@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	iam_store "github.com/hashicorp/boundary/internal/iam/store"
-	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
@@ -21,15 +20,13 @@ import (
 func Test_Repository_Scope_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		rw := db.New(conn)
-		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn)
-		repo, err := NewRepository(rw, rw, kms)
-		require.NoError(err)
 		id := testId(t)
-
 		s, err := NewOrg(WithName(id))
 		require.NoError(err)
 		s, err = repo.CreateScope(context.Background(), s, "")
@@ -47,15 +44,11 @@ func Test_Repository_Scope_Create(t *testing.T) {
 	})
 	t.Run("valid-scope-withPublicId", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		rw := db.New(conn)
-		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn)
-		repo, err := NewRepository(rw, rw, kms)
-		require.NoError(err)
 		publicId, err := newScopeId(scope.Org)
 		require.NoError(err)
 		s, err := NewOrg()
 		require.NoError(err)
+
 		s, err = repo.CreateScope(context.Background(), s, "", WithPublicId(publicId))
 		require.NoError(err)
 		require.NotNil(s)
@@ -69,15 +62,11 @@ func Test_Repository_Scope_Create(t *testing.T) {
 	})
 	t.Run("dup-org-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		rw := db.New(conn)
-		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn)
-		repo, err := NewRepository(rw, rw, kms)
-		require.NoError(err)
 		id := testId(t)
 
 		s, err := NewOrg(WithName(id))
 		require.NoError(err)
+
 		s, err = repo.CreateScope(context.Background(), s, "")
 		require.NoError(err)
 		require.NotNil(s)
@@ -92,11 +81,6 @@ func Test_Repository_Scope_Create(t *testing.T) {
 	})
 	t.Run("dup-proj-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		rw := db.New(conn)
-		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn)
-		repo, err := NewRepository(rw, rw, kms)
-		require.NoError(err)
 		id := testId(t)
 
 		s, err := NewOrg(WithName(id))
@@ -124,16 +108,14 @@ func Test_Repository_Scope_Create(t *testing.T) {
 func Test_Repository_Scope_Update(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		rw := db.New(conn)
-		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn)
-		repo, err := NewRepository(rw, rw, kms)
-		require.NoError(err)
 		id := testId(t)
 
-		s := testOrg(t, conn, id, "")
+		s := testOrg(t, repo, id, "")
 		assert.Equal(id, s.Name)
 
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
@@ -173,14 +155,9 @@ func Test_Repository_Scope_Update(t *testing.T) {
 	})
 	t.Run("bad-parent-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		rw := db.New(conn)
-		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn)
-		repo, err := NewRepository(rw, rw, kms)
-		require.NoError(err)
 		id := testId(t)
 
-		s := testOrg(t, conn, id, "")
+		s := testOrg(t, repo, id, "")
 		assert.Equal(id, s.Name)
 
 		project, err := NewProject(s.PublicId)
@@ -201,16 +178,13 @@ func Test_Repository_Scope_Update(t *testing.T) {
 func Test_Repository_Scope_Lookup(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	t.Run("found-and-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		rw := db.New(conn)
-		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn)
-		repo, err := NewRepository(rw, rw, kms)
-		require.NoError(err)
 		id := testId(t)
 
-		s := testOrg(t, conn, id, "")
+		s := testOrg(t, repo, id, "")
 		require.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), id)
 
@@ -229,9 +203,8 @@ func Test_Repository_Scope_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	assert.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	t.Run("valid-with-public-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		s, _ := TestScopes(t, repo)
@@ -269,7 +242,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 	id := testId(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	testkms := kms.TestKms(t, conn)
+	repo := TestRepo(t, conn, wrapper)
 	publicId := testPublicId(t, "o")
 
 	type args struct {
@@ -426,16 +399,11 @@ func TestRepository_UpdateScope(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			r := &Repository{
-				reader: rw,
-				writer: rw,
-				kms:    testKms,
-			}
-			org := testOrg(t, conn, tt.name+"-orig-"+id, "orig-"+id)
+			org := testOrg(t, repo, tt.name+"-orig-"+id, "orig-"+id)
 			if tt.args.scope != nil {
 				tt.args.scope.PublicId = org.PublicId
 			}
-			updatedScope, rowsUpdated, err := r.UpdateScope(context.Background(), tt.args.scope, 1, tt.args.fieldMaskPaths, tt.args.opt...)
+			updatedScope, rowsUpdated, err := repo.UpdateScope(context.Background(), tt.args.scope, 1, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantUpdatedRows, rowsUpdated)
@@ -469,11 +437,11 @@ func TestRepository_UpdateScope(t *testing.T) {
 		r := &Repository{
 			reader: rw,
 			writer: rw,
-			kms:    testKms,
+			kms:    repo.kms,
 		}
 		id := testId(t)
-		_ = testOrg(t, conn, id, id)
-		org2 := testOrg(t, conn, "dup-"+id, id)
+		_ = testOrg(t, repo, id, id)
+		org2 := testOrg(t, repo, "dup-"+id, id)
 		org2.Name = id
 		updatedScope, rowsUpdated, err := r.UpdateScope(context.Background(), org2, 1, []string{"Name"})
 		require.Error(err)
@@ -486,12 +454,9 @@ func Test_Repository_ListProjects(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
-	require.NoError(t, err)
-	org := testOrg(t, conn, "", "")
+	repo := TestRepo(t, conn, wrapper, WithLimit(testLimit))
+	org := testOrg(t, repo, "", "")
 
 	type args struct {
 		withOrgId string
@@ -549,7 +514,7 @@ func Test_Repository_ListProjects(t *testing.T) {
 			require.NoError(conn.Where("public_id != ? and public_id != 'global'", org.PublicId).Delete(allocScope()).Error)
 			testProjects := []*Scope{}
 			for i := 0; i < tt.createCnt; i++ {
-				testProjects = append(testProjects, testProject(t, conn, org.PublicId))
+				testProjects = append(testProjects, testProject(t, repo, org.PublicId))
 			}
 			assert.Equal(tt.createCnt, len(testProjects))
 			got, err := repo.ListProjects(context.Background(), tt.args.withOrgId, tt.args.opt...)
@@ -567,11 +532,8 @@ func Test_Repository_ListOrgs(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper, WithLimit(testLimit))
 	type args struct {
 		opt []Option
 	}
@@ -614,7 +576,7 @@ func Test_Repository_ListOrgs(t *testing.T) {
 			require.NoError(conn.Where("type = 'org'").Delete(allocScope()).Error)
 			testOrgs := []*Scope{}
 			for i := 0; i < tt.createCnt; i++ {
-				testOrgs = append(testOrgs, testOrg(t, conn, "", ""))
+				testOrgs = append(testOrgs, testOrg(t, repo, "", ""))
 			}
 			assert.Equal(tt.createCnt, len(testOrgs))
 			got, err := repo.ListOrgs(context.Background(), tt.args.opt...)

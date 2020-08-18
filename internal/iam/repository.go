@@ -130,14 +130,21 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 		dbOpts = append(dbOpts, db.WithSkipVetForWrite(true))
 	}
 
-	scope, err := resource.GetScope(ctx, r.reader)
-	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("unable to get scope: %w", err)
+	var scope *Scope
+	switch t := resource.(type) {
+	case *Scope:
+		scope = t
+	default:
+		scope, err = resource.GetScope(ctx, r.reader)
+		if err != nil {
+			return nil, db.NoRowsAffected, fmt.Errorf("unable to get scope: %w", err)
+		}
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
 	}
+	dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
 
 	var rowsUpdated int
 	var returnedResource interface{}
@@ -146,7 +153,6 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
 			returnedResource = resourceCloner.Clone()
 			rowsUpdated, err = w.Update(
 				ctx,

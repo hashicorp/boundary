@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam/store"
-	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +17,8 @@ import (
 func TestNewUser(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, repo)
+	wrapper := db.TestWrapper(t)
+	org, _ := TestScopes(t, TestRepo(t, conn, wrapper))
 	id := testId(t)
 
 	type args struct {
@@ -93,7 +93,8 @@ func Test_UserHardcoded(t *testing.T) {
 func Test_UserCreate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, repo)
+	wrapper := db.TestWrapper(t)
+	org, _ := TestScopes(t, TestRepo(t, conn, wrapper))
 	id := testId(t)
 	t.Run("valid-user", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -132,9 +133,7 @@ func Test_UserUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper)
 	id := testId(t)
 	org, proj := TestScopes(t, repo)
 
@@ -208,13 +207,13 @@ func Test_UserUpdate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			if tt.wantDup {
-				u := TestUser(t, conn, org.PublicId)
+				u := TestUser(t, repo, org.PublicId)
 				u.Name = tt.args.name
 				_, err := rw.Update(context.Background(), u, tt.args.fieldMaskPaths, nil)
 				require.NoError(err)
 			}
 
-			u := TestUser(t, conn, org.PublicId)
+			u := TestUser(t, repo, org.PublicId)
 
 			updateUser := allocUser()
 			updateUser.PublicId = u.PublicId
@@ -245,9 +244,7 @@ func Test_UserDelete(t *testing.T) {
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper)
 	id := testId(t)
 	org, _ := TestScopes(t, repo)
 
@@ -260,7 +257,7 @@ func Test_UserDelete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			user:            TestUser(t, conn, org.PublicId),
+			user:            TestUser(t, repo, org.PublicId),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
@@ -305,11 +302,13 @@ func Test_UserDelete(t *testing.T) {
 func Test_UserGetScope(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		user := TestUser(t, conn, org.PublicId)
+		user := TestUser(t, repo, org.PublicId)
 		userScope, err := user.GetScope(context.Background(), w)
 		require.NoError(err)
 		assert.True(proto.Equal(org, userScope))
@@ -320,11 +319,13 @@ func Test_UserGetScope(t *testing.T) {
 func TestUser_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
-		user := TestUser(t, conn, org.PublicId)
+		user := TestUser(t, repo, org.PublicId)
 		cp := user.Clone()
 		assert.True(proto.Equal(cp.(*User).User, user.User))
 	})

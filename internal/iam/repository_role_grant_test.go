@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,9 +19,7 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper)
 	_, proj := TestScopes(t, repo)
 	role := TestRole(t, conn, proj.PublicId)
 	createGrantsFn := func() []string {
@@ -126,11 +123,8 @@ func TestRepository_ListRoleGrants(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper, WithLimit(testLimit))
 	org, proj := TestScopes(t, repo)
 
 	type args struct {
@@ -229,9 +223,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 
 	type args struct {
@@ -414,11 +406,8 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(err)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	role := TestRole(t, conn, org.PublicId)
 	require.NoError(conn.Where("1=1").Delete(allocRoleGrant()).Error)
@@ -476,7 +465,7 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 	}
 
 	// At the end, set to explicitly empty and make sure all are cleared out
-	_, _, err = repo.SetRoleGrants(context.Background(), role.PublicId, uint32(totalCnt+1), []string{})
+	_, _, err := repo.SetRoleGrants(context.Background(), role.PublicId, uint32(totalCnt+1), []string{})
 	require.NoError(err)
 
 	roleGrants, err := repo.ListRoleGrants(context.Background(), role.PublicId)
@@ -487,11 +476,8 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 func TestRepository_SetRoleGrants_Parameters(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	role := TestRole(t, conn, org.PublicId)
 	type args struct {

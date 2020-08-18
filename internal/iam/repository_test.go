@@ -24,7 +24,7 @@ func TestNewRepository(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	testkms := kms.TestKms(t, conn)
+	testKms := kms.TestKms(t, conn, wrapper)
 	type args struct {
 		r   db.Reader
 		w   db.Writer
@@ -61,7 +61,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil wrapper",
+			wantErrString: "error creating db repository with nil kms",
 		},
 		{
 			name: "nil-writer",
@@ -103,13 +103,10 @@ func TestNewRepository(t *testing.T) {
 func Test_Repository_create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		rw := db.New(conn)
-		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn)
-		repo, err := NewRepository(rw, rw, kms)
-		require.NoError(err)
 		id := testId(t)
 
 		s, err := NewOrg(WithName("fname-" + id))
@@ -136,11 +133,6 @@ func Test_Repository_create(t *testing.T) {
 	})
 	t.Run("nil-resource", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		rw := db.New(conn)
-		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn)
-		repo, err := NewRepository(rw, rw, kms)
-		require.NoError(err)
 		resource, err := repo.create(context.Background(), nil)
 		require.Error(err)
 		assert.Nil(resource)
@@ -151,12 +143,11 @@ func Test_Repository_create(t *testing.T) {
 func Test_Repository_delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	t.Run("valid-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
-		kms := kms.TestKms(t, conn)
-		repo, err := NewRepository(rw, rw, kms)
-		require.NoError(err)
 
 		s, _ := TestScopes(t, repo)
 
@@ -167,14 +158,12 @@ func Test_Repository_delete(t *testing.T) {
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
 		require.NoError(err)
 	})
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	t.Run("nil-resource", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		rw := db.New(conn)
-		kms := kms.TestKms(t, conn)
-		repo, err := NewRepository(rw, rw, kms)
-		require.NoError(err)
+
 		deletedRows, err := repo.delete(context.Background(), nil, nil)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal(0, deletedRows)
 		assert.Equal(err.Error(), "error deleting resource that is nil")
 	})
@@ -184,9 +173,9 @@ func TestRepository_update(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 	id := testId(t)
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	rw := db.New(conn)
+	repo := TestRepo(t, conn, wrapper)
 	publicId := testPublicId(t, "o")
 
 	type args struct {
@@ -301,16 +290,11 @@ func TestRepository_update(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			r := &Repository{
-				reader: rw,
-				writer: rw,
-				kms:    kms,
-			}
-			org := testOrg(t, conn, tt.name+"-orig-"+id, "orig-"+id)
+			org := testOrg(t, repo, tt.name+"-orig-"+id, "orig-"+id)
 			if tt.args.resource != nil {
 				tt.args.resource.(*Scope).PublicId = org.PublicId
 			}
-			updatedResource, rowsUpdated, err := r.update(context.Background(), tt.args.resource, 1, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
+			updatedResource, rowsUpdated, err := repo.update(context.Background(), tt.args.resource, 1, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantUpdatedRows, rowsUpdated)

@@ -12,9 +12,11 @@ import (
 func Test_testOrg(t *testing.T) {
 	assert := assert.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	id := testId(t)
 
-	org := testOrg(t, conn, id, id)
+	org := testOrg(t, repo, id, id)
 	assert.Equal(id, org.Name)
 	assert.Equal(id, org.Description)
 	assert.NotEmpty(org.PublicId)
@@ -24,10 +26,12 @@ func Test_testProj(t *testing.T) {
 	assert := assert.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	id := testId(t)
 
-	org := testOrg(t, conn, id, id)
-	proj := testProject(t, conn, org.PublicId, WithName(id), WithDescription(id))
+	org := testOrg(t, repo, id, id)
+	proj := testProject(t, repo, org.PublicId, WithName(id), WithDescription(id))
 	assert.Equal(id, proj.Name)
 	assert.Equal(id, proj.Description)
 	assert.NotEmpty(proj.PublicId)
@@ -47,6 +51,8 @@ func Test_testPublicId(t *testing.T) {
 func Test_TestScopes(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, prj := TestScopes(t, repo)
 
 	require.NotNil(org)
@@ -59,12 +65,14 @@ func Test_TestUser(t *testing.T) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 
 	require.NotNil(org)
 	assert.NotEmpty(org.GetPublicId())
 
-	user := TestUser(t, conn, org.PublicId)
+	user := TestUser(t, repo, org.PublicId)
 	require.NotNil(user)
 	assert.NotEmpty(user.PublicId)
 }
@@ -73,6 +81,8 @@ func Test_TestRole(t *testing.T) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	id := testId(t)
 	org, proj := TestScopes(t, repo)
 	role := TestRole(t, conn, org.PublicId, WithDescription(id), WithName(id))
@@ -90,6 +100,8 @@ func Test_TestRoleGrant(t *testing.T) {
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	_, proj := TestScopes(t, repo)
 	projRole := TestRole(t, conn, proj.PublicId)
 
@@ -104,6 +116,8 @@ func Test_TestUserRole(t *testing.T) {
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 	org2, proj2 := TestScopes(t, repo)
 
@@ -111,7 +125,7 @@ func Test_TestUserRole(t *testing.T) {
 	projRole := TestRole(t, conn, proj.PublicId)
 	org2Role := TestRole(t, conn, org2.PublicId)
 	proj2Role := TestRole(t, conn, proj2.PublicId)
-	user := TestUser(t, conn, org.PublicId)
+	user := TestUser(t, repo, org.PublicId)
 
 	userRole := TestUserRole(t, conn, orgRole.PublicId, user.PublicId)
 	require.NotNil(userRole)
@@ -138,6 +152,8 @@ func Test_TestGroupRole(t *testing.T) {
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 	org2, proj2 := TestScopes(t, repo)
 
@@ -174,10 +190,12 @@ func Test_TestGroupMember(t *testing.T) {
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 	og := TestGroup(t, conn, org.PublicId)
 	pg := TestGroup(t, conn, proj.PublicId)
-	u := TestUser(t, conn, org.PublicId)
+	u := TestUser(t, repo, org.PublicId)
 
 	gm := TestGroupMember(t, conn, og.PublicId, u.PublicId)
 	require.NotNil(gm)

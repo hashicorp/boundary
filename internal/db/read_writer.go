@@ -914,7 +914,7 @@ func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, opt 
 		return fmt.Errorf("lookup by id: underlying db nil %w", ErrNilParameter)
 	}
 	if reflect.ValueOf(resourceWithIder).Kind() != reflect.Ptr {
-		return fmt.Errorf("lookup by id: interface parameter must to be a pointer %w", ErrInvalidParameter)
+		return fmt.Errorf("lookup by id: interface parameter must to be a pointer: %w", ErrInvalidParameter)
 	}
 	primaryKey, where, err := primaryKeyWhere(resourceWithIder)
 	if err != nil {

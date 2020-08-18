@@ -18,7 +18,7 @@ import (
 
 // TestRepo creates a repo that can be used for various purposes. Crucially, it
 // ensures that the global scope contains a valid root key.
-func TestRepo(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper) *Repository {
+func TestRepo(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper, opt ...Option) *Repository {
 	require := require.New(t)
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
@@ -40,7 +40,7 @@ func TestRepo(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper) *Reposi
 	require.NoError(err)
 	require.NotNil(wrapper)
 
-	repo, err := NewRepository(rw, rw, kmsCache)
+	repo, err := NewRepository(rw, rw, kmsCache, opt...)
 	require.NoError(err)
 	return repo
 }

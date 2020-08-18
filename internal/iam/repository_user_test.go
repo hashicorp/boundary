@@ -10,7 +10,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
-	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,9 +21,7 @@ func TestRepository_CreateUser(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper)
 	id := testId(t)
 	org, _ := TestScopes(t, repo)
 
@@ -115,9 +112,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper)
 	id := testId(t)
 	org, proj := TestScopes(t, repo)
 	pubId := func(s string) *string { return &s }
@@ -301,13 +296,13 @@ func TestRepository_UpdateUser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			if tt.wantDup {
-				u := TestUser(t, conn, org.PublicId, tt.newUserOpts...)
+				u := TestUser(t, repo, org.PublicId, tt.newUserOpts...)
 				u.Name = tt.args.name
 				_, _, err := repo.UpdateUser(context.Background(), u, 1, tt.args.fieldMaskPaths, tt.args.opt...)
 				require.NoError(err)
 			}
 
-			u := TestUser(t, conn, org.PublicId, tt.newUserOpts...)
+			u := TestUser(t, repo, org.PublicId, tt.newUserOpts...)
 
 			updateUser := allocUser()
 			updateUser.PublicId = u.PublicId
@@ -375,9 +370,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 
 	type args struct {
@@ -394,7 +387,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				user: TestUser(t, conn, org.PublicId),
+				user: TestUser(t, repo, org.PublicId),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -458,11 +451,8 @@ func TestRepository_ListUsers(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper, WithLimit(testLimit))
 	org, _ := TestScopes(t, repo)
 
 	type args struct {
@@ -521,7 +511,7 @@ func TestRepository_ListUsers(t *testing.T) {
 			require.NoError(conn.Where("public_id != 'u_anon' and public_id != 'u_auth'").Delete(allocUser()).Error)
 			testUsers := []*User{}
 			for i := 0; i < tt.createCnt; i++ {
-				testUsers = append(testUsers, TestUser(t, conn, org.PublicId))
+				testUsers = append(testUsers, TestUser(t, repo, org.PublicId))
 			}
 			assert.Equal(tt.createCnt, len(testUsers))
 			got, err := repo.ListUsers(context.Background(), tt.args.withOrgId, tt.args.opt...)
@@ -540,9 +530,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper)
 
 	id := testId(t)
 	org, _ := TestScopes(t, repo)
@@ -550,7 +538,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 	newAuthAcct := testAccount(t, conn, org.PublicId, authMethodId, "")
 	newAuthAcctWithoutVivify := testAccount(t, conn, org.PublicId, authMethodId, "")
 
-	user := TestUser(t, conn, org.PublicId, WithName("existing-"+id))
+	user := TestUser(t, repo, org.PublicId, WithName("existing-"+id))
 	existingAuthAcct := testAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
 	require.Equal(t, user.PublicId, existingAuthAcct.IamUserId)
 
@@ -682,9 +670,7 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	authMethodId := testAuthMethod(t, conn, org.PublicId)
 
@@ -709,7 +695,7 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 			name: "simple",
 			args: args{
 				Ids: func() Ids {
-					u := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
 					a := testAccount(t, conn, org.PublicId, authMethodId, "")
 					return Ids{user: u.PublicId, acct: a.PublicId}
 				}(),
@@ -742,7 +728,7 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 			name: "already-properly-assoc",
 			args: args{
 				Ids: func() Ids {
-					u := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
 					a := testAccount(t, conn, org.PublicId, authMethodId, u.PublicId)
 					return Ids{user: u.PublicId, acct: a.PublicId}
 				}(),
@@ -753,8 +739,8 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 			name: "assoc-with-diff-user",
 			args: args{
 				Ids: func() Ids {
-					u := TestUser(t, conn, org.PublicId)
-					diffUser := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
+					diffUser := TestUser(t, repo, org.PublicId)
 					a := testAccount(t, conn, org.PublicId, authMethodId, diffUser.PublicId)
 					return Ids{user: u.PublicId, acct: a.PublicId}
 				}(),
@@ -766,8 +752,8 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 			name: "assoc-with-diff-user-withDisassociateOption",
 			args: args{
 				Ids: func() Ids {
-					u := TestUser(t, conn, org.PublicId)
-					diffUser := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
+					diffUser := TestUser(t, repo, org.PublicId)
 					a := testAccount(t, conn, org.PublicId, authMethodId, diffUser.PublicId)
 					return Ids{user: u.PublicId, acct: a.PublicId}
 				}(),
@@ -779,7 +765,7 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 			name: "bad-acct-id",
 			args: args{
 				Ids: func() Ids {
-					u := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
 					id := testId(t)
 					return Ids{user: u.PublicId, acct: id}
 				}(),
@@ -828,9 +814,7 @@ func TestRepository_DissociateUserWithAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	authMethodId := testAuthMethod(t, conn, org.PublicId)
 
@@ -854,7 +838,7 @@ func TestRepository_DissociateUserWithAccount(t *testing.T) {
 			name: "simple",
 			args: args{
 				Ids: func() Ids {
-					u := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
 					a := testAccount(t, conn, org.PublicId, authMethodId, u.PublicId)
 					return Ids{user: u.PublicId, acct: a.PublicId}
 				}(),
@@ -887,7 +871,7 @@ func TestRepository_DissociateUserWithAccount(t *testing.T) {
 			name: "already-properly-disassoc",
 			args: args{
 				Ids: func() Ids {
-					u := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
 					a := testAccount(t, conn, org.PublicId, authMethodId, "")
 					return Ids{user: u.PublicId, acct: a.PublicId}
 				}(),
@@ -897,8 +881,8 @@ func TestRepository_DissociateUserWithAccount(t *testing.T) {
 			name: "assoc-with-diff-user",
 			args: args{
 				Ids: func() Ids {
-					u := TestUser(t, conn, org.PublicId)
-					diffUser := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
+					diffUser := TestUser(t, repo, org.PublicId)
 					a := testAccount(t, conn, org.PublicId, authMethodId, diffUser.PublicId)
 					return Ids{user: u.PublicId, acct: a.PublicId}
 				}(),
@@ -910,7 +894,7 @@ func TestRepository_DissociateUserWithAccount(t *testing.T) {
 			name: "bad-acct-id",
 			args: args{
 				Ids: func() Ids {
-					u := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
 					id := testId(t)
 					return Ids{user: u.PublicId, acct: id}
 				}(),

@@ -15,13 +15,15 @@ import (
 func Test_NewGroupMember(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 	org2, _ := TestScopes(t, repo)
 
 	orgGroup := TestGroup(t, conn, org.PublicId)
 	projGroup := TestGroup(t, conn, proj.PublicId)
-	user := TestUser(t, conn, org.PublicId)
-	user2 := TestUser(t, conn, org2.PublicId)
+	user := TestUser(t, repo, org.PublicId)
+	user2 := TestUser(t, repo, org2.PublicId)
 
 	type args struct {
 		groupId string
@@ -112,6 +114,8 @@ func Test_NewGroupMember(t *testing.T) {
 func Test_GroupMemberCreate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 	type args struct {
 		gm *GroupMemberUser
@@ -129,7 +133,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			args: args{
 				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, org.PublicId)
-					u := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
 					gm, err := NewGroupMemberUser(g.PublicId, u.PublicId)
 					require.NoError(t, err)
 					return gm
@@ -142,7 +146,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			args: args{
 				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, proj.PublicId)
-					u := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
 					gm, err := NewGroupMemberUser(g.PublicId, u.PublicId)
 					require.NoError(t, err)
 					return gm
@@ -155,7 +159,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			args: args{
 				gm: func() *GroupMemberUser {
 					id := testId(t)
-					u := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
 					gm, err := NewGroupMemberUser(id, u.PublicId)
 					require.NoError(t, err)
 					return gm
@@ -182,7 +186,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			name: "missing-group-id",
 			args: args{
 				gm: func() *GroupMemberUser {
-					u := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
 					return &GroupMemberUser{
 						GroupMemberUser: &store.GroupMemberUser{
 							GroupId:  "",
@@ -215,7 +219,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			args: args{
 				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, org.PublicId)
-					u := TestUser(t, conn, org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
 					gm, err := NewGroupMemberUser(g.PublicId, u.PublicId)
 					require.NoError(t, err)
 					return gm
@@ -259,14 +263,16 @@ func Test_GroupMemberCreate(t *testing.T) {
 func Test_GroupMemberUpdate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	rw := db.New(conn)
 
 	t.Run("updates not allowed", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		g := TestGroup(t, conn, org.PublicId)
-		u := TestUser(t, conn, org.PublicId)
-		u2 := TestUser(t, conn, org.PublicId)
+		u := TestUser(t, repo, org.PublicId)
+		u2 := TestUser(t, repo, org.PublicId)
 		gm := TestGroupMember(t, conn, g.PublicId, u.PublicId)
 		updateGrpMember := gm.Clone().(*GroupMemberUser)
 		updateGrpMember.MemberId = u2.PublicId
@@ -279,10 +285,12 @@ func Test_GroupMemberUpdate(t *testing.T) {
 func Test_GroupMemberDelete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	rw := db.New(conn)
 	id := testId(t)
 	org, _ := TestScopes(t, repo)
-	u := TestUser(t, conn, org.PublicId)
+	u := TestUser(t, repo, org.PublicId)
 	g := TestGroup(t, conn, org.PublicId)
 
 	tests := []struct {
@@ -333,8 +341,10 @@ func Test_GroupMemberDelete(t *testing.T) {
 func TestGroupMember_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
-	user := TestUser(t, conn, org.PublicId)
+	user := TestUser(t, repo, org.PublicId)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		group := TestGroup(t, conn, org.PublicId)

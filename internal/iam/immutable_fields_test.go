@@ -16,6 +16,8 @@ import (
 func TestScope_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	w := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
@@ -92,6 +94,8 @@ func TestConcreteScope_ImmutableFields(t *testing.T) {
 	)
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	db := conn.DB()
 
 	org, proj := TestScopes(t, repo)
@@ -142,12 +146,14 @@ func TestConcreteScope_ImmutableFields(t *testing.T) {
 func TestUser_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	w := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	org, proj := TestScopes(t, repo)
-	new := TestUser(t, conn, org.PublicId)
+	new := TestUser(t, repo, org.PublicId)
 
 	var tests = []struct {
 		name      string
@@ -207,6 +213,8 @@ func TestUser_ImmutableFields(t *testing.T) {
 func TestRole_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	w := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
@@ -272,6 +280,8 @@ func TestRole_ImmutableFields(t *testing.T) {
 func TestGroup_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	w := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}

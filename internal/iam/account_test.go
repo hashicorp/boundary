@@ -20,11 +20,13 @@ import (
 func Test_AccountUpdate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	rw := db.New(conn)
 	t.Run("simple-update", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		u := TestUser(t, conn, org.PublicId)
+		u := TestUser(t, repo, org.PublicId)
 		authMethodPublicId := testAuthMethod(t, conn, org.PublicId)
 		acct := testAccount(t, conn, org.PublicId, authMethodPublicId, "")
 
@@ -45,12 +47,14 @@ func Test_AccountUpdate(t *testing.T) {
 func TestAccount_GetScope(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 
 	t.Run("valid-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		u := TestUser(t, conn, org.PublicId)
+		u := TestUser(t, repo, org.PublicId)
 		authMethodPublicId := testAuthMethod(t, conn, org.PublicId)
 		acct := testAccount(t, conn, org.PublicId, authMethodPublicId, u.PublicId)
 		scope, err := acct.GetScope(context.Background(), w)
@@ -62,10 +66,12 @@ func TestAccount_GetScope(t *testing.T) {
 func TestAccount_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
-		u := TestUser(t, conn, org.PublicId)
+		u := TestUser(t, repo, org.PublicId)
 		authMethodPublicId := testAuthMethod(t, conn, org.PublicId)
 		acct := testAccount(t, conn, org.PublicId, authMethodPublicId, u.PublicId)
 		cp := acct.Clone()
@@ -74,7 +80,7 @@ func TestAccount_Clone(t *testing.T) {
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
 		rw := db.New(conn)
-		u := TestUser(t, conn, org.PublicId)
+		u := TestUser(t, repo, org.PublicId)
 		authMethodPublicId := testAuthMethod(t, conn, org.PublicId)
 		acct := testAccount(t, conn, org.PublicId, authMethodPublicId, u.PublicId)
 		acct2 := testAccount(t, conn, org.PublicId, authMethodPublicId, "")

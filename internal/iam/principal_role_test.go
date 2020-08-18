@@ -15,10 +15,12 @@ import (
 func TestNewUserRole(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 	orgRole := TestRole(t, conn, org.PublicId)
 	projRole := TestRole(t, conn, proj.PublicId)
-	user := TestUser(t, conn, org.PublicId)
+	user := TestUser(t, repo, org.PublicId)
 
 	type args struct {
 		roleId string
@@ -97,6 +99,8 @@ func TestNewUserRole(t *testing.T) {
 func TestUserRole_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 	org2, proj2 := TestScopes(t, repo)
 	type args struct {
@@ -115,7 +119,7 @@ func TestUserRole_Create(t *testing.T) {
 			args: args{
 				role: func() *UserRole {
 					role := TestRole(t, conn, org.PublicId)
-					principal := TestUser(t, conn, org.PublicId)
+					principal := TestUser(t, repo, org.PublicId)
 					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
@@ -128,7 +132,7 @@ func TestUserRole_Create(t *testing.T) {
 			args: args{
 				role: func() *UserRole {
 					role := TestRole(t, conn, proj.PublicId)
-					principal := TestUser(t, conn, org.PublicId)
+					principal := TestUser(t, repo, org.PublicId)
 					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
@@ -141,7 +145,7 @@ func TestUserRole_Create(t *testing.T) {
 			args: args{
 				role: func() *UserRole {
 					role := TestRole(t, conn, org2.PublicId)
-					principal := TestUser(t, conn, org.PublicId)
+					principal := TestUser(t, repo, org.PublicId)
 					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
@@ -153,7 +157,7 @@ func TestUserRole_Create(t *testing.T) {
 			args: args{
 				role: func() *UserRole {
 					role := TestRole(t, conn, proj2.PublicId)
-					principal := TestUser(t, conn, org.PublicId)
+					principal := TestUser(t, repo, org.PublicId)
 					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
@@ -165,7 +169,7 @@ func TestUserRole_Create(t *testing.T) {
 			args: args{
 				role: func() *UserRole {
 					id := testId(t)
-					principal := TestUser(t, conn, org.PublicId)
+					principal := TestUser(t, repo, org.PublicId)
 					principalRole, err := NewUserRole(id, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
@@ -192,7 +196,7 @@ func TestUserRole_Create(t *testing.T) {
 			name: "missing-role-id",
 			args: args{
 				role: func() *UserRole {
-					principal := TestUser(t, conn, org.PublicId)
+					principal := TestUser(t, repo, org.PublicId)
 					return &UserRole{
 						UserRole: &store.UserRole{
 							RoleId:      "",
@@ -227,7 +231,7 @@ func TestUserRole_Create(t *testing.T) {
 			args: args{
 				role: func() *UserRole {
 					role := TestRole(t, conn, org.PublicId)
-					principal := TestUser(t, conn, org.PublicId)
+					principal := TestUser(t, repo, org.PublicId)
 					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
@@ -271,14 +275,16 @@ func TestUserRole_Create(t *testing.T) {
 func TestUserRole_Update(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	rw := db.New(conn)
 
 	t.Run("updates not allowed", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		r := TestRole(t, conn, org.PublicId)
-		u := TestUser(t, conn, org.PublicId)
-		u2 := TestUser(t, conn, org.PublicId)
+		u := TestUser(t, repo, org.PublicId)
+		u2 := TestUser(t, repo, org.PublicId)
 		userRole := TestUserRole(t, conn, r.PublicId, u.PublicId)
 		updateRole := userRole.Clone().(*UserRole)
 		updateRole.PrincipalId = u2.PublicId
@@ -291,10 +297,12 @@ func TestUserRole_Update(t *testing.T) {
 func TestUserRole_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	rw := db.New(conn)
 	id := testId(t)
 	org, _ := TestScopes(t, repo)
-	u := TestUser(t, conn, org.PublicId)
+	u := TestUser(t, repo, org.PublicId)
 	r := TestRole(t, conn, org.PublicId)
 
 	tests := []struct {
@@ -345,8 +353,10 @@ func TestUserRole_Delete(t *testing.T) {
 func TestUserRole_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
-	user := TestUser(t, conn, org.PublicId)
+	user := TestUser(t, repo, org.PublicId)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		role := TestRole(t, conn, org.PublicId)
@@ -368,6 +378,8 @@ func TestUserRole_Clone(t *testing.T) {
 func TestNewGroupRole(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 	orgRole := TestRole(t, conn, org.PublicId)
 	projRole := TestRole(t, conn, proj.PublicId)
@@ -450,6 +462,8 @@ func TestNewGroupRole(t *testing.T) {
 func TestGroupRole_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 	org2, proj2 := TestScopes(t, repo)
 	type args struct {
@@ -639,6 +653,8 @@ func TestGroupRole_Create(t *testing.T) {
 func TestGroupRole_Update(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	rw := db.New(conn)
 
@@ -659,6 +675,8 @@ func TestGroupRole_Update(t *testing.T) {
 func TestGroupRole_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	rw := db.New(conn)
 	id := testId(t)
 	org, _ := TestScopes(t, repo)
@@ -718,6 +736,8 @@ func TestGroupRole_Delete(t *testing.T) {
 func TestGroupRole_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)

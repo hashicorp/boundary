@@ -16,6 +16,8 @@ import (
 func TestRoleGrant_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	_, proj := TestScopes(t, repo)
 	projRole := TestRole(t, conn, proj.PublicId)
 
@@ -115,6 +117,8 @@ func TestRoleGrant_Create(t *testing.T) {
 func TestRoleGrant_Update(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	rw := db.New(conn)
 
@@ -134,7 +138,8 @@ func TestRoleGrant_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	_, proj := TestScopes(t, repo)
 	projRole := TestRole(t, conn, proj.PublicId)
 
@@ -218,9 +223,11 @@ func TestRoleGrant_Delete(t *testing.T) {
 func TestRoleGrant_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
-		s := testOrg(t, conn, "", "")
+		s := testOrg(t, repo, "", "")
 		role := TestRole(t, conn, s.PublicId)
 
 		g, err := NewRoleGrant(role.PublicId, "id=*;actions=*")
@@ -234,7 +241,7 @@ func TestRoleGrant_Clone(t *testing.T) {
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
-		s := testOrg(t, conn, "", "")
+		s := testOrg(t, repo, "", "")
 		role := TestRole(t, conn, s.PublicId)
 
 		g, err := NewRoleGrant(role.PublicId, "id=*;actions=*")

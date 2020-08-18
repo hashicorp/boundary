@@ -20,6 +20,8 @@ import (
 func TestNewRole(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 	id := testId(t)
 
@@ -96,6 +98,8 @@ func TestNewRole(t *testing.T) {
 func Test_RoleCreate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 	type args struct {
 		role *Role
@@ -205,6 +209,8 @@ func Test_RoleCreate(t *testing.T) {
 func Test_RoleUpdate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	id := testId(t)
 	org, proj := TestScopes(t, repo)
 	org2, proj2 := TestScopes(t, repo)
@@ -474,6 +480,8 @@ func Test_RoleUpdate(t *testing.T) {
 func Test_RoleDelete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	rw := db.New(conn)
 	id := testId(t)
 	org, _ := TestScopes(t, repo)
@@ -549,6 +557,8 @@ func TestRole_ResourceType(t *testing.T) {
 func TestRole_GetScope(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 
 	t.Run("valid-org", func(t *testing.T) {
@@ -572,6 +582,8 @@ func TestRole_GetScope(t *testing.T) {
 func TestRole_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
