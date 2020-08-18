@@ -2558,8 +2558,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has.\nOutput only.",
-          "readOnly": true
+          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has."
         }
       },
       "title": "User contains all fields related to a User resource"

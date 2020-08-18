@@ -554,20 +554,20 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.req.Version = version
+			tc.req.Item.Version = version
 
 			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateUserRequest)
 			proto.Merge(req, tc.req)
 
 			// Test with bad version (too high, too low)
-			req.Version = version + 2
+			req.Item.Version = version + 2
 			_, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
 			require.Error(gErr)
-			req.Version = version - 1
+			req.Item.Version = version - 1
 			_, gErr = tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
 			require.Error(gErr)
-			req.Version = version
+			req.Item.Version = version
 
 			got, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
 			require.Equal(tc.errCode, status.Code(gErr), "UpdateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
