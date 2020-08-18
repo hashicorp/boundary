@@ -4,21 +4,22 @@ import (
 	"errors"
 	"testing"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 )
 
 func TestRepository_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	type args struct {
-		r       db.Reader
-		w       db.Writer
-		wrapper wrapping.Wrapper
+		r   db.Reader
+		w   db.Writer
+		kms *kms.Kms
 	}
 
 	var tests = []struct {
@@ -30,22 +31,22 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				r:       rw,
-				w:       rw,
-				wrapper: wrapper,
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
 			},
 			want: &Repository{
-				reader:  rw,
-				writer:  rw,
-				wrapper: wrapper,
+				reader: rw,
+				writer: rw,
+				kms:    kmsCache,
 			},
 		},
 		{
 			name: "nil-reader",
 			args: args{
-				r:       nil,
-				w:       rw,
-				wrapper: wrapper,
+				r:   nil,
+				w:   rw,
+				kms: kmsCache,
 			},
 			want:      nil,
 			wantIsErr: db.ErrNilParameter,
@@ -53,19 +54,19 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "nil-writer",
 			args: args{
-				r:       rw,
-				w:       nil,
-				wrapper: wrapper,
+				r:   rw,
+				w:   nil,
+				kms: kmsCache,
 			},
 			want:      nil,
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
-			name: "nil-wrapper",
+			name: "nil-kms",
 			args: args{
-				r:       rw,
-				w:       rw,
-				wrapper: nil,
+				r:   rw,
+				w:   rw,
+				kms: nil,
 			},
 			want:      nil,
 			wantIsErr: db.ErrNilParameter,
@@ -73,9 +74,9 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "all-nils",
 			args: args{
-				r:       nil,
-				w:       nil,
-				wrapper: nil,
+				r:   nil,
+				w:   nil,
+				kms: nil,
 			},
 			want:      nil,
 			wantIsErr: db.ErrNilParameter,
@@ -85,7 +86,7 @@ func TestRepository_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
+			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)

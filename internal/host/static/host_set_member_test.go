@@ -13,8 +13,9 @@ import (
 func TestHostSetMember_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	conn.LogMode(false)
+	wrapper := db.TestWrapper(t)
 
-	cats := testCatalogs(t, conn, 2)
+	cats := testCatalogs(t, conn, wrapper, 2)
 
 	blueCat := cats[0]
 	blueSets := testSets(t, conn, blueCat.GetPublicId(), 2)

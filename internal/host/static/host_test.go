@@ -11,9 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
 func TestHost_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	cat := testCatalog(t, conn)
+	wrapper := db.TestWrapper(t)
+	cat := testCatalog(t, conn, wrapper)
 
 	conn.LogMode(false)
 	type args struct {

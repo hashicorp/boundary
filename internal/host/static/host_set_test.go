@@ -13,7 +13,8 @@ import (
 
 func TestHostSet_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	cat := testCatalog(t, conn)
+	wrapper := db.TestWrapper(t)
+	cat := testCatalog(t, conn, wrapper)
 
 	conn.LogMode(false)
 	type args struct {

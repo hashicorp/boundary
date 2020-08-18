@@ -109,7 +109,7 @@ func New(conf *Config) (*Controller, error) {
 		return iam.NewRepository(dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
 	}
 	c.StaticHostRepoFn = func() (*static.Repository, error) {
-		return static.NewRepository(dbase, dbase, c.conf.RootKms)
+		return static.NewRepository(dbase, dbase, c.kms)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(dbase, dbase, c.conf.RootKms)
