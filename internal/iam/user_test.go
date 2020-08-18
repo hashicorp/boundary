@@ -18,7 +18,7 @@ import (
 func TestNewUser(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 	id := testId(t)
 
 	type args struct {
@@ -93,7 +93,7 @@ func Test_UserHardcoded(t *testing.T) {
 func Test_UserCreate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 	id := testId(t)
 	t.Run("valid-user", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -132,11 +132,11 @@ func Test_UserUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	id := testId(t)
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 
 	type args struct {
 		name           string
@@ -245,11 +245,11 @@ func Test_UserDelete(t *testing.T) {
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	id := testId(t)
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 
 	tests := []struct {
 		name            string
@@ -305,7 +305,7 @@ func Test_UserDelete(t *testing.T) {
 func Test_UserGetScope(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
@@ -320,7 +320,7 @@ func Test_UserGetScope(t *testing.T) {
 func TestUser_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)

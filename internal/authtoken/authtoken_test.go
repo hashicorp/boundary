@@ -24,7 +24,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	acct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
@@ -94,7 +94,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			assert := assert.New(t)
 			w := db.New(conn)
 
-			org, _ := iam.TestScopes(t, conn)
+			org, _ := iam.TestScopes(t, repo)
 			authTok := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 			proto.Merge(authTok.AuthToken, tt.args.authTok)
 
@@ -117,7 +117,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	acct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 	createdAuthToken := TestAuthToken(t, conn, wrapper, org.GetPublicId())
@@ -178,7 +178,7 @@ func TestAuthToken_DbDelete(t *testing.T) {
 	}
 
 	wrapper := db.TestWrapper(t)
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	existingAuthTok := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 
 	var tests = []struct {

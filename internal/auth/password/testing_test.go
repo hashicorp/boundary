@@ -12,7 +12,7 @@ import (
 func Test_TestAuthMethods(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	require.NotNil(org)
 	assert.NotEmpty(org.GetPublicId())
 
@@ -28,7 +28,7 @@ func Test_TestAccounts(t *testing.T) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 
 	require.NotNil(org)
 	assert.NotEmpty(org.GetPublicId())

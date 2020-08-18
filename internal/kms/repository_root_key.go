@@ -44,23 +44,23 @@ func CreateRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapp
 	if len(key) == 0 {
 		return nil, nil, fmt.Errorf("create root key: missing key: %w", db.ErrInvalidParameter)
 	}
-	rk := allocRootKey()
-	kv := allocRootKeyVersion()
-	id, err := newRootKeyId()
+	rk := AllocRootKey()
+	kv := AllocRootKeyVersion()
+	id, err := NewRootKeyId()
 	if err != nil {
 		return nil, nil, fmt.Errorf("create root key: %w", err)
 	}
 	rk.PrivateId = id
 	rk.ScopeId = scopeId
 
-	id, err = newRootKeyVersionId()
+	id, err = NewRootKeyVersionId()
 	if err != nil {
 		return nil, nil, fmt.Errorf("create root key: %w", err)
 	}
 	kv.PrivateId = id
 	kv.RootKeyId = rk.PrivateId
 	kv.Key = key
-	if err := kv.encrypt(ctx, keyWrapper); err != nil {
+	if err := kv.Encrypt(ctx, keyWrapper); err != nil {
 		return nil, nil, fmt.Errorf("create root key: %w", err)
 	}
 
@@ -85,7 +85,7 @@ func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 	if keyWrapper == nil {
 		return nil, fmt.Errorf("lookup root key: missing key wrapper: %w", db.ErrNilParameter)
 	}
-	k := allocRootKey()
+	k := AllocRootKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
 		return nil, fmt.Errorf("lookup root key: failed %w for %s", err, privateId)
@@ -100,7 +100,7 @@ func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 	if privateId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete root key: missing private id: %w", db.ErrInvalidParameter)
 	}
-	k := allocRootKey()
+	k := AllocRootKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete root key: failed %w for %s", err, privateId)

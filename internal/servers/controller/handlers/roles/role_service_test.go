@@ -34,12 +34,12 @@ func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, repo)
 	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
 	pr := iam.TestRole(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return or, pr, repoFn
@@ -180,12 +180,12 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
-	oNoRoles, pWithRoles := iam.TestScopes(t, conn)
-	oWithRoles, pNoRoles := iam.TestScopes(t, conn)
+	oNoRoles, pWithRoles := iam.TestScopes(t, repo)
+	oWithRoles, pNoRoles := iam.TestScopes(t, repo)
 	var wantOrgRoles []*pb.Role
 	var wantProjRoles []*pb.Role
 	for i := 0; i < 10; i++ {
@@ -512,12 +512,12 @@ func TestUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, repo)
 	u := iam.TestUser(t, conn, o.GetPublicId())
 
 	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
@@ -933,14 +933,14 @@ func TestAddPrincipal(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, repo)
 	users := []*iam.User{
 		iam.TestUser(t, conn, o.GetPublicId()),
 		iam.TestUser(t, conn, o.GetPublicId()),
@@ -1055,14 +1055,14 @@ func TestSetPrincipal(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, repo)
 	users := []*iam.User{
 		iam.TestUser(t, conn, o.GetPublicId()),
 		iam.TestUser(t, conn, o.GetPublicId()),
@@ -1178,14 +1178,14 @@ func TestRemovePrincipal(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, repo)
 	users := []*iam.User{
 		iam.TestUser(t, conn, o.GetPublicId()),
 		iam.TestUser(t, conn, o.GetPublicId()),
@@ -1338,7 +1338,7 @@ func TestAddGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
@@ -1372,7 +1372,7 @@ func TestAddGrants(t *testing.T) {
 	}
 
 	for _, tc := range addCases {
-		o, p := iam.TestScopes(t, conn)
+		o, p := iam.TestScopes(t, repo)
 		for _, scope := range []*iam.Scope{o, p} {
 			t.Run(tc.name+"_"+scope.Type, func(t *testing.T) {
 				assert := assert.New(t)
@@ -1402,7 +1402,7 @@ func TestAddGrants(t *testing.T) {
 		}
 	}
 
-	_, p := iam.TestScopes(t, conn)
+	_, p := iam.TestScopes(t, repo)
 	role := iam.TestRole(t, conn, p.GetPublicId())
 	failCases := []struct {
 		name    string
@@ -1434,7 +1434,7 @@ func TestSetGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
@@ -1475,7 +1475,7 @@ func TestSetGrants(t *testing.T) {
 	}
 
 	for _, tc := range setCases {
-		o, p := iam.TestScopes(t, conn)
+		o, p := iam.TestScopes(t, repo)
 		for _, scope := range []*iam.Scope{o, p} {
 			t.Run(tc.name+"_"+scope.Type, func(t *testing.T) {
 				assert := assert.New(t)
@@ -1506,7 +1506,7 @@ func TestSetGrants(t *testing.T) {
 		}
 	}
 
-	_, p := iam.TestScopes(t, conn)
+	_, p := iam.TestScopes(t, repo)
 	role := iam.TestRole(t, conn, p.GetPublicId())
 
 	failCases := []struct {
@@ -1539,7 +1539,7 @@ func TestRemoveGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
@@ -1579,7 +1579,7 @@ func TestRemoveGrants(t *testing.T) {
 	}
 
 	for _, tc := range removeCases {
-		o, p := iam.TestScopes(t, conn)
+		o, p := iam.TestScopes(t, repo)
 		for _, scope := range []*iam.Scope{o, p} {
 			t.Run(tc.name+"_"+scope.Type, func(t *testing.T) {
 				assert := assert.New(t)
@@ -1611,7 +1611,7 @@ func TestRemoveGrants(t *testing.T) {
 		}
 	}
 
-	_, p := iam.TestScopes(t, conn)
+	_, p := iam.TestScopes(t, repo)
 	role := iam.TestRole(t, conn, p.GetPublicId())
 	failCases := []struct {
 		name string

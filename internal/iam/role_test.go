@@ -20,7 +20,7 @@ import (
 func TestNewRole(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	id := testId(t)
 
 	type args struct {
@@ -96,7 +96,7 @@ func TestNewRole(t *testing.T) {
 func Test_RoleCreate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	type args struct {
 		role *Role
 	}
@@ -206,8 +206,8 @@ func Test_RoleUpdate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	id := testId(t)
-	org, proj := TestScopes(t, conn)
-	org2, proj2 := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
+	org2, proj2 := TestScopes(t, repo)
 	rw := db.New(conn)
 	type args struct {
 		name            string
@@ -476,7 +476,7 @@ func Test_RoleDelete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	id := testId(t)
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 
 	tests := []struct {
 		name            string
@@ -549,7 +549,7 @@ func TestRole_ResourceType(t *testing.T) {
 func TestRole_GetScope(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 
 	t.Run("valid-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -572,7 +572,7 @@ func TestRole_GetScope(t *testing.T) {
 func TestRole_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		role := TestRole(t, conn, org.PublicId, WithDescription("this is a test role"))

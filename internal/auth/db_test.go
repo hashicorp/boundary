@@ -48,7 +48,7 @@ select count(*) from test_auth_method where public_id = $1;
 	_, err = db.Exec(addTriggers)
 	require.NoError(err)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 
 	id := "l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
 	_, err = db.Query(insert, id, org.GetPublicId())
@@ -112,7 +112,7 @@ values
 	_, err = db.Exec(addTriggers)
 	require.NoError(err)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	meth_id := "31Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
 	_, err = db.Query(insertAuthMethod, meth_id, org.GetPublicId())
 	require.NoError(err)

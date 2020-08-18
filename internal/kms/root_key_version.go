@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultRootKeyVersionTableName = "kms_root_key_version"
+	DefaultRootKeyVersionTableName = "kms_root_key_version"
 )
 
 type RootKeyVersion struct {
@@ -39,7 +39,7 @@ func NewRootKeyVersion(rootKeyId string, key []byte, opt ...Option) (*RootKeyVer
 	return k, nil
 }
 
-func allocRootKeyVersion() RootKeyVersion {
+func AllocRootKeyVersion() RootKeyVersion {
 	return RootKeyVersion{
 		RootKeyVersion: &store.RootKeyVersion{},
 	}
@@ -75,7 +75,7 @@ func (k *RootKeyVersion) TableName() string {
 	if k.tableName != "" {
 		return k.tableName
 	}
-	return defaultRootKeyVersionTableName
+	return DefaultRootKeyVersionTableName
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage
@@ -85,7 +85,7 @@ func (k *RootKeyVersion) SetTableName(n string) {
 	k.tableName = n
 }
 
-func (k *RootKeyVersion) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (k *RootKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.RootKey directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.RootKeyVersion, nil); err != nil {
@@ -94,7 +94,7 @@ func (k *RootKeyVersion) encrypt(ctx context.Context, cipher wrapping.Wrapper) e
 	return nil
 }
 
-func (k *RootKeyVersion) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (k *RootKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.RootKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.RootKeyVersion, nil); err != nil {

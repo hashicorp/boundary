@@ -34,12 +34,12 @@ func createDefaultGroupsAndRepo(t *testing.T) (*iam.Group, *iam.Group, func() (*
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, repo)
 	og := iam.TestGroup(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	pg := iam.TestGroup(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return og, pg, repoFn
@@ -73,12 +73,12 @@ func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, repo)
 	u := iam.TestUser(t, conn, o.GetPublicId())
 
 	og := iam.TestGroup(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
@@ -206,12 +206,12 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
-	oNoGroups, pWithGroups := iam.TestScopes(t, conn)
-	oWithGroups, pNoGroups := iam.TestScopes(t, conn)
+	oNoGroups, pWithGroups := iam.TestScopes(t, repo)
+	oWithGroups, pNoGroups := iam.TestScopes(t, repo)
 	var wantOrgGroups []*pb.Group
 	var wantProjGroups []*pb.Group
 	for i := 0; i < 10; i++ {
@@ -523,12 +523,12 @@ func TestUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, repo)
 	u := iam.TestUser(t, conn, o.GetPublicId())
 
 	og := iam.TestGroup(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
@@ -922,14 +922,14 @@ func TestAddMember(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new group service.")
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, repo)
 	users := []*iam.User{
 		iam.TestUser(t, conn, o.GetPublicId()),
 		iam.TestUser(t, conn, o.GetPublicId()),
@@ -1025,14 +1025,14 @@ func TestSetMember(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new group service.")
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, repo)
 	users := []*iam.User{
 		iam.TestUser(t, conn, o.GetPublicId()),
 		iam.TestUser(t, conn, o.GetPublicId()),
@@ -1129,14 +1129,14 @@ func TestRemoveMember(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new grp service.")
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, repo)
 	users := []*iam.User{
 		iam.TestUser(t, conn, o.GetPublicId()),
 		iam.TestUser(t, conn, o.GetPublicId()),

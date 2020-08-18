@@ -24,7 +24,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 
 	var tests = []struct {
 		name      string
@@ -158,7 +158,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, repo)
 		in := &AuthMethod{
 			AuthMethod: &store.AuthMethod{
 				ScopeId: org.GetPublicId(),
@@ -186,7 +186,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org1, _ := iam.TestScopes(t, conn)
+		org1, _ := iam.TestScopes(t, repo)
 		in := &AuthMethod{
 			AuthMethod: &store.AuthMethod{
 				Name: "test-name-repo",
@@ -204,7 +204,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		org2, _ := iam.TestScopes(t, conn)
+		org2, _ := iam.TestScopes(t, repo)
 		in2.ScopeId = org2.GetPublicId()
 		got2, err := repo.CreateAuthMethod(context.Background(), in2)
 		require.NoError(err)
@@ -222,7 +222,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org1, _ := iam.TestScopes(t, conn)
+		org1, _ := iam.TestScopes(t, repo)
 		in := allocAuthMethod()
 
 		amId, err := newAuthMethodId()
@@ -242,7 +242,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org1, _ := iam.TestScopes(t, conn)
+		org1, _ := iam.TestScopes(t, repo)
 		in := allocAuthMethod()
 
 		in.ScopeId = org1.GetPublicId()
@@ -258,7 +258,7 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	amId, err := newAuthMethodId()
@@ -308,7 +308,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	newAuthMethodId, err := newAuthMethodId()
@@ -359,8 +359,8 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	noAuthMethodOrg, _ := iam.TestScopes(t, conn)
-	o, _ := iam.TestScopes(t, conn)
+	noAuthMethodOrg, _ := iam.TestScopes(t, repo)
+	o, _ := iam.TestScopes(t, repo)
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 3)
 
 	var tests = []struct {
@@ -410,7 +410,7 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	authMethodCount := 10
 	ams := TestAuthMethods(t, conn, o.GetPublicId(), authMethodCount)
 
@@ -654,7 +654,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			// create the initial auth method
-			o, _ := iam.TestScopes(t, conn)
+			o, _ := iam.TestScopes(t, repo)
 			am, err := NewAuthMethod(o.GetPublicId(), WithName("default"), WithDescription("default"))
 			require.NoError(err)
 			origAM, err := repo.CreateAuthMethod(ctx, am)

@@ -29,9 +29,9 @@ func TestAuthenticate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 
 	authTokenRepoFn := func() (*authtoken.Repository, error) { return authtoken.NewRepository(rw, rw, wrapper) }
 	iamRepoFn := func() (*iam.Repository, error) { return iam.NewRepository(rw, rw, kms) }
@@ -174,9 +174,9 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 
 	passwordRepoFn := func() (*password.Repository, error) { return password.NewRepository(rw, rw, wrapper) }
 	authTokenRepoFn := func() (*authtoken.Repository, error) { return authtoken.NewRepository(rw, rw, wrapper) }

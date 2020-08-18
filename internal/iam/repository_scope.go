@@ -132,7 +132,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(dbr db.Reader, w db.Writer) error {
 			if err := w.Create(
 				ctx,
 				scopeRaw,
@@ -143,15 +143,17 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 			s := scopeRaw.(*Scope)
 
-			if s.Type == scope.Global.String() || s.Type == scope.Org.String() {
-				// Create the scope's root key
-				_, _, err := kmsCommon.CreateRootKeyTx(ctx, w, externalWrappers.Root(), s.PublicId, rootKey)
-				if err != nil {
-					return fmt.Errorf("error creating scope root key: %w", err)
-				}
+			// Create the scope's root key
+			_, _, err := kmsCommon.CreateRootKeyTx(ctx, w, externalWrappers.Root(), s.PublicId, rootKey)
+			if err != nil {
+				return fmt.Errorf("error creating scope root key: %w", err)
 			}
 
-			childOplogWrapper, err := r.kms.GetWrapper(ctx, s.PublicId, kms.KeyPurposeOplog, "")
+			kmsRepo, err := kms.NewRepository(dbr, w)
+			if err != nil {
+				return fmt.Errorf("error creating new kms repo: %w", err)
+			}
+			childOplogWrapper, err := r.kms.GetWrapper(ctx, s.PublicId, kms.KeyPurposeOplog, "", kms.WithRepository(kmsRepo))
 			if err != nil {
 				return fmt.Errorf("error fetching new scope oplog wrapper: %w", err)
 			}

@@ -100,7 +100,7 @@ func TestScope_Update(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		s, _ := TestScopes(t, conn)
+		s, _ := TestScopes(t, repo)
 
 		s.Name = testId(t)
 		updatedRows, err := w.Update(context.Background(), s, []string{"Name"}, nil)
@@ -110,7 +110,7 @@ func TestScope_Update(t *testing.T) {
 	t.Run("type-update-not-allowed", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		s, _ := TestScopes(t, conn)
+		s, _ := TestScopes(t, repo)
 
 		s.Type = scope.Project.String()
 		updatedRows, err := w.Update(context.Background(), s, []string{"Type"}, nil)
@@ -124,7 +124,7 @@ func TestScope_GetScope(t *testing.T) {
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		org, proj := TestScopes(t, conn)
+		org, proj := TestScopes(t, repo)
 		global := Scope{
 			Scope: &store.Scope{Type: scope.Global.String(), PublicId: "global"},
 		}
@@ -173,14 +173,14 @@ func TestScope_Clone(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
-		s, _ := TestScopes(t, conn)
+		s, _ := TestScopes(t, repo)
 		cp := s.Clone()
 		assert.True(proto.Equal(cp.(*Scope).Scope, s.Scope))
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
-		s, _ := TestScopes(t, conn)
-		s2, _ := TestScopes(t, conn)
+		s, _ := TestScopes(t, repo)
+		s2, _ := TestScopes(t, repo)
 		cp := s.Clone()
 		assert.True(!proto.Equal(cp.(*Scope).Scope, s2.Scope))
 	})

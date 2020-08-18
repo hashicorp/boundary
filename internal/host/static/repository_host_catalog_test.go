@@ -79,7 +79,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			repo, err := NewRepository(rw, rw, wrapper)
 			assert.NoError(err)
 			assert.NotNil(repo)
-			_, prj := iam.TestScopes(t, conn)
+			_, prj := iam.TestScopes(t, repo)
 			if tt.in != nil && tt.in.HostCatalog != nil {
 				tt.in.ScopeId = prj.GetPublicId()
 				assert.Empty(tt.in.PublicId)
@@ -107,7 +107,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(repo)
 
-		_, prj := iam.TestScopes(t, conn)
+		_, prj := iam.TestScopes(t, repo)
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
 				ScopeId: prj.GetPublicId(),
@@ -135,7 +135,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(repo)
 
-		org, prj := iam.TestScopes(t, conn)
+		org, prj := iam.TestScopes(t, repo)
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
 				Name: "test-name-repo",
@@ -435,7 +435,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			repo, err := NewRepository(rw, rw, wrapper)
 			assert.NoError(err)
 			assert.NotNil(repo)
-			_, prj := iam.TestScopes(t, conn)
+			_, prj := iam.TestScopes(t, repo)
 			tt.orig.ScopeId = prj.GetPublicId()
 			orig, err := repo.CreateCatalog(context.Background(), tt.orig)
 			require.NoError(t, err)
@@ -502,7 +502,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(repo)
 
-		org, prj := iam.TestScopes(t, conn)
+		org, prj := iam.TestScopes(t, repo)
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
 				Name: "test-name-repo",

@@ -19,7 +19,7 @@ func TestHostCatalog_ImmutableFields(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
 
-	_, proj := iam.TestScopes(t, conn)
+	_, proj := iam.TestScopes(t, repo)
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 	new := testCatalog(t, conn)
 

@@ -16,7 +16,7 @@ func Test_LookupScope(t *testing.T) {
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		org, _ := TestScopes(t, conn)
+		org, _ := TestScopes(t, repo)
 		user := TestUser(t, conn, org.PublicId)
 
 		foundScope, err := LookupScope(context.Background(), w, user)
@@ -32,7 +32,7 @@ func Test_LookupScope(t *testing.T) {
 	t.Run("bad-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		org, _ := TestScopes(t, conn)
+		org, _ := TestScopes(t, repo)
 		user := TestUser(t, conn, org.PublicId)
 
 		s, err := LookupScope(context.Background(), nil, user)

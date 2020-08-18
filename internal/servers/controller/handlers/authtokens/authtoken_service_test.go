@@ -32,7 +32,7 @@ func TestGet(t *testing.T) {
 	s, err := authtokens.NewService(repoFn)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	at := authtoken.TestAuthToken(t, conn, wrap, org.GetPublicId())
 
 	wireAuthToken := pb.AuthToken{
@@ -95,9 +95,9 @@ func TestList(t *testing.T) {
 		return authtoken.NewRepository(rw, rw, wrap)
 	}
 
-	orgNoTokens, _ := iam.TestScopes(t, conn)
+	orgNoTokens, _ := iam.TestScopes(t, repo)
 
-	orgWithSomeTokens, _ := iam.TestScopes(t, conn)
+	orgWithSomeTokens, _ := iam.TestScopes(t, repo)
 	var wantSomeTokens []*pb.AuthToken
 	for i := 0; i < 3; i++ {
 		at := authtoken.TestAuthToken(t, conn, wrap, orgWithSomeTokens.GetPublicId())
@@ -113,7 +113,7 @@ func TestList(t *testing.T) {
 		})
 	}
 
-	orgWithOtherTokens, _ := iam.TestScopes(t, conn)
+	orgWithOtherTokens, _ := iam.TestScopes(t, repo)
 	var wantOtherTokens []*pb.AuthToken
 	for i := 0; i < 3; i++ {
 		at := authtoken.TestAuthToken(t, conn, wrap, orgWithOtherTokens.GetPublicId())
@@ -181,8 +181,8 @@ func TestDelete(t *testing.T) {
 		return authtoken.NewRepository(rw, rw, wrap)
 	}
 
-	wrongOrg, _ := iam.TestScopes(t, conn)
-	org, _ := iam.TestScopes(t, conn)
+	wrongOrg, _ := iam.TestScopes(t, repo)
+	org, _ := iam.TestScopes(t, repo)
 	at := authtoken.TestAuthToken(t, conn, wrap, org.GetPublicId())
 	atForWrongOrg := authtoken.TestAuthToken(t, conn, wrap, org.GetPublicId())
 
@@ -260,7 +260,7 @@ func TestDelete_twice(t *testing.T) {
 		return authtoken.NewRepository(rw, rw, wrap)
 	}
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	at := authtoken.TestAuthToken(t, conn, wrap, org.GetPublicId())
 
 	s, err := authtokens.NewService(repoFn)

@@ -79,13 +79,13 @@ func (k *Kms) AddExternalWrappers(opt ...Option) error {
 	if opts.withRootWrapper != nil {
 		ext.root = opts.withRootWrapper
 		if ext.root.KeyID() == "" {
-			return fmt.Errorf("root wrapper passed in for has no key ID")
+			return fmt.Errorf("root wrapper has no key ID")
 		}
 	}
 	if opts.withWorkerAuthWrapper != nil {
 		ext.workerAuth = opts.withWorkerAuthWrapper
 		if ext.workerAuth.KeyID() == "" {
-			return fmt.Errorf("worker auth wrapper passed in has no key ID")
+			return fmt.Errorf("worker auth wrapper has no key ID")
 		}
 	}
 
@@ -108,7 +108,7 @@ func generateKeyId(scopeId string, purpose KeyPurpose, version uint32) string {
 // passed, it will ensure that the returning wrapper has that key ID in the
 // multiwrapper. This is not necesary for encryption but should be supplied for
 // decryption.
-func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, keyId string) (wrapping.Wrapper, error) {
+func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, keyId string, opt ...Option) (wrapping.Wrapper, error) {
 	switch purpose {
 	case "oplog", "database":
 	default:
@@ -130,7 +130,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	// root for the scope as we'll need it to decrypt the value coming from the
 	// DB. We don't cache the roots as we expect that after a few calls the
 	// scope-purpose cache will catch everything in steady-state.
-	rootWrapper, err := k.loadRoot(ctx, scopeId)
+	rootWrapper, err := k.loadRoot(ctx, scopeId, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error loading root key for scope %s: %w", scopeId, err)
 	}
@@ -154,8 +154,13 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	return derived, nil
 }
 
-func (k *Kms) loadRoot(ctx context.Context, scopeId string) (*multiwrapper.MultiWrapper, error) {
-	rootKeys, err := k.repo.ListRootKeys(ctx)
+func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multiwrapper.MultiWrapper, error) {
+	opts := getOpts(opt...)
+	repo := opts.withRepository
+	if repo == nil {
+		repo = k.repo
+	}
+	rootKeys, err := repo.ListRootKeys(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error listing root keys: %w", err)
 	}
@@ -186,9 +191,9 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string) (*multiwrapper.Multi
 	if externalWrappers.root == nil {
 		return nil, fmt.Errorf("root key wrapper for scope %s is nil", scopeId)
 	}
-	rootKeyVersions, err := k.repo.ListRootKeyVersions(ctx, externalWrappers.root, rootKeyId, WithOrder("version desc"))
+	rootKeyVersions, err := repo.ListRootKeyVersions(ctx, externalWrappers.root, rootKeyId, WithOrder("version desc"))
 	if err != nil {
-		return nil, fmt.Errorf("error looking up root key versions for scope %s: %w", scopeId, err)
+		return nil, fmt.Errorf("error looking up root key versions for scope %s with key ID %s: %w", scopeId, externalWrappers.root.KeyID(), err)
 	}
 	if len(rootKeyVersions) == 0 {
 		return nil, fmt.Errorf("no root key versions found for scope %s", scopeId)

@@ -14,7 +14,7 @@ import (
 
 func TestHostCatalog_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	_, prj := iam.TestScopes(t, conn)
+	_, prj := iam.TestScopes(t, repo)
 
 	type args struct {
 		scopeId string
@@ -110,7 +110,7 @@ func TestHostCatalog_New(t *testing.T) {
 func testCatalogs(t *testing.T, conn *gorm.DB, count int) []*HostCatalog {
 	t.Helper()
 	assert := assert.New(t)
-	_, prj := iam.TestScopes(t, conn)
+	_, prj := iam.TestScopes(t, repo)
 	var cats []*HostCatalog
 	for i := 0; i < count; i++ {
 		cat, err := NewHostCatalog(prj.GetPublicId())

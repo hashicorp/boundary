@@ -22,12 +22,12 @@ func TestRepository_CreateGroup(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	id := testId(t)
 
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 
 	type args struct {
 		group *Group
@@ -179,13 +179,13 @@ func TestRepository_UpdateGroup(t *testing.T) {
 	a := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 	repo, err := NewRepository(rw, rw, kms)
 	a.NoError(err)
 	id, err := uuid.GenerateUUID()
 	a.NoError(err)
 
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	pubId := func(s string) *string { return &s }
 
 	type args struct {
@@ -476,10 +476,10 @@ func TestRepository_DeleteGroup(t *testing.T) {
 	a := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 	repo, err := NewRepository(rw, rw, kms)
 	a.NoError(err)
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 
 	type args struct {
 		group *Group
@@ -561,10 +561,10 @@ func TestRepository_ListGroups(t *testing.T) {
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
 	require.NoError(t, err)
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 
 	type args struct {
 		withScopeId string
@@ -658,10 +658,10 @@ func TestRepository_ListMembers(t *testing.T) {
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
 	require.NoError(t, err)
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	pg := TestGroup(t, conn, proj.PublicId)
 	og := TestGroup(t, conn, org.PublicId)
 
@@ -751,10 +751,10 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	group := TestGroup(t, conn, proj.PublicId)
 	createUsersFn := func() []string {
 		results := []string{}
@@ -871,10 +871,10 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 
 	type args struct {
 		group           *Group
@@ -1011,12 +1011,12 @@ func TestRepository_SetGroupMembers(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	testUser := TestUser(t, conn, org.PublicId)
 
 	createUsersFn := func() []string {

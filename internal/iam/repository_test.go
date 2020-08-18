@@ -24,7 +24,7 @@ func TestNewRepository(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	testKms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	testkms := kms.TestKms(t, conn)
 	type args struct {
 		r   db.Reader
 		w   db.Writer
@@ -107,7 +107,7 @@ func Test_Repository_create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		kms := kms.TestKms(t, conn)
 		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		id := testId(t)
@@ -138,7 +138,7 @@ func Test_Repository_create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		kms := kms.TestKms(t, conn)
 		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		resource, err := repo.create(context.Background(), nil)
@@ -154,12 +154,11 @@ func Test_Repository_delete(t *testing.T) {
 	t.Run("valid-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
-		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		kms := kms.TestKms(t, conn)
 		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 
-		s, _ := TestScopes(t, conn)
+		s, _ := TestScopes(t, repo)
 
 		rowsDeleted, err := repo.delete(context.Background(), s)
 		require.NoError(err)
@@ -171,8 +170,7 @@ func Test_Repository_delete(t *testing.T) {
 	t.Run("nil-resource", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
-		wrapper := db.TestWrapper(t)
-		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		kms := kms.TestKms(t, conn)
 		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		deletedRows, err := repo.delete(context.Background(), nil, nil)
@@ -188,7 +186,7 @@ func TestRepository_update(t *testing.T) {
 	id := testId(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 	publicId := testPublicId(t, "o")
 
 	type args struct {

@@ -54,7 +54,7 @@ func WithRootWrapper(w wrapping.Wrapper) Option {
 
 func WithWorkerAuthWrapper(w wrapping.Wrapper) Option {
 	return func(o *options) {
-		o.withRootWrapper = w
+		o.withWorkerAuthWrapper = w
 	}
 }
 

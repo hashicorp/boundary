@@ -22,7 +22,7 @@ func TestAuthToken(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeI
 
 	ctx := context.Background()
 	rw := db.New(conn)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo, err := iam.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 

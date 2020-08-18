@@ -21,7 +21,7 @@ func TestAuthToken_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	new := TestAuthToken(t, conn, wrapper, org.PublicId)
 
 	var tests = []struct {

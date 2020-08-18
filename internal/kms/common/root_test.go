@@ -6,13 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alecthomas/assert"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/kms/common"
 	"github.com/hashicorp/boundary/internal/kms/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -24,7 +25,10 @@ func TestRepository_CreateRootKeyTx(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
-	org, proj := iam.TestScopes(t, conn)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+	org, proj := iam.TestScopes(t, iamRepo)
 
 	type args struct {
 		scopeId    string
@@ -98,7 +102,7 @@ func TestRepository_CreateRootKeyTx(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			// need to delete root keys created by iam.TestScopes()
 			require.NoError(conn.Where("1=1").Delete(&kms.RootKey{RootKey: &store.RootKey{}}).Error)
-			rk, kv, err := kms.CreateRootKeyTx(context.Background(), rw, tt.args.keyWrapper, tt.args.scopeId, tt.args.key)
+			rk, kv, err := common.CreateRootKeyTx(context.Background(), rw, tt.args.keyWrapper, tt.args.scopeId, tt.args.key)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(rk)

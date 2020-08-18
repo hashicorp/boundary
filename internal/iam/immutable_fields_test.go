@@ -20,7 +20,7 @@ func TestScope_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	new, _ := TestScopes(t, conn)
+	new, _ := TestScopes(t, repo)
 	var tests = []struct {
 		name      string
 		update    *Scope
@@ -94,7 +94,7 @@ func TestConcreteScope_ImmutableFields(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	db := conn.DB()
 
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 
 	var tests = []struct {
 		name      string
@@ -146,7 +146,7 @@ func TestUser_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	new := TestUser(t, conn, org.PublicId)
 
 	var tests = []struct {
@@ -211,7 +211,7 @@ func TestRole_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	new := TestRole(t, conn, org.PublicId)
 
 	var tests = []struct {
@@ -276,7 +276,7 @@ func TestGroup_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	new := TestGroup(t, conn, org.PublicId)
 
 	var tests = []struct {

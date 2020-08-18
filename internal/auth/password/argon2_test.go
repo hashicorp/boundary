@@ -16,7 +16,7 @@ import (
 func TestArgon2Configuration_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
@@ -115,7 +115,7 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 		}
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
@@ -303,7 +303,7 @@ func TestArgon2Credential_New(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	aut := auts[0]
 	accts := TestAccounts(t, conn, aut.PublicId, 5)

@@ -15,7 +15,7 @@ import (
 func TestNewUserRole(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	orgRole := TestRole(t, conn, org.PublicId)
 	projRole := TestRole(t, conn, proj.PublicId)
 	user := TestUser(t, conn, org.PublicId)
@@ -97,8 +97,8 @@ func TestNewUserRole(t *testing.T) {
 func TestUserRole_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
-	org2, proj2 := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
+	org2, proj2 := TestScopes(t, repo)
 	type args struct {
 		role *UserRole
 	}
@@ -271,7 +271,7 @@ func TestUserRole_Create(t *testing.T) {
 func TestUserRole_Update(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 	rw := db.New(conn)
 
 	t.Run("updates not allowed", func(t *testing.T) {
@@ -293,7 +293,7 @@ func TestUserRole_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	id := testId(t)
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 	u := TestUser(t, conn, org.PublicId)
 	r := TestRole(t, conn, org.PublicId)
 
@@ -345,7 +345,7 @@ func TestUserRole_Delete(t *testing.T) {
 func TestUserRole_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	user := TestUser(t, conn, org.PublicId)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
@@ -368,7 +368,7 @@ func TestUserRole_Clone(t *testing.T) {
 func TestNewGroupRole(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	orgRole := TestRole(t, conn, org.PublicId)
 	projRole := TestRole(t, conn, proj.PublicId)
 	group := TestGroup(t, conn, org.PublicId)
@@ -450,8 +450,8 @@ func TestNewGroupRole(t *testing.T) {
 func TestGroupRole_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
-	org2, proj2 := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
+	org2, proj2 := TestScopes(t, repo)
 	type args struct {
 		role *GroupRole
 	}
@@ -639,7 +639,7 @@ func TestGroupRole_Create(t *testing.T) {
 func TestGroupRole_Update(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 	rw := db.New(conn)
 
 	t.Run("updates not allowed", func(t *testing.T) {
@@ -661,7 +661,7 @@ func TestGroupRole_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	id := testId(t)
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 	g := TestGroup(t, conn, org.PublicId)
 	r := TestRole(t, conn, org.PublicId)
 
@@ -718,7 +718,7 @@ func TestGroupRole_Delete(t *testing.T) {
 func TestGroupRole_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		grp := TestGroup(t, conn, org.PublicId)

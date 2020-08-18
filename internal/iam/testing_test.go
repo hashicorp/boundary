@@ -47,7 +47,7 @@ func Test_testPublicId(t *testing.T) {
 func Test_TestScopes(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	org, prj := TestScopes(t, conn)
+	org, prj := TestScopes(t, repo)
 
 	require.NotNil(org)
 	assert.NotEmpty(org.GetPublicId())
@@ -59,7 +59,7 @@ func Test_TestUser(t *testing.T) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 
 	require.NotNil(org)
 	assert.NotEmpty(org.GetPublicId())
@@ -74,7 +74,7 @@ func Test_TestRole(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	id := testId(t)
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	role := TestRole(t, conn, org.PublicId, WithDescription(id), WithName(id))
 	require.NotNil(role)
 	assert.Equal(id, role.Description)
@@ -90,7 +90,7 @@ func Test_TestRoleGrant(t *testing.T) {
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	_, proj := TestScopes(t, conn)
+	_, proj := TestScopes(t, repo)
 	projRole := TestRole(t, conn, proj.PublicId)
 
 	grant := TestRoleGrant(t, conn, projRole.PublicId, "actions=*;id=*")
@@ -104,8 +104,8 @@ func Test_TestUserRole(t *testing.T) {
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
-	org2, proj2 := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
+	org2, proj2 := TestScopes(t, repo)
 
 	orgRole := TestRole(t, conn, org.PublicId)
 	projRole := TestRole(t, conn, proj.PublicId)
@@ -138,8 +138,8 @@ func Test_TestGroupRole(t *testing.T) {
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
-	org2, proj2 := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
+	org2, proj2 := TestScopes(t, repo)
 
 	orgRole := TestRole(t, conn, org.PublicId)
 	orgGroup := TestGroup(t, conn, org.PublicId)
@@ -174,7 +174,7 @@ func Test_TestGroupMember(t *testing.T) {
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	og := TestGroup(t, conn, org.PublicId)
 	pg := TestGroup(t, conn, proj.PublicId)
 	u := TestUser(t, conn, org.PublicId)

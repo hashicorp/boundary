@@ -16,7 +16,7 @@ import (
 func TestRoleGrant_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	_, proj := TestScopes(t, conn)
+	_, proj := TestScopes(t, repo)
 	projRole := TestRole(t, conn, proj.PublicId)
 
 	type args struct {
@@ -115,7 +115,7 @@ func TestRoleGrant_Create(t *testing.T) {
 func TestRoleGrant_Update(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 	rw := db.New(conn)
 
 	t.Run("updates not allowed", func(t *testing.T) {
@@ -135,7 +135,7 @@ func TestRoleGrant_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 
-	_, proj := TestScopes(t, conn)
+	_, proj := TestScopes(t, repo)
 	projRole := TestRole(t, conn, proj.PublicId)
 
 	type args struct {

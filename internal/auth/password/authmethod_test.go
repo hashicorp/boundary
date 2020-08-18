@@ -73,7 +73,7 @@ func TestAuthMethod_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			org, _ := iam.TestScopes(t, conn)
+			org, _ := iam.TestScopes(t, repo)
 			got, err := NewAuthMethod(org.GetPublicId(), tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)

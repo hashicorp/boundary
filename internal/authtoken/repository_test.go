@@ -131,9 +131,9 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	kms := kms.TestKms(t, conn)
 
-	org1, _ := iam.TestScopes(t, conn)
+	org1, _ := iam.TestScopes(t, repo)
 	am := password.TestAuthMethods(t, conn, org1.GetPublicId(), 1)[0]
 	aAcct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
@@ -142,7 +142,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 	u1, err := iamRepo.LookupUserWithLogin(context.Background(), aAcct.GetPublicId(), iam.WithAutoVivify(true))
 	require.NoError(t, err)
 
-	org2, _ := iam.TestScopes(t, conn)
+	org2, _ := iam.TestScopes(t, repo)
 	u2 := iam.TestUser(t, conn, org2.GetPublicId())
 
 	var tests = []struct {
@@ -220,7 +220,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	at := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	at.Token = ""
 	at.CtToken = nil
@@ -298,7 +298,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	at := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	atToken := at.GetToken()
 	at.Token = ""
@@ -408,7 +408,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	baseAT := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	baseAT.GetAuthAccountId()
 	aAcct := allocAuthAccount()
@@ -478,7 +478,7 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	at := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	badId, err := newAuthTokenId()
 	require.NoError(t, err)
@@ -535,7 +535,7 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	at1 := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	at1.Token = ""
 	at2 := TestAuthToken(t, conn, wrapper, org.GetPublicId())
@@ -543,7 +543,7 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 	at3 := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	at3.Token = ""
 
-	emptyOrg, _ := iam.TestScopes(t, conn)
+	emptyOrg, _ := iam.TestScopes(t, repo)
 
 	var tests = []struct {
 		name    string

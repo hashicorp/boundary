@@ -19,7 +19,7 @@ func TestRepository_Authenticate(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 
@@ -129,7 +129,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	assert, require := assert.New(t), require.New(t)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
@@ -248,7 +248,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	inAcct := &Account{
@@ -404,7 +404,7 @@ func TestRepository_SetPassword(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	origPasswd := "12345678"

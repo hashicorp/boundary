@@ -20,7 +20,7 @@ import (
 func Test_AccountUpdate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 	rw := db.New(conn)
 	t.Run("simple-update", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -45,7 +45,7 @@ func Test_AccountUpdate(t *testing.T) {
 func TestAccount_GetScope(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 
 	t.Run("valid-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -62,7 +62,7 @@ func TestAccount_GetScope(t *testing.T) {
 func TestAccount_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		u := TestUser(t, conn, org.PublicId)

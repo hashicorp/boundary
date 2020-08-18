@@ -22,7 +22,7 @@ func TestRepository_GetSetConfiguration(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
@@ -127,7 +127,7 @@ func TestRepository_GetConfiguration(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
@@ -198,7 +198,7 @@ func TestRepository_SetConfiguration(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()

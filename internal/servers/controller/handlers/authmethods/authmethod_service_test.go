@@ -35,7 +35,7 @@ func TestGet(t *testing.T) {
 		return password.NewRepository(rw, rw, wrap)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	wantU := &pb.AuthMethod{
@@ -112,9 +112,9 @@ func TestList(t *testing.T) {
 		return password.NewRepository(rw, rw, wrap)
 	}
 
-	oNoAuthMethods, _ := iam.TestScopes(t, conn)
-	oWithAuthMethods, _ := iam.TestScopes(t, conn)
-	oWithOtherAuthMethods, _ := iam.TestScopes(t, conn)
+	oNoAuthMethods, _ := iam.TestScopes(t, repo)
+	oWithAuthMethods, _ := iam.TestScopes(t, repo)
+	oWithOtherAuthMethods, _ := iam.TestScopes(t, repo)
 
 	var wantSomeAuthMethods []*pb.AuthMethod
 	for _, am := range password.TestAuthMethods(t, conn, oWithAuthMethods.GetPublicId(), 3) {
@@ -201,7 +201,7 @@ func TestDelete(t *testing.T) {
 		return password.NewRepository(rw, rw, wrap)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	s, err := authmethods.NewService(repoFn)
@@ -261,7 +261,7 @@ func TestDelete_twice(t *testing.T) {
 		return password.NewRepository(rw, rw, wrap)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	s, err := authmethods.NewService(repoFn)
@@ -286,7 +286,7 @@ func TestCreate(t *testing.T) {
 		return password.NewRepository(rw, rw, wrap)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	defaultAm := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	defaultCreated, err := ptypes.Timestamp(defaultAm.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Error converting proto to timestamp.")
@@ -423,7 +423,7 @@ func TestUpdate(t *testing.T) {
 		return password.NewRepository(rw, rw, wrap)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	tested, err := authmethods.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 

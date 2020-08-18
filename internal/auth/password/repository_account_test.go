@@ -40,7 +40,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 1)
 	authMethod := authMethods[0]
 
@@ -248,7 +248,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, repo)
 		authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 1)
 		authMethod := authMethods[0]
 
@@ -280,7 +280,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, repo)
 		authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 2)
 		authMethoda, authMethodb := authMethods[0], authMethods[1]
 		in := &Account{
@@ -318,7 +318,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	account := TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
 
@@ -369,7 +369,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	account := TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
 
@@ -421,7 +421,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 3)
 	accounts1 := TestAccounts(t, conn, authMethods[0].GetPublicId(), 3)
 	accounts2 := TestAccounts(t, conn, authMethods[1].GetPublicId(), 4)
@@ -474,7 +474,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, repo)
 	am := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 
 	accountCount := 10
@@ -857,7 +857,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 
-			org, _ := iam.TestScopes(t, conn)
+			org, _ := iam.TestScopes(t, repo)
 			am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
 
 			tt.orig.AuthMethodId = am.PublicId
@@ -914,7 +914,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		require.NotNil(repo)
 
 		name := "test-dup-name"
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, repo)
 		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
 		acts := TestAccounts(t, conn, am.PublicId, 2)
 
@@ -945,7 +945,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, repo)
 		ams := TestAuthMethods(t, conn, org.PublicId, 2)
 
 		ama := ams[0]
@@ -992,7 +992,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		require.NotNil(repo)
 
 		loginName := "kazmierczak12"
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, repo)
 		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
 		acts := TestAccounts(t, conn, am.PublicId, 2)
 
@@ -1023,7 +1023,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, repo)
 		ams := TestAuthMethods(t, conn, org.PublicId, 2)
 
 		ama := ams[0]
@@ -1065,7 +1065,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, repo)
 		ams := TestAuthMethods(t, conn, org.PublicId, 2)
 
 		ama := ams[0]

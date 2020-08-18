@@ -1,24 +1,5 @@
 begin;
 
-create or replace function
-  kms_scope_valid()
-  returns trigger
-as $$
-declare scope_type text;
-begin
-  -- Fetch the type of scope
-  select isc.type from iam_scope isc where isc.public_id = new.scope_id into scope_type;
-  -- Always allowed
-  if scope_type = 'global' then
-    return new;
-  end if;
-  if scope_type = 'org' then
-    return new;
-  end if;
-  raise exception 'invalid to scope type (must be global or org)';
-end;
-$$ language plpgsql;
-
 -- kms_version_column() will increment the version column whenever row data
 -- is inserted and should only be used in an before insert trigger.  This
 -- function will overwrite any explicit values to the version column.

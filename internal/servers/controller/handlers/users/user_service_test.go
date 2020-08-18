@@ -33,12 +33,12 @@ func createDefaultUserAndRepo(t *testing.T) (*iam.User, func() (*iam.Repository,
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, repo)
 	u := iam.TestUser(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return u, repoFn
 }
@@ -112,15 +112,15 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
+	kms := kms.TestKms(t, conn)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 	repo, err := repoFn()
 	require.NoError(err)
 
-	oNoUsers, _ := iam.TestScopes(t, conn)
-	oWithUsers, _ := iam.TestScopes(t, conn)
+	oNoUsers, _ := iam.TestScopes(t, repo)
+	oWithUsers, _ := iam.TestScopes(t, repo)
 
 	var wantUsers []*pb.User
 	for i := 0; i < 10; i++ {

@@ -20,15 +20,15 @@ func (r *Repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if len(key) == 0 {
 		return nil, fmt.Errorf("create root key version: missing key: %w", db.ErrInvalidParameter)
 	}
-	kv := allocRootKeyVersion()
-	id, err := newRootKeyVersionId()
+	kv := AllocRootKeyVersion()
+	id, err := NewRootKeyVersionId()
 	if err != nil {
 		return nil, fmt.Errorf("create root key version: %w", err)
 	}
 	kv.PrivateId = id
 	kv.RootKeyId = rootKeyId
 	kv.Key = key
-	if err := kv.encrypt(ctx, keyWrapper); err != nil {
+	if err := kv.Encrypt(ctx, keyWrapper); err != nil {
 		return nil, fmt.Errorf("create root key version: encrypt: %w", err)
 	}
 
@@ -61,12 +61,12 @@ func (r *Repository) LookupRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if keyWrapper == nil {
 		return nil, fmt.Errorf("lookup root key version: missing key wrapper: %w", db.ErrNilParameter)
 	}
-	k := allocRootKeyVersion()
+	k := AllocRootKeyVersion()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
 		return nil, fmt.Errorf("lookup root key version: failed %w for %s", err, privateId)
 	}
-	if err := k.decrypt(ctx, keyWrapper); err != nil {
+	if err := k.Decrypt(ctx, keyWrapper); err != nil {
 		return nil, fmt.Errorf("lookup root key version: decrypt: %w", err)
 	}
 	return &k, nil
@@ -79,7 +79,7 @@ func (r *Repository) DeleteRootKeyVersion(ctx context.Context, privateId string,
 	if privateId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete root key version: missing private id: %w", db.ErrInvalidParameter)
 	}
-	k := allocRootKeyVersion()
+	k := AllocRootKeyVersion()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete root key version: failed %w for %s", err, privateId)
@@ -123,7 +123,7 @@ func (r *Repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if len(foundKeys) == 0 {
 		return nil, db.ErrRecordNotFound
 	}
-	if err := foundKeys[0].decrypt(ctx, keyWrapper); err != nil {
+	if err := foundKeys[0].Decrypt(ctx, keyWrapper); err != nil {
 		return nil, fmt.Errorf("latest root key version: %w", err)
 	}
 	return &foundKeys[0], nil
@@ -143,7 +143,7 @@ func (r *Repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrappin
 		return nil, fmt.Errorf("list root key versions: %w", err)
 	}
 	for i, k := range versions {
-		if err := k.decrypt(ctx, keyWrapper); err != nil {
+		if err := k.Decrypt(ctx, keyWrapper); err != nil {
 			return nil, fmt.Errorf("list root key versions: error decrypting key num %d: %w", i, err)
 		}
 	}

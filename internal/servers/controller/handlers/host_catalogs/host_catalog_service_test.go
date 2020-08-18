@@ -32,7 +32,7 @@ func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Sc
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	_, pRes := iam.TestScopes(t, conn)
+	_, pRes := iam.TestScopes(t, repo)
 
 	wrap := db.TestWrapper(t)
 	rw := db.New(conn)
