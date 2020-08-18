@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,11 +15,9 @@ import (
 
 func TestProjects_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -26,20 +25,23 @@ func TestProjects_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
+	org := iam.TestOrg(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
+
 	scps := scopes.NewScopesClient(client)
 
-	pl, apiErr, err := scps.List(tc.Context(), orgId)
+	pl, apiErr, err := scps.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.Empty(pl)
 
 	expected := make([]*scopes.Scope, 10)
 	for i := 0; i < 10; i++ {
-		expected[i], apiErr, err = scps.Create(tc.Context(), orgId, scopes.WithName(fmt.Sprintf("%d", i)))
+		expected[i], apiErr, err = scps.Create(tc.Context(), org.GetPublicId(), scopes.WithName(fmt.Sprintf("%d", i)))
 		require.NoError(err)
 		assert.Nil(apiErr)
 	}
-	pl, apiErr, err = scps.List(tc.Context(), orgId)
+	pl, apiErr, err = scps.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
@@ -62,11 +64,9 @@ func comparableSlice(in []*scopes.Scope) []scopes.Scope {
 
 func TestProjects_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -74,6 +74,9 @@ func TestProjects_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
+	org, _ := iam.TestScopes(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
+
 	scps := scopes.NewScopesClient(client)
 
 	checkProject := func(step string, s *scopes.Scope, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
@@ -88,7 +91,7 @@ func TestProjects_Crud(t *testing.T) {
 		assert.Equal(wantedVersion, s.Version)
 	}
 
-	s, apiErr, err := scps.Create(tc.Context(), orgId, scopes.WithName("foo"))
+	s, apiErr, err := scps.Create(tc.Context(), org.GetPublicId(), scopes.WithName("foo"))
 	checkProject("create", s, apiErr, err, "foo", 1)
 
 	s, apiErr, err = scps.Read(tc.Context(), s.Id)
@@ -114,11 +117,9 @@ func TestProjects_Crud(t *testing.T) {
 // TODO: Get better coverage for expected errors and error formats.
 func TestProject_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -126,9 +127,12 @@ func TestProject_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
+	org, _ := iam.TestScopes(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
+
 	scps := scopes.NewScopesClient(client)
 
-	createdProj, apiErr, err := scps.Create(tc.Context(), orgId)
+	createdProj, apiErr, err := scps.Create(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.NotNil(createdProj)
 	assert.Nil(apiErr)

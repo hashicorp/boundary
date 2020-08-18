@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,8 @@ import (
 
 func TestHostSet_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	cat := testCatalog(t, conn)
+	_, prj := iam.TestScopes(t, conn)
+	cat := testCatalog(t, conn, prj.PublicId)
 
 	conn.LogMode(false)
 	type args struct {
@@ -42,7 +44,7 @@ func TestHostSet_New(t *testing.T) {
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					StaticHostCatalogId: cat.GetPublicId(),
+					CatalogId: cat.GetPublicId(),
 				},
 			},
 		},
@@ -56,8 +58,8 @@ func TestHostSet_New(t *testing.T) {
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Name:                "test-name",
+					CatalogId: cat.GetPublicId(),
+					Name:      "test-name",
 				},
 			},
 		},
@@ -71,8 +73,8 @@ func TestHostSet_New(t *testing.T) {
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Description:         "test-description",
+					CatalogId:   cat.GetPublicId(),
+					Description: "test-description",
 				},
 			},
 		},

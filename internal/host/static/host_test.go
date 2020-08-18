@@ -7,13 +7,16 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
 func TestHost_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	cat := testCatalog(t, conn)
+	_, prj := iam.TestScopes(t, conn)
+	cat := testCatalog(t, conn, prj.PublicId)
 
 	conn.LogMode(false)
 	type args struct {
@@ -55,8 +58,8 @@ func TestHost_New(t *testing.T) {
 			},
 			want: &Host{
 				Host: &store.Host{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "1234567",
+					CatalogId: cat.GetPublicId(),
+					Address:   "1234567",
 				},
 			},
 			wantWriteErr: true,
@@ -69,8 +72,8 @@ func TestHost_New(t *testing.T) {
 			},
 			want: &Host{
 				Host: &store.Host{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "12345678",
+					CatalogId: cat.GetPublicId(),
+					Address:   "12345678",
 				},
 			},
 		},
@@ -82,8 +85,8 @@ func TestHost_New(t *testing.T) {
 			},
 			want: &Host{
 				Host: &store.Host{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "127.0.0.1",
+					CatalogId: cat.GetPublicId(),
+					Address:   "127.0.0.1",
 				},
 			},
 		},
@@ -98,9 +101,9 @@ func TestHost_New(t *testing.T) {
 			},
 			want: &Host{
 				Host: &store.Host{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "127.0.0.1",
-					Name:                "test-name",
+					CatalogId: cat.GetPublicId(),
+					Address:   "127.0.0.1",
+					Name:      "test-name",
 				},
 			},
 		},
@@ -115,9 +118,9 @@ func TestHost_New(t *testing.T) {
 			},
 			want: &Host{
 				Host: &store.Host{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "127.0.0.1",
-					Description:         "test-description",
+					CatalogId:   cat.GetPublicId(),
+					Address:     "127.0.0.1",
+					Description: "test-description",
 				},
 			},
 		},

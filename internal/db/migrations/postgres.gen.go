@@ -923,26 +923,6 @@ before
 insert or update on iam_role
   for each row execute procedure grant_scope_id_valid();
 
--- disallow_default_role_deletion prevents the default role (r_default) from
--- being deleted
-create or replace function
-  disallow_default_role_deletion()
-  returns trigger
-as $$
-begin
-  if old.public_id = 'r_default' then
-    raise exception 'deletion of default role not allowed';
-  end if;
-  return old;
-end;
-$$ language plpgsql;
-
-create trigger
-  disallow_default_role_deletion
-before
-delete on iam_role
-  for each row execute procedure disallow_default_role_deletion();
-
 -- define the immutable fields for iam_role (started trigger name with "a_" so
 -- it will run first)
 create trigger 
@@ -950,12 +930,6 @@ create trigger
 before
 update on iam_role
   for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
-
-insert into iam_role (public_id, name, description, scope_id)
-  values('r_default', 'default', 'default role', 'global');
-
-insert into iam_role_grant (role_id, canonical_grant, raw_grant)
-  values('r_default', 'type=scope;actions=list', 'type=scope;actions=list');
 
 create table iam_group (
     public_id wt_public_id not null primary key,
@@ -1043,11 +1017,16 @@ begin
 end;
 $$ language plpgsql;
 
+insert into iam_role (public_id, name, description, scope_id)
+  values('r_default', 'default', 'Default role created on first instantiation of Boundary. It is meant to provide enough permissions for users to successfully authenticate via various clients types.', 'global');
+insert into iam_role_grant (role_id, canonical_grant, raw_grant)
+  values
+    ('r_default', 'type=scope;actions=list', 'type=scope;actions=list'),
+    ('r_default', 'type=auth-method;actions=authenticate,list', 'type=auth-method;actions=authenticate');
 insert into iam_user_role (role_id, principal_id)
   values 
     ('r_default', 'u_anon'),
     ('r_default', 'u_auth');
-
 
 -- iam_principle_role provides a consolidated view all principal roles assigned
 -- (user and group roles).
@@ -1363,169 +1342,6 @@ create trigger
 before
 insert on servers
   for each row execute procedure default_create_time();
-
-commit;
-
-`),
-	},
-	"migrations/10_static_host.down.sql": {
-		name: "10_static_host.down.sql",
-		bytes: []byte(`
-begin;
-
-  drop table static_host_set_member cascade;
-  drop table static_host_set cascade;
-  drop table static_host cascade;
-  drop table static_host_catalog cascade;
-
-commit;
-
-`),
-	},
-	"migrations/10_static_host.up.sql": {
-		name: "10_static_host.up.sql",
-		bytes: []byte(`
-begin;
-
-  create table static_host_catalog (
-    public_id wt_public_id primary key,
-    scope_id wt_scope_id not null
-      references iam_scope (public_id)
-      on delete cascade
-      on update cascade,
-    name text,
-    description text,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    version wt_version,
-    unique(scope_id, name)
-  );
-
-  create trigger
-    update_version_column
-  after update on static_host_catalog
-    for each row execute procedure update_version_column();
-
-  create trigger
-    update_time_column
-  before update on static_host_catalog
-    for each row execute procedure update_time_column();
-
-  create trigger
-    default_create_time_column
-  before
-  insert on static_host_catalog
-    for each row execute procedure default_create_time();
-
-  create trigger 
-    immutable_columns
-  before
-  update on static_host_catalog
-    for each row execute procedure immutable_columns('public_id', 'scope_id','create_time');
-
-  create table static_host (
-    public_id wt_public_id primary key,
-    static_host_catalog_id wt_public_id not null
-      references static_host_catalog (public_id)
-      on delete cascade
-      on update cascade,
-    name text,
-    description text,
-    address text not null
-    check(
-      length(trim(address)) > 7
-      and
-      length(trim(address)) < 256
-    ),
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    version wt_version,
-    unique(static_host_catalog_id, name)
-  );
-
-  create trigger
-    update_version_column
-  after update on static_host
-    for each row execute procedure update_version_column();
-
-  create trigger
-    update_time_column
-  before update on static_host
-    for each row execute procedure update_time_column();
-
-  create trigger
-    default_create_time_column
-  before
-  insert on static_host
-    for each row execute procedure default_create_time();
-
-  create trigger 
-    immutable_columns
-  before
-  update on static_host
-    for each row execute procedure immutable_columns('public_id', 'static_host_catalog_id','create_time');
-  
-  create table static_host_set (
-    public_id wt_public_id primary key,
-    static_host_catalog_id wt_public_id not null
-      references static_host_catalog (public_id)
-      on delete cascade
-      on update cascade,
-    name text,
-    description text,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    version wt_version,
-    unique(static_host_catalog_id, name)
-  );
-
-  create trigger
-    update_version_column
-  after update on static_host_set
-    for each row execute procedure update_version_column();
-
-  create trigger
-    update_time_column
-  before update on static_host_set
-    for each row execute procedure update_time_column();
-
-  create trigger
-    default_create_time_column
-  before
-  insert on static_host_set
-    for each row execute procedure default_create_time();
-
-
-  create trigger 
-    immutable_columns
-  before
-  update on static_host_set
-    for each row execute procedure immutable_columns('public_id', 'static_host_catalog_id','create_time');
-
-  create table static_host_set_member (
-    static_host_set_id wt_public_id
-      references static_host_set (public_id)
-      on delete cascade
-      on update cascade,
-    static_host_id wt_public_id
-      references static_host (public_id)
-      on delete cascade
-      on update cascade,
-    primary key(static_host_set_id, static_host_id)
-  );
-
-  create trigger 
-    immutable_columns
-  before
-  update on static_host_set_member
-    for each row execute procedure immutable_columns('static_host_set_id', 'static_host_id');
-    
-  insert into oplog_ticket (name, version)
-  values
-    ('static_host_catalog', 1),
-    ('static_host', 1),
-    ('static_host_set', 1),
-    ('static_host_set_member', 1);
 
 commit;
 
@@ -2182,6 +1998,432 @@ begin;
         from auth_password_method pm
   inner join auth_password_conf_union c
           on pm.password_conf_id = c.password_conf_id;
+
+commit;
+
+`),
+	},
+	"migrations/20_host.down.sql": {
+		name: "20_host.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table host_set;
+  drop table host;
+  drop table host_catalog;
+
+  drop function insert_host_set_subtype;
+  drop function insert_host_subtype;
+  drop function insert_host_catalog_subtype;
+
+  delete
+    from oplog_ticket
+   where name in (
+          'host_catalog',
+          'host',
+          'host_set'
+        );
+
+commit;
+
+`),
+	},
+	"migrations/20_host.up.sql": {
+		name: "20_host.up.sql",
+		bytes: []byte(`
+begin;
+
+/*
+
+                               ┌─────────────────┐
+                               │      host       │
+                               ├─────────────────┤
+                               │ public_id  (pk) │
+                               │ catalog_id (fk) │
+                               │                 │
+                               └─────────────────┘
+                                       ╲│╱
+                                        ○
+                                        │
+                                        ┼
+                                        ┼
+  ┌─────────────────┐          ┌─────────────────┐
+  │    iam_scope    │          │  host_catalog   │
+  ├─────────────────┤          ├─────────────────┤
+  │ public_id (pk)  │         ╱│ public_id (pk)  │
+  │                 │┼┼──────○─│ scope_id  (fk)  │
+  │                 │         ╲│                 │
+  └─────────────────┘          └─────────────────┘
+                                        ┼
+                                        ┼
+                                        │
+                                        ○
+                                       ╱│╲
+                               ┌─────────────────┐
+                               │    host_set     │
+                               ├─────────────────┤
+                               │ public_id  (pk) │
+                               │ catalog_id (fk) │
+                               │                 │
+                               └─────────────────┘
+
+*/
+
+  -- host_catalog
+  create table host_catalog (
+    public_id wt_public_id primary key,
+    scope_id wt_scope_id not null
+      references iam_scope (public_id)
+      on delete cascade
+      on update cascade,
+
+    -- The order of columns is important for performance. See:
+    -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
+    -- https://dba.stackexchange.com/questions/27481/is-a-composite-index-also-good-for-queries-on-the-first-field
+    unique(scope_id, public_id)
+  );
+
+  create trigger immutable_columns before update on host_catalog
+    for each row execute procedure immutable_columns('public_id', 'scope_id');
+
+  -- insert_host_catalog_subtype() is a before insert trigger
+  -- function for subtypes of host_catalog
+  create or replace function insert_host_catalog_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into host_catalog
+      (public_id, scope_id)
+    values
+      (new.public_id, new.scope_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
+  -- delete_host_catalog_subtype() is an after delete trigger
+  -- function for subtypes of host_catalog
+  create or replace function delete_host_catalog_subtype()
+    returns trigger
+  as $$
+  begin
+    delete from host_catalog
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
+  -- host
+  create table host (
+    public_id wt_public_id primary key,
+    catalog_id wt_public_id not null
+      references host_catalog (public_id)
+      on delete cascade
+      on update cascade,
+    unique(catalog_id, public_id)
+  );
+
+  create trigger immutable_columns before update on host
+    for each row execute procedure immutable_columns('public_id', 'catalog_id');
+
+  -- insert_host_subtype() is a before insert trigger
+  -- function for subtypes of host
+  create or replace function insert_host_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into host
+      (public_id, catalog_id)
+    values
+      (new.public_id, new.catalog_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
+  -- delete_host_subtype() is an after delete trigger
+  -- function for subtypes of host
+  create or replace function delete_host_subtype()
+    returns trigger
+  as $$
+  begin
+    delete from host
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
+  -- host_set
+  create table host_set (
+    public_id wt_public_id primary key,
+    catalog_id wt_public_id not null
+      references host_catalog (public_id)
+      on delete cascade
+      on update cascade,
+    unique(catalog_id, public_id)
+  );
+
+  create trigger immutable_columns before update on host_set
+    for each row execute procedure immutable_columns('public_id', 'catalog_id');
+
+  -- insert_host_set_subtype() is a before insert trigger
+  -- function for subtypes of host_set
+  create or replace function insert_host_set_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into host_set
+      (public_id, catalog_id)
+    values
+      (new.public_id, new.catalog_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
+  -- delete_host_set_subtype() is an after delete trigger
+  -- function for subtypes of host_set
+  create or replace function delete_host_set_subtype()
+    returns trigger
+  as $$
+  begin
+    delete from host_set
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
+  insert into oplog_ticket (name, version)
+  values
+    ('host_catalog', 1),
+    ('host', 1),
+    ('host_set', 1);
+
+commit;
+
+`),
+	},
+	"migrations/22_static_host.down.sql": {
+		name: "22_static_host.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table static_host_set_member cascade;
+  drop table static_host_set cascade;
+  drop table static_host cascade;
+  drop table static_host_catalog cascade;
+
+  delete
+    from oplog_ticket
+   where name in (
+          'static_host_catalog',
+          'static_host',
+          'static_host_set',
+          'static_host_set_member'
+        );
+
+commit;
+
+`),
+	},
+	"migrations/22_static_host.up.sql": {
+		name: "22_static_host.up.sql",
+		bytes: []byte(`
+begin;
+
+/*
+
+  ┌─────────────────┐          ┌─────────────────────┐
+  │      host       │          │     static_host     │
+  ├─────────────────┤          ├─────────────────────┤
+  │ public_id  (pk) │          │ public_id  (pk)     │
+  │ catalog_id (fk) │┼┼──────○┼│ catalog_id (fk)     │┼┼─────────────────────┐
+  │                 │          │ address             │             ◀fk1      │
+  └─────────────────┘          └─────────────────────┘                       │
+          ╲│╱                            ╲│╱                                 │
+           ○                              ○                                  │
+           │                              │                                  │
+           ┼                              ┼                                  ○
+           ┼                              ┼                                 ╱│╲
+  ┌─────────────────┐          ┌─────────────────────┐          ┌────────────────────────┐
+  │  host_catalog   │          │ static_host_catalog │          │ static_host_set_member │
+  ├─────────────────┤          ├─────────────────────┤          ├────────────────────────┤
+  │ public_id (pk)  │          │ public_id (pk)      │          │ host_id    (pk,fk1)    │
+  │ scope_id  (fk)  │┼┼──────○┼│ scope_id  (fk)      │          │ set_id     (pk,fk2)    │
+  │                 │          │                     │          │ catalog_id (fk1,fk2)   │
+  └─────────────────┘          └─────────────────────┘          └────────────────────────┘
+           ┼                              ┼                                 ╲│╱
+           ┼                              ┼                                  ○
+           │                              │                                  │
+           ○                              ○                                  │
+          ╱│╲                            ╱│╲                                 │
+  ┌─────────────────┐          ┌─────────────────────┐                       │
+  │    host_set     │          │   static_host_set   │                       │
+  ├─────────────────┤          ├─────────────────────┤                       │
+  │ public_id  (pk) │          │ public_id  (pk)     │             ◀fk2      │
+  │ catalog_id (fk) │┼┼──────○┼│ catalog_id (fk)     │┼┼─────────────────────┘
+  │                 │          │                     │
+  └─────────────────┘          └─────────────────────┘
+
+*/
+
+  create table static_host_catalog (
+    public_id wt_public_id primary key,
+    scope_id wt_scope_id not null
+      references iam_scope (public_id)
+      on delete cascade
+      on update cascade,
+    name text,
+    description text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    version wt_version,
+    foreign key (scope_id, public_id)
+      references host_catalog (scope_id, public_id)
+      on delete cascade
+      on update cascade,
+    unique(scope_id, name)
+  );
+
+  create trigger update_version_column after update on static_host_catalog
+    for each row execute procedure update_version_column();
+
+  create trigger update_time_column before update on static_host_catalog
+    for each row execute procedure update_time_column();
+
+  create trigger default_create_time_column before insert on static_host_catalog
+    for each row execute procedure default_create_time();
+
+  create trigger immutable_columns before update on static_host_catalog
+    for each row execute procedure immutable_columns('public_id', 'scope_id','create_time');
+
+  create trigger insert_host_catalog_subtype before insert on static_host_catalog
+    for each row execute procedure insert_host_catalog_subtype();
+
+  create trigger delete_host_catalog_subtype after delete on static_host_catalog
+    for each row execute procedure delete_host_catalog_subtype();
+
+  create table static_host (
+    public_id wt_public_id primary key,
+    catalog_id wt_public_id not null
+      references static_host_catalog (public_id)
+      on delete cascade
+      on update cascade,
+    name text,
+    description text,
+    address text not null
+      check(
+        length(trim(address)) > 7
+        and
+        length(trim(address)) < 256
+      ),
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    version wt_version,
+    unique(catalog_id, name),
+
+    foreign key (catalog_id, public_id)
+      references host (catalog_id, public_id)
+      on delete cascade
+      on update cascade,
+
+    -- The order of columns is important for performance. See:
+    -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
+    -- https://dba.stackexchange.com/questions/27481/is-a-composite-index-also-good-for-queries-on-the-first-field
+    unique(catalog_id, public_id)
+  );
+
+  create trigger update_version_column after update on static_host
+    for each row execute procedure update_version_column();
+
+  create trigger update_time_column before update on static_host
+    for each row execute procedure update_time_column();
+
+  create trigger default_create_time_column before insert on static_host
+    for each row execute procedure default_create_time();
+
+  create trigger immutable_columns before update on static_host
+    for each row execute procedure immutable_columns('public_id', 'catalog_id','create_time');
+
+  create trigger insert_host_subtype before insert on static_host
+    for each row execute procedure insert_host_subtype();
+
+  create trigger delete_host_subtype after delete on static_host
+    for each row execute procedure delete_host_subtype();
+
+  create table static_host_set (
+    public_id wt_public_id primary key,
+    catalog_id wt_public_id not null
+      references static_host_catalog (public_id)
+      on delete cascade
+      on update cascade,
+    name text,
+    description text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    version wt_version,
+    unique(catalog_id, name),
+    foreign key (catalog_id, public_id)
+      references host_set (catalog_id, public_id)
+      on delete cascade
+      on update cascade,
+    unique(catalog_id, public_id)
+  );
+
+  create trigger update_version_column after update on static_host_set
+    for each row execute procedure update_version_column();
+
+  create trigger update_time_column before update on static_host_set
+    for each row execute procedure update_time_column();
+
+  create trigger default_create_time_column before insert on static_host_set
+    for each row execute procedure default_create_time();
+
+  create trigger immutable_columns before update on static_host_set
+    for each row execute procedure immutable_columns('public_id', 'catalog_id','create_time');
+
+  create trigger insert_host_set_subtype before insert on static_host_set
+    for each row execute procedure insert_host_set_subtype();
+
+  create trigger delete_host_set_subtype after delete on static_host_set
+    for each row execute procedure delete_host_set_subtype();
+
+  create table static_host_set_member (
+    host_id wt_public_id not null,
+    set_id wt_public_id not null,
+    catalog_id wt_public_id not null,
+    primary key(host_id, set_id),
+    foreign key (catalog_id, host_id) -- fk1
+      references static_host (catalog_id, public_id)
+      on delete cascade
+      on update cascade,
+    foreign key (catalog_id, set_id) -- fk2
+      references static_host_set (catalog_id, public_id)
+      on delete cascade
+      on update cascade
+  );
+
+  create trigger immutable_columns before update on static_host_set_member
+    for each row execute procedure immutable_columns('host_id', 'set_id', 'catalog_id');
+
+  create or replace function insert_static_host_set_member()
+    returns trigger
+  as $$
+  begin
+    select static_host_set.catalog_id
+      into new.catalog_id
+    from static_host_set
+    where static_host_set.public_id = new.set_id;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger insert_static_host_set_member before insert on static_host_set_member
+    for each row execute procedure insert_static_host_set_member();
+
+  insert into oplog_ticket (name, version)
+  values
+    ('static_host_catalog', 1),
+    ('static_host', 1),
+    ('static_host_set', 1),
+    ('static_host_set_member', 1);
 
 commit;
 

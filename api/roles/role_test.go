@@ -7,9 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/groups"
-	"github.com/hashicorp/boundary/api/internal/strutil"
 	"github.com/hashicorp/boundary/api/roles"
-	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -20,11 +18,9 @@ import (
 
 func TestCustom(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -32,13 +28,10 @@ func TestCustom(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-
-	proj, apiErr, err := scopes.NewScopesClient(client).Create(tc.Context(), orgId)
-	require.NoError(err)
-	require.Nil(apiErr)
-
+	org, proj := iam.TestScopes(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
-	projClient.SetScopeId(proj.Id)
+	projClient.SetScopeId(proj.GetPublicId())
 
 	cases := []struct {
 		name        string
@@ -138,11 +131,9 @@ func TestCustom(t *testing.T) {
 
 func TestRole_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -150,13 +141,10 @@ func TestRole_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-
-	proj, apiErr, err := scopes.NewScopesClient(client).Create(tc.Context(), orgId)
-	require.NoError(err)
-	require.Nil(apiErr)
-
+	org, proj := iam.TestScopes(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
-	projClient.SetScopeId(proj.Id)
+	projClient.SetScopeId(proj.GetPublicId())
 
 	cases := []struct {
 		name        string
@@ -178,13 +166,7 @@ func TestRole_List(t *testing.T) {
 			p1, apiErr, err := roleClient.List(tc.Context())
 			require.NoError(err)
 			assert.Nil(apiErr)
-			var defaultRoleIds []string
-			if tt.name == "org" {
-				require.True(len(p1) == 2)
-				defaultRoleIds = []string{p1[0].Id, p1[1].Id}
-			} else {
-				require.Len(p1, 0)
-			}
+			require.Len(p1, 0)
 
 			var expected []*roles.Role
 			for i := 0; i < 10; i++ {
@@ -198,13 +180,7 @@ func TestRole_List(t *testing.T) {
 			p2, apiErr, err := roleClient.List(tc.Context())
 			assert.NoError(err)
 			assert.Nil(apiErr)
-			var p2ForComparison []*roles.Role
-			for _, v := range p2 {
-				if !strutil.StrListContains(defaultRoleIds, v.Id) {
-					p2ForComparison = append(p2ForComparison, v)
-				}
-			}
-			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(p2ForComparison))
+			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(p2))
 
 			for i := 1; i < 10; i++ {
 				expected[i], apiErr, err = roleClient.Create(tc.Context(), roles.WithName(expected[i].Name))
@@ -214,13 +190,7 @@ func TestRole_List(t *testing.T) {
 			p3, apiErr, err := roleClient.List(tc.Context())
 			require.NoError(err)
 			assert.Nil(apiErr)
-			var p3ForComparison []*roles.Role
-			for _, v := range p3 {
-				if !strutil.StrListContains(defaultRoleIds, v.Id) {
-					p3ForComparison = append(p3ForComparison, v)
-				}
-			}
-			assert.ElementsMatch(comparableSlice(expected), comparableSlice(p3ForComparison))
+			assert.ElementsMatch(comparableSlice(expected), comparableSlice(p3))
 		})
 	}
 }
@@ -242,11 +212,9 @@ func comparableSlice(in []*roles.Role) []roles.Role {
 
 func TestRole_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -254,13 +222,10 @@ func TestRole_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-
-	proj, apiErr, err := scopes.NewScopesClient(client).Create(tc.Context(), orgId)
-	require.NoError(err)
-	require.Nil(apiErr)
-
+	org, proj := iam.TestScopes(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
-	projClient.SetScopeId(proj.Id)
+	projClient.SetScopeId(proj.GetPublicId())
 
 	cases := []struct {
 		name        string
@@ -320,11 +285,9 @@ func TestRole_Crud(t *testing.T) {
 
 func TestRole_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -332,13 +295,10 @@ func TestRole_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-
-	proj, apiErr, err := scopes.NewScopesClient(client).Create(tc.Context(), orgId)
-	require.NoError(err)
-	require.Nil(apiErr)
-
+	org, proj := iam.TestScopes(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
-	projClient.SetScopeId(proj.Id)
+	projClient.SetScopeId(proj.GetPublicId())
 
 	cases := []struct {
 		name        string

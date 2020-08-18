@@ -79,7 +79,6 @@ type Config struct {
 	*configutil.SharedConfig `hcl:"-"`
 
 	DevController        bool        `hcl:"-"`
-	DefaultOrgId         string      `hcl:"default_org_id"`
 	PassthroughDirectory string      `hcl:"-"`
 	Worker               *Worker     `hcl:"worker"`
 	Controller           *Controller `hcl:"controller"`
