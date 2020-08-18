@@ -1520,7 +1520,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.GrantStringsMessage"
+              "$ref": "#/definitions/controller.api.services.v1.AddRoleGrantsRequest"
             }
           }
         ],
@@ -1553,7 +1553,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.PrincipalIdsMessage"
+              "$ref": "#/definitions/controller.api.services.v1.AddRolePrincipalsRequest"
             }
           }
         ],
@@ -1586,7 +1586,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.GrantStringsMessage"
+              "$ref": "#/definitions/controller.api.services.v1.RemoveRoleGrantsRequest"
             }
           }
         ],
@@ -1619,7 +1619,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.PrincipalIdsMessage"
+              "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsRequest"
             }
           }
         ],
@@ -1652,7 +1652,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.GrantStringsMessage"
+              "$ref": "#/definitions/controller.api.services.v1.SetRoleGrantsRequest"
             }
           }
         ],
@@ -1685,7 +1685,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.PrincipalIdsMessage"
+              "$ref": "#/definitions/controller.api.services.v1.SetRolePrincipalsRequest"
             }
           }
         ],
@@ -2407,8 +2407,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
-          "readOnly": true
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has."
         },
         "grant_scope_id": {
           "type": "string",
@@ -2592,11 +2591,49 @@
     "controller.api.services.v1.AddHostSetHostsResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.AddRoleGrantsRequest": {
+      "type": "object",
+      "properties": {
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "grant_strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "controller.api.services.v1.AddRoleGrantsResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.AddRolePrincipalsRequest": {
+      "type": "object",
+      "properties": {
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "principal_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -2931,17 +2968,6 @@
         }
       }
     },
-    "controller.api.services.v1.GrantStringsMessage": {
-      "type": "object",
-      "properties": {
-        "grant_strings": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.ListAccountsResponse": {
       "type": "object",
       "properties": {
@@ -3052,17 +3078,6 @@
         }
       }
     },
-    "controller.api.services.v1.PrincipalIdsMessage": {
-      "type": "object",
-      "properties": {
-        "principal_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.RemoveGroupMembersRequest": {
       "type": "object",
       "properties": {
@@ -3093,11 +3108,49 @@
     "controller.api.services.v1.RemoveHostSetHostsResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.RemoveRoleGrantsRequest": {
+      "type": "object",
+      "properties": {
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "grant_strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "controller.api.services.v1.RemoveRoleGrantsResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveRolePrincipalsRequest": {
+      "type": "object",
+      "properties": {
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "principal_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -3165,11 +3218,49 @@
         }
       }
     },
+    "controller.api.services.v1.SetRoleGrantsRequest": {
+      "type": "object",
+      "properties": {
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "grant_strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "controller.api.services.v1.SetRoleGrantsResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.SetRolePrincipalsRequest": {
+      "type": "object",
+      "properties": {
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "principal_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
