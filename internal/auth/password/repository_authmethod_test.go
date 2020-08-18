@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,8 +24,9 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-
-	org, _ := iam.TestScopes(t, repo)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
 
 	var tests = []struct {
 		name      string
@@ -132,7 +134,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateAuthMethod(context.Background(), tt.in, tt.opts...)
@@ -154,11 +156,11 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, repo)
+		org, _ := iam.TestScopes(t, iamRepo)
 		in := &AuthMethod{
 			AuthMethod: &store.AuthMethod{
 				ScopeId: org.GetPublicId(),
@@ -182,11 +184,11 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org1, _ := iam.TestScopes(t, repo)
+		org1, _ := iam.TestScopes(t, iamRepo)
 		in := &AuthMethod{
 			AuthMethod: &store.AuthMethod{
 				Name: "test-name-repo",
@@ -204,7 +206,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		org2, _ := iam.TestScopes(t, repo)
+		org2, _ := iam.TestScopes(t, iamRepo)
 		in2.ScopeId = org2.GetPublicId()
 		got2, err := repo.CreateAuthMethod(context.Background(), in2)
 		require.NoError(err)
@@ -218,11 +220,11 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 
 	t.Run("valid-with-publicid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org1, _ := iam.TestScopes(t, repo)
+		org1, _ := iam.TestScopes(t, iamRepo)
 		in := allocAuthMethod()
 
 		amId, err := newAuthMethodId()
@@ -238,11 +240,11 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 
 	t.Run("invalid-with-badpublicid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org1, _ := iam.TestScopes(t, repo)
+		org1, _ := iam.TestScopes(t, iamRepo)
 		in := allocAuthMethod()
 
 		in.ScopeId = org1.GetPublicId()
@@ -257,8 +259,9 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	o, _ := iam.TestScopes(t, repo)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	amId, err := newAuthMethodId()
@@ -288,7 +291,7 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupAuthMethod(context.Background(), tt.in)
@@ -307,8 +310,9 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	o, _ := iam.TestScopes(t, repo)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	newAuthMethodId, err := newAuthMethodId()
@@ -339,10 +343,10 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteAuthMethod(context.Background(), tt.in)
+			got, err := repo.DeleteAuthMethod(context.Background(), o.GetPublicId(), tt.in)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
@@ -358,9 +362,10 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-
-	noAuthMethodOrg, _ := iam.TestScopes(t, repo)
-	o, _ := iam.TestScopes(t, repo)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	noAuthMethodOrg, _ := iam.TestScopes(t, iamRepo)
+	o, _ := iam.TestScopes(t, iamRepo)
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 3)
 
 	var tests = []struct {
@@ -390,7 +395,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAuthMethods(context.Background(), tt.in, tt.opts...)
@@ -409,8 +414,9 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	o, _ := iam.TestScopes(t, repo)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethodCount := 10
 	ams := TestAuthMethods(t, conn, o.GetPublicId(), authMethodCount)
 
@@ -462,7 +468,7 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper, tt.repoOpts...)
+			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAuthMethods(context.Background(), ams[0].GetScopeId(), tt.listOpts...)
@@ -477,8 +483,10 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	ctx := context.Background()
 
@@ -654,7 +662,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			// create the initial auth method
-			o, _ := iam.TestScopes(t, repo)
+			o, _ := iam.TestScopes(t, iamRepo)
 			am, err := NewAuthMethod(o.GetPublicId(), WithName("default"), WithDescription("default"))
 			require.NoError(err)
 			origAM, err := repo.CreateAuthMethod(ctx, am)

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,8 +19,8 @@ func TestRepository_Authenticate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-
-	o, _ := iam.TestScopes(t, repo)
+	kms := kms.TestKms(t, conn, wrapper)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 
@@ -31,10 +32,10 @@ func TestRepository_Authenticate(t *testing.T) {
 	}
 	passwd := "12345678"
 
-	repo, err := NewRepository(rw, rw, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
-	outAcct, err := repo.CreateAccount(context.Background(), inAcct, WithPassword(passwd))
+	outAcct, err := repo.CreateAccount(context.Background(), o.GetPublicId(), inAcct, WithPassword(passwd))
 	assert.NoError(t, err)
 	require.NotNil(t, outAcct)
 
@@ -101,7 +102,7 @@ func TestRepository_Authenticate(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			authAcct, err := repo.Authenticate(context.Background(), tt.args.authMethodId, tt.args.loginName, tt.args.password)
+			authAcct, err := repo.Authenticate(context.Background(), o.GetPublicId(), tt.args.authMethodId, tt.args.loginName, tt.args.password)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(authAcct, "returned account")
@@ -128,8 +129,8 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	assert, require := assert.New(t), require.New(t)
-
-	o, _ := iam.TestScopes(t, repo)
+	kms := kms.TestKms(t, conn, wrapper)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
@@ -137,7 +138,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	passwd := "12345678"
 	ctx := context.Background()
 
-	repo, err := NewRepository(rw, rw, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
 	assert.NoError(err)
 	require.NotNil(repo)
 
@@ -158,7 +159,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 		},
 	}
 
-	origAcct, err := repo.CreateAccount(ctx, inAcct, WithPassword(passwd))
+	origAcct, err := repo.CreateAccount(ctx, o.GetPublicId(), inAcct, WithPassword(passwd))
 	require.NoError(err)
 	require.NotNil(origAcct)
 	assert.NotEmpty(origAcct.PublicId)
@@ -173,7 +174,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	origCredId := origCred.PrivateId
 
 	// Authenticate and verify the credential ID
-	authAcct, err := repo.Authenticate(ctx, authMethodId, loginName, passwd)
+	authAcct, err := repo.Authenticate(ctx, o.GetPublicId(), authMethodId, loginName, passwd)
 	require.NoError(err)
 	require.NotNil(authAcct, "auth account")
 	assert.Equal(origAcct.PublicId, authAcct.PublicId)
@@ -199,7 +200,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	inArgonConf := origArgonConf.clone()
 	inArgonConf.Threads = origArgonConf.Threads + 1
 
-	upConf, err := repo.SetConfiguration(ctx, inArgonConf)
+	upConf, err := repo.SetConfiguration(ctx, o.GetPublicId(), inArgonConf)
 	require.NoError(err)
 	require.NotNil(upConf)
 	assert.NotSame(inArgonConf, upConf)
@@ -209,7 +210,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	assert.NotEqual(origConfId, upArgonConf.PrivateId)
 
 	// Authenticate and verify the credential ID has not changed
-	auth2Acct, err := repo.Authenticate(ctx, authMethodId, loginName, passwd)
+	auth2Acct, err := repo.Authenticate(ctx, o.GetPublicId(), authMethodId, loginName, passwd)
 	require.NoError(err)
 	require.NotNil(auth2Acct, "auth2 account")
 	assert.Equal(origAcct.PublicId, auth2Acct.PublicId)
@@ -243,12 +244,13 @@ func TestRepository_ChangePassword(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	repo, err := NewRepository(rw, rw, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	o, _ := iam.TestScopes(t, repo)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	inAcct := &Account{
@@ -259,7 +261,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 	}
 	passwd := "12345678"
 
-	acct, err := repo.CreateAccount(context.Background(), inAcct, WithPassword(passwd))
+	acct, err := repo.CreateAccount(context.Background(), o.GetPublicId(), inAcct, WithPassword(passwd))
 	require.NoError(t, err)
 	require.NotNil(t, acct)
 
@@ -356,7 +358,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 
 			// Calls to Authenticate should always succeed in these tests
 			authFn := func(pwd string, name string) *Account {
-				acct, err := repo.Authenticate(context.Background(), inAcct.AuthMethodId, inAcct.LoginName, pwd)
+				acct, err := repo.Authenticate(context.Background(), o.GetPublicId(), inAcct.AuthMethodId, inAcct.LoginName, pwd)
 				require.NotNilf(acct, "%s: Authenticate should return an account", name)
 				require.NoErrorf(err, "%s: Authenticate should succeed", name)
 				return acct
@@ -364,7 +366,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 			// authenticate with original password
 			authAcct1 := authFn(passwd, "original account")
 
-			chgAuthAcct, err := repo.ChangePassword(context.Background(), tt.args.acctId, tt.args.old, tt.args.new, authAcct1.Version)
+			chgAuthAcct, err := repo.ChangePassword(context.Background(), o.GetPublicId(), tt.args.acctId, tt.args.old, tt.args.new, authAcct1.Version)
 			if tt.wantIsErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
@@ -399,12 +401,13 @@ func TestRepository_SetPassword(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	repo, err := NewRepository(rw, rw, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	o, _ := iam.TestScopes(t, repo)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	origPasswd := "12345678"
@@ -421,7 +424,7 @@ func TestRepository_SetPassword(t *testing.T) {
 			if pw != "" {
 				opts = append(opts, WithPassword(origPasswd))
 			}
-			acct, err := repo.CreateAccount(context.Background(), inAcct, opts...)
+			acct, err := repo.CreateAccount(context.Background(), o.GetPublicId(), inAcct, opts...)
 			require.NoError(t, err)
 			require.NotNil(t, acct)
 			return acct
@@ -429,7 +432,7 @@ func TestRepository_SetPassword(t *testing.T) {
 	}
 
 	wantAuthenticate := func(t *testing.T, ln, pw, msg string) string {
-		acct, err := repo.Authenticate(context.Background(), authMethod.PublicId, ln, pw)
+		acct, err := repo.Authenticate(context.Background(), o.GetPublicId(), authMethod.PublicId, ln, pw)
 		assert.NoErrorf(t, err, "%s: authenticate should not return an error", msg)
 		if assert.NotNilf(t, acct, "%s: authenticate should succeed", msg) {
 			return acct.CredentialId
@@ -437,7 +440,7 @@ func TestRepository_SetPassword(t *testing.T) {
 		return ""
 	}
 	wantNoAuthenticate := func(t *testing.T, ln, pw, msg string) string {
-		acct, err := repo.Authenticate(context.Background(), authMethod.PublicId, ln, pw)
+		acct, err := repo.Authenticate(context.Background(), o.GetPublicId(), authMethod.PublicId, ln, pw)
 		assert.NoErrorf(t, err, "%s: authenticate should not return an error", msg)
 		assert.Nilf(t, acct, "%s: authenticate should not succeed", msg)
 		return ""
@@ -480,7 +483,7 @@ func TestRepository_SetPassword(t *testing.T) {
 			}
 			oldCredId := nextAuth(t, acct.LoginName, origPasswd, "after create account")
 
-			acct, err = repo.SetPassword(context.Background(), acct.PublicId, tt.newPw, acct.Version)
+			acct, err = repo.SetPassword(context.Background(), o.GetPublicId(), acct.PublicId, tt.newPw, acct.Version)
 			require.NoError(err)
 
 			if oldCredId != "" {
@@ -527,7 +530,7 @@ func TestRepository_SetPassword(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			acct, err := repo.SetPassword(context.Background(), tt.accountId, tt.pw, tt.version)
+			acct, err := repo.SetPassword(context.Background(), o.GetPublicId(), tt.accountId, tt.pw, tt.version)
 			assert.Error(err)
 			assert.Truef(errors.Is(err, tt.wantError), "want err: %q got: %q", tt.wantError, err)
 			assert.Nil(acct)

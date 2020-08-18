@@ -41,6 +41,7 @@ select count(*) from test_auth_method where public_id = $1;
 	assert, require := assert.New(t), require.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
 	db := conn.DB()
 	_, err := db.Exec(createTable)
 	require.NoError(err)
@@ -48,7 +49,7 @@ select count(*) from test_auth_method where public_id = $1;
 	_, err = db.Exec(addTriggers)
 	require.NoError(err)
 
-	org, _ := iam.TestScopes(t, repo)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	id := "l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
 	_, err = db.Query(insert, id, org.GetPublicId())
@@ -105,6 +106,8 @@ values
 	assert, require := assert.New(t), require.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := iam.TestRepo(t, conn, wrapper)
 	db := conn.DB()
 	_, err := db.Exec(createTable)
 	require.NoError(err)

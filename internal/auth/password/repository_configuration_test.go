@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,11 +19,12 @@ func TestRepository_GetSetConfiguration(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 
-	o, _ := iam.TestScopes(t, repo)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
@@ -68,7 +70,7 @@ func TestRepository_GetSetConfiguration(t *testing.T) {
 		newConf.PasswordMethodId = currentConf.PasswordMethodId
 		newConf.Memory = currentConf.Memory * 2
 
-		updated, err := repo.SetConfiguration(ctx, newConf)
+		updated, err := repo.SetConfiguration(ctx, o.GetPublicId(), newConf)
 		assert.NoError(err)
 		require.NotNil(updated)
 		assert.NotSame(newConf, updated)
@@ -97,7 +99,7 @@ func TestRepository_GetSetConfiguration(t *testing.T) {
 		newConf.PasswordMethodId = authMethodId
 		assert.Empty(newConf.PrivateId)
 
-		updated, err := repo.SetConfiguration(ctx, newConf)
+		updated, err := repo.SetConfiguration(ctx, o.GetPublicId(), newConf)
 		assert.NoError(err)
 		require.NotNil(updated)
 		assert.NotSame(newConf, updated)
@@ -123,11 +125,12 @@ func TestRepository_GetConfiguration(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 
-	o, _ := iam.TestScopes(t, repo)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
@@ -194,11 +197,12 @@ func TestRepository_SetConfiguration(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 
-	o, _ := iam.TestScopes(t, repo)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
@@ -285,7 +289,7 @@ func TestRepository_SetConfiguration(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := repo.SetConfiguration(context.Background(), tt.in)
+			got, err := repo.SetConfiguration(context.Background(), o.GetPublicId(), tt.in)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got, "returned configuration")

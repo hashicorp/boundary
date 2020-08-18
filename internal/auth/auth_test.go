@@ -22,13 +22,13 @@ func TestHandler_AuthDecoration(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo, err := iam.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	org, proj := iam.TestScopes(t, repo)
+	org, proj := iam.TestScopes(t, iamRepo)
 	cases := []struct {
 		name            string
 		path            string
@@ -274,9 +274,9 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	tokenRepo, err := authtoken.NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	tokenRepo, err := authtoken.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
-	kms := kms.TestKms(t, conn)
 	iamRepo, err := iam.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	tokenRepoFn := func() (*authtoken.Repository, error) {
@@ -286,8 +286,8 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 		return iamRepo, nil
 	}
 
-	o, _ := iam.TestScopes(t, repo)
-	at := authtoken.TestAuthToken(t, conn, wrapper, o.GetPublicId())
+	o, _ := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
 
 	tokValue := at.GetPublicId() + "_" + at.GetToken()
 	jsCookieVal, httpCookieVal := tokValue[:len(tokValue)/2], tokValue[len(tokValue)/2:]
