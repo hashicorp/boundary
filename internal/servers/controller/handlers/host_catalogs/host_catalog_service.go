@@ -142,7 +142,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if err := validateUpdateRequest(req, ct); err != nil {
 		return nil, err
 	}
-	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, projId, id string, version uint32, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
+func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
@@ -219,6 +219,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, version ui
 	if name := item.GetName(); name != nil {
 		opts = append(opts, static.WithName(name.GetValue()))
 	}
+	version := item.GetVersion()
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for update: %v.", err)
@@ -295,6 +296,9 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	if item == nil {
 		badFields["item"] = "This field is required."
 	}
+	if item.GetVersion() != 0 {
+		badFields["version"] = "Cannot specify this field in a create request."
+	}
 	if item.GetType() == nil {
 		badFields["type"] = "This field is required."
 	}
@@ -325,15 +329,15 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) er
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "This field is required."
 	}
-	if req.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
 
 	item := req.GetItem()
 	if item == nil {
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
 		return nil
+	}
+	if item.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 	if item.GetType() != nil {
 		badFields["type"] = "This is a read only field and cannot be specified in an update request."
