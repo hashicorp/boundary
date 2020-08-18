@@ -1,4 +1,4 @@
-package kms
+package kms_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -31,18 +32,18 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	org, _ := iam.TestScopes(t, conn)
-	rk := TestRootKey(t, conn, org.PublicId)
-	new := TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
+	rk := kms.TestRootKey(t, conn, org.PublicId)
+	new := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
 
 	var tests = []struct {
 		name      string
-		update    *RootKeyVersion
+		update    *kms.RootKeyVersion
 		fieldMask []string
 	}{
 		{
 			name: "private_id",
-			update: func() *RootKeyVersion {
-				k := new.Clone().(*RootKeyVersion)
+			update: func() *kms.RootKeyVersion {
+				k := new.Clone().(*kms.RootKeyVersion)
 				k.PrivateId = "o_thisIsNotAValidId"
 				return k
 			}(),
@@ -50,8 +51,8 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "create time",
-			update: func() *RootKeyVersion {
-				k := new.Clone().(*RootKeyVersion)
+			update: func() *kms.RootKeyVersion {
+				k := new.Clone().(*kms.RootKeyVersion)
 				k.CreateTime = &ts
 				return k
 			}(),
@@ -59,8 +60,8 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "root_key_id",
-			update: func() *RootKeyVersion {
-				k := new.Clone().(*RootKeyVersion)
+			update: func() *kms.RootKeyVersion {
+				k := new.Clone().(*kms.RootKeyVersion)
 				k.RootKeyId = "o_thisIsNotAValidId"
 				return k
 			}(),
@@ -68,8 +69,8 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "version",
-			update: func() *RootKeyVersion {
-				k := new.Clone().(*RootKeyVersion)
+			update: func() *kms.RootKeyVersion {
+				k := new.Clone().(*kms.RootKeyVersion)
 				k.Version = uint32(22)
 				return k
 			}(),
@@ -77,8 +78,8 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "key",
-			update: func() *RootKeyVersion {
-				k := new.Clone().(*RootKeyVersion)
+			update: func() *kms.RootKeyVersion {
+				k := new.Clone().(*kms.RootKeyVersion)
 				k.Key = []byte("updated key")
 				return k
 			}(),
@@ -93,7 +94,7 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 			err := w.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			err = tt.update.encrypt(context.Background(), wrapper)
+			err = tt.update.Encrypt(context.Background(), wrapper)
 			require.NoError(err)
 			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
@@ -103,7 +104,7 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 			err = w.LookupById(context.Background(), after)
 			require.NoError(err)
 
-			assert.True(proto.Equal(orig.(*RootKeyVersion), after.(*RootKeyVersion)))
+			assert.True(proto.Equal(orig.(*kms.RootKeyVersion), after.(*kms.RootKeyVersion)))
 
 		})
 	}
@@ -117,17 +118,17 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	org, _ := iam.TestScopes(t, conn)
-	new := TestRootKey(t, conn, org.PublicId)
+	new := kms.TestRootKey(t, conn, org.PublicId)
 
 	var tests = []struct {
 		name      string
-		update    *RootKey
+		update    *kms.RootKey
 		fieldMask []string
 	}{
 		{
 			name: "private_id",
-			update: func() *RootKey {
-				k := new.Clone().(*RootKey)
+			update: func() *kms.RootKey {
+				k := new.Clone().(*kms.RootKey)
 				k.PrivateId = "o_thisIsNotAValidId"
 				return k
 			}(),
@@ -135,8 +136,8 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "create time",
-			update: func() *RootKey {
-				k := new.Clone().(*RootKey)
+			update: func() *kms.RootKey {
+				k := new.Clone().(*kms.RootKey)
 				k.CreateTime = &ts
 				return k
 			}(),
@@ -144,8 +145,8 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "scope_id",
-			update: func() *RootKey {
-				k := new.Clone().(*RootKey)
+			update: func() *kms.RootKey {
+				k := new.Clone().(*kms.RootKey)
 				k.ScopeId = "o_thisIsNotAValidId"
 				return k
 			}(),
@@ -168,7 +169,7 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 			err = w.LookupById(context.Background(), after)
 			require.NoError(err)
 
-			assert.True(proto.Equal(orig.(*RootKey), after.(*RootKey)))
+			assert.True(proto.Equal(orig.(*kms.RootKey), after.(*kms.RootKey)))
 
 		})
 	}

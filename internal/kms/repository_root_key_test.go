@@ -1,4 +1,4 @@
-package kms
+package kms_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
@@ -20,15 +21,16 @@ func TestRepository_CreateRootKey(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw)
+	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, proj := iam.TestScopes(t, conn)
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 
 	type args struct {
 		scopeId    string
 		key        []byte
 		keyWrapper wrapping.Wrapper
-		opt        []Option
+		opt        []kms.Option
 	}
 	tests := []struct {
 		name        string
@@ -133,13 +135,13 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw)
+	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, conn)
 
 	type args struct {
-		key *RootKey
-		opt []Option
+		key *kms.RootKey
+		opt []kms.Option
 	}
 	tests := []struct {
 		name            string
@@ -151,7 +153,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				key: TestRootKey(t, conn, org.PublicId),
+				key: kms.TestRootKey(t, conn, org.PublicId),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -159,8 +161,8 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 		{
 			name: "no-private-id",
 			args: args{
-				key: func() *RootKey {
-					k := allocRootKey()
+				key: func() *kms.RootKey {
+					k := kms.AllocRootKey()
 					return &k
 				}(),
 			},
@@ -171,10 +173,10 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 		{
 			name: "not-found",
 			args: args{
-				key: func() *RootKey {
-					id, err := newRootKeyId()
+				key: func() *kms.RootKey {
+					id, err := kms.NewRootKeyId()
 					require.NoError(t, err)
-					k := allocRootKey()
+					k := kms.AllocRootKey()
 					k.PrivateId = id
 					require.NoError(t, err)
 					return &k
@@ -221,11 +223,11 @@ func TestRepository_ListRootKeys(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
-	repo, err := NewRepository(rw, rw, WithLimit(testLimit))
+	repo, err := kms.NewRepository(rw, rw, kms.WithLimit(testLimit))
 	require.NoError(t, err)
 
 	type args struct {
-		opt []Option
+		opt []kms.Option
 	}
 	tests := []struct {
 		name      string
@@ -236,25 +238,25 @@ func TestRepository_ListRootKeys(t *testing.T) {
 	}{
 		{
 			name:      "no-limit",
-			createCnt: repo.defaultLimit + 1,
+			createCnt: testLimit + 1,
 			args: args{
-				opt: []Option{WithLimit(-1)},
+				opt: []kms.Option{kms.WithLimit(-1)},
 			},
-			wantCnt: repo.defaultLimit + 1,
+			wantCnt: testLimit + 1,
 			wantErr: false,
 		},
 		{
 			name:      "default-limit",
-			createCnt: repo.defaultLimit + 1,
+			createCnt: testLimit + 1,
 			args:      args{},
-			wantCnt:   repo.defaultLimit,
+			wantCnt:   testLimit,
 			wantErr:   false,
 		},
 		{
 			name:      "custom-limit",
-			createCnt: repo.defaultLimit + 1,
+			createCnt: testLimit + 1,
 			args: args{
-				opt: []Option{WithLimit(3)},
+				opt: []kms.Option{kms.WithLimit(3)},
 			},
 			wantCnt: 3,
 			wantErr: false,
@@ -263,11 +265,11 @@ func TestRepository_ListRootKeys(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocRootKey()).Error)
-			testRootKeys := []*RootKey{}
+			require.NoError(conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+			testRootKeys := []*kms.RootKey{}
 			for i := 0; i < tt.createCnt; i++ {
 				org, _ := iam.TestScopes(t, conn)
-				testRootKeys = append(testRootKeys, TestRootKey(t, conn, org.PublicId))
+				testRootKeys = append(testRootKeys, kms.TestRootKey(t, conn, org.PublicId))
 			}
 			assert.Equal(tt.createCnt, len(testRootKeys))
 			got, err := repo.ListRootKeys(context.Background(), tt.args.opt...)

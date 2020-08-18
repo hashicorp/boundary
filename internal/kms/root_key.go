@@ -34,7 +34,8 @@ func NewRootKey(scopeId string, opt ...Option) (*RootKey, error) {
 	return c, nil
 }
 
-func allocRootKey() RootKey {
+// AllocRootKey will allocate a root key
+func AllocRootKey() RootKey {
 	return RootKey{
 		RootKey: &store.RootKey{},
 	}

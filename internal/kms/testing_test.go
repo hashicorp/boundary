@@ -1,10 +1,11 @@
-package kms
+package kms_test
 
 import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,7 +15,7 @@ func Test_TestRootKey(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := iam.TestScopes(t, conn)
-	k := TestRootKey(t, conn, org.PublicId)
+	k := kms.TestRootKey(t, conn, org.PublicId)
 	require.NotNil(k)
 	assert.NotEmpty(k.PrivateId)
 }
@@ -25,8 +26,8 @@ func Test_TestRootKeyVersion(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, conn)
-	rk := TestRootKey(t, conn, org.PublicId)
-	k := TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
+	rk := kms.TestRootKey(t, conn, org.PublicId)
+	k := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
 	require.NotNil(k)
 	assert.NotEmpty(k.PrivateId)
 }

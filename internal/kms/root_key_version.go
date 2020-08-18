@@ -39,7 +39,8 @@ func NewRootKeyVersion(rootKeyId string, key []byte, opt ...Option) (*RootKeyVer
 	return k, nil
 }
 
-func allocRootKeyVersion() RootKeyVersion {
+// AllocRootKeyVersion allocates a RootKeyVersion
+func AllocRootKeyVersion() RootKeyVersion {
 	return RootKeyVersion{
 		RootKeyVersion: &store.RootKeyVersion{},
 	}
@@ -85,7 +86,8 @@ func (k *RootKeyVersion) SetTableName(n string) {
 	k.tableName = n
 }
 
-func (k *RootKeyVersion) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+// Encrypt will encrypt the root key version's key
+func (k *RootKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.RootKey directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.RootKeyVersion, nil); err != nil {
@@ -94,7 +96,8 @@ func (k *RootKeyVersion) encrypt(ctx context.Context, cipher wrapping.Wrapper) e
 	return nil
 }
 
-func (k *RootKeyVersion) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+// Decrypt will decrypt the root key version's key
+func (k *RootKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.RootKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.RootKeyVersion, nil); err != nil {

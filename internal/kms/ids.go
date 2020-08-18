@@ -11,7 +11,8 @@ const (
 	RootKeyVersionPrefix = "krkv"
 )
 
-func newRootKeyId() (string, error) {
+// NewRootKeyId
+func NewRootKeyId() (string, error) {
 	id, err := db.NewPublicId(RootKeyPrefix)
 	if err != nil {
 		return "", fmt.Errorf("new root key id: %w", err)
@@ -19,7 +20,7 @@ func newRootKeyId() (string, error) {
 	return id, nil
 }
 
-func newRootKeyVersionId() (string, error) {
+func NewRootKeyVersionId() (string, error) {
 	id, err := db.NewPublicId(RootKeyVersionPrefix)
 	if err != nil {
 		return "", fmt.Errorf("new root key version id: %w", err)
