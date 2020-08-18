@@ -115,9 +115,8 @@ message CreateAuthMethodResponse {
 
 message UpdateAuthMethodRequest {
   string id = 1;
-  uint32 version = 2;
-  resources.authmethods.v1.AuthMethod item = 3;
-  google.protobuf.FieldMask update_mask = 4;
+  resources.authmethods.v1.AuthMethod item = 2;
+  google.protobuf.FieldMask update_mask = 3;
 }
 
 message UpdateAuthMethodResponse {
