@@ -696,3 +696,337 @@ func TestUpdate(t *testing.T) {
 		})
 	}
 }
+
+func TestAddMember(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, wrap)
+	}
+	s, err := host_sets.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new group service.")
+
+	o, p := iam.TestScopes(t, conn)
+
+	newHc, err := static.NewHostCatalog(p.GetPublicId())
+	require.NoError(t, err, "Couldn't get new catalog.")
+	repo, err := repoFn()
+	require.NoError(t, err, "Couldn't create static repostitory")
+	hc, err := repo.CreateCatalog(context.Background(), newHc)
+	require.NoError(t, err, "Couldn't create host catalog")
+
+	hosts := []*static.Host{
+		static.TestHost(t, conn, p.GetPublicId()),
+		static.TestHost(t, conn, p.GetPublicId()),
+		static.TestHost(t, conn, p.GetPublicId()),
+	}
+
+	addCases := []struct {
+		name        string
+		setup       func(*static.HostSet)
+		addHosts    []string
+		resultHosts []string
+		wantErr     bool
+	}{
+		{
+			name:        "Add to empty set",
+			setup:       func(g *static.HostSet) {},
+			addHosts:    []string{hosts[1].GetPublicId()},
+			resultHosts: []string{hosts[1].GetPublicId()},
+		},
+		{
+			name: "Add host on populated set",
+			setup: func(s *static.HostSet) {
+				static.TestSetMember(t, conn, s.GetPublicId(), hosts[0].GetPublicId())
+			},
+			addHosts:    []string{hosts[1].GetPublicId()},
+			resultHosts: []string{hosts[0].GetPublicId(), hosts[1].GetPublicId()},
+		},
+		{
+			name: "Add empty on populated set",
+			setup: func(s *static.HostSet) {
+				static.TestSetMember(t, conn, s.GetPublicId(), hosts[0].GetPublicId())
+				static.TestSetMember(t, conn, s.GetPublicId(), hosts[1].GetPublicId())
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range addCases {
+		t.Run(tc.name, func(t *testing.T) {
+			hs := static.TestHostSet(t, conn, hc.GetPublicId())
+			tc.setup(hs)
+			req := &pbs.AddHostSetHostsRequest{
+				Id:            hs.GetPublicId(),
+				HostCatalogId: hs.GetHostCatalogId(),
+				Version:       hc.GetVersion(),
+				Item: &pbs.HostSetHosts{
+					HostIds: tc.addHosts,
+				},
+			}
+
+			got, err := s.AddHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			s, ok := status.FromError(err)
+			require.True(t, ok)
+			require.NoError(t, err, "Got error: %v", s)
+
+			assert.True(t, equalMembers(got.GetItem(), tc.resultHosts))
+		})
+	}
+
+	hs := static.TestHostSet(t, conn, p.GetPublicId())
+
+	failCases := []struct {
+		name    string
+		req     *pbs.AddHostSetHostsRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Host Set Id",
+			req: &pbs.AddHostSetHostsRequest{
+				Id:            "bad id",
+				HostCatalogId: hc.GetPublicId(),
+				Version:       hs.GetVersion(),
+				Item:          &pbs.HostSetHosts{},
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.AddHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}
+
+func TestSetMember(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, wrap)
+	}
+	s, err := host_sets.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new group service.")
+
+	o, p := iam.TestScopes(t, conn)
+
+	newHc, err := static.NewHostCatalog(p.GetPublicId())
+	require.NoError(t, err, "Couldn't get new catalog.")
+	repo, err := repoFn()
+	require.NoError(t, err, "Couldn't create static repostitory")
+	hc, err := repo.CreateCatalog(context.Background(), newHc)
+	require.NoError(t, err, "Couldn't create host catalog")
+
+	hosts := []*static.Host{
+		static.TestHost(t, conn, p.GetPublicId()),
+		static.TestHost(t, conn, p.GetPublicId()),
+		static.TestHost(t, conn, p.GetPublicId()),
+	}
+
+	setCases := []struct {
+		name        string
+		setup       func(*static.HostSet)
+		setHosts    []string
+		resultHosts []string
+		wantErr     bool
+	}{
+		{
+			name:        "Set user on empty group",
+			setup:       func(h *static.HostSet) {},
+			setHosts:    []string{hosts[1].GetPublicId()},
+			resultHosts: []string{hosts[1].GetPublicId()},
+		},
+		{
+			name: "Set user on populated group",
+			setup: func(h *static.HostSet) {
+				iam.TestGroupMember(t, conn, h.GetPublicId(), hosts[0].GetPublicId())
+			},
+			setHosts:    []string{hosts[1].GetPublicId()},
+			resultHosts: []string{hosts[1].GetPublicId()},
+		},
+		{
+			name: "Set empty on populated group",
+			setup: func(h *static.HostSet) {
+				iam.TestGroupMember(t, conn, h.GetPublicId(), hosts[0].GetPublicId())
+				iam.TestGroupMember(t, conn, h.GetPublicId(), hosts[1].GetPublicId())
+			},
+			setHosts:    []string{},
+			resultHosts: nil,
+		},
+	}
+
+	for _, tc := range setCases {
+		t.Run(tc.name+"_"+scp.GetType(), func(t *testing.T) {
+			grp := static.TestHostSEt(t, conn, scp.GetPublicId())
+			tc.setup(grp)
+			req := &pbs.SetHostSetHostsRequest{
+				Id:      grp.GetPublicId(),
+				Version: grp.GetVersion(),
+				Item: &pbs.HostSetHosts{
+					HostIds: tc.setHosts,
+				},
+			}
+
+			got, err := s.SetHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			s, ok := status.FromError(err)
+			require.True(t, ok)
+			require.NoError(t, err, "Got error: %v", s)
+
+			assert.True(t, equalMembers(got.GetItem(), tc.resultHosts))
+		})
+	}
+
+	hs := static.TestHostSet(t, conn, hc.GetPublicId())
+
+	failCases := []struct {
+		name    string
+		req     *pbs.SetHostSetHostsRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Group Id",
+			req: &pbs.SetHostSetHostsRequest{
+				Id:            "bad id",
+				HostCatalogId: hc.GetPublicId(),
+				Version:       hs.GetVersion(),
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.SetHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "SetHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}
+
+func TestRemoveMember(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, wrap)
+	}
+	s, err := host_sets.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new group service.")
+
+	o, p := iam.TestScopes(t, conn)
+
+	newHc, err := static.NewHostCatalog(p.GetPublicId())
+	require.NoError(t, err, "Couldn't get new catalog.")
+	repo, err := repoFn()
+	require.NoError(t, err, "Couldn't create static repostitory")
+	hc, err := repo.CreateCatalog(context.Background(), newHc)
+	require.NoError(t, err, "Couldn't create host catalog")
+
+	hosts := []*static.Host{
+		static.TestHost(t, conn, p.GetPublicId()),
+		static.TestHost(t, conn, p.GetPublicId()),
+		static.TestHost(t, conn, p.GetPublicId()),
+	}
+
+	addCases := []struct {
+		name        string
+		setup       func(*static.HostSet)
+		removeHosts []string
+		resultHosts []string
+		wantErr     bool
+	}{
+		{
+			name:        "Remove user on empty group",
+			setup:       func(*static.HostSet) {},
+			removeHosts: []string{hosts[1].GetPublicId()},
+			wantErr:     true,
+		},
+		{
+			name: "Remove 1 of 2 users from group",
+			setup: func(r *static.HostSet) {
+				iam.TestGroupMember(t, conn, r.GetPublicId(), hosts[0].GetPublicId())
+				iam.TestGroupMember(t, conn, r.GetPublicId(), hosts[1].GetPublicId())
+			},
+			removeHosts: []string{hosts[1].GetPublicId()},
+			resultHosts: []string{hosts[0].GetPublicId()},
+		},
+		{
+			name: "Remove all users from group",
+			setup: func(r *static.HostSet) {
+				iam.TestGroupMember(t, conn, r.GetPublicId(), hosts[0].GetPublicId())
+				iam.TestGroupMember(t, conn, r.GetPublicId(), hosts[1].GetPublicId())
+			},
+			removeHosts: []string{hosts[0].GetPublicId(), hosts[1].GetPublicId()},
+			resultHosts: []string{},
+		},
+		{
+			name: "Remove empty on populated group",
+			setup: func(r *static.HostSet) {
+				iam.TestGroupMember(t, conn, r.GetPublicId(), hosts[0].GetPublicId())
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range addCases {
+		t.Run(tc.name, func(t *testing.T) {
+			hs := static.TestHostSet(t, conn, hc.GetPublicId())
+			tc.setup(hs)
+			req := &pbs.RemoveHostSetHostsRequest{
+				Id:            hs.GetPublicId(),
+				HostCatalogId: hc.GetPublicId(),
+				Version:       hs.GetVersion(),
+				Item: &pbs.HostSetHosts{
+					HostIds: tc.removeHosts,
+				},
+			}
+
+			got, err := s.RemoveHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			s, ok := status.FromError(err)
+			require.True(t, ok)
+			require.NoError(t, err, "Got error: %v", s)
+
+			assert.True(t, equalMembers(got.GetItem(), tc.resultHosts))
+		})
+	}
+
+	hs := static.TestHostSet(t, conn, hs.GetPublicId())
+
+	failCases := []struct {
+		name    string
+		req     *pbs.RemoveHostSetHostsRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Group Id",
+			req: &pbs.RemoveHostSetHostsRequest{
+				Id:            "bad id",
+				HostCatalogId: hc.GetPublicId(),
+				Version:       hs.GetVersion(),
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.RemoveHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}

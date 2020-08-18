@@ -135,18 +135,51 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 }
 
 // AddHostSetHosts implements the interface pbs.HostSetServiceServer.
-func (s Service) AddHostSetHosts(ctx context.Context, request *pbs.AddHostSetHostsRequest) (*pbs.AddHostSetHostsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "This has not been implemented yet.")
+func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRequest) (*pbs.AddHostSetHostsResponse, error) {
+	authResults := auth.Verify(ctx)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	if err := validateAddRequest(req); err != nil {
+		return nil, err
+	}
+	g, err := s.addInRepo(ctx, req.GetId(), req.GetItem().GetHostIds(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.AddHostSetHostsResponse{Item: g}, nil
 }
 
 // SetHostSetHosts implements the interface pbs.HostSetServiceServer.
-func (s Service) SetHostSetHosts(ctx context.Context, request *pbs.SetHostSetHostsRequest) (*pbs.SetHostSetHostsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "This has not been implemented yet.")
+func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRequest) (*pbs.SetHostSetHostsResponse, error) {
+	authResults := auth.Verify(ctx)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	if err := validateSetRequest(req); err != nil {
+		return nil, err
+	}
+	g, err := s.setInRepo(ctx, req.GetId(), req.GetItem().GetHostIds(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.SetHostSetHostsResponse{Item: g}, nil
 }
 
 // RemoveHostSetHosts implements the interface pbs.HostSetServiceServer.
-func (s Service) RemoveHostSetHosts(ctx context.Context, request *pbs.RemoveHostSetHostsRequest) (*pbs.RemoveHostSetHostsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "This has not been implemented yet.")
+func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetHostsRequest) (*pbs.RemoveHostSetHostsResponse, error) {
+	authResults := auth.Verify(ctx)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	if err := validateRemoveRequest(req); err != nil {
+		return nil, err
+	}
+	g, err := s.removeInRepo(ctx, req.GetId(), req.GetItem().GetHostIds(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.RemoveHostSetHostsResponse{Item: g}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostSet, error) {
@@ -259,6 +292,72 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 		outH = append(outH, toProto(h, nil))
 	}
 	return outH, nil
+}
+
+func (s Service) addInRepo(ctx context.Context, groupId string, userIds []string, version uint32) (*pb.HostSet, error) {
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	// _, err = repo.AddHostSetMembers(ctx, groupId, version, userIds)
+	// if err != nil {
+	// 	return nil, status.Errorf(codes.Internal, "Unable to add members to group: %v.", err)
+	// }
+	// out, m, err := repo.LookupHostSet(ctx, groupId)
+	// if err != nil {
+	// 	return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+	// }
+	_ = repo
+	var m []*static.HostSetMember
+	var out *static.HostSet
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to lookup group after adding member to it.")
+	}
+	return toProto(out, m), nil
+}
+
+func (s Service) setInRepo(ctx context.Context, groupId string, userIds []string, version uint32) (*pb.HostSet, error) {
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	// _, _, err = repo.SetHostSetMembers(ctx, groupId, version, userIds)
+	// if err != nil {
+	// 	return nil, status.Errorf(codes.Internal, "Unable to set members on group: %v.", err)
+	// }
+	// out, m, err := repo.LookupHostSet(ctx, groupId)
+	// if err != nil {
+	// 	return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+	// }
+	_ = repo
+	var m []*static.HostSetMember
+	var out *static.HostSet
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to lookup group after setting members for it.")
+	}
+	return toProto(out, m), nil
+}
+
+func (s Service) removeInRepo(ctx context.Context, hostSetId string, userIds []string, version uint32) (*pb.HostSet, error) {
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	// _, err = repo.RemoveHostSetMembers(ctx, hostSetId, version, userIds)
+	// if err != nil {
+	// 	return nil, status.Errorf(codes.Internal, "Unable to remove members from group: %v.", err)
+	// }
+	// out, m, err := repo.LookupHostSet(ctx, hostSetId)
+	// if err != nil {
+	// 	return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+	// }
+	_ = repo
+	var m []*static.HostSetMember
+	var out *static.HostSet
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to lookup group after removing members from it.")
+	}
+	return toProto(out, m), nil
 }
 
 func toProto(in *static.HostSet, members []*static.HostSetMember) *pb.HostSet {
@@ -389,6 +488,54 @@ func validateDeleteRequest(req *pbs.DeleteHostSetRequest) error {
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", badFields)
+	}
+	return nil
+}
+
+func validateAddRequest(req *pbs.AddHostSetHostsRequest) error {
+	badFields := map[string]string{}
+	if !validId(req.GetId(), static.HostSetPrefix+"_") {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Required field."
+	}
+	if len(req.GetItem().GetHostIds()) == 0 {
+		badFields["host_ids"] = "Must be non-empty."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateSetRequest(req *pbs.SetHostSetHostsRequest) error {
+	badFields := map[string]string{}
+	if !validId(req.GetId(), static.HostSetPrefix+"_") {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Required field."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateRemoveRequest(req *pbs.RemoveHostSetHostsRequest) error {
+	badFields := map[string]string{}
+	if !validId(req.GetId(), static.HostSetPrefix+"_") {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Required field."
+	}
+	if len(req.GetItem().GetHostIds()) == 0 {
+		badFields["host_ids"] = "Must be non-empty."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
 }
