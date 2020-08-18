@@ -25,9 +25,7 @@ func TestRepository_CreateRootKeyTx(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
-	kmsCache := kms.TestKms(t, conn, wrapper)
-	iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
-	require.NoError(t, err)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 	org, proj := iam.TestScopes(t, iamRepo)
 
 	type args struct {
@@ -60,13 +58,13 @@ func TestRepository_CreateRootKeyTx(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "invalid-proj",
+			name: "valid-proj",
 			args: args{
 				scopeId:    proj.PublicId,
-				key:        []byte("invalid-proj"),
+				key:        []byte("valid-proj"),
 				keyWrapper: wrapper,
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "invalid-scope",
