@@ -14,6 +14,7 @@ func TestRootKey(t *testing.T, conn *gorm.DB, scopeId string) *RootKey {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
+	require.NoError(conn.Where("scope_id = ?", scopeId).Delete(AllocRootKey()).Error)
 	k, err := NewRootKey(scopeId)
 	require.NoError(err)
 	id, err := NewRootKeyId()

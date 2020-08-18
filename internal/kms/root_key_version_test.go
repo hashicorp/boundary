@@ -189,22 +189,19 @@ func TestRootKeyVersion_SetTableName(t *testing.T) {
 	t.Parallel()
 	defaultTableName := kms.DefaultRootKeyVersionTableName
 	tests := []struct {
-		name        string
-		initialName string
-		setNameTo   string
-		want        string
+		name      string
+		setNameTo string
+		want      string
 	}{
 		{
-			name:        "new-name",
-			initialName: "",
-			setNameTo:   "new-name",
-			want:        "new-name",
+			name:      "new-name",
+			setNameTo: "new-name",
+			want:      "new-name",
 		},
 		{
-			name:        "reset to default",
-			initialName: "initial",
-			setNameTo:   "",
-			want:        defaultTableName,
+			name:      "reset to default",
+			setNameTo: "",
+			want:      defaultTableName,
 		},
 	}
 	for _, tt := range tests {

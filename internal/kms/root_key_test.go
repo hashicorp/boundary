@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/kms/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -183,22 +182,19 @@ func TestRootKey_SetTableName(t *testing.T) {
 	t.Parallel()
 	defaultTableName := kms.DefaultRootKeyTableName
 	tests := []struct {
-		name        string
-		initialName string
-		setNameTo   string
-		want        string
+		name      string
+		setNameTo string
+		want      string
 	}{
 		{
-			name:        "new-name",
-			initialName: "",
-			setNameTo:   "new-name",
-			want:        "new-name",
+			name:      "new-name",
+			setNameTo: "new-name",
+			want:      "new-name",
 		},
 		{
-			name:        "reset to default",
-			initialName: "initial",
-			setNameTo:   "",
-			want:        defaultTableName,
+			name:      "reset to default",
+			setNameTo: "",
+			want:      defaultTableName,
 		},
 	}
 	for _, tt := range tests {
@@ -206,9 +202,7 @@ func TestRootKey_SetTableName(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			def := kms.AllocRootKey()
 			require.Equal(defaultTableName, def.TableName())
-			s := &kms.RootKey{
-				RootKey: &store.RootKey{},
-			}
+			s := kms.AllocRootKey()
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, s.TableName())
 		})

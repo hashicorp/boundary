@@ -11,6 +11,7 @@ const (
 	RootKeyVersionPrefix = "krkv"
 )
 
+// NewRootKeyId
 func NewRootKeyId() (string, error) {
 	id, err := db.NewPublicId(RootKeyPrefix)
 	if err != nil {
