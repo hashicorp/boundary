@@ -1,4 +1,4 @@
-package common
+package common_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/kms/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/require"
@@ -95,7 +96,9 @@ func TestRepository_CreateRootKeyTx(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			rk, kv, err := CreateRootKeyTx(context.Background(), rw, tt.args.keyWrapper, tt.args.scopeId, tt.args.key)
+			// need to delete root keys created by iam.TestScopes()
+			require.NoError(conn.Where("1=1").Delete(&kms.RootKey{RootKey: &store.RootKey{}}).Error)
+			rk, kv, err := kms.CreateRootKeyTx(context.Background(), rw, tt.args.keyWrapper, tt.args.scopeId, tt.args.key)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(rk)
