@@ -33,12 +33,16 @@ func NewAuthMethodsClient(c *api.Client) *AuthMethodsClient {
 	return &AuthMethodsClient{client: c}
 }
 
-func (c *AuthMethodsClient) Create(ctx context.Context, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *AuthMethodsClient) Create(ctx context.Context, resourceType string, opt ...Option) (*AuthMethod, *api.Error, error) {
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
+	if resourceType == "" {
+		return nil, nil, fmt.Errorf("empty resourceType value passed into Create request")
+	} else {
+		opts.valueMap["type"] = resourceType
+	}
 
 	req, err := c.client.NewRequest(ctx, "POST", "auth-methods", opts.valueMap, apiOpts...)
 	if err != nil {

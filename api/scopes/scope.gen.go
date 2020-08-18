@@ -35,12 +35,10 @@ func (c *ScopesClient) Create(ctx context.Context, scopeId string, opt ...Option
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
-
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "POST", "scopes", opts.valueMap, apiOpts...)
 	if err != nil {

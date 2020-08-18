@@ -37,11 +37,10 @@ func NewRolesClient(c *api.Client) *RolesClient {
 }
 
 func (c *RolesClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Error, error) {
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "POST", "roles", opts.valueMap, apiOpts...)
 	if err != nil {

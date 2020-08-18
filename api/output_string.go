@@ -47,7 +47,7 @@ func (d *OutputStringError) parseRequest() {
 	for k, v := range d.Request.Header {
 		for _, h := range v {
 			if strings.ToLower(k) == "authorization" {
-				h = `Bearer: <token>`
+				h = `Bearer <token>`
 			}
 			d.parsedCurlString = fmt.Sprintf("%s-H \"%s: %s\" ", d.parsedCurlString, k, h)
 		}
