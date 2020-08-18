@@ -479,7 +479,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		assert.NotNil(repo)
 
 		name := "test-dup-name"
-		cats := testCatalogs(t, conn, 2)
+		_, prj := iam.TestScopes(t, conn)
+		cats := testCatalogs(t, conn, prj.PublicId, 2)
 		c1 := cats[0]
 		c1.Name = name
 		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, 1, []string{"name"})
@@ -540,7 +541,9 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(repo)
 
-		c1, c2 := testCatalog(t, conn), testCatalog(t, conn)
+		_, prj1 := iam.TestScopes(t, conn)
+		_, prj2 := iam.TestScopes(t, conn)
+		c1, c2 := testCatalog(t, conn, prj1.PublicId), testCatalog(t, conn, prj2.PublicId)
 		assert.NotEqual(c1.ScopeId, c2.ScopeId)
 		orig := c1.clone()
 
@@ -558,7 +561,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 func TestRepository_LookupCatalog(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	cat := testCatalog(t, conn)
+	_, prj := iam.TestScopes(t, conn)
+	cat := testCatalog(t, conn, prj.PublicId)
 	badId, err := newHostCatalogId()
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
@@ -618,7 +622,8 @@ func TestRepository_LookupCatalog(t *testing.T) {
 
 func TestRepository_DeleteCatalog(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	cat := testCatalog(t, conn)
+	_, prj := iam.TestScopes(t, conn)
+	cat := testCatalog(t, conn, prj.PublicId)
 	badId, err := newHostCatalogId()
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)

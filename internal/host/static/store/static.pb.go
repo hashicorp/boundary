@@ -166,8 +166,8 @@ type Host struct {
 	CatalogId string `protobuf:"bytes,6,opt,name=catalog_id,json=catalogId,proto3" json:"catalog_id,omitempty" gorm:"not_null"`
 	// address is the IP Address or DNS name of the host. It must be set and
 	// it must be unique within catalog_id.
-	// @inject_tag: `gorm:"not_null"`
-	Address string `protobuf:"bytes,7,opt,name=address,proto3" json:"address,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"default:null"`
+	Address string `protobuf:"bytes,7,opt,name=address,proto3" json:"address,omitempty" gorm:"default:null"`
 	// version allows optimistic locking of the resource
 	// @inject_tag: `gorm:"default:null"`
 	Version uint32 `protobuf:"varint,8,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`

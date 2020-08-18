@@ -67,7 +67,7 @@ message Host {
 
   // address is the IP Address or DNS name of the host. It must be set and
   // it must be unique within catalog_id.
-  // @inject_tag: `gorm:"not_null"`
+  // @inject_tag: `gorm:"default:null"`
   string address = 7;
 
   // version allows optimistic locking of the resource

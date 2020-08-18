@@ -21,7 +21,8 @@ func TestHostCatalog_ImmutableFields(t *testing.T) {
 
 	_, proj := iam.TestScopes(t, conn)
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-	new := testCatalog(t, conn)
+	_, prj := iam.TestScopes(t, conn)
+	new := testCatalog(t, conn, prj.PublicId)
 
 	var tests = []struct {
 		name      string
@@ -84,7 +85,8 @@ func TestStaticHost_ImmutableFields(t *testing.T) {
 	w := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-	cat := testCatalog(t, conn)
+	_, prj := iam.TestScopes(t, conn)
+	cat := testCatalog(t, conn, prj.PublicId)
 	hosts := testHosts(t, conn, cat.GetPublicId(), 1)
 
 	new := hosts[0]
@@ -157,7 +159,8 @@ func TestStaticHostSet_ImmutableFields(t *testing.T) {
 	w := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-	cat := testCatalog(t, conn)
+	_, prj := iam.TestScopes(t, conn)
+	cat := testCatalog(t, conn, prj.PublicId)
 	sets := testSets(t, conn, cat.GetPublicId(), 1)
 
 	new := sets[0]
@@ -229,7 +232,8 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
 
-	cat := testCatalog(t, conn)
+	_, prj := iam.TestScopes(t, conn)
+	cat := testCatalog(t, conn, prj.PublicId)
 	sets := testSets(t, conn, cat.GetPublicId(), 1)
 	hosts := testHosts(t, conn, cat.GetPublicId(), 1)
 
