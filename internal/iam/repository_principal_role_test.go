@@ -51,10 +51,11 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 		return results
 	}
 	type args struct {
-		roleVersion  uint32
-		wantUserIds  bool
-		wantGroupIds bool
-		opt          []Option
+		roleVersion     uint32
+		wantUserIds     bool
+		specificUserIds []string
+		wantGroupIds    bool
+		opt             []Option
 	}
 	tests := []struct {
 		name      string
@@ -112,6 +113,14 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "recovery-user",
+			args: args{
+				roleVersion:     1,
+				specificUserIds: []string{"u_recovery"},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -142,6 +151,9 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 					} else {
 						groupIds = append(groupIds, g.PublicId)
 					}
+				}
+				if len(tt.args.specificUserIds) > 0 {
+					userIds = tt.args.specificUserIds
 				}
 				principalIds := append(userIds, groupIds...)
 				got, err := repo.AddPrincipalRoles(context.Background(), roleId, tt.args.roleVersion, principalIds, tt.args.opt...)

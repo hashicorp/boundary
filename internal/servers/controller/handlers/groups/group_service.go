@@ -468,6 +468,11 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 	if len(req.GetMemberIds()) == 0 {
 		badFields["member_ids"] = "Must be non-empty."
 	}
+	for _, id := range req.GetMemberIds() {
+		if id == "u_recovery" {
+			badFields["member_ids"] = "u_recovery cannot be assigned to a group"
+		}
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
@@ -481,6 +486,11 @@ func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
+	}
+	for _, id := range req.GetMemberIds() {
+		if id == "u_recovery" {
+			badFields["member_ids"] = "u_recovery cannot be assigned to a group"
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

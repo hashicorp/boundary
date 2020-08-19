@@ -504,6 +504,7 @@ drop function disallow_global_scope_deletion cascade;
 drop function user_scope_id_valid cascade;
 drop function iam_immutable_role_grant cascade;
 drop function disallow_iam_predefined_user_deletion cascade;
+drop function recovery_user_not_allowed cascade;
 
 COMMIT;
 
@@ -945,6 +946,21 @@ before
 update on iam_role
   for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
 
+create or replace function
+  recovery_user_not_allowed()
+  returns trigger
+as $$
+declare
+  new_value text;
+begin
+    execute format('SELECT $1.%I', tg_argv[0]) into new_value using new;
+    if new_value = 'u_recovery' then
+      raise exception '"u_recovery" not allowed here"';
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
 create table iam_group (
     public_id wt_public_id not null primary key,
     create_time wt_timestamp,
@@ -1093,6 +1109,12 @@ update on iam_user_role
   for each row execute procedure iam_immutable_role_principal();
 
 create trigger 
+  recovery_user_not_allowed_user_role
+before
+insert on iam_user_role
+  for each row execute procedure recovery_user_not_allowed('principal_id');
+
+create trigger 
   default_create_time_column
 before
 insert on iam_user_role
@@ -1114,7 +1136,7 @@ insert on iam_group_role
 create table iam_group_member_user (
   create_time wt_timestamp,
   group_id wt_public_id references iam_group(public_id) on delete cascade on update cascade,
-  member_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
+  member_id wt_user_id references iam_user(public_id) on delete cascade on update cascade,
   primary key (group_id, member_id)
 );
 
@@ -1138,6 +1160,12 @@ create trigger iam_immutable_group_member
 before
 update on iam_group_member_user
   for each row execute procedure iam_immutable_group_member();
+
+create trigger 
+  recovery_user_not_allowed_group_member
+before
+insert on iam_group_member_user
+  for each row execute procedure recovery_user_not_allowed('member_id');
 
 -- get_scoped_principal_id is used by the iam_group_member view as a convient
 -- way to create <scope_id>:<member_id> to reference members from
