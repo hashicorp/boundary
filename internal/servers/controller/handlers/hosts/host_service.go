@@ -338,11 +338,18 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 		badFields["attributes.address"] = "This field is required."
 	}
 
-	if item.GetType() == "" {
-		badFields["type"] = "This field is required."
-	}
-	if host.SubtypeFromType(item.GetType()) == host.UnknownSubtype {
-		badFields["type"] = "Provided type is unknown."
+	switch host.SubtypeFromId(req.GetHostCatalogId()) {
+	case host.StaticSubtype:
+		if item.GetType() != "" && item.GetType() != host.StaticSubtype.String() {
+			badFields["type"] = "Doesn't match the parent resource's type."
+		}
+		attrs := &pb.StaticHostAttributes{}
+		if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
+			badFields["attributes"] = "Attribute fields do not match the expected format."
+		}
+		if attrs.GetAddress() == nil {
+			badFields["attributes.address"] = "This is a required field for this type."
+		}
 	}
 	if item.GetId() != "" {
 		badFields["id"] = "This field is read only."
