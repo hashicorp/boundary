@@ -21,7 +21,7 @@ func (r *Repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrappi
 		return nil, fmt.Errorf("create root key version: missing key: %w", db.ErrInvalidParameter)
 	}
 	kv := AllocRootKeyVersion()
-	id, err := NewRootKeyVersionId()
+	id, err := newRootKeyVersionId()
 	if err != nil {
 		return nil, fmt.Errorf("create root key version: %w", err)
 	}

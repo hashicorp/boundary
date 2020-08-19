@@ -174,7 +174,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 			name: "not-found",
 			args: args{
 				key: func() *kms.RootKey {
-					id, err := kms.NewRootKeyId()
+					id, err := db.NewPublicId(kms.RootKeyPrefix)
 					require.NoError(t, err)
 					k := kms.AllocRootKey()
 					k.PrivateId = id

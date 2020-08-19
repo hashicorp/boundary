@@ -80,7 +80,7 @@ func TestRootKeyVersion_Create(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				id, err := kms.NewRootKeyVersionId()
+				id, err := db.NewPublicId(kms.RootKeyVersionPrefix)
 				require.NoError(err)
 				got.PrivateId = id
 				err = got.Encrypt(context.Background(), wrapper)
@@ -123,7 +123,7 @@ func TestRootKeyVersion_Delete(t *testing.T) {
 			name: "bad-id",
 			key: func() *kms.RootKeyVersion {
 				k := kms.AllocRootKeyVersion()
-				id, err := kms.NewRootKeyVersionId()
+				id, err := db.NewPublicId(kms.RootKeyVersionPrefix)
 				require.NoError(t, err)
 				k.PrivateId = id
 				return &k

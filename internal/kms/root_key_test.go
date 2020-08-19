@@ -91,7 +91,7 @@ func TestRootKey_Create(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				id, err := kms.NewRootKeyId()
+				id, err := db.NewPublicId(kms.RootKeyPrefix)
 				require.NoError(err)
 				got.PrivateId = id
 				err = db.New(conn).Create(context.Background(), got)
@@ -129,7 +129,7 @@ func TestRootKey_Delete(t *testing.T) {
 			name: "bad-id",
 			key: func() *kms.RootKey {
 				k := kms.AllocRootKey()
-				id, err := kms.NewRootKeyId()
+				id, err := db.NewPublicId(kms.RootKeyPrefix)
 				require.NoError(t, err)
 				k.PrivateId = id
 				k.ScopeId = org.PublicId

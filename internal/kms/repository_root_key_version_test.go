@@ -3,7 +3,6 @@ package kms_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -149,7 +148,7 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 			name: "not-found",
 			args: args{
 				key: func() *kms.RootKeyVersion {
-					id, err := kms.NewRootKeyVersionId()
+					id, err := db.NewPublicId(kms.RootKeyPrefix)
 					require.NoError(t, err)
 					k := kms.AllocRootKeyVersion()
 					k.PrivateId = id
@@ -260,7 +259,6 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(got)
 			assert.Equal(tt.wantVersion, got.Version)
-			fmt.Println(got.Version)
 		})
 	}
 }

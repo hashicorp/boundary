@@ -17,7 +17,7 @@ func TestRootKey(t *testing.T, conn *gorm.DB, scopeId string) *RootKey {
 	require.NoError(conn.Where("scope_id = ?", scopeId).Delete(AllocRootKey()).Error)
 	k, err := NewRootKey(scopeId)
 	require.NoError(err)
-	id, err := NewRootKeyId()
+	id, err := newRootKeyId()
 	require.NoError(err)
 	k.PrivateId = id
 	err = rw.Create(context.Background(), k)
@@ -31,7 +31,7 @@ func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, r
 	rw := db.New(conn)
 	k, err := NewRootKeyVersion(rootId, key)
 	require.NoError(err)
-	id, err := NewRootKeyVersionId()
+	id, err := newRootKeyVersionId()
 	require.NoError(err)
 	k.PrivateId = id
 	err = k.Encrypt(context.Background(), wrapper)

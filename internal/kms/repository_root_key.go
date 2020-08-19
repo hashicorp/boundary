@@ -46,14 +46,14 @@ func CreateRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapp
 	}
 	rk := AllocRootKey()
 	kv := AllocRootKeyVersion()
-	id, err := NewRootKeyId()
+	id, err := newRootKeyId()
 	if err != nil {
 		return nil, nil, fmt.Errorf("create root key: %w", err)
 	}
 	rk.PrivateId = id
 	rk.ScopeId = scopeId
 
-	id, err = NewRootKeyVersionId()
+	id, err = newRootKeyVersionId()
 	if err != nil {
 		return nil, nil, fmt.Errorf("create root key: %w", err)
 	}
