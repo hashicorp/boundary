@@ -184,33 +184,33 @@ func TestTcpTarget_Clone(t *testing.T) {
 	})
 }
 
-// func TestRootKey_SetTableName(t *testing.T) {
-// 	t.Parallel()
-// 	defaultTableName := kms.DefaultRootKeyTableName
-// 	tests := []struct {
-// 		name      string
-// 		setNameTo string
-// 		want      string
-// 	}{
-// 		{
-// 			name:      "new-name",
-// 			setNameTo: "new-name",
-// 			want:      "new-name",
-// 		},
-// 		{
-// 			name:      "reset to default",
-// 			setNameTo: "",
-// 			want:      defaultTableName,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			assert, require := assert.New(t), require.New(t)
-// 			def := kms.AllocRootKey()
-// 			require.Equal(defaultTableName, def.TableName())
-// 			s := kms.AllocRootKey()
-// 			s.SetTableName(tt.setNameTo)
-// 			assert.Equal(tt.want, s.TableName())
-// 		})
-// 	}
-// }
+func TestTcpTable_SetTableName(t *testing.T) {
+	t.Parallel()
+	defaultTableName := DefaultTcpTableName
+	tests := []struct {
+		name      string
+		setNameTo string
+		want      string
+	}{
+		{
+			name:      "new-name",
+			setNameTo: "new-name",
+			want:      "new-name",
+		},
+		{
+			name:      "reset to default",
+			setNameTo: "",
+			want:      defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := allocTcpTarget()
+			require.Equal(defaultTableName, def.TableName())
+			s := allocTcpTarget()
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
+		})
+	}
+}
