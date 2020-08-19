@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -159,6 +162,177 @@ func TestTcpTarget_Delete(t *testing.T) {
 			assert.True(errors.Is(db.ErrRecordNotFound, err))
 		})
 	}
+}
+
+func TestTcpTarget_Update(t *testing.T) {
+	t.Parallel()
+	id := testId(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	type args struct {
+		name           string
+		description    string
+		fieldMaskPaths []string
+		nullPaths      []string
+		ScopeId        string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		wantRowsUpdate int
+		wantErr        bool
+		wantErrMsg     string
+		wantDup        bool
+	}{
+		{
+			name: "valid",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "proj-scope-id",
+			args: args{
+				name:           "proj-scope-id" + id,
+				fieldMaskPaths: []string{"ScopeId"},
+				ScopeId:        proj.PublicId,
+			},
+			wantErr:    true,
+			wantErrMsg: "update: failed: pq: immutable column: target_tcp.scope_id",
+		},
+		{
+			name: "proj-scope-id-not-in-mask",
+			args: args{
+				name:           "proj-scope-id" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        proj.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "empty-scope-id",
+			args: args{
+				name:           "empty-scope-id" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        "",
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "dup-name",
+			args: args{
+				name:           "dup-name" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:    true,
+			wantDup:    true,
+			wantErrMsg: `update: failed: pq: duplicate key value violates unique constraint "target_tcp_scope_id_name_key"`,
+		},
+		{
+			name: "set description null",
+			args: args{
+				name:           "set description null" + id,
+				fieldMaskPaths: []string{"Name"},
+				nullPaths:      []string{"Description"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "set name null",
+			args: args{
+				description:    "set description null" + id,
+				fieldMaskPaths: []string{"Description"},
+				nullPaths:      []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:    true,
+			wantErrMsg: `update: failed: pq: null value in column "name" violates not-null constraint`,
+		},
+		{
+			name: "set description null",
+			args: args{
+				name:           "set name null" + id,
+				fieldMaskPaths: []string{"Name"},
+				nullPaths:      []string{"Description"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			if tt.wantDup {
+				target := TestTcpTarget(t, conn, org.PublicId, testTargetName(t, org.PublicId))
+				target.Name = tt.args.name
+				_, err := rw.Update(context.Background(), target, tt.args.fieldMaskPaths, tt.args.nullPaths)
+				require.NoError(err)
+			}
+
+			id := testId(t)
+			target := TestTcpTarget(t, conn, org.PublicId, id, WithDescription(id))
+
+			updateTarget := allocTcpTarget()
+			updateTarget.PublicId = target.PublicId
+			updateTarget.ScopeId = tt.args.ScopeId
+			updateTarget.Name = tt.args.name
+			updateTarget.Description = tt.args.description
+
+			updatedRows, err := rw.Update(context.Background(), &updateTarget, tt.args.fieldMaskPaths, tt.args.nullPaths)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Equal(0, updatedRows)
+				assert.Equal(tt.wantErrMsg, err.Error())
+				err = db.TestVerifyOplog(t, rw, target.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				require.Error(err)
+				assert.Equal("record not found", err.Error())
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantRowsUpdate, updatedRows)
+			assert.NotEqual(target.UpdateTime, updateTarget.UpdateTime)
+			foundTarget := allocTcpTarget()
+			foundTarget.PublicId = target.GetPublicId()
+			err = rw.LookupByPublicId(context.Background(), &foundTarget)
+			require.NoError(err)
+			assert.True(proto.Equal(updateTarget, foundTarget))
+			if len(tt.args.nullPaths) != 0 {
+				dbassert := dbassert.New(t, rw)
+				for _, f := range tt.args.nullPaths {
+					dbassert.IsNull(&foundTarget, f)
+				}
+			}
+		})
+	}
+	t.Run("update dup names in diff scopes", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		id := testId(t)
+		_ = TestTcpTarget(t, conn, org.PublicId, id, WithDescription(id))
+		projTarget := TestTcpTarget(t, conn, proj.PublicId, id)
+		projTarget.Name = id
+		updatedRows, err := rw.Update(context.Background(), projTarget, []string{"Name"}, nil)
+		require.NoError(err)
+		assert.Equal(1, updatedRows)
+
+		foundTarget := allocTcpTarget()
+		foundTarget.PublicId = projTarget.GetPublicId()
+		err = rw.LookupByPublicId(context.Background(), &foundTarget)
+		require.NoError(err)
+		assert.Equal(id, projTarget.Name)
+	})
 }
 
 func TestTcpTarget_Clone(t *testing.T) {
