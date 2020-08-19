@@ -53,4 +53,10 @@ message AuthToken {
 	// iam_user_id is not stored in the backing DB but it derived from the linked to auth account.
 	// @inject_tag: gorm:"-"
 	string iam_user_id = 13;
+
+	// key_id is the key ID that was used for the encryption operation. It can be
+	// used to identify a specific version of the key needed to decrypt the value,
+	// which is useful for caching purposes.
+	// @inject_tag: `gorm:"not_null"`
+	string key_id = 14;
 }

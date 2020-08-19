@@ -1381,6 +1381,7 @@ begin;
   create table auth_token (
     public_id wt_public_id primary key,
     token bytea not null unique,
+    key_id text not null,
     auth_account_id wt_public_id not null
       references auth_account(public_id)
       on delete cascade
@@ -1896,6 +1897,7 @@ begin;
       check(length(salt) > 0),
     derived_key bytea not null
       check(length(derived_key) > 0),
+    key_id text not null,
     foreign key (password_method_id, password_conf_id)
       references auth_password_argon2_conf (password_method_id, private_id)
       on delete cascade
