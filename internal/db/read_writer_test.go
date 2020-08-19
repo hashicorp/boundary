@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -949,7 +950,7 @@ func TestDb_LookupWhere(t *testing.T) {
 func TestDb_SearchWhere(t *testing.T) {
 	t.Parallel()
 	db, _ := TestSetup(t, "postgres")
-	knownUser := testUser(t, db, "", "", "")
+	knownUser := testUser(t, db, "zedUser", "", "")
 
 	type args struct {
 		where string
@@ -957,12 +958,13 @@ func TestDb_SearchWhere(t *testing.T) {
 		opt   []Option
 	}
 	tests := []struct {
-		name      string
-		db        Db
-		createCnt int
-		args      args
-		wantCnt   int
-		wantErr   bool
+		name          string
+		db            Db
+		createCnt     int
+		args          args
+		wantCnt       int
+		wantErr       bool
+		wantNameOrder bool
 	}{
 		{
 			name:      "no-limit",
@@ -970,10 +972,11 @@ func TestDb_SearchWhere(t *testing.T) {
 			createCnt: 10,
 			args: args{
 				where: "1=1",
-				opt:   []Option{WithLimit(-1)},
+				opt:   []Option{WithLimit(-1), WithOrder("name asc")},
 			},
-			wantCnt: 11, // there's an additional knownUser
-			wantErr: false,
+			wantCnt:       11, // there's an additional knownUser
+			wantErr:       false,
+			wantNameOrder: true,
 		},
 		{
 			name:      "custom-limit",
@@ -1040,11 +1043,13 @@ func TestDb_SearchWhere(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			testUsers := []*db_test.TestUser{}
 			for i := 0; i < tt.createCnt; i++ {
-				testUsers = append(testUsers, testUser(t, db, "", "", ""))
+				testUsers = append(testUsers, testUser(t, db, tt.name+strconv.Itoa(i), "", ""))
 			}
 			assert.Equal(tt.createCnt, len(testUsers))
 
 			var foundUsers []db_test.TestUser
+			db.LogMode(true)
+			defer db.LogMode(false)
 			err := tt.db.SearchWhere(context.Background(), &foundUsers, tt.args.where, tt.args.arg, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -1052,6 +1057,14 @@ func TestDb_SearchWhere(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(foundUsers))
+			if tt.wantNameOrder {
+				assert.Equal(tt.name+strconv.Itoa(0), foundUsers[0].Name)
+				for i, u := range foundUsers {
+					if u.Name != "zedUser" {
+						assert.Equal(tt.name+strconv.Itoa(i), u.Name)
+					}
+				}
+			}
 		})
 	}
 }

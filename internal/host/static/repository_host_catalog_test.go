@@ -10,6 +10,7 @@ import (
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -76,10 +77,11 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			assert.NotNil(repo)
-			_, prj := iam.TestScopes(t, conn)
+			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 			if tt.in != nil && tt.in.HostCatalog != nil {
 				tt.in.ScopeId = prj.GetPublicId()
 				assert.Empty(tt.in.PublicId)
@@ -103,11 +105,11 @@ func TestRepository_CreateCatalog(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert := assert.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		assert.NotNil(repo)
-
-		_, prj := iam.TestScopes(t, conn)
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
 				ScopeId: prj.GetPublicId(),
@@ -131,11 +133,11 @@ func TestRepository_CreateCatalog(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
 		assert := assert.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		assert.NotNil(repo)
-
-		org, prj := iam.TestScopes(t, conn)
+		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
 				Name: "test-name-repo",
@@ -432,10 +434,11 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			assert.NotNil(repo)
-			_, prj := iam.TestScopes(t, conn)
+			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 			tt.orig.ScopeId = prj.GetPublicId()
 			orig, err := repo.CreateCatalog(context.Background(), tt.orig)
 			require.NoError(t, err)
@@ -474,13 +477,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert := assert.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		assert.NotNil(repo)
 
 		name := "test-dup-name"
-		_, prj := iam.TestScopes(t, conn)
-		cats := testCatalogs(t, conn, prj.PublicId, 2)
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		cats := testCatalogs(t, conn, wrapper, prj.PublicId, 2)
 		c1 := cats[0]
 		c1.Name = name
 		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, 1, []string{"name"})
@@ -499,11 +503,11 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
 		assert := assert.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		assert.NotNil(repo)
-
-		org, prj := iam.TestScopes(t, conn)
+		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
 				Name: "test-name-repo",
@@ -537,13 +541,15 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 	t.Run("change-scope-id", func(t *testing.T) {
 		assert := assert.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		assert.NotNil(repo)
 
-		_, prj1 := iam.TestScopes(t, conn)
-		_, prj2 := iam.TestScopes(t, conn)
-		c1, c2 := testCatalog(t, conn, prj1.PublicId), testCatalog(t, conn, prj2.PublicId)
+		iamRepo := iam.TestRepo(t, conn, wrapper)
+		_, prj1 := iam.TestScopes(t, iamRepo)
+		_, prj2 := iam.TestScopes(t, iamRepo)
+		c1, c2 := testCatalog(t, conn, wrapper, prj1.PublicId), testCatalog(t, conn, wrapper, prj2.PublicId)
 		assert.NotEqual(c1.ScopeId, c2.ScopeId)
 		orig := c1.clone()
 
@@ -561,14 +567,13 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 func TestRepository_LookupCatalog(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	_, prj := iam.TestScopes(t, conn)
-	cat := testCatalog(t, conn, prj.PublicId)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cat := testCatalog(t, conn, wrapper, prj.PublicId)
 	badId, err := newHostCatalogId()
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
-
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
 
 	var tests = []struct {
 		name    string
@@ -598,7 +603,8 @@ func TestRepository_LookupCatalog(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			assert.NotNil(repo)
 
@@ -622,14 +628,14 @@ func TestRepository_LookupCatalog(t *testing.T) {
 
 func TestRepository_DeleteCatalog(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	_, prj := iam.TestScopes(t, conn)
-	cat := testCatalog(t, conn, prj.PublicId)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cat := testCatalog(t, conn, wrapper, prj.PublicId)
 	badId, err := newHostCatalogId()
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
-
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
 
 	var tests = []struct {
 		name    string
@@ -659,7 +665,8 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			assert.NotNil(repo)
 

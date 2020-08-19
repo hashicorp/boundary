@@ -84,7 +84,9 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/auth/store/account.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/password/store/password.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/password/store/argon2.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/root_key.pb.go	
 	@protoc-go-inject-tag -input=./internal/target/store/target.pb.go
+
 	@rm -R ${TMP_DIR}
 
 protolint:

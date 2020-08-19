@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -17,45 +18,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
-
-type catalogType int
-
-const (
-	unknownType catalogType = iota
-	staticType
-)
-
-func (t catalogType) String() string {
-	switch t {
-	case staticType:
-		return "Static"
-	}
-	return "Unknown"
-}
-
-func (t catalogType) idPrefix() string {
-	switch t {
-	case staticType:
-		return static.HostCatalogPrefix + "_"
-	}
-	return "unknown"
-}
-
-func typeFromTypeField(t string) catalogType {
-	switch {
-	case strings.EqualFold(strings.TrimSpace(t), staticType.String()):
-		return staticType
-	}
-	return unknownType
-}
-
-func typeFromId(id string) catalogType {
-	switch {
-	case strings.HasPrefix(id, staticType.idPrefix()):
-		return staticType
-	}
-	return unknownType
-}
 
 var (
 	maskManager handlers.MaskManager
@@ -94,11 +56,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ct := typeFromId(req.GetId())
-	if ct == unknownType {
-		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
-	}
-	if err := validateGetRequest(req, ct); err != nil {
+	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
 	hc, err := s.getFromRepo(ctx, req.GetId())
@@ -135,14 +93,10 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ct := typeFromId(req.GetId())
-	if ct == unknownType {
-		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
-	}
-	if err := validateUpdateRequest(req, ct); err != nil {
+	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -156,11 +110,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ct := typeFromId(req.GetId())
-	if ct == unknownType {
-		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
-	}
-	if err := validateDeleteRequest(req, ct); err != nil {
+	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
 	existed, err := s.deleteFromRepo(ctx, req.GetId())
@@ -211,7 +161,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, projId, id string, version uint32, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
+func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
@@ -219,6 +169,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, version ui
 	if name := item.GetName(); name != nil {
 		opts = append(opts, static.WithName(name.GetValue()))
 	}
+	version := item.GetVersion()
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for update: %v.", err)
@@ -257,10 +208,10 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 func toProto(in *static.HostCatalog) *pb.HostCatalog {
 	out := pb.HostCatalog{
 		Id:          in.GetPublicId(),
-		Type:        &wrapperspb.StringValue{Value: staticType.String()},
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
+		Type:        host.StaticSubtype.String(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -278,9 +229,9 @@ func toProto(in *static.HostCatalog) *pb.HostCatalog {
 //  * There are no conflicting parameters provided
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
-func validateGetRequest(req *pbs.GetHostCatalogRequest, ct catalogType) error {
+func validateGetRequest(req *pbs.GetHostCatalogRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetId(), ct.idPrefix()) {
+	if !validId(req.GetId(), static.HostCatalogPrefix+"_") {
 		badFields["id"] = "Invalid formatted identifier."
 	}
 	if len(badFields) > 0 {
@@ -295,11 +246,17 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	if item == nil {
 		badFields["item"] = "This field is required."
 	}
-	if item.GetType() == nil {
-		badFields["type"] = "This field is required."
+	if item.GetVersion() != 0 {
+		badFields["version"] = "Cannot specify this field in a create request."
 	}
-	if typeFromTypeField(item.GetType().GetValue()) == unknownType {
-		badFields["type"] = "Provided type is unknown."
+	switch host.SubtypeFromType(item.GetType()) {
+	case host.StaticSubtype:
+		shcAttrs := &pb.StaticHostCatalogDetails{}
+		if err := handlers.StructToProto(item.GetAttributes(), shcAttrs); err != nil {
+			badFields["attributes"] = "Attribute fields do not match the expected format."
+		}
+	default:
+		badFields["type"] = fmt.Sprintf("This is a required field and must be %q.", host.StaticSubtype.String())
 	}
 	if item.GetId() != "" {
 		badFields["id"] = "This field is read only."
@@ -316,17 +273,14 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	return nil
 }
 
-func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) error {
+func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetId(), ct.idPrefix()) {
+	if !validId(req.GetId(), static.HostCatalogPrefix+"_") {
 		badFields["id"] = "The field is incorrectly formatted."
 	}
 
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "This field is required."
-	}
-	if req.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
 	}
 
 	item := req.GetItem()
@@ -335,7 +289,10 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) er
 		// the mask will be marked as unset.
 		return nil
 	}
-	if item.GetType() != nil {
+	if item.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
+	}
+	if item.GetType() != "" {
 		badFields["type"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetId() != "" {
@@ -354,9 +311,9 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) er
 	return nil
 }
 
-func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest, ct catalogType) error {
+func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetId(), ct.idPrefix()) {
+	if !validId(req.GetId(), static.HostCatalogPrefix+"_") {
 		badFields["id"] = "The field is incorrectly formatted."
 	}
 	if len(badFields) > 0 {

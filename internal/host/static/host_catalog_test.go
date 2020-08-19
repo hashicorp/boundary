@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/iam"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,7 +15,8 @@ import (
 
 func TestHostCatalog_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	_, prj := iam.TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	type args struct {
 		scopeId string
@@ -107,7 +109,7 @@ func TestHostCatalog_New(t *testing.T) {
 	}
 }
 
-func testCatalogs(t *testing.T, conn *gorm.DB, scopeId string, count int) []*HostCatalog {
+func testCatalogs(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId string, count int) []*HostCatalog {
 	t.Helper()
 	assert := assert.New(t)
 	var cats []*HostCatalog
@@ -128,9 +130,9 @@ func testCatalogs(t *testing.T, conn *gorm.DB, scopeId string, count int) []*Hos
 	return cats
 }
 
-func testCatalog(t *testing.T, conn *gorm.DB, scopeId string) *HostCatalog {
+func testCatalog(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId string) *HostCatalog {
 	t.Helper()
-	cats := testCatalogs(t, conn, scopeId, 1)
+	cats := testCatalogs(t, conn, wrapper, scopeId, 1)
 	return cats[0]
 }
 

@@ -54,6 +54,29 @@ func WrapForHelpText(lines []string) string {
 	return strings.Join(ret, "\n")
 }
 
+func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) string {
+	maxKeyLength := maxLengthOverride
+	if maxKeyLength == 0 {
+		for k := range input {
+			if len(k) > maxKeyLength {
+				maxKeyLength = len(k)
+			}
+		}
+	}
+	var ret []string
+	for k, v := range input {
+		spaces := maxKeyLength - len(k)
+		ret = append(ret, fmt.Sprintf("%s%s%s%s",
+			strings.Repeat(" ", prefixSpaces),
+			fmt.Sprintf("%s: ", k),
+			strings.Repeat(" ", spaces),
+			fmt.Sprintf("%v", v)),
+		)
+	}
+
+	return strings.Join(ret, "\n")
+}
+
 type FormatOptions struct {
 	Format string
 }

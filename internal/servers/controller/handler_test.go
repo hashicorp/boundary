@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,9 +21,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	})
 	defer c.Shutdown()
 
-	org := iam.TestOrg(t, c.DbConn())
-
-	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/%s/auth-methods/paum_1234567890:authenticate", c.ApiAddrs()[0], org.GetPublicId()), "application/json",
+	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/%s/auth-methods/paum_1234567890:authenticate", c.ApiAddrs()[0], scope.Global.String()), "application/json",
 		strings.NewReader(`{"token_type": null, "credentials": {"login_name":"admin", "password": "password123"}}`))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
@@ -74,6 +72,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/users",
 			"v1/scopes/someid/auth-methods",
 			"v1/scopes/someid/auth-methods/someid/accounts",
+			"v1/scopes/someid/host-catalogs",
 
 			// custom methods
 			"v1/scopes/someid/auth-methods/someid:authenticate",
@@ -97,6 +96,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/auth-tokens/someid",
 			"v1/scopes/someid/auth-methods/someid",
 			"v1/scopes/someid/auth-methods/someid/accounts/someid",
+			"v1/scopes/someid/host-catalogs/someid",
 		},
 		"PATCH": {
 			"v1/scopes/someid",
@@ -104,6 +104,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/roles/someid",
 			"v1/scopes/someid/groups/someid",
 			"v1/scopes/someid/auth-methods/someid",
+			"v1/scopes/someid/host-catalogs/someid",
 		},
 	} {
 		for _, p := range paths {

@@ -80,3 +80,47 @@ func TestError_IsCheckConstraint(t *testing.T) {
 		})
 	}
 }
+
+func TestError_IsNotNullError(t *testing.T) {
+	var tests = []struct {
+		name string
+		in   error
+		want bool
+	}{
+		{
+			name: "nil-error",
+			in:   nil,
+			want: false,
+		},
+		{
+			name: "postgres-is-unique-not-not-null",
+			in: &pq.Error{
+				Code: pq.ErrorCode("23505"),
+			},
+			want: false,
+		},
+		{
+			name: "postgres-is-check-constraint-not-not-null",
+			in: &pq.Error{
+				Code: pq.ErrorCode("23514"),
+			},
+			want: false,
+		},
+		{
+			name: "postgres-is-not-null",
+			in: &pq.Error{
+				Code: pq.ErrorCode("23502"),
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			err := tt.in
+			got := IsNotNullError(err)
+			assert.Equal(tt.want, got)
+		})
+	}
+}

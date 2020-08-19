@@ -93,7 +93,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, req.GetAuthMethodId(), req.GetItem())
+	u, err := s.createInRepo(ctx, req.GetAuthMethodId(), authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, req.GetAuthMethodId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, req.GetAuthMethodId(), authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountReques
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 	if err := validateChangePasswordRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.changePasswordInRepo(ctx, req.GetId(), req.GetVersion(), req.GetOldPassword(), req.GetNewPassword())
+	u, err := s.changePasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetOldPassword(), req.GetNewPassword())
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 	if err := validateSetPasswordRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.setPasswordInRepo(ctx, req.GetId(), req.GetVersion(), req.GetPassword())
+	u, err := s.setPasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetPassword())
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 	return toProto(u)
 }
 
-func (s Service) createInRepo(ctx context.Context, authMethodId string, item *pb.Account) (*pb.Account, error) {
+func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*pb.Account, error) {
 	pwAttrs := &pb.PasswordAccountAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
@@ -211,7 +211,7 @@ func (s Service) createInRepo(ctx context.Context, authMethodId string, item *pb
 	if pwAttrs.GetPassword() != nil {
 		createOpts = append(createOpts, password.WithPassword(pwAttrs.GetPassword().GetValue()))
 	}
-	out, err := repo.CreateAccount(ctx, a, createOpts...)
+	out, err := repo.CreateAccount(ctx, scopeId, a, createOpts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to create user: %v.", err)
 	}
@@ -221,7 +221,7 @@ func (s Service) createInRepo(ctx context.Context, authMethodId string, item *pb
 	return toProto(out)
 }
 
-func (s Service) updateInRepo(ctx context.Context, authMethodId, id string, version uint32, mask []string, item *pb.Account) (*pb.Account, error) {
+func (s Service) updateInRepo(ctx context.Context, authMethodId, scopeId, id string, mask []string, item *pb.Account) (*pb.Account, error) {
 	var opts []password.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, password.WithDescription(desc.GetValue()))
@@ -242,6 +242,7 @@ func (s Service) updateInRepo(ctx context.Context, authMethodId, id string, vers
 	if pwAttrs.GetLoginName() != "" {
 		u.LoginName = pwAttrs.GetLoginName()
 	}
+	version := item.GetVersion()
 
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
@@ -251,7 +252,7 @@ func (s Service) updateInRepo(ctx context.Context, authMethodId, id string, vers
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateAccount(ctx, u, version, dbMask)
+	out, rowsUpdated, err := repo.UpdateAccount(ctx, scopeId, u, version, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update auth method: %v.", err)
 	}
@@ -261,12 +262,12 @@ func (s Service) updateInRepo(ctx context.Context, authMethodId, id string, vers
 	return toProto(out)
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
 	}
-	rows, err := repo.DeleteAccount(ctx, id)
+	rows, err := repo.DeleteAccount(ctx, scopeId, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
@@ -296,12 +297,12 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.A
 	return outUl, nil
 }
 
-func (s Service) changePasswordInRepo(ctx context.Context, id string, version uint32, oldPassword, newPassword string) (*pb.Account, error) {
+func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, oldPassword, newPassword string) (*pb.Account, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.ChangePassword(ctx, id, oldPassword, newPassword, version)
+	out, err := repo.ChangePassword(ctx, scopeId, id, oldPassword, newPassword, version)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to change password: %v.", err)
 	}
@@ -311,12 +312,12 @@ func (s Service) changePasswordInRepo(ctx context.Context, id string, version ui
 	return toProto(out)
 }
 
-func (s Service) setPasswordInRepo(ctx context.Context, id string, version uint32, password string) (*pb.Account, error) {
+func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, version uint32, password string) (*pb.Account, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.SetPassword(ctx, id, password, version)
+	out, err := repo.SetPassword(ctx, scopeId, id, password, version)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to set password: %v.", err)
 	}
@@ -330,7 +331,7 @@ func toProto(in *password.Account) (*pb.Account, error) {
 		UpdatedTime:  in.GetUpdateTime().GetTimestamp(),
 		AuthMethodId: in.GetAuthMethodId(),
 		Version:      in.GetVersion(),
-		Type:         "password",
+		Type:         auth.PasswordSubtype.String(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -371,6 +372,9 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	item := req.GetItem()
+	if item.GetVersion() != 0 {
+		badFields["version"] = "Cannot specify this field in a create request."
+	}
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field."
 	}
@@ -383,8 +387,11 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field."
 	}
-	switch item.GetType() {
-	case "password":
+	switch auth.SubtypeFromId(req.GetAuthMethodId()) {
+	case auth.PasswordSubtype:
+		if item.GetType() != "" && item.GetType() != auth.PasswordSubtype.String() {
+			badFields["type"] = "Doesn't match the parent resource's type."
+		}
 		pwAttrs := &pb.PasswordAccountAttributes{}
 		if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 			badFields["attributes"] = "Attribute fields do not match the expected format."
@@ -392,8 +399,6 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 		if pwAttrs.GetLoginName() == "" {
 			badFields["login_name"] = "This is a required field for this type."
 		}
-	default:
-		badFields["type"] = "This is a required field."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
@@ -477,15 +482,15 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update this resource."
 	}
-	if req.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
 
 	item := req.GetItem()
 	if item == nil {
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
 		return nil
+	}
+	if item.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field and cannot be specified in an update request."

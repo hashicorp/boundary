@@ -33,12 +33,14 @@ kms "aead" {
 	purpose = "root"
 	aead_type = "aes-gcm"
 	key = "%s"
+	key_id = "global_root"
 }
 
 kms "aead" {
 	purpose = "worker-auth"
 	aead_type = "aes-gcm"
 	key = "%s"
+	key_id = "global_worker-auth"
 }
 
 listener "tcp" {

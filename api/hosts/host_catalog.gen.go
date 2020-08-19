@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -34,12 +33,16 @@ func NewHostCatalogsClient(c *api.Client) *HostCatalogsClient {
 	return &HostCatalogsClient{client: c}
 }
 
-func (c *HostCatalogsClient) Create(ctx context.Context, opt ...Option) (*HostCatalog, *api.Error, error) {
+func (c *HostCatalogsClient) Create(ctx context.Context, resourceType string, opt ...Option) (*HostCatalog, *api.Error, error) {
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
+	if resourceType == "" {
+		return nil, nil, fmt.Errorf("empty resourceType value passed into Create request")
+	} else {
+		opts.valueMap["type"] = resourceType
+	}
 
 	req, err := c.client.NewRequest(ctx, "POST", "host-catalogs", opts.valueMap, apiOpts...)
 	if err != nil {
@@ -117,14 +120,12 @@ func (c *HostCatalogsClient) Update(ctx context.Context, hostCatalogId string, v
 		version = existingTarget.Version
 	}
 
+	opts.valueMap["version"] = version
+
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s", hostCatalogId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
-
-	q := url.Values{}
-	q.Add("version", fmt.Sprintf("%d", version))
-	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
