@@ -27,7 +27,12 @@ func TestTcpTarget(t *testing.T, conn *gorm.DB, scopeId, name string, opt ...Opt
 
 func testTargetName(t *testing.T, scopeId string) string {
 	t.Helper()
+	return fmt.Sprintf("%s-%s", scopeId, testId(t))
+}
+
+func testId(t *testing.T) string {
+	t.Helper()
 	id, err := uuid.GenerateUUID()
 	require.NoError(t, err)
-	return fmt.Sprintf("%s-%s", scopeId, id)
+	return id
 }
