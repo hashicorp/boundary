@@ -38,8 +38,10 @@ begin;
 
   -- host_catalog
   create table host_catalog (
-    public_id wt_public_id primary key,
+    public_id wt_public_id
+      primary key,
     scope_id wt_scope_id
+      not null
       references iam_scope (public_id)
       on delete cascade
       on update cascade,

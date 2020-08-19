@@ -58,14 +58,19 @@ begin;
 
   create table auth_password_method (
     public_id wt_public_id primary key,
-    scope_id wt_scope_id,
+    scope_id wt_scope_id
+      not null,
     password_conf_id wt_private_id, -- FK to auth_password_conf added below
     name text,
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    min_login_name_length int not null default 3,
-    min_password_length int not null default 8,
+    min_login_name_length int
+      not null
+      default 3,
+    min_password_length int
+      not null
+      default 8,
     version wt_version,
     foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
@@ -86,8 +91,10 @@ begin;
     for each row execute procedure insert_auth_method_subtype();
 
   create table auth_password_account (
-    public_id wt_public_id primary key,
-    auth_method_id wt_public_id not null,
+    public_id wt_public_id
+      primary key,
+    auth_method_id wt_public_id
+      not null,
     -- NOTE(mgaffney): The scope_id type is not wt_scope_id because the domain
     -- check is executed before the insert trigger which retrieves the scope_id
     -- causing an insert to fail.
@@ -160,10 +167,14 @@ begin;
   $$ language plpgsql;
 
   create table auth_password_credential (
-    private_id wt_private_id primary key,
-    password_account_id wt_public_id not null unique,
+    private_id wt_private_id
+      primary key,
+    password_account_id wt_public_id
+      not null
+      unique,
     password_conf_id wt_private_id,
-    password_method_id wt_public_id not null,
+    password_method_id wt_public_id
+      not null,
     foreign key (password_method_id, password_conf_id)
       references auth_password_conf (password_method_id, private_id)
       on delete cascade

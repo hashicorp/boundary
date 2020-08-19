@@ -16,7 +16,6 @@ comment on domain wt_private_id is
 'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_scope_id as text
-not null
 check(
   length(trim(value)) > 10 or value = 'global'
 );
