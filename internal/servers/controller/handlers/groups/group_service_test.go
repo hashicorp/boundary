@@ -873,20 +873,20 @@ func TestUpdate(t *testing.T) {
 			if tc.req.Id == pg.PublicId {
 				ver = pgVersion
 			}
-			tc.req.Version = ver
+			tc.req.Item.Version = ver
 
 			assert := assert.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateGroupRequest)
 			proto.Merge(req, tc.req)
 
 			// Test with bad version (too high, too low)
-			req.Version = ver + 2
+			req.Item.Version = ver + 2
 			_, gErr := tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			require.Error(gErr)
-			req.Version = ver - 1
+			req.Item.Version = ver - 1
 			_, gErr = tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			require.Error(gErr)
-			req.Version = ver
+			req.Item.Version = ver
 
 			got, gErr := tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -969,11 +969,9 @@ func TestAddMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.AddGroupMembersRequest{
-					Id:      grp.GetPublicId(),
-					Version: grp.GetVersion(),
-					Item: &pbs.GroupMemberIdsMessage{
-						MemberIds: tc.addUsers,
-					},
+					Id:        grp.GetPublicId(),
+					Version:   grp.GetVersion(),
+					MemberIds: tc.addUsers,
 				}
 
 				got, err := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
@@ -1072,11 +1070,9 @@ func TestSetMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.SetGroupMembersRequest{
-					Id:      grp.GetPublicId(),
-					Version: grp.GetVersion(),
-					Item: &pbs.GroupMemberIdsMessage{
-						MemberIds: tc.setUsers,
-					},
+					Id:        grp.GetPublicId(),
+					Version:   grp.GetVersion(),
+					MemberIds: tc.setUsers,
 				}
 
 				got, err := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
@@ -1183,11 +1179,9 @@ func TestRemoveMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.RemoveGroupMembersRequest{
-					Id:      grp.GetPublicId(),
-					Version: grp.GetVersion(),
-					Item: &pbs.GroupMemberIdsMessage{
-						MemberIds: tc.removeUsers,
-					},
+					Id:        grp.GetPublicId(),
+					Version:   grp.GetVersion(),
+					MemberIds: tc.removeUsers,
 				}
 
 				got, err := s.RemoveGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)

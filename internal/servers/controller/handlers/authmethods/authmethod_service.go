@@ -108,7 +108,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +196,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	return toProto(out)
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version uint32, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
 	var opts []password.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, password.WithDescription(desc.GetValue()))
@@ -219,6 +219,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version u
 	if pwAttrs.GetMinPasswordLength() != 0 {
 		u.MinPasswordLength = pwAttrs.GetMinPasswordLength()
 	}
+	version := item.GetVersion()
 
 	u.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -315,6 +316,9 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field."
 	}
+	if item.GetVersion() != 0 {
+		badFields["version"] = "Cannot specify this field in a create request."
+	}
 	switch item.GetType() {
 	case "password":
 		pwAttrs := &pb.PasswordAuthMethodAttributes{}
@@ -338,15 +342,15 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update this resource."
 	}
-	if req.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
 
 	item := req.GetItem()
 	if item == nil {
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
 		return nil
+	}
+	if item.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field and cannot be specified in an update request."
