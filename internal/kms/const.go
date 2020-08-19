@@ -1,13 +1,31 @@
 package kms
 
-type KeyPurpose string
+// KeyPurpose allows an application to specify the reason they need a key; this
+// is used to select which DEK to return
+type KeyPurpose uint
 
 const (
-	KeyPurposeUnknown  KeyPurpose = "unknown"
-	KeyPurposeDatabase KeyPurpose = "database"
-	KeyPurposeOplog    KeyPurpose = "oplog"
+	// KeyPurposeUnknown is the default, and indicates that a correct purpose
+	// wasn't specified
+	KeyPurposeUnknown KeyPurpose = 0
+
+	// KeyPurposeDatabase is used for general encryption needs for most values
+	// in the database, excluding the oplog
+	KeyPurposeDatabase KeyPurpose = 1
+
+	// KeyPurposeOplog is used for oplogs
+	KeyPurposeOplog KeyPurpose = 2
 )
 
+// String returns the key purpose cast as a string, just so it can be called as
+// a function instead of direct casting elsewhere, yw
 func (k KeyPurpose) String() string {
-	return string(k)
+	switch k {
+	case KeyPurposeDatabase:
+		return "database"
+	case KeyPurposeOplog:
+		return "oplog"
+	default:
+		return "unknown"
+	}
 }

@@ -15,24 +15,31 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
+// ExternalWrappers holds wrappers defined outside of Boundary, e.g. in its
+// configuration file.
 type ExternalWrappers struct {
 	m          sync.RWMutex
 	root       wrapping.Wrapper
 	workerAuth wrapping.Wrapper
 }
 
+// Root returns the wrapper for root keys
 func (e *ExternalWrappers) Root() wrapping.Wrapper {
 	e.m.RLock()
 	defer e.m.RUnlock()
 	return e.root
 }
 
+// WorkerAuth returns the wrapper for worker authentication
 func (e *ExternalWrappers) WorkerAuth() wrapping.Wrapper {
 	e.m.RLock()
 	defer e.m.RUnlock()
 	return e.workerAuth
 }
 
+// Kms is a way to access wrappers for a given scope and purpose. Since keys can
+// never change, only be added or (eventually) removed, it opportunistically
+// caches, going to the database as needed.
 type Kms struct {
 	logger hclog.Logger
 
@@ -46,17 +53,19 @@ type Kms struct {
 	repo *Repository
 }
 
-func NewKms(opt ...Option) (*Kms, error) {
-	opts := getOpts(opt...)
-	ret := &Kms{
-		logger:             opts.withLogger,
-		externalScopeCache: make(map[string]*ExternalWrappers, 3),
-		repo:               opts.withRepository,
-	}
-	if ret.repo == nil {
+// NewKms takes in a repo and returns a Kms. Supported options: WithLogger.
+func NewKms(repo *Repository, opt ...Option) (*Kms, error) {
+	if repo == nil {
 		return nil, errors.New("new kms created without an underlying repo")
 	}
-	return ret, nil
+
+	opts := getOpts(opt...)
+
+	return &Kms{
+		logger:             opts.withLogger,
+		externalScopeCache: make(map[string]*ExternalWrappers),
+		repo:               repo,
+	}, nil
 }
 
 // GetScopePurposeCache is used in test functions for validation. Since the
@@ -104,7 +113,15 @@ func (k *Kms) GetExternalWrappers() *ExternalWrappers {
 	k.externalScopeCacheMutex.RLock()
 	defer k.externalScopeCacheMutex.RUnlock()
 
-	return k.externalScopeCache[scope.Global.String()]
+	ext := k.externalScopeCache[scope.Global.String()]
+	ext.m.RLock()
+	defer ext.m.RUnlock()
+
+	ret := &ExternalWrappers{
+		root:       ext.root,
+		workerAuth: ext.workerAuth,
+	}
+	return ret
 }
 
 func generateKeyId(scopeId string, purpose KeyPurpose, version uint32) string {
@@ -117,7 +134,9 @@ func generateKeyId(scopeId string, purpose KeyPurpose, version uint32) string {
 // decryption.
 func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, opt ...Option) (wrapping.Wrapper, error) {
 	switch purpose {
-	case "oplog", "database":
+	case KeyPurposeOplog, KeyPurposeDatabase:
+	case KeyPurposeUnknown:
+		return nil, errors.New("key purpose not specified")
 	default:
 		return nil, fmt.Errorf("unsupported purpose %q", purpose)
 	}
@@ -150,7 +169,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 		KeyID: generateKeyId(scopeId, purpose, 1),
 		Hash:  func() hash.Hash { b, _ := blake2b.New256(nil); return b },
 		Salt:  []byte(scopeId),
-		Info:  []byte(purpose),
+		Info:  []byte(purpose.String()),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error creating derived wrapper: %w", err)
@@ -188,11 +207,10 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	// from the DB.
 	k.externalScopeCacheMutex.Lock()
 	externalWrappers := k.externalScopeCache[scope.Global.String()]
+	k.externalScopeCacheMutex.Unlock()
 	if externalWrappers == nil {
-		k.externalScopeCacheMutex.Unlock()
 		return nil, errors.New("could not find kms information at either the needed scope or global fallback")
 	}
-	k.externalScopeCacheMutex.Unlock()
 
 	externalWrappers.m.RLock()
 	defer externalWrappers.m.RUnlock()

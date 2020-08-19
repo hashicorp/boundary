@@ -53,6 +53,7 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 	return r.reader.SearchWhere(ctx, resources, where, args, dbOpts...)
 }
 
+// DefaultLimit returns the default limit for listing as set on the repo
 func (r *Repository) DefaultLimit() int {
 	return r.defaultLimit
 }

@@ -21,9 +21,6 @@ func TestAuthenticationHandler(t *testing.T) {
 	})
 	defer c.Shutdown()
 
-	//repo := c.IamRepo()
-	//org := iam.TestOrg(t, repo)
-
 	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/%s/auth-methods/paum_1234567890:authenticate", c.ApiAddrs()[0], scope.Global.String()), "application/json",
 		strings.NewReader(`{"token_type": null, "credentials": {"login_name":"admin", "password": "password123"}}`))
 	require.NoError(t, err)
