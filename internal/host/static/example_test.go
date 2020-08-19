@@ -16,7 +16,7 @@ func ExampleNewHostCatalog() {
 
 func ExampleNewHost() {
 	catalogPublicId := "sthc_1234"
-	host, _ := static.NewHost(catalogPublicId, "127.0.0.1")
+	host, _ := static.NewHost(catalogPublicId, static.WithAddress("127.0.0.1"))
 	fmt.Println(host.Address)
 	// Output:
 	// 127.0.0.1

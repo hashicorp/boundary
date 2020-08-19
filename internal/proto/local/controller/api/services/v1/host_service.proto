@@ -10,7 +10,10 @@ import "google/protobuf/field_mask.proto";
 import "controller/api/resources/hosts/v1/host.proto";
 
 service HostService {
-  // This retrieves the host specified in the request using the basic view.
+  // GetHost returns a stored Host if present.  The provided request
+  // must include the host catalog and host ID for the resource being
+  // retrieved. If any of those IDs are missing, malformed or reference a
+  // non existing resource an error is returned.
   rpc GetHost(GetHostRequest) returns (GetHostResponse) {
     option (google.api.http) = {
       get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts/{id}"
@@ -20,6 +23,12 @@ service HostService {
       summary: "Gets a single Host"
     };
   }
+
+  // ListHosts returns a list of stored hosts which exist inside the scope
+  // referenced inside the request. The request must include the scope ID and
+  // the host catalog id for the hosts being retrieved. If the any of those
+  // are missing, malformed, or reference a non existing scope, an error is
+  // returned.
   rpc ListHosts(ListHostsRequest) returns (ListHostsResponse) {
     option (google.api.http) = {
       get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts"
@@ -28,6 +37,12 @@ service HostService {
       summary: "List all Hosts for the specified catalog"
     };
   }
+
+  // CreateHost creates and stores a host in boundary.  The provided
+  // request must include the scope and host catalog ids in which the host
+  // will be created.  If the scope or catalog id is missing, malformed or references a
+  // non existing resource, an error is returned.  If a name is provided that
+  // is in use by another host in the same host catalog, an error is returned.
   rpc CreateHost(CreateHostRequest) returns (CreateHostResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts"
@@ -38,6 +53,15 @@ service HostService {
       summary: "Create a single Host"
     };
   }
+
+  // UpdateHost updates an existing host in boundary.  The provided
+  // host must not have any read only fields set.  The update mask must be
+  // included in the request and contain at least 1 mutable field.  To unset
+  // a field's value, include the field in the update mask and don't set it
+  // in the provided host. An error is returned if either the scope
+  // or host catalog or host ids are missing or reference a non existing
+  // resource.  An error is also returned if the request attempts to update the
+  // name to one that is already in use in this host catalog.
   rpc UpdateHost(UpdateHostRequest) returns (UpdateHostResponse) {
     option (google.api.http) = {
       patch: "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts/{id}"
@@ -48,6 +72,12 @@ service HostService {
       summary: "Update a Host"
     };
   }
+
+  // DeleteHost removes a host from Boundary. If the provided scope,
+  // host catalog, or host ids are malformed or not provided an error is
+  // returned.  No error is returned if any of the ids reference resources that
+  // do not exist since the response itself specifies if the resource existed
+  // before the DeleteHost request was received.
   rpc DeleteHost(DeleteHostRequest) returns (DeleteHostResponse) {
     option (google.api.http) = {
       delete: "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts/{id}"

@@ -53,15 +53,27 @@ func WithAutomaticVersioning() Option {
 	}
 }
 
-func WithAddress(inAddress string) Option {
+func WithStaticHostAddress(inAddress string) Option {
 	return func(o *options) {
-		o.valueMap["address"] = inAddress
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["address"] = inAddress
+		o.valueMap["attributes"] = val
 	}
 }
 
-func DefaultAddress() Option {
+func DefaultStaticHostAddress() Option {
 	return func(o *options) {
-		o.valueMap["address"] = nil
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["address"] = nil
+		o.valueMap["attributes"] = val
 	}
 }
 

@@ -259,6 +259,11 @@ var inputStructs = []*structInfo{
 		versionEnabled: true,
 	},
 	{
+		inProto:     &hosts.StaticHostAttributes{},
+		outFile:     "hosts/static_host_attributes.gen.go",
+		subtypeName: "StaticHost",
+	},
+	{
 		inProto: &hosts.HostSet{},
 		outFile: "hosts/host_set.gen.go",
 		templates: []*template.Template{
