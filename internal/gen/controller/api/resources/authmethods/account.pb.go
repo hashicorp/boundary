@@ -54,7 +54,6 @@ type Account struct {
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,60,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
 	// The version can be used in subsequent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
-	// Output only.
 	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty"`
 	// The type of this account.  Possible values are: "password", "oidc".
 	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty"`

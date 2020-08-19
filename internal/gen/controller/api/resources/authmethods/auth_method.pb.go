@@ -54,7 +54,6 @@ type AuthMethod struct {
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,6,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
 	// The version can be used in subsequent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
-	// Output only.
 	Version uint32 `protobuf:"varint,7,opt,name=version,proto3" json:"version,omitempty"`
 	// The auth method type.  This can be "password" or "oidc".
 	Type string `protobuf:"bytes,8,opt,name=type,proto3" json:"type,omitempty"`
