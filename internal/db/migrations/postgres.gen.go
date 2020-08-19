@@ -2647,7 +2647,7 @@ create table kms_database_key_version (
     references kms_database_key(private_id) 
     on delete cascade 
     on update cascade, 
-  root_key_version_id wt_private_id 
+  root_key_version_id wt_private_id not null
     references kms_root_key_version(private_id) 
     on delete cascade 
     on update cascade,
@@ -2703,7 +2703,7 @@ create table kms_oplog_key_version (
     references kms_oplog_key(private_id) 
     on delete cascade 
     on update cascade, 
-  root_key_version_id wt_private_id 
+  root_key_version_id wt_private_id not null
     references kms_root_key_version(private_id) 
     on delete cascade 
     on update cascade,
@@ -2759,7 +2759,7 @@ create table kms_session_key_version (
     references kms_session_key(private_id) 
     on delete cascade 
     on update cascade, 
-  root_key_version_id wt_private_id 
+  root_key_version_id wt_private_id not null
     references kms_root_key_version(private_id) 
     on delete cascade 
     on update cascade,
