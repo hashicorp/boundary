@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	defaultRootKeyTableName = "kms_root_key"
+	DefaultRootKeyTableName = "kms_root_key"
 )
 
 type RootKey struct {
@@ -68,7 +68,7 @@ func (k *RootKey) TableName() string {
 	if k.tableName != "" {
 		return k.tableName
 	}
-	return defaultRootKeyTableName
+	return DefaultRootKeyTableName
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage

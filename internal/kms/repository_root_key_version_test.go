@@ -23,7 +23,8 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 
 	type args struct {
@@ -110,7 +111,8 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 
 	type args struct {
@@ -198,7 +200,8 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 
 	tests := []struct {
@@ -271,7 +274,8 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo, err := kms.NewRepository(rw, rw, kms.WithLimit(testLimit))
 	require.NoError(t, err)
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 
 	type args struct {
@@ -288,28 +292,28 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 	}{
 		{
 			name:      "no-limit",
-			createCnt: testLimit + 1,
+			createCnt: repo.DefaultLimit() + 1,
 			args: args{
 				rootKeyId:  rk.PrivateId,
 				keyWrapper: wrapper,
 				opt:        []kms.Option{kms.WithLimit(-1)},
 			},
-			wantCnt: testLimit + 1,
+			wantCnt: repo.DefaultLimit() + 1,
 			wantErr: false,
 		},
 		{
 			name:      "default-limit",
-			createCnt: testLimit + 1,
+			createCnt: repo.DefaultLimit() + 1,
 			args: args{
 				keyWrapper: wrapper,
 				rootKeyId:  rk.PrivateId,
 			},
-			wantCnt: testLimit,
+			wantCnt: repo.DefaultLimit(),
 			wantErr: false,
 		},
 		{
 			name:      "custom-limit",
-			createCnt: testLimit + 1,
+			createCnt: repo.DefaultLimit() + 1,
 			args: args{
 				keyWrapper: wrapper,
 				rootKeyId:  rk.PrivateId,

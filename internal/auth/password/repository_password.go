@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"golang.org/x/crypto/argon2"
 )
@@ -29,7 +30,7 @@ type authAccount struct {
 // Authenticate will update the stored values for password to the current
 // password settings for authMethodId if authentication is successful and
 // the stored values are not using the current password settings.
-func (r *Repository) Authenticate(ctx context.Context, authMethodId string, loginName string, password string) (*Account, error) {
+func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, loginName, password string) (*Account, error) {
 	if authMethodId == "" {
 		return nil, fmt.Errorf("password authenticate: no authMethodId: %w", db.ErrInvalidParameter)
 	}
@@ -39,8 +40,16 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, logi
 	if password == "" {
 		return nil, fmt.Errorf("password authenticate: no password: %w", db.ErrInvalidParameter)
 	}
+	if scopeId == "" {
+		return nil, fmt.Errorf("password authenticate: no scopeId: %w", db.ErrNilParameter)
+	}
 
-	acct, err := r.authenticate(ctx, authMethodId, loginName, password)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, fmt.Errorf("password authenticate: unable to get database wrapper: %w", err)
+	}
+
+	acct, err := r.authenticate(ctx, scopeId, authMethodId, loginName, password)
 	if err != nil {
 		return nil, fmt.Errorf("password authenticate: %w", err)
 	}
@@ -58,9 +67,14 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, logi
 			return acct.Account, fmt.Errorf("password authenticate: update credential: %w", err)
 		}
 
+		oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+		if err != nil {
+			return acct.Account, fmt.Errorf("password authenticate: unable to get oplog wrapper: %w", err)
+		}
+
 		// do not change the Credential Id
 		cred.PrivateId = acct.CredentialId
-		if err := cred.encrypt(ctx, r.wrapper); err != nil {
+		if err := cred.encrypt(ctx, databaseWrapper); err != nil {
 			return acct.Account, fmt.Errorf("password authenticate: update credential: encrypt: %w", err)
 		}
 
@@ -69,7 +83,7 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, logi
 
 		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
-				rowsUpdated, err := w.Update(ctx, cred, fields, nil, db.WithOplog(r.wrapper, metadata))
+				rowsUpdated, err := w.Update(ctx, cred, fields, nil, db.WithOplog(oplogWrapper, metadata))
 				if err == nil && rowsUpdated > 1 {
 					return db.ErrMultipleRecords
 				}
@@ -89,7 +103,7 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, logi
 //
 // Returns nil if old does not match the stored password for accountId.
 // Returns ErrPasswordsEqual if old and new are equal.
-func (r *Repository) ChangePassword(ctx context.Context, accountId string, old, new string, version uint32) (*Account, error) {
+func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old, new string, version uint32) (*Account, error) {
 	if accountId == "" {
 		return nil, fmt.Errorf("change password: no account id: %w", db.ErrInvalidParameter)
 	}
@@ -105,6 +119,9 @@ func (r *Repository) ChangePassword(ctx context.Context, accountId string, old, 
 	if version == 0 {
 		return nil, fmt.Errorf("change password: no version supplied: %w", db.ErrInvalidParameter)
 	}
+	if scopeId == "" {
+		return nil, fmt.Errorf("change password: no scopeId: %w", db.ErrNilParameter)
+	}
 
 	authAccount, err := r.LookupAccount(ctx, accountId)
 	if err != nil {
@@ -114,7 +131,16 @@ func (r *Repository) ChangePassword(ctx context.Context, accountId string, old, 
 		return nil, fmt.Errorf("change password: lookup account: account not found: %w", db.ErrRecordNotFound)
 	}
 
-	acct, err := r.authenticate(ctx, authAccount.GetAuthMethodId(), authAccount.GetLoginName(), old)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, fmt.Errorf("change password: unable to get oplog wrapper: %w", err)
+	}
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, fmt.Errorf("change password: unable to get database wrapper: %w", err)
+	}
+
+	acct, err := r.authenticate(ctx, scopeId, authAccount.GetAuthMethodId(), authAccount.GetLoginName(), old)
 	if err != nil {
 		return nil, fmt.Errorf("change password: %w", err)
 	}
@@ -134,7 +160,7 @@ func (r *Repository) ChangePassword(ctx context.Context, accountId string, old, 
 		return nil, fmt.Errorf("change password: %w", err)
 	}
 
-	if err := newCred.encrypt(ctx, r.wrapper); err != nil {
+	if err := newCred.encrypt(ctx, databaseWrapper); err != nil {
 		return nil, fmt.Errorf("change password: encrypt: %w", err)
 	}
 
@@ -146,7 +172,7 @@ func (r *Repository) ChangePassword(ctx context.Context, accountId string, old, 
 			updatedAccount = allocAccount()
 			updatedAccount.PublicId = accountId
 			updatedAccount.Version = version + 1
-			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(r.wrapper, acct.Account.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
+			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(oplogWrapper, acct.Account.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
 			if err != nil {
 				return fmt.Errorf("change password: unable to update account version: %w", err)
 			}
@@ -154,14 +180,14 @@ func (r *Repository) ChangePassword(ctx context.Context, accountId string, old, 
 				return fmt.Errorf("change password: updated account and %d rows updated", rowsUpdated)
 			}
 
-			rowsDeleted, err := w.Delete(ctx, oldCred, db.WithOplog(r.wrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
+			rowsDeleted, err := w.Delete(ctx, oldCred, db.WithOplog(oplogWrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
 			}
 			if err != nil {
 				return err
 			}
-			return w.Create(ctx, newCred, db.WithOplog(r.wrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			return w.Create(ctx, newCred, db.WithOplog(oplogWrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE)))
 		},
 	)
 	if err != nil {
@@ -173,7 +199,7 @@ func (r *Repository) ChangePassword(ctx context.Context, accountId string, old, 
 	return updatedAccount, nil
 }
 
-func (r *Repository) authenticate(ctx context.Context, authMethodId string, loginName string, password string) (*authAccount, error) {
+func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, loginName, password string) (*authAccount, error) {
 	var accts []authAccount
 
 	tx, err := r.reader.DB()
@@ -204,7 +230,13 @@ func (r *Repository) authenticate(ctx context.Context, authMethodId string, logi
 		acct = accts[0]
 	}
 
-	if err := acct.decrypt(ctx, r.wrapper); err != nil {
+	// We don't pass a wrapper in here because for ecryption we want to indicate the expected key ID
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(acct.GetKeyId()))
+	if err != nil {
+		return nil, fmt.Errorf("unable to get database wrapper: %w", err)
+	}
+
+	if err := acct.decrypt(ctx, databaseWrapper); err != nil {
 		return nil, fmt.Errorf("cannot decrypt credential: %w", err)
 	}
 
@@ -218,12 +250,24 @@ func (r *Repository) authenticate(ctx context.Context, authMethodId string, logi
 
 // SetPassword sets the password for accountId to password. If password
 // contains an empty string, the password for accountId will be deleted.
-func (r *Repository) SetPassword(ctx context.Context, accountId string, password string, version uint32) (*Account, error) {
+func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, password string, version uint32) (*Account, error) {
 	if accountId == "" {
 		return nil, fmt.Errorf("set password: no accountId: %w", db.ErrInvalidParameter)
 	}
 	if version == 0 {
 		return nil, fmt.Errorf("set password: no version supplied: %w", db.ErrInvalidParameter)
+	}
+	if scopeId == "" {
+		return nil, fmt.Errorf("set password: no scopeId: %w", db.ErrNilParameter)
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, fmt.Errorf("set password: unable to get oplog wrapper: %w", err)
+	}
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, fmt.Errorf("set password: unable to get database wrapper: %w", err)
 	}
 
 	var newCred *Argon2Credential
@@ -242,18 +286,18 @@ func (r *Repository) SetPassword(ctx context.Context, accountId string, password
 		if err != nil {
 			return nil, fmt.Errorf("set password: %w", err)
 		}
-		if err := newCred.encrypt(ctx, r.wrapper); err != nil {
+		if err := newCred.encrypt(ctx, databaseWrapper); err != nil {
 			return nil, fmt.Errorf("set password: encrypt: %w", err)
 		}
 	}
 
 	var acct *Account
-	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(rr db.Reader, w db.Writer) error {
 			updatedAccount := allocAccount()
 			updatedAccount.PublicId = accountId
 			updatedAccount.Version = version + 1
-			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(r.wrapper, updatedAccount.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
+			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(oplogWrapper, updatedAccount.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
 			if err != nil {
 				return fmt.Errorf("set password: unable to update account version: %w", err)
 			}
@@ -270,7 +314,7 @@ func (r *Repository) SetPassword(ctx context.Context, accountId string, password
 			}
 			if oldCred.PrivateId != "" {
 				dCred := oldCred.clone()
-				rowsDeleted, err := w.Delete(ctx, dCred, db.WithOplog(r.wrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
+				rowsDeleted, err := w.Delete(ctx, dCred, db.WithOplog(oplogWrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
 				if err == nil && rowsDeleted > 1 {
 					return db.ErrMultipleRecords
 				}
@@ -279,7 +323,7 @@ func (r *Repository) SetPassword(ctx context.Context, accountId string, password
 				}
 			}
 			if newCred != nil {
-				return w.Create(ctx, newCred, db.WithOplog(r.wrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE)))
+				return w.Create(ctx, newCred, db.WithOplog(oplogWrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE)))
 			}
 			return nil
 		},

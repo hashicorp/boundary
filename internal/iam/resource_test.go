@@ -13,11 +13,13 @@ import (
 func Test_LookupScope(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		org, _ := TestScopes(t, conn)
-		user := TestUser(t, conn, org.PublicId)
+		org, _ := TestScopes(t, repo)
+		user := TestUser(t, repo, org.PublicId)
 
 		foundScope, err := LookupScope(context.Background(), w, user)
 		require.NoError(err)
@@ -32,8 +34,8 @@ func Test_LookupScope(t *testing.T) {
 	t.Run("bad-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		org, _ := TestScopes(t, conn)
-		user := TestUser(t, conn, org.PublicId)
+		org, _ := TestScopes(t, repo)
+		user := TestUser(t, repo, org.PublicId)
 
 		s, err := LookupScope(context.Background(), nil, user)
 		require.Error(err)

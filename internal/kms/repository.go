@@ -41,9 +41,19 @@ func NewRepository(r db.Reader, w db.Writer, opt ...Option) (*Repository, error)
 func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
+	var dbOpts []db.Option
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	return r.reader.SearchWhere(ctx, resources, where, args, db.WithLimit(limit))
+	dbOpts = append(dbOpts, db.WithLimit(limit))
+	if opts.withOrder != "" {
+		dbOpts = append(dbOpts, db.WithOrder(opts.withOrder))
+	}
+	return r.reader.SearchWhere(ctx, resources, where, args, dbOpts...)
+}
+
+// DefaultLimit returns the default limit for listing as set on the repo
+func (r *Repository) DefaultLimit() int {
+	return r.defaultLimit
 }

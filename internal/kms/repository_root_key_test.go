@@ -23,7 +23,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
-	org, proj := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 
 	type args struct {
@@ -55,15 +55,6 @@ func TestRepository_CreateRootKey(t *testing.T) {
 				keyWrapper: wrapper,
 			},
 			wantErr: false,
-		},
-		{
-			name: "invalid-proj",
-			args: args{
-				scopeId:    proj.PublicId,
-				key:        []byte("invalid-proj"),
-				keyWrapper: wrapper,
-			},
-			wantErr: true,
 		},
 		{
 			name: "invalid-scope",
@@ -137,7 +128,8 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 
 	type args struct {
 		key *kms.RootKey
@@ -225,6 +217,7 @@ func TestRepository_ListRootKeys(t *testing.T) {
 	rw := db.New(conn)
 	repo, err := kms.NewRepository(rw, rw, kms.WithLimit(testLimit))
 	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
 
 	type args struct {
 		opt []kms.Option
@@ -238,23 +231,23 @@ func TestRepository_ListRootKeys(t *testing.T) {
 	}{
 		{
 			name:      "no-limit",
-			createCnt: testLimit + 1,
+			createCnt: repo.DefaultLimit() + 1,
 			args: args{
 				opt: []kms.Option{kms.WithLimit(-1)},
 			},
-			wantCnt: testLimit + 1,
+			wantCnt: (repo.DefaultLimit()+1)*2 + 1, // org and project both have keys, plus global scope
 			wantErr: false,
 		},
 		{
 			name:      "default-limit",
-			createCnt: testLimit + 1,
+			createCnt: repo.DefaultLimit() + 1,
 			args:      args{},
-			wantCnt:   testLimit,
+			wantCnt:   repo.DefaultLimit(),
 			wantErr:   false,
 		},
 		{
 			name:      "custom-limit",
-			createCnt: testLimit + 1,
+			createCnt: repo.DefaultLimit() + 1,
 			args: args{
 				opt: []kms.Option{kms.WithLimit(3)},
 			},
@@ -263,15 +256,12 @@ func TestRepository_ListRootKeys(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-			testRootKeys := []*kms.RootKey{}
 			for i := 0; i < tt.createCnt; i++ {
-				org, _ := iam.TestScopes(t, conn)
-				testRootKeys = append(testRootKeys, kms.TestRootKey(t, conn, org.PublicId))
+				_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 			}
-			assert.Equal(tt.createCnt, len(testRootKeys))
 			got, err := repo.ListRootKeys(context.Background(), tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)

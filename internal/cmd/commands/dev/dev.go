@@ -225,11 +225,11 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return 1
 	}
-	if c.ControllerKMS == nil {
+	if c.RootKms == nil {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return 1
 	}
-	if c.WorkerAuthKMS == nil {
+	if c.WorkerAuthKms == nil {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 		return 1
 	}
@@ -237,7 +237,7 @@ func (c *Command) Run(args []string) int {
 	c.Info["[Controller] AEAD Key Bytes"] = devConfig.Controller.DevControllerKey
 	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
 	c.Info["[Worker-Auth] AEAD Key Bytes"] = devConfig.Controller.DevWorkerAuthKey
-	if c.WorkerAuthKMS == nil {
+	if c.WorkerAuthKms == nil {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 		return 1
 	}

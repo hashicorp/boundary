@@ -2,27 +2,55 @@ package iam
 
 import (
 	"context"
+	"crypto/rand"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/types/scope"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestScopes creates an org and project suitable for testing.
-func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
-	t.Helper()
+// TestRepo creates a repo that can be used for various purposes. Crucially, it
+// ensures that the global scope contains a valid root key.
+func TestRepo(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper, opt ...Option) *Repository {
 	require := require.New(t)
 	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	wrapper, err := kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeOplog)
+	if err != nil {
+		var kmsRepo *kms.Repository
+		// Assume the root hasn't been created and try to insert it
+		kmsRepo, err = kms.NewRepository(rw, rw)
+		require.NoError(err)
+		rootKey, err := uuid.GenerateRandomBytesWithReader(32, rand.Reader)
+		require.NoError(err)
+		_, _, err = kmsRepo.CreateRootKey(context.Background(), rootWrapper, scope.Global.String(), rootKey)
+		require.NoError(err)
+		wrapper, err = kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeOplog)
+		if err != nil {
+			panic(err)
+		}
+	}
 	require.NoError(err)
+	require.NotNil(wrapper)
 
-	org, err = NewOrg()
+	repo, err := NewRepository(rw, rw, kmsCache, opt...)
+	require.NoError(err)
+	return repo
+}
+
+// TestScopes creates an org and project suitable for testing.
+func TestScopes(t *testing.T, repo *Repository) (org *Scope, prj *Scope) {
+	t.Helper()
+	require := require.New(t)
+
+	org, err := NewOrg()
 	require.NoError(err)
 	org, err = repo.CreateScope(context.Background(), org, "")
 	require.NoError(err)
@@ -39,15 +67,11 @@ func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 	return
 }
 
-func TestOrg(t *testing.T, conn *gorm.DB) (org *Scope) {
+func TestOrg(t *testing.T, repo *Repository, opt ...Option) (org *Scope) {
 	t.Helper()
 	require := require.New(t)
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
-	require.NoError(err)
 
-	org, err = NewOrg()
+	org, err := NewOrg(opt...)
 	require.NoError(err)
 	org, err = repo.CreateScope(context.Background(), org, "")
 	require.NoError(err)
@@ -57,13 +81,9 @@ func TestOrg(t *testing.T, conn *gorm.DB) (org *Scope) {
 	return
 }
 
-func testOrg(t *testing.T, conn *gorm.DB, name, description string) (org *Scope) {
+func testOrg(t *testing.T, repo *Repository, name, description string) (org *Scope) {
 	t.Helper()
 	require := require.New(t)
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
-	require.NoError(err)
 
 	o, err := NewOrg(WithDescription(description), WithName(name))
 	require.NoError(err)
@@ -71,16 +91,13 @@ func testOrg(t *testing.T, conn *gorm.DB, name, description string) (org *Scope)
 	require.NoError(err)
 	require.NotNil(o)
 	require.NotEmpty(o.GetPublicId())
+
 	return o
 }
 
-func testProject(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *Scope {
+func testProject(t *testing.T, repo *Repository, orgId string, opt ...Option) *Scope {
 	t.Helper()
 	require := require.New(t)
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
-	require.NoError(err)
 
 	p, err := NewProject(orgId, opt...)
 	require.NoError(err)
@@ -88,6 +105,7 @@ func testProject(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *Scop
 	require.NoError(err)
 	require.NotNil(p)
 	require.NotEmpty(p.GetPublicId())
+
 	return p
 }
 
@@ -106,13 +124,9 @@ func testPublicId(t *testing.T, prefix string) string {
 }
 
 // TestUser creates a user suitable for testing.
-func TestUser(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *User {
+func TestUser(t *testing.T, repo *Repository, scopeId string, opt ...Option) *User {
 	t.Helper()
-	require := assert.New(t)
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
-	require.NoError(err)
+	require := require.New(t)
 
 	user, err := NewUser(scopeId, opt...)
 	require.NoError(err)

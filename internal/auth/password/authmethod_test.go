@@ -13,6 +13,7 @@ import (
 
 func TestAuthMethod_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
 
 	w := db.New(conn)
 
@@ -73,7 +74,7 @@ func TestAuthMethod_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			org, _ := iam.TestScopes(t, conn)
+			org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 			got, err := NewAuthMethod(org.GetPublicId(), tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)

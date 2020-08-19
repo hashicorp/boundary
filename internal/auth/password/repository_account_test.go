@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,7 +41,10 @@ func TestRepository_CreateAccount(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
 	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 1)
 	authMethod := authMethods[0]
 
@@ -213,10 +217,10 @@ func TestRepository_CreateAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateAccount(context.Background(), tt.in, tt.opts...)
+			got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -235,7 +239,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 
 			opts := getOpts(tt.opts...)
 			if opts.withPassword {
-				authAcct, err := repo.Authenticate(context.Background(), tt.in.AuthMethodId, tt.in.LoginName, opts.password)
+				authAcct, err := repo.Authenticate(context.Background(), org.GetPublicId(), tt.in.AuthMethodId, tt.in.LoginName, opts.password)
 				require.NoError(err)
 				assert.NoError(db.TestVerifyOplog(t, rw, authAcct.CredentialId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 			}
@@ -244,11 +248,11 @@ func TestRepository_CreateAccount(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, iamRepo)
 		authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 1)
 		authMethod := authMethods[0]
 
@@ -260,7 +264,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			},
 		}
 
-		got, err := repo.CreateAccount(context.Background(), in)
+		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, AccountPrefix, got.PublicId)
@@ -269,18 +273,18 @@ func TestRepository_CreateAccount(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		got2, err := repo.CreateAccount(context.Background(), in)
+		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 	})
 
 	t.Run("valid-duplicate-names-diff-parents", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, iamRepo)
 		authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 2)
 		authMethoda, authMethodb := authMethods[0], authMethods[1]
 		in := &Account{
@@ -292,7 +296,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		in2 := in.clone()
 
 		in.AuthMethodId = authMethoda.GetPublicId()
-		got, err := repo.CreateAccount(context.Background(), in)
+		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, AccountPrefix, got.PublicId)
@@ -302,7 +306,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		in2.AuthMethodId = authMethodb.GetPublicId()
-		got2, err := repo.CreateAccount(context.Background(), in2)
+		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
 		assertPublicId(t, AccountPrefix, got2.PublicId)
@@ -318,7 +322,10 @@ func TestRepository_LookupAccount(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	account := TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
 
@@ -349,7 +356,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupAccount(context.Background(), tt.in)
@@ -369,7 +376,10 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	account := TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
 
@@ -401,10 +411,10 @@ func TestRepository_DeleteAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteAccount(context.Background(), tt.in)
+			got, err := repo.DeleteAccount(context.Background(), org.GetPublicId(), tt.in)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
@@ -421,7 +431,10 @@ func TestRepository_ListAccounts(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
 	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 3)
 	accounts1 := TestAccounts(t, conn, authMethods[0].GetPublicId(), 3)
 	accounts2 := TestAccounts(t, conn, authMethods[1].GetPublicId(), 4)
@@ -454,7 +467,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
@@ -474,7 +487,10 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
 	am := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 
 	accountCount := 10
@@ -528,7 +544,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper, tt.repoOpts...)
+			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAccounts(context.Background(), am.GetPublicId(), tt.listOpts...)
@@ -542,6 +558,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	changeLoginName := func(s string) func(*Account) *Account {
 		return func(a *Account) *Account {
@@ -853,25 +871,25 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 
-			org, _ := iam.TestScopes(t, conn)
+			org, _ := iam.TestScopes(t, iamRepo)
 			am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
 
 			tt.orig.AuthMethodId = am.PublicId
 			if tt.orig.LoginName == "" {
 				tt.orig.LoginName = "kazmierczak"
 			}
-			orig, err := repo.CreateAccount(context.Background(), tt.orig)
+			orig, err := repo.CreateAccount(context.Background(), org.GetPublicId(), tt.orig)
 			assert.NoError(err)
 			require.NotNil(orig)
 
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
-			got, gotCount, err := repo.UpdateAccount(context.Background(), orig, 1, tt.masks)
+			got, gotCount, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
@@ -909,12 +927,12 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
 		name := "test-dup-name"
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, iamRepo)
 		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
 		acts := TestAccounts(t, conn, am.PublicId, 2)
 
@@ -922,7 +940,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		ab := acts[1]
 
 		aa.Name = name
-		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, 1, []string{"name"})
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), aa, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(name, got1.Name)
@@ -930,7 +948,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 
 		ab.Name = name
-		got2, gotCount2, err := repo.UpdateAccount(context.Background(), ab, 1, []string{"name"})
+		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"name"})
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -941,11 +959,11 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-AuthMethods", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, iamRepo)
 		ams := TestAuthMethods(t, conn, org.PublicId, 2)
 
 		ama := ams[0]
@@ -960,7 +978,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 		in.AuthMethodId = ama.PublicId
 		in.LoginName = "kazmierczak"
-		got, err := repo.CreateAccount(context.Background(), in)
+		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, AccountPrefix, got.PublicId)
@@ -971,11 +989,11 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		in2.AuthMethodId = amb.PublicId
 		in2.LoginName = "kazmierczak2"
 		in2.Name = "first-name"
-		got2, err := repo.CreateAccount(context.Background(), in2)
+		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
 		got2.Name = got.Name
-		got3, gotCount3, err := repo.UpdateAccount(context.Background(), got2, 1, []string{"name"})
+		got3, gotCount3, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), got2, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got3)
 		assert.NotSame(got2, got3)
@@ -987,12 +1005,12 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 	t.Run("invalid-duplicate-loginnames", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
 		loginName := "kazmierczak12"
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, iamRepo)
 		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
 		acts := TestAccounts(t, conn, am.PublicId, 2)
 
@@ -1000,7 +1018,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		ab := acts[1]
 
 		aa.LoginName = loginName
-		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, 1, []string{"LoginName"})
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), aa, 1, []string{"LoginName"})
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(loginName, got1.LoginName)
@@ -1008,7 +1026,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 
 		ab.LoginName = loginName
-		got2, gotCount2, err := repo.UpdateAccount(context.Background(), ab, 1, []string{"LoginName"})
+		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"LoginName"})
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -1019,11 +1037,11 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 	t.Run("valid-duplicate-loginnames-diff-AuthMethods", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, iamRepo)
 		ams := TestAuthMethods(t, conn, org.PublicId, 2)
 
 		ama := ams[0]
@@ -1037,7 +1055,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		in2 := in.clone()
 
 		in.AuthMethodId = ama.PublicId
-		got, err := repo.CreateAccount(context.Background(), in)
+		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, AccountPrefix, got.PublicId)
@@ -1046,11 +1064,11 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 		in2.AuthMethodId = amb.PublicId
 		in2.LoginName = "kazmierczak2"
-		got2, err := repo.CreateAccount(context.Background(), in2)
+		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
 		got2.LoginName = got.LoginName
-		got3, gotCount3, err := repo.UpdateAccount(context.Background(), got2, 1, []string{"LoginName"})
+		got3, gotCount3, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), got2, 1, []string{"LoginName"})
 		assert.NoError(err)
 		require.NotNil(got3)
 		assert.NotSame(got2, got3)
@@ -1061,11 +1079,11 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 	t.Run("change-authmethod-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, iamRepo)
 		ams := TestAuthMethods(t, conn, org.PublicId, 2)
 
 		ama := ams[0]
@@ -1080,7 +1098,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		aa.AuthMethodId = ab.AuthMethodId
 		assert.Equal(aa.AuthMethodId, ab.AuthMethodId)
 
-		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, 1, []string{"name"})
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), aa, 1, []string{"name"})
 
 		assert.NoError(err)
 		require.NotNil(got1)

@@ -59,6 +59,7 @@ func (s *writableAuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper
 	if err := structwrapping.WrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
 		return fmt.Errorf("error encrypting auth token: %w", err)
 	}
+	s.KeyId = cipher.KeyID()
 	return nil
 }
 

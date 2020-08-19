@@ -19,7 +19,8 @@ import (
 func TestRootKey_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := iam.TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	type args struct {
 		scopeId string
 		opt     []kms.Option
@@ -63,20 +64,6 @@ func TestRootKey_Create(t *testing.T) {
 			}(),
 			create: true,
 		},
-		{
-			// root keys are not valid at the project scope level.
-			name: "invalid-project-config",
-			args: args{
-				scopeId: proj.PublicId,
-			},
-			want: func() *kms.RootKey {
-				k := kms.AllocRootKey()
-				k.ScopeId = proj.PublicId
-				return &k
-			}(),
-			create:        true,
-			wantCreateErr: true,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -110,7 +97,9 @@ func TestRootKey_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	org, _ := iam.TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 
 	tests := []struct {
 		name            string
@@ -167,17 +156,20 @@ func TestRootKey_Delete(t *testing.T) {
 func TestRootKey_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 		k := kms.TestRootKey(t, conn, org.PublicId)
 		cp := k.Clone()
 		assert.True(proto.Equal(cp.(*kms.RootKey).RootKey, k.RootKey))
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
-		org, _ := iam.TestScopes(t, conn)
-		org2, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 		k := kms.TestRootKey(t, conn, org.PublicId)
 		k2 := kms.TestRootKey(t, conn, org2.PublicId)
 
@@ -188,7 +180,7 @@ func TestRootKey_Clone(t *testing.T) {
 
 func TestRootKey_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := "kms_root_key"
+	defaultTableName := kms.DefaultRootKeyTableName
 	tests := []struct {
 		name      string
 		setNameTo string

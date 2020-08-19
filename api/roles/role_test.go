@@ -28,7 +28,7 @@ func TestCustom(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.DbConn())
+	org, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
 	projClient.SetScopeId(proj.GetPublicId())
@@ -141,7 +141,7 @@ func TestRole_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.DbConn())
+	org, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
 	projClient.SetScopeId(proj.GetPublicId())
@@ -222,7 +222,7 @@ func TestRole_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.DbConn())
+	org, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
 	projClient.SetScopeId(proj.GetPublicId())
@@ -295,7 +295,7 @@ func TestRole_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.DbConn())
+	org, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
 	projClient.SetScopeId(proj.GetPublicId())

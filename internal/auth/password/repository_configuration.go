@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
@@ -39,7 +40,7 @@ func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) 
 // for c.AuthMethodId, SetConfiguration ignores c. If c contains settings
 // equal to a previous configuration for c.AuthMethodId, SetConfiguration
 // updates AuthMethod to use the previous configuration.
-func (r *Repository) SetConfiguration(ctx context.Context, c Configuration) (Configuration, error) {
+func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Configuration) (Configuration, error) {
 	if c == nil {
 		return nil, fmt.Errorf("set password configuration: %w", db.ErrNilParameter)
 	}
@@ -52,7 +53,7 @@ func (r *Repository) SetConfiguration(ctx context.Context, c Configuration) (Con
 
 	switch v := c.(type) {
 	case *Argon2Configuration:
-		out, err := r.setArgon2Conf(ctx, v)
+		out, err := r.setArgon2Conf(ctx, scopeId, v)
 		if err != nil {
 			return nil, fmt.Errorf("set password configuration: %w", err)
 		}
@@ -62,7 +63,7 @@ func (r *Repository) SetConfiguration(ctx context.Context, c Configuration) (Con
 	}
 }
 
-func (r *Repository) setArgon2Conf(ctx context.Context, c *Argon2Configuration) (*Argon2Configuration, error) {
+func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon2Configuration) (*Argon2Configuration, error) {
 	c = c.clone()
 
 	id, err := newArgon2ConfigurationId()
@@ -77,6 +78,11 @@ func (r *Repository) setArgon2Conf(ctx context.Context, c *Argon2Configuration) 
 		},
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, fmt.Errorf("update: password account: unable to get oplog wrapper: %w", err)
+	}
+
 	newArgon2Conf := &Argon2Configuration{Argon2Configuration: &store.Argon2Configuration{}}
 
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
@@ -87,13 +93,13 @@ func (r *Repository) setArgon2Conf(ctx context.Context, c *Argon2Configuration) 
 					return err
 				}
 				newArgon2Conf = c.clone()
-				if err := w.Create(ctx, newArgon2Conf, db.WithOplog(r.wrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+				if err := w.Create(ctx, newArgon2Conf, db.WithOplog(oplogWrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
 					return err
 				}
 			}
 
 			a.PasswordConfId = newArgon2Conf.PrivateId
-			rowsUpdated, err := w.Update(ctx, a, []string{"PasswordConfId"}, nil, db.WithOplog(r.wrapper, a.oplog(oplog.OpType_OP_TYPE_UPDATE)))
+			rowsUpdated, err := w.Update(ctx, a, []string{"PasswordConfId"}, nil, db.WithOplog(oplogWrapper, a.oplog(oplog.OpType_OP_TYPE_UPDATE)))
 			if err == nil && rowsUpdated > 1 {
 				return db.ErrMultipleRecords
 			}

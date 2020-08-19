@@ -1331,7 +1331,8 @@ begin;
 create table servers (
     private_id text,
     type text,
-    name text not null unique,
+    name text not null unique
+      check(length(trim(name)) > 0),
     description text,
     address text,
     create_time wt_timestamp,
@@ -1381,6 +1382,9 @@ begin;
   create table auth_token (
     public_id wt_public_id primary key,
     token bytea not null unique,
+    -- TODO: Make key_id a foreign key once we have DEKs
+    key_id text not null
+      check(length(trim(key_id)) > 0),
     auth_account_id wt_public_id not null
       references auth_account(public_id)
       on delete cascade
@@ -1896,6 +1900,9 @@ begin;
       check(length(salt) > 0),
     derived_key bytea not null
       check(length(derived_key) > 0),
+    -- TODO: Make key_id a foreign key once we have DEKs
+    key_id text not null
+      check(length(trim(key_id)) > 0),
     foreign key (password_method_id, password_conf_id)
       references auth_password_argon2_conf (password_method_id, private_id)
       on delete cascade
@@ -2442,7 +2449,6 @@ commit;
 		bytes: []byte(`
 begin;
 
-drop function kms_scope_valid() cascade;
 drop function kms_version_column cascade;
 
 commit;
@@ -2453,25 +2459,6 @@ commit;
 		name: "30_keys.up.sql",
 		bytes: []byte(`
 begin;
-
-create or replace function
-  kms_scope_valid()
-  returns trigger
-as $$
-declare scope_type text;
-begin
-  -- Fetch the type of scope
-  select isc.type from iam_scope isc where isc.public_id = new.scope_id into scope_type;
-  -- Always allowed
-  if scope_type = 'global' then
-    return new;
-  end if;
-  if scope_type = 'org' then
-    return new;
-  end if;
-  raise exception 'invalid to scope type (must be global or org)';
-end;
-$$ language plpgsql;
 
 -- kms_version_column() will increment the version column whenever row data
 -- is inserted and should only be used in an before insert trigger.  This
@@ -2582,11 +2569,6 @@ create trigger
 before
 insert on kms_root_key
   for each row execute procedure default_create_time();
-
-create trigger 
-  kms_scope_valid
-before insert on kms_root_key
-  for each row execute procedure kms_scope_valid();
 
 create table kms_root_key_version (
   private_id wt_private_id primary key,
