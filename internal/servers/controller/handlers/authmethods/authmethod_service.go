@@ -261,7 +261,7 @@ func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
-		Type:        "password",
+		Type:        auth.PasswordSubtype.String(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -319,14 +319,14 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 	if item.GetVersion() != 0 {
 		badFields["version"] = "Cannot specify this field in a create request."
 	}
-	switch item.GetType() {
-	case "password":
+	switch auth.SubtypeFromType(item.GetType()) {
+	case auth.PasswordSubtype:
 		pwAttrs := &pb.PasswordAuthMethodAttributes{}
 		if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 			badFields["attributes"] = "Attribute fields do not match the expected format."
 		}
 	default:
-		badFields["type"] = "This is a required field and must be \"password\"."
+		badFields["type"] = fmt.Sprintf("This is a required field and must be %q.", auth.PasswordSubtype.String())
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)

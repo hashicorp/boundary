@@ -103,9 +103,4 @@ func TestCatalogs_Errors(t *testing.T) {
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusForbidden, apiErr.Status)
-
-	_, apiErr, err = pc.Update(tc.Context(), hc.Id, hc.Version, hosts.WithType("Cant Update"))
-	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 }

@@ -39,7 +39,7 @@ func TestAccounts_List(t *testing.T) {
 
 	expected = append(expected, &authmethods.Account{Attributes: map[string]interface{}{"login_name": "loginname1"}})
 
-	expected[1], apiErr, err = accountClient.Create(tc.Context(), amId, authmethods.WithType("password"), authmethods.WithPasswordAccountLoginName(expected[1].Attributes["login_name"].(string)))
+	expected[1], apiErr, err = accountClient.Create(tc.Context(), amId, authmethods.WithPasswordAccountLoginName(expected[1].Attributes["login_name"].(string)))
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
@@ -49,7 +49,7 @@ func TestAccounts_List(t *testing.T) {
 	assert.ElementsMatch(comparableSlice(expected[:2]), comparableSlice(ul))
 
 	for i := 2; i < 10; i++ {
-		newAcct, apiErr, err := accountClient.Create(tc.Context(), amId, authmethods.WithType("password"), authmethods.WithPasswordAccountLoginName(fmt.Sprintf("loginname%d", i)))
+		newAcct, apiErr, err := accountClient.Create(tc.Context(), amId, authmethods.WithPasswordAccountLoginName(fmt.Sprintf("loginname%d", i)))
 		expected = append(expected, newAcct)
 		assert.NoError(err)
 		assert.Nil(apiErr)
@@ -107,7 +107,7 @@ func TestAccount_Crud(t *testing.T) {
 		assert.EqualValues(wantedVersion, u.Version)
 	}
 
-	u, apiErr, err := accountClient.Create(tc.Context(), amId, authmethods.WithType("password"), authmethods.WithName("foo"), authmethods.WithPasswordAccountLoginName("loginname"))
+	u, apiErr, err := accountClient.Create(tc.Context(), amId, authmethods.WithName("foo"), authmethods.WithPasswordAccountLoginName("loginname"))
 	checkAccount("create", u, apiErr, err, "foo", 1)
 
 	u, apiErr, err = accountClient.Read(tc.Context(), amId, u.Id)
@@ -184,13 +184,13 @@ func TestAccount_Errors(t *testing.T) {
 
 	accountClient := authmethods.NewAccountsClient(client)
 
-	u, apiErr, err := accountClient.Create(tc.Context(), amId, authmethods.WithType("password"), authmethods.WithPasswordAccountLoginName("first"))
+	u, apiErr, err := accountClient.Create(tc.Context(), amId, authmethods.WithPasswordAccountLoginName("first"))
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.NotNil(u)
 
 	// Create another resource with the same name.
-	_, apiErr, err = accountClient.Create(tc.Context(), amId, authmethods.WithType("password"), authmethods.WithPasswordAccountLoginName("first"))
+	_, apiErr, err = accountClient.Create(tc.Context(), amId, authmethods.WithPasswordAccountLoginName("first"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 

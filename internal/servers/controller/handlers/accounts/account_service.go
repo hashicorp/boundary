@@ -331,7 +331,7 @@ func toProto(in *password.Account) (*pb.Account, error) {
 		UpdatedTime:  in.GetUpdateTime().GetTimestamp(),
 		AuthMethodId: in.GetAuthMethodId(),
 		Version:      in.GetVersion(),
-		Type:         "password",
+		Type:         auth.PasswordSubtype.String(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -387,8 +387,11 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field."
 	}
-	switch item.GetType() {
-	case "password":
+	switch auth.SubtypeFromId(req.GetAuthMethodId()) {
+	case auth.PasswordSubtype:
+		if item.GetType() != "" && item.GetType() != auth.PasswordSubtype.String() {
+			badFields["type"] = "Doesn't match the parent resource's type."
+		}
 		pwAttrs := &pb.PasswordAccountAttributes{}
 		if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 			badFields["attributes"] = "Attribute fields do not match the expected format."
@@ -396,8 +399,6 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 		if pwAttrs.GetLoginName() == "" {
 			badFields["login_name"] = "This is a required field for this type."
 		}
-	default:
-		badFields["type"] = "This is a required field."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)

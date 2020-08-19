@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -20,6 +21,7 @@ func TestRepository_New(t *testing.T) {
 		r   db.Reader
 		w   db.Writer
 		kms *kms.Kms
+		opts    []Option
 	}
 
 	var tests = []struct {
@@ -39,6 +41,22 @@ func TestRepository_New(t *testing.T) {
 				reader: rw,
 				writer: rw,
 				kms:    kmsCache,
+				defaultLimit: db.DefaultLimit,
+			},
+		},
+		{
+			name: "valid-with-limit",
+			args: args{
+				r:       rw,
+				w:       rw,
+				kms:  kmsCache,
+				opts:    []Option{WithLimit(5)},
+			},
+			want: &Repository{
+				reader:       rw,
+				writer:       rw,
+				kms:  kmsCache,
+				defaultLimit: 5,
 			},
 		},
 		{
@@ -85,7 +103,7 @@ func TestRepository_New(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+      assert, require := assert.New(t), require.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
@@ -93,7 +111,7 @@ func TestRepository_New(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.NotNil(got)
+			require.NotNil(got)
 			assert.Equal(tt.want, got)
 		})
 	}

@@ -2,6 +2,7 @@ package static
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -155,4 +156,71 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 	}
 
 	return returnedHost, rowsUpdated, nil
+}
+
+// LookupHost will look up a host in the repository. If the host is not
+// found, it will return nil, nil. All options are ignored.
+func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Option) (*Host, error) {
+	if publicId == "" {
+		return nil, fmt.Errorf("lookup: static host: missing public id %w", db.ErrInvalidParameter)
+	}
+	h := allocHost()
+	h.PublicId = publicId
+	if err := r.reader.LookupByPublicId(ctx, h); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("lookup: static host: failed %w for %s", err, publicId)
+	}
+	return h, nil
+}
+
+// ListHosts returns a slice of Hosts for the catalogId.
+// WithLimit is the only option supported.
+func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Option) ([]*Host, error) {
+	if catalogId == "" {
+		return nil, fmt.Errorf("list: static host: missing catalog id: %w", db.ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var hosts []*Host
+	err := r.reader.SearchWhere(ctx, &hosts, "catalog_id = ?", []interface{}{catalogId}, db.WithLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list: static host: %w", err)
+	}
+	return hosts, nil
+}
+
+// DeleteHost deletes the host for the provided id from the repository
+// returning a count of the number of records deleted. All options are
+// ignored.
+func (r *Repository) DeleteHost(ctx context.Context, publicId string, opt ...Option) (int, error) {
+	if publicId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host: missing public id: %w", db.ErrInvalidParameter)
+	}
+	h := allocHost()
+	h.PublicId = publicId
+
+	var rowsDeleted int
+	_, err := r.writer.DoTx(
+		ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) (err error) {
+			dh := h.clone()
+			rowsDeleted, err = w.Delete(ctx, dh, db.WithOplog(r.wrapper, h.oplog(oplog.OpType_OP_TYPE_DELETE)))
+			if err == nil && rowsDeleted > 1 {
+				return db.ErrMultipleRecords
+			}
+			return err
+		},
+	)
+
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host: %s: %w", publicId, err)
+	}
+
+	return rowsDeleted, nil
 }

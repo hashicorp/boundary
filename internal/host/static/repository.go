@@ -13,12 +13,13 @@ type Repository struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
+	defaultLimit int
 }
 
 // NewRepository creates a new Repository. The returned repository should
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it.
-func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	switch {
 	case r == nil:
 		return nil, fmt.Errorf("db.Reader: %w", db.ErrNilParameter)
@@ -28,9 +29,16 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) 
 		return nil, fmt.Errorf("kms: %w", db.ErrNilParameter)
 	}
 
+	opts := getOpts(opt...)
+	if opts.withLimit == 0 {
+		// zero signals the boundary defaults should be used.
+		opts.withLimit = db.DefaultLimit
+	}
+
 	return &Repository{
 		reader: r,
 		writer: w,
 		kms:    kms,
+		defaultLimit: opts.withLimit,
 	}, nil
 }

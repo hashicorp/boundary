@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/host/static/store"
@@ -14,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestRepository_CreateHost(t *testing.T) {
@@ -726,4 +729,232 @@ func TestRepository_UpdateHost(t *testing.T) {
 		assert.Equal(1, gotCount1, "row count")
 		assert.NoError(db.TestVerifyOplog(t, rw, hA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 	})
+}
+
+func TestRepository_LookupHost(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	_, prj := iam.TestScopes(t, conn)
+	catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+	host := testHosts(t, conn, catalog.PublicId, 1)[0]
+
+	hostId, err := newHostId()
+	require.NoError(t, err)
+	var tests = []struct {
+		name      string
+		in        string
+		want      *Host
+		wantIsErr error
+	}{
+		{
+			name:      "with-no-public-id",
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "with-non-existing-host-id",
+			in:   hostId,
+		},
+		{
+			name: "with-existing-host-id",
+			in:   host.PublicId,
+			want: host,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.LookupHost(context.Background(), tt.in)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			assert.EqualValues(tt.want, got)
+		})
+	}
+}
+
+func TestRepository_ListHosts(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	_, prj := iam.TestScopes(t, conn)
+	catalogs := testCatalogs(t, conn, prj.PublicId, 2)
+	catalogA, catalogB := catalogs[0], catalogs[1]
+
+	hosts := testHosts(t, conn, catalogA.PublicId, 3)
+
+	var tests = []struct {
+		name      string
+		in        string
+		opts      []Option
+		want      []*Host
+		wantIsErr error
+	}{
+		{
+			name:      "with-no-catalog-id",
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "Catalog-with-no-hosts",
+			in:   catalogB.PublicId,
+			want: []*Host{},
+		},
+		{
+			name: "Catalog-with-hosts",
+			in:   catalogA.PublicId,
+			want: hosts,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.ListHosts(context.Background(), tt.in, tt.opts...)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			opts := []cmp.Option{
+				cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
+				protocmp.Transform(),
+			}
+			assert.Empty(cmp.Diff(tt.want, got, opts...))
+		})
+	}
+}
+
+func TestRepository_ListHosts_Limits(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	_, prj := iam.TestScopes(t, conn)
+	catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+	count := 10
+	hosts := testHosts(t, conn, catalog.PublicId, count)
+
+	var tests = []struct {
+		name     string
+		repoOpts []Option
+		listOpts []Option
+		wantLen  int
+	}{
+		{
+			name:    "With no limits",
+			wantLen: count,
+		},
+		{
+			name:     "With repo limit",
+			repoOpts: []Option{WithLimit(3)},
+			wantLen:  3,
+		},
+		{
+			name:     "With negative repo limit",
+			repoOpts: []Option{WithLimit(-1)},
+			wantLen:  count,
+		},
+		{
+			name:     "With List limit",
+			listOpts: []Option{WithLimit(3)},
+			wantLen:  3,
+		},
+		{
+			name:     "With negative List limit",
+			listOpts: []Option{WithLimit(-1)},
+			wantLen:  count,
+		},
+		{
+			name:     "With repo smaller than list limit",
+			repoOpts: []Option{WithLimit(2)},
+			listOpts: []Option{WithLimit(6)},
+			wantLen:  6,
+		},
+		{
+			name:     "With repo larger than list limit",
+			repoOpts: []Option{WithLimit(6)},
+			listOpts: []Option{WithLimit(2)},
+			wantLen:  2,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper, tt.repoOpts...)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.ListHosts(context.Background(), hosts[0].CatalogId, tt.listOpts...)
+			require.NoError(err)
+			assert.Len(got, tt.wantLen)
+		})
+	}
+}
+
+func TestRepository_DeleteHost(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	_, prj := iam.TestScopes(t, conn)
+	catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+	host := testHosts(t, conn, catalog.PublicId, 1)[0]
+
+	newHostId, err := newHostId()
+	require.NoError(t, err)
+	var tests = []struct {
+		name      string
+		in        string
+		want      int
+		wantIsErr error
+	}{
+		{
+			name:      "With no public id",
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "With non existing host id",
+			in:   newHostId,
+			want: 0,
+		},
+		{
+			name: "With existing host id",
+			in:   host.PublicId,
+			want: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.DeleteHost(context.Background(), tt.in)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Zero(got)
+				return
+			}
+			require.NoError(err)
+			assert.EqualValues(tt.want, got)
+		})
+	}
 }
