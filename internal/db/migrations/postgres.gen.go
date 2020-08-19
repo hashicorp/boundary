@@ -1332,7 +1332,7 @@ create table servers (
     private_id text,
     type text,
     name text not null unique
-      check(length(name) > 0),
+      check(length(trim(name)) > 0),
     description text,
     address text,
     create_time wt_timestamp,
@@ -1383,7 +1383,7 @@ begin;
     public_id wt_public_id primary key,
     token bytea not null unique,
     key_id text not null
-      check(length(key_id) > 0),
+      check(length(trim(key_id)) > 0),
     auth_account_id wt_public_id not null
       references auth_account(public_id)
       on delete cascade
@@ -1900,7 +1900,7 @@ begin;
     derived_key bytea not null
       check(length(derived_key) > 0),
     key_id text not null
-      check(length(key_id) > 0),
+      check(length(trim(key_id)) > 0),
     foreign key (password_method_id, password_conf_id)
       references auth_password_argon2_conf (password_method_id, private_id)
       on delete cascade
