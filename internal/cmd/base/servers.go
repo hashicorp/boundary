@@ -441,9 +441,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("error creating kms repository: %w", err)
 	}
-	kmsCache, err := kms.NewKms(
-		kms.WithRepository(kmsRepo),
-	)
+	kmsCache, err := kms.NewKms(kmsRepo)
 	if err != nil {
 		return fmt.Errorf("error creating kms cache: %w", err)
 	}

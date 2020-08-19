@@ -47,7 +47,7 @@ func TestKms(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper) *Kms {
 	rw := db.New(conn)
 	kmsRepo, err := NewRepository(rw, rw)
 	require.NoError(err)
-	kms, err := NewKms(WithRepository(kmsRepo))
+	kms, err := NewKms(kmsRepo)
 	require.NoError(err)
 	err = kms.AddExternalWrappers(WithRootWrapper(rootWrapper))
 	require.NoError(err)

@@ -92,10 +92,7 @@ func New(conf *Config) (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms repository: %w", err)
 	}
-	c.kms, err = kms.NewKms(
-		kms.WithLogger(c.logger.Named("kms")),
-		kms.WithRepository(kmsRepo),
-	)
+	c.kms, err = kms.NewKms(kmsRepo, kms.WithLogger(c.logger.Named("kms")))
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
