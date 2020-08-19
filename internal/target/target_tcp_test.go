@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // NOTE: there are no update tests since all the RootKey attributes are
@@ -160,30 +161,28 @@ func TestTcpTarget_Delete(t *testing.T) {
 	}
 }
 
-// func TestRootKey_Clone(t *testing.T) {
-// 	t.Parallel()
-// 	conn, _ := db.TestSetup(t, "postgres")
-// 	wrapper := db.TestWrapper(t)
-// 	t.Run("valid", func(t *testing.T) {
-// 		assert := assert.New(t)
-// 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-// 		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-// 		k := kms.TestRootKey(t, conn, org.PublicId)
-// 		cp := k.Clone()
-// 		assert.True(proto.Equal(cp.(*kms.RootKey).RootKey, k.RootKey))
-// 	})
-// 	t.Run("not-equal", func(t *testing.T) {
-// 		assert := assert.New(t)
-// 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-// 		org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-// 		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-// 		k := kms.TestRootKey(t, conn, org.PublicId)
-// 		k2 := kms.TestRootKey(t, conn, org2.PublicId)
+func TestTcpTarget_Clone(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
+		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		target := TestTcpTarget(t, conn, org.PublicId, testTargetName(t, org.PublicId))
+		cp := target.Clone()
+		assert.True(proto.Equal(cp.(*TcpTarget).TcpTarget, target.TcpTarget))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
+		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		target := TestTcpTarget(t, conn, org.PublicId, testTargetName(t, org.PublicId))
+		target2 := TestTcpTarget(t, conn, org2.PublicId, testTargetName(t, org2.PublicId))
 
-// 		cp := k.Clone()
-// 		assert.True(!proto.Equal(cp.(*kms.RootKey).RootKey, k2.RootKey))
-// 	})
-// }
+		cp := target.Clone()
+		assert.True(!proto.Equal(cp.(*TcpTarget).TcpTarget, target2.TcpTarget))
+	})
+}
 
 // func TestRootKey_SetTableName(t *testing.T) {
 // 	t.Parallel()
