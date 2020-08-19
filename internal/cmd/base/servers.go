@@ -53,6 +53,7 @@ type Server struct {
 
 	RootKms            wrapping.Wrapper
 	WorkerAuthKms      wrapping.Wrapper
+	RecoveryKms        wrapping.Wrapper
 	Kms                *kms.Kms
 	SecureRandomReader io.Reader
 
@@ -330,7 +331,7 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
-			case "root", "worker-auth", "config":
+			case "root", "worker-auth", "recovery", "config":
 			default:
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
 			}
@@ -349,10 +350,17 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 					"After configuration nil KMS returned, KMS type was %s", kms.Type)
 			}
 
-			if purpose == "root" {
+			switch purpose {
+			case "root":
 				b.RootKms = wrapper
-			} else {
+			case "worker-auth":
 				b.WorkerAuthKms = wrapper
+			case "recovery":
+				b.RecoveryKms = wrapper
+			case "config":
+				// Do nothing, can be set in same file but not needed at runtime
+			default:
+				return fmt.Errorf("KMS purpose of %q is unknown", purpose)
 			}
 
 			// Ensure that the seal finalizer is called, even if using verify-only
@@ -447,7 +455,6 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	}
 	if err := kmsCache.AddExternalWrappers(
 		kms.WithRootWrapper(b.RootKms),
-		kms.WithWorkerAuthWrapper(b.WorkerAuthKms),
 	); err != nil {
 		return fmt.Errorf("error adding config keys to kms: %w", err)
 	}

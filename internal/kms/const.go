@@ -15,6 +15,9 @@ const (
 
 	// KeyPurposeOplog is used for oplogs
 	KeyPurposeOplog KeyPurpose = 2
+
+	// KeyPurposeRecovery is used for recovery access
+	KeyPurposeRecovery = 3
 )
 
 // String returns the key purpose cast as a string, just so it can be called as
@@ -25,6 +28,8 @@ func (k KeyPurpose) String() string {
 		return "database"
 	case KeyPurposeOplog:
 		return "oplog"
+	case KeyPurposeRecovery:
+		return "recovery"
 	default:
 		return "unknown"
 	}

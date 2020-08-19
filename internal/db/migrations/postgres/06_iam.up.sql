@@ -285,7 +285,7 @@ end;
 $$ language plpgsql;
 
 create or replace function
-  disallow_iam_anon_auth_deletion()
+  disallow_iam_predefined_user_deletion()
   returns trigger
 as $$
 begin
@@ -294,6 +294,9 @@ begin
   end if;
   if old.public_id = 'u_auth' then
     raise exception 'deletion of authenticated user not allowed';
+  end if;
+    if old.public_id = 'u_recovery' then
+    raise exception 'deletion of recovery user not allowed';
   end if;
   return old;
 end;
@@ -322,17 +325,20 @@ insert on iam_user
   for each row execute procedure default_create_time();
 
 create trigger
-  iam_user_disallow_anon_auth_deletion
+  iam_user_disallow_predefined_user_deletion
 before
 delete on iam_user
-  for each row execute procedure disallow_iam_anon_auth_deletion();
+  for each row execute procedure disallow_iam_predefined_user_deletion();
 
 -- TODO: Do we want to disallow changing the name or description?
 insert into iam_user (public_id, name, description, scope_id)
   values ('u_anon', 'anonymous', 'The anonymous user matches any request, whether authenticated or not', 'global');
 
 insert into iam_user (public_id, name, description, scope_id)
-  values ('u_auth', 'authenticated', 'The authenticated user matches any user that has a valid token', 'global');
+  values ('predefined_user', 'authenticated', 'The authenticated user matches any user that has a valid token', 'global');
+
+insert into iam_user (public_id, name, description, scope_id)
+  values ('u_recovery', 'recovery', 'The recovery user is used for any request that was performed with the recovery KMS workflow', 'global');
 
  -- define the immutable fields for iam_user
 create trigger 

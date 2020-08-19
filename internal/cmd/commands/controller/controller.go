@@ -198,7 +198,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.SetupKMSes(c.UI, c.Config.SharedConfig, []string{"root", "worker-auth"}); err != nil {
+	if err := c.SetupKMSes(c.UI, c.Config.SharedConfig, []string{"root", "worker-auth", "recovery"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}

@@ -21,6 +21,7 @@ type ExternalWrappers struct {
 	m          sync.RWMutex
 	root       wrapping.Wrapper
 	workerAuth wrapping.Wrapper
+	recovery   wrapping.Wrapper
 }
 
 // Root returns the wrapper for root keys
@@ -35,6 +36,13 @@ func (e *ExternalWrappers) WorkerAuth() wrapping.Wrapper {
 	e.m.RLock()
 	defer e.m.RUnlock()
 	return e.workerAuth
+}
+
+// Recovery returns the wrapper for recovery operations
+func (e *ExternalWrappers) Recovery() wrapping.Wrapper {
+	e.m.RLock()
+	defer e.m.RUnlock()
+	return e.recovery
 }
 
 // Kms is a way to access wrappers for a given scope and purpose. Since keys can
@@ -120,6 +128,7 @@ func (k *Kms) GetExternalWrappers() *ExternalWrappers {
 	ret := &ExternalWrappers{
 		root:       ext.root,
 		workerAuth: ext.workerAuth,
+		recovery:   ext.recovery,
 	}
 	return ret
 }

@@ -193,6 +193,9 @@ type TestControllerOpts struct {
 	// The worker auth KMS to use, or one will be created
 	WorkerAuthKms wrapping.Wrapper
 
+	// The recovery KMS to use, or one will be created
+	RecoveryKms wrapping.Wrapper
+
 	// The name to use for the controller, otherwise one will be randomly
 	// generated, unless provided in a non-nil Config
 	Name string
@@ -266,11 +269,14 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		tc.b.RootKms = opts.RootKms
 		tc.b.WorkerAuthKms = opts.WorkerAuthKms
 	case opts.RootKms == nil && opts.WorkerAuthKms == nil:
-		if err := tc.b.SetupKMSes(nil, opts.Config.SharedConfig, []string{"root", "worker-auth"}); err != nil {
+		if err := tc.b.SetupKMSes(nil, opts.Config.SharedConfig, []string{"root", "worker-auth", "recovery"}); err != nil {
 			t.Fatal(err)
 		}
 	default:
 		t.Fatal("either controller and worker auth KMS must both be set, or neither")
+	}
+	if opts.RecoveryKms != nil {
+		tc.b.RecoveryKms = opts.RecoveryKms
 	}
 
 	// Ensure the listeners use random port allocation
@@ -325,6 +331,7 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		DefaultAuthMethodId: tc.c.conf.DevAuthMethodId,
 		RootKms:             tc.c.conf.RootKms,
 		WorkerAuthKms:       tc.c.conf.WorkerAuthKms,
+		RecoveryKms:         tc.c.conf.RecoveryKms,
 		Name:                opts.Name,
 		Logger:              tc.c.conf.Logger,
 	}

@@ -63,6 +63,14 @@ func TestDevController(t *testing.T) {
 						"key_id":    "global_worker-auth",
 					},
 				},
+				{
+					Type:    "aead",
+					Purpose: []string{"recovery"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_recovery",
+					},
+				},
 			},
 			Telemetry: &configutil.Telemetry{
 				DisableHostname:         true,

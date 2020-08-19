@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -30,6 +31,7 @@ const (
 	AuthTokenTypeUnknown TokenFormat = iota
 	AuthTokenTypeBearer
 	AuthTokenTypeSplitCookie
+	AuthTokenRecoveryKms
 )
 
 type key int
@@ -63,6 +65,7 @@ type verifier struct {
 	logger          hclog.Logger
 	iamRepoFn       common.IamRepoFactory
 	authTokenRepoFn common.AuthTokenRepoFactory
+	kms             *kms.Kms
 	requestInfo     RequestInfo
 	res             *perms.Resource
 	act             action.Type
@@ -77,11 +80,13 @@ func NewVerifierContext(ctx context.Context,
 	logger hclog.Logger,
 	iamRepoFn common.IamRepoFactory,
 	authTokenRepoFn common.AuthTokenRepoFactory,
+	kms *kms.Kms,
 	requestInfo RequestInfo) context.Context {
 	return context.WithValue(ctx, verifierKey, &verifier{
 		logger:          logger,
 		iamRepoFn:       iamRepoFn,
 		authTokenRepoFn: authTokenRepoFn,
+		kms:             kms,
 		requestInfo:     requestInfo,
 	})
 }
@@ -115,6 +120,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		ret.Error = nil
 		return
 	}
+
 	v.ctx = ctx
 	v.requestInfo.scopeIdOverride = opts.withScopeId
 	if err := v.parseAuthParams(); err != nil {
@@ -377,7 +383,8 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	userId = "u_anon"
 
 	// Validate the token and fetch the corresponding user ID
-	if v.requestInfo.TokenFormat != AuthTokenTypeUnknown {
+	switch v.requestInfo.TokenFormat {
+	case AuthTokenTypeBearer, AuthTokenTypeSplitCookie:
 		tokenRepo, err := v.authTokenRepoFn()
 		if err != nil {
 			retErr = fmt.Errorf("perform auth check: failed to get authtoken repo: %w", err)
@@ -392,6 +399,19 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		if at != nil {
 			userId = at.GetIamUserId()
 		}
+	case AuthTokenRecoveryKms:
+		userId = "u_recovery"
+		if v.kms == nil {
+			retErr = errors.New("no KMS object available to authz system")
+			return
+		}
+		wrapper := v.kms.GetExternalWrappers().Recovery()
+		if wrapper == nil {
+			retErr = errors.New("no admin KMS is available")
+			return
+		}
+		v.logger.Warn("NOTE: recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
+		return
 	}
 
 	// Fetch and parse grants for this user ID (which may include grants for
@@ -419,6 +439,13 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		Name:          scp.GetName(),
 		Description:   scp.GetDescription(),
 		ParentScopeId: scp.GetParentId(),
+	}
+
+	// At this point we don't need to look up grants since it's automatically allowed
+	if v.requestInfo.TokenFormat == AuthTokenRecoveryKms {
+		aclResults = &perms.ACLResults{Allowed: true}
+		retErr = nil
+		return
 	}
 
 	var parsedGrants []perms.Grant
@@ -483,6 +510,10 @@ func GetTokenFromRequest(logger hclog.Logger, req *http.Request) (string, string
 		// header instead of nothing at all, so return blank which will indicate
 		// the anonymouse user
 		return "", "", AuthTokenTypeUnknown
+	}
+
+	if strings.HasPrefix(fullToken, "r_") {
+		return "", fullToken, AuthTokenRecoveryKms
 	}
 
 	splitFullToken := strings.Split(fullToken, "_")

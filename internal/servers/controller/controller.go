@@ -99,6 +99,7 @@ func New(conf *Config) (*Controller, error) {
 	if err := c.kms.AddExternalWrappers(
 		kms.WithRootWrapper(c.conf.RootKms),
 		kms.WithWorkerAuthWrapper(c.conf.WorkerAuthKms),
+		kms.WithRecoveryWrapper(c.conf.RecoveryKms),
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
