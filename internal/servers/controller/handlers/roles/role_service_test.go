@@ -885,20 +885,20 @@ func TestUpdate(t *testing.T) {
 			if tc.req.Id == pr.PublicId {
 				ver = prVersion
 			}
-			tc.req.Version = ver
+			tc.req.Item.Version = ver
 
 			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateRoleRequest)
 			proto.Merge(req, tc.req)
 
 			// Test with bad version (too high, too low)
-			req.Version = ver + 2
+			req.Item.Version = ver + 2
 			_, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			require.Error(gErr)
-			req.Version = ver - 1
+			req.Item.Version = ver - 1
 			_, gErr = tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			require.Error(gErr)
-			req.Version = ver
+			req.Item.Version = ver
 
 			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -1000,11 +1000,9 @@ func TestAddPrincipal(t *testing.T) {
 				role := iam.TestRole(t, conn, scope.GetPublicId())
 				tc.setup(role)
 				req := &pbs.AddRolePrincipalsRequest{
-					RoleId:  role.GetPublicId(),
-					Version: role.GetVersion(),
-					Item: &pbs.PrincipalIdsMessage{
-						PrincipalIds: append(tc.addUsers, tc.addGroups...),
-					},
+					RoleId:       role.GetPublicId(),
+					Version:      role.GetVersion(),
+					PrincipalIds: append(tc.addUsers, tc.addGroups...),
 				}
 
 				got, err := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
@@ -1122,11 +1120,9 @@ func TestSetPrincipal(t *testing.T) {
 				role := iam.TestRole(t, conn, scope.GetPublicId())
 				tc.setup(role)
 				req := &pbs.SetRolePrincipalsRequest{
-					RoleId:  role.GetPublicId(),
-					Version: role.GetVersion(),
-					Item: &pbs.PrincipalIdsMessage{
-						PrincipalIds: append(tc.setUsers, tc.setGroups...),
-					},
+					RoleId:       role.GetPublicId(),
+					Version:      role.GetVersion(),
+					PrincipalIds: append(tc.setUsers, tc.setGroups...),
 				}
 
 				got, err := s.SetRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
@@ -1262,11 +1258,9 @@ func TestRemovePrincipal(t *testing.T) {
 				role := iam.TestRole(t, conn, scope.GetPublicId())
 				tc.setup(role)
 				req := &pbs.RemoveRolePrincipalsRequest{
-					RoleId:  role.GetPublicId(),
-					Version: role.GetVersion(),
-					Item: &pbs.PrincipalIdsMessage{
-						PrincipalIds: append(tc.removeUsers, tc.removeGroups...),
-					},
+					RoleId:       role.GetPublicId(),
+					Version:      role.GetVersion(),
+					PrincipalIds: append(tc.removeUsers, tc.removeGroups...),
 				}
 
 				got, err := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
@@ -1380,9 +1374,7 @@ func TestAddGrants(t *testing.T) {
 				if o != scope {
 					scopeId = p.GetPublicId()
 				}
-				req.Item = &pbs.GrantStringsMessage{
-					GrantStrings: tc.add,
-				}
+				req.GrantStrings = tc.add
 				got, err := s.AddRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(scopeId)), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1404,11 +1396,9 @@ func TestAddGrants(t *testing.T) {
 		{
 			name: "Bad Role Id",
 			req: &pbs.AddRoleGrantsRequest{
-				RoleId: "bad id",
-				Item: &pbs.GrantStringsMessage{
-					GrantStrings: []string{"id=*;actions=create"},
-				},
-				Version: role.GetVersion(),
+				RoleId:       "bad id",
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1482,9 +1472,7 @@ func TestSetGrants(t *testing.T) {
 				if o != scope {
 					scopeId = p.GetPublicId()
 				}
-				req.Item = &pbs.GrantStringsMessage{
-					GrantStrings: tc.set,
-				}
+				req.GrantStrings = tc.set
 				got, err := s.SetRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(scopeId)), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1508,11 +1496,9 @@ func TestSetGrants(t *testing.T) {
 		{
 			name: "Bad Role Id",
 			req: &pbs.SetRoleGrantsRequest{
-				RoleId: "bad id",
-				Item: &pbs.GrantStringsMessage{
-					GrantStrings: []string{"id=*;actions=create"},
-				},
-				Version: role.GetVersion(),
+				RoleId:       "bad id",
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1585,9 +1571,7 @@ func TestRemoveGrants(t *testing.T) {
 				if o != scope {
 					scopeId = p.GetPublicId()
 				}
-				req.Item = &pbs.GrantStringsMessage{
-					GrantStrings: tc.remove,
-				}
+				req.GrantStrings = tc.remove
 				got, err := s.RemoveRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(scopeId)), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1612,11 +1596,9 @@ func TestRemoveGrants(t *testing.T) {
 		{
 			name: "Bad Role Id",
 			req: &pbs.RemoveRoleGrantsRequest{
-				RoleId: "bad id",
-				Item: &pbs.GrantStringsMessage{
-					GrantStrings: []string{"id=*;actions=create"},
-				},
-				Version: role.GetVersion(),
+				RoleId:       "bad id",
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},

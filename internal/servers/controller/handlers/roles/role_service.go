@@ -110,7 +110,7 @@ func (s Service) UpdateRole(ctx context.Context, req *pbs.UpdateRoleRequest) (*p
 	if err := validateUpdateRequest(req, authResults.Scope); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (s Service) AddRolePrincipals(ctx context.Context, req *pbs.AddRolePrincipa
 	if err := validateAddRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.addPrinciplesInRepo(ctx, req.GetRoleId(), req.GetItem().GetPrincipalIds(), req.GetVersion())
+	r, err := s.addPrinciplesInRepo(ctx, req.GetRoleId(), req.GetPrincipalIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (s Service) SetRolePrincipals(ctx context.Context, req *pbs.SetRolePrincipa
 	if err := validateSetRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.setPrinciplesInRepo(ctx, req.GetRoleId(), req.GetItem().GetPrincipalIds(), req.GetVersion())
+	r, err := s.setPrinciplesInRepo(ctx, req.GetRoleId(), req.GetPrincipalIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePr
 	if err := validateRemoveRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.removePrinciplesInRepo(ctx, req.GetRoleId(), req.GetItem().GetPrincipalIds(), req.GetVersion())
+	r, err := s.removePrinciplesInRepo(ctx, req.GetRoleId(), req.GetPrincipalIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsReques
 	if err := validateAddRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.addGrantsInRepo(ctx, req.GetRoleId(), req.GetItem().GetGrantStrings(), req.GetVersion())
+	r, err := s.addGrantsInRepo(ctx, req.GetRoleId(), req.GetGrantStrings(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsReques
 	if err := validateSetRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.setGrantsInRepo(ctx, req.GetRoleId(), req.GetItem().GetGrantStrings(), req.GetVersion())
+	r, err := s.setGrantsInRepo(ctx, req.GetRoleId(), req.GetGrantStrings(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,7 @@ func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrants
 	if err := validateRemoveRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.removeGrantsInRepo(ctx, req.GetRoleId(), req.GetItem().GetGrantStrings(), req.GetVersion())
+	r, err := s.removeGrantsInRepo(ctx, req.GetRoleId(), req.GetGrantStrings(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +283,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	return toProto(out, nil, nil), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version uint32, mask []string, item *pb.Role) (*pb.Role, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Role) (*pb.Role, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -294,6 +294,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version u
 	if grantScopeId := item.GetGrantScopeId(); grantScopeId != nil {
 		opts = append(opts, iam.WithGrantScopeId(grantScopeId.GetValue()))
 	}
+	version := item.GetVersion()
 
 	u, err := iam.NewRole(scopeId, opts...)
 	if err != nil {
@@ -574,15 +575,15 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest, scope *scopes.ScopeInfo) 
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update a role."
 	}
-	if req.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
 
 	item := req.GetItem()
 	if item == nil {
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
 		return nil
+	}
+	if item.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field and cannot be specified in an update request."
@@ -644,7 +645,7 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetItem().GetPrincipalIds()) == 0 {
+	if len(req.GetPrincipalIds()) == 0 {
 		badFields["principal_ids"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
@@ -675,7 +676,7 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetItem().GetPrincipalIds()) == 0 {
+	if len(req.GetPrincipalIds()) == 0 {
 		badFields["principal_ids"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
@@ -692,7 +693,7 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetItem().GetGrantStrings()) == 0 {
+	if len(req.GetGrantStrings()) == 0 {
 		badFields["grant_strings"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
@@ -723,7 +724,7 @@ func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetItem().GetGrantStrings()) == 0 {
+	if len(req.GetGrantStrings()) == 0 {
 		badFields["grant_strings"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {

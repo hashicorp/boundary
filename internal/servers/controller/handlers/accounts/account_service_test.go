@@ -792,7 +792,7 @@ func TestUpdate(t *testing.T) {
 			acc, cleanup := freshAccount(t)
 			defer cleanup()
 
-			tc.req.Version = 1
+			tc.req.Item.Version = 1
 
 			if tc.req.GetId() == "" {
 				tc.req.Id = acc.GetId()
