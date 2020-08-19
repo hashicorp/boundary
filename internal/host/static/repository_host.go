@@ -177,3 +177,33 @@ func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Opt
 	}
 	return hosts, nil
 }
+
+// DeleteHost deletes the host for the provided id from the repository
+// returning a count of the number of records deleted. All options are
+// ignored.
+func (r *Repository) DeleteHost(ctx context.Context, publicId string, opt ...Option) (int, error) {
+	if publicId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host: missing public id: %w", db.ErrInvalidParameter)
+	}
+	h := allocHost()
+	h.PublicId = publicId
+
+	var rowsDeleted int
+	_, err := r.writer.DoTx(
+		ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) (err error) {
+			dh := h.clone()
+			rowsDeleted, err = w.Delete(ctx, dh, db.WithOplog(r.wrapper, h.oplog(oplog.OpType_OP_TYPE_DELETE)))
+			if err == nil && rowsDeleted > 1 {
+				return db.ErrMultipleRecords
+			}
+			return err
+		},
+	)
+
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host: %s: %w", publicId, err)
+	}
+
+	return rowsDeleted, nil
+}
