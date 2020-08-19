@@ -110,6 +110,7 @@ func WithDisassociate(enable bool) Option {
 	}
 }
 
+// WithRandomReader provides and option to specify a random reader.
 func WithRandomReader(reader io.Reader) Option {
 	return func(o *options) {
 		o.withRandomReader = reader

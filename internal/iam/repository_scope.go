@@ -17,7 +17,7 @@ import (
 )
 
 // CreateScope will create a scope in the repository and return the written
-// scope. Supported options include: WithPublicId.
+// scope. Supported options include: WithPublicId and WithRandomReader.
 func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, opt ...Option) (*Scope, error) {
 	if s == nil {
 		return nil, fmt.Errorf("create scope: missing scope %w", db.ErrNilParameter)
