@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultRootKeyVersionTableName = "kms_root_key_version"
+	DefaultRootKeyVersionTableName = "kms_root_key_version"
 )
 
 type RootKeyVersion struct {
@@ -76,7 +76,7 @@ func (k *RootKeyVersion) TableName() string {
 	if k.tableName != "" {
 		return k.tableName
 	}
-	return defaultRootKeyVersionTableName
+	return DefaultRootKeyVersionTableName
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage

@@ -27,11 +27,13 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	w := db.New(conn)
+	rw := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKeyVersion()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	new := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
 
@@ -91,17 +93,17 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
-			err := w.LookupById(context.Background(), orig)
+			err := rw.LookupById(context.Background(), orig)
 			require.NoError(err)
 
 			err = tt.update.Encrypt(context.Background(), wrapper)
 			require.NoError(err)
-			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			err = w.LookupById(context.Background(), after)
+			err = rw.LookupById(context.Background(), after)
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*kms.RootKeyVersion), after.(*kms.RootKeyVersion)))
@@ -113,11 +115,13 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 func TestRootKey_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	w := db.New(conn)
+	rw := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	org, _ := iam.TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	new := kms.TestRootKey(t, conn, org.PublicId)
 
 	var tests = []struct {
@@ -158,15 +162,15 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
-			err := w.LookupById(context.Background(), orig)
+			err := rw.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			err = w.LookupById(context.Background(), after)
+			err = rw.LookupById(context.Background(), after)
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*kms.RootKey), after.(*kms.RootKey)))

@@ -1,9 +1,10 @@
-package kms
+package kms_test
 
 import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +20,7 @@ func TestNewRepository(t *testing.T) {
 	tests := []struct {
 		name          string
 		args          args
-		want          *Repository
+		want          *kms.Repository
 		wantErr       bool
 		wantErrString string
 	}{
@@ -29,11 +30,11 @@ func TestNewRepository(t *testing.T) {
 				r: rw,
 				w: rw,
 			},
-			want: &Repository{
-				reader:       rw,
-				writer:       rw,
-				defaultLimit: db.DefaultLimit,
-			},
+			want: func() *kms.Repository {
+				ret, err := kms.NewRepository(rw, rw)
+				require.NoError(t, err)
+				return ret
+			}(),
 			wantErr: false,
 		},
 		{
@@ -60,7 +61,7 @@ func TestNewRepository(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w)
+			got, err := kms.NewRepository(tt.args.r, tt.args.w)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(err.Error(), tt.wantErrString)

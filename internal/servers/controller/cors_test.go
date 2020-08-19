@@ -25,13 +25,15 @@ telemetry {
 kms "aead" {
         purpose = "root"
         aead_type = "aes-gcm"
-        key = "09iqFxRJNYsl/b8CQxjnGw=="
+		key = "09iqFxRJNYsl/b8CQxjnGw=="
+		key_id = "global_root"
 }
 
 kms "aead" {
         purpose = "worker-auth"
         aead_type = "aes-gcm"
-        key = "09iqFxRJNYsl/b8CQxjnGw=="
+		key = "09iqFxRJNYsl/b8CQxjnGw=="
+		key_id = "global_worker-auth"
 }
 
 listener "tcp" {
@@ -74,7 +76,9 @@ func TestHandler_CORS(t *testing.T) {
 	})
 	defer tc.Shutdown()
 
-	org := iam.TestOrg(t, tc.DbConn())
+	repo := tc.IamRepo()
+	require.NoError(t, err)
+	org := iam.TestOrg(t, repo)
 
 	cases := []struct {
 		name           string

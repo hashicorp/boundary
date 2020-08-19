@@ -30,13 +30,13 @@ import (
 func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*iam.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 
-	oRes, pRes := iam.TestScopes(t, conn)
+	oRes, pRes := iam.TestScopes(t, iamRepo)
 
 	oRes.Name = "defaultProj"
 	oRes.Description = "defaultProj"
@@ -150,18 +150,18 @@ func TestGet(t *testing.T) {
 
 func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 	repo, err := repoFn()
 	require.NoError(t, err)
 
-	oNoProjects, p1 := iam.TestScopes(t, conn)
+	oNoProjects, p1 := iam.TestScopes(t, repo)
 	_, err = repo.DeleteScope(context.Background(), p1.GetPublicId())
 	require.NoError(t, err)
-	oWithProjects, p2 := iam.TestScopes(t, conn)
+	oWithProjects, p2 := iam.TestScopes(t, repo)
 	_, err = repo.DeleteScope(context.Background(), p2.GetPublicId())
 	require.NoError(t, err)
 

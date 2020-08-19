@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/kms/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -20,7 +21,8 @@ func TestRootKeyVersion_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	rootKey := kms.TestRootKey(t, conn, org.PublicId)
 	type args struct {
 		rootId string
@@ -101,9 +103,10 @@ func TestRootKeyVersion_Create(t *testing.T) {
 func TestRootKeyVersion_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	org, _ := iam.TestScopes(t, conn)
 	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 
 	tests := []struct {
@@ -163,7 +166,8 @@ func TestRootKeyVersion_Clone(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 		rk := kms.TestRootKey(t, conn, org.PublicId)
 		k := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
 		cp := k.Clone()
@@ -171,7 +175,8 @@ func TestRootKeyVersion_Clone(t *testing.T) {
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
-		org, _ := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 		rk := kms.TestRootKey(t, conn, org.PublicId)
 		k := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
 		k2 := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
@@ -182,7 +187,7 @@ func TestRootKeyVersion_Clone(t *testing.T) {
 
 func TestRootKeyVersion_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := "kms_root_key_version"
+	defaultTableName := kms.DefaultRootKeyVersionTableName
 	tests := []struct {
 		name      string
 		setNameTo string
@@ -204,7 +209,9 @@ func TestRootKeyVersion_SetTableName(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			def := kms.AllocRootKeyVersion()
 			require.Equal(defaultTableName, def.TableName())
-			s := kms.AllocRootKeyVersion()
+			s := &kms.RootKeyVersion{
+				RootKeyVersion: &store.RootKeyVersion{},
+			}
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, s.TableName())
 		})

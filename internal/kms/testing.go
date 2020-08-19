@@ -40,3 +40,16 @@ func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, r
 	require.NoError(err)
 	return k
 }
+
+func TestKms(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper) *Kms {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	kmsRepo, err := NewRepository(rw, rw)
+	require.NoError(err)
+	kms, err := NewKms(kmsRepo)
+	require.NoError(err)
+	err = kms.AddExternalWrappers(WithRootWrapper(rootWrapper))
+	require.NoError(err)
+	return kms
+}

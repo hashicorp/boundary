@@ -18,14 +18,13 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
-	staticOrg, staticProj := TestScopes(t, conn)
+	repo := TestRepo(t, conn, wrapper)
+	staticOrg, staticProj := TestScopes(t, repo)
 	orgRole := TestRole(t, conn, staticOrg.PublicId)
 	projRole := TestRole(t, conn, staticProj.PublicId)
-	require.NoError(t, err)
 	createScopesFn := func() (orgs []string, projects []string) {
 		for i := 0; i < 5; i++ {
-			org, proj := TestScopes(t, conn)
+			org, proj := TestScopes(t, repo)
 			orgs = append(orgs, org.PublicId)
 			projects = append(projects, proj.PublicId)
 		}
@@ -34,7 +33,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 	createUsersFn := func(orgs []string) []string {
 		results := []string{}
 		for org := 0; org < 5; org++ {
-			u := TestUser(t, conn, orgs[org])
+			u := TestUser(t, repo, orgs[org])
 			results = append(results, u.PublicId)
 		}
 		return results
@@ -128,7 +127,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 
 				if tt.args.wantUserIds {
 					userIds = createUsersFn(orgs)
-					u := TestUser(t, conn, staticOrg.PublicId)
+					u := TestUser(t, repo, staticOrg.PublicId)
 					if roleId == orgRole.PublicId {
 						userIds = append(userIds, u.PublicId)
 					} else {
@@ -186,11 +185,9 @@ func TestRepository_ListPrincipalRoles(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
-	require.NoError(t, err)
-	org, proj := TestScopes(t, conn)
+	repo := TestRepo(t, conn, wrapper, WithLimit(testLimit))
+	org, proj := TestScopes(t, repo)
 
 	type args struct {
 		withRoleId string
@@ -260,7 +257,7 @@ func TestRepository_ListPrincipalRoles(t *testing.T) {
 			userRoles := make([]string, 0, tt.createCnt)
 			groupRoles := make([]string, 0, tt.createCnt)
 			for i := 0; i < tt.createCnt/2; i++ {
-				u := TestUser(t, conn, org.PublicId)
+				u := TestUser(t, repo, org.PublicId)
 				userRoles = append(userRoles, u.PublicId)
 				g := TestGroup(t, conn, tt.createScopeId)
 				groupRoles = append(groupRoles, g.PublicId)
@@ -293,9 +290,8 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
-	require.NoError(t, err)
-	org, _ := TestScopes(t, conn)
+	repo := TestRepo(t, conn, wrapper)
+	org, _ := TestScopes(t, repo)
 
 	type args struct {
 		role                *Role
@@ -426,7 +422,7 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 	}
 	createScopesFn := func() (orgs []string, projects []string) {
 		for i := 0; i < 5; i++ {
-			org, proj := TestScopes(t, conn)
+			org, proj := TestScopes(t, repo)
 			orgs = append(orgs, org.PublicId)
 			projects = append(projects, proj.PublicId)
 		}
@@ -438,10 +434,10 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 			orgs, projects := createScopesFn()
 			userIds := make([]string, 0, tt.args.createUserCnt)
 			if tt.args.createUserCnt > 0 {
-				u := TestUser(t, conn, org.PublicId)
+				u := TestUser(t, repo, org.PublicId)
 				userIds = append(userIds, u.PublicId)
 				for i := 0; i < tt.args.createUserCnt-1; i++ {
-					u := TestUser(t, conn, orgs[i])
+					u := TestUser(t, repo, orgs[i])
 					userIds = append(userIds, u.PublicId)
 				}
 			}
@@ -506,19 +502,17 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 func TestRepository_SetPrincipalRoles(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
-	require.NoError(t, err)
+	repo := TestRepo(t, conn, wrapper)
 
-	org, proj := TestScopes(t, conn)
-	testUser := TestUser(t, conn, org.PublicId)
+	org, proj := TestScopes(t, repo)
+	testUser := TestUser(t, repo, org.PublicId)
 	testGrp := TestGroup(t, conn, proj.PublicId)
 
 	createUsersFn := func() []string {
 		results := []string{}
 		for i := 0; i < 5; i++ {
-			u := TestUser(t, conn, org.PublicId)
+			u := TestUser(t, repo, org.PublicId)
 			results = append(results, u.PublicId)
 		}
 		results = append(results, "u_anon")
@@ -677,15 +671,13 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 func TestRepository_principalsToSet(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
-	require.NoError(t, err)
-	org, proj := TestScopes(t, conn)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
 	createUsersFn := func() []string {
 		results := []string{}
 		for i := 0; i < 5; i++ {
-			u := TestUser(t, conn, org.PublicId)
+			u := TestUser(t, repo, org.PublicId)
 			results = append(results, u.PublicId)
 		}
 		return results
@@ -799,7 +791,7 @@ func TestRepository_principalsToSet(t *testing.T) {
 				wantDeleteGrps = append(wantDeleteGrps, id)
 			}
 		}
-		newUser := TestUser(t, conn, org.PublicId)
+		newUser := TestUser(t, repo, org.PublicId)
 		newGrp := TestGroup(t, conn, proj.PublicId)
 		wantSetUsers = append(wantSetUsers, newUser.PublicId)
 		wantSetGrps = append(wantSetGrps, newGrp.PublicId)

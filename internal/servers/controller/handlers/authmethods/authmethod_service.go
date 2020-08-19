@@ -125,7 +125,7 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -240,12 +240,12 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	return toProto(out)
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
 	}
-	rows, err := repo.DeleteAuthMethod(ctx, id)
+	rows, err := repo.DeleteAuthMethod(ctx, scopeId, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil

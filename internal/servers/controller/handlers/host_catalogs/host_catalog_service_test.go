@@ -16,6 +16,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -32,12 +33,14 @@ func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Sc
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	_, pRes := iam.TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	wrap := db.TestWrapper(t)
+	_, pRes := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, wrap)
+		return static.NewRepository(rw, rw, kms)
 	}
 
 	hc, err := static.NewHostCatalog(pRes.GetPublicId(), static.WithName("default"), static.WithDescription("default"))

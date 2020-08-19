@@ -58,11 +58,6 @@ before
 insert on kms_root_key
   for each row execute procedure default_create_time();
 
-create trigger 
-  kms_scope_valid
-before insert on kms_root_key
-  for each row execute procedure kms_scope_valid();
-
 create table kms_root_key_version (
   private_id wt_private_id primary key,
   root_key_id  wt_private_id not null

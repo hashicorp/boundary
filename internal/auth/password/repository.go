@@ -5,15 +5,15 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/boundary/internal/kms"
 )
 
 // A Repository stores and retrieves the persistent types in the password
 // package. It is not safe to use a repository concurrently.
 type Repository struct {
-	reader  db.Reader
-	writer  db.Writer
-	wrapper wrapping.Wrapper
+	reader db.Reader
+	writer db.Writer
+	kms    *kms.Kms
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
 }
@@ -22,14 +22,14 @@ type Repository struct {
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it.  WithLimit option is used as a repo wide default
 // limit applied to all ListX methods.
-func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	switch {
 	case r == nil:
 		return nil, fmt.Errorf("db.Reader: %w", db.ErrNilParameter)
 	case w == nil:
 		return nil, fmt.Errorf("db.Writer: %w", db.ErrNilParameter)
-	case wrapper == nil:
-		return nil, fmt.Errorf("wrapping.Wrapper: %w", db.ErrNilParameter)
+	case kms == nil:
+		return nil, fmt.Errorf("kms: %w", db.ErrNilParameter)
 	}
 
 	opts := getOpts(opt...)
@@ -41,7 +41,7 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Op
 	return &Repository{
 		reader:       r,
 		writer:       w,
-		wrapper:      wrapper,
+		kms:          kms,
 		defaultLimit: opts.withLimit,
 	}, nil
 }
