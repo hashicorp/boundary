@@ -157,3 +157,23 @@ func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Opt
 	}
 	return h, nil
 }
+
+// ListHosts returns a slice of Hosts for the catalogId.
+// WithLimit is the only option supported.
+func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Option) ([]*Host, error) {
+	if catalogId == "" {
+		return nil, fmt.Errorf("list: static host: missing catalog id: %w", db.ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var hosts []*Host
+	err := r.reader.SearchWhere(ctx, &hosts, "catalog_id = ?", []interface{}{catalogId}, db.WithLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list: static host: %w", err)
+	}
+	return hosts, nil
+}
