@@ -50,7 +50,6 @@ func request_AuthMethodService_GetAuthMethod_0(ctx context.Context, marshaler ru
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -84,7 +83,6 @@ func local_request_AuthMethodService_GetAuthMethod_0(ctx context.Context, marsha
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -207,7 +205,6 @@ func request_AuthMethodService_UpdateAuthMethod_0(ctx context.Context, marshaler
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -256,7 +253,6 @@ func local_request_AuthMethodService_UpdateAuthMethod_0(ctx context.Context, mar
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -290,7 +286,6 @@ func request_AuthMethodService_DeleteAuthMethod_0(ctx context.Context, marshaler
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -317,7 +312,6 @@ func local_request_AuthMethodService_DeleteAuthMethod_0(ctx context.Context, mar
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -330,6 +324,7 @@ func local_request_AuthMethodService_DeleteAuthMethod_0(ctx context.Context, mar
 // RegisterAuthMethodServiceHandlerServer registers the http handlers for service AuthMethodService to "mux".
 // UnaryRPC     :call AuthMethodServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
+// Note that using this registration option will cause many gRPC library features (such as grpc.SendHeader, etc) to stop working. Consider using RegisterAuthMethodServiceHandlerFromEndpoint instead.
 func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server AuthMethodServiceServer) error {
 
 	mux.Handle("GET", pattern_AuthMethodService_GetAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {

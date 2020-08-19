@@ -50,7 +50,6 @@ func request_HostCatalogService_GetHostCatalog_0(ctx context.Context, marshaler 
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -84,7 +83,6 @@ func local_request_HostCatalogService_GetHostCatalog_0(ctx context.Context, mars
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -207,7 +205,6 @@ func request_HostCatalogService_UpdateHostCatalog_0(ctx context.Context, marshal
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -256,7 +253,6 @@ func local_request_HostCatalogService_UpdateHostCatalog_0(ctx context.Context, m
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -290,7 +286,6 @@ func request_HostCatalogService_DeleteHostCatalog_0(ctx context.Context, marshal
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -317,7 +312,6 @@ func local_request_HostCatalogService_DeleteHostCatalog_0(ctx context.Context, m
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -330,6 +324,7 @@ func local_request_HostCatalogService_DeleteHostCatalog_0(ctx context.Context, m
 // RegisterHostCatalogServiceHandlerServer registers the http handlers for service HostCatalogService to "mux".
 // UnaryRPC     :call HostCatalogServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
+// Note that using this registration option will cause many gRPC library features (such as grpc.SendHeader, etc) to stop working. Consider using RegisterHostCatalogServiceHandlerFromEndpoint instead.
 func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server HostCatalogServiceServer) error {
 
 	mux.Handle("GET", pattern_HostCatalogService_GetHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
