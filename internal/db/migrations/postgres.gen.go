@@ -1609,7 +1609,8 @@ begin;
 */
 
   create table auth_password_method (
-    public_id wt_public_id primary key,
+    public_id wt_public_id
+      primary key,
     scope_id wt_scope_id
       not null,
     password_conf_id wt_private_id, -- FK to auth_password_conf added below
@@ -1686,8 +1687,10 @@ begin;
     for each row execute procedure insert_auth_account_subtype();
 
   create table auth_password_conf (
-    private_id wt_private_id primary key,
-    password_method_id wt_public_id not null
+    private_id wt_private_id
+      primary key,
+    password_method_id wt_public_id
+      not null
       references auth_password_method (public_id)
       on delete cascade
       on update cascade
