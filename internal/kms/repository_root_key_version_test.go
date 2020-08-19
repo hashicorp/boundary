@@ -3,6 +3,7 @@ package kms_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -217,6 +218,13 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 			wantErr:     false,
 		},
 		{
+			name:        "1",
+			createCnt:   1,
+			keyWrapper:  wrapper,
+			wantVersion: 1,
+			wantErr:     false,
+		},
+		{
 			name:        "0",
 			createCnt:   0,
 			keyWrapper:  wrapper,
@@ -227,7 +235,6 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 			name:        "nil-wrapper",
 			createCnt:   5,
 			keyWrapper:  nil,
-			wantVersion: 5,
 			wantErr:     true,
 			wantIsError: db.ErrNilParameter,
 		},
@@ -253,6 +260,7 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(got)
 			assert.Equal(tt.wantVersion, got.Version)
+			fmt.Println(got.Version)
 		})
 	}
 }

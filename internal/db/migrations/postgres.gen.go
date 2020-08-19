@@ -2481,9 +2481,11 @@ create or replace function
   returns trigger
 as $$
 declare 
+  _key_id text;
   _max bigint; 
 begin
-  execute format('select max(version) + 1 from %I where %I = $1', tg_relid::regclass, tg_argv[0]) using new.root_key_id into _max;
+  execute format('SELECT $1.%I', tg_argv[0]) into _key_id using new;
+  execute format('select max(version) + 1 from %I where %I = $1', tg_relid::regclass, tg_argv[0]) using _key_id into _max;
   if _max is null then
   	_max = 1;
   end if;
