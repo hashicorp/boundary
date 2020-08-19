@@ -58,8 +58,8 @@ begin;
 
   create table auth_password_method (
     public_id wt_public_id primary key,
-    scope_id wt_scope_id not null,
-    password_conf_id wt_private_id not null, -- FK to auth_password_conf added below
+    scope_id wt_scope_id,
+    password_conf_id wt_private_id, -- FK to auth_password_conf added below
     name text,
     description text,
     create_time wt_timestamp,
@@ -162,7 +162,7 @@ begin;
   create table auth_password_credential (
     private_id wt_private_id primary key,
     password_account_id wt_public_id not null unique,
-    password_conf_id wt_private_id not null,
+    password_conf_id wt_private_id,
     password_method_id wt_public_id not null,
     foreign key (password_method_id, password_conf_id)
       references auth_password_conf (password_method_id, private_id)

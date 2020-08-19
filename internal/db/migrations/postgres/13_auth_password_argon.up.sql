@@ -56,7 +56,7 @@ begin;
       on delete cascade
       on update cascade,
     password_account_id wt_public_id not null,
-    password_conf_id wt_private_id not null,
+    password_conf_id wt_private_id,
     -- NOTE(mgaffney): The password_method_id type is not wt_public_id because
     -- the domain check is executed before the insert trigger which retrieves
     -- the password_method_id causing an insert to fail.

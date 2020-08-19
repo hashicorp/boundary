@@ -62,7 +62,7 @@ create table iam_scope_org (
     references iam_scope(public_id)
     on delete cascade
     on update cascade,
-  parent_id wt_scope_id not null
+  parent_id wt_scope_id
     references iam_scope_global(scope_id)
     on delete cascade
     on update cascade,
@@ -71,7 +71,7 @@ create table iam_scope_org (
 );
 
 create table iam_scope_project (
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id references iam_scope(public_id) on delete cascade on update cascade,
     parent_id wt_public_id not null references iam_scope_org(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
@@ -219,7 +219,7 @@ create table iam_user (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     version wt_version,
 
@@ -347,8 +347,8 @@ create table iam_role (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
-    grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id references iam_scope(public_id) on delete cascade on update cascade,
+    grant_scope_id wt_scope_id references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     version wt_version,
 
@@ -431,7 +431,7 @@ create table iam_group (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     -- version allows optimistic locking of the group when modifying the group
     -- itself and when modifying dependent items like group members. 
