@@ -285,6 +285,65 @@ returning public_id;
 	assert.Equal(3, v)
 }
 
+func TestDomain_wt_version_with_private_id(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table_wt_version(
+	private_id bigint generated always as identity primary key,
+	name text,
+	version wt_version
+);
+`
+		addTrigger = `
+create trigger 
+  update_version_column
+after update on test_table_wt_version
+  for each row execute procedure update_version_column('private_id');
+`
+		insert = `
+insert into test_table_wt_version (name)
+values ($1)
+returning private_id;
+`
+		update = `update test_table_wt_version set name = $1 where private_id = $2;`
+
+		updateVersion = `update test_table_wt_version set version = $1 where private_id = $2;`
+
+		search = `select version from test_table_wt_version where private_id = $1`
+	)
+	conn, _ := TestSetup(t, "postgres")
+	assert, require := assert.New(t), require.New(t)
+
+	db := conn.DB()
+	_, err := db.Exec(createTable)
+	require.NoError(err)
+
+	_, err = db.Exec(addTrigger)
+	require.NoError(err)
+
+	var id int
+	err = db.QueryRow(insert, "alice").Scan(&id)
+	require.NoError(err)
+	require.NotEmpty(id)
+
+	var v int
+	err = db.QueryRow(search, id).Scan(&v)
+	require.NoError(err)
+	assert.Equal(1, v)
+
+	_, err = db.Exec(update, "bob", id)
+	require.NoError(err)
+	err = db.QueryRow(search, id).Scan(&v)
+	require.NoError(err)
+	assert.Equal(2, v)
+
+	_, err = db.Exec(updateVersion, 22, id)
+	require.NoError(err)
+	err = db.QueryRow(search, id).Scan(&v)
+	require.NoError(err)
+	assert.Equal(3, v)
+}
+
 func TestDomain_DefaultUsersExist(t *testing.T) {
 	conn, _ := TestSetup(t, "postgres")
 	db := conn.DB()

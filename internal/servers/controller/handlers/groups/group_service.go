@@ -108,7 +108,7 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 	if err := validateAddGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	g, err := s.addMembersInRepo(ctx, req.GetId(), req.GetItem().GetMemberIds(), req.GetVersion())
+	g, err := s.addMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 	if err := validateSetGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	g, err := s.setMembersInRepo(ctx, req.GetId(), req.GetItem().GetMemberIds(), req.GetVersion())
+	g, err := s.setMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMem
 	if err := validateRemoveGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	g, err := s.removeMembersInRepo(ctx, req.GetId(), req.GetItem().GetMemberIds(), req.GetVersion())
+	g, err := s.removeMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +224,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Grou
 	return toProto(out, nil), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version uint32, mask []string, item *pb.Group) (*pb.Group, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Group) (*pb.Group, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -232,6 +232,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version u
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
+	version := item.GetVersion()
 	g, err := iam.NewGroup(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build group for update: %v.", err)
@@ -394,6 +395,9 @@ func validateCreateRequest(req *pbs.CreateGroupRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field."
 	}
+	if item.GetVersion() != 0 {
+		badFields["version"] = "Cannot specify this field in a create request."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
 	}
@@ -408,15 +412,15 @@ func validateUpdateRequest(req *pbs.UpdateGroupRequest) error {
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update a group."
 	}
-	if req.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
 
 	item := req.GetItem()
 	if item == nil {
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
 		return nil
+	}
+	if item.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field and cannot be specified in an update request."
@@ -461,7 +465,7 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetItem().GetMemberIds()) == 0 {
+	if len(req.GetMemberIds()) == 0 {
 		badFields["member_ids"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
@@ -492,7 +496,7 @@ func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetItem().GetMemberIds()) == 0 {
+	if len(req.GetMemberIds()) == 0 {
 		badFields["member_ids"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {

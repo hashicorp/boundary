@@ -20,7 +20,9 @@ import (
 func TestNewGroup(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
 	id := testId(t)
 
 	type args struct {
@@ -96,7 +98,9 @@ func TestNewGroup(t *testing.T) {
 func Test_GroupCreate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
 	type args struct {
 		group *Group
 	}
@@ -205,8 +209,10 @@ func Test_GroupCreate(t *testing.T) {
 func Test_GroupUpdate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	id := testId(t)
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	rw := db.New(conn)
 	type args struct {
 		name           string
@@ -375,9 +381,11 @@ func Test_GroupUpdate(t *testing.T) {
 func Test_GroupDelete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	rw := db.New(conn)
 	id := testId(t)
-	org, _ := TestScopes(t, conn)
+	org, _ := TestScopes(t, repo)
 
 	tests := []struct {
 		name            string
@@ -444,7 +452,9 @@ func TestGroup_ResourceType(t *testing.T) {
 func TestGroup_GetScope(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, proj := TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
 
 	t.Run("valid-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -467,7 +477,9 @@ func TestGroup_GetScope(t *testing.T) {
 func TestGroup_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	org, _ := TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, _ := TestScopes(t, repo)
 
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)

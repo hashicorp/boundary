@@ -16,6 +16,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -32,12 +33,14 @@ func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Sc
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	_, pRes := iam.TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	wrap := db.TestWrapper(t)
+	_, pRes := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, wrap)
+		return static.NewRepository(rw, rw, kms)
 	}
 
 	hc, err := static.NewHostCatalog(pRes.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
@@ -64,7 +67,7 @@ func TestGet(t *testing.T) {
 		Description: &wrappers.StringValue{Value: hc.GetDescription()},
 		CreatedTime: hc.CreateTime.GetTimestamp(),
 		UpdatedTime: hc.UpdateTime.GetTimestamp(),
-		Type:        &wrappers.StringValue{Value: "Static"},
+		Type:        "static",
 	}
 
 	cases := []struct {
@@ -236,7 +239,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				Name:        &wrappers.StringValue{Value: "name"},
 				Description: &wrappers.StringValue{Value: "desc"},
-				Type:        &wrappers.StringValue{Value: "Static"},
+				Type:        "static",
 			}},
 			res: &pbs.CreateHostCatalogResponse{
 				Uri: fmt.Sprintf("scopes/%s/host-catalogs/%s_", proj.GetPublicId(), static.HostCatalogPrefix),
@@ -244,7 +247,7 @@ func TestCreate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "name"},
 					Description: &wrappers.StringValue{Value: "desc"},
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -254,7 +257,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				Name:        &wrappers.StringValue{Value: "name"},
 				Description: &wrappers.StringValue{Value: "desc"},
-				Type:        &wrappers.StringValue{Value: "ThisIsMadeUp"},
+				Type:        "thisismadeup",
 			}},
 			errCode: codes.InvalidArgument,
 		},
@@ -374,7 +377,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -397,7 +400,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -450,7 +453,7 @@ func TestUpdate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -471,7 +474,7 @@ func TestUpdate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -494,7 +497,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "updated"},
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -517,7 +520,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "default"},
 					Description: &wrappers.StringValue{Value: "notignored"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -588,7 +591,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name"},
 				},
 				Item: &pb.HostCatalog{
-					Type: &wrappers.StringValue{Value: "Unknown"},
+					Type: "unknown",
 				},
 			},
 			res:     nil,
@@ -597,19 +600,19 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.req.Version = version
+			tc.req.Item.Version = version
 
 			req := proto.Clone(toMerge).(*pbs.UpdateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
 			// Test some bad versions
-			req.Version = version + 2
+			req.Item.Version = version + 2
 			_, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			require.Error(gErr)
-			req.Version = version - 1
+			req.Item.Version = version - 1
 			_, gErr = tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			require.Error(gErr)
-			req.Version = version
+			req.Item.Version = version
 
 			got, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)

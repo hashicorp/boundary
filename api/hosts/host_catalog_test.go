@@ -25,7 +25,7 @@ func TestCatalogs_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.DbConn())
+	org, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
 	projClient.SetScopeId(proj.GetPublicId())
@@ -46,7 +46,7 @@ func TestCatalogs_Crud(t *testing.T) {
 
 	hcClient := hosts.NewHostCatalogsClient(projClient)
 
-	hc, apiErr, err := hcClient.Create(tc.Context(), hosts.WithName("foo"), hosts.WithType("static"))
+	hc, apiErr, err := hcClient.Create(tc.Context(), "static", hosts.WithName("foo"))
 	checkCatalog("create", hc, apiErr, err, "foo", 1)
 
 	hc, apiErr, err = hcClient.Read(tc.Context(), hc.Id)
@@ -80,16 +80,16 @@ func TestCatalogs_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	_, proj := iam.TestScopes(t, tc.DbConn())
+	_, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(proj.GetPublicId())
 	pc := hosts.NewHostCatalogsClient(client)
 
-	hc, apiErr, err := pc.Create(tc.Context(), hosts.WithType("static"))
+	hc, apiErr, err := pc.Create(tc.Context(), "static", hosts.WithName("foo"))
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.NotNil(hc)
 
-	_, apiErr, err = pc.Create(tc.Context())
+	_, apiErr, err = pc.Create(tc.Context(), "static", hosts.WithName("foo"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 
@@ -103,9 +103,4 @@ func TestCatalogs_Errors(t *testing.T) {
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusForbidden, apiErr.Status)
-
-	_, apiErr, err = pc.Update(tc.Context(), hc.Id, hc.Version, hosts.WithType("Cant Update"))
-	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 }

@@ -15,6 +15,7 @@ import (
 	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -23,7 +24,6 @@ import (
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -33,14 +33,15 @@ func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
 
 	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
-	org, _ := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	aa := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
@@ -100,11 +101,12 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	ams := password.TestAuthMethods(t, conn, o.GetPublicId(), 3)
 	amNoAccounts, amSomeAccounts, amOtherAccounts := ams[0], ams[1], ams[2]
 
@@ -184,11 +186,12 @@ func TestDelete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	ams := password.TestAuthMethods(t, conn, o.GetPublicId(), 2)
 	am1, wrongAm := ams[0], ams[1]
 
@@ -263,13 +266,14 @@ func TestDelete(t *testing.T) {
 func TestDelete_twice(t *testing.T) {
 	assert := assert.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	rw := db.New(conn)
+	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	ac := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
@@ -291,23 +295,29 @@ func TestCreate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
 
 	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new account service.")
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	defaultAccount := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 	defaultCreated, err := ptypes.Timestamp(defaultAccount.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Error converting proto to timestamp.")
 
-	structNoPw, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: "thetestloginname"})
-	require.NoError(t, err, "Error converting proto to struct.")
-	structWithPw, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: "adifferentusername", Password: wrapperspb.String("somerandompassword")})
-	require.NoError(t, err, "Error converting proto to struct.")
+	createAttr := func(un, pw string) *structpb.Struct {
+		attr := &pb.PasswordAccountAttributes{LoginName: un}
+		if pw != "" {
+			attr.Password = wrapperspb.String(pw)
+		}
+		ret, err := handlers.ProtoToStruct(attr)
+		require.NoError(t, err, "Error converting proto to struct.")
+		return ret
+	}
 
 	cases := []struct {
 		name    string
@@ -323,7 +333,7 @@ func TestCreate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Type:        "password",
-					Attributes:  structNoPw,
+					Attributes:  createAttr("validaccount", ""),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -335,7 +345,27 @@ func TestCreate(t *testing.T) {
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
 					Version:      1,
 					Type:         "password",
-					Attributes:   structNoPw,
+					Attributes:   createAttr("validaccount", ""),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Create a valid Account without type defined",
+			req: &pbs.CreateAccountRequest{
+				AuthMethodId: defaultAccount.GetAuthMethodId(),
+				Item: &pb.Account{
+					Attributes: createAttr("notypedefined", ""),
+				},
+			},
+			res: &pbs.CreateAccountResponse{
+				Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s_", o.GetPublicId(), defaultAccount.GetAuthMethodId(), password.AccountPrefix),
+				Item: &pb.Account{
+					AuthMethodId: defaultAccount.GetAuthMethodId(),
+					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+					Version:      1,
+					Type:         "password",
+					Attributes:   createAttr("notypedefined", ""),
 				},
 			},
 			errCode: codes.OK,
@@ -347,8 +377,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "name_with_password"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        "password",
-					Attributes:  structWithPw,
+					Attributes:  createAttr("haspassword", "somepassword"),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -360,14 +389,22 @@ func TestCreate(t *testing.T) {
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
 					Version:      1,
 					Type:         "password",
-					Attributes: func() *structpb.Struct {
-						newSt := proto.Clone(structWithPw).(*structpb.Struct)
-						delete(newSt.Fields, "password")
-						return newSt
-					}(),
+					Attributes:   createAttr("haspassword", ""),
 				},
 			},
 			errCode: codes.OK,
+		},
+		{
+			name: "Cant specify mismatching type",
+			req: &pbs.CreateAccountRequest{
+				AuthMethodId: defaultAccount.GetAuthMethodId(),
+				Item: &pb.Account{
+					Type:       "wrong",
+					Attributes: createAttr("nopwprovided", ""),
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Can't specify Id",
@@ -376,7 +413,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Account{
 					Id:         password.AccountPrefix + "_notallowed",
 					Type:       "password",
-					Attributes: structNoPw,
+					Attributes: createAttr("cantprovideid", ""),
 				},
 			},
 			res:     nil,
@@ -389,7 +426,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Type:         "password",
-					Attributes:   structNoPw,
+					Attributes:   createAttr("noauthmethod", ""),
 				},
 			},
 			res:     nil,
@@ -402,7 +439,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Account{
 					CreatedTime: ptypes.TimestampNow(),
 					Type:        "password",
-					Attributes:  structNoPw,
+					Attributes:  createAttr("nocreatedtime", ""),
 				},
 			},
 			res:     nil,
@@ -415,18 +452,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Account{
 					UpdatedTime: ptypes.TimestampNow(),
 					Type:        "password",
-					Attributes:  structNoPw,
-				},
-			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Must specify type",
-			req: &pbs.CreateAccountRequest{
-				AuthMethodId: defaultAccount.GetAuthMethodId(),
-				Item: &pb.Account{
-					Attributes: structNoPw,
+					Attributes:  createAttr("noupdatetime", ""),
 				},
 			},
 			res:     nil,
@@ -474,11 +500,12 @@ func TestUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	tested, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
@@ -785,7 +812,7 @@ func TestUpdate(t *testing.T) {
 			acc, cleanup := freshAccount(t)
 			defer cleanup()
 
-			tc.req.Version = 1
+			tc.req.Item.Version = 1
 
 			if tc.req.GetId() == "" {
 				tc.req.Id = acc.GetId()
@@ -829,11 +856,12 @@ func TestSetPassword(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	tested, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
@@ -953,11 +981,12 @@ func TestChangePassword(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	tested, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 

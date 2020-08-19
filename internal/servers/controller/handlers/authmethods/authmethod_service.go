@@ -108,7 +108,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +196,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	return toProto(out)
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version uint32, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
 	var opts []password.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, password.WithDescription(desc.GetValue()))
@@ -219,6 +219,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version u
 	if pwAttrs.GetMinPasswordLength() != 0 {
 		u.MinPasswordLength = pwAttrs.GetMinPasswordLength()
 	}
+	version := item.GetVersion()
 
 	u.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -239,12 +240,12 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version u
 	return toProto(out)
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
 	}
-	rows, err := repo.DeleteAuthMethod(ctx, id)
+	rows, err := repo.DeleteAuthMethod(ctx, scopeId, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
@@ -260,7 +261,7 @@ func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
-		Type:        "password",
+		Type:        auth.PasswordSubtype.String(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -315,14 +316,17 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field."
 	}
-	switch item.GetType() {
-	case "password":
+	if item.GetVersion() != 0 {
+		badFields["version"] = "Cannot specify this field in a create request."
+	}
+	switch auth.SubtypeFromType(item.GetType()) {
+	case auth.PasswordSubtype:
 		pwAttrs := &pb.PasswordAuthMethodAttributes{}
 		if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 			badFields["attributes"] = "Attribute fields do not match the expected format."
 		}
 	default:
-		badFields["type"] = "This is a required field and must be \"password\"."
+		badFields["type"] = fmt.Sprintf("This is a required field and must be %q.", auth.PasswordSubtype.String())
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
@@ -338,15 +342,15 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update this resource."
 	}
-	if req.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
 
 	item := req.GetItem()
 	if item == nil {
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
 		return nil
+	}
+	if item.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field and cannot be specified in an update request."

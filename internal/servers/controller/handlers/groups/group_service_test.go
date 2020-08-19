@@ -31,13 +31,13 @@ import (
 func createDefaultGroupsAndRepo(t *testing.T) (*iam.Group, *iam.Group, func() (*iam.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, iamRepo)
 	og := iam.TestGroup(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	pg := iam.TestGroup(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return og, pg, repoFn
@@ -69,14 +69,14 @@ func equalMembers(g *pb.Group, members []string) bool {
 
 func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 
-	o, p := iam.TestScopes(t, conn)
-	u := iam.TestUser(t, conn, o.GetPublicId())
+	o, p := iam.TestScopes(t, iamRepo)
+	u := iam.TestUser(t, iamRepo, o.GetPublicId())
 
 	og := iam.TestGroup(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	_ = iam.TestGroupMember(t, conn, og.GetPublicId(), u.GetPublicId())
@@ -201,13 +201,13 @@ func TestGet(t *testing.T) {
 
 func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
-	oNoGroups, pWithGroups := iam.TestScopes(t, conn)
-	oWithGroups, pNoGroups := iam.TestScopes(t, conn)
+	oNoGroups, pWithGroups := iam.TestScopes(t, iamRepo)
+	oWithGroups, pNoGroups := iam.TestScopes(t, iamRepo)
 	var wantOrgGroups []*pb.Group
 	var wantProjGroups []*pb.Group
 	for i := 0; i < 10; i++ {
@@ -517,14 +517,14 @@ func TestCreate(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 
-	o, p := iam.TestScopes(t, conn)
-	u := iam.TestUser(t, conn, o.GetPublicId())
+	o, p := iam.TestScopes(t, iamRepo)
+	u := iam.TestUser(t, iamRepo, o.GetPublicId())
 
 	og := iam.TestGroup(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	_ = iam.TestGroupMember(t, conn, og.GetPublicId(), u.GetPublicId())
@@ -873,20 +873,20 @@ func TestUpdate(t *testing.T) {
 			if tc.req.Id == pg.PublicId {
 				ver = pgVersion
 			}
-			tc.req.Version = ver
+			tc.req.Item.Version = ver
 
 			assert := assert.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateGroupRequest)
 			proto.Merge(req, tc.req)
 
 			// Test with bad version (too high, too low)
-			req.Version = ver + 2
+			req.Item.Version = ver + 2
 			_, gErr := tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			require.Error(gErr)
-			req.Version = ver - 1
+			req.Item.Version = ver - 1
 			_, gErr = tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			require.Error(gErr)
-			req.Version = ver
+			req.Item.Version = ver
 
 			got, gErr := tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -915,19 +915,19 @@ func TestUpdate(t *testing.T) {
 
 func TestAddMember(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new group service.")
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, iamRepo)
 	users := []*iam.User{
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
 	}
 
 	addCases := []struct {
@@ -969,11 +969,9 @@ func TestAddMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.AddGroupMembersRequest{
-					Id:      grp.GetPublicId(),
-					Version: grp.GetVersion(),
-					Item: &pbs.GroupMemberIdsMessage{
-						MemberIds: tc.addUsers,
-					},
+					Id:        grp.GetPublicId(),
+					Version:   grp.GetVersion(),
+					MemberIds: tc.addUsers,
 				}
 
 				got, err := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
@@ -1017,19 +1015,19 @@ func TestAddMember(t *testing.T) {
 
 func TestSetMember(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new group service.")
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, iamRepo)
 	users := []*iam.User{
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
 	}
 
 	setCases := []struct {
@@ -1072,11 +1070,9 @@ func TestSetMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.SetGroupMembersRequest{
-					Id:      grp.GetPublicId(),
-					Version: grp.GetVersion(),
-					Item: &pbs.GroupMemberIdsMessage{
-						MemberIds: tc.setUsers,
-					},
+					Id:        grp.GetPublicId(),
+					Version:   grp.GetVersion(),
+					MemberIds: tc.setUsers,
 				}
 
 				got, err := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
@@ -1120,19 +1116,19 @@ func TestSetMember(t *testing.T) {
 
 func TestRemoveMember(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new grp service.")
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, iamRepo)
 	users := []*iam.User{
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
 	}
 
 	addCases := []struct {
@@ -1183,11 +1179,9 @@ func TestRemoveMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.RemoveGroupMembersRequest{
-					Id:      grp.GetPublicId(),
-					Version: grp.GetVersion(),
-					Item: &pbs.GroupMemberIdsMessage{
-						MemberIds: tc.removeUsers,
-					},
+					Id:        grp.GetPublicId(),
+					Version:   grp.GetVersion(),
+					MemberIds: tc.removeUsers,
 				}
 
 				got, err := s.RemoveGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)

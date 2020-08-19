@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
@@ -66,16 +67,21 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	}
 	m.PasswordConfId, c.PasswordMethodId = c.PrivateId, m.PublicId
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, m.GetScopeId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, fmt.Errorf("create: password auth method: unable to get oplog wrapper: %w", err)
+	}
+
 	var newAuthMethod *AuthMethod
 	var newArgon2Conf *Argon2Configuration
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			newArgon2Conf = c.clone()
-			if err := w.Create(ctx, newArgon2Conf, db.WithOplog(r.wrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+			if err := w.Create(ctx, newArgon2Conf, db.WithOplog(oplogWrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
 				return err
 			}
 			newAuthMethod = m.clone()
-			return w.Create(ctx, newAuthMethod, db.WithOplog(r.wrapper, m.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			return w.Create(ctx, newAuthMethod, db.WithOplog(oplogWrapper, m.oplog(oplog.OpType_OP_TYPE_CREATE)))
 		},
 	)
 
@@ -127,22 +133,27 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeId string, opt ..
 
 // DeleteAuthMethod deletes the auth method for the provided id from the repository returning a count of the
 // number of records deleted.  All options are ignored.
-func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, opt ...Option) (int, error) {
+func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId string, opt ...Option) (int, error) {
 	if publicId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete: password auth method: missing public id: %w", db.ErrInvalidParameter)
 	}
 	am := allocAuthMethod()
 	am.PublicId = publicId
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: password auth method: unable to get oplog wrapper: %w", err)
+	}
+
 	var rowsDeleted int
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
 			metadata := am.oplog(oplog.OpType_OP_TYPE_DELETE)
 			dAc := am.clone()
-			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(r.wrapper, metadata))
+			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
 			}
@@ -176,6 +187,9 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 	if authMethod.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod public id: %w", db.ErrInvalidParameter)
 	}
+	if authMethod.ScopeId == "" {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: scope id empty: %w", db.ErrNilParameter)
+	}
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
@@ -200,15 +214,20 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w", db.ErrEmptyFieldMask)
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, authMethod.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: unable to get oplog wrapper: %w", err)
+	}
+
 	upAuthMethod := authMethod.clone()
 	var rowsUpdated int
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			dbOpts := []db.Option{
-				db.WithOplog(r.wrapper, upAuthMethod.oplog(oplog.OpType_OP_TYPE_UPDATE)),
+				db.WithOplog(oplogWrapper, upAuthMethod.oplog(oplog.OpType_OP_TYPE_UPDATE)),
 				db.WithVersion(&version),
 			}
 			var err error

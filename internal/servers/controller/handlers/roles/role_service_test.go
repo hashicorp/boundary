@@ -31,13 +31,13 @@ import (
 func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, iamRepo)
 	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
 	pr := iam.TestRole(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return or, pr, repoFn
@@ -176,13 +176,13 @@ func TestGet(t *testing.T) {
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
-	oNoRoles, pWithRoles := iam.TestScopes(t, conn)
-	oWithRoles, pNoRoles := iam.TestScopes(t, conn)
+	oNoRoles, pWithRoles := iam.TestScopes(t, iamRepo)
+	oWithRoles, pNoRoles := iam.TestScopes(t, iamRepo)
 	var wantOrgRoles []*pb.Role
 	var wantProjRoles []*pb.Role
 	for i := 0; i < 10; i++ {
@@ -507,14 +507,14 @@ func TestUpdate(t *testing.T) {
 		},
 	}
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 
-	o, p := iam.TestScopes(t, conn)
-	u := iam.TestUser(t, conn, o.GetPublicId())
+	o, p := iam.TestScopes(t, iamRepo)
+	u := iam.TestUser(t, iamRepo, o.GetPublicId())
 
 	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
 	_ = iam.TestRoleGrant(t, conn, or.GetPublicId(), grantString)
@@ -885,20 +885,20 @@ func TestUpdate(t *testing.T) {
 			if tc.req.Id == pr.PublicId {
 				ver = prVersion
 			}
-			tc.req.Version = ver
+			tc.req.Item.Version = ver
 
 			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateRoleRequest)
 			proto.Merge(req, tc.req)
 
 			// Test with bad version (too high, too low)
-			req.Version = ver + 2
+			req.Item.Version = ver + 2
 			_, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			require.Error(gErr)
-			req.Version = ver - 1
+			req.Item.Version = ver - 1
 			_, gErr = tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			require.Error(gErr)
-			req.Version = ver
+			req.Item.Version = ver
 
 			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -927,19 +927,19 @@ func TestUpdate(t *testing.T) {
 
 func TestAddPrincipal(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, iamRepo)
 	users := []*iam.User{
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
 	}
 	groups := []*iam.Group{
 		iam.TestGroup(t, conn, o.GetPublicId()),
@@ -1000,11 +1000,9 @@ func TestAddPrincipal(t *testing.T) {
 				role := iam.TestRole(t, conn, scope.GetPublicId())
 				tc.setup(role)
 				req := &pbs.AddRolePrincipalsRequest{
-					RoleId:  role.GetPublicId(),
-					Version: role.GetVersion(),
-					Item: &pbs.PrincipalIdsMessage{
-						PrincipalIds: append(tc.addUsers, tc.addGroups...),
-					},
+					RoleId:       role.GetPublicId(),
+					Version:      role.GetVersion(),
+					PrincipalIds: append(tc.addUsers, tc.addGroups...),
 				}
 
 				got, err := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
@@ -1048,19 +1046,19 @@ func TestAddPrincipal(t *testing.T) {
 
 func TestSetPrincipal(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, iamRepo)
 	users := []*iam.User{
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
 	}
 	groups := []*iam.Group{
 		iam.TestGroup(t, conn, o.GetPublicId()),
@@ -1122,11 +1120,9 @@ func TestSetPrincipal(t *testing.T) {
 				role := iam.TestRole(t, conn, scope.GetPublicId())
 				tc.setup(role)
 				req := &pbs.SetRolePrincipalsRequest{
-					RoleId:  role.GetPublicId(),
-					Version: role.GetVersion(),
-					Item: &pbs.PrincipalIdsMessage{
-						PrincipalIds: append(tc.setUsers, tc.setGroups...),
-					},
+					RoleId:       role.GetPublicId(),
+					Version:      role.GetVersion(),
+					PrincipalIds: append(tc.setUsers, tc.setGroups...),
 				}
 
 				got, err := s.SetRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
@@ -1170,19 +1166,19 @@ func TestSetPrincipal(t *testing.T) {
 
 func TestRemovePrincipal(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	o, p := iam.TestScopes(t, conn)
+	o, p := iam.TestScopes(t, iamRepo)
 	users := []*iam.User{
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
 	}
 	groups := []*iam.Group{
 		iam.TestGroup(t, conn, o.GetPublicId()),
@@ -1262,11 +1258,9 @@ func TestRemovePrincipal(t *testing.T) {
 				role := iam.TestRole(t, conn, scope.GetPublicId())
 				tc.setup(role)
 				req := &pbs.RemoveRolePrincipalsRequest{
-					RoleId:  role.GetPublicId(),
-					Version: role.GetVersion(),
-					Item: &pbs.PrincipalIdsMessage{
-						PrincipalIds: append(tc.removeUsers, tc.removeGroups...),
-					},
+					RoleId:       role.GetPublicId(),
+					Version:      role.GetVersion(),
+					PrincipalIds: append(tc.removeUsers, tc.removeGroups...),
 				}
 
 				got, err := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
@@ -1329,10 +1323,10 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 
 func TestAddGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
@@ -1364,7 +1358,7 @@ func TestAddGrants(t *testing.T) {
 	}
 
 	for _, tc := range addCases {
-		o, p := iam.TestScopes(t, conn)
+		o, p := iam.TestScopes(t, iamRepo)
 		for _, scope := range []*iam.Scope{o, p} {
 			t.Run(tc.name+"_"+scope.Type, func(t *testing.T) {
 				assert := assert.New(t)
@@ -1380,9 +1374,7 @@ func TestAddGrants(t *testing.T) {
 				if o != scope {
 					scopeId = p.GetPublicId()
 				}
-				req.Item = &pbs.GrantStringsMessage{
-					GrantStrings: tc.add,
-				}
+				req.GrantStrings = tc.add
 				got, err := s.AddRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(scopeId)), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1394,7 +1386,7 @@ func TestAddGrants(t *testing.T) {
 		}
 	}
 
-	_, p := iam.TestScopes(t, conn)
+	_, p := iam.TestScopes(t, iamRepo)
 	role := iam.TestRole(t, conn, p.GetPublicId())
 	failCases := []struct {
 		name    string
@@ -1404,11 +1396,9 @@ func TestAddGrants(t *testing.T) {
 		{
 			name: "Bad Role Id",
 			req: &pbs.AddRoleGrantsRequest{
-				RoleId: "bad id",
-				Item: &pbs.GrantStringsMessage{
-					GrantStrings: []string{"id=*;actions=create"},
-				},
-				Version: role.GetVersion(),
+				RoleId:       "bad id",
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1424,10 +1414,10 @@ func TestAddGrants(t *testing.T) {
 
 func TestSetGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 
 	s, err := roles.NewService(repoFn)
@@ -1466,7 +1456,7 @@ func TestSetGrants(t *testing.T) {
 	}
 
 	for _, tc := range setCases {
-		o, p := iam.TestScopes(t, conn)
+		o, p := iam.TestScopes(t, iamRepo)
 		for _, scope := range []*iam.Scope{o, p} {
 			t.Run(tc.name+"_"+scope.Type, func(t *testing.T) {
 				assert := assert.New(t)
@@ -1482,9 +1472,7 @@ func TestSetGrants(t *testing.T) {
 				if o != scope {
 					scopeId = p.GetPublicId()
 				}
-				req.Item = &pbs.GrantStringsMessage{
-					GrantStrings: tc.set,
-				}
+				req.GrantStrings = tc.set
 				got, err := s.SetRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(scopeId)), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1497,7 +1485,7 @@ func TestSetGrants(t *testing.T) {
 		}
 	}
 
-	_, p := iam.TestScopes(t, conn)
+	_, p := iam.TestScopes(t, iamRepo)
 	role := iam.TestRole(t, conn, p.GetPublicId())
 
 	failCases := []struct {
@@ -1508,11 +1496,9 @@ func TestSetGrants(t *testing.T) {
 		{
 			name: "Bad Role Id",
 			req: &pbs.SetRoleGrantsRequest{
-				RoleId: "bad id",
-				Item: &pbs.GrantStringsMessage{
-					GrantStrings: []string{"id=*;actions=create"},
-				},
-				Version: role.GetVersion(),
+				RoleId:       "bad id",
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1528,10 +1514,10 @@ func TestSetGrants(t *testing.T) {
 
 func TestRemoveGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iamRepo, nil
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
@@ -1569,7 +1555,7 @@ func TestRemoveGrants(t *testing.T) {
 	}
 
 	for _, tc := range removeCases {
-		o, p := iam.TestScopes(t, conn)
+		o, p := iam.TestScopes(t, iamRepo)
 		for _, scope := range []*iam.Scope{o, p} {
 			t.Run(tc.name+"_"+scope.Type, func(t *testing.T) {
 				assert := assert.New(t)
@@ -1585,9 +1571,7 @@ func TestRemoveGrants(t *testing.T) {
 				if o != scope {
 					scopeId = p.GetPublicId()
 				}
-				req.Item = &pbs.GrantStringsMessage{
-					GrantStrings: tc.remove,
-				}
+				req.GrantStrings = tc.remove
 				got, err := s.RemoveRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(scopeId)), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1601,7 +1585,7 @@ func TestRemoveGrants(t *testing.T) {
 		}
 	}
 
-	_, p := iam.TestScopes(t, conn)
+	_, p := iam.TestScopes(t, iamRepo)
 	role := iam.TestRole(t, conn, p.GetPublicId())
 	failCases := []struct {
 		name string
@@ -1612,11 +1596,9 @@ func TestRemoveGrants(t *testing.T) {
 		{
 			name: "Bad Role Id",
 			req: &pbs.RemoveRoleGrantsRequest{
-				RoleId: "bad id",
-				Item: &pbs.GrantStringsMessage{
-					GrantStrings: []string{"id=*;actions=create"},
-				},
-				Version: role.GetVersion(),
+				RoleId:       "bad id",
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},

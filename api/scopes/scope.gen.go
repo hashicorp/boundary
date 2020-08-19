@@ -35,12 +35,10 @@ func (c *ScopesClient) Create(ctx context.Context, scopeId string, opt ...Option
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
-
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "POST", "scopes", opts.valueMap, apiOpts...)
 	if err != nil {
@@ -122,14 +120,12 @@ func (c *ScopesClient) Update(ctx context.Context, scopeId string, version uint3
 		version = existingTarget.Version
 	}
 
+	opts.valueMap["version"] = version
+
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("scopes/%s", scopeId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
-
-	q := url.Values{}
-	q.Add("version", fmt.Sprintf("%d", version))
-	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {

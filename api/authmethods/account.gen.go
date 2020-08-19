@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -39,12 +38,10 @@ func (c *AccountsClient) Create(ctx context.Context, authMethodId string, opt ..
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Create request")
 	}
-
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s/accounts", authMethodId), opts.valueMap, apiOpts...)
 	if err != nil {
@@ -129,14 +126,12 @@ func (c *AccountsClient) Update(ctx context.Context, authMethodId string, accoun
 		version = existingTarget.Version
 	}
 
+	opts.valueMap["version"] = version
+
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("auth-methods/%s/accounts/%s", authMethodId, accountId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
-
-	q := url.Values{}
-	q.Add("version", fmt.Sprintf("%d", version))
-	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {

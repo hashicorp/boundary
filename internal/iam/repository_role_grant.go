@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
 )
@@ -34,7 +35,16 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 		newRoleGrants = append(newRoleGrants, roleGrant)
 	}
 
-	_, err := r.writer.DoTx(
+	scope, err := role.GetScope(ctx, r.reader)
+	if err != nil {
+		return nil, fmt.Errorf("add role grants: unable to get role %s scope: %w", roleId, err)
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, fmt.Errorf("add role grants: unable to get oplog wrapper: %w", err)
+	}
+
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
@@ -64,18 +74,13 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 			}
 			msgs = append(msgs, roleGrantOplogMsgs...)
 
-			s, err := role.GetScope(ctx, r.reader)
-			if err != nil {
-				return fmt.Errorf("add role grants: unable to get role %s scope: %w", roleId, err)
-			}
-
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{s.PublicId},
-				"scope-type":         []string{s.Type},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
 				"resource-public-id": []string{roleId},
 			}
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("unable to write oplog: %w", err)
 			}
 
@@ -109,8 +114,17 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 	role := allocRole()
 	role.PublicId = roleId
 
+	scope, err := role.GetScope(ctx, r.reader)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete role grants: unable to get role %s scope to create metadata: %w", roleId, err)
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete role grants: unable to get oplog wrapper: %w", err)
+	}
+
 	var totalRowsDeleted int
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
@@ -179,18 +193,13 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 			totalRowsDeleted = rowsDeleted
 			msgs = append(msgs, roleGrantOplogMsgs...)
 
-			s, err := role.GetScope(ctx, r.reader)
-			if err != nil {
-				return fmt.Errorf("delete role grants: unable to get role %s scope: %w", roleId, err)
-			}
-
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
-				"scope-id":           []string{s.PublicId},
-				"scope-type":         []string{s.Type},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
 				"resource-public-id": []string{roleId},
 			}
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("delete role grants: unable to write oplog: %w", err)
 			}
 
@@ -208,15 +217,15 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 // value for the WithVersion option and will return an error.
 func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, opt ...Option) ([]*RoleGrant, int, error) {
 	if roleId == "" {
-		return nil, 0, fmt.Errorf("set role grants: missing role id %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: missing role id %w", db.ErrInvalidParameter)
 	}
 	if roleVersion == 0 {
-		return nil, 0, fmt.Errorf("set role grants: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: version cannot be zero: %w", db.ErrInvalidParameter)
 	}
 
 	// Explicitly set to zero clears, but treat nil as a mistake
 	if grants == nil {
-		return nil, 0, fmt.Errorf("set role grants: nil grants: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: nil grants: %w", db.ErrNilParameter)
 	}
 
 	role := allocRole()
@@ -229,7 +238,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	// Find existing grants
 	roleGrants := []*RoleGrant{}
 	if err := r.reader.SearchWhere(ctx, &roleGrants, "role_id = ?", []interface{}{roleId}); err != nil {
-		return nil, 0, fmt.Errorf("set role grants: unable to search for grants: %w", err)
+		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: unable to search for grants: %w", err)
 	}
 	found := map[string]*RoleGrant{}
 	for _, rg := range roleGrants {
@@ -244,7 +253,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 		// Use a fake scope, just want to get out a canonical string
 		perm, err := perms.Parse("o_abcd1234", "", grant)
 		if err != nil {
-			return nil, 0, fmt.Errorf("set role grants: error parsing grant string: %w", err)
+			return nil, db.NoRowsAffected, fmt.Errorf("set role grants: error parsing grant string: %w", err)
 		}
 		canonicalString := perm.CanonicalString()
 
@@ -260,7 +269,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 		// Not found, so add
 		rg, err = NewRoleGrant(roleId, grant)
 		if err != nil {
-			return nil, 0, fmt.Errorf("set role grants: unable to create in memory role grant: %w", err)
+			return nil, db.NoRowsAffected, fmt.Errorf("set role grants: unable to create in memory role grant: %w", err)
 		}
 		addRoleGrants = append(addRoleGrants, rg)
 		currentRoleGrants = append(currentRoleGrants, rg)
@@ -273,11 +282,20 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	}
 
 	if len(addRoleGrants) == 0 && len(deleteRoleGrants) == 0 {
-		return currentRoleGrants, 0, nil
+		return currentRoleGrants, db.NoRowsAffected, nil
+	}
+
+	scope, err := role.GetScope(ctx, r.reader)
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: unable to get role %s scope: %w", roleId, err)
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: unable to get oplog wrapper: %w", err)
 	}
 
 	var totalRowsDeleted int
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
@@ -323,18 +341,13 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 				msgs = append(msgs, roleGrantOplogMsgs...)
 			}
 
-			s, err := role.GetScope(ctx, r.reader)
-			if err != nil {
-				return fmt.Errorf("set role grants: unable to get role %s scope: %w", roleId, err)
-			}
-
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String(), oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{s.PublicId},
-				"scope-type":         []string{s.Type},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
 				"resource-public-id": []string{roleId},
 			}
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("set role grants: unable to write oplog: %w", err)
 			}
 

@@ -39,7 +39,7 @@ func (c *Command) Help() string {
 	if c.Func == "" {
 		return helpMap["base"]()
 	}
-	return helpMap[c.Func]() + "\n\n" + c.Flags().Help()
+	return helpMap[c.Func]() + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -47,7 +47,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	if len(flagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.User, flagsMap[c.Func])
+		common.PopulateCommonFlags(c.Command, f, resource.User.String(), flagsMap[c.Func])
 	}
 
 	return set

@@ -100,15 +100,3 @@ func DefaultName() Option {
 		o.valueMap["name"] = nil
 	}
 }
-
-func WithType(inType string) Option {
-	return func(o *options) {
-		o.valueMap["type"] = inType
-	}
-}
-
-func DefaultType() Option {
-	return func(o *options) {
-		o.valueMap["type"] = nil
-	}
-}

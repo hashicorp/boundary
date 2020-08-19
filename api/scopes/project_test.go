@@ -25,7 +25,7 @@ func TestProjects_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.DbConn())
+	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
 	scps := scopes.NewScopesClient(client)
@@ -74,7 +74,7 @@ func TestProjects_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, _ := iam.TestScopes(t, tc.DbConn())
+	org, _ := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
 	scps := scopes.NewScopesClient(client)
@@ -127,7 +127,7 @@ func TestProject_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, _ := iam.TestScopes(t, tc.DbConn())
+	org, _ := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
 	scps := scopes.NewScopesClient(client)

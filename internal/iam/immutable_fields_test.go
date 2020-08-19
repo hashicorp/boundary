@@ -16,11 +16,13 @@ import (
 func TestScope_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	w := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	new, _ := TestScopes(t, conn)
+	new, _ := TestScopes(t, repo)
 	var tests = []struct {
 		name      string
 		update    *Scope
@@ -92,9 +94,11 @@ func TestConcreteScope_ImmutableFields(t *testing.T) {
 	)
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	db := conn.DB()
 
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 
 	var tests = []struct {
 		name      string
@@ -142,12 +146,14 @@ func TestConcreteScope_ImmutableFields(t *testing.T) {
 func TestUser_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	w := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	org, proj := TestScopes(t, conn)
-	new := TestUser(t, conn, org.PublicId)
+	org, proj := TestScopes(t, repo)
+	new := TestUser(t, repo, org.PublicId)
 
 	var tests = []struct {
 		name      string
@@ -207,11 +213,13 @@ func TestUser_ImmutableFields(t *testing.T) {
 func TestRole_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	w := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	new := TestRole(t, conn, org.PublicId)
 
 	var tests = []struct {
@@ -272,11 +280,13 @@ func TestRole_ImmutableFields(t *testing.T) {
 func TestGroup_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
 	w := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	org, proj := TestScopes(t, conn)
+	org, proj := TestScopes(t, repo)
 	new := TestGroup(t, conn, org.PublicId)
 
 	var tests = []struct {
