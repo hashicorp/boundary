@@ -867,7 +867,7 @@ func TestUpdate(t *testing.T) {
 			if tc.req.Id == proj.PublicId {
 				ver = projVersion
 			}
-			tc.req.Version = ver
+			tc.req.Item.Version = ver
 
 			assert := assert.New(t)
 			var req *pbs.UpdateScopeRequest
@@ -879,7 +879,7 @@ func TestUpdate(t *testing.T) {
 				}
 			default:
 				ver = projVersion
-				tc.req.Version = ver
+				tc.req.Item.Version = ver
 				req = proto.Clone(projToMerge).(*pbs.UpdateScopeRequest)
 				if tc.errCode == codes.OK {
 					defer resetProject()

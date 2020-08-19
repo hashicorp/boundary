@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -33,11 +32,10 @@ func NewUsersClient(c *api.Client) *UsersClient {
 }
 
 func (c *UsersClient) Create(ctx context.Context, opt ...Option) (*User, *api.Error, error) {
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "POST", "users", opts.valueMap, apiOpts...)
 	if err != nil {
@@ -115,14 +113,12 @@ func (c *UsersClient) Update(ctx context.Context, userId string, version uint32,
 		version = existingTarget.Version
 	}
 
+	opts.valueMap["version"] = version
+
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("users/%s", userId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
-
-	q := url.Values{}
-	q.Add("version", fmt.Sprintf("%d", version))
-	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {

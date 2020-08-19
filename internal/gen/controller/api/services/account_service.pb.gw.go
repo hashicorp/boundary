@@ -50,7 +50,6 @@ func request_AccountService_GetAccount_0(ctx context.Context, marshaler runtime.
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -61,7 +60,6 @@ func request_AccountService_GetAccount_0(ctx context.Context, marshaler runtime.
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -95,7 +93,6 @@ func local_request_AccountService_GetAccount_0(ctx context.Context, marshaler ru
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -106,7 +103,6 @@ func local_request_AccountService_GetAccount_0(ctx context.Context, marshaler ru
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -144,7 +140,6 @@ func request_AccountService_ListAccounts_0(ctx context.Context, marshaler runtim
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -178,7 +173,6 @@ func local_request_AccountService_ListAccounts_0(ctx context.Context, marshaler 
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -220,7 +214,6 @@ func request_AccountService_CreateAccount_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -255,7 +248,6 @@ func local_request_AccountService_CreateAccount_0(ctx context.Context, marshaler
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -301,7 +293,6 @@ func request_AccountService_UpdateAccount_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -312,7 +303,6 @@ func request_AccountService_UpdateAccount_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -361,7 +351,6 @@ func local_request_AccountService_UpdateAccount_0(ctx context.Context, marshaler
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -372,7 +361,6 @@ func local_request_AccountService_UpdateAccount_0(ctx context.Context, marshaler
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -406,7 +394,6 @@ func request_AccountService_DeleteAccount_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -417,7 +404,6 @@ func request_AccountService_DeleteAccount_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -444,7 +430,6 @@ func local_request_AccountService_DeleteAccount_0(ctx context.Context, marshaler
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -455,7 +440,6 @@ func local_request_AccountService_DeleteAccount_0(ctx context.Context, marshaler
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -490,7 +474,6 @@ func request_AccountService_SetPassword_0(ctx context.Context, marshaler runtime
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -501,7 +484,6 @@ func request_AccountService_SetPassword_0(ctx context.Context, marshaler runtime
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -536,7 +518,6 @@ func local_request_AccountService_SetPassword_0(ctx context.Context, marshaler r
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -547,7 +528,6 @@ func local_request_AccountService_SetPassword_0(ctx context.Context, marshaler r
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -582,7 +562,6 @@ func request_AccountService_ChangePassword_0(ctx context.Context, marshaler runt
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -593,7 +572,6 @@ func request_AccountService_ChangePassword_0(ctx context.Context, marshaler runt
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -628,7 +606,6 @@ func local_request_AccountService_ChangePassword_0(ctx context.Context, marshale
 	}
 
 	protoReq.AuthMethodId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
@@ -639,7 +616,6 @@ func local_request_AccountService_ChangePassword_0(ctx context.Context, marshale
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -652,6 +628,7 @@ func local_request_AccountService_ChangePassword_0(ctx context.Context, marshale
 // RegisterAccountServiceHandlerServer registers the http handlers for service AccountService to "mux".
 // UnaryRPC     :call AccountServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
+// Note that using this registration option will cause many gRPC library features (such as grpc.SendHeader, etc) to stop working. Consider using RegisterAccountServiceHandlerFromEndpoint instead.
 func RegisterAccountServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server AccountServiceServer) error {
 
 	mux.Handle("GET", pattern_AccountService_GetAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {

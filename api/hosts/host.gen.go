@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -38,12 +37,10 @@ func (c *HostsClient) Create(ctx context.Context, hostCatalogId string, opt ...O
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Create request")
 	}
-
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/hosts", hostCatalogId), opts.valueMap, apiOpts...)
 	if err != nil {
@@ -128,14 +125,12 @@ func (c *HostsClient) Update(ctx context.Context, hostCatalogId string, hostId s
 		version = existingTarget.Version
 	}
 
+	opts.valueMap["version"] = version
+
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s/hosts/%s", hostCatalogId, hostId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
-
-	q := url.Values{}
-	q.Add("version", fmt.Sprintf("%d", version))
-	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {

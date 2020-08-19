@@ -260,7 +260,6 @@ type Role struct {
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,60,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
 	// The version can be used in subsequent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
-	// Output only.
 	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty"`
 	// The scope the grants will apply to. If the role is at the global scope,
 	// this can be an org or project. If the role is at an org

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -34,12 +33,16 @@ func NewAuthMethodsClient(c *api.Client) *AuthMethodsClient {
 	return &AuthMethodsClient{client: c}
 }
 
-func (c *AuthMethodsClient) Create(ctx context.Context, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *AuthMethodsClient) Create(ctx context.Context, resourceType string, opt ...Option) (*AuthMethod, *api.Error, error) {
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
+	if resourceType == "" {
+		return nil, nil, fmt.Errorf("empty resourceType value passed into Create request")
+	} else {
+		opts.valueMap["type"] = resourceType
+	}
 
 	req, err := c.client.NewRequest(ctx, "POST", "auth-methods", opts.valueMap, apiOpts...)
 	if err != nil {
@@ -117,14 +120,12 @@ func (c *AuthMethodsClient) Update(ctx context.Context, authMethodId string, ver
 		version = existingTarget.Version
 	}
 
+	opts.valueMap["version"] = version
+
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("auth-methods/%s", authMethodId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
-
-	q := url.Values{}
-	q.Add("version", fmt.Sprintf("%d", version))
-	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {

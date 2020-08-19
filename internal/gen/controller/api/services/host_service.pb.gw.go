@@ -50,7 +50,6 @@ func request_HostService_GetHost_0(ctx context.Context, marshaler runtime.Marsha
 	}
 
 	protoReq.HostCatalogId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
 	}
@@ -61,7 +60,6 @@ func request_HostService_GetHost_0(ctx context.Context, marshaler runtime.Marsha
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -95,7 +93,6 @@ func local_request_HostService_GetHost_0(ctx context.Context, marshaler runtime.
 	}
 
 	protoReq.HostCatalogId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
 	}
@@ -106,7 +103,6 @@ func local_request_HostService_GetHost_0(ctx context.Context, marshaler runtime.
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -144,7 +140,6 @@ func request_HostService_ListHosts_0(ctx context.Context, marshaler runtime.Mars
 	}
 
 	protoReq.HostCatalogId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
 	}
@@ -178,7 +173,6 @@ func local_request_HostService_ListHosts_0(ctx context.Context, marshaler runtim
 	}
 
 	protoReq.HostCatalogId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
 	}
@@ -220,7 +214,6 @@ func request_HostService_CreateHost_0(ctx context.Context, marshaler runtime.Mar
 	}
 
 	protoReq.HostCatalogId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
 	}
@@ -255,7 +248,6 @@ func local_request_HostService_CreateHost_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.HostCatalogId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
 	}
@@ -301,7 +293,6 @@ func request_HostService_UpdateHost_0(ctx context.Context, marshaler runtime.Mar
 	}
 
 	protoReq.HostCatalogId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
 	}
@@ -312,7 +303,6 @@ func request_HostService_UpdateHost_0(ctx context.Context, marshaler runtime.Mar
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -361,7 +351,6 @@ func local_request_HostService_UpdateHost_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.HostCatalogId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
 	}
@@ -372,7 +361,6 @@ func local_request_HostService_UpdateHost_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -406,7 +394,6 @@ func request_HostService_DeleteHost_0(ctx context.Context, marshaler runtime.Mar
 	}
 
 	protoReq.HostCatalogId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
 	}
@@ -417,7 +404,6 @@ func request_HostService_DeleteHost_0(ctx context.Context, marshaler runtime.Mar
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -444,7 +430,6 @@ func local_request_HostService_DeleteHost_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.HostCatalogId, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
 	}
@@ -455,7 +440,6 @@ func local_request_HostService_DeleteHost_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -468,6 +452,7 @@ func local_request_HostService_DeleteHost_0(ctx context.Context, marshaler runti
 // RegisterHostServiceHandlerServer registers the http handlers for service HostService to "mux".
 // UnaryRPC     :call HostServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
+// Note that using this registration option will cause many gRPC library features (such as grpc.SendHeader, etc) to stop working. Consider using RegisterHostServiceHandlerFromEndpoint instead.
 func RegisterHostServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server HostServiceServer) error {
 
 	mux.Handle("GET", pattern_HostService_GetHost_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {

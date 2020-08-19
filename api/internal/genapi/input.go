@@ -62,6 +62,10 @@ type structInfo struct {
 	// operations all values are used for the function argument.
 	// For collection based operations the last value is ignored for generating function argument.
 	pathArgs []string
+
+	// typeOnCreate indicates that create will be creating a concrete
+	// implementation of an abstract type and thus a type field is necessary
+	typeOnCreate bool
 }
 
 var inputStructs = []*structInfo{
@@ -185,6 +189,7 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pathArgs:       []string{"auth-method"},
+		typeOnCreate:   true,
 		versionEnabled: true,
 	},
 	{
@@ -236,6 +241,7 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pathArgs:       []string{"host-catalog"},
+		typeOnCreate:   true,
 		versionEnabled: true,
 	},
 	{

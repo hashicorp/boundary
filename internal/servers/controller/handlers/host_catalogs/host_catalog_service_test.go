@@ -597,19 +597,19 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.req.Version = version
+			tc.req.Item.Version = version
 
 			req := proto.Clone(toMerge).(*pbs.UpdateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
 			// Test some bad versions
-			req.Version = version + 2
+			req.Item.Version = version + 2
 			_, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			require.Error(gErr)
-			req.Version = version - 1
+			req.Item.Version = version - 1
 			_, gErr = tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			require.Error(gErr)
-			req.Version = version
+			req.Item.Version = version
 
 			got, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)

@@ -1,10 +1,10 @@
-package users
+package authmethods
 
 import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/users"
+	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -24,22 +24,47 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return common.SynopsisFunc(c.Func, "user")
+	if c.Func == "password" {
+		return "Manage password auth-methods within Boundary"
+	}
+	return common.SynopsisFunc(c.Func, "auth-method")
 }
 
 var flagsMap = map[string][]string{
-	"create": {"name", "description"},
-	"update": {"id", "name", "description", "version"},
 	"read":   {"id"},
 	"delete": {"id"},
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("user")
-	if c.Func == "" {
-		return helpMap["base"]()
+	helpMap := common.HelpMap("auth-method")
+	switch c.Func {
+	case "":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary auth-methods [sub command] [options] [args]",
+			"",
+			"  This command allows operations on Boundary auth-method resources. Example:",
+			"",
+			"    Read an auth-method:",
+			"",
+			`      $ boundary auth-methods read -id paum_1234567890`,
+			"",
+			"  Please see the auth-methods subcommand help for detailed usage information.",
+		})
+	case "password":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary auth-methods password [sub command] [options] [args]",
+			"",
+			"  This command allows operations on Boundary password-type auth-method resources. Example:",
+			"",
+			"    Create a password-type auth-method:",
+			"",
+			`      $ boundary auth-methods pasword create -name prodops -description "For ProdOps usage"`,
+			"",
+			"  Please see the subcommand help for detailed usage information.",
+		})
+	default:
+		return helpMap[c.Func]() + c.Flags().Help()
 	}
-	return helpMap[c.Func]() + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -62,7 +87,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	if c.Func == "" {
+	if c.Func == "" || c.Func == "password" {
 		return cli.RunResultHelp
 	}
 
@@ -84,61 +109,43 @@ func (c *Command) Run(args []string) int {
 		return 2
 	}
 
-	var opts []users.Option
+	var opts []authmethods.Option
 
 	switch c.FlagName {
 	case "":
 	case "null":
-		opts = append(opts, users.DefaultName())
+		opts = append(opts, authmethods.DefaultName())
 	default:
-		opts = append(opts, users.WithName(c.FlagName))
+		opts = append(opts, authmethods.WithName(c.FlagName))
 	}
 
 	switch c.FlagDescription {
 	case "":
 	case "null":
-		opts = append(opts, users.DefaultDescription())
+		opts = append(opts, authmethods.DefaultDescription())
 	default:
-		opts = append(opts, users.WithDescription(c.FlagDescription))
+		opts = append(opts, authmethods.WithDescription(c.FlagDescription))
 	}
 
-	userClient := users.NewUsersClient(client)
-
-	// Perform check-and-set when needed
-	var version uint32
-	switch c.Func {
-	case "create", "read", "delete", "list":
-		// These don't udpate so don't need the existing version
-	default:
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, users.WithAutomaticVersioning())
-		default:
-			version = uint32(c.FlagVersion)
-		}
-	}
+	authmethodClient := authmethods.NewAuthMethodsClient(client)
 
 	var existed bool
-	var user *users.User
-	var listedUsers []*users.User
+	var method *authmethods.AuthMethod
+	var listedMethods []*authmethods.AuthMethod
 	var apiErr *api.Error
 
 	switch c.Func {
-	case "create":
-		user, apiErr, err = userClient.Create(c.Context, opts...)
-	case "update":
-		user, apiErr, err = userClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		user, apiErr, err = userClient.Read(c.Context, c.FlagId, opts...)
+		method, apiErr, err = authmethodClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = userClient.Delete(c.Context, c.FlagId, opts...)
+		existed, apiErr, err = authmethodClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedUsers, apiErr, err = userClient.List(c.Context, opts...)
+		listedMethods, apiErr, err = authmethodClient.List(c.Context, opts...)
 	}
 
-	plural := "user"
+	plural := "auth method"
 	if c.Func == "list" {
-		plural = "users"
+		plural = "auth methods"
 	}
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
@@ -169,11 +176,11 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
-			if len(listedUsers) == 0 {
+			if len(listedMethods) == 0 {
 				c.UI.Output("null")
 				return 0
 			}
-			b, err := base.JsonFormatter{}.Format(listedUsers)
+			b, err := base.JsonFormatter{}.Format(listedMethods)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 				return 1
@@ -181,33 +188,34 @@ func (c *Command) Run(args []string) int {
 			c.UI.Output(string(b))
 
 		case "table":
-			if len(listedUsers) == 0 {
-				c.UI.Output("No users found")
+			if len(listedMethods) == 0 {
+				c.UI.Output("No auth methods found")
 				return 0
 			}
 			var output []string
 			output = []string{
 				"",
-				"User information:",
+				"Auth Method information:",
 			}
-			for i, u := range listedUsers {
+			for i, m := range listedMethods {
 				if i > 0 {
 					output = append(output, "")
 				}
 				if true {
 					output = append(output,
-						fmt.Sprintf("  ID:             %s", u.Id),
-						fmt.Sprintf("    Version:      %d", u.Version),
+						fmt.Sprintf("  ID:             %s", m.Id),
+						fmt.Sprintf("    Version:      %d", m.Version),
+						fmt.Sprintf("    Type:         %s", m.Type),
 					)
 				}
-				if u.Name != "" {
+				if m.Name != "" {
 					output = append(output,
-						fmt.Sprintf("    Name:         %s", u.Name),
+						fmt.Sprintf("    Name:         %s", m.Name),
 					)
 				}
-				if u.Description != "" {
+				if m.Description != "" {
 					output = append(output,
-						fmt.Sprintf("    Description:  %s", u.Description),
+						fmt.Sprintf("    Description:  %s", m.Description),
 					)
 				}
 			}
@@ -218,9 +226,9 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateUserTableOutput(user))
+		c.UI.Output(generateAuthMethodTableOutput(method))
 	case "json":
-		b, err := base.JsonFormatter{}.Format(user)
+		b, err := base.JsonFormatter{}.Format(method)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1

@@ -68,7 +68,7 @@ func (c *Command) Help() string {
 	if c.Func == "" {
 		return hm["base"]()
 	}
-	return hm[c.Func]() + "\n\n" + c.Flags().Help()
+	return hm[c.Func]() + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
