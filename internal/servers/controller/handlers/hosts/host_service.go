@@ -94,7 +94,7 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	h, err := s.createInRepo(ctx, req.GetHostCatalogId(), req.GetItem())
+	h, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetHostCatalogId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
 	return toProto(h, hsl)
 }
 
-func (s Service) createInRepo(ctx context.Context, catalogId string, item *pb.Host) (*pb.Host, error) {
+func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.Host) (*pb.Host, error) {
 	ha := &pb.StaticHostAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed converting attributes to subtype proto: %s", err)
@@ -179,11 +179,13 @@ func (s Service) createInRepo(ctx context.Context, catalogId string, item *pb.Ho
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build host for creation: %v.", err)
 	}
+	h.CatalogId = catalogId
+
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.CreateHost(ctx, h)
+	out, err := repo.CreateHost(ctx, scopeId, h)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to create host: %v.", err)
 	}

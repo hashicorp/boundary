@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -34,12 +35,14 @@ func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Sc
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	_, pRes := iam.TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	wrap := db.TestWrapper(t)
+	_, pRes := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, wrap)
+		return static.NewRepository(rw, rw, kms)
 	}
 
 	hc, err := static.NewHostCatalog(pRes.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
@@ -57,7 +60,8 @@ func TestGet(t *testing.T) {
 	t.Parallel()
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
 	toMerge := &pbs.GetHostRequest{
-		Id: hc.GetPublicId(),
+		HostCatalogId: hc.GetPublicId(),
+		Id:            hc.GetPublicId(),
 	}
 
 	// pHost := &pb.Host{
@@ -123,14 +127,17 @@ func TestGet(t *testing.T) {
 
 func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrap := db.TestWrapper(t)
-	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, wrap)
-	}
-	o, _ := iam.TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	newHc, err := static.NewHostCatalog(o.GetPublicId())
+	o, pRes := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	rw := db.New(conn)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+
+	newHc, err := static.NewHostCatalog(pRes.GetPublicId())
 	require.NoError(t, err, "Couldn't get new catalog.")
 	repo, err := repoFn()
 	require.NoError(t, err, "Couldn't create static repostitory")
@@ -141,11 +148,11 @@ func TestList(t *testing.T) {
 
 	var wantHs []*pb.Host
 	for i := 0; i < 10; i++ {
-		hs := iam.TestGroup(t, conn, o.GetPublicId())
+		hs := iam.TestGroup(t, conn, pRes.GetPublicId())
 		wantHs = append(wantHs, &pb.Host{
 			Id:            hs.GetPublicId(),
 			HostCatalogId: hcRes.GetPublicId(),
-			Scope:         &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			Scope:         &scopes.ScopeInfo{Id: pRes.GetPublicId(), Type: scope.Org.String()},
 			CreatedTime:   hs.GetCreateTime().GetTimestamp(),
 			UpdatedTime:   hs.GetUpdateTime().GetTimestamp(),
 			Version:       hs.GetVersion(),
