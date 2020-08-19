@@ -92,7 +92,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 			if err != nil {
 				return err
 			}
-			repo, err := NewRepository(read, w, r.wrapper)
+			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
 				return fmt.Errorf("update role: failed creating inner repo: %w for %s", err, role.PublicId)
 			}
@@ -134,7 +134,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 			if err := read.LookupByPublicId(ctx, &role); err != nil {
 				return fmt.Errorf("lookup role: failed %w for %s", err, withPublicId)
 			}
-			repo, err := NewRepository(read, w, r.wrapper)
+			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
 				return fmt.Errorf("lookup role: failed creating inner repo: %w for %s", err, withPublicId)
 			}

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/go-hclog"
@@ -40,6 +41,8 @@ type Controller struct {
 	AuthTokenRepoFn    common.AuthTokenRepoFactory
 	ServersRepoFn      common.ServersRepoFactory
 	PasswordAuthRepoFn common.PasswordAuthRepoFactory
+
+	kms *kms.Kms
 
 	clusterAddress string
 }
@@ -85,20 +88,34 @@ func New(conf *Config) (*Controller, error) {
 
 	// Set up repo stuff
 	dbase := db.New(c.conf.Database)
+	kmsRepo, err := kms.NewRepository(dbase, dbase)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms repository: %w", err)
+	}
+	c.kms, err = kms.NewKms(kmsRepo, kms.WithLogger(c.logger.Named("kms")))
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := c.kms.AddExternalWrappers(
+		kms.WithRootWrapper(c.conf.RootKms),
+		kms.WithWorkerAuthWrapper(c.conf.WorkerAuthKms),
+	); err != nil {
+		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	}
 	c.IamRepoFn = func() (*iam.Repository, error) {
-		return iam.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+		return iam.NewRepository(dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
 	}
 	c.StaticHostRepoFn = func() (*static.Repository, error) {
-		return static.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+		return static.NewRepository(dbase, dbase, c.kms)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+		return authtoken.NewRepository(dbase, dbase, c.kms)
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
-		return servers.NewRepository(c.logger.Named("servers.repository"), dbase, dbase, c.conf.ControllerKMS)
+		return servers.NewRepository(c.logger.Named("servers.repository"), dbase, dbase, c.kms)
 	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
-		return password.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+		return password.NewRepository(dbase, dbase, c.kms)
 	}
 
 	c.workerAuthCache = cache.New(0, 0)

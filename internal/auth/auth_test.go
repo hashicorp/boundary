@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/kr/pretty"
@@ -19,14 +20,12 @@ import (
 
 func TestHandler_AuthDecoration(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	iamRepo, err := iam.NewRepository(rw, rw, wrapper)
-	require.NoError(t, err)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	org, proj := iam.TestScopes(t, conn)
+	org, proj := iam.TestScopes(t, iamRepo)
 	cases := []struct {
 		name            string
 		path            string
@@ -272,10 +271,10 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	tokenRepo, err := authtoken.NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	tokenRepo, err := authtoken.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
-	iamRepo, err := iam.NewRepository(rw, rw, wrapper)
-	require.NoError(t, err)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 	tokenRepoFn := func() (*authtoken.Repository, error) {
 		return tokenRepo, nil
 	}
@@ -283,8 +282,8 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 		return iamRepo, nil
 	}
 
-	o, _ := iam.TestScopes(t, conn)
-	at := authtoken.TestAuthToken(t, conn, wrapper, o.GetPublicId())
+	o, _ := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
 
 	tokValue := at.GetPublicId() + "_" + at.GetToken()
 	jsCookieVal, httpCookieVal := tokValue[:len(tokValue)/2], tokValue[len(tokValue)/2:]

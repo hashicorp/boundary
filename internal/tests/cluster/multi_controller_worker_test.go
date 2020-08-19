@@ -58,7 +58,7 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	expectWorkers(c2)
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		WorkerAuthKMS:      c1.Config().WorkerAuthKMS,
+		WorkerAuthKms:      c1.Config().WorkerAuthKms,
 		InitialControllers: c1.ClusterAddrs(),
 		Logger:             logger.Named("w1"),
 	})

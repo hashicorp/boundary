@@ -16,6 +16,7 @@ type Option func(*options)
 type options struct {
 	withName        string
 	withDescription string
+	withLimit       int
 	withAddress     string
 }
 
@@ -38,6 +39,15 @@ func WithDescription(desc string) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
+	}
+}
+
+// WithLimit provides an option to provide a limit. Intentionally allowing
+// negative integers. If WithLimit < 0, then unlimited results are
+// returned. If WithLimit == 0, then default limits are used for results.
+func WithLimit(l int) Option {
+	return func(o *options) {
+		o.withLimit = l
 	}
 }
 

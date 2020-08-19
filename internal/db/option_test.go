@@ -162,4 +162,17 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withWhereClauseArgs = []interface{}{1234, "bar"}
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithOrder", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of false
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts.withOrder = ""
+		assert.Equal(opts, testOpts)
+
+		// try setting to false
+		opts = GetOpts(WithOrder("version desc"))
+		testOpts.withOrder = "version desc"
+		assert.Equal(opts, testOpts)
+	})
 }

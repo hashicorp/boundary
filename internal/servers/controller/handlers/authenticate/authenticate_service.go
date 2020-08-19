@@ -61,7 +61,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		return nil, err
 	}
 	creds := req.GetCredentials().GetFields()
-	tok, err := s.authenticateWithRepo(ctx, req.GetAuthMethodId(), creds[loginNameKey].GetStringValue(), creds[pwKey].GetStringValue())
+	tok, err := s.authenticateWithRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), creds[loginNameKey].GetStringValue(), creds[pwKey].GetStringValue())
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequ
 	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented.")
 }
 
-func (s Service) authenticateWithRepo(ctx context.Context, authMethodId, loginName, pw string) (*pba.AuthToken, error) {
+func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId, loginName, pw string) (*pba.AuthToken, error) {
 	iamRepo, err := s.iamRepo()
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, authMethodId, loginNa
 		return nil, err
 	}
 
-	acct, err := pwRepo.Authenticate(ctx, authMethodId, loginName, pw)
+	acct, err := pwRepo.Authenticate(ctx, scopeId, authMethodId, loginName, pw)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, authMethodId, loginNa
 	if err != nil {
 		return nil, err
 	}
-	tok, err := atRepo.CreateAuthToken(ctx, u.GetPublicId(), acct.GetPublicId())
+	tok, err := atRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
 	if err != nil {
 		return nil, err
 	}

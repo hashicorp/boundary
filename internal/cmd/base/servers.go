@@ -18,12 +18,14 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/shared-secure-libs/gatedwriter"
 	"github.com/hashicorp/shared-secure-libs/reloadutil"
@@ -49,8 +51,9 @@ type Server struct {
 	CombineLogs bool
 	LogLevel    hclog.Level
 
-	ControllerKMS      wrapping.Wrapper
-	WorkerAuthKMS      wrapping.Wrapper
+	RootKms            wrapping.Wrapper
+	WorkerAuthKms      wrapping.Wrapper
+	Kms                *kms.Kms
 	SecureRandomReader io.Reader
 
 	InmemSink         *metrics.InmemSink
@@ -347,9 +350,9 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 			}
 
 			if purpose == "root" {
-				b.ControllerKMS = wrapper
+				b.RootKms = wrapper
 			} else {
-				b.WorkerAuthKMS = wrapper
+				b.WorkerAuthKms = wrapper
 			}
 
 			// Ensure that the seal finalizer is called, even if using verify-only
@@ -365,7 +368,7 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 
 	// prepare a secure random reader
 	var err error
-	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config, b.ControllerKMS)
+	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config, b.RootKms)
 	if err != nil {
 		return err
 	}
@@ -433,7 +436,23 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	b.Database.LogMode(true)
 
 	rw := db.New(b.Database)
-	repo, err := iam.NewRepository(rw, rw, b.ControllerKMS)
+
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return fmt.Errorf("error creating kms repository: %w", err)
+	}
+	kmsCache, err := kms.NewKms(kmsRepo)
+	if err != nil {
+		return fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		kms.WithRootWrapper(b.RootKms),
+		kms.WithWorkerAuthWrapper(b.WorkerAuthKms),
+	); err != nil {
+		return fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+
+	repo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 	if err != nil {
 		return fmt.Errorf("unable to create repo for org id: %w", err)
 	}
@@ -444,8 +463,17 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		cancel()
 	}()
 
+	rootKey, err := uuid.GenerateRandomBytesWithReader(32, b.SecureRandomReader)
+	if err != nil {
+		return fmt.Errorf("error generating random bytes for scope root key: %w", err)
+	}
+	_, _, err = kmsRepo.CreateRootKey(ctx, b.RootKms, scope.Global.String(), rootKey)
+	if err != nil {
+		return fmt.Errorf("error saving global scope root key: %w", err)
+	}
+
 	// Create the dev auth method
-	pwRepo, err := password.NewRepository(rw, rw, b.ControllerKMS)
+	pwRepo, err := password.NewRepository(rw, rw, kmsCache)
 	if err != nil {
 		return fmt.Errorf("error creating password repo: %w", err)
 	}
@@ -482,7 +510,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("error creating new in memory auth account: %w", err)
 	}
-	acct, err = pwRepo.CreateAccount(ctx, acct, password.WithPassword(pw))
+	acct, err = pwRepo.CreateAccount(ctx, scope.Global.String(), acct, password.WithPassword(pw))
 	if err != nil {
 		return fmt.Errorf("error saving auth account to the db: %w", err)
 	}

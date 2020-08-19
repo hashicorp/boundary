@@ -113,7 +113,7 @@ type TestWorkerOpts struct {
 	DisableAutoStart bool
 
 	// The worker auth KMS to use, or one will be created
-	WorkerAuthKMS wrapping.Wrapper
+	WorkerAuthKms wrapping.Wrapper
 
 	// The name to use for the worker, otherwise one will be randomly
 	// generated, unless provided in a non-nil Config
@@ -178,8 +178,8 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 
 	// Set up KMSes
 	switch {
-	case opts.WorkerAuthKMS != nil:
-		tw.b.WorkerAuthKMS = opts.WorkerAuthKMS
+	case opts.WorkerAuthKms != nil:
+		tw.b.WorkerAuthKms = opts.WorkerAuthKms
 	default:
 		if err := tw.b.SetupKMSes(nil, opts.Config.SharedConfig, []string{"worker-auth"}); err != nil {
 			t.Fatal(err)
@@ -220,7 +220,7 @@ func (tw *TestWorker) AddClusterWorkerMember(t *testing.T, opts *TestWorkerOpts)
 		opts = new(TestWorkerOpts)
 	}
 	nextOpts := &TestWorkerOpts{
-		WorkerAuthKMS:      tw.w.conf.WorkerAuthKMS,
+		WorkerAuthKms:      tw.w.conf.WorkerAuthKms,
 		Name:               opts.Name,
 		InitialControllers: tw.ControllerAddrs(),
 		Logger:             tw.w.conf.Logger,

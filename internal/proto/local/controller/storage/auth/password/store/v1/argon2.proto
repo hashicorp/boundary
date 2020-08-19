@@ -82,4 +82,10 @@ message Argon2Credential {
   // derivation function.
   // @inject_tag: `gorm:"not_null"`
   bytes derived_key = 9;
+
+  // key_id is the key ID that was used for the encryption operation. It can be
+  // used to identify a specific version of the key needed to decrypt the value,
+  // which is useful for caching purposes.
+  // @inject_tag: `gorm:"not_null"`
+  string key_id = 10;
 }

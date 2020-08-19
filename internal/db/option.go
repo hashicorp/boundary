@@ -39,6 +39,7 @@ type Options struct {
 
 	withWhereClause     string
 	withWhereClauseArgs []interface{}
+	withOrder           string
 }
 
 type oplogOpts struct {
@@ -144,5 +145,13 @@ func WithWhere(whereClause string, args ...interface{}) Option {
 	return func(o *Options) {
 		o.withWhereClause = whereClause
 		o.withWhereClauseArgs = append(o.withWhereClauseArgs, args...)
+	}
+}
+
+// WithOrder provides an option to provide an order when searching and looking
+// up.
+func WithOrder(withOrder string) Option {
+	return func(o *Options) {
+		o.withOrder = withOrder
 	}
 }

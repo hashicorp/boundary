@@ -173,6 +173,7 @@ func (c *Argon2Credential) encrypt(ctx context.Context, cipher wrapping.Wrapper)
 	if err := structwrapping.WrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
 		return fmt.Errorf("error encrypting argon2 credential: %w", err)
 	}
+	c.KeyId = cipher.KeyID()
 	return nil
 }
 

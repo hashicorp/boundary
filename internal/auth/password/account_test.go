@@ -12,8 +12,8 @@ import (
 
 func TestAccount_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-
-	o, _ := iam.TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	aut := auts[0]
 
@@ -59,7 +59,7 @@ func TestAccount_New(t *testing.T) {
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: aut.GetPublicId(),
-					LoginName:     "kazmierczak1",
+					LoginName:    "kazmierczak1",
 				},
 			},
 		},

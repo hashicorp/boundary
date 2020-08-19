@@ -8,9 +8,9 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 const (
@@ -19,29 +19,29 @@ const (
 
 // Repository is the jobs database repository
 type Repository struct {
-	logger  hclog.Logger
-	reader  db.Reader
-	writer  db.Writer
-	wrapper wrapping.Wrapper
+	logger hclog.Logger
+	reader db.Reader
+	writer db.Writer
+	kms    *kms.Kms
 }
 
 // NewRepository creates a new jobs Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
-func NewRepository(logger hclog.Logger, r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
+func NewRepository(logger hclog.Logger, r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) {
 	if r == nil {
-		return nil, errors.New("error creating db repository with nil reader")
+		return nil, errors.New("error creating server repository with nil reader")
 	}
 	if w == nil {
-		return nil, errors.New("error creating db repository with nil writer")
+		return nil, errors.New("error creating server repository with nil writer")
 	}
-	if wrapper == nil {
-		return nil, errors.New("error creating db repository with nil wrapper")
+	if kms == nil {
+		return nil, errors.New("error creating server repository with nil kms")
 	}
 	return &Repository{
-		logger:  logger,
-		reader:  r,
-		writer:  w,
-		wrapper: wrapper,
+		logger: logger,
+		reader: r,
+		writer: w,
+		kms:    kms,
 	}, nil
 }
 

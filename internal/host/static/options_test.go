@@ -8,18 +8,23 @@ import (
 
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
 	t.Run("WithName", func(t *testing.T) {
 		opts := getOpts(WithName("test"))
 		testOpts := getDefaultOptions()
 		testOpts.withName = "test"
-		assert.Equal(opts, testOpts)
+		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithDescription", func(t *testing.T) {
 		opts := getOpts(WithDescription("test desc"))
 		testOpts := getDefaultOptions()
 		testOpts.withDescription = "test desc"
-		assert.Equal(opts, testOpts)
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithLimit", func(t *testing.T) {
+		opts := getOpts(WithLimit(5))
+		testOpts := getDefaultOptions()
+		testOpts.withLimit = 5
+		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithAddress", func(t *testing.T) {
 		opts := getOpts(WithAddress("test"))

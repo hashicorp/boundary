@@ -25,7 +25,7 @@ func TestUsers_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.DbConn())
+	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 	userClient := users.NewUsersClient(client)
 
@@ -86,7 +86,7 @@ func TestUser_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.DbConn())
+	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 	userClient := users.NewUsersClient(client)
 
@@ -139,7 +139,7 @@ func TestUser_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.DbConn())
+	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 	userClient := users.NewUsersClient(client)
 
