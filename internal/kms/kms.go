@@ -59,6 +59,13 @@ func NewKms(opt ...Option) (*Kms, error) {
 	return ret, nil
 }
 
+// GetScopePurposeCache is used in test functions for validation. Since the
+// tests need to be in a different package to avoid circular dependencies, this
+// is exported.
+func (k *Kms) GetScopePurposeCache() *sync.Map {
+	return &k.scopePurposeCache
+}
+
 // AddExternalWrappers allows setting the external keys.
 //
 // TODO: If we support more than one, e.g. for encrypting against many in case
@@ -150,9 +157,10 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	}
 
 	// Store the looked-up value into the scope cache.
-	k.scopePurposeCache.Store(scopeId+purpose.String(), multiwrapper.NewMultiWrapper(derived))
+	multi := multiwrapper.NewMultiWrapper(derived)
+	k.scopePurposeCache.Store(scopeId+purpose.String(), multi)
 
-	return derived, nil
+	return multi, nil
 }
 
 func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multiwrapper.MultiWrapper, error) {
