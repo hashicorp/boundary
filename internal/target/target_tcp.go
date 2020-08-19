@@ -64,6 +64,9 @@ func (t *TcpTarget) VetForWrite(ctx context.Context, r db.Reader, opType db.OpTy
 		if t.ScopeId == "" {
 			return fmt.Errorf("tcp target vet for write: missing scope id: %w", db.ErrInvalidParameter)
 		}
+		if t.Name == "" {
+			return fmt.Errorf("tcp target vet for write: missing name id: %w", db.ErrInvalidParameter)
+		}
 	}
 	return nil
 }
