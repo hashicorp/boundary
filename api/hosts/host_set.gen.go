@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -127,14 +126,12 @@ func (c *HostSetsClient) Update(ctx context.Context, hostCatalogId string, hostS
 		version = existingTarget.Version
 	}
 
+	opts.valueMap["version"] = version
+
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s/host-sets/%s", hostCatalogId, hostSetId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
-
-	q := url.Values{}
-	q.Add("version", fmt.Sprintf("%d", version))
-	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -250,6 +247,8 @@ func (c *HostSetsClient) AddHosts(ctx context.Context, hostCatalogId string, hos
 		version = existingTarget.Version
 	}
 
+	opts.valueMap["version"] = version
+
 	if len(hostIds) > 0 {
 		opts.valueMap["host_ids"] = hostIds
 	}
@@ -258,10 +257,6 @@ func (c *HostSetsClient) AddHosts(ctx context.Context, hostCatalogId string, hos
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating AddHosts request: %w", err)
 	}
-
-	q := url.Values{}
-	q.Add("version", fmt.Sprintf("%d", version))
-	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -307,6 +302,8 @@ func (c *HostSetsClient) SetHosts(ctx context.Context, hostCatalogId string, hos
 		version = existingTarget.Version
 	}
 
+	opts.valueMap["version"] = version
+
 	if len(hostIds) > 0 {
 		opts.valueMap["host_ids"] = hostIds
 	} else if hostIds != nil {
@@ -318,10 +315,6 @@ func (c *HostSetsClient) SetHosts(ctx context.Context, hostCatalogId string, hos
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating SetHosts request: %w", err)
 	}
-
-	q := url.Values{}
-	q.Add("version", fmt.Sprintf("%d", version))
-	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -367,6 +360,8 @@ func (c *HostSetsClient) RemoveHosts(ctx context.Context, hostCatalogId string, 
 		version = existingTarget.Version
 	}
 
+	opts.valueMap["version"] = version
+
 	if len(hostIds) > 0 {
 		opts.valueMap["host_ids"] = hostIds
 	}
@@ -375,10 +370,6 @@ func (c *HostSetsClient) RemoveHosts(ctx context.Context, hostCatalogId string, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating RemoveHosts request: %w", err)
 	}
-
-	q := url.Values{}
-	q.Add("version", fmt.Sprintf("%d", version))
-	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
