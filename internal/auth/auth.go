@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/recovery"
 	"github.com/hashicorp/go-hclog"
 	"github.com/kr/pretty"
 )
@@ -390,7 +391,6 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 			retErr = fmt.Errorf("perform auth check: failed to get authtoken repo: %w", err)
 			return
 		}
-
 		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
 		if err != nil {
 			retErr = fmt.Errorf("perform auth check: failed to validate token: %w", err)
@@ -399,18 +399,26 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		if at != nil {
 			userId = at.GetIamUserId()
 		}
+
 	case AuthTokenRecoveryKms:
 		userId = "u_recovery"
 		if v.kms == nil {
-			retErr = errors.New("no KMS object available to authz system")
+			retErr = errors.New("perform auth check: no KMS object available to authz system")
 			return
 		}
 		wrapper := v.kms.GetExternalWrappers().Recovery()
 		if wrapper == nil {
-			retErr = errors.New("no admin KMS is available")
+			retErr = errors.New("perform auth check: no admin KMS is available")
 			return
 		}
-		v.logger.Warn("NOTE: recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
+		info, err := recovery.ParseRecoveryToken(v.ctx, v.requestInfo.Token, wrapper)
+		if err != nil {
+			retErr = fmt.Errorf("perform auth check: error validating recovery token: %w", err)
+			return
+		}
+		// TODO: verify nonce hasn't been used
+		_ = info
+		v.logger.Warn("NOTE: recovery KMS was used to authorize a call", "token", v.requestInfo.Token, "url", v.requestInfo.Path, "method", v.requestInfo.Method)
 		return
 	}
 

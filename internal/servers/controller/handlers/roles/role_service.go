@@ -648,6 +648,11 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 	if len(req.GetPrincipalIds()) == 0 {
 		badFields["principal_ids"] = "Must be non-empty."
 	}
+	for _, id := range req.GetPrincipalIds() {
+		if id == "u_recovery" {
+			badFields["principal_ids"] = "u_recovery cannot be assigned to a role"
+		}
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
@@ -661,6 +666,11 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
+	}
+	for _, id := range req.GetPrincipalIds() {
+		if id == "u_recovery" {
+			badFields["principal_ids"] = "u_recovery cannot be assigned to a role"
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
