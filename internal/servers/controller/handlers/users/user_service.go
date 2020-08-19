@@ -108,7 +108,7 @@ func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, orgId, id string, version uint32, mask []string, item *pb.User) (*pb.User, error) {
+func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.User) (*pb.User, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -184,6 +184,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, version uin
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
+	version := item.GetVersion()
 	u, err := iam.NewUser(orgId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build user for update: %v.", err)
@@ -282,6 +283,9 @@ func validateCreateRequest(req *pbs.CreateUserRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field."
 	}
+	if item.GetVersion() != 0 {
+		badFields["version"] = "Cannot specify this field in a create request."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
 	}
@@ -296,15 +300,15 @@ func validateUpdateRequest(req *pbs.UpdateUserRequest) error {
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update a user."
 	}
-	if req.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
 
 	item := req.GetItem()
 	if item == nil {
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
 		return nil
+	}
+	if item.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field and cannot be specified in an update request."

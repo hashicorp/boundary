@@ -123,7 +123,7 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.updateInRepo(ctx, authResults.Scope, req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	p, err := s.updateInRepo(ctx, authResults.Scope, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 	return ToProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, scopeId string, version uint32, mask []string, item *pb.Scope) (*pb.Scope, error) {
+func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*pb.Scope, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -205,6 +205,8 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
+	version := item.GetVersion()
+
 	var iamScope *iam.Scope
 	var err error
 	switch parentScope.GetType() {
@@ -337,6 +339,9 @@ func validateCreateRequest(req *pbs.CreateScopeRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field."
 	}
+	if item.GetVersion() != 0 {
+		badFields["version"] = "This cannot be specified at create time."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
 	}
@@ -362,9 +367,6 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update a project."
 	}
-	if req.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
 
 	item := req.GetItem()
 	if item == nil {
@@ -374,6 +376,9 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
 		return nil
+	}
+	if item.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field and cannot be specified in an update request."

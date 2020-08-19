@@ -742,7 +742,7 @@ func TestUpdate(t *testing.T) {
 			am, cleanup := freshAuthMethod()
 			defer cleanup()
 
-			tc.req.Version = 1
+			tc.req.Item.Version = 1
 
 			if tc.req.GetId() == "" {
 				tc.req.Id = am.GetId()
