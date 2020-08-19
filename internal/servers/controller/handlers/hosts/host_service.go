@@ -118,7 +118,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	hc, err := s.updateInRepo(ctx, req.GetHostCatalogId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetHostCatalogId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (s Service) DeleteHost(ctx context.Context, req *pbs.DeleteHostRequest) (*p
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -147,17 +147,14 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	// h, hsl, err := repo.LookupSet(ctx, id)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	_ = repo
-	var hsl []*static.HostSetMember
-	var h *static.Host
+	h, err := repo.LookupHost(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	if h == nil {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
 	}
-	return toProto(h, hsl)
+	return toProto(h, nil)
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.Host) (*pb.Host, error) {
@@ -179,7 +176,6 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build host for creation: %v.", err)
 	}
-	h.CatalogId = catalogId
 
 	repo, err := s.staticRepoFn()
 	if err != nil {
@@ -195,7 +191,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	return toProto(out, nil)
 }
 
-func (s Service) updateInRepo(ctx context.Context, catalogId, id string, version uint32, mask []string, item *pb.Host) (*pb.Host, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.Host) (*pb.Host, error) {
 	ha := &pb.StaticHostAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed converting attributes to subtype proto: %s", err)
@@ -223,30 +219,25 @@ func (s Service) updateInRepo(ctx context.Context, catalogId, id string, version
 	if err != nil {
 		return nil, err
 	}
-	// out, hsl, rowsUpdated, err := repo.UpdateHost(ctx, h, version, dbMask)
-	// if err != nil {
-	// 	return nil, status.Errorf(codes.Internal, "Unable to update host: %v.", err)
-	// }
-	// if rowsUpdated == 0 {
-	// 	return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
-	// }
-	_ = repo
-	var hsl []*static.HostSetMember
-	out := h
-	return toProto(out, hsl)
+	out, rowsUpdated, err := repo.UpdateHost(ctx, scopeId, h, item.GetVersion(), dbMask)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to update host: %v.", err)
+	}
+	if rowsUpdated == 0 {
+		return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
+	}
+	return toProto(out, nil)
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return false, err
 	}
-	// rows, err := repo.DeleteSet(ctx, id)
-	// if err != nil {
-	// 	return false, status.Errorf(codes.Internal, "Unable to delete host: %v.", err)
-	// }
-	_ = repo
-	rows := 0
+	rows, err := repo.DeleteHost(ctx, scopeId, id)
+	if err != nil {
+		return false, status.Errorf(codes.Internal, "Unable to delete host: %v.", err)
+	}
 	return rows > 0, nil
 }
 
@@ -381,15 +372,15 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "This field is required."
 	}
-	if req.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
 
 	item := req.GetItem()
 	if item == nil {
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
 		return nil
+	}
+	if item.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 	if item.GetType() != "" {
 		badFields["type"] = "This is a read only field and cannot be specified in an update request."

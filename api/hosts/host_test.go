@@ -97,7 +97,7 @@ func TestHost_Errors(t *testing.T) {
 
 	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
 	require.NoError(err)
-	require.NotNil(apiErr)
+	require.Nil(apiErr)
 	assert.NotNil(h)
 
 	_, apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
@@ -106,7 +106,6 @@ func TestHost_Errors(t *testing.T) {
 
 	_, apiErr, err = hClient.Read(tc.Context(), hc.Id, static.HostPrefix+"_doesntexis")
 	require.NoError(err)
-	// TODO: Should this be nil instead of just a catalog that has no values set
 	assert.NotNil(apiErr)
 	assert.EqualValues(apiErr.Status, http.StatusNotFound)
 
