@@ -20,15 +20,18 @@ type TcpTarget struct {
 
 // NewRootKey creates a new in memory tcp target.  WithName, WithDescription and
 // WithDefaultPort options are supported
-func NewTcpTarget(scopeId string, opt ...Option) (*TcpTarget, error) {
+func NewTcpTarget(scopeId, name string, opt ...Option) (*TcpTarget, error) {
 	opts := getOpts(opt...)
 	if scopeId == "" {
 		return nil, fmt.Errorf("new tcp target: missing scope id: %w", db.ErrInvalidParameter)
 	}
+	if name == "" {
+		return nil, fmt.Errorf("new tcp target: missing name: %w", db.ErrInvalidParameter)
+	}
 	t := &TcpTarget{
 		TcpTarget: &store.TcpTarget{
 			ScopeId:     scopeId,
-			Name:        opts.withName,
+			Name:        name,
 			Description: opts.withDescription,
 			DefaultPort: opts.withDefaultPort,
 		},
@@ -53,9 +56,9 @@ func (t *TcpTarget) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the tcp target
 // before it's written.
-func (t *Target) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if t.PrivateId == "" {
-		return fmt.Errorf("tcp target vet for write: missing private id: %w", db.ErrInvalidParameter)
+func (t *TcpTarget) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	if t.PublicId == "" {
+		return fmt.Errorf("tcp target vet for write: missing public id: %w", db.ErrInvalidParameter)
 	}
 	if opType == db.CreateOp {
 		if t.ScopeId == "" {
@@ -66,16 +69,16 @@ func (t *Target) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType,
 }
 
 // TableName returns the tablename to override the default gorm table name
-func (t *Target) TableName() string {
+func (t *TcpTarget) TableName() string {
 	if t.tableName != "" {
 		return t.tableName
 	}
-	return DefaultRootKeyTableName
+	return DefaultTcpTableName
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage
 // interface. If the caller attempts to set the name to "" the name will be
 // reset to the default name.
-func (t *Target) SetTableName(n string) {
+func (t *TcpTarget) SetTableName(n string) {
 	t.tableName = n
 }
