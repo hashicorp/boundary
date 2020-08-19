@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -44,13 +43,13 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 	if scopeId == "" {
 		return nil, fmt.Errorf("password authenticate: no scopeId: %w", db.ErrNilParameter)
 	}
-	// FIXME: We should have a key ID
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(""))
+
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, fmt.Errorf("password authenticate: unable to get database wrapper: %w", err)
 	}
 
-	acct, err := r.authenticate(ctx, databaseWrapper, authMethodId, loginName, password)
+	acct, err := r.authenticate(ctx, scopeId, authMethodId, loginName, password)
 	if err != nil {
 		return nil, fmt.Errorf("password authenticate: %w", err)
 	}
@@ -136,13 +135,12 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 	if err != nil {
 		return nil, fmt.Errorf("change password: unable to get oplog wrapper: %w", err)
 	}
-	// FIXME: We should have a key ID
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(""))
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, fmt.Errorf("change password: unable to get database wrapper: %w", err)
 	}
 
-	acct, err := r.authenticate(ctx, databaseWrapper, authAccount.GetAuthMethodId(), authAccount.GetLoginName(), old)
+	acct, err := r.authenticate(ctx, scopeId, authAccount.GetAuthMethodId(), authAccount.GetLoginName(), old)
 	if err != nil {
 		return nil, fmt.Errorf("change password: %w", err)
 	}
@@ -201,7 +199,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 	return updatedAccount, nil
 }
 
-func (r *Repository) authenticate(ctx context.Context, databaseWrapper wrapping.Wrapper, authMethodId, loginName, password string) (*authAccount, error) {
+func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, loginName, password string) (*authAccount, error) {
 	var accts []authAccount
 
 	tx, err := r.reader.DB()
@@ -230,6 +228,12 @@ func (r *Repository) authenticate(ctx context.Context, databaseWrapper wrapping.
 		return nil, fmt.Errorf("multiple accounts returned for user name")
 	default:
 		acct = accts[0]
+	}
+
+	// We don't pass a wrapper in here because for ecryption we want to indicate the expected key ID
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(acct.GetKeyId()))
+	if err != nil {
+		return nil, fmt.Errorf("unable to get database wrapper: %w", err)
 	}
 
 	if err := acct.decrypt(ctx, databaseWrapper); err != nil {
@@ -261,8 +265,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 	if err != nil {
 		return nil, fmt.Errorf("set password: unable to get oplog wrapper: %w", err)
 	}
-	// FIXME: We should have a key ID
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(""))
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, fmt.Errorf("set password: unable to get database wrapper: %w", err)
 	}

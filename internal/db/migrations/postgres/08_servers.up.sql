@@ -7,7 +7,8 @@ begin;
 create table servers (
     private_id text,
     type text,
-    name text not null unique,
+    name text not null unique
+      check(length(name) > 0),
     description text,
     address text,
     create_time wt_timestamp,

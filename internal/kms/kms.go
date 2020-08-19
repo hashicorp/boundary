@@ -143,8 +143,9 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 		return nil, fmt.Errorf("error loading root key for scope %s: %w", scopeId, err)
 	}
 
-	// TODO: Look up dek in the db, then decrypt with the root wrapper. For now
-	// since we don't have DEKs, derive a key.
+	// TODO: Look up dek in the db, then decrypt with the root wrapper. If we
+	// have a key ID passed in verify that we find it. For now since we don't
+	// have DEKs, derive a key.
 	baseWrapper := rootWrapper.WrapperForKeyID("__base__").(*aead.Wrapper)
 	derived, err := baseWrapper.NewDerivedWrapper(&aead.DerivedWrapperOptions{
 		KeyID: generateKeyId(scopeId, purpose, 1),
