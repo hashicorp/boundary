@@ -872,6 +872,7 @@ create table iam_role (
       on delete cascade
       on update cascade,
     grant_scope_id wt_scope_id
+      not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
