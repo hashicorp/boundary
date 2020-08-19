@@ -23,7 +23,6 @@ import (
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -304,10 +303,15 @@ func TestCreate(t *testing.T) {
 	defaultCreated, err := ptypes.Timestamp(defaultAccount.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Error converting proto to timestamp.")
 
-	structNoPw, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: "thetestloginname"})
-	require.NoError(t, err, "Error converting proto to struct.")
-	structWithPw, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: "adifferentusername", Password: wrapperspb.String("somerandompassword")})
-	require.NoError(t, err, "Error converting proto to struct.")
+	createAttr := func(un, pw string) *structpb.Struct {
+		attr := &pb.PasswordAccountAttributes{LoginName: un}
+		if pw != "" {
+			attr.Password = wrapperspb.String(pw)
+		}
+		ret, err := handlers.ProtoToStruct(attr)
+		require.NoError(t, err, "Error converting proto to struct.")
+		return ret
+	}
 
 	cases := []struct {
 		name    string
@@ -323,7 +327,7 @@ func TestCreate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Type:        "password",
-					Attributes:  structNoPw,
+					Attributes:  createAttr("validaccount", ""),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -335,7 +339,27 @@ func TestCreate(t *testing.T) {
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
 					Version:      1,
 					Type:         "password",
-					Attributes:   structNoPw,
+					Attributes:   createAttr("validaccount", ""),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Create a valid Account without type defined",
+			req: &pbs.CreateAccountRequest{
+				AuthMethodId: defaultAccount.GetAuthMethodId(),
+				Item: &pb.Account{
+					Attributes: createAttr("notypedefined", ""),
+				},
+			},
+			res: &pbs.CreateAccountResponse{
+				Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s_", o.GetPublicId(), defaultAccount.GetAuthMethodId(), password.AccountPrefix),
+				Item: &pb.Account{
+					AuthMethodId: defaultAccount.GetAuthMethodId(),
+					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+					Version:      1,
+					Type:         "password",
+					Attributes:   createAttr("notypedefined", ""),
 				},
 			},
 			errCode: codes.OK,
@@ -347,8 +371,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "name_with_password"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        "password",
-					Attributes:  structWithPw,
+					Attributes:  createAttr("haspassword", "somepassword"),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -360,14 +383,22 @@ func TestCreate(t *testing.T) {
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
 					Version:      1,
 					Type:         "password",
-					Attributes: func() *structpb.Struct {
-						newSt := proto.Clone(structWithPw).(*structpb.Struct)
-						delete(newSt.Fields, "password")
-						return newSt
-					}(),
+					Attributes:   createAttr("haspassword", ""),
 				},
 			},
 			errCode: codes.OK,
+		},
+		{
+			name: "Cant specify mismatching type",
+			req: &pbs.CreateAccountRequest{
+				AuthMethodId: defaultAccount.GetAuthMethodId(),
+				Item: &pb.Account{
+					Type:       "wrong",
+					Attributes: createAttr("nopwprovided", ""),
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Can't specify Id",
@@ -376,7 +407,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Account{
 					Id:         password.AccountPrefix + "_notallowed",
 					Type:       "password",
-					Attributes: structNoPw,
+					Attributes: createAttr("cantprovideid", ""),
 				},
 			},
 			res:     nil,
@@ -389,7 +420,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Type:         "password",
-					Attributes:   structNoPw,
+					Attributes:   createAttr("noauthmethod", ""),
 				},
 			},
 			res:     nil,
@@ -402,7 +433,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Account{
 					CreatedTime: ptypes.TimestampNow(),
 					Type:        "password",
-					Attributes:  structNoPw,
+					Attributes:  createAttr("nocreatedtime", ""),
 				},
 			},
 			res:     nil,
@@ -415,18 +446,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Account{
 					UpdatedTime: ptypes.TimestampNow(),
 					Type:        "password",
-					Attributes:  structNoPw,
-				},
-			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Must specify type",
-			req: &pbs.CreateAccountRequest{
-				AuthMethodId: defaultAccount.GetAuthMethodId(),
-				Item: &pb.Account{
-					Attributes: structNoPw,
+					Attributes:  createAttr("noupdatetime", ""),
 				},
 			},
 			res:     nil,
