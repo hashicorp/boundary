@@ -335,7 +335,7 @@ insert into iam_user (public_id, name, description, scope_id)
   values ('u_auth', 'authenticated', 'The authenticated user matches any user that has a valid token', 'global');
 
  -- define the immutable fields for iam_user
-create trigger 
+create trigger
   immutable_columns
 before
 update on iam_user
