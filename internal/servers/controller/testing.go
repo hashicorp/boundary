@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -45,6 +46,14 @@ func (tc *TestController) Client() *api.Client {
 
 func (tc *TestController) Context() context.Context {
 	return tc.ctx
+}
+
+func (tc *TestController) IamRepo() *iam.Repository {
+	repo, err := tc.c.IamRepoFn()
+	if err != nil {
+		tc.t.Fatal(err)
+	}
+	return repo
 }
 
 func (tc *TestController) Cancel() {
@@ -179,10 +188,10 @@ type TestControllerOpts struct {
 	DisableAuthorizationFailures bool
 
 	// The controller KMS to use, or one will be created
-	ControllerKMS wrapping.Wrapper
+	RootKms wrapping.Wrapper
 
 	// The worker auth KMS to use, or one will be created
-	WorkerAuthKMS wrapping.Wrapper
+	WorkerAuthKms wrapping.Wrapper
 
 	// The name to use for the controller, otherwise one will be randomly
 	// generated, unless provided in a non-nil Config
@@ -253,10 +262,10 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	// Set up KMSes
 	switch {
-	case opts.ControllerKMS != nil && opts.WorkerAuthKMS != nil:
-		tc.b.ControllerKMS = opts.ControllerKMS
-		tc.b.WorkerAuthKMS = opts.WorkerAuthKMS
-	case opts.ControllerKMS == nil && opts.WorkerAuthKMS == nil:
+	case opts.RootKms != nil && opts.WorkerAuthKms != nil:
+		tc.b.RootKms = opts.RootKms
+		tc.b.WorkerAuthKms = opts.WorkerAuthKms
+	case opts.RootKms == nil && opts.WorkerAuthKms == nil:
 		if err := tc.b.SetupKMSes(nil, opts.Config.SharedConfig, []string{"root", "worker-auth"}); err != nil {
 			t.Fatal(err)
 		}
@@ -314,8 +323,8 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 	nextOpts := &TestControllerOpts{
 		DatabaseUrl:         tc.c.conf.DatabaseUrl,
 		DefaultAuthMethodId: tc.c.conf.DevAuthMethodId,
-		ControllerKMS:       tc.c.conf.ControllerKMS,
-		WorkerAuthKMS:       tc.c.conf.WorkerAuthKMS,
+		RootKms:             tc.c.conf.RootKms,
+		WorkerAuthKms:       tc.c.conf.WorkerAuthKms,
 		Name:                opts.Name,
 		Logger:              tc.c.conf.Logger,
 	}

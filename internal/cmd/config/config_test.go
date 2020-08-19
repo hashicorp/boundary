@@ -52,6 +52,7 @@ func TestDevController(t *testing.T) {
 					Purpose: []string{"root"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
+						"key_id":    "global_root",
 					},
 				},
 				{
@@ -59,6 +60,7 @@ func TestDevController(t *testing.T) {
 					Purpose: []string{"worker-auth"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
+						"key_id":    "global_worker-auth",
 					},
 				},
 			},

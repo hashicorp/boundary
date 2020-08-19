@@ -14,6 +14,7 @@ import (
 	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -30,12 +31,14 @@ import (
 func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	wrap := db.TestWrapper(t)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	wantU := &pb.AuthMethod{
@@ -107,14 +110,16 @@ func TestGet(t *testing.T) {
 func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	wrap := db.TestWrapper(t)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
-	oNoAuthMethods, _ := iam.TestScopes(t, conn)
-	oWithAuthMethods, _ := iam.TestScopes(t, conn)
-	oWithOtherAuthMethods, _ := iam.TestScopes(t, conn)
+	oNoAuthMethods, _ := iam.TestScopes(t, iamRepo)
+	oWithAuthMethods, _ := iam.TestScopes(t, iamRepo)
+	oWithOtherAuthMethods, _ := iam.TestScopes(t, iamRepo)
 
 	var wantSomeAuthMethods []*pb.AuthMethod
 	for _, am := range password.TestAuthMethods(t, conn, oWithAuthMethods.GetPublicId(), 3) {
@@ -196,12 +201,14 @@ func TestList(t *testing.T) {
 func TestDelete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	wrap := db.TestWrapper(t)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	s, err := authmethods.NewService(repoFn)
@@ -256,12 +263,14 @@ func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	wrap := db.TestWrapper(t)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	s, err := authmethods.NewService(repoFn)
@@ -281,12 +290,14 @@ func TestDelete_twice(t *testing.T) {
 func TestCreate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	wrap := db.TestWrapper(t)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, iamRepo)
 	defaultAm := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	defaultCreated, err := ptypes.Timestamp(defaultAm.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Error converting proto to timestamp.")
@@ -418,12 +429,14 @@ func TestCreate(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	wrap := db.TestWrapper(t)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 	repoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, wrap)
+		return password.NewRepository(rw, rw, kms)
 	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
-	o, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, iamRepo)
 	tested, err := authmethods.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 

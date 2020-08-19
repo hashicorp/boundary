@@ -67,6 +67,9 @@ begin;
       check(length(salt) > 0),
     derived_key bytea not null
       check(length(derived_key) > 0),
+    -- TODO: Make key_id a foreign key once we have DEKs
+    key_id text not null
+      check(length(trim(key_id)) > 0),
     foreign key (password_method_id, password_conf_id)
       references auth_password_argon2_conf (password_method_id, private_id)
       on delete cascade

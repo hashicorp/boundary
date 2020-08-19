@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
@@ -159,6 +160,11 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 		"resource-type":      []string{"auth-account"},
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, acct.GetScopeId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, fmt.Errorf("lookup user with login: unable to get oplog wrapper: %w", err)
+	}
+
 	// We will create a new user and associate the user with the account
 	// within one retryable transaction using writer.DoTx
 	var obtainedUser *User
@@ -199,7 +205,7 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 				return fmt.Errorf("account update affected %d rows", updatedRows)
 			}
 			msgs = append(msgs, &updateMsg)
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, ticket, metadata, msgs); err != nil {
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 				return err
 			}
 			return nil
@@ -280,6 +286,11 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 		}
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, acct.GetScopeId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, fmt.Errorf("associate user with account: unable to get oplog wrapper: %w", err)
+	}
+
 	// validate, associated the user with the account, and then read the
 	// user back in the same tx for consistency.
 	_, err = r.writer.DoTx(
@@ -287,7 +298,6 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(txReader db.Reader, w db.Writer) error {
-
 			metadata := oplog.Metadata{
 				"resource-public-id": []string{accountId},
 				"scope-id":           []string{acct.ScopeId},
@@ -302,9 +312,9 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 			// transactions)
 			switch {
 			case opts.withDisassociate:
-				updatedRows, err = w.Update(ctx, updatedAcct, []string{"IamUserId"}, nil, db.WithOplog(r.wrapper, metadata), db.WithWhere("iam_user_id = ?", acct.IamUserId))
+				updatedRows, err = w.Update(ctx, updatedAcct, []string{"IamUserId"}, nil, db.WithOplog(oplogWrapper, metadata), db.WithWhere("iam_user_id = ?", acct.IamUserId))
 			default:
-				updatedRows, err = w.Update(ctx, updatedAcct, []string{"IamUserId"}, nil, db.WithOplog(r.wrapper, metadata), db.WithWhere("iam_user_id is NULL"))
+				updatedRows, err = w.Update(ctx, updatedAcct, []string{"IamUserId"}, nil, db.WithOplog(oplogWrapper, metadata), db.WithWhere("iam_user_id is NULL"))
 			}
 			if err != nil {
 				return err
@@ -355,6 +365,11 @@ func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId
 		return nil, fmt.Errorf("dissociate user with account: %s account is not associated with a user: %w", accountId, db.ErrInvalidParameter)
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, acct.GetScopeId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, fmt.Errorf("disassociate user with account: unable to get oplog wrapper: %w", err)
+	}
+
 	// validate, dissociate the user with the account and then read the user back in
 	// the same tx for consistency.
 	_, err = r.writer.DoTx(
@@ -373,7 +388,7 @@ func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId
 			// set the user id to null and use WithWhere to ensure that the auth
 			// account is associated with the user (handling race conditions
 			// with other concurrent transactions)
-			updatedRows, err := w.Update(ctx, updatedAcct, nil, []string{"IamUserId"}, db.WithOplog(r.wrapper, metadata), db.WithWhere("iam_user_id = ?", userPublicId))
+			updatedRows, err := w.Update(ctx, updatedAcct, nil, []string{"IamUserId"}, db.WithOplog(oplogWrapper, metadata), db.WithWhere("iam_user_id = ?", userPublicId))
 			if err != nil {
 				return err
 			}
