@@ -40,7 +40,7 @@ message HostSet {
 	uint32 version = 70;
 
 	// The type of the resource, to help differentiate schemas
-	google.protobuf.StringValue type = 80 [(custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.StringValue type = 80;
 
 	// The total count of hosts in this host set
 	// Output only.
