@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 )
 
 // NOTE: there are no update tests since all the RootKey attributes are
@@ -101,36 +100,36 @@ func TestTcpTarget_Create(t *testing.T) {
 	}
 }
 
-func TestRootKey_Delete(t *testing.T) {
+func TestTcpTarget_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 
 	tests := []struct {
 		name            string
-		key             *kms.RootKey
+		target          *TcpTarget
 		wantRowsDeleted int
 		wantErr         bool
 		wantErrMsg      string
 	}{
 		{
 			name:            "valid",
-			key:             kms.TestRootKey(t, conn, org.PublicId),
+			target:          TestTcpTarget(t, conn, org.PublicId, testTargetName(t, org.PublicId)),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
 		{
 			name: "bad-id",
-			key: func() *kms.RootKey {
-				k := kms.AllocRootKey()
-				id, err := db.NewPublicId(kms.RootKeyPrefix)
+			target: func() *TcpTarget {
+				target := allocTcpTarget()
+				id, err := newTcpId()
 				require.NoError(t, err)
-				k.PrivateId = id
-				k.ScopeId = org.PublicId
-				return &k
+				target.PublicId = id
+				target.ScopeId = org.PublicId
+				target.Name = testTargetName(t, org.PublicId)
+				return &target
 			}(),
 			wantErr:         false,
 			wantRowsDeleted: 0,
@@ -139,9 +138,9 @@ func TestRootKey_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deleteKey := kms.AllocRootKey()
-			deleteKey.PrivateId = tt.key.PrivateId
-			deletedRows, err := rw.Delete(context.Background(), &deleteKey)
+			deleteTarget := allocTcpTarget()
+			deleteTarget.PublicId = tt.target.PublicId
+			deletedRows, err := rw.Delete(context.Background(), &deleteTarget)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -152,67 +151,67 @@ func TestRootKey_Delete(t *testing.T) {
 				return
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundKey := kms.AllocRootKey()
-			foundKey.PrivateId = tt.key.PrivateId
-			err = rw.LookupById(context.Background(), &foundKey)
+			foundTarget := allocTcpTarget()
+			foundTarget.PublicId = tt.target.PublicId
+			err = rw.LookupById(context.Background(), &foundTarget)
 			require.Error(err)
 			assert.True(errors.Is(db.ErrRecordNotFound, err))
 		})
 	}
 }
 
-func TestRootKey_Clone(t *testing.T) {
-	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	t.Run("valid", func(t *testing.T) {
-		assert := assert.New(t)
-		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-		k := kms.TestRootKey(t, conn, org.PublicId)
-		cp := k.Clone()
-		assert.True(proto.Equal(cp.(*kms.RootKey).RootKey, k.RootKey))
-	})
-	t.Run("not-equal", func(t *testing.T) {
-		assert := assert.New(t)
-		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-		k := kms.TestRootKey(t, conn, org.PublicId)
-		k2 := kms.TestRootKey(t, conn, org2.PublicId)
+// func TestRootKey_Clone(t *testing.T) {
+// 	t.Parallel()
+// 	conn, _ := db.TestSetup(t, "postgres")
+// 	wrapper := db.TestWrapper(t)
+// 	t.Run("valid", func(t *testing.T) {
+// 		assert := assert.New(t)
+// 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+// 		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+// 		k := kms.TestRootKey(t, conn, org.PublicId)
+// 		cp := k.Clone()
+// 		assert.True(proto.Equal(cp.(*kms.RootKey).RootKey, k.RootKey))
+// 	})
+// 	t.Run("not-equal", func(t *testing.T) {
+// 		assert := assert.New(t)
+// 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+// 		org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+// 		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+// 		k := kms.TestRootKey(t, conn, org.PublicId)
+// 		k2 := kms.TestRootKey(t, conn, org2.PublicId)
 
-		cp := k.Clone()
-		assert.True(!proto.Equal(cp.(*kms.RootKey).RootKey, k2.RootKey))
-	})
-}
+// 		cp := k.Clone()
+// 		assert.True(!proto.Equal(cp.(*kms.RootKey).RootKey, k2.RootKey))
+// 	})
+// }
 
-func TestRootKey_SetTableName(t *testing.T) {
-	t.Parallel()
-	defaultTableName := kms.DefaultRootKeyTableName
-	tests := []struct {
-		name      string
-		setNameTo string
-		want      string
-	}{
-		{
-			name:      "new-name",
-			setNameTo: "new-name",
-			want:      "new-name",
-		},
-		{
-			name:      "reset to default",
-			setNameTo: "",
-			want:      defaultTableName,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			def := kms.AllocRootKey()
-			require.Equal(defaultTableName, def.TableName())
-			s := kms.AllocRootKey()
-			s.SetTableName(tt.setNameTo)
-			assert.Equal(tt.want, s.TableName())
-		})
-	}
-}
+// func TestRootKey_SetTableName(t *testing.T) {
+// 	t.Parallel()
+// 	defaultTableName := kms.DefaultRootKeyTableName
+// 	tests := []struct {
+// 		name      string
+// 		setNameTo string
+// 		want      string
+// 	}{
+// 		{
+// 			name:      "new-name",
+// 			setNameTo: "new-name",
+// 			want:      "new-name",
+// 		},
+// 		{
+// 			name:      "reset to default",
+// 			setNameTo: "",
+// 			want:      defaultTableName,
+// 		},
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			assert, require := assert.New(t), require.New(t)
+// 			def := kms.AllocRootKey()
+// 			require.Equal(defaultTableName, def.TableName())
+// 			s := kms.AllocRootKey()
+// 			s.SetTableName(tt.setNameTo)
+// 			assert.Equal(tt.want, s.TableName())
+// 		})
+// 	}
+// }
