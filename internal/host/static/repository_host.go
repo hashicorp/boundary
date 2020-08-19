@@ -198,19 +198,24 @@ func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Opt
 // DeleteHost deletes the host for the provided id from the repository
 // returning a count of the number of records deleted. All options are
 // ignored.
-func (r *Repository) DeleteHost(ctx context.Context, publicId string, opt ...Option) (int, error) {
+func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId string, opt ...Option) (int, error) {
 	if publicId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete: static host: missing public id: %w", db.ErrInvalidParameter)
 	}
 	h := allocHost()
 	h.PublicId = publicId
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: unable to get oplog wrapper: %w", err)
+	}
+
 	var rowsDeleted int
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
 			dh := h.clone()
-			rowsDeleted, err = w.Delete(ctx, dh, db.WithOplog(r.wrapper, h.oplog(oplog.OpType_OP_TYPE_DELETE)))
+			rowsDeleted, err = w.Delete(ctx, dh, db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
 			}
