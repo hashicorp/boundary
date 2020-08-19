@@ -90,8 +90,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 	if err != nil {
 		return nil, fmt.Errorf("create: unable to get oplog wrapper: %w", err)
 	}
-	// FIXME: should have a key ID
-	databaseWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(""))
+	databaseWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, fmt.Errorf("create: unable to get database wrapper: %w", err)
 	}
@@ -161,8 +160,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 		return nil, fmt.Errorf("auth token: lookup: %w", err)
 	}
 	if opts.withTokenValue {
-		// FIXME: Should have a key ID
-		databaseWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(""))
+		databaseWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(at.GetKeyId()))
 		if err != nil {
 			return nil, fmt.Errorf("lookup: unable to get database wrapper: %w", err)
 		}
@@ -172,6 +170,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	}
 
 	at.CtToken = nil
+	at.KeyId = ""
 	return at, nil
 }
 
@@ -295,6 +294,7 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withOrgId string, opt .
 	for _, at := range authTokens {
 		at.Token = ""
 		at.CtToken = nil
+		at.KeyId = ""
 	}
 	return authTokens, nil
 }

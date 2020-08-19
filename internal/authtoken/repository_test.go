@@ -226,6 +226,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	at := TestAuthToken(t, conn, kms, org.GetPublicId())
 	at.Token = ""
 	at.CtToken = nil
+	at.KeyId = ""
 
 	badId, err := newAuthTokenId()
 	require.NoError(t, err)
@@ -307,6 +308,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 	atToken := at.GetToken()
 	at.Token = ""
 	at.CtToken = nil
+	at.KeyId = ""
 	atTime, err := ptypes.Timestamp(at.GetApproximateLastAccessTime().GetTimestamp())
 	require.NoError(t, err)
 	require.NotNil(t, atTime)
@@ -548,10 +550,13 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 	org, _ := iam.TestScopes(t, repo)
 	at1 := TestAuthToken(t, conn, kms, org.GetPublicId())
 	at1.Token = ""
+	at1.KeyId = ""
 	at2 := TestAuthToken(t, conn, kms, org.GetPublicId())
 	at2.Token = ""
+	at2.KeyId = ""
 	at3 := TestAuthToken(t, conn, kms, org.GetPublicId())
 	at3.Token = ""
+	at3.KeyId = ""
 
 	emptyOrg, _ := iam.TestScopes(t, repo)
 

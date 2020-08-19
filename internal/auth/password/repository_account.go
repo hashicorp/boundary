@@ -77,8 +77,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	if err != nil {
 		return nil, fmt.Errorf("create: password account: unable to get oplog wrapper: %w", err)
 	}
-	// FIXME: should have a key ID
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(""))
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, fmt.Errorf("create: password account: unable to get database wrapper: %w", err)
 	}
