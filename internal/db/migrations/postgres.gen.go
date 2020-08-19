@@ -1382,6 +1382,7 @@ begin;
   create table auth_token (
     public_id wt_public_id primary key,
     token bytea not null unique,
+    -- TODO: Make key_id a foreign key once we have DEKs
     key_id text not null
       check(length(trim(key_id)) > 0),
     auth_account_id wt_public_id not null
@@ -1899,6 +1900,7 @@ begin;
       check(length(salt) > 0),
     derived_key bytea not null
       check(length(derived_key) > 0),
+    -- TODO: Make key_id a foreign key once we have DEKs
     key_id text not null
       check(length(trim(key_id)) > 0),
     foreign key (password_method_id, password_conf_id)
