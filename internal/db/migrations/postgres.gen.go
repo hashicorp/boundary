@@ -849,7 +849,7 @@ insert into iam_user (public_id, name, description, scope_id)
   values ('u_anon', 'anonymous', 'The anonymous user matches any request, whether authenticated or not', 'global');
 
 insert into iam_user (public_id, name, description, scope_id)
-  values ('predefined_user', 'authenticated', 'The authenticated user matches any user that has a valid token', 'global');
+  values ('u_auth', 'authenticated', 'The authenticated user matches any user that has a valid token', 'global');
 
 insert into iam_user (public_id, name, description, scope_id)
   values ('u_recovery', 'recovery', 'The recovery user is used for any request that was performed with the recovery KMS workflow', 'global');
