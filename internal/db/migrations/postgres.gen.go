@@ -2761,7 +2761,15 @@ before insert on target_tcp
 -- target_all_subtypes is a union of all target subtypes 
 create view target_all_subtypes
 as 
-select public_id, scope_id from target_tcp;
+select 
+  public_id, 
+  scope_id, 
+  name, 
+  description, 
+  default_port, 
+  version, 
+  'tcp' as type 
+  from target_tcp;
 
 commit;
 
