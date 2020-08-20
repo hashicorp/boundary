@@ -151,7 +151,14 @@ select
   description, 
   default_port, 
   version, 
-  'tcp' as type 
+  create_time,
+  update_time,
+  'tcp' as type
   from target_tcp;
+
+insert into oplog_ticket
+  (name, version)
+values
+  ('target_tcp', 1);
 
 commit;
