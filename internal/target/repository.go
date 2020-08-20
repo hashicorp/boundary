@@ -50,33 +50,66 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 	}, nil
 }
 
-// LookupTarget will look up a target in the repository.  If the target is not
-// found, it will return nil, nil.  No options are currently supported.
-func (r *Repository) LookupTarget(ctx context.Context, keyWrapper wrapping.Wrapper, publicId string, opt ...Option) (Target, error) {
+// LookupTarget will look up a target in the repository and return the target
+// and its host set ids.  If the target is not found, it will return nil, nil, nil.
+// No options are currently supported.
+func (r *Repository) LookupTarget(ctx context.Context, keyWrapper wrapping.Wrapper, publicId string, opt ...Option) (Target, []string, error) {
 	if publicId == "" {
-		return nil, fmt.Errorf("lookup target: missing private id: %w", db.ErrNilParameter)
+		return nil, nil, fmt.Errorf("lookup target: missing private id: %w", db.ErrNilParameter)
 	}
 	if keyWrapper == nil {
-		return nil, fmt.Errorf("lookup target: missing key wrapper: %w", db.ErrNilParameter)
+		return nil, nil, fmt.Errorf("lookup target: missing key wrapper: %w", db.ErrNilParameter)
 	}
 	target := allocTargetView()
 	target.PublicId = publicId
-	if err := r.reader.LookupById(ctx, &target); err != nil {
-		return nil, fmt.Errorf("lookup target: failed %w for %s", err, publicId)
+	var hostSets []string
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, w db.Writer) error {
+			if err := read.LookupById(ctx, &target); err != nil {
+				return fmt.Errorf("lookup target: failed %w for %s", err, publicId)
+			}
+			var err error
+			if hostSets, err = fetchHostSets(ctx, read, target.PublicId); err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("lookup target: %w", err)
 	}
 	subType, err := target.TargetSubType()
 	if err != nil {
-		return nil, fmt.Errorf("lookup target: %w", err)
+		return nil, nil, fmt.Errorf("lookup target: %w", err)
 	}
-	return subType, nil
+	return subType, hostSets, nil
 }
 
-// ListTargets in targets in a scope.  Supports the WithScopeId, WithUserId, WithLimit, WithTargetType options.
+func fetchHostSets(ctx context.Context, r db.Reader, targetId string) ([]string, error) {
+	var hostSets []*TargetHostSet
+	if err := r.SearchWhere(ctx, &hostSets, "target_id = ?", []interface{}{targetId}); err != nil {
+		return nil, fmt.Errorf("fetch host sets: %w", err)
+	}
+	if len(hostSets) == 0 {
+		return nil, nil
+	}
+	hs := make([]string, 0, len(hostSets))
+	for _, h := range hostSets {
+		hs = append(hs, h.HostSetId)
+	}
+	return hs, nil
+}
+
+// ListTargets in targets in a scope.  Supports the WithScopeId, WithLimit, WithTargetType options.
 func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, error) {
 	opts := getOpts(opt...)
 	if opts.withScopeId == "" && opts.withUserId == "" {
 		return nil, fmt.Errorf("list targets: must specify either a scope id or user id: %w", db.ErrInvalidParameter)
 	}
+	// TODO (jimlambrt) - implement WithUserId filtering.
 	var where []string
 	var args []interface{}
 	if opts.withScopeId != "" {
