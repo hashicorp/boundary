@@ -60,9 +60,9 @@ func TestHosts(t *testing.T, conn *gorm.DB, catalogId string, count int) []*Host
 	return hosts
 }
 
-// TestSets creates count number of static host sets to the provided DB
-// with the provided catalog id.  The catalog must have been created previously.
-// If any errors are encountered during the creation of the set, the test will fail.
+// TestSets creates count number of static host sets in the provided DB
+// with the provided catalog id. The catalog must have been created
+// previously. The test will fail if any errors are encountered.
 func TestSets(t *testing.T, conn *gorm.DB, catalogId string, count int) []*HostSet {
 	t.Helper()
 	assert := assert.New(t)

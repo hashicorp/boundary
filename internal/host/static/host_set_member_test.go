@@ -26,7 +26,7 @@ func TestHostSetMember_New(t *testing.T) {
 	// TODO(mgaffney) 05/2020:
 	// these will be needed when the repository code is done
 	// greenCat := cats[1]
-	// greenSets := testSets(t, conn, greenCat.GetPublicId(), 2)
+	// greenSets := TestSets(t, conn, greenCat.GetPublicId(), 2)
 	// greenHosts := TestHosts(t, conn, greenCat.GetPublicId(), 2)
 
 	var tests = []struct {
