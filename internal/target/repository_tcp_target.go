@@ -10,36 +10,44 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
-// CreateRootKeyVersion inserts into the repository and returns the new root key
-// version with its PrivateId.  There are no valid options at this time.
-func (r *Repository) CreateTcpTarget(ctx context.Context, keyWrapper wrapping.Wrapper, target *TcpTarget, opt ...Option) (Target, error) {
+// CreateTcpTarget inserts into the repository and returns the new Target with
+// its list of host sets.  WithHostSets is currently the only supported option.
+func (r *Repository) CreateTcpTarget(ctx context.Context, keyWrapper wrapping.Wrapper, target *TcpTarget, opt ...Option) (Target, []string, error) {
+	opts := getOpts(opt...)
 	if keyWrapper == nil {
-		return nil, fmt.Errorf("create tcp target: missing key wrapper: %w", db.ErrNilParameter)
+		return nil, nil, fmt.Errorf("create tcp target: missing key wrapper: %w", db.ErrNilParameter)
 	}
 	if target == nil {
-		return nil, fmt.Errorf("create tcp target: missing target: %w", db.ErrNilParameter)
+		return nil, nil, fmt.Errorf("create tcp target: missing target: %w", db.ErrNilParameter)
 	}
 	if target.TcpTarget == nil {
-		return nil, fmt.Errorf("create tcp target: missing target store: %w", db.ErrNilParameter)
+		return nil, nil, fmt.Errorf("create tcp target: missing target store: %w", db.ErrNilParameter)
 	}
 	if target.ScopeId == "" {
-		return nil, fmt.Errorf("create tcp target: scope id empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create tcp target: scope id empty: %w", db.ErrInvalidParameter)
 	}
 	if target.Name == "" {
-		return nil, fmt.Errorf("create tcp target: name empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create tcp target: name empty: %w", db.ErrInvalidParameter)
 	}
 	if target.PublicId != "" {
-		return nil, fmt.Errorf("create tcp target: public id not empty: %w", db.ErrInvalidParameter)
-
+		return nil, nil, fmt.Errorf("create tcp target: public id not empty: %w", db.ErrInvalidParameter)
 	}
 	id, err := newTcpTargetId()
 	if err != nil {
-		return nil, fmt.Errorf("create tcp target: %w", err)
+		return nil, nil, fmt.Errorf("create tcp target: %w", err)
+	}
+	newHostSets := make([]interface{}, 0, len(opts.withHostSets))
+	for _, id := range opts.withHostSets {
+		hostSet, err := NewTargetHostSet(id, id)
+		if err != nil {
+			return nil, nil, fmt.Errorf("create tcp target: unable to create in memory target host set: %w", err)
+		}
+		newHostSets = append(newHostSets, hostSet)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, target.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("create tcp target: unable to get oplog wrapper: %w", err)
+		return nil, nil, fmt.Errorf("create tcp target: unable to get oplog wrapper: %w", err)
 	}
 	t := target.Clone().(*TcpTarget)
 	t.PublicId = id
@@ -51,16 +59,32 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, keyWrapper wrapping.Wr
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
+			targetTicket, err := w.GetTicket(t)
+			if err != nil {
+				return fmt.Errorf("create tcp target: unable to get ticket: %w", err)
+			}
+			msgs := make([]*oplog.Message, 0, 2)
+			var targetOplogMsg oplog.Message
 			returnedTarget = t.Clone()
-			// no oplog entries for root key version
-			if err := w.Create(ctx, returnedTarget, db.WithOplog(oplogWrapper, metadata)); err != nil {
+			if err := w.Create(ctx, returnedTarget, db.NewOplogMsg(&targetOplogMsg)); err != nil {
 				return err
+			}
+			msgs = append(msgs, &targetOplogMsg)
+			if len(newHostSets) > 0 {
+				hostSetOplogMsgs := make([]*oplog.Message, 0, len(newHostSets))
+				if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSetOplogMsgs)); err != nil {
+					return fmt.Errorf("create tcp target: unable to add host sets: %w", err)
+				}
+				msgs = append(msgs, hostSetOplogMsgs...)
+			}
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
+				return fmt.Errorf("create tcp target: unable to write oplog: %w", err)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create tcp target: %w for %s root key id", err, t.PublicId)
+		return nil, nil, fmt.Errorf("create tcp target: %w for %s target id id", err, t.PublicId)
 	}
-	return returnedTarget.(*TcpTarget), err
+	return returnedTarget.(*TcpTarget), nil, err
 }

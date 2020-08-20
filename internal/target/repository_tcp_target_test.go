@@ -32,10 +32,11 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 		opt        []Option
 	}
 	tests := []struct {
-		name        string
-		args        args
-		wantErr     bool
-		wantIsError error
+		name         string
+		args         args
+		wantHostSets []string
+		wantErr      bool
+		wantIsError  error
 	}{
 		{
 			name: "valid-org",
@@ -117,7 +118,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			target, err := repo.CreateTcpTarget(context.Background(), tt.args.keyWrapper, tt.args.target, tt.args.opt...)
+			target, hostSets, err := repo.CreateTcpTarget(context.Background(), tt.args.keyWrapper, tt.args.target, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(target)
@@ -128,10 +129,12 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(target.GetPublicId())
+			assert.Equal(tt.wantHostSets, hostSets)
 
-			foundTarget, err := repo.LookupTarget(context.Background(), tt.args.keyWrapper, target.GetPublicId())
+			foundTarget, foundHostSets, err := repo.LookupTarget(context.Background(), tt.args.keyWrapper, target.GetPublicId())
 			assert.NoError(err)
 			assert.True(proto.Equal(target.(*TcpTarget), foundTarget.(*TcpTarget)))
+			assert.Equal(hostSets, foundHostSets)
 
 			err = db.TestVerifyOplog(t, rw, target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
