@@ -6,28 +6,27 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/go-hclog"
 )
 
 const (
 	defaultLiveness = 15 * time.Second
 )
 
-// Repository is the jobs database repository
+// Repository is the servers database repository
 type Repository struct {
-	logger hclog.Logger
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
 }
 
-// NewRepository creates a new jobs Repository. Supports the options: WithLimit
+// NewRepository creates a new servers Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
-func NewRepository(logger hclog.Logger, r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) {
 	if r == nil {
 		return nil, errors.New("error creating server repository with nil reader")
 	}
@@ -38,7 +37,6 @@ func NewRepository(logger hclog.Logger, r db.Reader, w db.Writer, kms *kms.Kms) 
 		return nil, errors.New("error creating server repository with nil kms")
 	}
 	return &Repository{
-		logger: logger,
 		reader: r,
 		writer: w,
 		kms:    kms,
@@ -47,7 +45,7 @@ func NewRepository(logger hclog.Logger, r db.Reader, w db.Writer, kms *kms.Kms) 
 
 // list will return a listing of resources and honor the WithLimit option or the
 // repo defaultLimit
-func (r *Repository) List(ctx context.Context, serverType string, opt ...Option) ([]*Server, error) {
+func (r *Repository) ListServers(ctx context.Context, serverType string, opt ...Option) ([]*Server, error) {
 	opts := getOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
@@ -71,6 +69,7 @@ func (r *Repository) List(ctx context.Context, serverType string, opt ...Option)
 		return nil, fmt.Errorf("error performing server list: %w", err)
 	}
 	results := make([]*Server, 0, 3)
+	var scanErr error
 	for rows.Next() {
 		server := &Server{
 			CreateTime: new(timestamp.Timestamp),
@@ -85,10 +84,13 @@ func (r *Repository) List(ctx context.Context, serverType string, opt ...Option)
 			server.CreateTime,
 			server.UpdateTime,
 		); err != nil {
-			r.logger.Error("error scanning server row", "error", err)
+			scanErr = fmt.Errorf("error scanning server row: %w", err)
 			break
 		}
 		results = append(results, server)
+	}
+	if scanErr != nil {
+		return nil, scanErr
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error performing scan over server rows: %w", err)
@@ -96,8 +98,8 @@ func (r *Repository) List(ctx context.Context, serverType string, opt ...Option)
 	return results, nil
 }
 
-// upsert will upsert
-func (r *Repository) Upsert(ctx context.Context, server *Server, opt ...Option) ([]*Server, int, error) {
+// UpsertServer adds or updates a server in the DB
+func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Option) ([]*Server, int, error) {
 	if server == nil {
 		return nil, db.NoRowsAffected, errors.New("cannot update server that is nil")
 	}
@@ -139,6 +141,56 @@ func (r *Repository) Upsert(ctx context.Context, server *Server, opt ...Option) 
 		return nil, int(rowsAffected), nil
 	}
 	// Fetch current controllers to feed to the workers
-	controllers, err := r.List(ctx, resource.Controller.String())
+	controllers, err := r.ListServers(ctx, resource.Controller.String())
 	return controllers, len(controllers), err
+}
+
+// AddRecoveryNonce adds a nonce
+func (r *Repository) AddRecoveryNonce(ctx context.Context, nonce string, opt ...Option) error {
+	if nonce == "" {
+		return errors.New("empty nonce provided")
+	}
+	// Build query
+	q := `
+	insert into recovery_nonces
+		(nonce)
+	values
+		($1);
+	`
+	underlying, err := r.writer.DB()
+	if err != nil {
+		return fmt.Errorf("error fetching underlying DB for recovery nonce operation: %w", err)
+	}
+	result, err := underlying.ExecContext(ctx, q, nonce)
+	if err != nil {
+		return fmt.Errorf("error performing nonce insertion: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error finding number of rows affected by nonce insertion: %w", err)
+	}
+	if rows != 1 {
+		return fmt.Errorf("unexpected number of rows inserted at nonce insertion, wanted 1, got %d", rows)
+	}
+	return nil
+}
+
+// CleanupNonces starts a task to periodically remove nonces that no longer need to be stored
+func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int64, error) {
+	// If something was inserted before 3x the actual validity period, clean it out
+	endTime := time.Now().Add(-3 * globals.RecoveryTokenValidityPeriod)
+
+	underlying, err := r.writer.DB()
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("error fetching underlying DB for recovery nonce cleanup operation: %w", err)
+	}
+	result, err := underlying.ExecContext(ctx, "delete from recovery_nonces where create_time < $1;", endTime)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("error performing nonce cleanup: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("error finding number of rows affected by nonce cleanup: %w", err)
+	}
+	return rows, nil
 }

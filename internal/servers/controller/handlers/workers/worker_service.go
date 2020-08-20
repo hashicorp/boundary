@@ -36,7 +36,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error aqcuiring repo to store worker status: %v", err)
 	}
 	req.Worker.Type = resource.Worker.String()
-	controllers, _, err := repo.Upsert(ctx, req.Worker)
+	controllers, _, err := repo.UpsertServer(ctx, req.Worker)
 	if err != nil {
 		ws.logger.Error("error storing worker status", "error", err)
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
