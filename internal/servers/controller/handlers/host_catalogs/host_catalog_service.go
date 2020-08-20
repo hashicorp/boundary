@@ -47,7 +47,21 @@ func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 }
 
 func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogsRequest) (*pbs.ListHostCatalogsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Host Catalogs.")
+	authResults := auth.Verify(ctx)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	if err := validateListRequest(req); err != nil {
+		return nil, err
+	}
+	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range ul {
+		item.Scope = authResults.Scope
+	}
+	return &pbs.ListHostCatalogsResponse{Items: ul}, nil
 }
 
 // GetHostCatalog implements the interface pbs.HostCatalogServiceServer.
@@ -133,6 +147,22 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, e
 		return nil, handlers.NotFoundErrorf("Host catalog %q doesn't exist.", id)
 	}
 	return toProto(hc), nil
+}
+
+func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.HostCatalog, error) {
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	ul, err := repo.ListCatalogs(ctx, scopeId)
+	if err != nil {
+		return nil, err
+	}
+	var outUl []*pb.HostCatalog
+	for _, u := range ul {
+		outUl = append(outUl, toProto(u))
+	}
+	return outUl, nil
 }
 
 func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
@@ -236,6 +266,14 @@ func validateGetRequest(req *pbs.GetHostCatalogRequest) error {
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", badFields)
+	}
+	return nil
+}
+
+func validateListRequest(req *pbs.ListHostCatalogsRequest) error {
+	badFields := map[string]string{}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
 }
