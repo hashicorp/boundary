@@ -317,16 +317,6 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 	if item == nil {
 		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", map[string]string{"item": "this field is required."})
 	}
-
-	ha := &pb.StaticHostAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
-		badFields["attributes"] = "Incorrectly formatted attribute for this type."
-	}
-
-	if ha.GetAddress() == nil {
-		badFields["attributes.address"] = "This field is required."
-	}
-
 	switch host.SubtypeFromId(req.GetHostCatalogId()) {
 	case host.StaticSubtype:
 		if item.GetType() != "" && item.GetType() != host.StaticSubtype.String() {
