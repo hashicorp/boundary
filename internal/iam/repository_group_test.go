@@ -804,6 +804,14 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "recovery-user",
+			args: args{
+				groupId: group.PublicId,
+				userIds: []string{"u_recovery"},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

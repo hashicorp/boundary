@@ -23,6 +23,7 @@ type options struct {
 	withLogger            hclog.Logger
 	withRootWrapper       wrapping.Wrapper
 	withWorkerAuthWrapper wrapping.Wrapper
+	withRecoveryWrapper   wrapping.Wrapper
 	withRepository        *Repository
 	withOrder             string
 	withKeyId             string
@@ -56,10 +57,17 @@ func WithRootWrapper(w wrapping.Wrapper) Option {
 }
 
 // WithWorkerAuthWrapper sets the external worker authentication wrapper for a
-// given scope.
+// given scope
 func WithWorkerAuthWrapper(w wrapping.Wrapper) Option {
 	return func(o *options) {
 		o.withWorkerAuthWrapper = w
+	}
+}
+
+// WithRecoveryWrapper sets the recovery wrapper for a given scope
+func WithRecoveryWrapper(w wrapping.Wrapper) Option {
+	return func(o *options) {
+		o.withRecoveryWrapper = w
 	}
 }
 

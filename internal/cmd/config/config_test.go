@@ -63,6 +63,14 @@ func TestDevController(t *testing.T) {
 						"key_id":    "global_worker-auth",
 					},
 				},
+				{
+					Type:    "aead",
+					Purpose: []string{"recovery"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_recovery",
+					},
+				},
 			},
 			Telemetry: &configutil.Telemetry{
 				DisableHostname:         true,
@@ -82,8 +90,10 @@ func TestDevController(t *testing.T) {
 	exp.Listeners[1].RawConfig = actual.Listeners[1].RawConfig
 	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
+	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
 	exp.Controller.DevControllerKey = actual.Seals[0].Config["key"]
 	exp.Controller.DevWorkerAuthKey = actual.Seals[1].Config["key"]
+	exp.Controller.DevRecoveryKey = actual.Seals[2].Config["key"]
 
 	assert.Equal(t, exp, actual)
 }

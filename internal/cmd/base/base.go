@@ -18,6 +18,10 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/recovery"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
@@ -31,12 +35,15 @@ const (
 	// NotSetValue is a flag value for a not-set value
 	NotSetValue = "(not set)"
 
-	envTokenName = "BOUNDARY_TOKEN_NAME"
+	envTokenName      = "BOUNDARY_TOKEN_NAME"
+	envRecoveryConfig = "BOUNDARY_RECOVERY_CONFIG"
 )
 
 // reRemoveWhitespace is a regular expression for stripping whitespace from
 // a string.
 var reRemoveWhitespace = regexp.MustCompile(`[\s]+`)
+
+var DevOnlyControllerFlags = func(*Command, *FlagSet) {}
 
 type Command struct {
 	Context    context.Context
@@ -60,12 +67,16 @@ type Command struct {
 	flagFormat           string
 	flagField            string
 	FlagTokenName        string
+	FlagRecoveryConfig   string
 	flagOutputCurlString bool
 
 	FlagId          string
 	FlagName        string
 	FlagDescription string
 	FlagVersion     int
+
+	FlagDevPassthroughDirectory string
+	FlagDevRecoveryKey          string
 
 	client *api.Client
 }
@@ -172,32 +183,55 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	}
 
 	tokenName := "default"
-	if c.client.Token() == "" {
-		if c.FlagTokenName != "" {
-			tokenName = c.FlagTokenName
+	switch {
+	case c.FlagRecoveryConfig != "":
+		wrapper, err := getWrapper(c.Context, c.FlagRecoveryConfig)
+		if err != nil {
+			return nil, err
 		}
-		if tokenName != "none" {
-			token, err := keyring.Get("HashiCorp Boundary Auth Token", tokenName)
-			if err != nil {
-				if err == keyring.ErrNotFound {
-					c.UI.Info("No saved credential found, continuing without")
-				} else {
-					c.UI.Error(fmt.Sprintf("Error reading auth token from system credential store: %s", err))
-				}
-				token = ""
+		if err := wrapper.Init(c.Context); err != nil {
+			return nil, fmt.Errorf("Error initializing kms: %w", err)
+		}
+		defer func() {
+			if err := wrapper.Finalize(c.Context); err != nil {
+				c.UI.Error(fmt.Errorf("An error was encountered finalizing the kms: %w", err).Error())
 			}
-			if token != "" {
-				tokenBytes, err := base64.RawStdEncoding.DecodeString(token)
+		}()
+
+		token, err := recovery.GenerateRecoveryToken(c.Context, wrapper)
+		if err != nil {
+			return nil, fmt.Errorf("Error generating recovery config: %w", err)
+		}
+		c.client.SetToken(token)
+
+	case c.client.Token() == "":
+		if c.client.Token() == "" {
+			if c.FlagTokenName != "" {
+				tokenName = c.FlagTokenName
+			}
+			if tokenName != "none" {
+				token, err := keyring.Get("HashiCorp Boundary Auth Token", tokenName)
 				if err != nil {
-					c.UI.Error(fmt.Sprintf("Error unmarshaling stored token from system credential store: %s", err))
-				} else {
-					var authToken authtokens.AuthToken
-					if err := json.Unmarshal(tokenBytes, &authToken); err != nil {
-						c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
+					if err == keyring.ErrNotFound {
+						c.UI.Info("No saved credential found, continuing without")
 					} else {
-						c.client.SetToken(authToken.Token)
-						if !opts.withNoTokenScope {
-							c.client.SetScopeId(authToken.Scope.Id)
+						c.UI.Error(fmt.Sprintf("Error reading auth token from system credential store: %s", err))
+					}
+					token = ""
+				}
+				if token != "" {
+					tokenBytes, err := base64.RawStdEncoding.DecodeString(token)
+					if err != nil {
+						c.UI.Error(fmt.Sprintf("Error unmarshaling stored token from system credential store: %s", err))
+					} else {
+						var authToken authtokens.AuthToken
+						if err := json.Unmarshal(tokenBytes, &authToken); err != nil {
+							c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
+						} else {
+							c.client.SetToken(authToken.Token)
+							if !opts.withNoTokenScope {
+								c.client.SetScopeId(authToken.Scope.Id)
+							}
 						}
 					}
 				}
@@ -343,6 +377,13 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Target: &c.FlagTokenName,
 				EnvVar: envTokenName,
 				Usage:  `If specified, the given value will be used as the name when storing the token in the system credential store. This can allow switching user identities for different commands. Set to "none" to disable storing the token.`,
+			})
+
+			f.StringVar(&StringVar{
+				Name:   "recovery-config",
+				Target: &c.FlagRecoveryConfig,
+				EnvVar: envRecoveryConfig,
+				Usage:  `If specified, the given config file will be parsed for a "kms" block with purpose "recovery" and will use the recovery mechanism to authorize the call."`,
 			})
 
 			f.BoolVar(&BoolVar{
@@ -516,4 +557,31 @@ func printFlagDetail(w io.Writer, f *flag.Flag) {
 	usage := reRemoveWhitespace.ReplaceAllString(f.Usage, " ")
 	indented := WrapAtLengthWithPadding(usage, 6)
 	fmt.Fprintf(w, "%s\n\n", indented)
+}
+
+func getWrapper(ctx context.Context, path string) (wrapping.Wrapper, error) {
+	kmses, err := configutil.LoadConfigKMSes(path)
+	if err != nil {
+		return nil, fmt.Errorf("Error parsing config file: %w", err)
+	}
+
+	var kms *configutil.KMS
+	for _, v := range kmses {
+		if strutil.StrListContains(v.Purpose, "recovery") {
+			if kms != nil {
+				return nil, fmt.Errorf("Only one %q block marked for %q purpose is allowed", "kms", "recovery")
+			}
+			kms = v
+		}
+	}
+	if kms == nil {
+		return nil, fmt.Errorf("No %q block marked for %q purpose is allowed", "kms", "recovery")
+	}
+
+	wrapper, err := configutil.ConfigureWrapper(kms, nil, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Error configuring kms: %w", err)
+	}
+
+	return wrapper, nil
 }

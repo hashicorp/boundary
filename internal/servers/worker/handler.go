@@ -57,9 +57,9 @@ func (c *Worker) wrapGenericHandler(h http.Handler, props HandlerProperties) htt
 		ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
 		// Add a size limiter if desired
 		if maxRequestSize > 0 {
-			ctx = context.WithValue(ctx, "max_request_size", maxRequestSize)
+			ctx = context.WithValue(ctx, globals.ContextMaxRequestSizeTypeKey, maxRequestSize)
 		}
-		ctx = context.WithValue(ctx, "original_request_path", r.URL.Path)
+		ctx = context.WithValue(ctx, globals.ContextOriginalRequestPathTypeKey, r.URL.Path)
 		r = r.WithContext(ctx)
 
 		h.ServeHTTP(w, r)

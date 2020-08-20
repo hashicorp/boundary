@@ -9,9 +9,8 @@ import "time"
 // import issues. These values should only ever be set at startup, but simply
 // available to reference from anywhere.
 
-const (
-	ContextUserIdValue = "wt_user_id"
-)
+type ContextMaxRequestSizeType int
+type ContextOriginalRequestPathType int
 
 var (
 	// DefaultMaxRequestDuration is the amount of time we'll wait for a request
@@ -19,4 +18,12 @@ var (
 
 	// DefaultMaxRequestSize is the maximum size of a request we allow by default
 	DefaultMaxRequestSize = int64(1024 * 1024)
+
+	// ContextMaxRequestSizeTypeKey is a value to keep linters from complaining
+	// about clashing string identifiers
+	ContextMaxRequestSizeTypeKey ContextMaxRequestSizeType
+
+	// ContextOriginalRequestPathTypeKey is a value to keep linters from complaining
+	// about clashing string identifiers
+	ContextOriginalRequestPathTypeKey ContextOriginalRequestPathType
 )
