@@ -102,6 +102,15 @@ create table target_tcp (
   unique(scope_id, name) -- name must be unique within a scope
 );
 
+create trigger
+  insert_target_subtype
+before insert on target_tcp
+  for each row execute procedure insert_target_subtype();
+
+create trigger
+  delete_target_subtype
+after delete on target_tcp
+  for each row execute procedure delete_target_subtype();
 
  -- define the immutable fields for target 
 create trigger 
