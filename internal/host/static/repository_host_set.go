@@ -2,6 +2,7 @@ package static
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -128,4 +129,21 @@ func (r *Repository) UpdateSet(ctx context.Context, s *HostSet, version uint32, 
 	}
 
 	return returnedHostSet, rowsUpdated, nil
+}
+
+// LookupSet will look up a host set in the repository. If the host set is
+// not found, it will return nil, nil. All options are ignored.
+func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Option) (*HostSet, error) {
+	if publicId == "" {
+		return nil, fmt.Errorf("lookup: static host set: missing public id %w", db.ErrInvalidParameter)
+	}
+	s := allocHostSet()
+	s.PublicId = publicId
+	if err := r.reader.LookupByPublicId(ctx, s); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("lookup: static host set: failed %w for %s", err, publicId)
+	}
+	return s, nil
 }
