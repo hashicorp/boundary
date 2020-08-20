@@ -55,7 +55,7 @@ type UpdateRequest interface {
 func ValidateUpdateRequest(prefix string, r UpdateRequest, i ApiResource, fn CustomValidatorFunc) error {
 	badFields := map[string]string{}
 	if !ValidId(prefix, r.GetId()) {
-		badFields["group_id"] = "Improperly formatted path identifier."
+		badFields["id"] = "Improperly formatted path identifier."
 	}
 	if r.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update this resource."
