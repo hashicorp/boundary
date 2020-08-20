@@ -54,4 +54,26 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withDefaultPort = uint32(22)
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithUserId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithUserId("testId"))
+		testOpts := getDefaultOptions()
+		testOpts.withUserId = "testId"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithScopeId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithScopeId("testId"))
+		testOpts := getDefaultOptions()
+		testOpts.withScopeId = "testId"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithTargetType", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithTargetType(TcpTargetType))
+		testOpts := getDefaultOptions()
+		target := TcpTargetType
+		testOpts.withTargetType = &target
+		assert.Equal(opts, testOpts)
+	})
 }
