@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -108,28 +107,6 @@ func TestHostSet_New(t *testing.T) {
 			}
 		})
 	}
-}
-
-func testSets(t *testing.T, conn *gorm.DB, catalogId string, count int) []*HostSet {
-	t.Helper()
-	assert := assert.New(t)
-	var sets []*HostSet
-
-	for i := 0; i < count; i++ {
-		set, err := NewHostSet(catalogId)
-		assert.NoError(err)
-		assert.NotNil(set)
-		id, err := newHostSetId()
-		assert.NoError(err)
-		assert.NotEmpty(id)
-		set.PublicId = id
-
-		w := db.New(conn)
-		err2 := w.Create(context.Background(), set)
-		assert.NoError(err2)
-		sets = append(sets, set)
-	}
-	return sets
 }
 
 func TestHostSet_SetTableName(t *testing.T) {

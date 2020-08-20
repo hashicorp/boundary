@@ -30,7 +30,6 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// TODO: Uncomment all the valid test cases.
 func TestGet(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -361,10 +360,26 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create with no type",
 			req: &pbs.CreateHostRequest{Item: &pb.Host{
-				Name:        &wrappers.StringValue{Value: "name"},
-				Description: &wrappers.StringValue{Value: "desc"},
+				Name:        &wrappers.StringValue{Value: "no type name"},
+				Description: &wrappers.StringValue{Value: "no type desc"},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"address": structpb.NewStringValue("123.456.789"),
+				}},
 			}},
-			errCode: codes.InvalidArgument,
+			res: &pbs.CreateHostResponse{
+				Uri: fmt.Sprintf("scopes/%s/host-catalogs/%s/hosts/%s_", proj.GetPublicId(), hc.GetPublicId(), static.HostPrefix),
+				Item: &pb.Host{
+					HostCatalogId: hc.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:          &wrappers.StringValue{Value: "no type name"},
+					Description:   &wrappers.StringValue{Value: "no type desc"},
+					Type:          "static",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewStringValue("123.456.789"),
+					}},
+				},
+			},
+			errCode: codes.OK,
 		},
 		{
 			name: "Can't specify Id",
@@ -410,8 +425,8 @@ func TestCreate(t *testing.T) {
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a set created after the test setup's default set
-				assert.True(gotCreateTime.After(defaultHcCreated), "New set should have been created after default set. Was created %v, which is after %v", gotCreateTime, defaultHcCreated)
-				assert.True(gotUpdateTime.After(defaultHcCreated), "New set should have been updated after default set. Was updated %v, which is after %v", gotUpdateTime, defaultHcCreated)
+				assert.True(gotCreateTime.After(defaultHcCreated), "New host should have been created after default host. Was created %v, which is after %v", gotCreateTime, defaultHcCreated)
+				assert.True(gotUpdateTime.After(defaultHcCreated), "New host should have been updated after default host. Was updated %v, which is after %v", gotUpdateTime, defaultHcCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""

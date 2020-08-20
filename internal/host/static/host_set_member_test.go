@@ -20,7 +20,7 @@ func TestHostSetMember_New(t *testing.T) {
 	cats := TestCatalogs(t, conn, prj.PublicId, 2)
 
 	blueCat := cats[0]
-	blueSets := testSets(t, conn, blueCat.GetPublicId(), 2)
+	blueSets := TestSets(t, conn, blueCat.GetPublicId(), 2)
 	blueHosts := TestHosts(t, conn, blueCat.GetPublicId(), 2)
 
 	// TODO(mgaffney) 05/2020:

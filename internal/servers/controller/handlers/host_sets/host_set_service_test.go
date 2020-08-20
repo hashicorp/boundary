@@ -2,6 +2,7 @@ package host_sets_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -16,57 +17,45 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Scope, func() (*static.Repository, error)) {
-	t.Helper()
-	require := require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-	_, pRes := iam.TestScopes(t, conn)
-
-	wrap := db.TestWrapper(t)
-	rw := db.New(conn)
-	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, wrap)
-	}
-
-	hc, err := static.NewHostCatalog(pRes.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
-	require.NoError(err, "Couldn't get new catalog.")
-	repo, err := repoFn()
-	require.NoError(err, "Couldn't create static repostitory")
-	hcRes, err := repo.CreateCatalog(context.Background(), hc)
-	require.NoError(err, "Couldn't persist new catalog.")
-
-	return hcRes, pRes, repoFn
-}
-
-// TODO: Uncomment all the valid test cases.
 func TestGet(t *testing.T) {
 	t.Parallel()
-	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	rw := db.New(conn)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+
 	toMerge := &pbs.GetHostSetRequest{
-		Id: hc.GetPublicId(),
+		HostCatalogId: hc.GetPublicId(),
 	}
 
-	// pHostSet := &pb.HostSet{
-	// 	Id:          hc.GetPublicId(),
-	// 	CreatedTime: hc.CreateTime.GetTimestamp(),
-	// 	UpdatedTime: hc.UpdateTime.GetTimestamp(),
-	// 	Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-	// 	Name:        &wrappers.StringValue{Value: hc.GetName()},
-	// 	Description: &wrappers.StringValue{Value: hc.GetDescription()},
-	// 	Type:        "static",
-	// }
+	pHost := &pb.HostSet{
+		HostCatalogId: hc.GetPublicId(),
+		Id:            h.GetPublicId(),
+		CreatedTime:   h.CreateTime.GetTimestamp(),
+		UpdatedTime:   h.UpdateTime.GetTimestamp(),
+		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+		Type:          "static",
+	}
 
 	cases := []struct {
 		name    string
@@ -74,12 +63,12 @@ func TestGet(t *testing.T) {
 		res     *pbs.GetHostSetResponse
 		errCode codes.Code
 	}{
-		// {
-		// 	name:    "Get an Existing HostSet",
-		// 	req:     &pbs.GetHostSetRequest{Id: hc.GetPublicId()},
-		// 	res:     &pbs.GetHostSetResponse{Item: pHostSet},
-		// 	errCode: codes.OK,
-		// },
+		{
+			name:    "Get an Existing Host",
+			req:     &pbs.GetHostSetRequest{Id: h.GetPublicId()},
+			res:     &pbs.GetHostSetResponse{Item: pHost},
+			errCode: codes.OK,
+		},
 		{
 			name:    "Get a non existing Host Set",
 			req:     &pbs.GetHostSetRequest{Id: static.HostSetPrefix + "_DoesntExis"},
@@ -94,7 +83,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name:    "space in id",
-			req:     &pbs.GetHostSetRequest{Id: static.HostSetPrefix + "_1 23456789"},
+			req:     &pbs.GetHostSetRequest{Id: static.HostPrefix + "_1 23456789"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
@@ -105,7 +94,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetHostSetRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_sets.NewService(repo)
+			s, err := host_sets.NewService(repoFn)
 			require.NoError(t, err, "Couldn't create a new host set service.")
 
 			got, gErr := s.GetHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
@@ -121,32 +110,27 @@ func TestGet(t *testing.T) {
 
 func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrap := db.TestWrapper(t)
-	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, wrap)
-	}
-	o, _ := iam.TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	newHc, err := static.NewHostCatalog(o.GetPublicId())
-	require.NoError(t, err, "Couldn't get new catalog.")
-	repo, err := repoFn()
-	require.NoError(t, err, "Couldn't create static repostitory")
-	hcRes, err := repo.CreateCatalog(context.Background(), newHc)
-	require.NoError(t, err, "Couldn't create host catalog")
-	hcNoHostSets, err := repo.CreateCatalog(context.Background(), newHc)
-	require.NoError(t, err, "Couldn't create host catalog")
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	rw := db.New(conn)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	hcs := static.TestCatalogs(t, conn, proj.GetPublicId(), 2)
+	hc, hcNoHosts := hcs[0], hcs[1]
 
 	var wantHs []*pb.HostSet
-	for i := 0; i < 10; i++ {
-		hs := iam.TestGroup(t, conn, o.GetPublicId())
+	for _, h := range static.TestSets(t, conn, hc.GetPublicId(), 10) {
 		wantHs = append(wantHs, &pb.HostSet{
-			Id:            hs.GetPublicId(),
-			HostCatalogId: hcRes.GetPublicId(),
-			Scope:         &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
-			CreatedTime:   hs.GetCreateTime().GetTimestamp(),
-			UpdatedTime:   hs.GetUpdateTime().GetTimestamp(),
-			Version:       hs.GetVersion(),
+			Id:            h.GetPublicId(),
+			HostCatalogId: h.GetCatalogId(),
+			Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+			CreatedTime:   h.GetCreateTime().GetTimestamp(),
+			UpdatedTime:   h.GetUpdateTime().GetTimestamp(),
+			Version:       h.GetVersion(),
 			Type:          host.StaticSubtype.String(),
 		})
 	}
@@ -159,15 +143,13 @@ func TestList(t *testing.T) {
 	}{
 		{
 			name:          "List Many Host Sets",
-			hostCatalogId: hcRes.GetPublicId(),
-			// TODO: Uncomment this out when we implement list host catalog.
-			// res:     &pbs.ListHostSetsResponse{Items: wantHs},
-			res:     &pbs.ListHostSetsResponse{},
-			errCode: codes.OK,
+			hostCatalogId: hc.GetPublicId(),
+			res:           &pbs.ListHostSetsResponse{Items: wantHs},
+			errCode:       codes.OK,
 		},
 		{
 			name:          "List No Host Sets",
-			hostCatalogId: hcNoHostSets.GetPublicId(),
+			hostCatalogId: hcNoHosts.GetPublicId(),
 			res:           &pbs.ListHostSetsResponse{},
 			errCode:       codes.OK,
 		},
@@ -178,7 +160,7 @@ func TestList(t *testing.T) {
 			s, err := host_sets.NewService(repoFn)
 			require.NoError(err, "Couldn't create new host set service.")
 
-			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ListHostSetsRequest{HostCatalogId: tc.hostCatalogId})
+			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), &pbs.ListHostSetsRequest{HostCatalogId: tc.hostCatalogId})
 			assert.Equal(tc.errCode, status.Code(gErr), "ListHostSets(%q) got error %v, wanted %v", tc.hostCatalogId, gErr, tc.errCode)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostSets(%q) got response %q, wanted %q", tc.hostCatalogId, got, tc.res)
 		})
@@ -187,9 +169,20 @@ func TestList(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	t.Parallel()
-	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	s, err := host_sets.NewService(repo)
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	rw := db.New(conn)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+
+	s, err := host_sets.NewService(repoFn)
 	require.NoError(t, err, "Couldn't create a new host set service.")
 
 	cases := []struct {
@@ -199,20 +192,20 @@ func TestDelete(t *testing.T) {
 		res     *pbs.DeleteHostSetResponse
 		errCode codes.Code
 	}{
-		// {
-		// 	name:    "Delete an Existing HostSet",
-		// 	scopeId: proj.GetPublicId(),
-		// 	req: &pbs.DeleteHostSetRequest{
-		// 		HostCatalogId: hc.GetPublicId(),
-		// 		Id: hs.GetPublicId(),
-		// 	},
-		// 	res: &pbs.DeleteHostSetResponse{
-		// 		Existed: true,
-		// 	},
-		// 	errCode: codes.OK,
-		// },
 		{
-			name:    "Delete bad id HostSet",
+			name:    "Delete an Existing Host",
+			scopeId: proj.GetPublicId(),
+			req: &pbs.DeleteHostSetRequest{
+				HostCatalogId: hc.GetPublicId(),
+				Id:            h.GetPublicId(),
+			},
+			res: &pbs.DeleteHostSetResponse{
+				Existed: true,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Delete bad id Host",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
 				HostCatalogId: hc.GetPublicId(),
@@ -223,23 +216,24 @@ func TestDelete(t *testing.T) {
 			},
 			errCode: codes.OK,
 		},
-		// {
-		// 	name:    "Delete bad host catalog id in HostSet",
-		// 	scopeId: "p_doesntexis",
-		// 	req: &pbs.DeleteHostSetRequest{
-		// 		HostCatalogId: hc.GetPublicId(),
-		// 		Id: hs.GetPublicId(),
-		// 	},
-		// 	res: &pbs.DeleteHostSetResponse{
-		// 		Existed: false,
-		// 	},
-		// 	errCode: codes.OK,
-		// },
 		{
-			name:    "Bad HostSet Id formatting",
+			name:    "Delete bad host catalog id in Host",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				Id: static.HostSetPrefix + "_bad_format",
+				HostCatalogId: static.HostCatalogPrefix + "_doesntexis",
+				Id:            h.GetPublicId(),
+			},
+			res: &pbs.DeleteHostSetResponse{
+				Existed: false,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Bad Host Id formatting",
+			scopeId: proj.GetPublicId(),
+			req: &pbs.DeleteHostSetRequest{
+				HostCatalogId: hc.GetPublicId(),
+				Id:            static.HostSetPrefix + "_bad_format",
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -250,7 +244,7 @@ func TestDelete(t *testing.T) {
 			assert := assert.New(t)
 			got, gErr := s.DeleteHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "DeleteHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.EqualValuesf(tc.res, got, "DeleteHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -258,28 +252,54 @@ func TestDelete(t *testing.T) {
 func TestDelete_twice(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	s, err := host_sets.NewService(repo)
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	rw := db.New(conn)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+
+	s, err := host_sets.NewService(repoFn)
 	require.NoError(t, err, "Couldn't create a new host set service.")
 	req := &pbs.DeleteHostSetRequest{
 		HostCatalogId: hc.GetPublicId(),
-		Id:            static.HostSetPrefix + "_1234567890",
+		Id:            h.GetPublicId(),
 	}
 	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
 	got, gErr := s.DeleteHostSet(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	// assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	// got, gErr = s.DeleteHostSet(ctx, req)
-	// assert.NoError(gErr, "Second attempt")
+	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
+	got, gErr = s.DeleteHostSet(ctx, req)
+	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
 	t.Parallel()
-	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
-	_ = hc
-	toMerge := &pbs.CreateHostSetRequest{}
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	rw := db.New(conn)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+
+	toMerge := &pbs.CreateHostSetRequest{
+		HostCatalogId: hc.GetPublicId(),
+	}
+
+	defaultHcCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
+	require.NoError(t, err)
 
 	cases := []struct {
 		name    string
@@ -287,25 +307,25 @@ func TestCreate(t *testing.T) {
 		res     *pbs.CreateHostSetResponse
 		errCode codes.Code
 	}{
-		// {
-		// 	name: "Create a valid HostSet",
-		// 	req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-		// 		Name:        &wrappers.StringValue{Value: "name"},
-		// 		Description: &wrappers.StringValue{Value: "desc"},
-		// 		Type:        "static",
-		// 	}},
-		// 	res: &pbs.CreateHostSetResponse{
-		// 		Uri: fmt.Sprintf("scopes/%s/host-catalogs/%s/host-sets/%s_", proj.GetPublicId(), hc.GetId(), static.HostSetPrefix),
-		// 		Item: &pb.HostSet{
-		// 			HostCatalogId: hc.GetPublicId(),
-		// 			Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-		// 			Name:          &wrappers.StringValue{Value: "name"},
-		// 			Description:   &wrappers.StringValue{Value: "desc"},
-		// 			Type:          "static",
-		// 		},
-		// 	},
-		// 	errCode: codes.OK,
-		// },
+		{
+			name: "Create a valid Host",
+			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+				Name:        &wrappers.StringValue{Value: "name"},
+				Description: &wrappers.StringValue{Value: "desc"},
+				Type:        "static",
+			}},
+			res: &pbs.CreateHostSetResponse{
+				Uri: fmt.Sprintf("scopes/%s/host-catalogs/%s/host-sets/%s_", proj.GetPublicId(), hc.GetPublicId(), static.HostSetPrefix),
+				Item: &pb.HostSet{
+					HostCatalogId: hc.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:          &wrappers.StringValue{Value: "name"},
+					Description:   &wrappers.StringValue{Value: "desc"},
+					Type:          "static",
+				},
+			},
+			errCode: codes.OK,
+		},
 		{
 			name: "Create with unknown type",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
@@ -318,10 +338,20 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create with no type",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-				Name:        &wrappers.StringValue{Value: "name"},
-				Description: &wrappers.StringValue{Value: "desc"},
+				Name:        &wrappers.StringValue{Value: "no type name"},
+				Description: &wrappers.StringValue{Value: "no type desc"},
 			}},
-			errCode: codes.InvalidArgument,
+			res: &pbs.CreateHostSetResponse{
+				Uri: fmt.Sprintf("scopes/%s/host-catalogs/%s/host-sets/%s_", proj.GetPublicId(), hc.GetPublicId(), static.HostSetPrefix),
+				Item: &pb.HostSet{
+					HostCatalogId: hc.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:          &wrappers.StringValue{Value: "no type name"},
+					Description:   &wrappers.StringValue{Value: "no type desc"},
+					Type:          "static",
+				},
+			},
+			errCode: codes.OK,
 		},
 		{
 			name: "Can't specify Id",
@@ -354,21 +384,21 @@ func TestCreate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateHostSetRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_sets.NewService(repo)
+			s, err := host_sets.NewService(repoFn)
 			require.NoError(err, "Failed to create a new host set service.")
 
 			got, gErr := s.CreateHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateHostSet(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostSetPrefix))
-				// gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				// require.NoError(err, "Error converting proto to timestamp.")
-				// gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				// require.NoError(err, "Error converting proto to timestamp")
-				// // Verify it is a set created after the test setup's default set
-				// assert.True(gotCreateTime.After(defaultHcCreated), "New set should have been created after default set. Was created %v, which is after %v", gotCreateTime, defaultHcCreated)
-				// assert.True(gotUpdateTime.After(defaultHcCreated), "New set should have been updated after default set. Was updated %v, which is after %v", gotUpdateTime, defaultHcCreated)
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostPrefix))
+				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
+				require.NoError(err, "Error converting proto to timestamp.")
+				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
+				require.NoError(err, "Error converting proto to timestamp")
+				// Verify it is a set created after the test setup's default set
+				assert.True(gotCreateTime.After(defaultHcCreated), "New set should have been created after default set. Was created %v, which is after %v", gotCreateTime, defaultHcCreated)
+				assert.True(gotUpdateTime.After(defaultHcCreated), "New set should have been updated after default set. Was updated %v, which is after %v", gotUpdateTime, defaultHcCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
@@ -385,27 +415,44 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	t.Parallel()
-	hc, proj, repoFn := createDefaultHostCatalogAndRepo(t)
-	tested, err := host_sets.NewService(repoFn)
-	require.NoError(t, err, "Failed to create a new host set service.")
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	rw := db.New(conn)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	repo, err := repoFn()
+	require.NoError(t, err, "Couldn't create new static repo.")
+
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+
+	h, err := static.NewHostSet(hc.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
+	require.NoError(t, err)
+	h, err = repo.CreateSet(context.Background(), proj.GetPublicId(), h)
+	require.NoError(t, err)
 
 	var version uint32 = 1
 
 	resetHostSet := func() {
 		version++
-		repo, err := repoFn()
-		require.NoError(t, err, "Couldn't create new static repo.")
-		// hc, _, err = repo.UpdateSet(context.Background(), hc, version, []string{"Name", "Description"})
-		// require.NoError(t, err, "Failed to reset host set.")
-		_ = repo
+		_, _, err = repo.UpdateSet(context.Background(), proj.GetPublicId(), h, version, []string{"Name", "Description"})
+		require.NoError(t, err, "Failed to reset host.")
 		version++
 	}
 
-	hcCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
+	hCreated, err := ptypes.Timestamp(h.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Failed to convert proto to timestamp")
 	toMerge := &pbs.UpdateHostSetRequest{
-		Id: hc.GetPublicId(),
+		HostCatalogId: hc.GetPublicId(),
+		Id:            h.GetPublicId(),
 	}
+
+	tested, err := host_sets.NewService(repoFn)
+	require.NoError(t, err, "Failed to create a new host set service.")
 
 	cases := []struct {
 		name    string
@@ -413,52 +460,54 @@ func TestUpdate(t *testing.T) {
 		res     *pbs.UpdateHostSetResponse
 		errCode codes.Code
 	}{
-		// {
-		// 	name: "Update an Existing HostSet",
-		// 	req: &pbs.UpdateHostSetRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"name", "description"},
-		// 		},
-		// 		Item: &pb.HostSet{
-		// 			Name:        &wrappers.StringValue{Value: "new"},
-		// 			Description: &wrappers.StringValue{Value: "desc"},
-		// 		},
-		// 	},
-		// 	res: &pbs.UpdateHostSetResponse{
-		// 		Item: &pb.HostSet{
-		// 			Id:          hc.GetPublicId(),
-		// 			Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-		// 			Name:        &wrappers.StringValue{Value: "new"},
-		// 			Description: &wrappers.StringValue{Value: "desc"},
-		// 			CreatedTime: hc.GetCreateTime().GetTimestamp(),
-		// 			Type:        &wrappers.StringValue{Value: "Static"},
-		// 		},
-		// 	},
-		// 	errCode: codes.OK,
-		// },
-		// {
-		// 	name: "Multiple Paths in single string",
-		// 	req: &pbs.UpdateHostSetRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"name,description"},
-		// 		},
-		// 		Item: &pb.HostSet{
-		// 			Name:        &wrappers.StringValue{Value: "new"},
-		// 			Description: &wrappers.StringValue{Value: "desc"},
-		// 		},
-		// 	},
-		// 	res: &pbs.UpdateHostSetResponse{
-		// 		Item: &pb.HostSet{
-		// 			Id:          hc.GetPublicId(),
-		// 			Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-		// 			Name:        &wrappers.StringValue{Value: "new"},
-		// 			Description: &wrappers.StringValue{Value: "desc"},
-		// 			CreatedTime: hc.GetCreateTime().GetTimestamp(),
-		// 			Type:        &wrappers.StringValue{Value: "Static"},
-		// 		},
-		// 	},
-		// 	errCode: codes.OK,
-		// },
+		{
+			name: "Update an Existing Host",
+			req: &pbs.UpdateHostSetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.HostSet{
+					Name:        &wrappers.StringValue{Value: "new"},
+					Description: &wrappers.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateHostSetResponse{
+				Item: &pb.HostSet{
+					HostCatalogId: hc.GetPublicId(),
+					Id:            h.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:          &wrappers.StringValue{Value: "new"},
+					Description:   &wrappers.StringValue{Value: "desc"},
+					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					Type:          "static",
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Multiple Paths in single string",
+			req: &pbs.UpdateHostSetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description"},
+				},
+				Item: &pb.HostSet{
+					Name:        &wrappers.StringValue{Value: "new"},
+					Description: &wrappers.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateHostSetResponse{
+				Item: &pb.HostSet{
+					HostCatalogId: hc.GetPublicId(),
+					Id:            h.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:          &wrappers.StringValue{Value: "new"},
+					Description:   &wrappers.StringValue{Value: "desc"},
+					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					Type:          "static",
+				},
+			},
+			errCode: codes.OK,
+		},
 		{
 			name: "No Update Mask",
 			req: &pbs.UpdateHostSetRequest{
@@ -491,111 +540,113 @@ func TestUpdate(t *testing.T) {
 			},
 			errCode: codes.InvalidArgument,
 		},
-		// {
-		// 	name: "Unset Name",
-		// 	req: &pbs.UpdateHostSetRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"name"},
-		// 		},
-		// 		Item: &pb.HostSet{
-		// 			Description: &wrappers.StringValue{Value: "ignored"},
-		// 		},
-		// 	},
-		// 	res: &pbs.UpdateHostSetResponse{
-		// 		Item: &pb.HostSet{
-		// 			Id:          hc.GetPublicId(),
-		// 			Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-		// 			Description: &wrappers.StringValue{Value: "default"},
-		// 			CreatedTime: hc.GetCreateTime().GetTimestamp(),
-		// 			Type:        &wrappers.StringValue{Value: "Static"},
-		// 		},
-		// 	},
-		// 	errCode: codes.OK,
-		// },
-		// {
-		// 	name: "Unset Description",
-		// 	req: &pbs.UpdateHostSetRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"description"},
-		// 		},
-		// 		Item: &pb.HostSet{
-		// 			Name: &wrappers.StringValue{Value: "ignored"},
-		// 		},
-		// 	},
-		// 	res: &pbs.UpdateHostSetResponse{
-		// 		Item: &pb.HostSet{
-		// 			Id:          hc.GetPublicId(),
-		// 			Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-		// 			Name:        &wrappers.StringValue{Value: "default"},
-		// 			CreatedTime: hc.GetCreateTime().GetTimestamp(),
-		// 			Type:        &wrappers.StringValue{Value: "Static"},
-		// 		},
-		// 	},
-		// 	errCode: codes.OK,
-		// },
-		// {
-		// 	name: "Update Only Name",
-		// 	req: &pbs.UpdateHostSetRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"name"},
-		// 		},
-		// 		Item: &pb.HostSet{
-		// 			Name:        &wrappers.StringValue{Value: "updated"},
-		// 			Description: &wrappers.StringValue{Value: "ignored"},
-		// 		},
-		// 	},
-		// 	res: &pbs.UpdateHostSetResponse{
-		// 		Item: &pb.HostSet{
-		// 			Id:          hc.GetPublicId(),
-		// 			Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-		// 			Name:        &wrappers.StringValue{Value: "updated"},
-		// 			Description: &wrappers.StringValue{Value: "default"},
-		// 			CreatedTime: hc.GetCreateTime().GetTimestamp(),
-		// 			Type:        &wrappers.StringValue{Value: "Static"},
-		// 		},
-		// 	},
-		// 	errCode: codes.OK,
-		// },
-		// {
-		// 	name: "Update Only Description",
-		// 	req: &pbs.UpdateHostSetRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"description"},
-		// 		},
-		// 		Item: &pb.HostSet{
-		// 			Name:        &wrappers.StringValue{Value: "ignored"},
-		// 			Description: &wrappers.StringValue{Value: "notignored"},
-		// 		},
-		// 	},
-		// 	res: &pbs.UpdateHostSetResponse{
-		// 		Item: &pb.HostSet{
-		// 			Id:          hc.GetPublicId(),
-		// 			Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-		// 			Name:        &wrappers.StringValue{Value: "default"},
-		// 			Description: &wrappers.StringValue{Value: "notignored"},
-		// 			CreatedTime: hc.GetCreateTime().GetTimestamp(),
-		// 			Type:        &wrappers.StringValue{Value: "Static"},
-		// 		},
-		// 	},
-		// 	errCode: codes.OK,
-		// },
-		// TODO: Updating a non existing set should result in a NotFound exception but currently results in
-		// the repoFn returning an internal error.
-		// {
-		// 	name: "Update a Non Existing HostSet",
-		// 	req: &pbs.UpdateHostSetRequest{
-		// 		Id: static.HostSetPrefix + "_DoesntExis",
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"description"},
-		// 		},
-		// 		Item: &pb.HostSet{
-		// 			Name:        &wrappers.StringValue{Value: "new"},
-		// 			Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-		// 			Description: &wrappers.StringValue{Value: "desc"},
-		// 		},
-		// 	},
-		// 	errCode: codes.Internal,
-		// },
+		{
+			name: "Unset Name",
+			req: &pbs.UpdateHostSetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.HostSet{
+					Description: &wrappers.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateHostSetResponse{
+				Item: &pb.HostSet{
+					HostCatalogId: hc.GetPublicId(),
+					Id:            h.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Description:   &wrappers.StringValue{Value: "default"},
+					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					Type:          "static",
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Unset Description",
+			req: &pbs.UpdateHostSetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.HostSet{
+					Name: &wrappers.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateHostSetResponse{
+				Item: &pb.HostSet{
+					HostCatalogId: hc.GetPublicId(),
+					Id:            h.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:          &wrappers.StringValue{Value: "default"},
+					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					Type:          "static",
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update Only Name",
+			req: &pbs.UpdateHostSetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.HostSet{
+					Name:        &wrappers.StringValue{Value: "updated"},
+					Description: &wrappers.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateHostSetResponse{
+				Item: &pb.HostSet{
+					HostCatalogId: hc.GetPublicId(),
+					Id:            h.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:          &wrappers.StringValue{Value: "updated"},
+					Description:   &wrappers.StringValue{Value: "default"},
+					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					Type:          "static",
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update Only Description",
+			req: &pbs.UpdateHostSetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.HostSet{
+					Name:        &wrappers.StringValue{Value: "ignored"},
+					Description: &wrappers.StringValue{Value: "notignored"},
+				},
+			},
+			res: &pbs.UpdateHostSetResponse{
+				Item: &pb.HostSet{
+					HostCatalogId: hc.GetPublicId(),
+					Id:            h.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:          &wrappers.StringValue{Value: "default"},
+					Description:   &wrappers.StringValue{Value: "notignored"},
+					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					Type:          "static",
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update a Non Existing Host Set",
+			req: &pbs.UpdateHostSetRequest{
+				Id: static.HostSetPrefix + "_DoesntExis",
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.HostSet{
+					Name:        &wrappers.StringValue{Value: "new"},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Description: &wrappers.StringValue{Value: "desc"},
+				},
+			},
+			errCode: codes.Internal,
+		},
 		{
 			name: "Cant change Id",
 			req: &pbs.UpdateHostSetRequest{
@@ -655,19 +706,19 @@ func TestUpdate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			tc.req.Version = version
+			tc.req.Item.Version = version
 
 			req := proto.Clone(toMerge).(*pbs.UpdateHostSetRequest)
 			proto.Merge(req, tc.req)
 
 			// Test some bad versions
-			req.Version = version + 2
+			req.Item.Version = version + 2
 			_, gErr := tested.UpdateHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			require.Error(gErr)
-			req.Version = version - 1
+			req.Item.Version = version - 1
 			_, gErr = tested.UpdateHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			require.Error(gErr)
-			req.Version = version
+			req.Item.Version = version
 
 			got, gErr := tested.UpdateHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateHostSet(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -677,14 +728,12 @@ func TestUpdate(t *testing.T) {
 			}
 
 			if got != nil {
-				assert.NotNilf(tc.res, "Expected UpdateHostSet response to be nil, but was %v", got)
+				assert.NotNilf(tc.res, "Expected UpdateHost response to be nil, but was %v", got)
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Failed to convert proto to timestamp")
 				// Verify it is a set updated after it was created
 				// TODO: This is currently failing.
-				//assert.True(gotUpdateTime.After(hcCreated), "Updated set should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hcCreated)
-				_ = gotUpdateTime
-				_ = hcCreated
+				assert.True(gotUpdateTime.After(hCreated), "Updated set should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
@@ -693,340 +742,6 @@ func TestUpdate(t *testing.T) {
 				tc.res.Item.Version = version + 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateHostSet(%q) got response %q, wanted %q", req, got, tc.res)
-		})
-	}
-}
-
-func TestAddMember(t *testing.T) {
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrap := db.TestWrapper(t)
-	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, wrap)
-	}
-	s, err := host_sets.NewService(repoFn)
-	require.NoError(t, err, "Error when getting new group service.")
-
-	o, p := iam.TestScopes(t, conn)
-
-	newHc, err := static.NewHostCatalog(p.GetPublicId())
-	require.NoError(t, err, "Couldn't get new catalog.")
-	repo, err := repoFn()
-	require.NoError(t, err, "Couldn't create static repostitory")
-	hc, err := repo.CreateCatalog(context.Background(), newHc)
-	require.NoError(t, err, "Couldn't create host catalog")
-
-	hosts := []*static.Host{
-		static.TestHost(t, conn, p.GetPublicId()),
-		static.TestHost(t, conn, p.GetPublicId()),
-		static.TestHost(t, conn, p.GetPublicId()),
-	}
-
-	addCases := []struct {
-		name        string
-		setup       func(*static.HostSet)
-		addHosts    []string
-		resultHosts []string
-		wantErr     bool
-	}{
-		{
-			name:        "Add to empty set",
-			setup:       func(g *static.HostSet) {},
-			addHosts:    []string{hosts[1].GetPublicId()},
-			resultHosts: []string{hosts[1].GetPublicId()},
-		},
-		{
-			name: "Add host on populated set",
-			setup: func(s *static.HostSet) {
-				static.TestSetMember(t, conn, s.GetPublicId(), hosts[0].GetPublicId())
-			},
-			addHosts:    []string{hosts[1].GetPublicId()},
-			resultHosts: []string{hosts[0].GetPublicId(), hosts[1].GetPublicId()},
-		},
-		{
-			name: "Add empty on populated set",
-			setup: func(s *static.HostSet) {
-				static.TestSetMember(t, conn, s.GetPublicId(), hosts[0].GetPublicId())
-				static.TestSetMember(t, conn, s.GetPublicId(), hosts[1].GetPublicId())
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tc := range addCases {
-		t.Run(tc.name, func(t *testing.T) {
-			hs := static.TestHostSet(t, conn, hc.GetPublicId())
-			tc.setup(hs)
-			req := &pbs.AddHostSetHostsRequest{
-				Id:            hs.GetPublicId(),
-				HostCatalogId: hs.GetHostCatalogId(),
-				Version:       hc.GetVersion(),
-				Item: &pbs.HostSetHosts{
-					HostIds: tc.addHosts,
-				},
-			}
-
-			got, err := s.AddHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
-			if tc.wantErr {
-				assert.Error(t, err)
-				return
-			}
-			s, ok := status.FromError(err)
-			require.True(t, ok)
-			require.NoError(t, err, "Got error: %v", s)
-
-			assert.True(t, equalMembers(got.GetItem(), tc.resultHosts))
-		})
-	}
-
-	hs := static.TestHostSet(t, conn, p.GetPublicId())
-
-	failCases := []struct {
-		name    string
-		req     *pbs.AddHostSetHostsRequest
-		errCode codes.Code
-	}{
-		{
-			name: "Bad Host Set Id",
-			req: &pbs.AddHostSetHostsRequest{
-				Id:            "bad id",
-				HostCatalogId: hc.GetPublicId(),
-				Version:       hs.GetVersion(),
-				Item:          &pbs.HostSetHosts{},
-			},
-			errCode: codes.InvalidArgument,
-		},
-	}
-	for _, tc := range failCases {
-		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
-			_, gErr := s.AddHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "AddHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-		})
-	}
-}
-
-func TestSetMember(t *testing.T) {
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrap := db.TestWrapper(t)
-	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, wrap)
-	}
-	s, err := host_sets.NewService(repoFn)
-	require.NoError(t, err, "Error when getting new group service.")
-
-	o, p := iam.TestScopes(t, conn)
-
-	newHc, err := static.NewHostCatalog(p.GetPublicId())
-	require.NoError(t, err, "Couldn't get new catalog.")
-	repo, err := repoFn()
-	require.NoError(t, err, "Couldn't create static repostitory")
-	hc, err := repo.CreateCatalog(context.Background(), newHc)
-	require.NoError(t, err, "Couldn't create host catalog")
-
-	hosts := []*static.Host{
-		static.TestHost(t, conn, p.GetPublicId()),
-		static.TestHost(t, conn, p.GetPublicId()),
-		static.TestHost(t, conn, p.GetPublicId()),
-	}
-
-	setCases := []struct {
-		name        string
-		setup       func(*static.HostSet)
-		setHosts    []string
-		resultHosts []string
-		wantErr     bool
-	}{
-		{
-			name:        "Set user on empty group",
-			setup:       func(h *static.HostSet) {},
-			setHosts:    []string{hosts[1].GetPublicId()},
-			resultHosts: []string{hosts[1].GetPublicId()},
-		},
-		{
-			name: "Set user on populated group",
-			setup: func(h *static.HostSet) {
-				iam.TestGroupMember(t, conn, h.GetPublicId(), hosts[0].GetPublicId())
-			},
-			setHosts:    []string{hosts[1].GetPublicId()},
-			resultHosts: []string{hosts[1].GetPublicId()},
-		},
-		{
-			name: "Set empty on populated group",
-			setup: func(h *static.HostSet) {
-				iam.TestGroupMember(t, conn, h.GetPublicId(), hosts[0].GetPublicId())
-				iam.TestGroupMember(t, conn, h.GetPublicId(), hosts[1].GetPublicId())
-			},
-			setHosts:    []string{},
-			resultHosts: nil,
-		},
-	}
-
-	for _, tc := range setCases {
-		t.Run(tc.name+"_"+scp.GetType(), func(t *testing.T) {
-			grp := static.TestHostSEt(t, conn, scp.GetPublicId())
-			tc.setup(grp)
-			req := &pbs.SetHostSetHostsRequest{
-				Id:      grp.GetPublicId(),
-				Version: grp.GetVersion(),
-				Item: &pbs.HostSetHosts{
-					HostIds: tc.setHosts,
-				},
-			}
-
-			got, err := s.SetHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
-			if tc.wantErr {
-				assert.Error(t, err)
-				return
-			}
-			s, ok := status.FromError(err)
-			require.True(t, ok)
-			require.NoError(t, err, "Got error: %v", s)
-
-			assert.True(t, equalMembers(got.GetItem(), tc.resultHosts))
-		})
-	}
-
-	hs := static.TestHostSet(t, conn, hc.GetPublicId())
-
-	failCases := []struct {
-		name    string
-		req     *pbs.SetHostSetHostsRequest
-		errCode codes.Code
-	}{
-		{
-			name: "Bad Group Id",
-			req: &pbs.SetHostSetHostsRequest{
-				Id:            "bad id",
-				HostCatalogId: hc.GetPublicId(),
-				Version:       hs.GetVersion(),
-			},
-			errCode: codes.InvalidArgument,
-		},
-	}
-	for _, tc := range failCases {
-		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
-			_, gErr := s.SetHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "SetHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-		})
-	}
-}
-
-func TestRemoveMember(t *testing.T) {
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrap := db.TestWrapper(t)
-	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, wrap)
-	}
-	s, err := host_sets.NewService(repoFn)
-	require.NoError(t, err, "Error when getting new group service.")
-
-	o, p := iam.TestScopes(t, conn)
-
-	newHc, err := static.NewHostCatalog(p.GetPublicId())
-	require.NoError(t, err, "Couldn't get new catalog.")
-	repo, err := repoFn()
-	require.NoError(t, err, "Couldn't create static repostitory")
-	hc, err := repo.CreateCatalog(context.Background(), newHc)
-	require.NoError(t, err, "Couldn't create host catalog")
-
-	hosts := []*static.Host{
-		static.TestHost(t, conn, p.GetPublicId()),
-		static.TestHost(t, conn, p.GetPublicId()),
-		static.TestHost(t, conn, p.GetPublicId()),
-	}
-
-	addCases := []struct {
-		name        string
-		setup       func(*static.HostSet)
-		removeHosts []string
-		resultHosts []string
-		wantErr     bool
-	}{
-		{
-			name:        "Remove user on empty group",
-			setup:       func(*static.HostSet) {},
-			removeHosts: []string{hosts[1].GetPublicId()},
-			wantErr:     true,
-		},
-		{
-			name: "Remove 1 of 2 users from group",
-			setup: func(r *static.HostSet) {
-				iam.TestGroupMember(t, conn, r.GetPublicId(), hosts[0].GetPublicId())
-				iam.TestGroupMember(t, conn, r.GetPublicId(), hosts[1].GetPublicId())
-			},
-			removeHosts: []string{hosts[1].GetPublicId()},
-			resultHosts: []string{hosts[0].GetPublicId()},
-		},
-		{
-			name: "Remove all users from group",
-			setup: func(r *static.HostSet) {
-				iam.TestGroupMember(t, conn, r.GetPublicId(), hosts[0].GetPublicId())
-				iam.TestGroupMember(t, conn, r.GetPublicId(), hosts[1].GetPublicId())
-			},
-			removeHosts: []string{hosts[0].GetPublicId(), hosts[1].GetPublicId()},
-			resultHosts: []string{},
-		},
-		{
-			name: "Remove empty on populated group",
-			setup: func(r *static.HostSet) {
-				iam.TestGroupMember(t, conn, r.GetPublicId(), hosts[0].GetPublicId())
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tc := range addCases {
-		t.Run(tc.name, func(t *testing.T) {
-			hs := static.TestHostSet(t, conn, hc.GetPublicId())
-			tc.setup(hs)
-			req := &pbs.RemoveHostSetHostsRequest{
-				Id:            hs.GetPublicId(),
-				HostCatalogId: hc.GetPublicId(),
-				Version:       hs.GetVersion(),
-				Item: &pbs.HostSetHosts{
-					HostIds: tc.removeHosts,
-				},
-			}
-
-			got, err := s.RemoveHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
-			if tc.wantErr {
-				assert.Error(t, err)
-				return
-			}
-			s, ok := status.FromError(err)
-			require.True(t, ok)
-			require.NoError(t, err, "Got error: %v", s)
-
-			assert.True(t, equalMembers(got.GetItem(), tc.resultHosts))
-		})
-	}
-
-	hs := static.TestHostSet(t, conn, hs.GetPublicId())
-
-	failCases := []struct {
-		name    string
-		req     *pbs.RemoveHostSetHostsRequest
-		errCode codes.Code
-	}{
-		{
-			name: "Bad Group Id",
-			req: &pbs.RemoveHostSetHostsRequest{
-				Id:            "bad id",
-				HostCatalogId: hc.GetPublicId(),
-				Version:       hs.GetVersion(),
-			},
-			errCode: codes.InvalidArgument,
-		},
-	}
-	for _, tc := range failCases {
-		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
-			_, gErr := s.RemoveHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
 }
