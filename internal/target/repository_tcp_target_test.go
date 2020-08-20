@@ -131,7 +131,6 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			conn.LogMode(true)
 			target, hostSets, err := repo.CreateTcpTarget(context.Background(), tt.args.keyWrapper, tt.args.target, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
