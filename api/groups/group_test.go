@@ -1,8 +1,8 @@
 package groups_test
 
 import (
+	"errors"
 	"fmt"
-	"net/http"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -50,18 +50,18 @@ func TestGroup_List(t *testing.T) {
 			grps := groups.NewGroupsClient(tt.scopeClient)
 			pl, apiErr, err := grps.List(tc.Context())
 			assert.NoError(err)
-			assert.Nil(apiErr)
+			assert.NoError(apiErr)
 			assert.Empty(pl)
 
 			expected := make([]*groups.Group, 10)
 			for i := 0; i < 10; i++ {
 				expected[i], apiErr, err = grps.Create(tc.Context(), groups.WithName(fmt.Sprint(i)))
 				require.NoError(err)
-				assert.Nil(apiErr)
+				assert.NoError(apiErr)
 			}
 			pl, apiErr, err = grps.List(tc.Context())
 			require.NoError(err)
-			assert.Nil(apiErr)
+			assert.NoError(apiErr)
 			require.NotNil(pl)
 			require.Len(pl, 10)
 			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
@@ -101,11 +101,9 @@ func TestGroup_Crud(t *testing.T) {
 	projClient := client.Clone()
 	projClient.SetScopeId(proj.GetPublicId())
 
-	checkGroup := func(step string, g *groups.Group, apiErr *api.Error, err error, wantedName string, wantedVersion uint32, expectedUserIds []string) {
+	checkGroup := func(step string, g *groups.Group, apiErr error, err error, wantedName string, wantedVersion uint32, expectedUserIds []string) {
 		require.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
-			t.Errorf("ApiError message: %q", apiErr.Message)
-		}
+		assert.NoError(apiErr, step)
 		assert.NotNil(g, "returned no resource", step)
 		gotName := ""
 		if g.Name != "" {
@@ -135,11 +133,11 @@ func TestGroup_Crud(t *testing.T) {
 
 	user1, apiErr, err := users.NewUsersClient(client).Create(tc.Context())
 	require.NoError(err)
-	require.Nil(apiErr)
+	require.NoError(apiErr)
 
 	user2, apiErr, err := users.NewUsersClient(client).Create(tc.Context())
 	require.NoError(err)
-	require.Nil(apiErr)
+	require.NoError(apiErr)
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -213,28 +211,28 @@ func TestGroup_Errors(t *testing.T) {
 
 			g, apiErr, err := groupClient.Create(tc.Context(), groups.WithName("first"))
 			require.NoError(err)
-			assert.Nil(apiErr)
+			assert.NoError(apiErr)
 			assert.NotNil(g)
 
 			// Create another resource with the same name.
 			_, apiErr, err = groupClient.Create(tc.Context(), groups.WithName("first"))
 			require.NoError(err)
-			assert.NotNil(apiErr)
+			assert.Error(apiErr)
 
 			_, apiErr, err = groupClient.Read(tc.Context(), iam.GroupPrefix+"_doesntexis")
 			require.NoError(err)
-			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusNotFound, apiErr.Status)
+			assert.Error(apiErr)
+			assert.True(errors.Is(apiErr, api.ErrNotFound))
 
 			_, apiErr, err = groupClient.Read(tc.Context(), "invalid id")
 			require.NoError(err)
-			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusForbidden, apiErr.Status)
+			assert.Error(apiErr)
+			assert.True(errors.Is(apiErr, api.ErrForbidden))
 
 			_, apiErr, err = groupClient.Update(tc.Context(), g.Id, g.Version)
 			require.NoError(err)
-			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusBadRequest, apiErr.Status)
+			assert.Error(apiErr)
+			assert.True(errors.Is(apiErr, api.ErrBadRequest))
 		})
 	}
 }

@@ -3,7 +3,6 @@ package groups
 import (
 	"fmt"
 
-	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/groups"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
@@ -160,7 +159,7 @@ func (c *Command) Run(args []string) int {
 	var existed bool
 	var group *groups.Group
 	var listedGroups []*groups.Group
-	var apiErr *api.Error
+	var apiErr error
 
 	switch c.Func {
 	case "create":

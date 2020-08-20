@@ -36,7 +36,7 @@ func NewRolesClient(c *api.Client) *RolesClient {
 	return &RolesClient{client: c}
 }
 
-func (c *RolesClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Error, error) {
+func (c *RolesClient) Create(ctx context.Context, opt ...Option) (r *Role, apiErr error, reqErr error) {
 	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
@@ -53,7 +53,7 @@ func (c *RolesClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Er
 	}
 
 	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -63,7 +63,7 @@ func (c *RolesClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Er
 	return target, apiErr, nil
 }
 
-func (c *RolesClient) Read(ctx context.Context, roleId string, opt ...Option) (*Role, *api.Error, error) {
+func (c *RolesClient) Read(ctx context.Context, roleId string, opt ...Option) (r *Role, apiErr error, reqErr error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into Read request")
 	}
@@ -85,7 +85,7 @@ func (c *RolesClient) Read(ctx context.Context, roleId string, opt ...Option) (*
 	}
 
 	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -95,7 +95,7 @@ func (c *RolesClient) Read(ctx context.Context, roleId string, opt ...Option) (*
 	return target, apiErr, nil
 }
 
-func (c *RolesClient) Update(ctx context.Context, roleId string, version uint32, opt ...Option) (*Role, *api.Error, error) {
+func (c *RolesClient) Update(ctx context.Context, roleId string, version uint32, opt ...Option) (r *Role, apiErr error, reqErr error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into Update request")
 	}
@@ -135,7 +135,7 @@ func (c *RolesClient) Update(ctx context.Context, roleId string, version uint32,
 	}
 
 	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -145,7 +145,7 @@ func (c *RolesClient) Update(ctx context.Context, roleId string, version uint32,
 	return target, apiErr, nil
 }
 
-func (c *RolesClient) Delete(ctx context.Context, roleId string, opt ...Option) (bool, *api.Error, error) {
+func (c *RolesClient) Delete(ctx context.Context, roleId string, opt ...Option) (b bool, apiErr error, reqErr error) {
 	if roleId == "" {
 		return false, nil, fmt.Errorf("empty roleId value passed into Delete request")
 	}
@@ -170,7 +170,7 @@ func (c *RolesClient) Delete(ctx context.Context, roleId string, opt ...Option) 
 		Existed bool
 	}
 	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
@@ -180,7 +180,7 @@ func (c *RolesClient) Delete(ctx context.Context, roleId string, opt ...Option) 
 	return target.Existed, apiErr, nil
 }
 
-func (c *RolesClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Error, error) {
+func (c *RolesClient) List(ctx context.Context, opt ...Option) (l []*Role, apiErr error, reqErr error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -201,7 +201,7 @@ func (c *RolesClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Er
 		Items []*Role
 	}
 	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
@@ -211,7 +211,7 @@ func (c *RolesClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Er
 	return target.Items, apiErr, nil
 }
 
-func (c *RolesClient) AddGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *RolesClient) AddGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (r *Role, apiErr error, reqErr error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddGrants request")
 	}
@@ -255,7 +255,7 @@ func (c *RolesClient) AddGrants(ctx context.Context, roleId string, version uint
 	}
 
 	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddGrants response: %w", err)
 	}
@@ -265,7 +265,7 @@ func (c *RolesClient) AddGrants(ctx context.Context, roleId string, version uint
 	return target, apiErr, nil
 }
 
-func (c *RolesClient) AddPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *RolesClient) AddPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (r *Role, apiErr error, reqErr error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddPrincipals request")
 	}
@@ -309,7 +309,7 @@ func (c *RolesClient) AddPrincipals(ctx context.Context, roleId string, version 
 	}
 
 	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddPrincipals response: %w", err)
 	}
@@ -319,7 +319,7 @@ func (c *RolesClient) AddPrincipals(ctx context.Context, roleId string, version 
 	return target, apiErr, nil
 }
 
-func (c *RolesClient) SetGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *RolesClient) SetGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (r *Role, apiErr error, reqErr error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetGrants request")
 	}
@@ -366,7 +366,7 @@ func (c *RolesClient) SetGrants(ctx context.Context, roleId string, version uint
 	}
 
 	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetGrants response: %w", err)
 	}
@@ -376,7 +376,7 @@ func (c *RolesClient) SetGrants(ctx context.Context, roleId string, version uint
 	return target, apiErr, nil
 }
 
-func (c *RolesClient) SetPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *RolesClient) SetPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (r *Role, apiErr error, reqErr error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetPrincipals request")
 	}
@@ -423,7 +423,7 @@ func (c *RolesClient) SetPrincipals(ctx context.Context, roleId string, version 
 	}
 
 	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetPrincipals response: %w", err)
 	}
@@ -433,7 +433,7 @@ func (c *RolesClient) SetPrincipals(ctx context.Context, roleId string, version 
 	return target, apiErr, nil
 }
 
-func (c *RolesClient) RemoveGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *RolesClient) RemoveGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (r *Role, apiErr error, reqErr error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemoveGrants request")
 	}
@@ -477,7 +477,7 @@ func (c *RolesClient) RemoveGrants(ctx context.Context, roleId string, version u
 	}
 
 	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemoveGrants response: %w", err)
 	}
@@ -487,7 +487,7 @@ func (c *RolesClient) RemoveGrants(ctx context.Context, roleId string, version u
 	return target, apiErr, nil
 }
 
-func (c *RolesClient) RemovePrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *RolesClient) RemovePrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (r *Role, apiErr error, reqErr error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemovePrincipals request")
 	}
@@ -531,7 +531,7 @@ func (c *RolesClient) RemovePrincipals(ctx context.Context, roleId string, versi
 	}
 
 	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemovePrincipals response: %w", err)
 	}

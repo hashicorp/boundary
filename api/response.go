@@ -21,7 +21,7 @@ func (r *Response) HttpResponse() *http.Response {
 	return r.resp
 }
 
-func (r *Response) Decode(inStruct interface{}) (*Error, error) {
+func (r *Response) Decode(inStruct interface{}) (apiErr error, reqErr error) {
 	if r == nil || r.resp == nil {
 		return nil, fmt.Errorf("nil response, cannot decode")
 	}
@@ -45,7 +45,7 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 		return nil, fmt.Errorf("nil value given to decode into and not a 204 response")
 	}
 
-	apiErr := &Error{
+	apiErr = &Error{
 		Status: int32(r.resp.StatusCode),
 	}
 	if r.resp.Body != nil {

@@ -34,7 +34,7 @@ func NewAccountsClient(c *api.Client) *AccountsClient {
 	return &AccountsClient{client: c}
 }
 
-func (c *AccountsClient) Create(ctx context.Context, authMethodId string, opt ...Option) (*Account, *api.Error, error) {
+func (c *AccountsClient) Create(ctx context.Context, authMethodId string, opt ...Option) (r *Account, apiErr error, reqErr error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Create request")
 	}
@@ -54,7 +54,7 @@ func (c *AccountsClient) Create(ctx context.Context, authMethodId string, opt ..
 	}
 
 	target := new(Account)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -64,7 +64,7 @@ func (c *AccountsClient) Create(ctx context.Context, authMethodId string, opt ..
 	return target, apiErr, nil
 }
 
-func (c *AccountsClient) Read(ctx context.Context, authMethodId string, accountId string, opt ...Option) (*Account, *api.Error, error) {
+func (c *AccountsClient) Read(ctx context.Context, authMethodId string, accountId string, opt ...Option) (r *Account, apiErr error, reqErr error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Read request")
 	}
@@ -90,7 +90,7 @@ func (c *AccountsClient) Read(ctx context.Context, authMethodId string, accountI
 	}
 
 	target := new(Account)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -100,7 +100,7 @@ func (c *AccountsClient) Read(ctx context.Context, authMethodId string, accountI
 	return target, apiErr, nil
 }
 
-func (c *AccountsClient) Update(ctx context.Context, authMethodId string, accountId string, version uint32, opt ...Option) (*Account, *api.Error, error) {
+func (c *AccountsClient) Update(ctx context.Context, authMethodId string, accountId string, version uint32, opt ...Option) (r *Account, apiErr error, reqErr error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Update request")
 	}
@@ -143,7 +143,7 @@ func (c *AccountsClient) Update(ctx context.Context, authMethodId string, accoun
 	}
 
 	target := new(Account)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -153,7 +153,7 @@ func (c *AccountsClient) Update(ctx context.Context, authMethodId string, accoun
 	return target, apiErr, nil
 }
 
-func (c *AccountsClient) Delete(ctx context.Context, authMethodId string, accountId string, opt ...Option) (bool, *api.Error, error) {
+func (c *AccountsClient) Delete(ctx context.Context, authMethodId string, accountId string, opt ...Option) (b bool, apiErr error, reqErr error) {
 	if authMethodId == "" {
 		return false, nil, fmt.Errorf("empty authMethodId value passed into Delete request")
 	}
@@ -182,7 +182,7 @@ func (c *AccountsClient) Delete(ctx context.Context, authMethodId string, accoun
 		Existed bool
 	}
 	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
@@ -192,7 +192,7 @@ func (c *AccountsClient) Delete(ctx context.Context, authMethodId string, accoun
 	return target.Existed, apiErr, nil
 }
 
-func (c *AccountsClient) List(ctx context.Context, authMethodId string, opt ...Option) ([]*Account, *api.Error, error) {
+func (c *AccountsClient) List(ctx context.Context, authMethodId string, opt ...Option) (l []*Account, apiErr error, reqErr error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into List request")
 	}
@@ -217,7 +217,7 @@ func (c *AccountsClient) List(ctx context.Context, authMethodId string, opt ...O
 		Items []*Account
 	}
 	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}

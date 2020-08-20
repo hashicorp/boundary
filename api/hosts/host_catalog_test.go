@@ -1,8 +1,8 @@
 package hosts_test
 
 import (
+	"errors"
 	"fmt"
-	"net/http"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -32,7 +32,7 @@ func TestCatalog_List(t *testing.T) {
 
 	ul, apiErr, err := catalogClient.List(tc.Context())
 	assert.NoError(err)
-	assert.Nil(apiErr)
+	assert.NoError(apiErr)
 	assert.Empty(ul)
 
 	var expected []*hosts.HostCatalog
@@ -42,21 +42,21 @@ func TestCatalog_List(t *testing.T) {
 
 	expected[0], apiErr, err = catalogClient.Create(tc.Context(), "static", hosts.WithName(expected[0].Name))
 	assert.NoError(err)
-	assert.Nil(apiErr)
+	assert.NoError(apiErr)
 
 	ul, apiErr, err = catalogClient.List(tc.Context())
 	assert.NoError(err)
-	assert.Nil(apiErr)
+	assert.NoError(apiErr)
 	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul))
 
 	for i := 1; i < 10; i++ {
 		expected[i], apiErr, err = catalogClient.Create(tc.Context(), "static", hosts.WithName(expected[i].Name))
 		assert.NoError(err)
-		assert.Nil(apiErr)
+		assert.NoError(apiErr)
 	}
 	ul, apiErr, err = catalogClient.List(tc.Context())
 	require.NoError(err)
-	assert.Nil(apiErr)
+	assert.NoError(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))
 }
 
@@ -92,11 +92,9 @@ func TestCatalogs_Crud(t *testing.T) {
 	projClient := client.Clone()
 	projClient.SetScopeId(proj.GetPublicId())
 
-	checkCatalog := func(step string, hc *hosts.HostCatalog, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
+	checkCatalog := func(step string, hc *hosts.HostCatalog, apiErr error, err error, wantedName string, wantVersion uint32) {
 		require.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
-			t.Errorf("ApiError message: %q", apiErr.Message)
-		}
+		assert.NoError(apiErr, step)
 		assert.NotNil(hc, "returned no resource", step)
 		gotName := ""
 		if hc.Name != "" {
@@ -148,21 +146,25 @@ func TestCatalogs_Errors(t *testing.T) {
 
 	hc, apiErr, err := pc.Create(tc.Context(), "static", hosts.WithName("foo"))
 	require.NoError(err)
-	assert.Nil(apiErr)
+	assert.NoError(apiErr)
 	assert.NotNil(hc)
 
 	_, apiErr, err = pc.Create(tc.Context(), "static", hosts.WithName("foo"))
 	require.NoError(err)
-	assert.NotNil(apiErr)
+	assert.Error(apiErr)
+
+	_, apiErr, err = pc.Create(tc.Context(), "unknown", hosts.WithName("bar"))
+	require.NoError(err)
+	assert.Error(apiErr)
 
 	_, apiErr, err = pc.Read(tc.Context(), static.HostCatalogPrefix+"_doesntexis")
 	require.NoError(err)
 	// TODO: Should this be nil instead of just a catalog that has no values set
-	assert.NotNil(apiErr)
-	assert.EqualValues(apiErr.Status, http.StatusNotFound)
+	assert.Error(apiErr)
+	assert.True(errors.Is(apiErr, api.ErrNotFound))
 
 	_, apiErr, err = pc.Read(tc.Context(), "invalid id")
 	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.Error(apiErr)
+	assert.True(errors.Is(apiErr, api.ErrForbidden))
 }

@@ -31,7 +31,7 @@ func NewScopesClient(c *api.Client) *ScopesClient {
 	return &ScopesClient{client: c}
 }
 
-func (c *ScopesClient) Create(ctx context.Context, scopeId string, opt ...Option) (*Scope, *api.Error, error) {
+func (c *ScopesClient) Create(ctx context.Context, scopeId string, opt ...Option) (r *Scope, apiErr error, reqErr error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
@@ -55,7 +55,7 @@ func (c *ScopesClient) Create(ctx context.Context, scopeId string, opt ...Option
 	}
 
 	target := new(Scope)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -65,7 +65,7 @@ func (c *ScopesClient) Create(ctx context.Context, scopeId string, opt ...Option
 	return target, apiErr, nil
 }
 
-func (c *ScopesClient) Read(ctx context.Context, scopeId string, opt ...Option) (*Scope, *api.Error, error) {
+func (c *ScopesClient) Read(ctx context.Context, scopeId string, opt ...Option) (r *Scope, apiErr error, reqErr error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Read request")
 	}
@@ -87,7 +87,7 @@ func (c *ScopesClient) Read(ctx context.Context, scopeId string, opt ...Option) 
 	}
 
 	target := new(Scope)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -97,7 +97,7 @@ func (c *ScopesClient) Read(ctx context.Context, scopeId string, opt ...Option) 
 	return target, apiErr, nil
 }
 
-func (c *ScopesClient) Update(ctx context.Context, scopeId string, version uint32, opt ...Option) (*Scope, *api.Error, error) {
+func (c *ScopesClient) Update(ctx context.Context, scopeId string, version uint32, opt ...Option) (r *Scope, apiErr error, reqErr error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Update request")
 	}
@@ -137,7 +137,7 @@ func (c *ScopesClient) Update(ctx context.Context, scopeId string, version uint3
 	}
 
 	target := new(Scope)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -147,7 +147,7 @@ func (c *ScopesClient) Update(ctx context.Context, scopeId string, version uint3
 	return target, apiErr, nil
 }
 
-func (c *ScopesClient) Delete(ctx context.Context, scopeId string, opt ...Option) (bool, *api.Error, error) {
+func (c *ScopesClient) Delete(ctx context.Context, scopeId string, opt ...Option) (b bool, apiErr error, reqErr error) {
 	if scopeId == "" {
 		return false, nil, fmt.Errorf("empty scopeId value passed into Delete request")
 	}
@@ -172,7 +172,7 @@ func (c *ScopesClient) Delete(ctx context.Context, scopeId string, opt ...Option
 		Existed bool
 	}
 	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
@@ -182,7 +182,7 @@ func (c *ScopesClient) Delete(ctx context.Context, scopeId string, opt ...Option
 	return target.Existed, apiErr, nil
 }
 
-func (c *ScopesClient) List(ctx context.Context, scopeId string, opt ...Option) ([]*Scope, *api.Error, error) {
+func (c *ScopesClient) List(ctx context.Context, scopeId string, opt ...Option) (l []*Scope, apiErr error, reqErr error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
 	}
@@ -211,7 +211,7 @@ func (c *ScopesClient) List(ctx context.Context, scopeId string, opt ...Option) 
 		Items []*Scope
 	}
 	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}

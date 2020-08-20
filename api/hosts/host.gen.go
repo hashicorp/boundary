@@ -35,7 +35,7 @@ func NewHostsClient(c *api.Client) *HostsClient {
 	return &HostsClient{client: c}
 }
 
-func (c *HostsClient) Create(ctx context.Context, hostCatalogId string, opt ...Option) (*Host, *api.Error, error) {
+func (c *HostsClient) Create(ctx context.Context, hostCatalogId string, opt ...Option) (r *Host, apiErr error, reqErr error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Create request")
 	}
@@ -55,7 +55,7 @@ func (c *HostsClient) Create(ctx context.Context, hostCatalogId string, opt ...O
 	}
 
 	target := new(Host)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -65,7 +65,7 @@ func (c *HostsClient) Create(ctx context.Context, hostCatalogId string, opt ...O
 	return target, apiErr, nil
 }
 
-func (c *HostsClient) Read(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (*Host, *api.Error, error) {
+func (c *HostsClient) Read(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (r *Host, apiErr error, reqErr error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
 	}
@@ -91,7 +91,7 @@ func (c *HostsClient) Read(ctx context.Context, hostCatalogId string, hostId str
 	}
 
 	target := new(Host)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -101,7 +101,7 @@ func (c *HostsClient) Read(ctx context.Context, hostCatalogId string, hostId str
 	return target, apiErr, nil
 }
 
-func (c *HostsClient) Update(ctx context.Context, hostCatalogId string, hostId string, version uint32, opt ...Option) (*Host, *api.Error, error) {
+func (c *HostsClient) Update(ctx context.Context, hostCatalogId string, hostId string, version uint32, opt ...Option) (r *Host, apiErr error, reqErr error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
 	}
@@ -144,7 +144,7 @@ func (c *HostsClient) Update(ctx context.Context, hostCatalogId string, hostId s
 	}
 
 	target := new(Host)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -154,7 +154,7 @@ func (c *HostsClient) Update(ctx context.Context, hostCatalogId string, hostId s
 	return target, apiErr, nil
 }
 
-func (c *HostsClient) Delete(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (bool, *api.Error, error) {
+func (c *HostsClient) Delete(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (b bool, apiErr error, reqErr error) {
 	if hostCatalogId == "" {
 		return false, nil, fmt.Errorf("empty hostCatalogId value passed into Delete request")
 	}
@@ -183,7 +183,7 @@ func (c *HostsClient) Delete(ctx context.Context, hostCatalogId string, hostId s
 		Existed bool
 	}
 	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
@@ -193,7 +193,7 @@ func (c *HostsClient) Delete(ctx context.Context, hostCatalogId string, hostId s
 	return target.Existed, apiErr, nil
 }
 
-func (c *HostsClient) List(ctx context.Context, hostCatalogId string, opt ...Option) ([]*Host, *api.Error, error) {
+func (c *HostsClient) List(ctx context.Context, hostCatalogId string, opt ...Option) (l []*Host, apiErr error, reqErr error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into List request")
 	}
@@ -218,7 +218,7 @@ func (c *HostsClient) List(ctx context.Context, hostCatalogId string, opt ...Opt
 		Items []*Host
 	}
 	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}

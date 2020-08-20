@@ -33,7 +33,7 @@ func NewAuthMethodsClient(c *api.Client) *AuthMethodsClient {
 	return &AuthMethodsClient{client: c}
 }
 
-func (c *AuthMethodsClient) Create(ctx context.Context, resourceType string, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *AuthMethodsClient) Create(ctx context.Context, resourceType string, opt ...Option) (r *AuthMethod, apiErr error, reqErr error) {
 	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
@@ -55,7 +55,7 @@ func (c *AuthMethodsClient) Create(ctx context.Context, resourceType string, opt
 	}
 
 	target := new(AuthMethod)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -65,7 +65,7 @@ func (c *AuthMethodsClient) Create(ctx context.Context, resourceType string, opt
 	return target, apiErr, nil
 }
 
-func (c *AuthMethodsClient) Read(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *AuthMethodsClient) Read(ctx context.Context, authMethodId string, opt ...Option) (r *AuthMethod, apiErr error, reqErr error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Read request")
 	}
@@ -87,7 +87,7 @@ func (c *AuthMethodsClient) Read(ctx context.Context, authMethodId string, opt .
 	}
 
 	target := new(AuthMethod)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -97,7 +97,7 @@ func (c *AuthMethodsClient) Read(ctx context.Context, authMethodId string, opt .
 	return target, apiErr, nil
 }
 
-func (c *AuthMethodsClient) Update(ctx context.Context, authMethodId string, version uint32, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *AuthMethodsClient) Update(ctx context.Context, authMethodId string, version uint32, opt ...Option) (r *AuthMethod, apiErr error, reqErr error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Update request")
 	}
@@ -137,7 +137,7 @@ func (c *AuthMethodsClient) Update(ctx context.Context, authMethodId string, ver
 	}
 
 	target := new(AuthMethod)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -147,7 +147,7 @@ func (c *AuthMethodsClient) Update(ctx context.Context, authMethodId string, ver
 	return target, apiErr, nil
 }
 
-func (c *AuthMethodsClient) Delete(ctx context.Context, authMethodId string, opt ...Option) (bool, *api.Error, error) {
+func (c *AuthMethodsClient) Delete(ctx context.Context, authMethodId string, opt ...Option) (b bool, apiErr error, reqErr error) {
 	if authMethodId == "" {
 		return false, nil, fmt.Errorf("empty authMethodId value passed into Delete request")
 	}
@@ -172,7 +172,7 @@ func (c *AuthMethodsClient) Delete(ctx context.Context, authMethodId string, opt
 		Existed bool
 	}
 	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
@@ -182,7 +182,7 @@ func (c *AuthMethodsClient) Delete(ctx context.Context, authMethodId string, opt
 	return target.Existed, apiErr, nil
 }
 
-func (c *AuthMethodsClient) List(ctx context.Context, opt ...Option) ([]*AuthMethod, *api.Error, error) {
+func (c *AuthMethodsClient) List(ctx context.Context, opt ...Option) (l []*AuthMethod, apiErr error, reqErr error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -203,7 +203,7 @@ func (c *AuthMethodsClient) List(ctx context.Context, opt ...Option) ([]*AuthMet
 		Items []*AuthMethod
 	}
 	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}

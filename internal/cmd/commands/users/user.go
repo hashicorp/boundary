@@ -3,7 +3,6 @@ package users
 import (
 	"fmt"
 
-	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
@@ -121,7 +120,7 @@ func (c *Command) Run(args []string) int {
 	var existed bool
 	var user *users.User
 	var listedUsers []*users.User
-	var apiErr *api.Error
+	var apiErr error
 
 	switch c.Func {
 	case "create":

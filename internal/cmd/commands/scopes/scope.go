@@ -3,7 +3,6 @@ package scopes
 import (
 	"fmt"
 
-	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
@@ -121,7 +120,7 @@ func (c *Command) Run(args []string) int {
 	var existed bool
 	var scope *scopes.Scope
 	var listedScopes []*scopes.Scope
-	var apiErr *api.Error
+	var apiErr error
 
 	switch c.Func {
 	case "create":

@@ -33,7 +33,7 @@ func NewGroupsClient(c *api.Client) *GroupsClient {
 	return &GroupsClient{client: c}
 }
 
-func (c *GroupsClient) Create(ctx context.Context, opt ...Option) (*Group, *api.Error, error) {
+func (c *GroupsClient) Create(ctx context.Context, opt ...Option) (r *Group, apiErr error, reqErr error) {
 	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
@@ -50,7 +50,7 @@ func (c *GroupsClient) Create(ctx context.Context, opt ...Option) (*Group, *api.
 	}
 
 	target := new(Group)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -60,7 +60,7 @@ func (c *GroupsClient) Create(ctx context.Context, opt ...Option) (*Group, *api.
 	return target, apiErr, nil
 }
 
-func (c *GroupsClient) Read(ctx context.Context, groupId string, opt ...Option) (*Group, *api.Error, error) {
+func (c *GroupsClient) Read(ctx context.Context, groupId string, opt ...Option) (r *Group, apiErr error, reqErr error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into Read request")
 	}
@@ -82,7 +82,7 @@ func (c *GroupsClient) Read(ctx context.Context, groupId string, opt ...Option) 
 	}
 
 	target := new(Group)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -92,7 +92,7 @@ func (c *GroupsClient) Read(ctx context.Context, groupId string, opt ...Option) 
 	return target, apiErr, nil
 }
 
-func (c *GroupsClient) Update(ctx context.Context, groupId string, version uint32, opt ...Option) (*Group, *api.Error, error) {
+func (c *GroupsClient) Update(ctx context.Context, groupId string, version uint32, opt ...Option) (r *Group, apiErr error, reqErr error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into Update request")
 	}
@@ -132,7 +132,7 @@ func (c *GroupsClient) Update(ctx context.Context, groupId string, version uint3
 	}
 
 	target := new(Group)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -142,7 +142,7 @@ func (c *GroupsClient) Update(ctx context.Context, groupId string, version uint3
 	return target, apiErr, nil
 }
 
-func (c *GroupsClient) Delete(ctx context.Context, groupId string, opt ...Option) (bool, *api.Error, error) {
+func (c *GroupsClient) Delete(ctx context.Context, groupId string, opt ...Option) (b bool, apiErr error, reqErr error) {
 	if groupId == "" {
 		return false, nil, fmt.Errorf("empty groupId value passed into Delete request")
 	}
@@ -167,7 +167,7 @@ func (c *GroupsClient) Delete(ctx context.Context, groupId string, opt ...Option
 		Existed bool
 	}
 	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
@@ -177,7 +177,7 @@ func (c *GroupsClient) Delete(ctx context.Context, groupId string, opt ...Option
 	return target.Existed, apiErr, nil
 }
 
-func (c *GroupsClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.Error, error) {
+func (c *GroupsClient) List(ctx context.Context, opt ...Option) (l []*Group, apiErr error, reqErr error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -198,7 +198,7 @@ func (c *GroupsClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.
 		Items []*Group
 	}
 	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
@@ -208,7 +208,7 @@ func (c *GroupsClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.
 	return target.Items, apiErr, nil
 }
 
-func (c *GroupsClient) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *GroupsClient) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (r *Group, apiErr error, reqErr error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into AddMembers request")
 	}
@@ -252,7 +252,7 @@ func (c *GroupsClient) AddMembers(ctx context.Context, groupId string, version u
 	}
 
 	target := new(Group)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddMembers response: %w", err)
 	}
@@ -262,7 +262,7 @@ func (c *GroupsClient) AddMembers(ctx context.Context, groupId string, version u
 	return target, apiErr, nil
 }
 
-func (c *GroupsClient) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *GroupsClient) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (r *Group, apiErr error, reqErr error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into SetMembers request")
 	}
@@ -309,7 +309,7 @@ func (c *GroupsClient) SetMembers(ctx context.Context, groupId string, version u
 	}
 
 	target := new(Group)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetMembers response: %w", err)
 	}
@@ -319,7 +319,7 @@ func (c *GroupsClient) SetMembers(ctx context.Context, groupId string, version u
 	return target, apiErr, nil
 }
 
-func (c *GroupsClient) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *GroupsClient) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (r *Group, apiErr error, reqErr error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into RemoveMembers request")
 	}
@@ -363,7 +363,7 @@ func (c *GroupsClient) RemoveMembers(ctx context.Context, groupId string, versio
 	}
 
 	target := new(Group)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemoveMembers response: %w", err)
 	}

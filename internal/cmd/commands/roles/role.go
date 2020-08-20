@@ -3,7 +3,6 @@ package roles
 import (
 	"fmt"
 
-	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
@@ -207,7 +206,7 @@ func (c *Command) Run(args []string) int {
 	var existed bool
 	var role *roles.Role
 	var listedRoles []*roles.Role
-	var apiErr *api.Error
+	var apiErr error
 
 	switch c.Func {
 	case "create":

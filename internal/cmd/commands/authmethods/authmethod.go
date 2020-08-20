@@ -3,7 +3,6 @@ package authmethods
 import (
 	"fmt"
 
-	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
@@ -132,7 +131,7 @@ func (c *Command) Run(args []string) int {
 	var existed bool
 	var method *authmethods.AuthMethod
 	var listedMethods []*authmethods.AuthMethod
-	var apiErr *api.Error
+	var apiErr error
 
 	switch c.Func {
 	case "read":

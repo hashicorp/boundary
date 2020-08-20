@@ -33,7 +33,7 @@ func NewHostCatalogsClient(c *api.Client) *HostCatalogsClient {
 	return &HostCatalogsClient{client: c}
 }
 
-func (c *HostCatalogsClient) Create(ctx context.Context, resourceType string, opt ...Option) (*HostCatalog, *api.Error, error) {
+func (c *HostCatalogsClient) Create(ctx context.Context, resourceType string, opt ...Option) (r *HostCatalog, apiErr error, reqErr error) {
 	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
@@ -55,7 +55,7 @@ func (c *HostCatalogsClient) Create(ctx context.Context, resourceType string, op
 	}
 
 	target := new(HostCatalog)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -65,7 +65,7 @@ func (c *HostCatalogsClient) Create(ctx context.Context, resourceType string, op
 	return target, apiErr, nil
 }
 
-func (c *HostCatalogsClient) Read(ctx context.Context, hostCatalogId string, opt ...Option) (*HostCatalog, *api.Error, error) {
+func (c *HostCatalogsClient) Read(ctx context.Context, hostCatalogId string, opt ...Option) (r *HostCatalog, apiErr error, reqErr error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
 	}
@@ -87,7 +87,7 @@ func (c *HostCatalogsClient) Read(ctx context.Context, hostCatalogId string, opt
 	}
 
 	target := new(HostCatalog)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -97,7 +97,7 @@ func (c *HostCatalogsClient) Read(ctx context.Context, hostCatalogId string, opt
 	return target, apiErr, nil
 }
 
-func (c *HostCatalogsClient) Update(ctx context.Context, hostCatalogId string, version uint32, opt ...Option) (*HostCatalog, *api.Error, error) {
+func (c *HostCatalogsClient) Update(ctx context.Context, hostCatalogId string, version uint32, opt ...Option) (r *HostCatalog, apiErr error, reqErr error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
 	}
@@ -137,7 +137,7 @@ func (c *HostCatalogsClient) Update(ctx context.Context, hostCatalogId string, v
 	}
 
 	target := new(HostCatalog)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -147,7 +147,7 @@ func (c *HostCatalogsClient) Update(ctx context.Context, hostCatalogId string, v
 	return target, apiErr, nil
 }
 
-func (c *HostCatalogsClient) Delete(ctx context.Context, hostCatalogId string, opt ...Option) (bool, *api.Error, error) {
+func (c *HostCatalogsClient) Delete(ctx context.Context, hostCatalogId string, opt ...Option) (b bool, apiErr error, reqErr error) {
 	if hostCatalogId == "" {
 		return false, nil, fmt.Errorf("empty hostCatalogId value passed into Delete request")
 	}
@@ -172,7 +172,7 @@ func (c *HostCatalogsClient) Delete(ctx context.Context, hostCatalogId string, o
 		Existed bool
 	}
 	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
@@ -182,7 +182,7 @@ func (c *HostCatalogsClient) Delete(ctx context.Context, hostCatalogId string, o
 	return target.Existed, apiErr, nil
 }
 
-func (c *HostCatalogsClient) List(ctx context.Context, opt ...Option) ([]*HostCatalog, *api.Error, error) {
+func (c *HostCatalogsClient) List(ctx context.Context, opt ...Option) (l []*HostCatalog, apiErr error, reqErr error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -203,7 +203,7 @@ func (c *HostCatalogsClient) List(ctx context.Context, opt ...Option) ([]*HostCa
 		Items []*HostCatalog
 	}
 	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}

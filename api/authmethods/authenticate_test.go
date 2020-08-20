@@ -1,9 +1,10 @@
 package authmethods_test
 
 import (
-	"net/http"
+	"errors"
 	"testing"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/kr/pretty"
@@ -27,11 +28,11 @@ func TestAuthenticate(t *testing.T) {
 
 	tok, apiErr, err := methods.Authenticate(tc.Context(), amId, "user", "passpass")
 	require.NoError(err)
-	assert.Nil(apiErr, pretty.Sprint(apiErr))
+	assert.NoError(apiErr, pretty.Sprint(apiErr))
 	assert.NotNil(tok)
 
 	_, apiErr, err = methods.Authenticate(tc.Context(), amId, "user", "wrong")
 	require.NoError(err)
-	require.NotNil(t, apiErr)
-	assert.EqualValuesf(http.StatusUnauthorized, apiErr.Status, "Expected unauthenticated, got %q", apiErr.Message)
+	require.Error(apiErr)
+	assert.Truef(errors.Is(apiErr, api.ErrUnauthorized), apiErr.Error())
 }

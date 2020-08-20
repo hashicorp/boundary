@@ -1,8 +1,8 @@
 package users_test
 
 import (
+	"errors"
 	"fmt"
-	"net/http"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -90,11 +90,9 @@ func TestUser_Crud(t *testing.T) {
 	client.SetScopeId(org.GetPublicId())
 	userClient := users.NewUsersClient(client)
 
-	checkUser := func(step string, u *users.User, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
+	checkUser := func(step string, u *users.User, apiErr error, err error, wantedName string, wantedVersion uint32) {
 		assert.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
-			t.Errorf("ApiError message: %q", apiErr.Message)
-		}
+		assert.NoError(apiErr, step)
 		assert.NotNil(u, "returned no resource", step)
 		gotName := ""
 		if u.Name != "" {
@@ -145,26 +143,26 @@ func TestUser_Errors(t *testing.T) {
 
 	u, apiErr, err := userClient.Create(tc.Context(), users.WithName("first"))
 	require.NoError(err)
-	assert.Nil(apiErr)
+	assert.NoError(apiErr)
 	assert.NotNil(u)
 
 	// Create another resource with the same name.
 	_, apiErr, err = userClient.Create(tc.Context(), users.WithName("first"))
 	require.NoError(err)
-	assert.NotNil(apiErr)
+	assert.Error(apiErr)
 
 	_, apiErr, err = userClient.Read(tc.Context(), iam.UserPrefix+"_doesntexis")
 	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.Error(apiErr)
+	assert.True(errors.Is(apiErr, api.ErrNotFound))
 
 	_, apiErr, err = userClient.Read(tc.Context(), "invalid id")
 	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.Error(apiErr)
+	assert.True(errors.Is(apiErr, api.ErrForbidden))
 
 	_, apiErr, err = userClient.Update(tc.Context(), u.Id, u.Version)
 	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
+	assert.Error(apiErr)
+	assert.True(errors.Is(apiErr, api.ErrBadRequest))
 }

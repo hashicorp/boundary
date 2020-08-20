@@ -187,7 +187,7 @@ func fillTemplates() {
 }
 
 var listTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opt... Option) ([]*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
+func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opt... Option) (l []*{{ .Name }}, apiErr error, reqErr error) { {{ range .CollectionFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 	}
@@ -217,7 +217,7 @@ func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .Collection
 		Items []*{{ .Name }}
 	}
 	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
@@ -229,7 +229,7 @@ func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .Collection
 `))
 
 var readTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+func (c *{{ .ClientName }}Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (r *{{ .Name }}, apiErr error, reqErr error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Read request")
 	}
@@ -251,7 +251,7 @@ func (c *{{ .ClientName }}Client) Read(ctx context.Context, {{ range .ResourceFu
 	}
 
 	target := new({{ .Name }})
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -263,7 +263,7 @@ func (c *{{ .ClientName }}Client) Read(ctx context.Context, {{ range .ResourceFu
 `))
 
 var deleteTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) Delete(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (bool, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+func (c *{{ .ClientName }}Client) Delete(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (b bool, apiErr error, reqErr error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
 		return false, nil, fmt.Errorf("empty {{ . }} value passed into Delete request")
 	}
@@ -288,7 +288,7 @@ func (c *{{ .ClientName }}Client) Delete(ctx context.Context, {{ range .Resource
 		Existed bool
 	}
 	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
@@ -300,7 +300,7 @@ func (c *{{ .ClientName }}Client) Delete(ctx context.Context, {{ range .Resource
 `))
 
 var createTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
+func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (r *{{ .Name }}, apiErr error, reqErr error) { {{ range .CollectionFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Create request")
 	}
@@ -330,7 +330,7 @@ func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ if .TypeOnCreat
 	}
 
 	target := new({{ .Name }})
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -342,7 +342,7 @@ func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ if .TypeOnCreat
 `))
 
 var updateTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }}version uint32, opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }}version uint32, opt... Option) (r *{{ .Name }}, apiErr error, reqErr error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Update request")
 	}{{ end }}
@@ -384,7 +384,7 @@ func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .Resource
 	}
 
 	target := new({{ .Name }})
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -409,7 +409,7 @@ var sliceSubTypeTemplate = template.Must(template.New("").Funcs(
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
 {{ $resPath := getPathWithAction $input.PathArgs $actionName }}
-func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ range $input.ResourceFunctionArgs }} {{ . }} string, {{ end }}version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}, *api.Error, error) { {{ range $input.ResourceFunctionArgs }}
+func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ range $input.ResourceFunctionArgs }} {{ . }} string, {{ end }}version uint32, {{ $value }} []string, opt... Option) (r *{{ $input.Name }}, apiErr error, reqErr error) { {{ range $input.ResourceFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into {{ $fullName }} request")
 	}{{ end }}
@@ -458,7 +458,7 @@ func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ 
 	}
 
 	target := new({{ $input.Name }})
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding {{ $fullName }} response: %w", err)
 	}

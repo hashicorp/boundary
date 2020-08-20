@@ -5,7 +5,6 @@ import (
 	"net/textproto"
 	"strconv"
 
-	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
@@ -181,7 +180,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	}
 
 	var method *authmethods.AuthMethod
-	var apiErr *api.Error
+	var apiErr error
 
 	switch c.Func {
 	case "create":

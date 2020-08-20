@@ -1,7 +1,7 @@
 package hosts_test
 
 import (
-	"net/http"
+	"errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -35,11 +35,9 @@ func TestHost_Crud(t *testing.T) {
 	require.Nil(apiErr)
 	require.NotNil(hc)
 
-	checkHost := func(step string, h *hosts.Host, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
+	checkHost := func(step string, h *hosts.Host, apiErr error, err error, wantedName string, wantVersion uint32) {
 		require.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
-			t.Errorf("ApiError message: %q", apiErr.Message)
-		}
+		assert.NoError(apiErr, step)
 		assert.NotNil(h, "returned no resource", step)
 		gotName := ""
 		if h.Name != "" {
@@ -97,20 +95,20 @@ func TestHost_Errors(t *testing.T) {
 
 	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
 	require.NoError(err)
-	require.Nil(apiErr)
+	require.NoError(apiErr)
 	assert.NotNil(h)
 
 	_, apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
 	require.NoError(err)
-	assert.NotNil(apiErr)
+	assert.Error(apiErr)
 
 	_, apiErr, err = hClient.Read(tc.Context(), hc.Id, static.HostPrefix+"_doesntexis")
 	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(apiErr.Status, http.StatusNotFound)
+	assert.Error(apiErr)
+	assert.True(errors.Is(apiErr, api.ErrNotFound))
 
 	_, apiErr, err = hClient.Read(tc.Context(), hc.Id, "invalid id")
 	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.Error(apiErr)
+	assert.True(errors.Is(apiErr, api.ErrForbidden))
 }

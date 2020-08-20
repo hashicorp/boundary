@@ -1,8 +1,8 @@
 package scopes_test
 
 import (
+	"errors"
 	"fmt"
-	"net/http"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -32,7 +32,7 @@ func TestProjects_List(t *testing.T) {
 
 	pl, apiErr, err := scps.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
-	assert.Nil(apiErr)
+	assert.NoError(apiErr)
 	assert.Empty(pl)
 
 	expected := make([]*scopes.Scope, 10)
@@ -43,7 +43,7 @@ func TestProjects_List(t *testing.T) {
 	}
 	pl, apiErr, err = scps.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
-	assert.Nil(apiErr)
+	assert.NoError(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
 }
 
@@ -79,9 +79,9 @@ func TestProjects_Crud(t *testing.T) {
 
 	scps := scopes.NewScopesClient(client)
 
-	checkProject := func(step string, s *scopes.Scope, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
+	checkProject := func(step string, s *scopes.Scope, apiErr error, err error, wantedName string, wantedVersion uint32) {
 		require.NoError(err, step)
-		assert.Nil(apiErr, step)
+		assert.NoError(apiErr, step)
 		assert.NotNil(s, "returned project", step)
 		gotName := ""
 		if s.Name != "" {
@@ -105,13 +105,13 @@ func TestProjects_Crud(t *testing.T) {
 
 	existed, apiErr, err := scps.Delete(tc.Context(), s.Id)
 	require.NoError(err)
-	assert.Nil(apiErr)
+	assert.NoError(apiErr)
 	assert.True(existed, "Expected existing project when deleted, but it wasn't.")
 
 	_, apiErr, err = scps.Delete(tc.Context(), s.Id)
 	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status, "Expected project to not exist when deleted, but it did.")
+	assert.Error(apiErr)
+	assert.True(errors.Is(apiErr, api.ErrForbidden), "Expected project to not exist when deleted, but it did.")
 }
 
 // TODO: Get better coverage for expected errors and error formats.
@@ -134,17 +134,16 @@ func TestProject_Errors(t *testing.T) {
 
 	createdProj, apiErr, err := scps.Create(tc.Context(), org.GetPublicId())
 	require.NoError(err)
+	assert.NoError(apiErr)
 	assert.NotNil(createdProj)
-	assert.Nil(apiErr)
 
 	_, apiErr, err = scps.Read(tc.Context(), "p_doesntexis")
 	require.NoError(err)
-	// TODO: Should this be nil instead of just a Project that has no values set
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.Error(apiErr)
+	assert.True(errors.Is(apiErr, api.ErrForbidden))
 
 	_, apiErr, err = scps.Read(tc.Context(), "invalid id")
 	assert.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.Error(apiErr)
+	assert.True(errors.Is(apiErr, api.ErrForbidden))
 }

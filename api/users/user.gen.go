@@ -31,7 +31,7 @@ func NewUsersClient(c *api.Client) *UsersClient {
 	return &UsersClient{client: c}
 }
 
-func (c *UsersClient) Create(ctx context.Context, opt ...Option) (*User, *api.Error, error) {
+func (c *UsersClient) Create(ctx context.Context, opt ...Option) (r *User, apiErr error, reqErr error) {
 	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
@@ -48,7 +48,7 @@ func (c *UsersClient) Create(ctx context.Context, opt ...Option) (*User, *api.Er
 	}
 
 	target := new(User)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -58,7 +58,7 @@ func (c *UsersClient) Create(ctx context.Context, opt ...Option) (*User, *api.Er
 	return target, apiErr, nil
 }
 
-func (c *UsersClient) Read(ctx context.Context, userId string, opt ...Option) (*User, *api.Error, error) {
+func (c *UsersClient) Read(ctx context.Context, userId string, opt ...Option) (r *User, apiErr error, reqErr error) {
 	if userId == "" {
 		return nil, nil, fmt.Errorf("empty userId value passed into Read request")
 	}
@@ -80,7 +80,7 @@ func (c *UsersClient) Read(ctx context.Context, userId string, opt ...Option) (*
 	}
 
 	target := new(User)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -90,7 +90,7 @@ func (c *UsersClient) Read(ctx context.Context, userId string, opt ...Option) (*
 	return target, apiErr, nil
 }
 
-func (c *UsersClient) Update(ctx context.Context, userId string, version uint32, opt ...Option) (*User, *api.Error, error) {
+func (c *UsersClient) Update(ctx context.Context, userId string, version uint32, opt ...Option) (r *User, apiErr error, reqErr error) {
 	if userId == "" {
 		return nil, nil, fmt.Errorf("empty userId value passed into Update request")
 	}
@@ -130,7 +130,7 @@ func (c *UsersClient) Update(ctx context.Context, userId string, version uint32,
 	}
 
 	target := new(User)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -140,7 +140,7 @@ func (c *UsersClient) Update(ctx context.Context, userId string, version uint32,
 	return target, apiErr, nil
 }
 
-func (c *UsersClient) Delete(ctx context.Context, userId string, opt ...Option) (bool, *api.Error, error) {
+func (c *UsersClient) Delete(ctx context.Context, userId string, opt ...Option) (b bool, apiErr error, reqErr error) {
 	if userId == "" {
 		return false, nil, fmt.Errorf("empty userId value passed into Delete request")
 	}
@@ -165,7 +165,7 @@ func (c *UsersClient) Delete(ctx context.Context, userId string, opt ...Option) 
 		Existed bool
 	}
 	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
@@ -175,7 +175,7 @@ func (c *UsersClient) Delete(ctx context.Context, userId string, opt ...Option) 
 	return target.Existed, apiErr, nil
 }
 
-func (c *UsersClient) List(ctx context.Context, opt ...Option) ([]*User, *api.Error, error) {
+func (c *UsersClient) List(ctx context.Context, opt ...Option) (l []*User, apiErr error, reqErr error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -196,7 +196,7 @@ func (c *UsersClient) List(ctx context.Context, opt ...Option) ([]*User, *api.Er
 		Items []*User
 	}
 	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}

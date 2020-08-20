@@ -5,11 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/boundary/api"
 	"github.com/kr/pretty"
 )
 
-func (c *AccountsClient) SetPassword(ctx context.Context, authMethodId, accountId, password string, version uint32, opt ...Option) (*Account, *api.Error, error) {
+func (c *AccountsClient) SetPassword(ctx context.Context, authMethodId, accountId, password string, version uint32, opt ...Option) (r *Account, apiErr error, reqErr error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into SetPassword request")
 	}
@@ -55,7 +54,7 @@ func (c *AccountsClient) SetPassword(ctx context.Context, authMethodId, accountI
 	}
 
 	target := new(Account)
-	apiErr, err := resp.Decode(target)
+	apiErr, err = resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetPassword response: %w", err)
 	}
