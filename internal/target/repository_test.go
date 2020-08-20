@@ -121,6 +121,16 @@ func TestRepository_ListTargets(t *testing.T) {
 		wantErr        bool
 	}{
 		{
+			name:          "tcp-target",
+			createCnt:     5,
+			createScopeId: org.PublicId,
+			args: args{
+				opt: []Option{WithTargetType(TcpTargetType), WithScopeId(org.PublicId)},
+			},
+			wantCnt: 5,
+			wantErr: false,
+		},
+		{
 			name:          "no-limit-org",
 			createCnt:     testLimit + 1,
 			createScopeId: org.PublicId,
@@ -185,6 +195,7 @@ func TestRepository_ListTargets(t *testing.T) {
 				}
 			}
 			assert.Equal(tt.createCnt, len(testGroups))
+			conn.LogMode(true)
 			got, err := repo.ListTargets(context.Background(), tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)

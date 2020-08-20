@@ -109,14 +109,14 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	if opts.withScopeId == "" && opts.withUserId == "" {
 		return nil, fmt.Errorf("list targets: must specify either a scope id or user id: %w", db.ErrInvalidParameter)
 	}
-	// TODO (jimlambrt) - implement WithUserId filtering.
+	// TODO (jimlambrt) - implement WithUserId() optional filtering.
 	var where []string
 	var args []interface{}
 	if opts.withScopeId != "" {
 		where, args = append(where, "scope_id = ?"), append(args, opts.withScopeId)
 	}
 	if opts.withTargetType != nil {
-		where, args = append(where, "type = ?"), append(args, opts.withTargetType)
+		where, args = append(where, "type = ?"), append(args, opts.withTargetType.String())
 	}
 
 	var foundTargets []*targetView
