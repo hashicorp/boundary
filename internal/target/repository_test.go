@@ -1,9 +1,12 @@
 package target
 
 import (
+	"context"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -87,6 +90,108 @@ func TestNewRepository(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.want, got)
+		})
+	}
+}
+
+func TestRepository_ListTargets(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	const testLimit = 10
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, proj := iam.TestScopes(t, iamRepo)
+	rw := db.New(conn)
+	repo, err := NewRepository(rw, rw, testKms)
+	require.NoError(t, err)
+	repo.defaultLimit = testLimit
+
+	type args struct {
+		opt []Option
+	}
+	tests := []struct {
+		name           string
+		createCnt      int
+		createScopeId  string
+		createScopeId2 string
+		grantUserId    string
+		args           args
+		wantCnt        int
+		wantErr        bool
+	}{
+		{
+			name:          "no-limit-org",
+			createCnt:     testLimit + 1,
+			createScopeId: org.PublicId,
+			args: args{
+				opt: []Option{WithLimit(-1), WithScopeId(org.PublicId)},
+			},
+			wantCnt: testLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:          "no-limit-proj",
+			createCnt:     testLimit + 1,
+			createScopeId: proj.PublicId,
+			args: args{
+				opt: []Option{WithLimit(-1), WithScopeId(proj.PublicId)},
+			},
+			wantCnt: testLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:          "default-limit",
+			createCnt:     testLimit + 1,
+			createScopeId: org.PublicId,
+			args: args{
+				opt: []Option{WithScopeId(org.PublicId)},
+			},
+			wantCnt: testLimit,
+			wantErr: false,
+		},
+		{
+			name:          "custom-limit",
+			createCnt:     testLimit + 1,
+			createScopeId: org.PublicId,
+			args: args{
+				opt: []Option{WithLimit(3), WithScopeId(org.PublicId)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+		{
+			name:          "bad-org",
+			createCnt:     1,
+			createScopeId: org.PublicId,
+			args: args{
+				opt: []Option{WithScopeId("bad-id")},
+			},
+			wantCnt: 0,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocTcpTarget()).Error)
+			testGroups := []*TcpTarget{}
+			for i := 0; i < tt.createCnt; i++ {
+				switch {
+				case tt.createScopeId2 != "" && i%2 == 0:
+					testGroups = append(testGroups, TestTcpTarget(t, conn, tt.createScopeId2, strconv.Itoa(i)))
+				default:
+					testGroups = append(testGroups, TestTcpTarget(t, conn, tt.createScopeId, strconv.Itoa(i)))
+				}
+			}
+			assert.Equal(tt.createCnt, len(testGroups))
+			got, err := repo.ListTargets(context.Background(), tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
 		})
 	}
 }
