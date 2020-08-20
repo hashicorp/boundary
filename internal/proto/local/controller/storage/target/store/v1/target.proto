@@ -52,11 +52,11 @@ message TargetView {
 }
 
 message TargetHostSet {
-  // public_id is used to access the TargetHostSet via an API
+  // target_id of the TargetHostSet
   // @inject_tag: gorm:"primary_key"
-  string public_id = 10;
+  string target_id = 10;
 
-  // host_set_id is used to access the Role via an API
+  // host_set_id of the TargetHostSet
   // @inject_tag: gorm:"primary_key"
   string host_set_id = 20;
 
