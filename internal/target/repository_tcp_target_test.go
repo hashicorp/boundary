@@ -3,7 +3,6 @@ package target
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -148,7 +147,6 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			assert.NoError(err)
 			assert.True(proto.Equal(target.(*TcpTarget), foundTarget.(*TcpTarget)))
 			assert.Equal(hostSets, foundHostSets)
-			fmt.Println(foundHostSets)
 
 			err = db.TestVerifyOplog(t, rw, target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
