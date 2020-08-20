@@ -39,6 +39,7 @@ comment on domain wt_public_id is
 'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_private_id as text
+not null
 check(
   length(trim(value)) > 10
 );
@@ -53,13 +54,15 @@ comment on domain wt_scope_id is
 '"global" or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_user_id as text
+not null
 check(
-  length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth'
+  length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth' or value = 'u_recovery'
 );
 comment on domain wt_scope_id is
 '"u_anon", "u_auth", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_role_id as text
+not null
 check(
   length(trim(value)) > 10 or value = 'r_default'
 );
@@ -503,7 +506,8 @@ drop function grant_scope_id_valid cascade;
 drop function disallow_global_scope_deletion cascade;
 drop function user_scope_id_valid cascade;
 drop function iam_immutable_role_grant cascade;
-drop function disallow_iam_anon_auth_deletion cascade;
+drop function disallow_iam_predefined_user_deletion cascade;
+drop function recovery_user_not_allowed cascade;
 
 COMMIT;
 
@@ -576,7 +580,8 @@ create table iam_scope_org (
     references iam_scope(public_id)
     on delete cascade
     on update cascade,
-  parent_id wt_scope_id not null
+  parent_id wt_scope_id
+    not null
     references iam_scope_global(scope_id)
     on delete cascade
     on update cascade,
@@ -585,7 +590,11 @@ create table iam_scope_org (
 );
 
 create table iam_scope_project (
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
     parent_id wt_public_id not null references iam_scope_org(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
@@ -728,12 +737,17 @@ insert into iam_scope (public_id, name, type, description)
 
 
 create table iam_user (
-    public_id wt_user_id primary key,
+    public_id wt_user_id
+      primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
     unique(name, scope_id),
     version wt_version,
 
@@ -799,7 +813,7 @@ end;
 $$ language plpgsql;
 
 create or replace function
-  disallow_iam_anon_auth_deletion()
+  disallow_iam_predefined_user_deletion()
   returns trigger
 as $$
 begin
@@ -808,6 +822,9 @@ begin
   end if;
   if old.public_id = 'u_auth' then
     raise exception 'deletion of authenticated user not allowed';
+  end if;
+    if old.public_id = 'u_recovery' then
+    raise exception 'deletion of recovery user not allowed';
   end if;
   return old;
 end;
@@ -836,10 +853,10 @@ insert on iam_user
   for each row execute procedure default_create_time();
 
 create trigger
-  iam_user_disallow_anon_auth_deletion
+  iam_user_disallow_predefined_user_deletion
 before
 delete on iam_user
-  for each row execute procedure disallow_iam_anon_auth_deletion();
+  for each row execute procedure disallow_iam_predefined_user_deletion();
 
 -- TODO: Do we want to disallow changing the name or description?
 insert into iam_user (public_id, name, description, scope_id)
@@ -848,8 +865,11 @@ insert into iam_user (public_id, name, description, scope_id)
 insert into iam_user (public_id, name, description, scope_id)
   values ('u_auth', 'authenticated', 'The authenticated user matches any user that has a valid token', 'global');
 
+insert into iam_user (public_id, name, description, scope_id)
+  values ('u_recovery', 'recovery', 'The recovery user is used for any request that was performed with the recovery KMS workflow', 'global');
+
  -- define the immutable fields for iam_user
-create trigger 
+create trigger
   immutable_columns
 before
 update on iam_user
@@ -861,8 +881,16 @@ create table iam_role (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
-    grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
+    grant_scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
     unique(name, scope_id),
     version wt_version,
 
@@ -939,13 +967,33 @@ before
 update on iam_role
   for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
 
+create or replace function
+  recovery_user_not_allowed()
+  returns trigger
+as $$
+declare
+  new_value text;
+begin
+    execute format('SELECT $1.%I', tg_argv[0]) into new_value using new;
+    if new_value = 'u_recovery' then
+      raise exception '"u_recovery" not allowed here"';
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
 create table iam_group (
-    public_id wt_public_id not null primary key,
+    public_id wt_public_id
+      primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
     unique(name, scope_id),
     -- version allows optimistic locking of the group when modifying the group
     -- itself and when modifying dependent items like group members. 
@@ -1087,6 +1135,12 @@ update on iam_user_role
   for each row execute procedure iam_immutable_role_principal();
 
 create trigger 
+  recovery_user_not_allowed_user_role
+before
+insert on iam_user_role
+  for each row execute procedure recovery_user_not_allowed('principal_id');
+
+create trigger 
   default_create_time_column
 before
 insert on iam_user_role
@@ -1108,7 +1162,7 @@ insert on iam_group_role
 create table iam_group_member_user (
   create_time wt_timestamp,
   group_id wt_public_id references iam_group(public_id) on delete cascade on update cascade,
-  member_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
+  member_id wt_user_id references iam_user(public_id) on delete cascade on update cascade,
   primary key (group_id, member_id)
 );
 
@@ -1132,6 +1186,12 @@ create trigger iam_immutable_group_member
 before
 update on iam_group_member_user
   for each row execute procedure iam_immutable_group_member();
+
+create trigger 
+  recovery_user_not_allowed_group_member
+before
+insert on iam_group_member_user
+  for each row execute procedure recovery_user_not_allowed('member_id');
 
 -- get_scoped_principal_id is used by the iam_group_member view as a convient
 -- way to create <scope_id>:<member_id> to reference members from
@@ -1237,8 +1297,10 @@ begin;
 
   -- base table for auth methods
   create table auth_method (
-    public_id wt_public_id primary key,
-    scope_id wt_scope_id not null
+    public_id wt_public_id
+      primary key,
+    scope_id wt_scope_id
+      not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
@@ -1252,9 +1314,12 @@ begin;
 
   -- base table for auth accounts
   create table auth_account (
-    public_id wt_public_id primary key,
-    auth_method_id wt_public_id not null,
-    scope_id wt_scope_id not null,
+    public_id wt_public_id
+      primary key,
+    auth_method_id wt_public_id
+      not null,
+    scope_id wt_scope_id
+      not null,
     iam_user_id wt_public_id,
     -- including scope_id in fk1 and fk2 ensures the scope_id of the owning
     -- auth_method and the scope_id of the owning iam_user are the same
@@ -1590,15 +1655,21 @@ begin;
 */
 
   create table auth_password_method (
-    public_id wt_public_id primary key,
-    scope_id wt_scope_id not null,
-    password_conf_id wt_private_id not null, -- FK to auth_password_conf added below
+    public_id wt_public_id
+      primary key,
+    scope_id wt_scope_id
+      not null,
+    password_conf_id wt_private_id, -- FK to auth_password_conf added below
     name text,
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    min_login_name_length int not null default 3,
-    min_password_length int not null default 8,
+    min_login_name_length int
+      not null
+      default 3,
+    min_password_length int
+      not null
+      default 8,
     version wt_version,
     foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
@@ -1619,8 +1690,10 @@ begin;
     for each row execute procedure insert_auth_method_subtype();
 
   create table auth_password_account (
-    public_id wt_public_id primary key,
-    auth_method_id wt_public_id not null,
+    public_id wt_public_id
+      primary key,
+    auth_method_id wt_public_id
+      not null,
     -- NOTE(mgaffney): The scope_id type is not wt_scope_id because the domain
     -- check is executed before the insert trigger which retrieves the scope_id
     -- causing an insert to fail.
@@ -1660,8 +1733,10 @@ begin;
     for each row execute procedure insert_auth_account_subtype();
 
   create table auth_password_conf (
-    private_id wt_private_id primary key,
-    password_method_id wt_public_id not null
+    private_id wt_private_id
+      primary key,
+    password_method_id wt_public_id
+      not null
       references auth_password_method (public_id)
       on delete cascade
       on update cascade
@@ -1693,10 +1768,14 @@ begin;
   $$ language plpgsql;
 
   create table auth_password_credential (
-    private_id wt_private_id primary key,
-    password_account_id wt_public_id not null unique,
-    password_conf_id wt_private_id not null,
-    password_method_id wt_public_id not null,
+    private_id wt_private_id
+      primary key,
+    password_account_id wt_public_id
+      not null
+      unique,
+    password_conf_id wt_private_id,
+    password_method_id wt_public_id
+      not null,
     foreign key (password_method_id, password_conf_id)
       references auth_password_conf (password_method_id, private_id)
       on delete cascade
@@ -1889,7 +1968,7 @@ begin;
       on delete cascade
       on update cascade,
     password_account_id wt_public_id not null,
-    password_conf_id wt_private_id not null,
+    password_conf_id wt_private_id,
     -- NOTE(mgaffney): The password_method_id type is not wt_public_id because
     -- the domain check is executed before the insert trigger which retrieves
     -- the password_method_id causing an insert to fail.
@@ -2086,8 +2165,10 @@ begin;
 
   -- host_catalog
   create table host_catalog (
-    public_id wt_public_id primary key,
-    scope_id wt_scope_id not null
+    public_id wt_public_id
+      primary key,
+    scope_id wt_scope_id
+      not null
       references iam_scope (public_id)
       on delete cascade
       on update cascade,
@@ -2280,8 +2361,10 @@ begin;
 */
 
   create table static_host_catalog (
-    public_id wt_public_id primary key,
-    scope_id wt_scope_id not null
+    public_id wt_public_id
+      primary key,
+    scope_id wt_scope_id
+      not null
       references iam_scope (public_id)
       on delete cascade
       on update cascade,

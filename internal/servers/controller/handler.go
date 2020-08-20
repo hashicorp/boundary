@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
@@ -82,6 +83,13 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	}
 	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
 		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
+	}
+	hs, err := hosts.NewService(c.StaticHostRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create host handler service: %w", err)
+	}
+	if err := services.RegisterHostServiceHandlerServer(ctx, mux, hs); err != nil {
+		return nil, fmt.Errorf("failed to register host service handler: %w", err)
 	}
 	accts, err := accounts.NewService(c.PasswordAuthRepoFn)
 	if err != nil {
@@ -179,7 +187,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 
 		// Add a size limiter if desired
 		if maxRequestSize > 0 {
-			ctx = context.WithValue(ctx, "max_request_size", maxRequestSize)
+			ctx = context.WithValue(ctx, globals.ContextMaxRequestSizeTypeKey, maxRequestSize)
 		}
 
 		// Add values for authn/authz checking
@@ -188,8 +196,9 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			Method:               r.Method,
 			DisableAuthzFailures: disableAuthzFailures,
 		}
+
 		requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, r)
-		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, requestInfo)
+		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, c.kms, requestInfo)
 
 		// Set the context back on the request
 		r = r.WithContext(ctx)

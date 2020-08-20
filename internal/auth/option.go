@@ -1,5 +1,7 @@
 package auth
 
+import "github.com/hashicorp/boundary/internal/kms"
+
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
@@ -15,6 +17,7 @@ type Option func(*options)
 type options struct {
 	withScopeId string
 	withUserId  string
+	withKms     *kms.Kms
 }
 
 func getDefaultOptions() options {
@@ -33,5 +36,11 @@ func WithScopeId(id string) Option {
 func WithUserId(id string) Option {
 	return func(o *options) {
 		o.withUserId = id
+	}
+}
+
+func WithKms(kms *kms.Kms) Option {
+	return func(o *options) {
+		o.withKms = kms
 	}
 }

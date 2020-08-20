@@ -8,5 +8,5 @@ func DisabledAuthTestContext(opt ...Option) context.Context {
 	opts := getOpts(opt...)
 	reqInfo.scopeIdOverride = opts.withScopeId
 	reqInfo.userIdOverride = opts.withUserId
-	return NewVerifierContext(context.Background(), nil, nil, nil, reqInfo)
+	return NewVerifierContext(context.Background(), nil, nil, nil, opts.withKms, reqInfo)
 }

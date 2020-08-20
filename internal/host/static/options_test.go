@@ -26,4 +26,10 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withLimit = 5
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithAddress", func(t *testing.T) {
+		opts := getOpts(WithAddress("test"))
+		testOpts := getDefaultOptions()
+		testOpts.withAddress = "test"
+		assert.Equal(t, opts, testOpts)
+	})
 }

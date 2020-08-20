@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -62,7 +62,7 @@ func TestGet(t *testing.T) {
 
 	pHostCatalog := &pb.HostCatalog{
 		Id:          hc.GetPublicId(),
-		Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+		Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 		Name:        &wrappers.StringValue{Value: hc.GetName()},
 		Description: &wrappers.StringValue{Value: hc.GetDescription()},
 		CreatedTime: hc.CreateTime.GetTimestamp(),
@@ -117,6 +117,89 @@ func TestGet(t *testing.T) {
 				tc.res.Item.Version = 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestList(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	_, pNoCatalogs := iam.TestScopes(t, iamRepo)
+	_, pWithCatalogs := iam.TestScopes(t, iamRepo)
+	_, pWithOtherCatalogs := iam.TestScopes(t, iamRepo)
+
+	var wantSomeCatalogs []*pb.HostCatalog
+	for _, hc := range static.TestCatalogs(t, conn, pWithCatalogs.GetPublicId(), 3) {
+		wantSomeCatalogs = append(wantSomeCatalogs, &pb.HostCatalog{
+			Id:          hc.GetPublicId(),
+			CreatedTime: hc.GetCreateTime().GetTimestamp(),
+			UpdatedTime: hc.GetUpdateTime().GetTimestamp(),
+			Scope:       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String()},
+			Version:     1,
+			Type:        "static",
+		})
+	}
+
+	var wantOtherCatalogs []*pb.HostCatalog
+	for _, hc := range static.TestCatalogs(t, conn, pWithOtherCatalogs.GetPublicId(), 3) {
+		wantOtherCatalogs = append(wantOtherCatalogs, &pb.HostCatalog{
+			Id:          hc.GetPublicId(),
+			CreatedTime: hc.GetCreateTime().GetTimestamp(),
+			UpdatedTime: hc.GetUpdateTime().GetTimestamp(),
+			Scope:       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String()},
+			Version:     1,
+			Type:        "static",
+		})
+	}
+
+	cases := []struct {
+		name    string
+		scopeId string
+		res     *pbs.ListHostCatalogsResponse
+		errCode codes.Code
+	}{
+		{
+			name:    "List Some Catalogs",
+			scopeId: pWithCatalogs.GetPublicId(),
+			res:     &pbs.ListHostCatalogsResponse{Items: wantSomeCatalogs},
+			errCode: codes.OK,
+		},
+		{
+			name:    "List Other Catalogs",
+			scopeId: pWithOtherCatalogs.GetPublicId(),
+			res:     &pbs.ListHostCatalogsResponse{Items: wantOtherCatalogs},
+			errCode: codes.OK,
+		},
+		{
+			name:    "List No Catalogs",
+			scopeId: pNoCatalogs.GetPublicId(),
+			res:     &pbs.ListHostCatalogsResponse{},
+			errCode: codes.OK,
+		},
+		// TODO: When an auth method doesn't exist, we should return a 404 instead of an empty list.
+		{
+			name:    "Unfound Catalogs",
+			scopeId: scope.Project.Prefix() + "_DoesntExis",
+			res:     &pbs.ListHostCatalogsResponse{},
+			errCode: codes.OK,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := host_catalogs.NewService(repoFn)
+			require.NoError(err, "Couldn't create new auth_method service.")
+
+			got, gErr := s.ListHostCatalogs(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListHostCatalogsRequest{})
+			assert.Equal(tc.errCode, status.Code(gErr), "ListHostCatalogs() for scope %q got error %v, wanted %v", tc.scopeId, gErr, tc.errCode)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostCatalogs() for scope %q got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
 	}
 }
@@ -244,7 +327,7 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateHostCatalogResponse{
 				Uri: fmt.Sprintf("scopes/%s/host-catalogs/%s_", proj.GetPublicId(), static.HostCatalogPrefix),
 				Item: &pb.HostCatalog{
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "name"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					Type:        "static",
@@ -373,7 +456,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -396,7 +479,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -450,7 +533,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
 					Type:        "static",
@@ -471,7 +554,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
 					Type:        "static",
@@ -493,7 +576,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "updated"},
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -516,7 +599,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "default"},
 					Description: &wrappers.StringValue{Value: "notignored"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -536,7 +619,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.HostCatalog{
 					Name:        &wrappers.StringValue{Value: "new"},
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
@@ -551,7 +634,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.HostCatalog{
 					Id:          "p_somethinge",
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "new desc"},
 				}},

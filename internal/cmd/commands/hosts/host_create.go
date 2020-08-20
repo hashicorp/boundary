@@ -112,7 +112,7 @@ func (c *CreateCommand) Run(args []string) int {
 
 	host, apiErr, err := hosts.NewHostsClient(client).Create(c.Context,
 		c.flagCatalogId,
-		hosts.WithAddress(c.flagAddress),
+		hosts.WithStaticHostAddress(c.flagAddress),
 		hosts.WithName(c.flagName),
 		hosts.WithDescription(c.flagDescription))
 

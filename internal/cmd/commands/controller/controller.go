@@ -23,8 +23,6 @@ import (
 var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
 
-var devOnlyControllerFlags = func(*Command, *base.FlagSet) {}
-
 type Command struct {
 	*base.Server
 
@@ -51,7 +49,6 @@ type Command struct {
 	flagDevControllerClusterListenAddr string
 	flagDevOrgId                       string
 	flagDevAuthMethodId                string
-	flagDevPassthroughDirectory        string
 }
 
 func (c *Command) Synopsis() string {
@@ -166,7 +163,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  "If set, both startup information and logs will be sent to stdout. If not set (the default), startup information will go to stdout and logs will be sent to stderr.",
 	})
 
-	devOnlyControllerFlags(c, f)
+	base.DevOnlyControllerFlags(c.Command, f)
 
 	return set
 }
@@ -198,7 +195,10 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.SetupKMSes(c.UI, c.Config.SharedConfig, []string{"root", "worker-auth"}); err != nil {
+	if c.FlagDevRecoveryKey != "" {
+		c.Config.Controller.DevRecoveryKey = c.FlagDevRecoveryKey
+	}
+	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
@@ -382,7 +382,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 			c.DevPassword = c.flagDevPassword
 		}
 
-		c.Config.PassthroughDirectory = c.flagDevPassthroughDirectory
+		c.Config.PassthroughDirectory = c.FlagDevPassthroughDirectory
 
 		for _, l := range c.Config.Listeners {
 			if len(l.Purpose) != 1 {

@@ -19,7 +19,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
-func TestRepository_CreateHost(t *testing.T) {
+func TestRepository_CreateSet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -30,115 +30,79 @@ func TestRepository_CreateHost(t *testing.T) {
 
 	var tests = []struct {
 		name      string
-		in        *Host
+		in        *HostSet
 		opts      []Option
-		want      *Host
+		want      *HostSet
 		wantIsErr error
 	}{
 		{
-			name:      "nil-Host",
+			name:      "nil-HostSet",
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
-			name:      "nil-embedded-Host",
-			in:        &Host{},
+			name:      "nil-embedded-HostSet",
+			in:        &HostSet{},
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
 			name: "invalid-no-catalog-id",
-			in: &Host{
-				Host: &store.Host{},
+			in: &HostSet{
+				HostSet: &store.HostSet{},
 			},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-public-id-set",
-			in: &Host{
-				Host: &store.Host{
+			in: &HostSet{
+				HostSet: &store.HostSet{
 					CatalogId: catalog.PublicId,
 					PublicId:  "abcd_OOOOOOOOOO",
-					Address:   "127.0.0.1",
 				},
 			},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "valid-no-options",
-			in: &Host{
-				Host: &store.Host{
+			in: &HostSet{
+				HostSet: &store.HostSet{
 					CatalogId: catalog.PublicId,
-					Address:   "127.0.0.1",
 				},
 			},
-			want: &Host{
-				Host: &store.Host{
+			want: &HostSet{
+				HostSet: &store.HostSet{
 					CatalogId: catalog.PublicId,
-					Address:   "127.0.0.1",
 				},
 			},
 		},
 		{
 			name: "valid-with-name",
-			in: &Host{
-				Host: &store.Host{
+			in: &HostSet{
+				HostSet: &store.HostSet{
 					CatalogId: catalog.PublicId,
 					Name:      "test-name-repo",
-					Address:   "127.0.0.1",
 				},
 			},
-			want: &Host{
-				Host: &store.Host{
+			want: &HostSet{
+				HostSet: &store.HostSet{
 					CatalogId: catalog.PublicId,
 					Name:      "test-name-repo",
-					Address:   "127.0.0.1",
 				},
 			},
 		},
 		{
 			name: "valid-with-description",
-			in: &Host{
-				Host: &store.Host{
+			in: &HostSet{
+				HostSet: &store.HostSet{
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
-					Address:     "127.0.0.1",
 				},
 			},
-			want: &Host{
-				Host: &store.Host{
+			want: &HostSet{
+				HostSet: &store.HostSet{
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
-					Address:     "127.0.0.1",
 				},
 			},
-		},
-		{
-			name: "invalid-no-address",
-			in: &Host{
-				Host: &store.Host{
-					CatalogId: catalog.PublicId,
-				},
-			},
-			wantIsErr: ErrInvalidAddress,
-		},
-		{
-			name: "invalid-address-to-short",
-			in: &Host{
-				Host: &store.Host{
-					CatalogId: catalog.PublicId,
-					Address:   "127",
-				},
-			},
-			wantIsErr: ErrInvalidAddress,
-		},
-		{
-			name: "invalid-empty-address",
-			in: &Host{
-				Host: &store.Host{
-					CatalogId: catalog.PublicId,
-					Address:   "            ",
-				},
-			},
-			wantIsErr: ErrInvalidAddress,
 		},
 	}
 
@@ -149,7 +113,7 @@ func TestRepository_CreateHost(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
+			got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -158,7 +122,7 @@ func TestRepository_CreateHost(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, HostPrefix, got.PublicId)
+			assertPublicId(t, HostSetPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -176,24 +140,23 @@ func TestRepository_CreateHost(t *testing.T) {
 		_, prj := iam.TestScopes(t, iamRepo)
 		catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 
-		in := &Host{
-			Host: &store.Host{
+		in := &HostSet{
+			HostSet: &store.HostSet{
 				CatalogId: catalog.PublicId,
 				Name:      "test-name-repo",
-				Address:   "127.0.0.1",
 			},
 		}
 
-		got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
+		got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, HostPrefix, got.PublicId)
+		assertPublicId(t, HostSetPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		got2, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
+		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 	})
@@ -209,29 +172,28 @@ func TestRepository_CreateHost(t *testing.T) {
 
 		catalogA, catalogB := catalogs[0], catalogs[1]
 
-		in := &Host{
-			Host: &store.Host{
-				Name:    "test-name-repo",
-				Address: "127.0.0.1",
+		in := &HostSet{
+			HostSet: &store.HostSet{
+				Name: "test-name-repo",
 			},
 		}
 		in2 := in.clone()
 
 		in.CatalogId = catalogA.PublicId
-		got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
+		got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, HostPrefix, got.PublicId)
+		assertPublicId(t, HostSetPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		in2.CatalogId = catalogB.PublicId
-		got2, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in2)
+		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, HostPrefix, got2.PublicId)
+		assertPublicId(t, HostSetPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -239,95 +201,84 @@ func TestRepository_CreateHost(t *testing.T) {
 	})
 }
 
-func TestRepository_UpdateHost(t *testing.T) {
+func TestRepository_UpdateSet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
-	changeAddress := func(s string) func(*Host) *Host {
-		return func(h *Host) *Host {
-			h.Address = s
-			return h
+	changeName := func(n string) func(*HostSet) *HostSet {
+		return func(s *HostSet) *HostSet {
+			s.Name = n
+			return s
 		}
 	}
 
-	changeName := func(s string) func(*Host) *Host {
-		return func(h *Host) *Host {
-			h.Name = s
-			return h
+	changeDescription := func(d string) func(*HostSet) *HostSet {
+		return func(s *HostSet) *HostSet {
+			s.Description = d
+			return s
 		}
 	}
 
-	changeDescription := func(s string) func(*Host) *Host {
-		return func(h *Host) *Host {
-			h.Description = s
-			return h
-		}
-	}
-
-	makeNil := func() func(*Host) *Host {
-		return func(h *Host) *Host {
+	makeNil := func() func(*HostSet) *HostSet {
+		return func(s *HostSet) *HostSet {
 			return nil
 		}
 	}
 
-	makeEmbeddedNil := func() func(*Host) *Host {
-		return func(h *Host) *Host {
-			return &Host{}
+	makeEmbeddedNil := func() func(*HostSet) *HostSet {
+		return func(s *HostSet) *HostSet {
+			return &HostSet{}
 		}
 	}
 
-	deletePublicId := func() func(*Host) *Host {
-		return func(h *Host) *Host {
-			h.PublicId = ""
-			return h
+	deletePublicId := func() func(*HostSet) *HostSet {
+		return func(s *HostSet) *HostSet {
+			s.PublicId = ""
+			return s
 		}
 	}
 
-	nonExistentPublicId := func() func(*Host) *Host {
-		return func(h *Host) *Host {
-			h.PublicId = "abcd_OOOOOOOOOO"
-			return h
+	nonExistentPublicId := func() func(*HostSet) *HostSet {
+		return func(s *HostSet) *HostSet {
+			s.PublicId = "abcd_OOOOOOOOOO"
+			return s
 		}
 	}
 
-	combine := func(fns ...func(h *Host) *Host) func(*Host) *Host {
-		return func(h *Host) *Host {
+	combine := func(fns ...func(s *HostSet) *HostSet) func(*HostSet) *HostSet {
+		return func(s *HostSet) *HostSet {
 			for _, fn := range fns {
-				h = fn(h)
+				s = fn(s)
 			}
-			return h
+			return s
 		}
 	}
 
 	var tests = []struct {
 		name      string
-		orig      *Host
-		chgFn     func(*Host) *Host
+		orig      *HostSet
+		chgFn     func(*HostSet) *HostSet
 		masks     []string
-		want      *Host
+		want      *HostSet
 		wantCount int
 		wantIsErr error
 	}{
 		{
-			name: "nil-host",
-			orig: &Host{
-				Host: &store.Host{
-					Address: "127.0.0.1",
-				},
+			name: "nil-host-set",
+			orig: &HostSet{
+				HostSet: &store.HostSet{},
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
-			name: "nil-embedded-host",
-			orig: &Host{
-				Host: &store.Host{
-					Address: "127.0.0.1",
-				},
+			name: "nil-embedded-host-set",
+			orig: &HostSet{
+				HostSet: &store.HostSet{},
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
@@ -335,21 +286,18 @@ func TestRepository_UpdateHost(t *testing.T) {
 		},
 		{
 			name: "no-public-id",
-			orig: &Host{
-				Host: &store.Host{
-					Address: "127.0.0.1",
-				},
+			orig: &HostSet{
+				HostSet: &store.HostSet{},
 			},
 			chgFn:     deletePublicId(),
 			masks:     []string{"Name", "Description"},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "updating-non-existent-host",
-			orig: &Host{
-				Host: &store.Host{
-					Name:    "test-name-repo",
-					Address: "127.0.0.1",
+			name: "updating-non-existent-host-set",
+			orig: &HostSet{
+				HostSet: &store.HostSet{
+					Name: "test-name-repo",
 				},
 			},
 			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
@@ -358,10 +306,9 @@ func TestRepository_UpdateHost(t *testing.T) {
 		},
 		{
 			name: "empty-field-mask",
-			orig: &Host{
-				Host: &store.Host{
-					Name:    "test-name-repo",
-					Address: "127.0.0.1",
+			orig: &HostSet{
+				HostSet: &store.HostSet{
+					Name: "test-name-repo",
 				},
 			},
 			chgFn:     changeName("test-update-name-repo"),
@@ -369,10 +316,9 @@ func TestRepository_UpdateHost(t *testing.T) {
 		},
 		{
 			name: "read-only-fields-in-field-mask",
-			orig: &Host{
-				Host: &store.Host{
-					Name:    "test-name-repo",
-					Address: "127.0.0.1",
+			orig: &HostSet{
+				HostSet: &store.HostSet{
+					Name: "test-name-repo",
 				},
 			},
 			chgFn:     changeName("test-update-name-repo"),
@@ -381,10 +327,9 @@ func TestRepository_UpdateHost(t *testing.T) {
 		},
 		{
 			name: "unknown-field-in-field-mask",
-			orig: &Host{
-				Host: &store.Host{
-					Name:    "test-name-repo",
-					Address: "127.0.0.1",
+			orig: &HostSet{
+				HostSet: &store.HostSet{
+					Name: "test-name-repo",
 				},
 			},
 			chgFn:     changeName("test-update-name-repo"),
@@ -393,186 +338,123 @@ func TestRepository_UpdateHost(t *testing.T) {
 		},
 		{
 			name: "change-name",
-			orig: &Host{
-				Host: &store.Host{
-					Name:    "test-name-repo",
-					Address: "127.0.0.1",
+			orig: &HostSet{
+				HostSet: &store.HostSet{
+					Name: "test-name-repo",
 				},
 			},
 			chgFn: changeName("test-update-name-repo"),
 			masks: []string{"Name"},
-			want: &Host{
-				Host: &store.Host{
-					Name:    "test-update-name-repo",
-					Address: "127.0.0.1",
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					Name: "test-update-name-repo",
 				},
 			},
 			wantCount: 1,
 		},
 		{
 			name: "change-description",
-			orig: &Host{
-				Host: &store.Host{
+			orig: &HostSet{
+				HostSet: &store.HostSet{
 					Description: "test-description-repo",
-					Address:     "127.0.0.1",
 				},
 			},
 			chgFn: changeDescription("test-update-description-repo"),
 			masks: []string{"Description"},
-			want: &Host{
-				Host: &store.Host{
+			want: &HostSet{
+				HostSet: &store.HostSet{
 					Description: "test-update-description-repo",
-					Address:     "127.0.0.1",
 				},
 			},
 			wantCount: 1,
 		},
 		{
 			name: "change-name-and-description",
-			orig: &Host{
-				Host: &store.Host{
+			orig: &HostSet{
+				HostSet: &store.HostSet{
 					Name:        "test-name-repo",
 					Description: "test-description-repo",
-					Address:     "127.0.0.1",
 				},
 			},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
 			masks: []string{"Name", "Description"},
-			want: &Host{
-				Host: &store.Host{
+			want: &HostSet{
+				HostSet: &store.HostSet{
 					Name:        "test-update-name-repo",
 					Description: "test-update-description-repo",
-					Address:     "127.0.0.1",
 				},
 			},
 			wantCount: 1,
 		},
 		{
 			name: "delete-name",
-			orig: &Host{
-				Host: &store.Host{
+			orig: &HostSet{
+				HostSet: &store.HostSet{
 					Name:        "test-name-repo",
 					Description: "test-description-repo",
-					Address:     "127.0.0.1",
 				},
 			},
 			masks: []string{"Name"},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
-			want: &Host{
-				Host: &store.Host{
+			want: &HostSet{
+				HostSet: &store.HostSet{
 					Description: "test-description-repo",
-					Address:     "127.0.0.1",
 				},
 			},
 			wantCount: 1,
 		},
 		{
 			name: "delete-description",
-			orig: &Host{
-				Host: &store.Host{
+			orig: &HostSet{
+				HostSet: &store.HostSet{
 					Name:        "test-name-repo",
 					Description: "test-description-repo",
-					Address:     "127.0.0.1",
 				},
 			},
 			masks: []string{"Description"},
 			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
-			want: &Host{
-				Host: &store.Host{
-					Name:    "test-name-repo",
-					Address: "127.0.0.1",
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					Name: "test-name-repo",
 				},
 			},
 			wantCount: 1,
 		},
 		{
 			name: "do-not-delete-name",
-			orig: &Host{
-				Host: &store.Host{
+			orig: &HostSet{
+				HostSet: &store.HostSet{
 					Name:        "test-name-repo",
 					Description: "test-description-repo",
-					Address:     "127.0.0.1",
 				},
 			},
 			masks: []string{"Description"},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
-			want: &Host{
-				Host: &store.Host{
+			want: &HostSet{
+				HostSet: &store.HostSet{
 					Name:        "test-name-repo",
 					Description: "test-update-description-repo",
-					Address:     "127.0.0.1",
 				},
 			},
 			wantCount: 1,
 		},
 		{
 			name: "do-not-delete-description",
-			orig: &Host{
-				Host: &store.Host{
+			orig: &HostSet{
+				HostSet: &store.HostSet{
 					Name:        "test-name-repo",
 					Description: "test-description-repo",
-					Address:     "127.0.0.1",
 				},
 			},
 			masks: []string{"Name"},
 			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
-			want: &Host{
-				Host: &store.Host{
+			want: &HostSet{
+				HostSet: &store.HostSet{
 					Name:        "test-update-name-repo",
 					Description: "test-description-repo",
-					Address:     "127.0.0.1",
 				},
 			},
 			wantCount: 1,
-		},
-		{
-			name: "change-address",
-			orig: &Host{
-				Host: &store.Host{
-					Address: "127.0.0.1",
-				},
-			},
-			chgFn: changeAddress("10.0.0.1"),
-			masks: []string{"Address"},
-			want: &Host{
-				Host: &store.Host{
-					Address: "10.0.0.1",
-				},
-			},
-			wantCount: 1,
-		},
-		{
-			name: "change-short-address",
-			orig: &Host{
-				Host: &store.Host{
-					Address: "127.0.0.1",
-				},
-			},
-			chgFn:     changeAddress("11"),
-			masks:     []string{"Address"},
-			wantIsErr: ErrInvalidAddress,
-		},
-		{
-			name: "delete-address",
-			orig: &Host{
-				Host: &store.Host{
-					Address: "127.0.0.1",
-				},
-			},
-			chgFn:     changeAddress(""),
-			masks:     []string{"Address"},
-			wantIsErr: ErrInvalidAddress,
-		},
-		{
-			name: "change-empty-address",
-			orig: &Host{
-				Host: &store.Host{
-					Address: "127.0.0.1",
-				},
-			},
-			chgFn:     changeAddress("            "),
-			masks:     []string{"Address"},
-			wantIsErr: ErrInvalidAddress,
 		},
 	}
 
@@ -588,14 +470,14 @@ func TestRepository_UpdateHost(t *testing.T) {
 			catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 
 			tt.orig.CatalogId = catalog.PublicId
-			orig, err := repo.CreateHost(context.Background(), prj.GetPublicId(), tt.orig)
+			orig, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.orig)
 			assert.NoError(err)
 			require.NotNil(orig)
 
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
-			got, gotCount, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), orig, 1, tt.masks)
+			got, gotCount, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
@@ -605,7 +487,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, HostPrefix, got.PublicId)
+			assertPublicId(t, HostSetPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.CatalogId, got.CatalogId)
@@ -635,24 +517,24 @@ func TestRepository_UpdateHost(t *testing.T) {
 		name := "test-dup-name"
 		_, prj := iam.TestScopes(t, iamRepo)
 		catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-		hs := TestHosts(t, conn, catalog.PublicId, 2)
+		ss := TestSets(t, conn, catalog.PublicId, 2)
 
-		hA, hB := hs[0], hs[1]
+		sA, sB := ss[0], ss[1]
 
-		hA.Name = name
-		got1, gotCount1, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), hA, 1, []string{"name"})
+		sA.Name = name
+		got1, gotCount1, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sA, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(name, got1.Name)
 		assert.Equal(1, gotCount1, "row count")
-		assert.NoError(db.TestVerifyOplog(t, rw, hA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+		assert.NoError(db.TestVerifyOplog(t, rw, sA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 
-		hB.Name = name
-		got2, gotCount2, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), hB, 1, []string{"name"})
+		sB.Name = name
+		got2, gotCount2, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sB, 1, []string{"name"})
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
-		err = db.TestVerifyOplog(t, rw, hB.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+		err = db.TestVerifyOplog(t, rw, sB.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
 		assert.True(errors.Is(db.ErrRecordNotFound, err))
 	})
@@ -668,30 +550,29 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 		catalogA, catalogB := catalogs[0], catalogs[1]
 
-		in := &Host{
-			Host: &store.Host{
-				Name:    "test-name-repo",
-				Address: "127.0.0.1",
+		in := &HostSet{
+			HostSet: &store.HostSet{
+				Name: "test-name-repo",
 			},
 		}
 		in2 := in.clone()
 
 		in.CatalogId = catalogA.PublicId
-		got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
+		got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, HostPrefix, got.PublicId)
+		assertPublicId(t, HostSetPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 
 		in2.CatalogId = catalogB.PublicId
 		in2.Name = "first-name"
-		got2, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in2)
+		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
 		got2.Name = got.Name
-		got3, gotCount3, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), got2, 1, []string{"name"})
+		got3, gotCount3, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), got2, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got3)
 		assert.NotSame(got2, got3)
@@ -712,26 +593,26 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 		catalogA, catalogB := catalogs[0], catalogs[1]
 
-		hA := TestHosts(t, conn, catalogA.PublicId, 1)[0]
-		hB := TestHosts(t, conn, catalogB.PublicId, 1)[0]
+		sA := TestSets(t, conn, catalogA.PublicId, 1)[0]
+		sB := TestSets(t, conn, catalogB.PublicId, 1)[0]
 
-		assert.NotEqual(hA.CatalogId, hB.CatalogId)
-		orig := hA.clone()
+		assert.NotEqual(sA.CatalogId, sB.CatalogId)
+		orig := sA.clone()
 
-		hA.CatalogId = hB.CatalogId
-		assert.Equal(hA.CatalogId, hB.CatalogId)
+		sA.CatalogId = sB.CatalogId
+		assert.Equal(sA.CatalogId, sB.CatalogId)
 
-		got1, gotCount1, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), hA, 1, []string{"name"})
+		got1, gotCount1, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sA, 1, []string{"name"})
 
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(orig.CatalogId, got1.CatalogId)
 		assert.Equal(1, gotCount1, "row count")
-		assert.NoError(db.TestVerifyOplog(t, rw, hA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+		assert.NoError(db.TestVerifyOplog(t, rw, sA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 	})
 }
 
-func TestRepository_LookupHost(t *testing.T) {
+func TestRepository_LookupSet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -740,14 +621,14 @@ func TestRepository_LookupHost(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-	host := TestHosts(t, conn, catalog.PublicId, 1)[0]
+	hostSet := TestSets(t, conn, catalog.PublicId, 1)[0]
 
-	hostId, err := newHostId()
+	hostSetId, err := newHostSetId()
 	require.NoError(t, err)
 	var tests = []struct {
 		name      string
 		in        string
-		want      *Host
+		want      *HostSet
 		wantIsErr error
 	}{
 		{
@@ -755,13 +636,13 @@ func TestRepository_LookupHost(t *testing.T) {
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "with-non-existing-host-id",
-			in:   hostId,
+			name: "with-non-existing-host-set-id",
+			in:   hostSetId,
 		},
 		{
-			name: "with-existing-host-id",
-			in:   host.PublicId,
-			want: host,
+			name: "with-existing-host-set-id",
+			in:   hostSet.PublicId,
+			want: hostSet,
 		},
 	}
 
@@ -772,7 +653,7 @@ func TestRepository_LookupHost(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupHost(context.Background(), tt.in)
+			got, err := repo.LookupSet(context.Background(), tt.in)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -784,7 +665,7 @@ func TestRepository_LookupHost(t *testing.T) {
 	}
 }
 
-func TestRepository_ListHosts(t *testing.T) {
+func TestRepository_ListSets(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -795,13 +676,13 @@ func TestRepository_ListHosts(t *testing.T) {
 	catalogs := TestCatalogs(t, conn, prj.PublicId, 2)
 	catalogA, catalogB := catalogs[0], catalogs[1]
 
-	hosts := TestHosts(t, conn, catalogA.PublicId, 3)
+	hostSets := TestSets(t, conn, catalogA.PublicId, 3)
 
 	var tests = []struct {
 		name      string
 		in        string
 		opts      []Option
-		want      []*Host
+		want      []*HostSet
 		wantIsErr error
 	}{
 		{
@@ -809,14 +690,14 @@ func TestRepository_ListHosts(t *testing.T) {
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "Catalog-with-no-hosts",
+			name: "Catalog-with-no-host-sets",
 			in:   catalogB.PublicId,
-			want: []*Host{},
+			want: []*HostSet{},
 		},
 		{
-			name: "Catalog-with-hosts",
+			name: "Catalog-with-host-sets",
 			in:   catalogA.PublicId,
-			want: hosts,
+			want: hostSets,
 		},
 	}
 
@@ -827,7 +708,7 @@ func TestRepository_ListHosts(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListHosts(context.Background(), tt.in, tt.opts...)
+			got, err := repo.ListSets(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -835,7 +716,7 @@ func TestRepository_ListHosts(t *testing.T) {
 			}
 			require.NoError(err)
 			opts := []cmp.Option{
-				cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
+				cmpopts.SortSlices(func(x, y *HostSet) bool { return x.PublicId < y.PublicId }),
 				protocmp.Transform(),
 			}
 			assert.Empty(cmp.Diff(tt.want, got, opts...))
@@ -843,7 +724,7 @@ func TestRepository_ListHosts(t *testing.T) {
 	}
 }
 
-func TestRepository_ListHosts_Limits(t *testing.T) {
+func TestRepository_ListSets_Limits(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -853,7 +734,7 @@ func TestRepository_ListHosts_Limits(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	count := 10
-	hosts := TestHosts(t, conn, catalog.PublicId, count)
+	hostSets := TestSets(t, conn, catalog.PublicId, count)
 
 	var tests = []struct {
 		name     string
@@ -906,14 +787,14 @@ func TestRepository_ListHosts_Limits(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListHosts(context.Background(), hosts[0].CatalogId, tt.listOpts...)
+			got, err := repo.ListSets(context.Background(), hostSets[0].CatalogId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 		})
 	}
 }
 
-func TestRepository_DeleteHost(t *testing.T) {
+func TestRepository_DeleteSet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -922,9 +803,9 @@ func TestRepository_DeleteHost(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-	host := TestHosts(t, conn, catalog.PublicId, 1)[0]
+	hostSet := TestSets(t, conn, catalog.PublicId, 1)[0]
 
-	newHostId, err := newHostId()
+	newHostSetId, err := newHostSetId()
 	require.NoError(t, err)
 	var tests = []struct {
 		name      string
@@ -937,13 +818,13 @@ func TestRepository_DeleteHost(t *testing.T) {
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "With non existing host id",
-			in:   newHostId,
+			name: "With non existing host set id",
+			in:   newHostSetId,
 			want: 0,
 		},
 		{
-			name: "With existing host id",
-			in:   host.PublicId,
+			name: "With existing host set id",
+			in:   hostSet.PublicId,
 			want: 1,
 		},
 	}
@@ -955,7 +836,7 @@ func TestRepository_DeleteHost(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteHost(context.Background(), catalog.ScopeId, tt.in)
+			got, err := repo.DeleteSet(context.Background(), prj.PublicId, tt.in)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)

@@ -362,7 +362,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 			if tc.userId == "" {
 				return
 			}
-			ctx := NewVerifierContext(context.Background(), nil, iamRepoFn, tokenRepoFn, requestInfo)
+			ctx := NewVerifierContext(context.Background(), nil, iamRepoFn, tokenRepoFn, kms, requestInfo)
 
 			v, ok := ctx.Value(verifierKey).(*verifier)
 			require.True(t, ok)
