@@ -17,12 +17,14 @@ type options struct {
 	withName        string
 	withDescription string
 	withLimit       int
+	withAddress     string
 }
 
 func getDefaultOptions() options {
 	return options{
 		withDescription: "",
 		withName:        "",
+		withAddress:     "",
 	}
 }
 
@@ -46,5 +48,12 @@ func WithName(name string) Option {
 func WithLimit(l int) Option {
 	return func(o *options) {
 		o.withLimit = l
+	}
+}
+
+// WithAddress provides an optional address.
+func WithAddress(address string) Option {
+	return func(o *options) {
+		o.withAddress = address
 	}
 }

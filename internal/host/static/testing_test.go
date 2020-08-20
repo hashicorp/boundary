@@ -24,3 +24,23 @@ func Test_TestCatalogs(t *testing.T) {
 		assert.NotEmpty(c.GetPublicId())
 	}
 }
+
+func Test_TestHosts(t *testing.T) {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	require.NotNil(org)
+	assert.NotEmpty(org.GetPublicId())
+
+	c := TestCatalogs(t, conn, org.GetPublicId(), 1)[0]
+
+	count := 4
+	accounts := TestHosts(t, conn, c.GetPublicId(), count)
+	assert.Len(accounts, count)
+	for _, a := range accounts {
+		assert.NotEmpty(a.GetPublicId())
+	}
+}

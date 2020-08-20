@@ -2,6 +2,7 @@ package static
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -31,4 +32,30 @@ func TestCatalogs(t *testing.T, conn *gorm.DB, scopeId string, count int) []*Hos
 		cats = append(cats, cat)
 	}
 	return cats
+}
+
+// TestHosts creates count number of static hosts to the provided DB
+// with the provided catalog id.  The catalog must have been created previously.
+// If any errors are encountered during the creation of the host, the test will fail.
+func TestHosts(t *testing.T, conn *gorm.DB, catalogId string, count int) []*Host {
+	t.Helper()
+	assert := assert.New(t)
+	var hosts []*Host
+
+	for i := 0; i < count; i++ {
+		host, err := NewHost(catalogId, WithAddress(fmt.Sprintf("%s-%d", catalogId, i)))
+		assert.NoError(err)
+		assert.NotNil(host)
+
+		id, err := newHostId()
+		assert.NoError(err)
+		assert.NotEmpty(id)
+		host.PublicId = id
+
+		w := db.New(conn)
+		err2 := w.Create(context.Background(), host)
+		assert.NoError(err2)
+		hosts = append(hosts, host)
+	}
+	return hosts
 }

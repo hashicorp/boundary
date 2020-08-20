@@ -166,11 +166,11 @@ service RoleService {
     };
   }
 
-  // RemoveRoleGrants removes the users and/or groups from the specified role.
+  // RemoveRoleGrants removes the grants from the specified role.
   // The provided request must include the scope and the role IDs from which the
-  // users and/or groups will be removed. If either ID is missing, malformed, or
-  // references a non-existing org, an error is returned.  It is not an error to
-  // have duplicate user/group IDs.
+  // grants will be removed. If either ID is missing, malformed, or
+  // references a non-existing scope, an error is returned.  It is not an error to
+  // have duplicate grants.
   rpc RemoveRoleGrants(RemoveRoleGrantsRequest) returns (RemoveRoleGrantsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/roles/{role_id}:remove-grants"
