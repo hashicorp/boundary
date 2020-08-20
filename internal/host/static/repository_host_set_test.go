@@ -26,7 +26,7 @@ func TestRepository_CreateSet(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 
 	var tests = []struct {
 		name      string
@@ -138,7 +138,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+		catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 
 		in := &HostSet{
 			HostSet: &store.HostSet{
@@ -168,7 +168,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalogs := testCatalogs(t, conn, prj.PublicId, 2)
+		catalogs := TestCatalogs(t, conn, prj.PublicId, 2)
 
 		catalogA, catalogB := catalogs[0], catalogs[1]
 
@@ -467,7 +467,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			require.NotNil(repo)
 
 			_, prj := iam.TestScopes(t, iamRepo)
-			catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+			catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 
 			tt.orig.CatalogId = catalog.PublicId
 			orig, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.orig)
@@ -516,7 +516,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 		name := "test-dup-name"
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+		catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 		ss := testSets(t, conn, catalog.PublicId, 2)
 
 		sA, sB := ss[0], ss[1]
@@ -546,7 +546,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalogs := testCatalogs(t, conn, prj.PublicId, 2)
+		catalogs := TestCatalogs(t, conn, prj.PublicId, 2)
 
 		catalogA, catalogB := catalogs[0], catalogs[1]
 
@@ -589,7 +589,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalogs := testCatalogs(t, conn, prj.PublicId, 2)
+		catalogs := TestCatalogs(t, conn, prj.PublicId, 2)
 
 		catalogA, catalogB := catalogs[0], catalogs[1]
 
@@ -620,7 +620,7 @@ func TestRepository_LookupSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	hostSet := testSets(t, conn, catalog.PublicId, 1)[0]
 
 	hostSetId, err := newHostSetId()
@@ -673,7 +673,7 @@ func TestRepository_ListSets(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	catalogs := testCatalogs(t, conn, prj.PublicId, 2)
+	catalogs := TestCatalogs(t, conn, prj.PublicId, 2)
 	catalogA, catalogB := catalogs[0], catalogs[1]
 
 	hostSets := testSets(t, conn, catalogA.PublicId, 3)
@@ -732,7 +732,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	count := 10
 	hostSets := testSets(t, conn, catalog.PublicId, count)
 
@@ -802,7 +802,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	hostSet := testSets(t, conn, catalog.PublicId, 1)[0]
 
 	newHostSetId, err := newHostSetId()

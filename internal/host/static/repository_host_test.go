@@ -26,7 +26,7 @@ func TestRepository_CreateHost(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 
 	var tests = []struct {
 		name      string
@@ -174,7 +174,7 @@ func TestRepository_CreateHost(t *testing.T) {
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+		catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 
 		in := &Host{
 			Host: &store.Host{
@@ -205,7 +205,7 @@ func TestRepository_CreateHost(t *testing.T) {
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalogs := testCatalogs(t, conn, prj.PublicId, 2)
+		catalogs := TestCatalogs(t, conn, prj.PublicId, 2)
 
 		catalogA, catalogB := catalogs[0], catalogs[1]
 
@@ -585,7 +585,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			require.NotNil(repo)
 
 			_, prj := iam.TestScopes(t, iamRepo)
-			catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+			catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 
 			tt.orig.CatalogId = catalog.PublicId
 			orig, err := repo.CreateHost(context.Background(), prj.GetPublicId(), tt.orig)
@@ -634,8 +634,8 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 		name := "test-dup-name"
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
-		hs := testHosts(t, conn, catalog.PublicId, 2)
+		catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+		hs := TestHosts(t, conn, catalog.PublicId, 2)
 
 		hA, hB := hs[0], hs[1]
 
@@ -664,7 +664,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalogs := testCatalogs(t, conn, prj.PublicId, 2)
+		catalogs := TestCatalogs(t, conn, prj.PublicId, 2)
 
 		catalogA, catalogB := catalogs[0], catalogs[1]
 
@@ -708,12 +708,12 @@ func TestRepository_UpdateHost(t *testing.T) {
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalogs := testCatalogs(t, conn, prj.PublicId, 2)
+		catalogs := TestCatalogs(t, conn, prj.PublicId, 2)
 
 		catalogA, catalogB := catalogs[0], catalogs[1]
 
-		hA := testHosts(t, conn, catalogA.PublicId, 1)[0]
-		hB := testHosts(t, conn, catalogB.PublicId, 1)[0]
+		hA := TestHosts(t, conn, catalogA.PublicId, 1)[0]
+		hB := TestHosts(t, conn, catalogB.PublicId, 1)[0]
 
 		assert.NotEqual(hA.CatalogId, hB.CatalogId)
 		orig := hA.clone()
@@ -739,8 +739,8 @@ func TestRepository_LookupHost(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
-	host := testHosts(t, conn, catalog.PublicId, 1)[0]
+	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	host := TestHosts(t, conn, catalog.PublicId, 1)[0]
 
 	hostId, err := newHostId()
 	require.NoError(t, err)
@@ -792,10 +792,10 @@ func TestRepository_ListHosts(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	catalogs := testCatalogs(t, conn, prj.PublicId, 2)
+	catalogs := TestCatalogs(t, conn, prj.PublicId, 2)
 	catalogA, catalogB := catalogs[0], catalogs[1]
 
-	hosts := testHosts(t, conn, catalogA.PublicId, 3)
+	hosts := TestHosts(t, conn, catalogA.PublicId, 3)
 
 	var tests = []struct {
 		name      string
@@ -851,9 +851,9 @@ func TestRepository_ListHosts_Limits(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	count := 10
-	hosts := testHosts(t, conn, catalog.PublicId, count)
+	hosts := TestHosts(t, conn, catalog.PublicId, count)
 
 	var tests = []struct {
 		name     string
@@ -921,8 +921,8 @@ func TestRepository_DeleteHost(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
-	host := testHosts(t, conn, catalog.PublicId, 1)[0]
+	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	host := TestHosts(t, conn, catalog.PublicId, 1)[0]
 
 	newHostId, err := newHostId()
 	require.NoError(t, err)

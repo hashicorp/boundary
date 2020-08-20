@@ -54,11 +54,11 @@ message Host {
   // name is optional. If set, it must be unique within
   // catalog_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 4;
+  string name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 5;
+  string description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
   // catalog_id is the public_id of the owning
   // static_host_catalog and must be set.
@@ -68,7 +68,7 @@ message Host {
   // address is the IP Address or DNS name of the host. It must be set and
   // it must be unique within catalog_id.
   // @inject_tag: `gorm:"default:null"`
-  string address = 7;
+  string address = 7 [(custom_options.v1.mask_mapping) = {this:"address" that: "attributes.address"}];
 
   // version allows optimistic locking of the resource
   // @inject_tag: `gorm:"default:null"`
@@ -91,11 +91,11 @@ message HostSet {
   // name is optional. If set, it must be unique within
   // catalog_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 4;
+  string name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 5;
+  string description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
   // catalog_id is the public_id of the owning
   // static_host_catalog and must be set.

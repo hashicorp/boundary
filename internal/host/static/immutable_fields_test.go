@@ -21,7 +21,7 @@ func TestHostCatalog_ImmutableFields(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 	o, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	new := testCatalog(t, conn, prj.PublicId)
+	new := testCatalog(t, conn, wrapper, prj.PublicId)
 
 	var tests = []struct {
 		name      string
@@ -86,8 +86,8 @@ func TestStaticHost_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	cat := testCatalog(t, conn, prj.PublicId)
-	hosts := testHosts(t, conn, cat.GetPublicId(), 1)
+	cat := testCatalog(t, conn, wrapper, prj.PublicId)
+	hosts := TestHosts(t, conn, cat.GetPublicId(), 1)
 
 	new := hosts[0]
 
@@ -161,7 +161,7 @@ func TestStaticHostSet_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	cat := testCatalog(t, conn, prj.PublicId)
+	cat := testCatalog(t, conn, wrapper, prj.PublicId)
 	sets := testSets(t, conn, cat.GetPublicId(), 1)
 
 	new := sets[0]
@@ -235,9 +235,9 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	cat := testCatalog(t, conn, prj.PublicId)
+	cat := testCatalog(t, conn, wrapper, prj.PublicId)
 	sets := testSets(t, conn, cat.GetPublicId(), 1)
-	hosts := testHosts(t, conn, cat.GetPublicId(), 1)
+	hosts := TestHosts(t, conn, cat.GetPublicId(), 1)
 
 	new, err := NewHostSetMember(sets[0].PublicId, hosts[0].PublicId)
 	require.NoError(t, err)
