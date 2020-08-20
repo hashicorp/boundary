@@ -56,7 +56,9 @@ func (c *AuthTokensClient) Read(ctx context.Context, authTokenId string, opt ...
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -89,7 +91,9 @@ func (c *AuthTokensClient) Delete(ctx context.Context, authTokenId string, opt .
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
-
+	if apiErr != nil {
+		return false, apiErr, nil
+	}
 	return target.Existed, apiErr, nil
 }
 
@@ -118,6 +122,8 @@ func (c *AuthTokensClient) List(ctx context.Context, opt ...Option) ([]*AuthToke
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target.Items, apiErr, nil
 }

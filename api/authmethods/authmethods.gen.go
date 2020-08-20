@@ -59,7 +59,9 @@ func (c *AuthMethodsClient) Create(ctx context.Context, resourceType string, opt
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -89,7 +91,9 @@ func (c *AuthMethodsClient) Read(ctx context.Context, authMethodId string, opt .
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -137,7 +141,9 @@ func (c *AuthMethodsClient) Update(ctx context.Context, authMethodId string, ver
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -170,7 +176,9 @@ func (c *AuthMethodsClient) Delete(ctx context.Context, authMethodId string, opt
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
-
+	if apiErr != nil {
+		return false, apiErr, nil
+	}
 	return target.Existed, apiErr, nil
 }
 
@@ -199,6 +207,8 @@ func (c *AuthMethodsClient) List(ctx context.Context, opt ...Option) ([]*AuthMet
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target.Items, apiErr, nil
 }
