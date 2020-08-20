@@ -50,26 +50,6 @@ func Test_TestSets(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-
-	require.NotNil(org)
-	assert.NotEmpty(org.GetPublicId())
-
-	c := TestCatalogs(t, conn, org.GetPublicId(), 1)[0]
-
-	count := 4
-	sets := TestSets(t, conn, c.GetPublicId(), count)
-	assert.Len(sets, count)
-	for _, s := range sets {
-		assert.NotEmpty(s.GetPublicId())
-	}
-}
-
-func Test_TestSets(t *testing.T) {
-	t.Helper()
-	assert, require := assert.New(t), require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	require.NotNil(prj)
