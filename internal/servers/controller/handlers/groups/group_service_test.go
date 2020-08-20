@@ -961,6 +961,12 @@ func TestAddMember(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name:     "Add invalid u_recovery to group",
+			setup:    func(g *iam.Group) {},
+			addUsers: []string{"u_recovery"},
+			wantErr:  true,
+		},
 	}
 
 	for _, tc := range addCases {

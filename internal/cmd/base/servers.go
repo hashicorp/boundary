@@ -325,7 +325,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	return nil
 }
 
-func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config, purposes []string) error {
+func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 	sharedConfig := config.SharedConfig
 	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {

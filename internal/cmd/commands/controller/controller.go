@@ -198,7 +198,7 @@ func (c *Command) Run(args []string) int {
 	if c.FlagDevRecoveryKey != "" {
 		c.Config.Controller.DevRecoveryKey = c.FlagDevRecoveryKey
 	}
-	if err := c.SetupKMSes(c.UI, c.Config, []string{"root", "worker-auth", "recovery"}); err != nil {
+	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
