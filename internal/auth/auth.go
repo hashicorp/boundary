@@ -25,8 +25,6 @@ const (
 	HeaderAuthMethod    = "Authorization"
 	HttpOnlyCookieName  = "wt-http-token-cookie"
 	JsVisibleCookieName = "wt-js-token-cookie"
-
-	recoveryTokenValidityPeriod = 5 * time.Minute
 )
 
 type TokenFormat int
@@ -40,7 +38,13 @@ const (
 
 type key int
 
-var verifierKey key
+var (
+	// RecoveryTokenValidityPeriod is exported so we can modify it in tests if
+	// we want
+	RecoveryTokenValidityPeriod = 5 * time.Minute
+
+	verifierKey key
+)
 
 // RequestInfo contains request parameters necessary for checking authn/authz
 type RequestInfo struct {
@@ -423,7 +427,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		// If we add the validity period to the creation time (which we've
 		// verified is before the current time, with a minute of fudging), and
 		// it's before now, it's expired and might be a replay.
-		if info.CreationTime.Add(recoveryTokenValidityPeriod).Before(time.Now()) {
+		if info.CreationTime.Add(RecoveryTokenValidityPeriod).Before(time.Now()) {
 			retErr = errors.New("perform auth check: recovery token has expired")
 			return
 		}
