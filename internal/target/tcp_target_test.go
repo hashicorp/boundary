@@ -9,15 +9,11 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
-
-// NOTE: there are no update tests since all the RootKey attributes are
-// immutable and those tests are covered by TestRootKey_ImmutableFields
 
 func TestTcpTarget_Create(t *testing.T) {
 	t.Parallel()
@@ -79,7 +75,6 @@ func TestTcpTarget_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 			got, err := NewTcpTarget(tt.args.scopeId, tt.args.name, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
