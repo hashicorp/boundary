@@ -62,7 +62,8 @@ create table iam_scope_org (
     references iam_scope(public_id)
     on delete cascade
     on update cascade,
-  parent_id wt_scope_id not null
+  parent_id wt_scope_id
+    not null
     references iam_scope_global(scope_id)
     on delete cascade
     on update cascade,
@@ -71,7 +72,11 @@ create table iam_scope_org (
 );
 
 create table iam_scope_project (
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
     parent_id wt_public_id not null references iam_scope_org(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
@@ -214,12 +219,17 @@ insert into iam_scope (public_id, name, type, description)
 
 
 create table iam_user (
-    public_id wt_user_id primary key,
+    public_id wt_user_id
+      primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
     unique(name, scope_id),
     version wt_version,
 
@@ -341,7 +351,7 @@ insert into iam_user (public_id, name, description, scope_id)
   values ('u_recovery', 'recovery', 'The recovery user is used for any request that was performed with the recovery KMS workflow', 'global');
 
  -- define the immutable fields for iam_user
-create trigger 
+create trigger
   immutable_columns
 before
 update on iam_user
@@ -353,8 +363,16 @@ create table iam_role (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
-    grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
+    grant_scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
     unique(name, scope_id),
     version wt_version,
 
@@ -447,12 +465,17 @@ end;
 $$ language plpgsql;
 
 create table iam_group (
-    public_id wt_public_id not null primary key,
+    public_id wt_public_id
+      primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
     unique(name, scope_id),
     -- version allows optimistic locking of the group when modifying the group
     -- itself and when modifying dependent items like group members. 
