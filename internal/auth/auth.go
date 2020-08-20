@@ -418,7 +418,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		}
 		// TODO: verify nonce hasn't been used
 		_ = info
-		v.logger.Warn("NOTE: recovery KMS was used to authorize a call", "token", v.requestInfo.Token, "url", v.requestInfo.Path, "method", v.requestInfo.Method)
+		v.logger.Warn("NOTE: recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
 	}
 
 	// Fetch and parse grants for this user ID (which may include grants for
