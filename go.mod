@@ -24,16 +24,16 @@ require (
 	github.com/hashicorp/go-kms-wrapping v0.5.14
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-plugin v1.2.0 // indirect
-	github.com/hashicorp/go-retryablehttp v0.6.6
+	github.com/hashicorp/go-retryablehttp v0.6.7
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/shared-secure-libs v0.0.2
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200805123347-1ef507638af6
-	github.com/iancoleman/strcase v0.0.0-20180726023541-3605ed457bf7
+	github.com/iancoleman/strcase v0.1.0
 	github.com/jackc/pgx/v4 v4.8.1
-	github.com/jinzhu/gorm v1.9.15
+	github.com/jinzhu/gorm v1.9.16
 	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.8.0
