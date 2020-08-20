@@ -87,7 +87,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var role *Role
 	var roleRaw interface{}
 	switch userId {
-	case "", "u_anon", "u_auth":
+	case "", "u_anon", "u_auth", "u_recovery":
 		// TODO: Cause a log entry. The repo doesn't have a logger right now,
 		// and ideally we will be using context to pass around log info scoped
 		// to this request for grouped display in the server log. The only

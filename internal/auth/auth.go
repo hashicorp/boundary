@@ -408,7 +408,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		}
 		wrapper := v.kms.GetExternalWrappers().Recovery()
 		if wrapper == nil {
-			retErr = errors.New("perform auth check: no admin KMS is available")
+			retErr = errors.New("perform auth check: no recovery KMS is available")
 			return
 		}
 		info, err := recovery.ParseRecoveryToken(v.ctx, v.requestInfo.Token, wrapper)
@@ -419,7 +419,6 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		// TODO: verify nonce hasn't been used
 		_ = info
 		v.logger.Warn("NOTE: recovery KMS was used to authorize a call", "token", v.requestInfo.Token, "url", v.requestInfo.Path, "method", v.requestInfo.Method)
-		return
 	}
 
 	// Fetch and parse grants for this user ID (which may include grants for

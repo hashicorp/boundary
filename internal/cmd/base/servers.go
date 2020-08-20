@@ -16,6 +16,7 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -324,14 +325,19 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	return nil
 }
 
-func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes []string) error {
-	for _, kms := range config.Seals {
+func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config, purposes []string) error {
+	sharedConfig := config.SharedConfig
+	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
 			purpose = strings.ToLower(purpose)
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
-			case "root", "worker-auth", "recovery", "config":
+			case "root", "worker-auth", "config":
+			case "recovery":
+				if config.Controller != nil && config.Controller.DevRecoveryKey != "" {
+					kms.Config["key"] = config.Controller.DevRecoveryKey
+				}
 			default:
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
 			}
@@ -376,7 +382,7 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 
 	// prepare a secure random reader
 	var err error
-	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config, b.RootKms)
+	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config.SharedConfig, b.RootKms)
 	if err != nil {
 		return err
 	}

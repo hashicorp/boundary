@@ -112,6 +112,12 @@ func (k *Kms) AddExternalWrappers(opt ...Option) error {
 			return fmt.Errorf("worker auth wrapper has no key ID")
 		}
 	}
+	if opts.withRecoveryWrapper != nil {
+		ext.recovery = opts.withRecoveryWrapper
+		if ext.recovery.KeyID() == "" {
+			return fmt.Errorf("recovery wrapper has no key ID")
+		}
+	}
 
 	k.externalScopeCache[scope.Global.String()] = ext
 	return nil

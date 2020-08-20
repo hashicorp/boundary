@@ -18,8 +18,6 @@ import (
 var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
 
-var devOnlyControllerFlags = func(*Command, *base.FlagSet) {}
-
 type Command struct {
 	*base.Server
 
@@ -28,20 +26,15 @@ type Command struct {
 	ReloadedCh    chan struct{}
 	SigUSR2Ch     chan struct{}
 
-	cleanupGuard sync.Once
-
-	flagConfig                         string
 	flagLogLevel                       string
 	flagLogFormat                      string
 	flagCombineLogs                    bool
-	flagDev                            bool
 	flagDevLoginName                   string
 	flagDevPassword                    string
 	flagDevOrgId                       string
 	flagDevAuthMethodId                string
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
-	flagDevPassthroughDirectory        string
 }
 
 func (c *Command) Synopsis() string {
@@ -139,7 +132,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  "If set, both startup information and logs will be sent to stdout. If not set (the default), startup information will go to stdout and logs will be sent to stderr.",
 	})
 
-	devOnlyControllerFlags(c, f)
+	base.DevOnlyControllerFlags(c.Command, f)
 
 	return set
 }
@@ -190,7 +183,7 @@ func (c *Command) Run(args []string) int {
 		c.DevPassword = c.flagDevPassword
 	}
 
-	devConfig.PassthroughDirectory = c.flagDevPassthroughDirectory
+	devConfig.PassthroughDirectory = c.FlagDevPassthroughDirectory
 
 	for _, l := range devConfig.Listeners {
 		if len(l.Purpose) != 1 {
@@ -221,7 +214,10 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.SetupKMSes(c.UI, devConfig.SharedConfig, []string{"root", "worker-auth", "recovery"}); err != nil {
+	if c.FlagDevRecoveryKey != "" {
+		devConfig.Controller.DevRecoveryKey = c.FlagDevRecoveryKey
+	}
+	if err := c.SetupKMSes(c.UI, devConfig, []string{"root", "worker-auth", "recovery"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
