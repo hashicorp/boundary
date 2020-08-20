@@ -30,6 +30,6 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithAddress("test"))
 		testOpts := getDefaultOptions()
 		testOpts.withAddress = "test"
-		assert.Equal(opts, testOpts)
+		assert.Equal(t, opts, testOpts)
 	})
 }
