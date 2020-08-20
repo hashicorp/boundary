@@ -14,15 +14,22 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const nonceLength = 32
+
+// FutureLeeway indicates how far in the future we should allow the creation
+// time of the token to be, in order to account for clock drift
+var FutureLeeway = time.Minute
+
 // Info is the struct required to be marshaled to be used as a token
 // for the recovery workflow.
 type Info struct {
 	Nonce        string    `json:"nonce"`
+	NonceBytes   []byte    `json:"-"`
 	CreationTime time.Time `json:"creation_time"`
 }
 
 func GenerateRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper) (string, error) {
-	b, err := uuid.GenerateRandomBytes(32)
+	b, err := uuid.GenerateRandomBytes(nonceLength)
 	if err != nil {
 		return "", fmt.Errorf("error generating random bytes for recovery token nonce: %w", err)
 	}
@@ -31,6 +38,10 @@ func GenerateRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper) (strin
 		CreationTime: time.Now(),
 	}
 
+	return formatToken(ctx, wrapper, info)
+}
+
+func formatToken(ctx context.Context, wrapper wrapping.Wrapper, info *Info) (string, error) {
 	marshaledInfo, err := json.Marshal(info)
 	if err != nil {
 		return "", fmt.Errorf("error marshaling recovery info: %w", err)
@@ -49,7 +60,7 @@ func GenerateRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper) (strin
 	return fmt.Sprintf("r_%s", base64.RawStdEncoding.EncodeToString(marshaledBlob)), nil
 }
 
-func ParseRecoveryToken(ctx context.Context, token string, wrapper wrapping.Wrapper) (*Info, error) {
+func ParseRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper, token string) (*Info, error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
 		return nil, errors.New("empty token")
@@ -77,6 +88,24 @@ func ParseRecoveryToken(ctx context.Context, token string, wrapper wrapping.Wrap
 	info := new(Info)
 	if err := json.Unmarshal(marshaledInfo, info); err != nil {
 		return nil, fmt.Errorf("error unmarshaling recovery info: %w", err)
+	}
+
+	info.NonceBytes, err = base64.RawStdEncoding.DecodeString(info.Nonce)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding nonce bytes: %w", err)
+	}
+	if len(info.NonceBytes) != nonceLength {
+		return nil, errors.New("nonce has incorrect length, must be 32 bytes")
+	}
+
+	if info.CreationTime.IsZero() {
+		return nil, errors.New("recovery token creation time is zero")
+	}
+	// It must be before the current time. This means someone can't create
+	// one way in the future and keep using it. We fudge this by 1 minute to
+	// account for time discrepancies between systems.
+	if info.CreationTime.After(time.Now().Add(FutureLeeway)) {
+		return nil, errors.New("recovery token creation time is invalid")
 	}
 
 	return info, nil

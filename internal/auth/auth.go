@@ -414,23 +414,16 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 			retErr = errors.New("perform auth check: no recovery KMS is available")
 			return
 		}
-		info, err := recovery.ParseRecoveryToken(v.ctx, v.requestInfo.Token, wrapper)
+		info, err := recovery.ParseRecoveryToken(v.ctx, wrapper, v.requestInfo.Token)
 		if err != nil {
 			retErr = fmt.Errorf("perform auth check: error validating recovery token: %w", err)
 			return
 		}
-		now := time.Now()
-		// It must be before the current time. This means someone can't create
-		// one way in the future and keep using it. We fudge this by 1 minute to
-		// account for time discrepancies between systems.
-		if info.CreationTime.After(now.Add(time.Minute)) || info.CreationTime.IsZero() {
-			retErr = errors.New("perform auth check: recovery token creation time is invalid")
-			return
-		}
+
 		// If we add the validity period to the creation time (which we've
 		// verified is before the current time, with a minute of fudging), and
 		// it's before now, it's expired and might be a replay.
-		if info.CreationTime.Add(recoveryTokenValidityPeriod).Before(now) {
+		if info.CreationTime.Add(recoveryTokenValidityPeriod).Before(time.Now()) {
 			retErr = errors.New("perform auth check: recovery token has expired")
 			return
 		}
