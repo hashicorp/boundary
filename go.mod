@@ -8,7 +8,7 @@ require (
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
-	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
+	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-bindata/go-bindata/v3 v3.1.3
 	github.com/go-swagger/go-swagger v0.25.0
 	github.com/golang-migrate/migrate/v4 v4.12.2
@@ -48,7 +48,6 @@ require (
 	github.com/pires/go-proxyproto v0.1.3
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
-	github.com/ryanuber/columnize v2.1.0+incompatible
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.6.1
 	github.com/zalando/go-keyring v0.1.0

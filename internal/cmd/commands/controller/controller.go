@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
-	"sync"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -30,8 +29,6 @@ type Command struct {
 	SighupCh      chan struct{}
 	ReloadedCh    chan struct{}
 	SigUSR2Ch     chan struct{}
-
-	cleanupGuard sync.Once
 
 	Config     *config.Config
 	controller *controller.Controller

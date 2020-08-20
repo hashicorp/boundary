@@ -65,7 +65,6 @@ type Command struct {
 	flagTLSInsecure   bool
 
 	flagFormat           string
-	flagField            string
 	FlagTokenName        string
 	FlagRecoveryConfig   string
 	flagOutputCurlString bool

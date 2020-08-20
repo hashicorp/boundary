@@ -145,7 +145,9 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 		Format: format,
 	}
 
-	if _, ok := base.Formatters[format]; !ok {
+	switch format {
+	case "table", "json":
+	default:
 		ui.Error(fmt.Sprintf("Invalid output format: %s", format))
 		return 1
 	}
