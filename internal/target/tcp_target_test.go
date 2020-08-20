@@ -388,3 +388,37 @@ func TestTcpTable_SetTableName(t *testing.T) {
 		})
 	}
 }
+
+func TestTcpTarget_oplog(t *testing.T) {
+	id := testId(t)
+	tests := []struct {
+		name   string
+		target *TcpTarget
+		op     oplog.OpType
+		want   oplog.Metadata
+	}{
+		{
+			name: "simple",
+			target: func() *TcpTarget {
+				t := allocTcpTarget()
+				t.PublicId = id
+				t.ScopeId = id
+				return &t
+			}(),
+			op: oplog.OpType_OP_TYPE_CREATE,
+			want: oplog.Metadata{
+				"resource-public-id": []string{id},
+				"resource-type":      []string{"tcp target"},
+				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+				"scope-id":           []string{id},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got := tt.target.oplog(tt.op)
+			assert.Equal(got, tt.want)
+		})
+	}
+}
