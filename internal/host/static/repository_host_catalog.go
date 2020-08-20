@@ -179,6 +179,25 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 	return c, nil
 }
 
+// ListCatalogs returns a slice of HostCatalogs for the scopeId. WithLimit is the only option supported.
+func (r *Repository) ListCatalogs(ctx context.Context, scopeId string, opt ...Option) ([]*HostCatalog, error) {
+	if scopeId == "" {
+		return nil, fmt.Errorf("list: static host catalog: missing scope id: %w", db.ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var hostCatalogs []*HostCatalog
+	err := r.reader.SearchWhere(ctx, &hostCatalogs, "scope_id = ?", []interface{}{scopeId}, db.WithLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list: static host catalog: %w", err)
+	}
+	return hostCatalogs, nil
+}
+
 // DeleteCatalog deletes id from the repository returning a count of the
 // number of records deleted.
 func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (int, error) {
