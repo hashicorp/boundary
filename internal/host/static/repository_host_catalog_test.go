@@ -484,7 +484,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 		name := "test-dup-name"
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		cats := testCatalogs(t, conn, wrapper, prj.PublicId, 2)
+		cats := testCatalogs(t, conn, prj.PublicId, 2)
 		c1 := cats[0]
 		c1.Name = name
 		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, 1, []string{"name"})
@@ -549,7 +549,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		iamRepo := iam.TestRepo(t, conn, wrapper)
 		_, prj1 := iam.TestScopes(t, iamRepo)
 		_, prj2 := iam.TestScopes(t, iamRepo)
-		c1, c2 := testCatalog(t, conn, wrapper, prj1.PublicId), testCatalog(t, conn, wrapper, prj2.PublicId)
+		c1, c2 := testCatalog(t, conn, prj1.PublicId), testCatalog(t, conn, prj2.PublicId)
 		assert.NotEqual(c1.ScopeId, c2.ScopeId)
 		orig := c1.clone()
 
@@ -570,7 +570,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	cat := testCatalog(t, conn, wrapper, prj.PublicId)
+	cat := testCatalog(t, conn, prj.PublicId)
 	badId, err := newHostCatalogId()
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
@@ -632,7 +632,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	cat := testCatalog(t, conn, wrapper, prj.PublicId)
+	cat := testCatalog(t, conn, prj.PublicId)
 	badId, err := newHostCatalogId()
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)

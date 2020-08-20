@@ -17,7 +17,7 @@ func TestHost_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	cat := testCatalog(t, conn, wrapper, prj.PublicId)
+	cat := testCatalog(t, conn, prj.PublicId)
 
 	conn.LogMode(false)
 	type args struct {

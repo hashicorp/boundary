@@ -17,7 +17,7 @@ func TestHostSetMember_New(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	cats := testCatalogs(t, conn, wrapper, prj.PublicId, 2)
+	cats := testCatalogs(t, conn, prj.PublicId, 2)
 
 	blueCat := cats[0]
 	blueSets := testSets(t, conn, blueCat.GetPublicId(), 2)
