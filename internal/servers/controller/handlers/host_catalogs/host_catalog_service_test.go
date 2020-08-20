@@ -10,7 +10,6 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
@@ -137,24 +136,24 @@ func TestList(t *testing.T) {
 	_, pWithOtherCatalogs := iam.TestScopes(t, iamRepo)
 
 	var wantSomeCatalogs []*pb.HostCatalog
-	for _, hc := range password.TestCatalogs(t, conn, pWithCatalogs.GetPublicId(), 3) {
+	for _, hc := range static.TestCatalogs(t, conn, pWithCatalogs.GetPublicId(), 3) {
 		wantSomeCatalogs = append(wantSomeCatalogs, &pb.HostCatalog{
 			Id:          hc.GetPublicId(),
 			CreatedTime: hc.GetCreateTime().GetTimestamp(),
 			UpdatedTime: hc.GetUpdateTime().GetTimestamp(),
-			Scope:       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Org.String()},
+			Scope:       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String()},
 			Version:     1,
 			Type:        "static",
 		})
 	}
 
 	var wantOtherCatalogs []*pb.HostCatalog
-	for _, hc := range password.TestCatalogs(t, conn, pWithOtherCatalogs.GetPublicId(), 3) {
+	for _, hc := range static.TestCatalogs(t, conn, pWithOtherCatalogs.GetPublicId(), 3) {
 		wantOtherCatalogs = append(wantOtherCatalogs, &pb.HostCatalog{
 			Id:          hc.GetPublicId(),
 			CreatedTime: hc.GetCreateTime().GetTimestamp(),
 			UpdatedTime: hc.GetUpdateTime().GetTimestamp(),
-			Scope:       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Org.String()},
+			Scope:       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String()},
 			Version:     1,
 			Type:        "static",
 		})
@@ -187,8 +186,8 @@ func TestList(t *testing.T) {
 		// TODO: When an auth method doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:    "Unfound Catalogs",
-			scopeId: scopepb. + "_DoesntExis",
-			res:     &pbs.ListAuthMethodsResponse{},
+			scopeId: scope.Project.Prefix() + "_DoesntExis",
+			res:     &pbs.ListHostCatalogsResponse{},
 			errCode: codes.OK,
 		},
 	}
