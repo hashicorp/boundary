@@ -87,7 +87,7 @@ func TestStaticHost_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cat := testCatalog(t, conn, wrapper, prj.PublicId)
-	hosts := testHosts(t, conn, cat.GetPublicId(), 1)
+	hosts := TestHosts(t, conn, cat.GetPublicId(), 1)
 
 	new := hosts[0]
 
@@ -237,7 +237,7 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cat := testCatalog(t, conn, wrapper, prj.PublicId)
 	sets := testSets(t, conn, cat.GetPublicId(), 1)
-	hosts := testHosts(t, conn, cat.GetPublicId(), 1)
+	hosts := TestHosts(t, conn, cat.GetPublicId(), 1)
 
 	new, err := NewHostSetMember(sets[0].PublicId, hosts[0].PublicId)
 	require.NoError(t, err)

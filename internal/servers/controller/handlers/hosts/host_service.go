@@ -246,9 +246,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 	if err != nil {
 		return nil, err
 	}
-	//hl, err := repo.ListHosts(ctx, catalogId)
-	_ = repo
-	var hl []*static.Host
+	hl, err := repo.ListHosts(ctx, catalogId)
 	if err != nil {
 		return nil, err
 	}

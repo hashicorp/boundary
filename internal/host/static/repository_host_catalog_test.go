@@ -484,7 +484,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 		name := "test-dup-name"
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		cats := testCatalogs(t, conn, wrapper, prj.PublicId, 2)
+		cats := TestCatalogs(t, conn, prj.PublicId, 2)
 		c1 := cats[0]
 		c1.Name = name
 		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, 1, []string{"name"})

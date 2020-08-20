@@ -17,17 +17,17 @@ func TestHostSetMember_New(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	cats := testCatalogs(t, conn, wrapper, prj.PublicId, 2)
+	cats := TestCatalogs(t, conn, prj.PublicId, 2)
 
 	blueCat := cats[0]
 	blueSets := testSets(t, conn, blueCat.GetPublicId(), 2)
-	blueHosts := testHosts(t, conn, blueCat.GetPublicId(), 2)
+	blueHosts := TestHosts(t, conn, blueCat.GetPublicId(), 2)
 
 	// TODO(mgaffney) 05/2020:
 	// these will be needed when the repository code is done
 	// greenCat := cats[1]
 	// greenSets := testSets(t, conn, greenCat.GetPublicId(), 2)
-	// greenHosts := testHosts(t, conn, greenCat.GetPublicId(), 2)
+	// greenHosts := TestHosts(t, conn, greenCat.GetPublicId(), 2)
 
 	var tests = []struct {
 		name    string

@@ -2,13 +2,11 @@ package static
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -156,29 +154,6 @@ func TestHost_New(t *testing.T) {
 			}
 		})
 	}
-}
-
-func testHosts(t *testing.T, conn *gorm.DB, catalogId string, count int) []*Host {
-	t.Helper()
-	assert := assert.New(t)
-	var hosts []*Host
-
-	for i := 0; i < count; i++ {
-		host, err := NewHost(catalogId, WithAddress(fmt.Sprintf("%s-%d", catalogId, i)))
-		assert.NoError(err)
-		assert.NotNil(host)
-
-		id, err := newHostCatalogId()
-		assert.NoError(err)
-		assert.NotEmpty(id)
-		host.PublicId = id
-
-		w := db.New(conn)
-		err2 := w.Create(context.Background(), host)
-		assert.NoError(err2)
-		hosts = append(hosts, host)
-	}
-	return hosts
 }
 
 func TestHost_SetTableName(t *testing.T) {
