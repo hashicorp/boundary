@@ -517,7 +517,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		name := "test-dup-name"
 		_, prj := iam.TestScopes(t, iamRepo)
 		catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-		ss := testSets(t, conn, catalog.PublicId, 2)
+		ss := TestSets(t, conn, catalog.PublicId, 2)
 
 		sA, sB := ss[0], ss[1]
 
@@ -593,8 +593,8 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 		catalogA, catalogB := catalogs[0], catalogs[1]
 
-		sA := testSets(t, conn, catalogA.PublicId, 1)[0]
-		sB := testSets(t, conn, catalogB.PublicId, 1)[0]
+		sA := TestSets(t, conn, catalogA.PublicId, 1)[0]
+		sB := TestSets(t, conn, catalogB.PublicId, 1)[0]
 
 		assert.NotEqual(sA.CatalogId, sB.CatalogId)
 		orig := sA.clone()
@@ -621,7 +621,7 @@ func TestRepository_LookupSet(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-	hostSet := testSets(t, conn, catalog.PublicId, 1)[0]
+	hostSet := TestSets(t, conn, catalog.PublicId, 1)[0]
 
 	hostSetId, err := newHostSetId()
 	require.NoError(t, err)
@@ -676,7 +676,7 @@ func TestRepository_ListSets(t *testing.T) {
 	catalogs := TestCatalogs(t, conn, prj.PublicId, 2)
 	catalogA, catalogB := catalogs[0], catalogs[1]
 
-	hostSets := testSets(t, conn, catalogA.PublicId, 3)
+	hostSets := TestSets(t, conn, catalogA.PublicId, 3)
 
 	var tests = []struct {
 		name      string
@@ -734,7 +734,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	count := 10
-	hostSets := testSets(t, conn, catalog.PublicId, count)
+	hostSets := TestSets(t, conn, catalog.PublicId, count)
 
 	var tests = []struct {
 		name     string
@@ -803,7 +803,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-	hostSet := testSets(t, conn, catalog.PublicId, 1)[0]
+	hostSet := TestSets(t, conn, catalog.PublicId, 1)[0]
 
 	newHostSetId, err := newHostSetId()
 	require.NoError(t, err)
