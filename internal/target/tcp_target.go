@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -17,6 +18,9 @@ type TcpTarget struct {
 	*store.TcpTarget
 	tableName string `gorm:"-"`
 }
+
+var _ Target = (*TcpTarget)(nil)
+var _ db.VetForWriter = (*TcpTarget)(nil)
 
 // NewRootKey creates a new in memory tcp target.  WithName, WithDescription and
 // WithDefaultPort options are supported
@@ -84,4 +88,14 @@ func (t *TcpTarget) TableName() string {
 // reset to the default name.
 func (t *TcpTarget) SetTableName(n string) {
 	t.tableName = n
+}
+
+func (t *TcpTarget) oplog(op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{t.PublicId},
+		"resource-type":      []string{"tcp target"},
+		"op-type":            []string{op.String()},
+		"scope-id":           []string{t.ScopeId},
+	}
+	return metadata
 }
