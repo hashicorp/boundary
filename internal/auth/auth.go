@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -24,6 +25,8 @@ const (
 	HeaderAuthMethod    = "Authorization"
 	HttpOnlyCookieName  = "wt-http-token-cookie"
 	JsVisibleCookieName = "wt-js-token-cookie"
+
+	recoveryTokenValidityPeriod = 5 * time.Minute
 )
 
 type TokenFormat int
@@ -416,7 +419,22 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 			retErr = fmt.Errorf("perform auth check: error validating recovery token: %w", err)
 			return
 		}
-		// TODO: verify nonce hasn't been used
+		now := time.Now()
+		// It must be before the current time. This means someone can't create
+		// one way in the future and keep using it. We fudge this by 1 minute to
+		// account for time discrepancies between systems.
+		if info.CreationTime.After(now.Add(time.Minute)) || info.CreationTime.IsZero() {
+			retErr = errors.New("perform auth check: recovery token creation time is invalid")
+			return
+		}
+		// If we add the validity period to the creation time (which we've
+		// verified is before the current time, with a minute of fudging), and
+		// it's before now, it's expired and might be a replay.
+		if info.CreationTime.Add(recoveryTokenValidityPeriod).Before(now) {
+			retErr = errors.New("perform auth check: recovery token has expired")
+			return
+		}
+		// TODO: verify nonce hasn't been used via the DB
 		_ = info
 		v.logger.Warn("NOTE: recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
 	}
