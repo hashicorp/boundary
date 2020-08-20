@@ -3,10 +3,12 @@ package target
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -26,6 +28,13 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
+	cats := static.TestCatalogs(t, conn, org.PublicId, 1)
+	hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 2)
+	var sets []string
+	for _, s := range hsets {
+		sets = append(sets, s.PublicId)
+	}
+
 	type args struct {
 		target     *TcpTarget
 		keyWrapper wrapping.Wrapper
@@ -42,13 +51,17 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			name: "valid-org",
 			args: args{
 				target: func() *TcpTarget {
-					target, err := NewTcpTarget(org.PublicId, "valid-org", WithDescription("valid-org"), WithDefaultPort(uint32(22)))
+					target, err := NewTcpTarget(org.PublicId, "valid-org",
+						WithDescription("valid-org"),
+						WithDefaultPort(uint32(22)))
 					require.NoError(t, err)
 					return target
 				}(),
 				keyWrapper: wrapper,
+				opt:        []Option{WithHostSets(sets)},
 			},
-			wantErr: false,
+			wantErr:      false,
+			wantHostSets: sets,
 		},
 		{
 			name: "nil-target",
@@ -118,6 +131,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			conn.LogMode(true)
 			target, hostSets, err := repo.CreateTcpTarget(context.Background(), tt.args.keyWrapper, tt.args.target, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
@@ -135,6 +149,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			assert.NoError(err)
 			assert.True(proto.Equal(target.(*TcpTarget), foundTarget.(*TcpTarget)))
 			assert.Equal(hostSets, foundHostSets)
+			fmt.Println(foundHostSets)
 
 			err = db.TestVerifyOplog(t, rw, target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)

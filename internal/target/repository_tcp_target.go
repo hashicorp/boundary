@@ -36,14 +36,6 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, keyWrapper wrapping.Wr
 	if err != nil {
 		return nil, nil, fmt.Errorf("create tcp target: %w", err)
 	}
-	newHostSets := make([]interface{}, 0, len(opts.withHostSets))
-	for _, id := range opts.withHostSets {
-		hostSet, err := NewTargetHostSet(id, id)
-		if err != nil {
-			return nil, nil, fmt.Errorf("create tcp target: unable to create in memory target host set: %w", err)
-		}
-		newHostSets = append(newHostSets, hostSet)
-	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, target.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
@@ -52,13 +44,23 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, keyWrapper wrapping.Wr
 	t := target.Clone().(*TcpTarget)
 	t.PublicId = id
 
+	newHostSets := make([]interface{}, 0, len(opts.withHostSets))
+	for _, hsId := range opts.withHostSets {
+		hostSet, err := NewTargetHostSet(t.PublicId, hsId)
+		if err != nil {
+			return nil, nil, fmt.Errorf("create tcp target: unable to create in memory target host set: %w", err)
+		}
+		newHostSets = append(newHostSets, hostSet)
+	}
+
 	metadata := t.oplog(oplog.OpType_OP_TYPE_CREATE)
 	var returnedTarget interface{}
+	var returnedHostSet []string
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(read db.Reader, w db.Writer) error {
 			targetTicket, err := w.GetTicket(t)
 			if err != nil {
 				return fmt.Errorf("create tcp target: unable to get ticket: %w", err)
@@ -75,16 +77,20 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, keyWrapper wrapping.Wr
 				if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSetOplogMsgs)); err != nil {
 					return fmt.Errorf("create tcp target: unable to add host sets: %w", err)
 				}
+				if returnedHostSet, err = fetchHostSets(ctx, read, t.PublicId); err != nil {
+					return fmt.Errorf("create tcp target: unable to read host sets: %w", err)
+				}
 				msgs = append(msgs, hostSetOplogMsgs...)
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("create tcp target: unable to write oplog: %w", err)
 			}
+
 			return nil
 		},
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("create tcp target: %w for %s target id id", err, t.PublicId)
 	}
-	return returnedTarget.(*TcpTarget), nil, err
+	return returnedTarget.(*TcpTarget), returnedHostSet, err
 }
