@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -18,10 +16,6 @@ import (
 )
 
 const orgIdFieldName = "org_id"
-
-var (
-	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
-)
 
 // Service handles request as described by the pbs.AuthTokenServiceServer interface.
 type Service struct {
@@ -57,7 +51,7 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	return &pbs.ListAuthTokensResponse{Items: ul}, nil
 }
 
-// GetAuthTokens implements the interface pbs.AuthTokenServiceServer.
+// GetAuthToken implements the interface pbs.AuthTokenServiceServer.
 func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest) (*pbs.GetAuthTokenResponse, error) {
 	authResults := auth.Verify(ctx)
 	if authResults.Error != nil {
@@ -159,39 +153,17 @@ func toProto(in *authtoken.AuthToken) *pb.AuthToken {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAuthTokenRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetId(), authtoken.AuthTokenPrefix+"_") {
-		badFields["id"] = "Invalid formatted user id."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
-	}
-	return nil
+	return handlers.ValidateGetRequest(authtoken.AuthTokenPrefix, req, handlers.NoopValidatorFn)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetId(), authtoken.AuthTokenPrefix+"_") {
-		badFields["id"] = "Incorrectly formatted identifier."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-	return nil
+	return handlers.ValidateDeleteRequest(authtoken.AuthTokenPrefix, req, handlers.NoopValidatorFn)
 }
 
-func validateListRequest(req *pbs.ListAuthTokensRequest) error {
+func validateListRequest(_ *pbs.ListAuthTokensRequest) error {
 	badFields := map[string]string{}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
-}
-
-func validId(id, prefix string) bool {
-	if !strings.HasPrefix(id, prefix) {
-		return false
-	}
-	id = strings.TrimPrefix(id, prefix)
-	return !reInvalidID.Match([]byte(id))
 }
