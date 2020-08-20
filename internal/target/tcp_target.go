@@ -21,8 +21,9 @@ type TcpTarget struct {
 
 var _ Target = (*TcpTarget)(nil)
 var _ db.VetForWriter = (*TcpTarget)(nil)
+var _ oplog.ReplayableMessage = (*TcpTarget)(nil)
 
-// NewRootKey creates a new in memory tcp target.  WithName, WithDescription and
+// NewTcpTarget creates a new in memory tcp target.  WithName, WithDescription and
 // WithDefaultPort options are supported
 func NewTcpTarget(scopeId, name string, opt ...Option) (*TcpTarget, error) {
 	opts := getOpts(opt...)
