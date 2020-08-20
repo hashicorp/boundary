@@ -175,7 +175,7 @@ func (r *Repository) AddRecoveryNonce(ctx context.Context, nonce string, opt ...
 	return nil
 }
 
-// CleanupNonces starts a task to periodically remove nonces that no longer need to be stored
+// CleanupNonces removes nonces that no longer need to be stored
 func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int64, error) {
 	// If something was inserted before 3x the actual validity period, clean it out
 	endTime := time.Now().Add(-3 * globals.RecoveryTokenValidityPeriod)
@@ -193,4 +193,25 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int64, e
 		return db.NoRowsAffected, fmt.Errorf("error finding number of rows affected by nonce cleanup: %w", err)
 	}
 	return rows, nil
+}
+
+// ListNonces lists nonces. Used only for tests at the moment.
+func (r *Repository) ListNonces(ctx context.Context, opt ...Option) ([]string, error) {
+	underlying, err := r.reader.DB()
+	if err != nil {
+		return nil, fmt.Errorf("error fetching underlying DB for nonce listing operation: %w", err)
+	}
+	result, err := underlying.QueryContext(ctx, "select nonce from recovery_nonces")
+	if err != nil {
+		return nil, fmt.Errorf("error listing nonces: %w", err)
+	}
+	var nonces []string
+	for result.Next() {
+		var nonce string
+		if err := result.Scan(&nonce); err != nil {
+			return nil, fmt.Errorf("error scanning nonce: %w", err)
+		}
+		nonces = append(nonces, nonce)
+	}
+	return nonces, nil
 }
