@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/host/static/store"
-	"github.com/hashicorp/boundary/internal/iam"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/iam"
 )
 
 func TestHostCatalog_New(t *testing.T) {
@@ -109,7 +109,7 @@ func TestHostCatalog_New(t *testing.T) {
 	}
 }
 
-func testCatalog(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId string) *HostCatalog {
+func testCatalog(t *testing.T, conn *gorm.DB, scopeId string) *HostCatalog {
 	t.Helper()
 	cats := TestCatalogs(t, conn, scopeId, 1)
 	return cats[0]
