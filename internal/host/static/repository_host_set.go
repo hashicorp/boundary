@@ -147,3 +147,23 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Opti
 	}
 	return s, nil
 }
+
+// ListSets returns a slice of HostSets for the catalogId. WithLimit is the
+// only option supported.
+func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Option) ([]*HostSet, error) {
+	if catalogId == "" {
+		return nil, fmt.Errorf("list: static host set: missing catalog id: %w", db.ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var sets []*HostSet
+	err := r.reader.SearchWhere(ctx, &sets, "catalog_id = ?", []interface{}{catalogId}, db.WithLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list: static host set: %w", err)
+	}
+	return sets, nil
+}
