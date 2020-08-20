@@ -16,6 +16,7 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -53,6 +54,7 @@ type Server struct {
 
 	RootKms            wrapping.Wrapper
 	WorkerAuthKms      wrapping.Wrapper
+	RecoveryKms        wrapping.Wrapper
 	Kms                *kms.Kms
 	SecureRandomReader io.Reader
 
@@ -323,14 +325,19 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	return nil
 }
 
-func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes []string) error {
-	for _, kms := range config.Seals {
+func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
+	sharedConfig := config.SharedConfig
+	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
 			purpose = strings.ToLower(purpose)
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
 			case "root", "worker-auth", "config":
+			case "recovery":
+				if config.Controller != nil && config.Controller.DevRecoveryKey != "" {
+					kms.Config["key"] = config.Controller.DevRecoveryKey
+				}
 			default:
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
 			}
@@ -349,10 +356,17 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 					"After configuration nil KMS returned, KMS type was %s", kms.Type)
 			}
 
-			if purpose == "root" {
+			switch purpose {
+			case "root":
 				b.RootKms = wrapper
-			} else {
+			case "worker-auth":
 				b.WorkerAuthKms = wrapper
+			case "recovery":
+				b.RecoveryKms = wrapper
+			case "config":
+				// Do nothing, can be set in same file but not needed at runtime
+			default:
+				return fmt.Errorf("KMS purpose of %q is unknown", purpose)
 			}
 
 			// Ensure that the seal finalizer is called, even if using verify-only
@@ -368,7 +382,7 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 
 	// prepare a secure random reader
 	var err error
-	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config, b.RootKms)
+	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config.SharedConfig, b.RootKms)
 	if err != nil {
 		return err
 	}
@@ -447,7 +461,6 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	}
 	if err := kmsCache.AddExternalWrappers(
 		kms.WithRootWrapper(b.RootKms),
-		kms.WithWorkerAuthWrapper(b.WorkerAuthKms),
 	); err != nil {
 		return fmt.Errorf("error adding config keys to kms: %w", err)
 	}

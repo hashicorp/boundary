@@ -992,6 +992,12 @@ func TestAddPrincipal(t *testing.T) {
 			addGroups:    []string{groups[1].GetPublicId()},
 			resultGroups: []string{groups[0].GetPublicId(), groups[1].GetPublicId()},
 		},
+		{
+			name:     "Add invalid u_recovery on role",
+			setup:    func(r *iam.Role) {},
+			addUsers: []string{"u_recovery"},
+			wantErr:  true,
+		},
 	}
 
 	for _, tc := range addCases {
@@ -1111,6 +1117,12 @@ func TestSetPrincipal(t *testing.T) {
 			},
 			setGroups:    []string{groups[1].GetPublicId()},
 			resultGroups: []string{groups[1].GetPublicId()},
+		},
+		{
+			name:     "Set invalid u_recovery on role",
+			setup:    func(r *iam.Role) {},
+			setUsers: []string{"u_recovery"},
+			wantErr:  true,
 		},
 	}
 

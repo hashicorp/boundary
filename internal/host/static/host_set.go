@@ -64,7 +64,7 @@ func (s *HostSet) clone() *HostSet {
 func (s *HostSet) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{s.PublicId},
-		"resource-type":      []string{"static-host set"},
+		"resource-type":      []string{"static-host-set"},
 		"op-type":            []string{op.String()},
 	}
 	if s.CatalogId != "" {

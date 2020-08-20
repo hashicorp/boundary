@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/recovery"
 	"github.com/hashicorp/go-hclog"
 	"github.com/kr/pretty"
 )
@@ -30,11 +33,18 @@ const (
 	AuthTokenTypeUnknown TokenFormat = iota
 	AuthTokenTypeBearer
 	AuthTokenTypeSplitCookie
+	AuthTokenRecoveryKms
 )
 
 type key int
 
-var verifierKey key
+var (
+	// RecoveryTokenValidityPeriod is exported so we can modify it in tests if
+	// we want
+	RecoveryTokenValidityPeriod = 5 * time.Minute
+
+	verifierKey key
+)
 
 // RequestInfo contains request parameters necessary for checking authn/authz
 type RequestInfo struct {
@@ -63,6 +73,7 @@ type verifier struct {
 	logger          hclog.Logger
 	iamRepoFn       common.IamRepoFactory
 	authTokenRepoFn common.AuthTokenRepoFactory
+	kms             *kms.Kms
 	requestInfo     RequestInfo
 	res             *perms.Resource
 	act             action.Type
@@ -77,11 +88,13 @@ func NewVerifierContext(ctx context.Context,
 	logger hclog.Logger,
 	iamRepoFn common.IamRepoFactory,
 	authTokenRepoFn common.AuthTokenRepoFactory,
+	kms *kms.Kms,
 	requestInfo RequestInfo) context.Context {
 	return context.WithValue(ctx, verifierKey, &verifier{
 		logger:          logger,
 		iamRepoFn:       iamRepoFn,
 		authTokenRepoFn: authTokenRepoFn,
+		kms:             kms,
 		requestInfo:     requestInfo,
 	})
 }
@@ -115,6 +128,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		ret.Error = nil
 		return
 	}
+
 	v.ctx = ctx
 	v.requestInfo.scopeIdOverride = opts.withScopeId
 	if err := v.parseAuthParams(); err != nil {
@@ -377,13 +391,13 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	userId = "u_anon"
 
 	// Validate the token and fetch the corresponding user ID
-	if v.requestInfo.TokenFormat != AuthTokenTypeUnknown {
+	switch v.requestInfo.TokenFormat {
+	case AuthTokenTypeBearer, AuthTokenTypeSplitCookie:
 		tokenRepo, err := v.authTokenRepoFn()
 		if err != nil {
 			retErr = fmt.Errorf("perform auth check: failed to get authtoken repo: %w", err)
 			return
 		}
-
 		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
 		if err != nil {
 			retErr = fmt.Errorf("perform auth check: failed to validate token: %w", err)
@@ -392,6 +406,34 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		if at != nil {
 			userId = at.GetIamUserId()
 		}
+
+	case AuthTokenRecoveryKms:
+		userId = "u_recovery"
+		if v.kms == nil {
+			retErr = errors.New("perform auth check: no KMS object available to authz system")
+			return
+		}
+		wrapper := v.kms.GetExternalWrappers().Recovery()
+		if wrapper == nil {
+			retErr = errors.New("perform auth check: no recovery KMS is available")
+			return
+		}
+		info, err := recovery.ParseRecoveryToken(v.ctx, wrapper, v.requestInfo.Token)
+		if err != nil {
+			retErr = fmt.Errorf("perform auth check: error validating recovery token: %w", err)
+			return
+		}
+
+		// If we add the validity period to the creation time (which we've
+		// verified is before the current time, with a minute of fudging), and
+		// it's before now, it's expired and might be a replay.
+		if info.CreationTime.Add(RecoveryTokenValidityPeriod).Before(time.Now()) {
+			retErr = errors.New("perform auth check: recovery token has expired")
+			return
+		}
+		// TODO: verify nonce hasn't been used via the DB
+		_ = info
+		v.logger.Warn("NOTE: recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
 	}
 
 	// Fetch and parse grants for this user ID (which may include grants for
@@ -419,6 +461,13 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		Name:          scp.GetName(),
 		Description:   scp.GetDescription(),
 		ParentScopeId: scp.GetParentId(),
+	}
+
+	// At this point we don't need to look up grants since it's automatically allowed
+	if v.requestInfo.TokenFormat == AuthTokenRecoveryKms {
+		aclResults = &perms.ACLResults{Allowed: true}
+		retErr = nil
+		return
 	}
 
 	var parsedGrants []perms.Grant
@@ -483,6 +532,10 @@ func GetTokenFromRequest(logger hclog.Logger, req *http.Request) (string, string
 		// header instead of nothing at all, so return blank which will indicate
 		// the anonymouse user
 		return "", "", AuthTokenTypeUnknown
+	}
+
+	if strings.HasPrefix(fullToken, "r_") {
+		return "", fullToken, AuthTokenRecoveryKms
 	}
 
 	splitFullToken := strings.Split(fullToken, "_")

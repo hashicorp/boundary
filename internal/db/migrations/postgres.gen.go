@@ -56,7 +56,7 @@ comment on domain wt_scope_id is
 create domain wt_user_id as text
 not null
 check(
-  length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth'
+  length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth' or value = 'u_recovery'
 );
 comment on domain wt_scope_id is
 '"u_anon", "u_auth", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
@@ -506,7 +506,8 @@ drop function grant_scope_id_valid cascade;
 drop function disallow_global_scope_deletion cascade;
 drop function user_scope_id_valid cascade;
 drop function iam_immutable_role_grant cascade;
-drop function disallow_iam_anon_auth_deletion cascade;
+drop function disallow_iam_predefined_user_deletion cascade;
+drop function recovery_user_not_allowed cascade;
 
 COMMIT;
 
@@ -812,7 +813,7 @@ end;
 $$ language plpgsql;
 
 create or replace function
-  disallow_iam_anon_auth_deletion()
+  disallow_iam_predefined_user_deletion()
   returns trigger
 as $$
 begin
@@ -821,6 +822,9 @@ begin
   end if;
   if old.public_id = 'u_auth' then
     raise exception 'deletion of authenticated user not allowed';
+  end if;
+    if old.public_id = 'u_recovery' then
+    raise exception 'deletion of recovery user not allowed';
   end if;
   return old;
 end;
@@ -849,10 +853,10 @@ insert on iam_user
   for each row execute procedure default_create_time();
 
 create trigger
-  iam_user_disallow_anon_auth_deletion
+  iam_user_disallow_predefined_user_deletion
 before
 delete on iam_user
-  for each row execute procedure disallow_iam_anon_auth_deletion();
+  for each row execute procedure disallow_iam_predefined_user_deletion();
 
 -- TODO: Do we want to disallow changing the name or description?
 insert into iam_user (public_id, name, description, scope_id)
@@ -860,6 +864,9 @@ insert into iam_user (public_id, name, description, scope_id)
 
 insert into iam_user (public_id, name, description, scope_id)
   values ('u_auth', 'authenticated', 'The authenticated user matches any user that has a valid token', 'global');
+
+insert into iam_user (public_id, name, description, scope_id)
+  values ('u_recovery', 'recovery', 'The recovery user is used for any request that was performed with the recovery KMS workflow', 'global');
 
  -- define the immutable fields for iam_user
 create trigger
@@ -959,6 +966,21 @@ create trigger
 before
 update on iam_role
   for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
+
+create or replace function
+  recovery_user_not_allowed()
+  returns trigger
+as $$
+declare
+  new_value text;
+begin
+    execute format('SELECT $1.%I', tg_argv[0]) into new_value using new;
+    if new_value = 'u_recovery' then
+      raise exception '"u_recovery" not allowed here"';
+    end if;
+    return new;
+end;
+$$ language plpgsql;
 
 create table iam_group (
     public_id wt_public_id
@@ -1113,6 +1135,12 @@ update on iam_user_role
   for each row execute procedure iam_immutable_role_principal();
 
 create trigger 
+  recovery_user_not_allowed_user_role
+before
+insert on iam_user_role
+  for each row execute procedure recovery_user_not_allowed('principal_id');
+
+create trigger 
   default_create_time_column
 before
 insert on iam_user_role
@@ -1134,7 +1162,7 @@ insert on iam_group_role
 create table iam_group_member_user (
   create_time wt_timestamp,
   group_id wt_public_id references iam_group(public_id) on delete cascade on update cascade,
-  member_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
+  member_id wt_user_id references iam_user(public_id) on delete cascade on update cascade,
   primary key (group_id, member_id)
 );
 
@@ -1158,6 +1186,12 @@ create trigger iam_immutable_group_member
 before
 update on iam_group_member_user
   for each row execute procedure iam_immutable_group_member();
+
+create trigger 
+  recovery_user_not_allowed_group_member
+before
+insert on iam_group_member_user
+  for each row execute procedure recovery_user_not_allowed('member_id');
 
 -- get_scoped_principal_id is used by the iam_group_member view as a convient
 -- way to create <scope_id>:<member_id> to reference members from
