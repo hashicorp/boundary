@@ -76,4 +76,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withTargetType = &target
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithHostSets", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithHostSets([]string{"alice", "bob"}))
+		testOpts := getDefaultOptions()
+		testOpts.withHostSets = []string{"alice", "bob"}
+		assert.Equal(opts, testOpts)
+	})
 }

@@ -21,6 +21,7 @@ type options struct {
 	withScopeId     string
 	withUserId      string
 	withTargetType  *TargetType
+	withHostSets    []string
 }
 
 func getDefaultOptions() options {
@@ -32,6 +33,7 @@ func getDefaultOptions() options {
 		withScopeId:     "",
 		withUserId:      "",
 		withTargetType:  nil,
+		withHostSets:    nil,
 	}
 }
 
@@ -83,5 +85,12 @@ func WithUserId(userId string) Option {
 func WithTargetType(t TargetType) Option {
 	return func(o *options) {
 		o.withTargetType = &t
+	}
+}
+
+// WithHostSets provides an option for providing a list of host set ids
+func WithHostSets(hs []string) Option {
+	return func(o *options) {
+		o.withHostSets = hs
 	}
 }
