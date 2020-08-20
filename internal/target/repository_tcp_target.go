@@ -32,7 +32,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, keyWrapper wrapping.Wr
 		return nil, fmt.Errorf("create tcp target: public id not empty: %w", db.ErrInvalidParameter)
 
 	}
-	id, err := newTcpId()
+	id, err := newTcpTargetId()
 	if err != nil {
 		return nil, fmt.Errorf("create tcp target: %w", err)
 	}

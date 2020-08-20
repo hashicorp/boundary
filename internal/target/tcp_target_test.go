@@ -89,7 +89,7 @@ func TestTcpTarget_Create(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				id, err := newTcpId()
+				id, err := newTcpTargetId()
 				require.NoError(err)
 				got.PublicId = id
 				err = db.New(conn).Create(context.Background(), got)
@@ -128,7 +128,7 @@ func TestTcpTarget_Delete(t *testing.T) {
 			name: "bad-id",
 			target: func() *TcpTarget {
 				target := allocTcpTarget()
-				id, err := newTcpId()
+				id, err := newTcpTargetId()
 				require.NoError(t, err)
 				target.PublicId = id
 				target.ScopeId = org.PublicId

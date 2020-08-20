@@ -17,7 +17,7 @@ func TestTcpTarget(t *testing.T, conn *gorm.DB, scopeId, name string, opt ...Opt
 	rw := db.New(conn)
 	target, err := NewTcpTarget(scopeId, name, opt...)
 	require.NoError(err)
-	id, err := newTcpId()
+	id, err := newTcpTargetId()
 	require.NoError(err)
 	target.PublicId = id
 	err = rw.Create(context.Background(), target)

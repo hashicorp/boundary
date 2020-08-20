@@ -10,7 +10,7 @@ const (
 	TcpTargetPrefix = "tcp"
 )
 
-func newTcpId() (string, error) {
+func newTcpTargetId() (string, error) {
 	id, err := db.NewPublicId(TcpTargetPrefix)
 	if err != nil {
 		return "", fmt.Errorf("new tcp target id: %w", err)

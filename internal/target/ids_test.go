@@ -11,7 +11,7 @@ import (
 func Test_Ids(t *testing.T) {
 	t.Parallel()
 	t.Run("tcp", func(t *testing.T) {
-		id, err := newTcpId()
+		id, err := newTcpTargetId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, TcpTargetPrefix+"_"))
 	})

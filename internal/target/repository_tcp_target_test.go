@@ -76,7 +76,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				target: func() *TcpTarget {
 					target, err := NewTcpTarget(org.PublicId, "valid-org", WithDescription("valid-org"), WithDefaultPort(uint32(22)))
 					require.NoError(t, err)
-					id, err := newTcpId()
+					id, err := newTcpTargetId()
 					require.NoError(t, err)
 					target.PublicId = id
 					return target
