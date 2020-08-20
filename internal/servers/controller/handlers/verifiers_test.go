@@ -13,13 +13,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// The fake resource arbitrarily use's the user proto to satisfy the ApiResource API.
-type fakeResource struct {
-	*pb.User
-}
-
-var _ ApiResource = fakeResource{}
-
 func errorIncludesFields(t *testing.T, err error, wantFields []string) {
 	t.Helper()
 	s, ok := status.FromError(err)
