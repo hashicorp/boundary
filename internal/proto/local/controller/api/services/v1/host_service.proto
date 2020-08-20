@@ -120,8 +120,8 @@ message CreateHostResponse {
 message UpdateHostRequest {
   string host_catalog_id = 1 [json_name="host_catalog_id"];
   string id = 2;
-  api.resources.hosts.v1.Host item = 4;
-  google.protobuf.FieldMask update_mask = 5;
+  api.resources.hosts.v1.Host item = 3;
+  google.protobuf.FieldMask update_mask = 4;
 }
 
 message UpdateHostResponse {

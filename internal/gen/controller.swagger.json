@@ -1323,13 +1323,6 @@
             }
           },
           {
-            "name": "version",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
             "name": "update_mask",
             "in": "query",
             "required": false,

@@ -487,7 +487,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostResponse{
 				Item: &pb.Host{
 					HostCatalogId: hc.GetPublicId(),
-					Id:            hc.GetPublicId(),
+					Id:            h.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:          &wrappers.StringValue{Value: "new"},
 					Description:   &wrappers.StringValue{Value: "desc"},
@@ -571,11 +571,12 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostResponse{
 				Item: &pb.Host{
-					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Description: &wrappers.StringValue{Value: "default"},
-					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        "static",
+					HostCatalogId: hc.GetPublicId(),
+					Id:            h.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Description:   &wrappers.StringValue{Value: "default"},
+					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					Type:          "static",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -595,11 +596,12 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostResponse{
 				Item: &pb.Host{
-					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "default"},
-					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        "static",
+					HostCatalogId: hc.GetPublicId(),
+					Id:            h.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:          &wrappers.StringValue{Value: "default"},
+					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					Type:          "static",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -620,12 +622,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostResponse{
 				Item: &pb.Host{
-					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "updated"},
-					Description: &wrappers.StringValue{Value: "default"},
-					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        "static",
+					HostCatalogId: hc.GetPublicId(),
+					Id:            h.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:          &wrappers.StringValue{Value: "updated"},
+					Description:   &wrappers.StringValue{Value: "default"},
+					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					Type:          "static",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -646,12 +649,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostResponse{
 				Item: &pb.Host{
-					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "default"},
-					Description: &wrappers.StringValue{Value: "notignored"},
-					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        "static",
+					HostCatalogId: hc.GetPublicId(),
+					Id:            h.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:          &wrappers.StringValue{Value: "default"},
+					Description:   &wrappers.StringValue{Value: "notignored"},
+					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					Type:          "static",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -733,19 +737,19 @@ func TestUpdate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			tc.req.Version = version
+			tc.req.Item.Version = version
 
 			req := proto.Clone(toMerge).(*pbs.UpdateHostRequest)
 			proto.Merge(req, tc.req)
 
 			// Test some bad versions
-			req.Version = version + 2
+			req.Item.Version = version + 2
 			_, gErr := tested.UpdateHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			require.Error(gErr)
-			req.Version = version - 1
+			req.Item.Version = version - 1
 			_, gErr = tested.UpdateHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			require.Error(gErr)
-			req.Version = version
+			req.Item.Version = version
 
 			got, gErr := tested.UpdateHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateHost(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
