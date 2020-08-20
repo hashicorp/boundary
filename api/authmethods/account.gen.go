@@ -58,7 +58,9 @@ func (c *AccountsClient) Create(ctx context.Context, authMethodId string, opt ..
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -92,7 +94,9 @@ func (c *AccountsClient) Read(ctx context.Context, authMethodId string, accountI
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -143,7 +147,9 @@ func (c *AccountsClient) Update(ctx context.Context, authMethodId string, accoun
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -180,7 +186,9 @@ func (c *AccountsClient) Delete(ctx context.Context, authMethodId string, accoun
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
-
+	if apiErr != nil {
+		return false, apiErr, nil
+	}
 	return target.Existed, apiErr, nil
 }
 
@@ -213,6 +221,8 @@ func (c *AccountsClient) List(ctx context.Context, authMethodId string, opt ...O
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target.Items, apiErr, nil
 }

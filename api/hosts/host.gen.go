@@ -59,7 +59,9 @@ func (c *HostsClient) Create(ctx context.Context, hostCatalogId string, opt ...O
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -93,7 +95,9 @@ func (c *HostsClient) Read(ctx context.Context, hostCatalogId string, hostId str
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -144,7 +148,9 @@ func (c *HostsClient) Update(ctx context.Context, hostCatalogId string, hostId s
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -181,7 +187,9 @@ func (c *HostsClient) Delete(ctx context.Context, hostCatalogId string, hostId s
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
-
+	if apiErr != nil {
+		return false, apiErr, nil
+	}
 	return target.Existed, apiErr, nil
 }
 
@@ -214,6 +222,8 @@ func (c *HostsClient) List(ctx context.Context, hostCatalogId string, opt ...Opt
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target.Items, apiErr, nil
 }
