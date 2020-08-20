@@ -18,11 +18,10 @@ func TestHostCatalog_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
-
-	_, proj := iam.TestScopes(t, conn)
+	wrapper := db.TestWrapper(t)
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-	_, prj := iam.TestScopes(t, conn)
-	new := testCatalog(t, conn, prj.PublicId)
+	o, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	new := testCatalog(t, conn, wrapper, prj.PublicId)
 
 	var tests = []struct {
 		name      string
@@ -51,7 +50,7 @@ func TestHostCatalog_ImmutableFields(t *testing.T) {
 			name: "scope id",
 			update: func() *HostCatalog {
 				c := new.clone()
-				c.ScopeId = proj.PublicId
+				c.ScopeId = o.PublicId
 				return c
 			}(),
 			fieldMask: []string{"ScopeId"},
@@ -83,10 +82,11 @@ func TestStaticHost_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
+	wrapper := db.TestWrapper(t)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-	_, prj := iam.TestScopes(t, conn)
-	cat := testCatalog(t, conn, prj.PublicId)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cat := testCatalog(t, conn, wrapper, prj.PublicId)
 	hosts := testHosts(t, conn, cat.GetPublicId(), 1)
 
 	new := hosts[0]
@@ -157,10 +157,11 @@ func TestStaticHostSet_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
+	wrapper := db.TestWrapper(t)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-	_, prj := iam.TestScopes(t, conn)
-	cat := testCatalog(t, conn, prj.PublicId)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cat := testCatalog(t, conn, wrapper, prj.PublicId)
 	sets := testSets(t, conn, cat.GetPublicId(), 1)
 
 	new := sets[0]
@@ -231,9 +232,10 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
+	wrapper := db.TestWrapper(t)
 
-	_, prj := iam.TestScopes(t, conn)
-	cat := testCatalog(t, conn, prj.PublicId)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cat := testCatalog(t, conn, wrapper, prj.PublicId)
 	sets := testSets(t, conn, cat.GetPublicId(), 1)
 	hosts := testHosts(t, conn, cat.GetPublicId(), 1)
 

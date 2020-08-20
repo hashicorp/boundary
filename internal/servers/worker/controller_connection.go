@@ -223,7 +223,7 @@ func (w Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error)
 	if err != nil {
 		return nil, nil, err
 	}
-	encInfo, err := w.conf.WorkerAuthKMS.Encrypt(context.Background(), marshaledInfo, nil)
+	encInfo, err := w.conf.WorkerAuthKms.Encrypt(context.Background(), marshaledInfo, nil)
 	if err != nil {
 		return nil, nil, err
 	}

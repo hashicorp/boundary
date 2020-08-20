@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
@@ -24,7 +25,7 @@ import (
 //
 // Both a.Name and a.Description are optional. If a.Name is set, it must be
 // unique within a.AuthMethodId.
-func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Option) (*Account, error) {
+func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Account, opt ...Option) (*Account, error) {
 	if a == nil {
 		return nil, fmt.Errorf("create: password account: %w", db.ErrNilParameter)
 	}
@@ -36,6 +37,9 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 	}
 	if a.PublicId != "" {
 		return nil, fmt.Errorf("create: password account: public id not empty: %w", db.ErrInvalidParameter)
+	}
+	if scopeId == "" {
+		return nil, fmt.Errorf("create: password account: scope id empty: %w", db.ErrNilParameter)
 	}
 	if !validLoginName(a.LoginName) {
 		return nil, fmt.Errorf("create: password account: invalid user name: %w", db.ErrInvalidParameter)
@@ -69,21 +73,30 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 		}
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, fmt.Errorf("create: password account: unable to get oplog wrapper: %w", err)
+	}
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, fmt.Errorf("create: password account: unable to get database wrapper: %w", err)
+	}
+
 	var newCred *Argon2Credential
 	var newAccount *Account
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			newAccount = a.clone()
-			if err := w.Create(ctx, newAccount, db.WithOplog(r.wrapper, a.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+			if err := w.Create(ctx, newAccount, db.WithOplog(oplogWrapper, a.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
 				return err
 			}
 
 			if cred != nil {
 				newCred = cred.clone()
-				if err := newCred.encrypt(ctx, r.wrapper); err != nil {
+				if err := newCred.encrypt(ctx, databaseWrapper); err != nil {
 					return err
 				}
-				if err := w.Create(ctx, newCred, db.WithOplog(r.wrapper, cred.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+				if err := w.Create(ctx, newCred, db.WithOplog(oplogWrapper, cred.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
 					return err
 				}
 			}
@@ -139,22 +152,30 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 
 // DeleteAccount deletes the account for the provided id from the repository returning a count of the
 // number of records deleted.  All options are ignored.
-func (r *Repository) DeleteAccount(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
+func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId string, opt ...Option) (int, error) {
 	if withPublicId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete: password account: missing public id: %w", db.ErrInvalidParameter)
+	}
+	if scopeId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete: password account: scope id empty: %w", db.ErrNilParameter)
 	}
 	ac := allocAccount()
 	ac.PublicId = withPublicId
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: password account: unable to get oplog wrapper: %w", err)
+	}
+
 	var rowsDeleted int
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
 			metadata := ac.oplog(oplog.OpType_OP_TYPE_DELETE)
 			dAc := ac.clone()
-			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(r.wrapper, metadata))
+			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
 			}
@@ -191,7 +212,7 @@ func validLoginName(u string) bool {
 // An attribute of a will be set to NULL in the database if the attribute
 // in a is the zero value and it is included in fieldMaskPaths. a.LoginName
 // cannot be set to NULL.
-func (r *Repository) UpdateAccount(ctx context.Context, a *Account, version uint32, fieldMaskPaths []string, opt ...Option) (*Account, int, error) {
+func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Account, version uint32, fieldMaskPaths []string, opt ...Option) (*Account, int, error) {
 	if a == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", db.ErrNilParameter)
 	}
@@ -203,6 +224,9 @@ func (r *Repository) UpdateAccount(ctx context.Context, a *Account, version uint
 	}
 	if version == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: no version supplied: %w", db.ErrInvalidParameter)
+	}
+	if scopeId == "" {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: scope id empty: %w", db.ErrNilParameter)
 	}
 
 	var changeLoginName bool
@@ -242,17 +266,22 @@ func (r *Repository) UpdateAccount(ctx context.Context, a *Account, version uint
 		}
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: unable to get oplog wrapper: %w", err)
+	}
+
 	a = a.clone()
 
 	metadata := a.oplog(oplog.OpType_OP_TYPE_UPDATE)
 
 	var rowsUpdated int
 	var returnedAccount *Account
-	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			returnedAccount = a.clone()
 			var err error
-			rowsUpdated, err = w.Update(ctx, returnedAccount, dbMask, nullFields, db.WithOplog(r.wrapper, metadata), db.WithVersion(&version))
+			rowsUpdated, err = w.Update(ctx, returnedAccount, dbMask, nullFields, db.WithOplog(oplogWrapper, metadata), db.WithVersion(&version))
 			if err == nil && rowsUpdated > 1 {
 				return db.ErrMultipleRecords
 			}

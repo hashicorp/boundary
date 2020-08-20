@@ -121,4 +121,7 @@ main
 internal/ui/assets.go
 update-ui-assets*
 
+# Test config file
+test.hcl
+
 # vim: set filetype=conf :

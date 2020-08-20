@@ -39,6 +39,7 @@ comment on domain wt_public_id is
 'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_private_id as text
+not null
 check(
   length(trim(value)) > 10
 );
@@ -53,6 +54,7 @@ comment on domain wt_scope_id is
 '"global" or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_user_id as text
+not null
 check(
   length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth'
 );
@@ -60,6 +62,7 @@ comment on domain wt_scope_id is
 '"u_anon", "u_auth", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_role_id as text
+not null
 check(
   length(trim(value)) > 10 or value = 'r_default'
 );
@@ -121,7 +124,8 @@ comment on domain wt_version is
 
 -- update_version_column() will increment the version column whenever row data
 -- is updated and should only be used in an update after trigger.  This function
--- will overwrite any explicit updates to the version column. 
+-- will overwrite any explicit updates to the version column. The function
+-- accepts an optional parameter of 'private_id' for the tables primary key.
 create or replace function
   update_version_column()
   returns trigger
@@ -129,9 +133,16 @@ as $$
 begin
   if pg_trigger_depth() = 1 then
     if row(new.*) is distinct from row(old.*) then
-      execute format('update %I set version = $1 where public_id = $2', tg_relid::regclass) using old.version+1, new.public_id;
-      new.version = old.version + 1;
-      return new;
+      if tg_nargs = 0 then
+        execute format('update %I set version = $1 where public_id = $2', tg_relid::regclass) using old.version+1, new.public_id;
+        new.version = old.version + 1;
+        return new;
+      end if;
+      if tg_argv[0] = 'private_id' then
+        execute format('update %I set version = $1 where private_id = $2', tg_relid::regclass) using old.version+1, new.private_id;
+        new.version = old.version + 1;
+        return new;
+      end if;
     end if;
   end if;
   return new;
@@ -568,7 +579,8 @@ create table iam_scope_org (
     references iam_scope(public_id)
     on delete cascade
     on update cascade,
-  parent_id wt_scope_id not null
+  parent_id wt_scope_id
+    not null
     references iam_scope_global(scope_id)
     on delete cascade
     on update cascade,
@@ -577,7 +589,11 @@ create table iam_scope_org (
 );
 
 create table iam_scope_project (
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
     parent_id wt_public_id not null references iam_scope_org(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
@@ -720,12 +736,17 @@ insert into iam_scope (public_id, name, type, description)
 
 
 create table iam_user (
-    public_id wt_user_id primary key,
+    public_id wt_user_id
+      primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
     unique(name, scope_id),
     version wt_version,
 
@@ -841,7 +862,7 @@ insert into iam_user (public_id, name, description, scope_id)
   values ('u_auth', 'authenticated', 'The authenticated user matches any user that has a valid token', 'global');
 
  -- define the immutable fields for iam_user
-create trigger 
+create trigger
   immutable_columns
 before
 update on iam_user
@@ -853,8 +874,16 @@ create table iam_role (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
-    grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
+    grant_scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
     unique(name, scope_id),
     version wt_version,
 
@@ -932,12 +961,17 @@ update on iam_role
   for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
 
 create table iam_group (
-    public_id wt_public_id not null primary key,
+    public_id wt_public_id
+      primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id
+      not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
     unique(name, scope_id),
     -- version allows optimistic locking of the group when modifying the group
     -- itself and when modifying dependent items like group members. 
@@ -1229,8 +1263,10 @@ begin;
 
   -- base table for auth methods
   create table auth_method (
-    public_id wt_public_id primary key,
-    scope_id wt_scope_id not null
+    public_id wt_public_id
+      primary key,
+    scope_id wt_scope_id
+      not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
@@ -1244,9 +1280,12 @@ begin;
 
   -- base table for auth accounts
   create table auth_account (
-    public_id wt_public_id primary key,
-    auth_method_id wt_public_id not null,
-    scope_id wt_scope_id not null,
+    public_id wt_public_id
+      primary key,
+    auth_method_id wt_public_id
+      not null,
+    scope_id wt_scope_id
+      not null,
     iam_user_id wt_public_id,
     -- including scope_id in fk1 and fk2 ensures the scope_id of the owning
     -- auth_method and the scope_id of the owning iam_user are the same
@@ -1323,7 +1362,8 @@ begin;
 create table servers (
     private_id text,
     type text,
-    name text not null unique,
+    name text not null unique
+      check(length(trim(name)) > 0),
     description text,
     address text,
     create_time wt_timestamp,
@@ -1373,6 +1413,9 @@ begin;
   create table auth_token (
     public_id wt_public_id primary key,
     token bytea not null unique,
+    -- TODO: Make key_id a foreign key once we have DEKs
+    key_id text not null
+      check(length(trim(key_id)) > 0),
     auth_account_id wt_public_id not null
       references auth_account(public_id)
       on delete cascade
@@ -1578,15 +1621,21 @@ begin;
 */
 
   create table auth_password_method (
-    public_id wt_public_id primary key,
-    scope_id wt_scope_id not null,
-    password_conf_id wt_private_id not null, -- FK to auth_password_conf added below
+    public_id wt_public_id
+      primary key,
+    scope_id wt_scope_id
+      not null,
+    password_conf_id wt_private_id, -- FK to auth_password_conf added below
     name text,
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    min_login_name_length int not null default 3,
-    min_password_length int not null default 8,
+    min_login_name_length int
+      not null
+      default 3,
+    min_password_length int
+      not null
+      default 8,
     version wt_version,
     foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
@@ -1607,8 +1656,10 @@ begin;
     for each row execute procedure insert_auth_method_subtype();
 
   create table auth_password_account (
-    public_id wt_public_id primary key,
-    auth_method_id wt_public_id not null,
+    public_id wt_public_id
+      primary key,
+    auth_method_id wt_public_id
+      not null,
     -- NOTE(mgaffney): The scope_id type is not wt_scope_id because the domain
     -- check is executed before the insert trigger which retrieves the scope_id
     -- causing an insert to fail.
@@ -1648,8 +1699,10 @@ begin;
     for each row execute procedure insert_auth_account_subtype();
 
   create table auth_password_conf (
-    private_id wt_private_id primary key,
-    password_method_id wt_public_id not null
+    private_id wt_private_id
+      primary key,
+    password_method_id wt_public_id
+      not null
       references auth_password_method (public_id)
       on delete cascade
       on update cascade
@@ -1681,10 +1734,14 @@ begin;
   $$ language plpgsql;
 
   create table auth_password_credential (
-    private_id wt_private_id primary key,
-    password_account_id wt_public_id not null unique,
-    password_conf_id wt_private_id not null,
-    password_method_id wt_public_id not null,
+    private_id wt_private_id
+      primary key,
+    password_account_id wt_public_id
+      not null
+      unique,
+    password_conf_id wt_private_id,
+    password_method_id wt_public_id
+      not null,
     foreign key (password_method_id, password_conf_id)
       references auth_password_conf (password_method_id, private_id)
       on delete cascade
@@ -1877,7 +1934,7 @@ begin;
       on delete cascade
       on update cascade,
     password_account_id wt_public_id not null,
-    password_conf_id wt_private_id not null,
+    password_conf_id wt_private_id,
     -- NOTE(mgaffney): The password_method_id type is not wt_public_id because
     -- the domain check is executed before the insert trigger which retrieves
     -- the password_method_id causing an insert to fail.
@@ -1888,6 +1945,9 @@ begin;
       check(length(salt) > 0),
     derived_key bytea not null
       check(length(derived_key) > 0),
+    -- TODO: Make key_id a foreign key once we have DEKs
+    key_id text not null
+      check(length(trim(key_id)) > 0),
     foreign key (password_method_id, password_conf_id)
       references auth_password_argon2_conf (password_method_id, private_id)
       on delete cascade
@@ -2071,8 +2131,10 @@ begin;
 
   -- host_catalog
   create table host_catalog (
-    public_id wt_public_id primary key,
-    scope_id wt_scope_id not null
+    public_id wt_public_id
+      primary key,
+    scope_id wt_scope_id
+      not null
       references iam_scope (public_id)
       on delete cascade
       on update cascade,
@@ -2265,8 +2327,10 @@ begin;
 */
 
   create table static_host_catalog (
-    public_id wt_public_id primary key,
-    scope_id wt_scope_id not null
+    public_id wt_public_id
+      primary key,
+    scope_id wt_scope_id
+      not null
       references iam_scope (public_id)
       on delete cascade
       on update cascade,
@@ -2427,6 +2491,341 @@ begin;
 
 commit;
 
+`),
+	},
+	"migrations/30_keys.down.sql": {
+		name: "30_keys.down.sql",
+		bytes: []byte(`
+begin;
+
+drop function kms_version_column cascade;
+
+commit;
+
+`),
+	},
+	"migrations/30_keys.up.sql": {
+		name: "30_keys.up.sql",
+		bytes: []byte(`
+begin;
+
+-- kms_version_column() will increment the version column whenever row data
+-- is inserted and should only be used in an before insert trigger.  This
+-- function will overwrite any explicit values to the version column.
+create or replace function
+  kms_version_column()
+  returns trigger
+as $$
+declare 
+  _key_id text;
+  _max bigint; 
+begin
+  execute format('SELECT $1.%I', tg_argv[0]) into _key_id using new;
+  execute format('select max(version) + 1 from %I where %I = $1', tg_relid::regclass, tg_argv[0]) using _key_id into _max;
+  if _max is null then
+  	_max = 1;
+  end if;
+  new.version = _max;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  kms_version_column()
+is
+  'function used in before insert triggers to properly set version columns for kms_* tables with a version column';
+  
+  commit;
+`),
+	},
+	"migrations/31_keys.down.sql": {
+		name: "31_keys.down.sql",
+		bytes: []byte(`
+begin;
+
+drop table kms_root_key cascade;
+drop table kms_root_key_version cascade;
+drop table kms_database_key cascade;
+drop table kms_database_key_version cascade;
+drop table kms_oplog_key cascade;
+drop table kms_oplog_key_version cascade;
+drop table kms_session_key cascade;
+drop table kms_session_key_version cascade;
+
+commit;
+
+`),
+	},
+	"migrations/31_keys.up.sql": {
+		name: "31_keys.up.sql",
+		bytes: []byte(`
+begin;
+
+/*
+             ┌────────────────────────────────────────────────────────────────────────────────────────────┐            
+             ├────────────────────────────────────────────────────────────────┐                           ○            
+             ├────────────────────────────────────┐                           ○                           ┼            
+             │                                    ○                           ┼              ┌────────────────────────┐
+             ┼                                    ┼              ┌────────────────────────┐  │    kms_session_key     │
+┌────────────────────────┐           ┌────────────────────────┐  │     kms_oplog_key      │  ├────────────────────────┤
+│      kms_root_key      │           │    kms_database_key    │  ├────────────────────────┤  │private_id              │
+├────────────────────────┤           ├────────────────────────┤  │private_id              │  │root_key_id             │
+│private_id              │           │private_id              │  │root_key_id             │  │                        │
+│scope_id                │           │root_key_id             │  │                        │  │                        │
+│                        │           │                        │  │                        │  │                        │
+└────────────────────────┘           └────────────────────────┘  └────────────────────────┘  └────────────────────────┘
+             ┼                                    ┼                           ┼                           ┼            
+             │                                    │                           │                           │            
+             │                                    │                           │                           │            
+             │                                    │                           │                           │            
+             │                                    │                           │                           │            
+             ┼                                    ┼                           ┼                           ┼            
+            ╱│╲                                  ╱│╲                         ╱│╲                         ╱│╲           
+┌────────────────────────┐           ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐
+│  kms_root_key_version  │           │kms_database_key_version│  │ kms_oplog_key_version  │  │kms_session_key_version │
+├────────────────────────┤           ├────────────────────────┤  ├────────────────────────┤  ├────────────────────────┤
+│private_id              │           │private_id              │  │private_id              │  │private_id              │
+│root_key_id             │           │database_key_id         │  │oplog_key_id            │  │session_key_id          │
+│key                     │           │root_key_id             │  │root_key_id             │  │root_key_id             │
+│version                 │           │key                     │  │key                     │  │key                     │
+│                        │           │version                 │  │version                 │  │version                 │
+└────────────────────────┘           └────────────────────────┘  │                        │  │                        │
+             ┼                                    ┼              └────────────────────────┘  │                        │
+             │                                    ○                           ┼              └────────────────────────┘
+             ├────────────────────────────────────┘                           ○                           ┼            
+             ├────────────────────────────────────────────────────────────────┘                           ○            
+             └────────────────────────────────────────────────────────────────────────────────────────────┘            
+*/
+
+create table kms_root_key (
+  private_id wt_private_id primary key,
+  scope_id wt_scope_id not null unique -- there can only be one root key for a scope.
+    references iam_scope(public_id) 
+    on delete cascade 
+    on update cascade,
+  create_time wt_timestamp
+);
+
+ -- define the immutable fields for kms_root_key (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_root_key
+  for each row execute procedure immutable_columns('private_id', 'scope_id', 'create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on kms_root_key
+  for each row execute procedure default_create_time();
+
+create table kms_root_key_version (
+  private_id wt_private_id primary key,
+  root_key_id  wt_private_id not null
+    references kms_root_key(private_id) 
+    on delete cascade 
+    on update cascade,
+  version wt_version,
+  key bytea not null,
+  create_time wt_timestamp,
+  unique(root_key_id, version)
+);
+
+ -- define the immutable fields for kms_root_key_version (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_root_key_version
+  for each row execute procedure immutable_columns('private_id', 'root_key_id', 'version', 'key', 'create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on kms_root_key_version
+  for each row execute procedure default_create_time();
+
+
+create trigger
+	kms_version_column
+before insert on kms_root_key_version
+	for each row execute procedure kms_version_column('root_key_id');
+
+create table kms_database_key (
+  private_id wt_private_id primary key,
+  root_key_id wt_private_id not null
+    references kms_root_key(private_id)
+    on delete cascade
+    on update cascade,
+  create_time wt_timestamp
+);
+
+ -- define the immutable fields for kms_database_key (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_database_key
+  for each row execute procedure immutable_columns('private_id', 'root_key_id', 'create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on kms_database_key
+  for each row execute procedure default_create_time();
+
+create table kms_database_key_version (
+  private_id wt_private_id primary key,
+  database_key_id wt_private_id not null
+    references kms_database_key(private_id) 
+    on delete cascade 
+    on update cascade, 
+  root_key_version_id wt_private_id not null
+    references kms_root_key_version(private_id) 
+    on delete cascade 
+    on update cascade,
+  version wt_version,
+  key bytea not null,
+  create_time wt_timestamp,
+  unique(database_key_id, version)
+);
+
+ -- define the immutable fields for kms_database_key_version (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_database_key_version
+  for each row execute procedure immutable_columns('private_id', 'database_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
+  
+create trigger 
+  default_create_time_column
+before
+insert on kms_database_key_version
+  for each row execute procedure default_create_time();
+
+create trigger
+	kms_version_column
+before insert on kms_database_key_version
+	for each row execute procedure kms_version_column('database_key_id');
+
+create table kms_oplog_key (
+  private_id wt_private_id primary key,
+  root_key_id wt_private_id not null
+    references kms_root_key(private_id)
+    on delete cascade
+    on update cascade,
+  create_time wt_timestamp
+);
+
+ -- define the immutable fields for kms_oplog_key (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_oplog_key
+  for each row execute procedure immutable_columns('private_id', 'root_key_id', 'create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on kms_oplog_key
+  for each row execute procedure default_create_time();
+
+create table kms_oplog_key_version (
+  private_id wt_private_id primary key,
+  oplog_key_id wt_private_id not null
+    references kms_oplog_key(private_id) 
+    on delete cascade 
+    on update cascade, 
+  root_key_version_id wt_private_id not null
+    references kms_root_key_version(private_id) 
+    on delete cascade 
+    on update cascade,
+  version wt_version,
+  key bytea not null,
+  create_time wt_timestamp,
+  unique(oplog_key_id, version)
+);
+
+ -- define the immutable fields for kms_oplog_key_version (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_oplog_key_version
+  for each row execute procedure immutable_columns('private_id', 'oplog_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
+  
+create trigger 
+  default_create_time_column
+before
+insert on kms_oplog_key_version
+  for each row execute procedure default_create_time();
+
+create trigger
+	kms_version_column
+before insert on kms_oplog_key_version
+	for each row execute procedure kms_version_column('oplog_key_id');
+
+create table kms_session_key (
+  private_id wt_private_id primary key,
+  root_key_id wt_private_id not null
+    references kms_root_key(private_id)
+    on delete cascade
+    on update cascade,
+  create_time wt_timestamp
+);
+
+ -- define the immutable fields for kms_oplog_key (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_session_key
+  for each row execute procedure immutable_columns('private_id', 'root_key_id', 'create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on kms_session_key
+  for each row execute procedure default_create_time();
+
+create table kms_session_key_version (
+  private_id wt_private_id primary key,
+  session_key_id wt_private_id not null
+    references kms_session_key(private_id) 
+    on delete cascade 
+    on update cascade, 
+  root_key_version_id wt_private_id not null
+    references kms_root_key_version(private_id) 
+    on delete cascade 
+    on update cascade,
+  version wt_version,
+  key bytea not null,
+  create_time wt_timestamp,
+  unique(session_key_id, version)
+);
+
+
+ -- define the immutable fields for kms_session_key_version (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_session_key_version
+  for each row execute procedure immutable_columns('private_id', 'session_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
+  
+create trigger 
+  default_create_time_column
+before
+insert on kms_session_key_version
+  for each row execute procedure default_create_time();
+
+create trigger
+	kms_version_column
+before insert on kms_session_key_version
+	for each row execute procedure kms_version_column('session_key_id');
+
+  insert into oplog_ticket
+    (name, version)
+  values
+    ('kms_root_key', 1),
+    ('kms_root_key_version', 1);
+    
+commit;
 `),
 	},
 }

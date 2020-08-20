@@ -1,6 +1,7 @@
 package hosts_test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -12,6 +13,67 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCatalog_List(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	amId := "paum_1234567890"
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		DisableAuthorizationFailures: true,
+		DefaultAuthMethodId:          amId,
+		DefaultLoginName:             "user",
+		DefaultPassword:              "passpass",
+	})
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	_, proj := iam.TestScopes(t, tc.IamRepo())
+	client.SetScopeId(proj.GetPublicId())
+	catalogClient := hosts.NewHostCatalogsClient(client)
+
+	ul, apiErr, err := catalogClient.List(tc.Context())
+	assert.NoError(err)
+	assert.Nil(apiErr)
+	assert.Empty(ul)
+
+	var expected []*hosts.HostCatalog
+	for i := 0; i < 10; i++ {
+		expected = append(expected, &hosts.HostCatalog{Name: fmt.Sprint(i)})
+	}
+
+	expected[0], apiErr, err = catalogClient.Create(tc.Context(), "static", hosts.WithName(expected[0].Name))
+	assert.NoError(err)
+	assert.Nil(apiErr)
+
+	ul, apiErr, err = catalogClient.List(tc.Context())
+	assert.NoError(err)
+	assert.Nil(apiErr)
+	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul))
+
+	for i := 1; i < 10; i++ {
+		expected[i], apiErr, err = catalogClient.Create(tc.Context(), "static", hosts.WithName(expected[i].Name))
+		assert.NoError(err)
+		assert.Nil(apiErr)
+	}
+	ul, apiErr, err = catalogClient.List(tc.Context())
+	require.NoError(err)
+	assert.Nil(apiErr)
+	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))
+}
+
+func comparableSlice(in []*hosts.HostCatalog) []hosts.HostCatalog {
+	var filtered []hosts.HostCatalog
+	for _, i := range in {
+		p := hosts.HostCatalog{
+			Id:          i.Id,
+			Name:        i.Name,
+			Description: i.Description,
+			CreatedTime: i.CreatedTime,
+			UpdatedTime: i.UpdatedTime,
+		}
+		filtered = append(filtered, p)
+	}
+	return filtered
+}
 
 func TestCatalogs_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
@@ -25,7 +87,7 @@ func TestCatalogs_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.DbConn())
+	org, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
 	projClient.SetScopeId(proj.GetPublicId())
@@ -80,7 +142,7 @@ func TestCatalogs_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	_, proj := iam.TestScopes(t, tc.DbConn())
+	_, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(proj.GetPublicId())
 	pc := hosts.NewHostCatalogsClient(client)
 

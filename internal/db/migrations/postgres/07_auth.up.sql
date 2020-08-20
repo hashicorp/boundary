@@ -48,8 +48,10 @@ begin;
 
   -- base table for auth methods
   create table auth_method (
-    public_id wt_public_id primary key,
-    scope_id wt_scope_id not null
+    public_id wt_public_id
+      primary key,
+    scope_id wt_scope_id
+      not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
@@ -63,9 +65,12 @@ begin;
 
   -- base table for auth accounts
   create table auth_account (
-    public_id wt_public_id primary key,
-    auth_method_id wt_public_id not null,
-    scope_id wt_scope_id not null,
+    public_id wt_public_id
+      primary key,
+    auth_method_id wt_public_id
+      not null,
+    scope_id wt_scope_id
+      not null,
     iam_user_id wt_public_id,
     -- including scope_id in fk1 and fk2 ensures the scope_id of the owning
     -- auth_method and the scope_id of the owning iam_user are the same

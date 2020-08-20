@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"strings"
 	"testing"
 	"time"
@@ -47,6 +48,12 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 		t.Fatal(n)
 	}
 	root := aead.NewWrapper(nil)
+	_, err = root.SetConfig(map[string]string{
+		"key_id": base64.StdEncoding.EncodeToString(rootKey),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := root.SetAESGCMKeyBytes(rootKey); err != nil {
 		t.Fatal(err)
 	}

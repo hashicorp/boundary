@@ -5,6 +5,9 @@ begin;
   create table auth_token (
     public_id wt_public_id primary key,
     token bytea not null unique,
+    -- TODO: Make key_id a foreign key once we have DEKs
+    key_id text not null
+      check(length(trim(key_id)) > 0),
     auth_account_id wt_public_id not null
       references auth_account(public_id)
       on delete cascade

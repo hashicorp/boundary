@@ -8,6 +8,7 @@ comment on domain wt_public_id is
 'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_private_id as text
+not null
 check(
   length(trim(value)) > 10
 );
@@ -22,6 +23,7 @@ comment on domain wt_scope_id is
 '"global" or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_user_id as text
+not null
 check(
   length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth'
 );
@@ -29,6 +31,7 @@ comment on domain wt_scope_id is
 '"u_anon", "u_auth", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_role_id as text
+not null
 check(
   length(trim(value)) > 10 or value = 'r_default'
 );
@@ -90,7 +93,8 @@ comment on domain wt_version is
 
 -- update_version_column() will increment the version column whenever row data
 -- is updated and should only be used in an update after trigger.  This function
--- will overwrite any explicit updates to the version column. 
+-- will overwrite any explicit updates to the version column. The function
+-- accepts an optional parameter of 'private_id' for the tables primary key.
 create or replace function
   update_version_column()
   returns trigger
@@ -98,9 +102,16 @@ as $$
 begin
   if pg_trigger_depth() = 1 then
     if row(new.*) is distinct from row(old.*) then
-      execute format('update %I set version = $1 where public_id = $2', tg_relid::regclass) using old.version+1, new.public_id;
-      new.version = old.version + 1;
-      return new;
+      if tg_nargs = 0 then
+        execute format('update %I set version = $1 where public_id = $2', tg_relid::regclass) using old.version+1, new.public_id;
+        new.version = old.version + 1;
+        return new;
+      end if;
+      if tg_argv[0] = 'private_id' then
+        execute format('update %I set version = $1 where private_id = $2', tg_relid::regclass) using old.version+1, new.private_id;
+        new.version = old.version + 1;
+        return new;
+      end if;
     end if;
   end if;
   return new;

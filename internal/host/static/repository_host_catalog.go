@@ -2,10 +2,12 @@ package static
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
@@ -39,6 +41,11 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	}
 	c.PublicId = id
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, fmt.Errorf("create: static host catalog: unable to get oplog wrapper: %w", err)
+	}
+
 	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_CREATE)
 
 	var newHostCatalog *HostCatalog
@@ -51,7 +58,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 			return w.Create(
 				ctx,
 				newHostCatalog,
-				db.WithOplog(r.wrapper, metadata),
+				db.WithOplog(oplogWrapper, metadata),
 			)
 		},
 	)
@@ -87,6 +94,9 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	if c.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: missing public id: %w", db.ErrInvalidParameter)
 	}
+	if c.ScopeId == "" {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: missing scope id: %w", db.ErrNilParameter)
+	}
 	if len(fieldMask) == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", db.ErrEmptyFieldMask)
 	}
@@ -107,13 +117,19 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
 	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: unable to get oplog wrapper: %w", err)
+	}
+
 	c = c.clone()
 
 	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_UPDATE)
 
 	var rowsUpdated int
 	var returnedCatalog *HostCatalog
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
@@ -125,7 +141,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				returnedCatalog,
 				dbMask,
 				nullFields,
-				db.WithOplog(r.wrapper, metadata),
+				db.WithOplog(oplogWrapper, metadata),
 				db.WithVersion(&version),
 			)
 			if err == nil && rowsUpdated > 1 {
@@ -163,6 +179,25 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 	return c, nil
 }
 
+// ListCatalogs returns a slice of HostCatalogs for the scopeId. WithLimit is the only option supported.
+func (r *Repository) ListCatalogs(ctx context.Context, scopeId string, opt ...Option) ([]*HostCatalog, error) {
+	if scopeId == "" {
+		return nil, fmt.Errorf("list: static host catalog: missing scope id: %w", db.ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var hostCatalogs []*HostCatalog
+	err := r.reader.SearchWhere(ctx, &hostCatalogs, "scope_id = ?", []interface{}{scopeId}, db.WithLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list: static host catalog: %w", err)
+	}
+	return hostCatalogs, nil
+}
+
 // DeleteCatalog deletes id from the repository returning a count of the
 // number of records deleted.
 func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (int, error) {
@@ -172,12 +207,25 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 
 	c := allocCatalog()
 	c.PublicId = id
+	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return db.NoRowsAffected, nil
+		}
+		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: failed %w for %s", err, id)
+	}
+	if c.ScopeId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: missing scope id: %w", db.ErrNilParameter)
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: unable to get oplog wrapper: %w", err)
+	}
 
 	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_DELETE)
 
 	var rowsDeleted int
 	var deleteCatalog *HostCatalog
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
@@ -187,7 +235,7 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 			rowsDeleted, err = w.Delete(
 				ctx,
 				deleteCatalog,
-				db.WithOplog(r.wrapper, metadata),
+				db.WithOplog(oplogWrapper, metadata),
 			)
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
