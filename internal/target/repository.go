@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 var (
@@ -57,14 +56,11 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 }
 
 // LookupTarget will look up a target in the repository and return the target
-// and its host set ids.  If the target is not found, it will return nil, nil, nil.
+// with its host set ids.  If the target is not found, it will return nil, nil, nil.
 // No options are currently supported.
-func (r *Repository) LookupTarget(ctx context.Context, keyWrapper wrapping.Wrapper, publicId string, opt ...Option) (Target, []string, error) {
+func (r *Repository) LookupTarget(ctx context.Context, publicId string, opt ...Option) (Target, []string, error) {
 	if publicId == "" {
 		return nil, nil, fmt.Errorf("lookup target: missing private id: %w", db.ErrNilParameter)
-	}
-	if keyWrapper == nil {
-		return nil, nil, fmt.Errorf("lookup target: missing key wrapper: %w", db.ErrNilParameter)
 	}
 	target := allocTargetView()
 	target.PublicId = publicId
@@ -205,4 +201,93 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, opt ...O
 		},
 	)
 	return rowsDeleted, err
+}
+
+// AddTargeHostSets provides the ability to add host sets (hostSetIds) to a
+// target (targetId).  The target's current db version must match the
+// targetVersion or an error will be returned.   The target and a list of
+// current host set ids will be returned on success. Zero is not a valid value
+// for the WithVersion option and will return an error.
+func (r *Repository) AddTargeHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, opt ...Option) (Target, []string, error) {
+	if targetId == "" {
+		return nil, nil, fmt.Errorf("add target host sets: missing target id: %w", db.ErrInvalidParameter)
+	}
+	if targetVersion == 0 {
+		return nil, nil, fmt.Errorf("add target host sets: version cannot be zero: %w", db.ErrInvalidParameter)
+	}
+	if len(hostSetIds) == 0 {
+		return nil, nil, fmt.Errorf("add target host sets: missing host set ids: %w", db.ErrInvalidParameter)
+	}
+	newHostSets := make([]interface{}, 0, len(hostSetIds))
+	for _, id := range hostSetIds {
+		ths, err := NewTargetHostSet(targetId, id)
+		if err != nil {
+			return nil, nil, fmt.Errorf("add target host sets: unable to create in memory target host set: %w", err)
+		}
+		newHostSets = append(newHostSets, ths)
+	}
+	t := allocTargetView()
+	t.PublicId = targetId
+	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
+		return nil, nil, fmt.Errorf("add target host sets: failed %w for %s", err, targetId)
+	}
+	var metadata oplog.Metadata
+	var target interface{}
+	switch t.Type {
+	case TcpTargetType.String():
+		tcpT := allocTcpTarget()
+		tcpT.PublicId = t.PublicId
+		tcpT.Version = targetVersion + 1
+		target = &tcpT
+		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_CREATE)
+	default:
+		return nil, nil, fmt.Errorf("delete target host sets: %s is an unsupported target type %s", t.PublicId, t.Type)
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, nil, fmt.Errorf("add target host sets: unable to get oplog wrapper: %w", err)
+	}
+	var currentHostSets []string
+	var updatedTarget interface{}
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			msgs := make([]*oplog.Message, 0, 2)
+			targetTicket, err := w.GetTicket(target)
+			if err != nil {
+				return fmt.Errorf("add target host sets: unable to get ticket: %w", err)
+			}
+			updatedTarget = target.(Cloneable).Clone()
+			var targetOplogMsg oplog.Message
+			rowsUpdated, err := w.Update(ctx, updatedTarget, []string{"Version"}, nil, db.NewOplogMsg(&targetOplogMsg), db.WithVersion(&targetVersion))
+			if err != nil {
+				return fmt.Errorf("add target host sets: unable to update role version: %w", err)
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("add target host sets: updated role and %d rows updated", rowsUpdated)
+			}
+			msgs = append(msgs, &targetOplogMsg)
+			if len(newHostSets) > 0 {
+				hostSetsOplogMsgs := make([]*oplog.Message, 0, len(newHostSets))
+				if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSetsOplogMsgs)); err != nil {
+					return fmt.Errorf("add target host sets: unable to add target host sets: %w", err)
+				}
+				msgs = append(msgs, hostSetsOplogMsgs...)
+			}
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
+				return fmt.Errorf("add target host sets: unable to write oplog: %w", err)
+			}
+			currentHostSets, err = fetchHostSets(ctx, reader, targetId)
+			if err != nil {
+				return fmt.Errorf("add target host sets: unable to retrieve current host sets after adds: %w", err)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("add target host sets: error creating roles: %w", err)
+	}
+	return updatedTarget.(Target), currentHostSets, nil
 }
