@@ -28,13 +28,13 @@ func TestRepository_ListSetMembers(t *testing.T) {
 	setA, setB := sets[0], sets[1]
 
 	hosts := TestHosts(t, conn, c.PublicId, 5)
-	members := TestSetMembers(t, conn, setA.PublicId, hosts)
+	TestSetMembers(t, conn, setA.PublicId, hosts)
 
 	var tests = []struct {
 		name      string
 		in        string
 		opts      []Option
-		want      []*HostSetMember
+		want      []*Host
 		wantIsErr error
 	}{
 		{
@@ -44,12 +44,11 @@ func TestRepository_ListSetMembers(t *testing.T) {
 		{
 			name: "set-with-no-hosts",
 			in:   setB.PublicId,
-			want: []*HostSetMember{},
 		},
 		{
 			name: "set-with-hosts",
 			in:   setA.PublicId,
-			want: members,
+			want: hosts,
 		},
 	}
 
@@ -68,7 +67,7 @@ func TestRepository_ListSetMembers(t *testing.T) {
 			}
 			require.NoError(err)
 			opts := []cmp.Option{
-				cmpopts.SortSlices(func(x, y *HostSetMember) bool { return x.HostId < y.HostId }),
+				cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
 				protocmp.Transform(),
 			}
 			assert.Empty(cmp.Diff(tt.want, got, opts...))
