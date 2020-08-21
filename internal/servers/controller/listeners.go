@@ -108,7 +108,7 @@ func (c *Controller) startListeners() error {
 		// Clear out in case this is a second start of the controller
 		ln.Mux.UnregisterProto(alpnmux.DefaultProto)
 		l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
-			GetConfigForClient: c.validateWorkerTLS,
+			GetConfigForClient: c.validateWorkerTls,
 		})
 		if err != nil {
 			return fmt.Errorf("error getting sub-listener for worker proto: %w", err)

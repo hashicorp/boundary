@@ -17,6 +17,17 @@ const (
 	defaultLiveness = 15 * time.Second
 )
 
+type ServerType string
+
+const (
+	ServerTypeController ServerType = "controller"
+	ServerTypeWorker     ServerType = "worker"
+)
+
+func (s ServerType) String() string {
+	return string(s)
+}
+
 // Repository is the jobs database repository
 type Repository struct {
 	logger hclog.Logger
@@ -47,7 +58,7 @@ func NewRepository(logger hclog.Logger, r db.Reader, w db.Writer, kms *kms.Kms) 
 
 // list will return a listing of resources and honor the WithLimit option or the
 // repo defaultLimit
-func (r *Repository) List(ctx context.Context, serverType string, opt ...Option) ([]*Server, error) {
+func (r *Repository) List(ctx context.Context, serverType ServerType, opt ...Option) ([]*Server, error) {
 	opts := getOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
@@ -65,7 +76,7 @@ func (r *Repository) List(ctx context.Context, serverType string, opt ...Option)
 		return nil, fmt.Errorf("error fetching underlying DB for server list operation: %w", err)
 	}
 	rows, err := underlying.QueryContext(ctx, q,
-		serverType,
+		serverType.String(),
 		updateTime.Format(time.RFC3339))
 	if err != nil {
 		return nil, fmt.Errorf("error performing server list: %w", err)
@@ -139,6 +150,6 @@ func (r *Repository) Upsert(ctx context.Context, server *Server, opt ...Option) 
 		return nil, int(rowsAffected), nil
 	}
 	// Fetch current controllers to feed to the workers
-	controllers, err := r.List(ctx, resource.Controller.String())
+	controllers, err := r.List(ctx, ServerTypeController)
 	return controllers, len(controllers), err
 }

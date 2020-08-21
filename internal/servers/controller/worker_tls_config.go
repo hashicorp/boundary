@@ -20,7 +20,7 @@ type workerAuthEntry struct {
 	conn net.Conn
 }
 
-func (c Controller) validateWorkerTLS(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+func (c Controller) validateWorkerTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	for _, p := range hello.SupportedProtos {
 		switch {
 		case strings.HasPrefix(p, "v1workerauth-"):

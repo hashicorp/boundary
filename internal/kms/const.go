@@ -18,6 +18,9 @@ const (
 
 	// KeyPurposeRecovery is used for recovery access
 	KeyPurposeRecovery
+
+	// KeyPurposeSessions is used as a base key to derive session-specific keys
+	KeyPurposeSessions
 )
 
 // String returns the key purpose cast as a string, just so it can be called as
@@ -30,6 +33,8 @@ func (k KeyPurpose) String() string {
 		return "oplog"
 	case KeyPurposeRecovery:
 		return "recovery"
+	case KeyPurposeSessions:
+		return "sessions"
 	default:
 		return "unknown"
 	}

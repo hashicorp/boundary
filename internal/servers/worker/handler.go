@@ -15,18 +15,18 @@ type HandlerProperties struct {
 
 // Handler returns an http.Handler for the API. This can be used on
 // its own to mount the Vault API within another web server.
-func (c *Worker) Handler(props HandlerProperties) http.Handler {
+func (c *Worker) handler(props HandlerProperties) http.Handler {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	mux.Handle("/v1/", handleDummy())
+	mux.Handle("/v1/proxy", handleProxy())
 
 	genericWrappedHandler := c.wrapGenericHandler(mux, props)
 
 	return genericWrappedHandler
 }
 
-func handleDummy() http.Handler {
+func handleProxy() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"foo": "bar"}`))

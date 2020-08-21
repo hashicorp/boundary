@@ -1,9 +1,16 @@
 package worker
 
 import (
+	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"sync"
+	"time"
 
+	"github.com/hashicorp/go-alpnmux"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -11,24 +18,66 @@ func (w *Worker) startListeners() error {
 	servers := make([]func(), 0, len(w.conf.Listeners))
 
 	for _, ln := range w.conf.Listeners {
-		var err error
 		for _, purpose := range ln.Config.Purpose {
 			switch purpose {
 			case "api", "cluster":
-				// Do nothing, in dev mode we might see it here
+				// We may have this in dev mode; ignore
+				continue
+
 			case "worker-alpn-tls":
-				if w.listeningAddress != "" {
-					return errors.New("more than one listening address found")
-				}
-				w.listeningAddress = ln.Config.Address
-				w.logger.Info("reporting listening address to controllers", "address", w.listeningAddress)
-				// TODO: other stuff
-				// TODO: once we have an actual listener, record in w.listeningAddress the actual address with port
+				// Do nothing; handle below
+
 			default:
-				err = fmt.Errorf("unknown listener purpose %q", purpose)
+				return fmt.Errorf("unknown listener purpose %q", purpose)
 			}
+
+			if w.listeningAddress != "" {
+				return errors.New("more than one listening address found")
+			}
+			w.listeningAddress = ln.Config.Address
+			w.logger.Info("reporting listening address to controllers", "address", w.listeningAddress)
+
+			handler := w.handler(HandlerProperties{
+				ListenerConfig: ln.Config,
+			})
+
+			cancelCtx := w.baseContext
+
+			server := &http.Server{
+				Handler:           handler,
+				ReadHeaderTimeout: 10 * time.Second,
+				ReadTimeout:       30 * time.Second,
+				IdleTimeout:       5 * time.Minute,
+				ErrorLog:          w.logger.StandardLogger(nil),
+				BaseContext: func(net.Listener) context.Context {
+					return cancelCtx
+				},
+			}
+			ln.HTTPServer = server
+
+			if ln.Config.HTTPReadHeaderTimeout > 0 {
+				server.ReadHeaderTimeout = ln.Config.HTTPReadHeaderTimeout
+			}
+			if ln.Config.HTTPReadTimeout > 0 {
+				server.ReadTimeout = ln.Config.HTTPReadTimeout
+			}
+			if ln.Config.HTTPWriteTimeout > 0 {
+				server.WriteTimeout = ln.Config.HTTPWriteTimeout
+			}
+			if ln.Config.HTTPIdleTimeout > 0 {
+				server.IdleTimeout = ln.Config.HTTPIdleTimeout
+			}
+
+			// Clear out in case this is a second start of the controller
+			ln.Mux.UnregisterProto(alpnmux.DefaultProto)
+			l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
+				GetConfigForClient: w.getJobTls,
+			})
 			if err != nil {
-				return err
+				return fmt.Errorf("error getting tls listener: %w", err)
+			}
+			if l == nil {
+				return errors.New("could not get tls listener")
 			}
 		}
 	}
@@ -41,15 +90,26 @@ func (w *Worker) startListeners() error {
 }
 
 func (w *Worker) stopListeners() error {
-	var retErr *multierror.Error
+	serverWg := new(sync.WaitGroup)
 	for _, ln := range w.conf.Listeners {
-		if ln.ALPNListener != nil {
-			if err := ln.ALPNListener.Close(); err != nil {
-				retErr = multierror.Append(retErr, err)
-			}
-		}
+		localLn := ln
+		serverWg.Add(1)
+		go func() {
+			defer serverWg.Done()
 
-		if !w.conf.RawConfig.DevController {
+			shutdownKill, shutdownKillCancel := context.WithTimeout(w.baseContext, localLn.Config.MaxRequestDuration)
+			defer shutdownKillCancel()
+
+			if localLn.HTTPServer != nil {
+				localLn.HTTPServer.Shutdown(shutdownKill)
+			}
+		}()
+	}
+	serverWg.Wait()
+
+	var retErr *multierror.Error
+	if !w.conf.RawConfig.DevController {
+		for _, ln := range w.conf.Listeners {
 			if err := ln.Mux.Close(); err != nil {
 				retErr = multierror.Append(retErr, err)
 			}

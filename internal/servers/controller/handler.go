@@ -2,8 +2,14 @@ package controller
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/big"
+	mathrand "math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -14,10 +20,15 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
+	"github.com/hashicorp/boundary/internal/sessions"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -30,6 +41,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 type HandlerProperties struct {
@@ -48,7 +60,7 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 		return nil, err
 	}
 	mux.Handle("/v1/", h)
-
+	mux.Handle("/jobtesting", jobTestingHandler(c))
 	mux.Handle("/", handleUi(c))
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
@@ -291,6 +303,101 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		}
 
 		h.ServeHTTP(w, req)
+	})
+}
+
+type JobMapEntry struct {
+	*sessions.SessionResponse
+	Endpoint string
+}
+
+func jobTestingHandler(c *Controller) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		errorResp := func(e error) {
+			w.Write([]byte(e.Error()))
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
+		if err := r.ParseForm(); err != nil {
+			errorResp(err)
+			return
+		}
+		endpoint := r.URL.Query().Get("endpoint")
+		if endpoint == "" {
+			errorResp(errors.New("missing endpoint query param"))
+			return
+		}
+
+		var workers []*sessions.Worker
+		repo, err := c.ServersRepoFn()
+		if err != nil {
+			errorResp(err)
+			return
+		}
+		servers, err := repo.List(r.Context(), servers.ServerTypeWorker)
+		if err != nil {
+			errorResp(err)
+			return
+		}
+		for _, v := range servers {
+			workers = append(workers, &sessions.Worker{Address: v.Address})
+		}
+
+		wrapper, err := c.kms.GetWrapper(r.Context(), scope.Global.String(), kms.KeyPurposeSessions)
+		if err != nil {
+			errorResp(err)
+			return
+		}
+		jobId, err := base62.Random(10)
+		if err != nil {
+			errorResp(err)
+			return
+		}
+		jobId = "s_" + jobId
+		pubKey, privKey, err := sessions.DeriveED25519Key(wrapper, "u_1234567890", jobId)
+
+		template := &x509.Certificate{
+			ExtKeyUsage: []x509.ExtKeyUsage{
+				x509.ExtKeyUsageServerAuth,
+				x509.ExtKeyUsageClientAuth,
+			},
+			DNSNames:              []string{jobId},
+			KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
+			SerialNumber:          big.NewInt(mathrand.Int63()),
+			NotBefore:             time.Now().Add(-1 * time.Minute),
+			NotAfter:              time.Now().Add(10 * time.Minute),
+			BasicConstraintsValid: true,
+			IsCA:                  true,
+		}
+
+		certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pubKey, privKey)
+		if err != nil {
+			errorResp(err)
+			return
+		}
+
+		ret := &sessions.SessionResponse{
+			Id:          jobId,
+			Type:        "tcp",
+			Certificate: certBytes,
+			PrivateKey:  privKey,
+			Workers:     workers,
+		}
+
+		marshaled, err := proto.Marshal(ret)
+		if err != nil {
+			errorResp(err)
+			return
+		}
+
+		if _, err := w.Write([]byte(base64.RawStdEncoding.EncodeToString(marshaled))); err != nil {
+			errorResp(err)
+			return
+		}
+
+		ret.PrivateKey = nil
+		c.jobMap.Store(jobId, &JobMapEntry{SessionResponse: ret, Endpoint: endpoint})
+		c.logger.Info("stored entry", "job_id", jobId, "endpoint", endpoint)
 	})
 }
 

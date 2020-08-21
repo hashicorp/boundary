@@ -34,6 +34,7 @@ type Controller struct {
 
 	// Used for testing
 	workerStatusUpdateTimes *sync.Map
+	jobMap                  *sync.Map
 
 	// Repo factory methods
 	IamRepoFn          common.IamRepoFactory
@@ -52,6 +53,7 @@ func New(conf *Config) (*Controller, error) {
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
 		workerStatusUpdateTimes: new(sync.Map),
+		jobMap:                  new(sync.Map),
 	}
 
 	c.started.Store(false)
