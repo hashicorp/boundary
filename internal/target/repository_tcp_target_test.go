@@ -143,7 +143,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			assert.NotNil(target.GetPublicId())
 			assert.Equal(tt.wantHostSets, hostSets)
 
-			foundTarget, foundHostSets, err := repo.LookupTarget(context.Background(), tt.args.keyWrapper, target.GetPublicId())
+			foundTarget, foundHostSets, err := repo.LookupTarget(context.Background(), target.GetPublicId())
 			assert.NoError(err)
 			assert.True(proto.Equal(target.(*TcpTarget), foundTarget.(*TcpTarget)))
 			assert.Equal(hostSets, foundHostSets)
