@@ -145,60 +145,38 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 	return controllers, len(controllers), err
 }
 
+type RecoveryNonce struct {
+	Nonce string
+}
+
 // AddRecoveryNonce adds a nonce
 func (r *Repository) AddRecoveryNonce(ctx context.Context, nonce string, opt ...Option) error {
 	if nonce == "" {
 		return errors.New("empty nonce provided")
 	}
-	// Build query
-	q := `
-	insert into recovery_nonces
-		(nonce)
-	values
-		($1);
-	`
-	underlying, err := r.writer.DB()
-	if err != nil {
-		return fmt.Errorf("error fetching underlying DB for recovery nonce operation: %w", err)
-	}
-	result, err := underlying.ExecContext(ctx, q, nonce)
-	if err != nil {
+	rn := &RecoveryNonce{Nonce: nonce}
+	if err := r.writer.Create(ctx, rn); err != nil {
 		return fmt.Errorf("error performing nonce insertion: %w", err)
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("error finding number of rows affected by nonce insertion: %w", err)
-	}
-	if rows != 1 {
-		return fmt.Errorf("unexpected number of rows inserted at nonce insertion, wanted 1, got %d", rows)
 	}
 	return nil
 }
 
 // CleanupNonces removes nonces that no longer need to be stored
-func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int64, error) {
+func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, error) {
 	// If something was inserted before 3x the actual validity period, clean it out
 	endTime := time.Now().Add(-3 * globals.RecoveryTokenValidityPeriod)
 
-	underlying, err := r.writer.DB()
-	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("error fetching underlying DB for recovery nonce cleanup operation: %w", err)
-	}
-	result, err := underlying.ExecContext(ctx, "delete from recovery_nonces where create_time < $1;", endTime)
+	rows, err := r.writer.Delete(ctx, &RecoveryNonce{}, db.WithWhere(deleteWhereSql, endTime))
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("error performing nonce cleanup: %w", err)
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("error finding number of rows affected by nonce cleanup: %w", err)
 	}
 	return rows, nil
 }
 
 // ListNonces lists nonces. Used only for tests at the moment.
-func (r *Repository) ListNonces(ctx context.Context, opt ...Option) ([]string, error) {
-	var nonces []string
-	if err := r.reader.SearchWhere(ctx, &nonces, listNonceSql, []interface{}{}); err != nil {
+func (r *Repository) ListNonces(ctx context.Context, opt ...Option) ([]*RecoveryNonce, error) {
+	var nonces []*RecoveryNonce
+	if err := r.reader.SearchWhere(ctx, &nonces, "", nil, db.WithLimit(-1)); err != nil {
 		return nil, fmt.Errorf("error listing nonces: %w", err)
 	}
 	return nonces, nil

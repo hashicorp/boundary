@@ -1,5 +1,5 @@
 package servers
 
 const (
-	listNonceSql = "select nonce from recovery_nonces"
+	deleteWhereSql = `create_time < $1`
 )
