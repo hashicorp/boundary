@@ -418,3 +418,160 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_DeleteTargetHosts(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+	repo, err := NewRepository(rw, rw, testKms)
+	require.NoError(t, err)
+
+	type args struct {
+		target                Target
+		targetIdOverride      *string
+		targetVersionOverride *uint32
+		createCnt             int
+		deleteCnt             int
+		opt                   []Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantRowsDeleted int
+		wantErr         bool
+		wantIsErr       error
+	}{
+		{
+			name: "valid",
+			args: args{
+				target:    TestTcpTarget(t, conn, org.PublicId, "valid"),
+				createCnt: 5,
+				deleteCnt: 5,
+			},
+			wantRowsDeleted: 5,
+			wantErr:         false,
+		},
+		{
+			name: "valid-keeping-some",
+			args: args{
+				target:    TestTcpTarget(t, conn, org.PublicId, "valid-keeping-some"),
+				createCnt: 5,
+				deleteCnt: 2,
+			},
+			wantRowsDeleted: 2,
+			wantErr:         false,
+		},
+		{
+			name: "no-deletes",
+			args: args{
+				target:    TestTcpTarget(t, conn, org.PublicId, "no-deletes"),
+				createCnt: 5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+		{
+			name: "not-found",
+			args: args{
+				target:           TestTcpTarget(t, conn, org.PublicId, "not-found"),
+				targetIdOverride: func() *string { id := testId(t); return &id }(),
+				createCnt:        5,
+				deleteCnt:        5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+		},
+		{
+			name: "missing-target-id",
+			args: args{
+				target:           TestTcpTarget(t, conn, org.PublicId, "missing-target-id"),
+				targetIdOverride: func() *string { id := ""; return &id }(),
+				createCnt:        5,
+				deleteCnt:        5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+		{
+			name: "zero-version",
+			args: args{
+				target:                TestTcpTarget(t, conn, org.PublicId, "zero-version"),
+				targetVersionOverride: func() *uint32 { v := uint32(0); return &v }(),
+				createCnt:             5,
+				deleteCnt:             5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				target:                TestTcpTarget(t, conn, org.PublicId, "bad-version"),
+				targetVersionOverride: func() *uint32 { v := uint32(1000); return &v }(),
+				createCnt:             5,
+				deleteCnt:             5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			hsIds := make([]string, 0, tt.args.createCnt)
+			if tt.args.createCnt > 0 {
+				for i := 0; i < tt.args.createCnt; i++ {
+					cats := static.TestCatalogs(t, conn, org.PublicId, 1)
+					hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 1)
+					hsIds = append(hsIds, hsets[0].PublicId)
+				}
+			}
+			_, addedHostSets, err := repo.AddTargeHostSets(context.Background(), tt.args.target.GetPublicId(), 1, hsIds, tt.args.opt...)
+			require.NoError(err)
+			assert.Equal(tt.args.createCnt, len(addedHostSets))
+
+			deleteHostSets := make([]string, 0, tt.args.deleteCnt)
+			for i := 0; i < tt.args.deleteCnt; i++ {
+				deleteHostSets = append(deleteHostSets, hsIds[i])
+			}
+			var targetId string
+			switch {
+			case tt.args.targetIdOverride != nil:
+				targetId = *tt.args.targetIdOverride
+			default:
+				targetId = tt.args.target.GetPublicId()
+			}
+			var targetVersion uint32
+			switch {
+			case tt.args.targetVersionOverride != nil:
+				targetVersion = *tt.args.targetVersionOverride
+			default:
+				targetVersion = 2
+			}
+			deletedRows, err := repo.DeleteTargeHostSets(context.Background(), targetId, targetVersion, deleteHostSets, tt.args.opt...)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, deletedRows)
+				if tt.wantIsErr != nil {
+					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+				}
+				err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+				assert.Error(err)
+				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+
+			err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+		})
+	}
+}

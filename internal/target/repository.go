@@ -269,13 +269,13 @@ func (r *Repository) AddTargeHostSets(ctx context.Context, targetId string, targ
 				return fmt.Errorf("add target host sets: updated role and %d rows updated", rowsUpdated)
 			}
 			msgs = append(msgs, &targetOplogMsg)
-			if len(newHostSets) > 0 {
-				hostSetsOplogMsgs := make([]*oplog.Message, 0, len(newHostSets))
-				if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSetsOplogMsgs)); err != nil {
-					return fmt.Errorf("add target host sets: unable to add target host sets: %w", err)
-				}
-				msgs = append(msgs, hostSetsOplogMsgs...)
+
+			hostSetsOplogMsgs := make([]*oplog.Message, 0, len(newHostSets))
+			if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSetsOplogMsgs)); err != nil {
+				return fmt.Errorf("add target host sets: unable to add target host sets: %w", err)
 			}
+			msgs = append(msgs, hostSetsOplogMsgs...)
+
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("add target host sets: unable to write oplog: %w", err)
 			}
@@ -290,4 +290,95 @@ func (r *Repository) AddTargeHostSets(ctx context.Context, targetId string, targ
 		return nil, nil, fmt.Errorf("add target host sets: error creating roles: %w", err)
 	}
 	return updatedTarget.(Target), currentHostSets, nil
+}
+
+// DeleteTargeHostSets deletes host sets from a target (targetId). The role's
+// current db version must match the targetVersion or an error will be returned.
+// Zero is not a valid value for the WithVersion option and will return an
+// error.
+func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, opt ...Option) (int, error) {
+	if targetId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete target host sets: missing target id: %w", db.ErrInvalidParameter)
+	}
+	if targetVersion == 0 {
+		return db.NoRowsAffected, fmt.Errorf("delete target host sets: version cannot be zero: %w", db.ErrInvalidParameter)
+	}
+	if len(hostSetIds) == 0 {
+		return db.NoRowsAffected, fmt.Errorf("delete target host sets: missing host set ids: %w", db.ErrInvalidParameter)
+	}
+	deleteTargeHostSets := make([]interface{}, 0, len(hostSetIds))
+	for _, id := range hostSetIds {
+		ths, err := NewTargetHostSet(targetId, id)
+		if err != nil {
+			return db.NoRowsAffected, fmt.Errorf("delete target host sets: unable to create in memory target host set: %w", err)
+		}
+		deleteTargeHostSets = append(deleteTargeHostSets, ths)
+	}
+
+	t := allocTargetView()
+	t.PublicId = targetId
+	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete target host sets: failed %w for %s", err, targetId)
+	}
+
+	var metadata oplog.Metadata
+	var target interface{}
+	switch t.Type {
+	case TcpTargetType.String():
+		tcpT := allocTcpTarget()
+		tcpT.PublicId = t.PublicId
+		tcpT.Version = targetVersion + 1
+		target = &tcpT
+		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_DELETE)
+	default:
+		return db.NoRowsAffected, fmt.Errorf("delete target host sets: %s is an unsupported target type %s", t.PublicId, t.Type)
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete target host sets: unable to get oplog wrapper: %w", err)
+	}
+
+	var totalRowsDeleted int
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			msgs := make([]*oplog.Message, 0, 2)
+			roleTicket, err := w.GetTicket(target)
+			if err != nil {
+				return fmt.Errorf("delete target host sets: unable to get ticket: %w", err)
+			}
+			updatedTarget := target.(Cloneable).Clone()
+			var targetOplogMsg oplog.Message
+			rowsUpdated, err := w.Update(ctx, updatedTarget, []string{"Version"}, nil, db.NewOplogMsg(&targetOplogMsg), db.WithVersion(&targetVersion))
+			if err != nil {
+				return fmt.Errorf("delete target host sets: unable to update target version: %w", err)
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("delete target host sets: updated role and %d rows updated", rowsUpdated)
+			}
+			msgs = append(msgs, &targetOplogMsg)
+
+			hostSetsOplogMsgs := make([]*oplog.Message, 0, len(deleteTargeHostSets))
+			rowsDeleted, err := w.DeleteItems(ctx, deleteTargeHostSets, db.NewOplogMsgs(&hostSetsOplogMsgs))
+			if err != nil {
+				return fmt.Errorf("delete target host sets: unable to delete target host sets: %w", err)
+			}
+			if rowsDeleted != len(deleteTargeHostSets) {
+				return fmt.Errorf("delete target host sets: target host sets deleted %d did not match request for %d", rowsDeleted, len(deleteTargeHostSets))
+			}
+			totalRowsDeleted += rowsDeleted
+			msgs = append(msgs, hostSetsOplogMsgs...)
+
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
+				return fmt.Errorf("delete target host sets: unable to write oplog: %w", err)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete target host sets: error deleting target host sets: %w", err)
+	}
+	return totalRowsDeleted, nil
 }
