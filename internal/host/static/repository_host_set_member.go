@@ -1,10 +1,30 @@
 package static
 
-import "context"
+import (
+	"context"
+	"fmt"
+
+	"github.com/hashicorp/boundary/internal/db"
+)
 
 // ListSetMembers returns a slice of all host set members in setId.
 func (r *Repository) ListSetMembers(ctx context.Context, setId string, opt ...Option) ([]*HostSetMember, error) {
-	panic("not implemented")
+	if setId == "" {
+		return nil, fmt.Errorf("list: static host set members: missing set id: %w", db.ErrInvalidParameter)
+	}
+
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var members []*HostSetMember
+	err := r.reader.SearchWhere(ctx, &members, "set_id = ?", []interface{}{setId}, db.WithLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list: static host set members: %w", err)
+	}
+	return members, nil
 }
 
 // AddSetMembers adds hostIds to setId in the repository. It returns a
