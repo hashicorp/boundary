@@ -306,11 +306,6 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 	})
 }
 
-type JobMapEntry struct {
-	*sessions.SessionResponse
-	Endpoint string
-}
-
 func jobTestingHandler(c *Controller) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		errorResp := func(e error) {
@@ -328,7 +323,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 
-		var workers []*sessions.Worker
+		var workers []*services.WorkerInfo
 		repo, err := c.ServersRepoFn()
 		if err != nil {
 			errorResp(err)
@@ -340,7 +335,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 		for _, v := range servers {
-			workers = append(workers, &sessions.Worker{Address: v.Address})
+			workers = append(workers, &services.WorkerInfo{Address: v.Address})
 		}
 
 		wrapper, err := c.kms.GetWrapper(r.Context(), scope.Global.String(), kms.KeyPurposeSessions)
@@ -376,12 +371,15 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 
-		ret := &sessions.SessionResponse{
+		ret := &services.ValidateSessionResponse{
 			Id:          jobId,
+			ScopeId:     scope.Global.String(),
+			UserId:      "u_1234567890",
 			Type:        "tcp",
+			Endpoint:    endpoint,
 			Certificate: certBytes,
 			PrivateKey:  privKey,
-			Workers:     workers,
+			WorkerInfo:  workers,
 		}
 
 		marshaled, err := proto.Marshal(ret)
@@ -396,7 +394,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 		}
 
 		ret.PrivateKey = nil
-		c.jobMap.Store(jobId, &JobMapEntry{SessionResponse: ret, Endpoint: endpoint})
+		c.jobMap.Store(jobId, ret)
 		c.logger.Info("stored entry", "job_id", jobId, "endpoint", endpoint)
 	})
 }

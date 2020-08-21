@@ -78,8 +78,14 @@ func (w *Worker) startListeners() error {
 				return errors.New("could not get tls listener")
 			}
 
-			w.listeningAddress = l.Addr().String()
-			w.logger.Info("reporting listening address to controllers", "address", w.listeningAddress)
+			servers = append(servers, func() {
+				go server.Serve(l)
+			})
+
+			if w.listeningAddress == "" {
+				w.listeningAddress = l.Addr().String()
+				w.logger.Info("reporting listening address to controllers", "address", w.listeningAddress)
+			}
 		}
 	}
 

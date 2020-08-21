@@ -64,7 +64,6 @@ func (c *Worker) wrapGenericHandler(h http.Handler, props HandlerProperties) htt
 
 		h.ServeHTTP(w, r)
 		cancelFunc()
-		return
 	})
 }
 
