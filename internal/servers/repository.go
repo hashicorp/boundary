@@ -197,21 +197,9 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int64, e
 
 // ListNonces lists nonces. Used only for tests at the moment.
 func (r *Repository) ListNonces(ctx context.Context, opt ...Option) ([]string, error) {
-	underlying, err := r.reader.DB()
-	if err != nil {
-		return nil, fmt.Errorf("error fetching underlying DB for nonce listing operation: %w", err)
-	}
-	result, err := underlying.QueryContext(ctx, "select nonce from recovery_nonces")
-	if err != nil {
-		return nil, fmt.Errorf("error listing nonces: %w", err)
-	}
 	var nonces []string
-	for result.Next() {
-		var nonce string
-		if err := result.Scan(&nonce); err != nil {
-			return nil, fmt.Errorf("error scanning nonce: %w", err)
-		}
-		nonces = append(nonces, nonce)
+	if err := r.reader.SearchWhere(ctx, &nonces, listNonceSql, []interface{}{}); err != nil {
+		return nil, fmt.Errorf("error listing nonces: %w", err)
 	}
 	return nonces, nil
 }
