@@ -8,12 +8,18 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 var (
 	ErrMetadataScopeNotFound = errors.New("scope not found for metadata")
 )
+
+// Clonable provides a cloning interface
+type Cloneable interface {
+	Clone() interface{}
+}
 
 // Repository is the target database repository
 type Repository struct {
@@ -149,4 +155,54 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 	}
 	dbOpts = append(dbOpts, db.WithLimit(limit))
 	return r.reader.SearchWhere(ctx, resources, where, args, dbOpts...)
+}
+
+// DeleteTarget will delete a target from the repository.
+func (r *Repository) DeleteTarget(ctx context.Context, publicId string, opt ...Option) (int, error) {
+	if publicId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete target: missing public id %w", db.ErrNilParameter)
+	}
+	t := allocTargetView()
+	t.PublicId = publicId
+	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete target: failed %w for %s", err, publicId)
+	}
+	var metadata oplog.Metadata
+	var deleteTarget interface{}
+	switch t.Type {
+	case TcpTargetType.String():
+		tcpT := allocTcpTarget()
+		tcpT.PublicId = publicId
+		deleteTarget = &tcpT
+		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_DELETE)
+	default:
+		return db.NoRowsAffected, fmt.Errorf("delete target: %s is an unsupported target type %s", publicId, t.Type)
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, t.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete target: unable to get oplog wrapper: %w", err)
+	}
+
+	var rowsDeleted int
+	var deleteResource interface{}
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			deleteResource = deleteTarget.(Cloneable).Clone()
+			rowsDeleted, err = w.Delete(
+				ctx,
+				deleteResource,
+				db.WithOplog(oplogWrapper, metadata),
+			)
+			if err == nil && rowsDeleted > 1 {
+				// return err, which will result in a rollback of the delete
+				return errors.New("error more than 1 target would have been deleted ")
+			}
+			return err
+		},
+	)
+	return rowsDeleted, err
 }

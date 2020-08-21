@@ -2,12 +2,15 @@ package target
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -203,6 +206,90 @@ func TestRepository_ListTargets(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+}
+
+func TestRepository_DeleteTarget(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+	repo, err := NewRepository(rw, rw, testKms)
+	require.NoError(t, err)
+
+	type args struct {
+		target Target
+		opt    []Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name: "valid",
+			args: args{
+				target: TestTcpTarget(t, conn, org.PublicId, "valid"),
+			},
+			wantRowsDeleted: 1,
+			wantErr:         false,
+		},
+		{
+			name: "no-public-id",
+			args: args{
+				target: func() Target {
+					target := allocTcpTarget()
+					return &target
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantErrMsg:      "delete target: missing public id nil parameter",
+		},
+		{
+			name: "not-found",
+			args: args{
+				target: func() Target {
+					id, err := newTcpTargetId()
+					require.NoError(t, err)
+					target := allocTcpTarget()
+					target.PublicId = id
+					return target
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantErrMsg:      "delete target: failed record not found for ",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			deletedRows, err := repo.DeleteTarget(context.Background(), tt.args.target.GetPublicId(), tt.args.opt...)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, deletedRows)
+				assert.Contains(err.Error(), tt.wantErrMsg)
+				err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+				assert.Error(err)
+				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+			foundGroup, _, err := repo.LookupTarget(context.Background(), wrapper, tt.args.target.GetPublicId())
+			assert.Error(err)
+			assert.Nil(foundGroup)
+			assert.True(errors.Is(err, db.ErrRecordNotFound))
+
+			err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
 		})
 	}
 }
