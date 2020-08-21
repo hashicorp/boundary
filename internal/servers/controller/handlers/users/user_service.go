@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
@@ -21,7 +19,6 @@ import (
 
 var (
 	maskManager handlers.MaskManager
-	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 )
 
 func init() {
@@ -261,80 +258,19 @@ func toProto(in *iam.User) *pb.User {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetUserRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetId(), iam.UserPrefix+"_") {
-		badFields["id"] = "Invalid formatted user id."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
-	}
-	return nil
+	return handlers.ValidateGetRequest(iam.UserPrefix, req, handlers.NoopValidatorFn)
 }
 
 func validateCreateRequest(req *pbs.CreateUserRequest) error {
-	badFields := map[string]string{}
-	item := req.GetItem()
-	if item.GetId() != "" {
-		badFields["id"] = "This is a read only field."
-	}
-	if item.GetCreatedTime() != nil {
-		badFields["created_time"] = "This is a read only field."
-	}
-	if item.GetUpdatedTime() != nil {
-		badFields["updated_time"] = "This is a read only field."
-	}
-	if item.GetVersion() != 0 {
-		badFields["version"] = "Cannot specify this field in a create request."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
-	}
-	return nil
+	return handlers.ValidateCreateRequest(req.GetItem(), handlers.NoopValidatorFn)
 }
 
 func validateUpdateRequest(req *pbs.UpdateUserRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetId(), iam.UserPrefix+"_") {
-		badFields["user_id"] = "Improperly formatted path identifier."
-	}
-	if req.GetUpdateMask() == nil {
-		badFields["update_mask"] = "UpdateMask not provided but is required to update a user."
-	}
-
-	item := req.GetItem()
-	if item == nil {
-		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
-		// the mask will be marked as unset.
-		return nil
-	}
-	if item.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
-	if item.GetId() != "" {
-		badFields["id"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetCreatedTime() != nil {
-		badFields["created_time"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetUpdatedTime() != nil {
-		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-
-	return nil
+	return handlers.ValidateUpdateRequest(iam.UserPrefix, req, req.GetItem(), handlers.NoopValidatorFn)
 }
 
 func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetId(), iam.UserPrefix+"_") {
-		badFields["id"] = "Incorrectly formatted identifier."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-	return nil
+	return handlers.ValidateDeleteRequest(iam.UserPrefix, req, handlers.NoopValidatorFn)
 }
 
 func validateListRequest(req *pbs.ListUsersRequest) error {
@@ -343,12 +279,4 @@ func validateListRequest(req *pbs.ListUsersRequest) error {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
-}
-
-func validId(id, prefix string) bool {
-	if !strings.HasPrefix(id, prefix) {
-		return false
-	}
-	id = strings.TrimPrefix(id, prefix)
-	return !reInvalidID.Match([]byte(id))
 }

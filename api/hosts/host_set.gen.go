@@ -59,7 +59,9 @@ func (c *HostSetsClient) Create(ctx context.Context, hostCatalogId string, opt .
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -93,7 +95,9 @@ func (c *HostSetsClient) Read(ctx context.Context, hostCatalogId string, hostSet
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -144,7 +148,9 @@ func (c *HostSetsClient) Update(ctx context.Context, hostCatalogId string, hostS
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -181,7 +187,9 @@ func (c *HostSetsClient) Delete(ctx context.Context, hostCatalogId string, hostS
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
-
+	if apiErr != nil {
+		return false, apiErr, nil
+	}
 	return target.Existed, apiErr, nil
 }
 
@@ -214,7 +222,9 @@ func (c *HostSetsClient) List(ctx context.Context, hostCatalogId string, opt ...
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target.Items, apiErr, nil
 }
 
@@ -269,7 +279,9 @@ func (c *HostSetsClient) AddHosts(ctx context.Context, hostCatalogId string, hos
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddHosts response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -327,7 +339,9 @@ func (c *HostSetsClient) SetHosts(ctx context.Context, hostCatalogId string, hos
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetHosts response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -382,6 +396,8 @@ func (c *HostSetsClient) RemoveHosts(ctx context.Context, hostCatalogId string, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemoveHosts response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }

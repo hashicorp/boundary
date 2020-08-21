@@ -57,7 +57,9 @@ func (c *RolesClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Er
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -87,7 +89,9 @@ func (c *RolesClient) Read(ctx context.Context, roleId string, opt ...Option) (*
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -135,7 +139,9 @@ func (c *RolesClient) Update(ctx context.Context, roleId string, version uint32,
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -168,7 +174,9 @@ func (c *RolesClient) Delete(ctx context.Context, roleId string, opt ...Option) 
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
-
+	if apiErr != nil {
+		return false, apiErr, nil
+	}
 	return target.Existed, apiErr, nil
 }
 
@@ -197,7 +205,9 @@ func (c *RolesClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Er
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target.Items, apiErr, nil
 }
 
@@ -249,7 +259,9 @@ func (c *RolesClient) AddGrants(ctx context.Context, roleId string, version uint
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddGrants response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -301,7 +313,9 @@ func (c *RolesClient) AddPrincipals(ctx context.Context, roleId string, version 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddPrincipals response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -356,7 +370,9 @@ func (c *RolesClient) SetGrants(ctx context.Context, roleId string, version uint
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetGrants response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -411,7 +427,9 @@ func (c *RolesClient) SetPrincipals(ctx context.Context, roleId string, version 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetPrincipals response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -463,7 +481,9 @@ func (c *RolesClient) RemoveGrants(ctx context.Context, roleId string, version u
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemoveGrants response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -515,6 +535,8 @@ func (c *RolesClient) RemovePrincipals(ctx context.Context, roleId string, versi
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemovePrincipals response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }

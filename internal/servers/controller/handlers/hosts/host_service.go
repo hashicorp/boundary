@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
@@ -295,132 +294,75 @@ func toProto(in *static.Host, members []*static.HostSetMember) (*pb.Host, error)
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
-		badFields["host_catalog_id"] = "The field is incorrectly formatted."
-	}
-	if !validId(req.GetId(), static.HostPrefix+"_") {
-		badFields["id"] = "Invalid formatted identifier."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", badFields)
-	}
-	return nil
+	return handlers.ValidateGetRequest(static.HostPrefix, req, func() map[string]string {
+		badFields := map[string]string{}
+		if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
+			badFields["host_catalog_id"] = "The field is incorrectly formatted."
+		}
+		return badFields
+	})
 }
 
 func validateCreateRequest(req *pbs.CreateHostRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
-		badFields["host_catalog_id"] = "The field is incorrectly formatted."
-	}
-	item := req.GetItem()
-	if item == nil {
-		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", map[string]string{"item": "this field is required."})
-	}
-	switch host.SubtypeFromId(req.GetHostCatalogId()) {
-	case host.StaticSubtype:
-		if item.GetType() != "" && item.GetType() != host.StaticSubtype.String() {
-			badFields["type"] = "Doesn't match the parent resource's type."
+	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
+			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
-		attrs := &pb.StaticHostAttributes{}
-		if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
-			badFields["attributes"] = "Attribute fields do not match the expected format."
+
+		if req.GetItem().GetHostCatalogId() != "" {
+			badFields["host_catalog_id"] = "This field is read only."
 		}
-		if attrs.GetAddress() == nil {
-			badFields["attributes.address"] = "This is a required field for this type."
+		switch host.SubtypeFromId(req.GetHostCatalogId()) {
+		case host.StaticSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
+				badFields["type"] = "Doesn't match the parent resource's type."
+			}
+			attrs := &pb.StaticHostAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+				badFields["attributes"] = "Attribute fields do not match the expected format."
+			}
+			if attrs.GetAddress() == nil {
+				badFields["attributes.address"] = "This is a required field for this type."
+			}
 		}
-	}
-	if item.GetId() != "" {
-		badFields["id"] = "This field is read only."
-	}
-	if item.GetHostCatalogId() != "" {
-		badFields["host_catalog_id"] = "This field is read only."
-	}
-	if item.GetCreatedTime() != nil {
-		badFields["created_time"] = "This field is read only."
-	}
-	if item.GetUpdatedTime() != nil {
-		badFields["updated_time"] = "This field is read only."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", badFields)
-	}
-	return nil
+		return badFields
+	})
 }
 
 func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetId(), static.HostPrefix+"_") {
-		badFields["id"] = "The field is incorrectly formatted."
-	}
-	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
-		badFields["host_catalog_id"] = "The field is incorrectly formatted."
-	}
+	return handlers.ValidateUpdateRequest(static.HostPrefix, req, req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
+			badFields["host_catalog_id"] = "The field is incorrectly formatted."
+		}
+		if req.GetItem().GetHostCatalogId() != "" {
+			badFields["host_catalog_id"] = "This is a read only field and cannot be specified in an update request."
+		}
+		if req.GetItem().GetType() != "" {
+			badFields["type"] = "This is a read only field and cannot be specified in an update request."
+		}
+		return badFields
+	})
+}
 
-	if req.GetUpdateMask() == nil {
-		badFields["update_mask"] = "This field is required."
-	}
-
-	item := req.GetItem()
-	if item == nil {
-		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
-		// the mask will be marked as unset.
-		return nil
-	}
-	if item.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
-	if item.GetType() != "" {
-		badFields["type"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetHostCatalogId() != "" {
-		badFields["host_catalog_id"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetId() != "" {
-		badFields["id"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetCreatedTime() != nil {
-		badFields["created_time"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetUpdatedTime() != nil {
-		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-
-	return nil
+func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
+	return handlers.ValidateDeleteRequest(static.HostPrefix, req, func() map[string]string {
+		badFields := map[string]string{}
+		if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
+			badFields["host_catalog_id"] = "The field is incorrectly formatted."
+		}
+		return badFields
+	})
 }
 
 func validateListRequest(req *pbs.ListHostsRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+	if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
-}
-
-func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
-		badFields["host_catalog_id"] = "The field is incorrectly formatted."
-	}
-	if !validId(req.GetId(), static.HostPrefix+"_") {
-		badFields["id"] = "The field is incorrectly formatted."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", badFields)
-	}
-	return nil
-}
-
-func validId(id, prefix string) bool {
-	if !strings.HasPrefix(id, prefix) {
-		return false
-	}
-	id = strings.TrimPrefix(id, prefix)
-	return !reInvalidID.Match([]byte(id))
 }

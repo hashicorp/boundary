@@ -52,7 +52,9 @@ func (c *UsersClient) Create(ctx context.Context, opt ...Option) (*User, *api.Er
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -82,7 +84,9 @@ func (c *UsersClient) Read(ctx context.Context, userId string, opt ...Option) (*
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -130,7 +134,9 @@ func (c *UsersClient) Update(ctx context.Context, userId string, version uint32,
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -163,7 +169,9 @@ func (c *UsersClient) Delete(ctx context.Context, userId string, opt ...Option) 
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
-
+	if apiErr != nil {
+		return false, apiErr, nil
+	}
 	return target.Existed, apiErr, nil
 }
 
@@ -192,6 +200,8 @@ func (c *UsersClient) List(ctx context.Context, opt ...Option) ([]*User, *api.Er
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target.Items, apiErr, nil
 }
