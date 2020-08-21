@@ -8,11 +8,13 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNewRepository(t *testing.T) {
@@ -283,13 +285,136 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundGroup, _, err := repo.LookupTarget(context.Background(), wrapper, tt.args.target.GetPublicId())
+			foundGroup, _, err := repo.LookupTarget(context.Background(), tt.args.target.GetPublicId())
 			assert.Error(err)
 			assert.Nil(foundGroup)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
 			err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
+		})
+	}
+}
+
+func TestRepository_AddTargetHostSets(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	staticOrg, staticProj := iam.TestScopes(t, iamRepo)
+	orgTarget := TestTcpTarget(t, conn, staticOrg.PublicId, "static-org")
+	projTarget := TestTcpTarget(t, conn, staticProj.PublicId, "static-proj")
+	repo, err := NewRepository(rw, rw, testKms)
+	require.NoError(t, err)
+
+	_, _, err = repo.LookupTarget(context.Background(), orgTarget.PublicId)
+	require.NoError(t, err)
+	_, _, err = repo.LookupTarget(context.Background(), projTarget.PublicId)
+	require.NoError(t, err)
+
+	createHostSetsFn := func(orgs, projects []string) []string {
+		results := []string{}
+		for _, publicId := range orgs {
+			cats := static.TestCatalogs(t, conn, publicId, 1)
+			hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 1)
+			results = append(results, hsets[0].PublicId)
+		}
+		for _, publicId := range projects {
+			cats := static.TestCatalogs(t, conn, publicId, 1)
+			hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 1)
+			results = append(results, hsets[0].PublicId)
+		}
+		return results
+	}
+
+	type args struct {
+		targetVersion uint32
+		wantTargetIds bool
+		opt           []Option
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantErr   bool
+		wantErrIs error
+	}{
+		{
+			name: "valid",
+			args: args{
+				targetVersion: 1,
+				wantTargetIds: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				targetVersion: 1000,
+				wantTargetIds: true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "zero-version",
+			args: args{
+				targetVersion: 0,
+				wantTargetIds: true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "no-host-sets",
+			args: args{
+				targetVersion: 1,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocTargetHostSet()).Error)
+			var hostSetIds []string
+			for _, targetId := range []string{projTarget.PublicId, orgTarget.PublicId} {
+				origTarget, origHostSet, err := repo.LookupTarget(context.Background(), targetId)
+				require.NoError(err)
+				require.Equal(0, len(origHostSet))
+
+				if tt.args.wantTargetIds {
+					hostSetIds = createHostSetsFn([]string{staticOrg.PublicId}, []string{staticProj.PublicId})
+				}
+
+				gotTarget, gotHostSets, err := repo.AddTargeHostSets(context.Background(), targetId, tt.args.targetVersion, hostSetIds, tt.args.opt...)
+				if tt.wantErr {
+					require.Error(err)
+					if tt.wantErrIs != nil {
+						assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					}
+					return
+				}
+				require.NoError(err)
+				gotHostSet := map[string]bool{}
+				for _, id := range gotHostSets {
+					gotHostSet[id] = true
+				}
+				err = db.TestVerifyOplog(t, rw, targetId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+				assert.NoError(err)
+
+				foundHostSets, err := fetchHostSets(context.Background(), rw, targetId)
+				require.NoError(err)
+				for _, id := range foundHostSets {
+					assert.NotEmpty(gotHostSet[id])
+				}
+
+				t, ths, err := repo.LookupTarget(context.Background(), targetId)
+				require.NoError(err)
+				assert.Equal(tt.args.targetVersion+1, t.GetVersion())
+				assert.Equal(origTarget.GetVersion(), t.GetVersion()-1)
+				assert.Equal(gotHostSets, ths)
+				assert.True(proto.Equal(gotTarget.(*TcpTarget), t.(*TcpTarget)))
+			}
 		})
 	}
 }
