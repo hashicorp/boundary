@@ -13,6 +13,7 @@ type Target interface {
 	GetDefaultPort() uint32
 	GetName() string
 	GetDescription() string
+	GetVersion() uint32
 }
 
 // TargetType defines the possible types for targets.
