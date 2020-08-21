@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -21,7 +19,6 @@ import (
 
 var (
 	maskManager handlers.MaskManager
-	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 )
 
 func init() {
@@ -67,7 +64,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	return &pbs.ListAccountsResponse{Items: ul}, nil
 }
 
-// GetAccounts implements the interface pbs.AccountServiceServer.
+// GetAccount implements the interface pbs.AccountServiceServer.
 func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*pbs.GetAccountResponse, error) {
 	authResults := auth.Verify(ctx)
 	if authResults.Error != nil {
@@ -353,76 +350,58 @@ func toProto(in *password.Account) (*pb.Account, error) {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAccountRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetId(), password.AccountPrefix+"_") {
-		badFields["id"] = "Invalid formatted identifier."
-	}
-	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
-		badFields["auth_method_id"] = "Invalid formatted identifier."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
-	}
-	return nil
+	return handlers.ValidateGetRequest(password.AccountPrefix, req, func() map[string]string {
+		badFields := map[string]string{}
+		if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
+			badFields["auth_method_id"] = "Invalid formatted identifier."
+		}
+		return badFields
+	})
 }
 
 func validateCreateRequest(req *pbs.CreateAccountRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
-		badFields["auth_method_id"] = "Invalid formatted identifier."
-	}
-	item := req.GetItem()
-	if item.GetVersion() != 0 {
-		badFields["version"] = "Cannot specify this field in a create request."
-	}
-	if item.GetId() != "" {
-		badFields["id"] = "This is a read only field."
-	}
-	if item.GetAuthMethodId() != "" {
-		badFields["auth_method_id"] = "This is a read only field."
-	}
-	if item.GetCreatedTime() != nil {
-		badFields["created_time"] = "This is a read only field."
-	}
-	if item.GetUpdatedTime() != nil {
-		badFields["updated_time"] = "This is a read only field."
-	}
-	switch auth.SubtypeFromId(req.GetAuthMethodId()) {
-	case auth.PasswordSubtype:
-		if item.GetType() != "" && item.GetType() != auth.PasswordSubtype.String() {
-			badFields["type"] = "Doesn't match the parent resource's type."
+	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		if req.GetItem().GetAuthMethodId() != "" {
+			badFields["auth_method_id"] = "This is a read only field."
 		}
-		pwAttrs := &pb.PasswordAccountAttributes{}
-		if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
-			badFields["attributes"] = "Attribute fields do not match the expected format."
+		switch auth.SubtypeFromId(req.GetAuthMethodId()) {
+		case auth.PasswordSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.PasswordSubtype.String() {
+				badFields["type"] = "Doesn't match the parent resource's type."
+			}
+			pwAttrs := &pb.PasswordAccountAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {
+				badFields["attributes"] = "Attribute fields do not match the expected format."
+			}
+			if pwAttrs.GetLoginName() == "" {
+				badFields["login_name"] = "This is a required field for this type."
+			}
 		}
-		if pwAttrs.GetLoginName() == "" {
-			badFields["login_name"] = "This is a required field for this type."
-		}
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
-	}
-	return nil
+		return badFields
+	})
+}
+
+func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
+	return handlers.ValidateUpdateRequest(password.AccountPrefix, req, req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		return badFields
+	})
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
-		badFields["auth_method_id"] = "Invalid formatted identifier."
-	}
-	if !validId(req.GetId(), password.AccountPrefix+"_") {
-		badFields["id"] = "Incorrectly formatted identifier."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-	return nil
+	return handlers.ValidateDeleteRequest(password.AccountPrefix, req, func() map[string]string {
+		badFields := map[string]string{}
+		if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
+			badFields["auth_method_id"] = "Invalid formatted identifier."
+		}
+		return badFields
+	})
 }
 
 func validateListRequest(req *pbs.ListAccountsRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
+	if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	if len(badFields) > 0 {
@@ -433,10 +412,10 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 
 func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetId(), password.AccountPrefix+"_") {
+	if !handlers.ValidId(password.AccountPrefix, req.GetId()) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
-	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
+	if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -456,10 +435,10 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 
 func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetId(), password.AccountPrefix+"_") {
+	if !handlers.ValidId(password.AccountPrefix, req.GetId()) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
-	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
+	if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -469,55 +448,4 @@ func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
-}
-
-func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetId(), password.AccountPrefix+"_") {
-		badFields["id"] = "Improperly formatted identifier."
-	}
-	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
-		badFields["auth_method_id"] = "Improperly formatted identifier."
-	}
-	if req.GetUpdateMask() == nil {
-		badFields["update_mask"] = "UpdateMask not provided but is required to update this resource."
-	}
-
-	item := req.GetItem()
-	if item == nil {
-		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
-		// the mask will be marked as unset.
-		return nil
-	}
-	if item.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
-	if item.GetId() != "" {
-		badFields["id"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetAuthMethodId() != "" {
-		badFields["auth_method_id"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetCreatedTime() != nil {
-		badFields["created_time"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetUpdatedTime() != nil {
-		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetType() != "" {
-		badFields["type"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-
-	return nil
-}
-
-func validId(id, prefix string) bool {
-	if !strings.HasPrefix(id, prefix) {
-		return false
-	}
-	id = strings.TrimPrefix(id, prefix)
-	return !reInvalidID.Match([]byte(id))
 }
