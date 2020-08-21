@@ -4,9 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/go-hclog"
@@ -25,7 +23,7 @@ type Worker struct {
 	baseCancel  context.CancelFunc
 	started     ua.Bool
 
-	controllerConns   *sync.Map
+	controllerConn    *atomic.Value
 	lastStatusSuccess *atomic.Value
 
 	listeningAddress string
@@ -38,13 +36,13 @@ func New(conf *Config) (*Worker, error) {
 	w := &Worker{
 		conf:                      conf,
 		logger:                    conf.Logger.Named("worker"),
-		controllerConns:           new(sync.Map),
+		controllerConn:            new(atomic.Value),
 		lastStatusSuccess:         new(atomic.Value),
 		controllerResolver:        new(atomic.Value),
 		controllerResolverCleanup: new(atomic.Value),
 	}
 
-	w.lastStatusSuccess.Store(time.Time{})
+	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
 	w.started.Store(false)
 	w.controllerResolver.Store((*manual.Resolver)(nil))
 	w.controllerResolverCleanup.Store(func() {})

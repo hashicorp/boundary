@@ -34,8 +34,6 @@ func (w *Worker) startListeners() error {
 			if w.listeningAddress != "" {
 				return errors.New("more than one listening address found")
 			}
-			w.listeningAddress = ln.Config.Address
-			w.logger.Info("reporting listening address to controllers", "address", w.listeningAddress)
 
 			handler := w.handler(HandlerProperties{
 				ListenerConfig: ln.Config,
@@ -79,6 +77,9 @@ func (w *Worker) startListeners() error {
 			if l == nil {
 				return errors.New("could not get tls listener")
 			}
+
+			w.listeningAddress = l.Addr().String()
+			w.logger.Info("reporting listening address to controllers", "address", w.listeningAddress)
 		}
 	}
 

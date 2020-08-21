@@ -49,15 +49,10 @@ func (tw *TestWorker) Name() string {
 
 func (tw *TestWorker) ControllerAddrs() []string {
 	var addrs []string
-	tw.w.controllerConns.Range(func(_, v interface{}) bool {
-		// If something is removed from the map while ranging, ignore it
-		if v == nil {
-			return true
-		}
-		c := v.(*controllerConnection)
-		addrs = append(addrs, c.controllerAddr)
-		return true
-	})
+	lastStatus := tw.w.LastStatusSuccess()
+	for _, v := range lastStatus.GetControllers() {
+		addrs = append(addrs, v.Address)
+	}
 
 	return addrs
 }
