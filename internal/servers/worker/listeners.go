@@ -68,6 +68,7 @@ func (w *Worker) startListeners() error {
 
 			// Clear out in case this is a second start of the controller
 			ln.Mux.UnregisterProto(alpnmux.DefaultProto)
+			ln.Mux.UnregisterProto(alpnmux.NoProto)
 			l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
 				GetConfigForClient: w.getJobTls,
 			})

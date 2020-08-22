@@ -260,7 +260,6 @@ func (w Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error)
 		NextProtos:   nextProtos,
 		MinVersion:   tls.VersionTLS13,
 	}
-	tlsConfig.BuildNameToCertificate()
 
 	return tlsConfig, info, nil
 }

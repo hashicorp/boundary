@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -18,6 +19,8 @@ const (
 func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	var jobId string
 	switch len(hello.SupportedProtos) {
+	case 0:
+		return nil, fmt.Errorf("no alpn nextproto value could be found")
 	case 1:
 		if hello.SupportedProtos[0] == "h2" {
 			// In the future we'll handle it when we support custom certs,
@@ -27,7 +30,7 @@ func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 			jobId = hello.SupportedProtos[0]
 		}
 	default:
-		return nil, errors.New("too many alpn nextproto values")
+		return nil, fmt.Errorf("too many alpn nextproto values: %v", hello.SupportedProtos)
 	}
 
 	rawConn := w.controllerConn.Load()
@@ -64,19 +67,15 @@ func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	certPool := x509.NewCertPool()
 	certPool.AddCert(parsedCert)
 
-	// This is just some extra verification/validation to use what's encoded
-	// instead of the job ID we already found
-	nextProtos := []string{parsedCert.DNSNames[0]}
-
 	tlsConf := &tls.Config{
 		Certificates: []tls.Certificate{
 			{
 				Certificate: [][]byte{resp.GetCertificate()},
-				PrivateKey:  resp.GetPrivateKey(),
+				PrivateKey:  ed25519.PrivateKey(resp.GetPrivateKey()),
 				Leaf:        parsedCert,
 			},
 		},
-		NextProtos: nextProtos,
+		NextProtos: []string{parsedCert.DNSNames[0]},
 		ServerName: parsedCert.DNSNames[0],
 		ClientAuth: tls.RequireAndVerifyClientCert,
 		ClientCAs:  certPool,

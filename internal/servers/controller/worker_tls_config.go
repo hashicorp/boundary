@@ -84,7 +84,6 @@ func (c Controller) v1WorkerAuthConfig(protos []string) (*tls.Config, *base.Work
 		NextProtos:   []string{firstMatchProto},
 		MinVersion:   tls.VersionTLS13,
 	}
-	tlsConfig.BuildNameToCertificate()
 
 	return tlsConfig, info, nil
 }
