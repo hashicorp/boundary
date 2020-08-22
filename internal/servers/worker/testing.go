@@ -63,7 +63,7 @@ func (tw *TestWorker) ProxyAddrs() []string {
 	}
 
 	for _, listener := range tw.b.Listeners {
-		if listener.Config.Purpose[0] == "worker-alpn-tls" {
+		if listener.Config.Purpose[0] == "proxy" {
 			tcpAddr, ok := listener.Mux.Addr().(*net.TCPAddr)
 			if !ok {
 				tw.t.Fatal("could not parse address as a TCP addr")
@@ -185,7 +185,7 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 	for _, listener := range opts.Config.Listeners {
 		listener.RandomPort = true
 	}
-	if err := tw.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"worker-alpn-tls"}); err != nil {
+	if err := tw.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"proxy"}); err != nil {
 		t.Fatal(err)
 	}
 

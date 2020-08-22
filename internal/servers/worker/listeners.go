@@ -24,7 +24,7 @@ func (w *Worker) startListeners() error {
 				// We may have this in dev mode; ignore
 				continue
 
-			case "worker-alpn-tls":
+			case "proxy":
 				// Do nothing; handle below
 
 			default:

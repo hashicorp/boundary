@@ -144,7 +144,7 @@ func (c *Controller) startListeners() error {
 				} else {
 					err = configureForCluster(ln)
 				}
-			case "worker-alpn-tls":
+			case "proxy":
 				// Do nothing, in a dev mode we might see it here
 			default:
 				err = fmt.Errorf("unknown listener purpose %q", purpose)

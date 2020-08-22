@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -18,19 +19,11 @@ const (
 
 func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	var jobId string
-	switch len(hello.SupportedProtos) {
-	case 0:
-		return nil, fmt.Errorf("no alpn nextproto value could be found")
-	case 1:
-		if hello.SupportedProtos[0] == "h2" {
-			// In the future we'll handle it when we support custom certs,
-			// but for now we don't support this.
-			return nil, errors.New("h2 is not currently a supported alpn nextproto value")
-		} else {
-			jobId = hello.SupportedProtos[0]
-		}
+	switch {
+	case strings.HasPrefix(hello.ServerName, "s_"):
+		jobId = hello.ServerName
 	default:
-		return nil, fmt.Errorf("too many alpn nextproto values: %v", hello.SupportedProtos)
+		return nil, fmt.Errorf("could not find job ID in SNI")
 	}
 
 	rawConn := w.controllerConn.Load()
@@ -75,14 +68,13 @@ func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 				Leaf:        parsedCert,
 			},
 		},
-		NextProtos: []string{parsedCert.DNSNames[0]},
 		ServerName: parsedCert.DNSNames[0],
 		ClientAuth: tls.RequireAndVerifyClientCert,
 		ClientCAs:  certPool,
 		MinVersion: tls.VersionTLS13,
 	}
 
-	//log.Println(litter.Sdump(tlsConf))
+	//w.logger.Trace(litter.Sdump(tlsConf))
 
 	return tlsConf, nil
 }

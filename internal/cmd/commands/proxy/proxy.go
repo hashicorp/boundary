@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 
 	"github.com/golang/protobuf/proto"
@@ -15,7 +16,7 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
-	"github.com/sanity-io/litter"
+	"nhooyr.io/websocket"
 )
 
 var _ cli.Command = (*Command)(nil)
@@ -143,53 +144,45 @@ func (c *Command) Run(args []string) int {
 			},
 		},
 		RootCAs:    certPool,
-		NextProtos: []string{parsedCert.DNSNames[0]},
 		ServerName: parsedCert.DNSNames[0],
 		MinVersion: tls.VersionTLS13,
 	}
 
-	c.UI.Info(litter.Sdump(tlsConf))
 	transport := cleanhttp.DefaultTransport()
 	transport.DisableKeepAlives = false
 	transport.TLSClientConfig = tlsConf
 
-	conn, err := tls.Dial("tcp", sessionInfo.GetWorkerInfo()[0].GetAddress(), tlsConf)
-	if err != nil {
-		c.UI.Error(err.Error())
-	}
-	c.UI.Info(litter.Sdump(conn.ConnectionState()))
-	/*
-		conn, resp, err := websocket.Dial(
-			c.Context,
-			fmt.Sprintf("wss://%s/v1/proxy", sessionInfo.GetWorkerInfo()[0].GetAddress()),
-			&websocket.DialOptions{
-				HTTPClient: &http.Client{
-					Transport: transport,
-				},
-				Subprotocols: []string{supportedProto},
+	conn, resp, err := websocket.Dial(
+		c.Context,
+		fmt.Sprintf("wss://%s/v1/proxy", sessionInfo.GetWorkerInfo()[0].GetAddress()),
+		&websocket.DialOptions{
+			HTTPClient: &http.Client{
+				Transport: transport,
 			},
-		)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error dialing the worker: %w", err).Error())
-			return 1
-		}
-		// TODO: Is this needed, or is the context sufficient?
-		//defer conn.Close(websocket.StatusNormalClosure, "done-client")
-		_ = conn
+			Subprotocols: []string{supportedProto},
+		},
+	)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error dialing the worker: %w", err).Error())
+		return 1
+	}
+	// TODO: Is this needed, or is the context sufficient?
+	//defer conn.Close(websocket.StatusNormalClosure, "done-client")
+	_ = conn
 
-		if resp == nil {
-			c.UI.Error("Response from worker is nil")
-			return 1
-		}
-		if resp.Header == nil {
-			c.UI.Error("Response header is nil")
-			return 1
-		}
-		negProto := resp.Header.Get("Sec-WebSocket-Protocol")
-		if negProto != supportedProto {
-			c.UI.Error(fmt.Sprintf("Unexpected negotiated protocol: %s", negProto))
-			return 1
-		}
-	*/
+	if resp == nil {
+		c.UI.Error("Response from worker is nil")
+		return 1
+	}
+	if resp.Header == nil {
+		c.UI.Error("Response header is nil")
+		return 1
+	}
+	negProto := resp.Header.Get("Sec-WebSocket-Protocol")
+	if negProto != supportedProto {
+		c.UI.Error(fmt.Sprintf("Unexpected negotiated protocol: %s", negProto))
+		return 1
+	}
+
 	return 0
 }

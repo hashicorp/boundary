@@ -69,7 +69,7 @@ listener "tcp" {
 
 	devWorkerExtraConfig = `
 listener "tcp" {
-	purpose = "worker-alpn-tls"
+	purpose = "proxy"
 	tls_disable = true
 	proxy_protocol_behavior = "allow_authorized"
 	proxy_protocol_authorized_addrs = "127.0.0.1"
