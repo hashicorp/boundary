@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
@@ -43,7 +42,6 @@ func New(conf *Config) (*Worker, error) {
 		controllerResolverCleanup: new(atomic.Value),
 	}
 
-	w.controllerConn.Store((services.WorkerServiceClient)(nil))
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
 	w.started.Store(false)
 	w.controllerResolver.Store((*manual.Resolver)(nil))

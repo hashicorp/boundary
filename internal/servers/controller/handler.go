@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/sanity-io/litter"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authenticate"
@@ -395,7 +396,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 
 		ret.PrivateKey = nil
 		c.jobMap.Store(jobId, ret)
-		c.logger.Info("stored entry", "job_id", jobId, "endpoint", endpoint)
+		c.logger.Info("stored entry", "job_id", jobId, "endpoint", endpoint, "workers", litter.Sdump(workers))
 	})
 }
 

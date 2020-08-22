@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -29,7 +30,17 @@ func (c *Worker) handler(props HandlerProperties) http.Handler {
 func handleProxy() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"foo": "bar"}`))
+
+		ret := map[string]interface{}{
+			"job": r.TLS.ServerName,
+		}
+		b, err := json.Marshal(ret)
+		if err != nil {
+			w.Write([]byte(err.Error()))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Write(b)
 	})
 }
 
