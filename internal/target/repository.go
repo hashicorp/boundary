@@ -439,12 +439,8 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 			deleteHostSets = append(deleteHostSets, hs)
 		}
 	}
-	currentHostSets := make([]string, 0, len(hostSetIds)+len(found))
 	if len(addHostSets) == 0 && len(deleteHostSets) == 0 {
-		for _, id := range foundThs {
-			currentHostSets = append(currentHostSets, id)
-		}
-		return currentHostSets, db.NoRowsAffected, nil
+		return foundThs, db.NoRowsAffected, nil
 	}
 
 	var metadata oplog.Metadata
@@ -465,6 +461,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 	}
 
 	var totalRowsAffected int
+	var currentHostSets []string
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
