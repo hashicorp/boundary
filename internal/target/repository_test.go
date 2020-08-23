@@ -748,15 +748,12 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantAffectedRows, affectedRows)
 			assert.Equal(len(tt.args.hostSetIds), len(got))
-			var gotIds []string
-			for _, id := range got {
-				gotIds = append(gotIds, id)
-			}
+
 			var wantIds []string
 			wantIds = append(wantIds, tt.args.hostSetIds...)
 			sort.Strings(wantIds)
-			sort.Strings(gotIds)
-			assert.Equal(wantIds, gotIds)
+			sort.Strings(got)
+			assert.Equal(wantIds, got)
 
 			foundTarget, _, err := repo.LookupTarget(context.Background(), tt.args.target.GetPublicId())
 			require.NoError(err)
