@@ -53,71 +53,51 @@ create or replace function
   target_host_set_scope_valid()
   returns trigger
 as $$
-declare hs_scope_id text;
-declare hs_scope_type text;
-declare hs_scope_parent_id text;
-declare t_scope_id text;
-declare t_scope_type text;
-declare t_scope_parent_id text;
 begin
-  select 
-    hc.scope_id,
-    s.type,
-    s.parent_id
-  from 
-    iam_scope s,
-    host_set hs,
-    host_catalog hc
-  where 
-    hs.catalog_id = hc.public_id and
-    hc.scope_id = s.public_id and 
-    hs.public_id = new.host_set_id
-  into hs_scope_id, hs_scope_type, hs_scope_parent_id;
+perform (
+  with recursive
+  -- using the new.target_id: build a list of valid_scopes that contains the
+  -- scope_ids for the org of the target + all of the projects within that org
+  valid_scopes(scope_id) as (
+    select case s.type  
+      when 'org' then s.public_id
+      else s.parent_id
+      end
+    from 
+      iam_scope s,
+      target t
+    where 
+      s.public_id = t.scope_id and
+      t.public_id = new.target_id 
+    union all 
+      select s.public_id
+      from 
+        iam_scope s,
+        valid_scopes vs
+      where s.parent_id = vs.scope_id        
+  ),
+  -- using the new.host_set_id: check to see if the scope of the host set's
+  -- catalog matches one of the valid_scopes
+  final (scope_id) as (
+    select hc.scope_id
+    from 
+      host_catalog hc,
+      host_set hs,
+      valid_scopes vs
+    where
+      hc.public_id = hs.catalog_id and 
+      hc.scope_id in (vs.scope_id) and 
+      hs.public_id = new.host_set_id
+  )
+  select scope_id from final
+);
 
-  select 
-    s.public_id,
-    s.type,
-    s.parent_id
-  from 
-    iam_scope s,
-    target t
-  where 
-    s.public_id = t.scope_id and
-    t.public_id = new.target_id 
-  into t_scope_id, t_scope_type, t_scope_parent_id;
-  
-  if hs_scope_id = t_scope_id then
-    if hs_scope_type = 'org' then
-      return new;
-    end if;
-    if hs_scope_type = 'project' then
-      return new;
-    end if;
-    raise exception 'scopes (% == %) match but invalid hs scope type % (must be org or project)', hs_scope_id, t_scope_id, hs_scope_type;
-  end if;
-
-  if t_scope_type = 'org' then
-    -- Allow if target scope is the parent of the host set; this is, if the host
-    -- set belongs to a direct child scope of the target's org 
-    if t_scope_id = hs_scope_parent_id then
-      return new;
-    end if;
-    raise exception 'host set scope % is not a child project of the target scope %', hs_scope_id, t_scope_id;
-  end if;
-
-  if hs_scope_type = 'org' then
-    -- Allow if host set scope is the parent of the target; this is, if the
-    -- target belongs to a direct child scope of the host set's org  
-    if hs_scope_id = t_scope_parent_id then
-      return new;
-    end if;
-    raise exception 'target scope % is not a child project of the host set scope %', t_scope_id, hs_scope_id;
-  end if;
-
+if not found then
   -- well, it's not a valid scope relationship
   raise exception 'target scope % and host set scope % are not equal and not related via an org', t_scope_id, hs_scope_id;
+end if;
+return new;
 end;
 $$ language plpgsql;
-
 
 commit;
