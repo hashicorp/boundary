@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -145,4 +147,189 @@ func TestRepository_ListSetMembers_Limits(t *testing.T) {
 			assert.Len(got, tt.wantLen)
 		})
 	}
+}
+
+func TestRepository_AddSetMembers_InvalidParameters(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	_, prj := iam.TestScopes(t, iamRepo)
+	c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	set := TestSets(t, conn, c.PublicId, 1)[0]
+	hosts := TestHosts(t, conn, c.PublicId, 5)
+	var hostIds []string
+	for _, h := range hosts {
+		hostIds = append(hostIds, h.PublicId)
+	}
+
+	badVersion := uint32(12345)
+
+	type args struct {
+		scopeId string
+		setId   string
+		version uint32
+		hostIds []string
+		opt     []Option
+	}
+
+	tests := []struct {
+		name      string
+		args      args
+		want      []*Host
+		wantErr   bool
+		wantIsErr error
+	}{
+		{
+			name: "empty-scope-id",
+			args: args{
+				setId:   set.PublicId,
+				version: set.Version,
+				hostIds: hostIds,
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-set-id",
+			args: args{
+				scopeId: prj.PublicId,
+				version: set.Version,
+				hostIds: hostIds,
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "zero-version",
+			args: args{
+				scopeId: prj.PublicId,
+				setId:   set.PublicId,
+				hostIds: hostIds,
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-host-ids",
+			args: args{
+				scopeId: prj.PublicId,
+				setId:   set.PublicId,
+				version: set.Version,
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-version",
+			args: args{
+				scopeId: prj.PublicId,
+				setId:   set.PublicId,
+				version: badVersion,
+				hostIds: hostIds,
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid",
+			args: args{
+				scopeId: prj.PublicId,
+				setId:   set.PublicId,
+				version: set.Version,
+				hostIds: hostIds,
+			},
+			want: hosts,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kms)
+			require.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.AddSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(got)
+				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+				return
+			}
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Nil(got)
+				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+				return
+			}
+			require.NoError(err)
+			opts := []cmp.Option{
+				cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
+				protocmp.Transform(),
+			}
+			assert.Empty(cmp.Diff(tt.want, got, opts...))
+			assert.NoError(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+		})
+	}
+}
+
+func TestRepository_AddSetMembers_InvalidHostCombinations(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	_, prj := iam.TestScopes(t, iamRepo)
+
+	assert, require := assert.New(t), require.New(t)
+	c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	set := TestSets(t, conn, c.PublicId, 1)[0]
+
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	hosts := TestHosts(t, conn, c.PublicId, 5)
+	var hostIds []string
+	for _, h := range hosts {
+		hostIds = append(hostIds, h.PublicId)
+	}
+
+	// first call - add first set of hosts - should succeed
+	got, err := repo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds)
+	require.NoError(err)
+	require.NotNil(got)
+
+	opts := []cmp.Option{
+		cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
+		protocmp.Transform(),
+	}
+	assert.Empty(cmp.Diff(hosts, got, opts...))
+	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+
+	// second call - add new set of hosts - should succeed
+	set.Version = set.Version + 1
+	hosts2 := TestHosts(t, conn, c.PublicId, 5)
+	var hostIds2 []string
+	for _, h := range hosts2 {
+		hostIds2 = append(hostIds2, h.PublicId)
+	}
+	got2, err2 := repo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds2)
+	require.NoError(err2)
+	require.NotNil(got2)
+
+	hosts = append(hosts, hosts2...)
+	assert.Empty(cmp.Diff(hosts, got2, opts...))
+	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+
+	// third call - add new hosts plus a few existing hosts - should fail
+	set.Version = set.Version + 1
+	hosts3 := TestHosts(t, conn, c.PublicId, 5)
+	var hostIds3 []string
+	for _, h := range hosts3 {
+		hostIds3 = append(hostIds2, h.PublicId)
+	}
+	hostIds3 = append(hostIds3, hostIds2...)
+	got3, err3 := repo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds3)
+	require.Error(err3)
+	require.Nil(got3)
 }

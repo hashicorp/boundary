@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 )
 
 // ListSetMembers returns a slice of all hosts in setId.
@@ -52,11 +54,107 @@ func (r *Repository) ListSetMembers(ctx context.Context, setId string, opt ...Op
 }
 
 // AddSetMembers adds hostIds to setId in the repository. It returns a
-// slice of all host set members in setId. A host must belong to the same
-// catalog as the set to be added. The version must match the current
-// version of the setId in the repository.
-func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*HostSetMember, error) {
-	panic("not implemented")
+// slice of all hosts in setId. A host must belong to the same catalog as
+// the set to be added. The version must match the current version of the
+// setId in the repository.
+func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, error) {
+	if scopeId == "" {
+		return nil, fmt.Errorf("add: static host set members: missing scope id: %w", db.ErrInvalidParameter)
+	}
+	if setId == "" {
+		return nil, fmt.Errorf("add: static host set members: missing set id: %w", db.ErrInvalidParameter)
+	}
+	if version == 0 {
+		return nil, fmt.Errorf("add: static host set members: version is zero: %w", db.ErrInvalidParameter)
+	}
+	if len(hostIds) == 0 {
+		return nil, fmt.Errorf("add: static host set members: empty hostIds: %w", db.ErrInvalidParameter)
+	}
+
+	// Create in-memory host set members
+	var members []interface{}
+	for _, id := range hostIds {
+		var m *HostSetMember
+		m, err := NewHostSetMember(setId, id)
+		if err != nil {
+			return nil, fmt.Errorf("add: static host set members: %w", err)
+		}
+		members = append(members, m)
+	}
+
+	wrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, fmt.Errorf("add: static host set members: unable to get oplog wrapper: %w", err)
+	}
+
+	var hosts []*Host
+
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
+		set := newHostSetForMembers(setId, version)
+		metadata := set.oplog(oplog.OpType_OP_TYPE_CREATE)
+
+		// Create host set members
+		var msgs []*oplog.Message
+		if err := w.CreateItems(ctx, members, db.NewOplogMsgs(&msgs)); err != nil {
+			return fmt.Errorf("unable to create host set members: %w", err)
+		}
+
+		// Update host set version
+		setMsg := new(oplog.Message)
+		rowsUpdated, err := w.Update(
+			ctx,
+			set,
+			[]string{"Version"},
+			nil,
+			db.NewOplogMsg(setMsg),
+			db.WithVersion(&version),
+		)
+		switch {
+		case err != nil:
+			return fmt.Errorf("unable to update host set version: %w", err)
+		case rowsUpdated > 1:
+			return fmt.Errorf("unable to update host set version: %w", db.ErrMultipleRecords)
+		}
+		msgs = append(msgs, setMsg)
+
+		// Write oplog
+		ticket, err := w.GetTicket(set)
+		if err != nil {
+			return fmt.Errorf("unable to get ticket: %w", err)
+		}
+		if err := w.WriteOplogEntryWith(ctx, wrapper, ticket, metadata, msgs); err != nil {
+			return fmt.Errorf("unable to write oplog: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("add: static host set members: %w", err)
+	}
+
+	// Get list of hosts
+
+	// NOTE(mgaffney): Currently, this cannot be done within the
+	// transaction. Gorm panics when DB() is called during a transaction.
+	tx, err := r.reader.DB()
+	if err != nil {
+		return nil, fmt.Errorf("get hosts: unable to get DB: %w", err)
+	}
+
+	rows, err := tx.Query(setMembersQueryNoLimit, setId)
+	if err != nil {
+		return nil, fmt.Errorf("get hosts: query failed: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var h Host
+		if err := r.reader.ScanRows(rows, &h); err != nil {
+			return nil, fmt.Errorf("get hosts: scan row failed: %w", err)
+		}
+		hosts = append(hosts, &h)
+	}
+	return hosts, nil
 }
 
 // DeleteSetMembers deletes hostIds from setId in the repository. It
@@ -67,9 +165,9 @@ func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId
 }
 
 // SetSetMembers replaces the hosts in setId with hostIds in the
-// repository. It returns a slice of all host set members in setId. A host
-// must belong to the same catalog as the set to be added. The version must
-// match the current version of the setId in the repository.
-func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*HostSetMember, error) {
+// repository. It returns a slice of all hosts in setId. A host must belong
+// to the same catalog as the set to be added. The version must match the
+// current version of the setId in the repository.
+func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, error) {
 	panic("not implemented")
 }
