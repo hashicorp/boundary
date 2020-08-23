@@ -161,7 +161,85 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 // returns the number of hosts deleted from the set. The version must match
 // the current version of the setId in the repository.
 func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) (int, error) {
-	panic("not implemented")
+	if scopeId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: missing scope id: %w", db.ErrInvalidParameter)
+	}
+	if setId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: missing set id: %w", db.ErrInvalidParameter)
+	}
+	if version == 0 {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: version is zero: %w", db.ErrInvalidParameter)
+	}
+	if len(hostIds) == 0 {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: empty hostIds: %w", db.ErrInvalidParameter)
+	}
+
+	// Create in-memory host set members
+	var members []interface{}
+	for _, id := range hostIds {
+		var m *HostSetMember
+		m, err := NewHostSetMember(setId, id)
+		if err != nil {
+			return db.NoRowsAffected, fmt.Errorf("delete: static host set members: %w", err)
+		}
+		members = append(members, m)
+	}
+
+	wrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: unable to get oplog wrapper: %w", err)
+	}
+
+	var rowsDeleted int
+
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
+		set := newHostSetForMembers(setId, version)
+		metadata := set.oplog(oplog.OpType_OP_TYPE_DELETE)
+
+		// Delete host set members
+		var msgs []*oplog.Message
+		rowsDeleted, err = w.DeleteItems(ctx, members, db.NewOplogMsgs(&msgs))
+		if err != nil {
+			return fmt.Errorf("unable to delete host set members: %w", err)
+		}
+		if rowsDeleted != len(members) {
+			return fmt.Errorf("set members deleted %d did not match request for %d", rowsDeleted, len(members))
+		}
+
+		// Update host set version
+		setMsg := new(oplog.Message)
+		rowsUpdated, err := w.Update(
+			ctx,
+			set,
+			[]string{"Version"},
+			nil,
+			db.NewOplogMsg(setMsg),
+			db.WithVersion(&version),
+		)
+		switch {
+		case err != nil:
+			return fmt.Errorf("unable to update host set version: %w", err)
+		case rowsUpdated > 1:
+			return fmt.Errorf("unable to update host set version: %w", db.ErrMultipleRecords)
+		}
+		msgs = append(msgs, setMsg)
+
+		// Write oplog
+		ticket, err := w.GetTicket(set)
+		if err != nil {
+			return fmt.Errorf("unable to get ticket: %w", err)
+		}
+		if err := w.WriteOplogEntryWith(ctx, wrapper, ticket, metadata, msgs); err != nil {
+			return fmt.Errorf("unable to write oplog: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: %w", err)
+	}
+	return rowsDeleted, nil
 }
 
 // SetSetMembers replaces the hosts in setId with hostIds in the
