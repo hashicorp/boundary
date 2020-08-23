@@ -200,7 +200,6 @@ func TestRepository_ListTargets(t *testing.T) {
 				}
 			}
 			assert.Equal(tt.createCnt, len(testGroups))
-			conn.LogMode(true)
 			got, err := repo.ListTargets(context.Background(), tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -304,14 +303,7 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	staticOrg, staticProj := iam.TestScopes(t, iamRepo)
-	orgTarget := TestTcpTarget(t, conn, staticOrg.PublicId, "static-org")
-	projTarget := TestTcpTarget(t, conn, staticProj.PublicId, "static-proj")
 	repo, err := NewRepository(rw, rw, testKms)
-	require.NoError(t, err)
-
-	_, _, err = repo.LookupTarget(context.Background(), orgTarget.PublicId)
-	require.NoError(t, err)
-	_, _, err = repo.LookupTarget(context.Background(), projTarget.PublicId)
 	require.NoError(t, err)
 
 	createHostSetsFn := func(orgs, projects []string) []string {
@@ -376,6 +368,11 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			require.NoError(conn.Where("1=1").Delete(allocTargetHostSet()).Error)
+			require.NoError(conn.Where("1=1").Delete(allocTcpTarget()).Error)
+
+			orgTarget := TestTcpTarget(t, conn, staticOrg.PublicId, "static-org")
+			projTarget := TestTcpTarget(t, conn, staticProj.PublicId, "static-proj")
+
 			var hostSetIds []string
 			for _, targetId := range []string{projTarget.PublicId, orgTarget.PublicId} {
 				origTarget, origHostSet, err := repo.LookupTarget(context.Background(), targetId)
@@ -392,6 +389,18 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 					if tt.wantErrIs != nil {
 						assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 					}
+					// test to see of the target version update oplog was not created
+					err = db.TestVerifyOplog(t, rw, targetId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+					assert.Error(err)
+
+					// TODO (jimlambrt 9/2020) - unfortunately, we can currently
+					// test to make sure that the oplog entry for a target create
+					// doesn't exist because the db.TestVerifyOplog doesn't really
+					// support that level of testing and the previous call to
+					// TestTcpTarget would create an oplog entry for the
+					// create on the target.   Once TestVerifyOplog supports the
+					// appropriate granularity, we should add an appropriate assert.
+
 					return
 				}
 				require.NoError(err)
@@ -399,7 +408,17 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 				for _, id := range gotHostSets {
 					gotHostSet[id] = true
 				}
-				err = db.TestVerifyOplog(t, rw, targetId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+
+				// TODO (jimlambrt 9/2020) - unfortunately, we can currently
+				// test to make sure that the oplog entry for a target create
+				// doesn't exist because the db.TestVerifyOplog doesn't really
+				// support that level of testing and the previous call to
+				// TestTcpTarget would create an oplog entry for the
+				// create on the target.   Once TestVerifyOplog supports the
+				// appropriate granularity, we should add an appropriate assert.
+
+				// test to see of the target version update oplog was  created
+				err = db.TestVerifyOplog(t, rw, targetId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.NoError(err)
 
 				foundHostSets, err := fetchHostSets(context.Background(), rw, targetId)
@@ -562,6 +581,14 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 				if tt.wantIsErr != nil {
 					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
 				}
+				// TODO (jimlambrt 9/2020) - unfortunately, we can currently
+				// test to make sure that the oplog entry for a target update
+				// doesn't exist because the db.TestVerifyOplog doesn't really
+				// support that level of testing and the previous call to
+				// repo.AddTargeHostSets() would create an oplog entry for the
+				// update to the target.   Once TestVerifyOplog supports the
+				// appropriate granularity, we should add an appropriate assert.
+
 				err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.True(errors.Is(db.ErrRecordNotFound, err))
@@ -570,6 +597,15 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 
+			// TODO (jimlambrt 9/2020) - unfortunately, we can currently
+			// test to make sure that the oplog entry for a target update
+			// doesn't exist because the db.TestVerifyOplog doesn't really
+			// support that level of testing and the previous call to
+			// repo.AddTargeHostSets() would create an oplog entry for the
+			// update to the target.   Once TestVerifyOplog supports the
+			// appropriate granularity,, we should add an appropriate assert.
+
+			// we should find the oplog for the delete of target host sets
 			err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 		})

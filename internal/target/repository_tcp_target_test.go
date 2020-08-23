@@ -150,6 +150,15 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 
 			err = db.TestVerifyOplog(t, rw, target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
+
+			// TODO (jimlambrt 9/2020) - unfortunately, we can currently
+			// test to make sure that the oplog entry for a target host sets
+			// create exist because the db.TestVerifyOplog doesn't really
+			// support that level of testing and the previous call to
+			// CreateTcpTarget would create an oplog entry for the
+			// create on the target even if no host sets were added.   Once
+			// TestVerifyOplog supports the appropriate granularity, we should
+			// add an appropriate assert.
 		})
 	}
 }
