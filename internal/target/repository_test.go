@@ -3,6 +3,7 @@ package target
 import (
 	"context"
 	"errors"
+	"sort"
 	"strconv"
 	"testing"
 	"time"
@@ -608,6 +609,162 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			// we should find the oplog for the delete of target host sets
 			err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
+		})
+	}
+}
+
+func TestRepository_SetTargetHostSets(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, testKms)
+	require.NoError(t, err)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, proj := iam.TestScopes(t, iamRepo)
+
+	testCats := static.TestCatalogs(t, conn, org.PublicId, 1)
+	hsets := static.TestSets(t, conn, testCats[0].GetPublicId(), 5)
+	testHostSetIds := make([]string, 0, len(hsets))
+	for _, hs := range hsets {
+		testHostSetIds = append(testHostSetIds, hs.PublicId)
+	}
+
+	createHostSetsFn := func() []string {
+		results := []string{}
+		for _, publicId := range []string{org.PublicId, proj.PublicId} {
+			for i := 0; i < 5; i++ {
+				cats := static.TestCatalogs(t, conn, publicId, 1)
+				hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 1)
+				results = append(results, hsets[0].PublicId)
+			}
+		}
+		return results
+	}
+
+	setupFn := func(target Target) []string {
+		hs := createHostSetsFn()
+		_, created, err := repo.AddTargeHostSets(context.Background(), target.GetPublicId(), 1, hs)
+		require.NoError(t, err)
+		require.Equal(t, 10, len(created))
+		return created
+	}
+	type args struct {
+		target            Target
+		targetVersion     uint32
+		hostSetIds        []string
+		addToOrigHostSets bool
+		opt               []Option
+	}
+	tests := []struct {
+		name             string
+		setup            func(Target) []string
+		args             args
+		wantAffectedRows int
+		wantErr          bool
+	}{
+		{
+			name:  "clear",
+			setup: setupFn,
+			args: args{
+				target:        TestTcpTarget(t, conn, proj.PublicId, "clear"),
+				targetVersion: 2, // yep, since setupFn will increment it to 2
+				hostSetIds:    []string{},
+			},
+			wantErr:          false,
+			wantAffectedRows: 10,
+		},
+		{
+			name:  "no-change",
+			setup: setupFn,
+			args: args{
+				target:            TestTcpTarget(t, conn, proj.PublicId, "no-change"),
+				targetVersion:     2, // yep, since setupFn will increment it to 2
+				hostSetIds:        []string{},
+				addToOrigHostSets: true,
+			},
+			wantErr:          false,
+			wantAffectedRows: 0,
+		},
+		{
+			name:  "add-sets",
+			setup: setupFn,
+			args: args{
+				target:            TestTcpTarget(t, conn, proj.PublicId, "add-sets"),
+				targetVersion:     2, // yep, since setupFn will increment it to 2
+				hostSetIds:        []string{testHostSetIds[0], testHostSetIds[1]},
+				addToOrigHostSets: true,
+			},
+			wantErr:          false,
+			wantAffectedRows: 2,
+		},
+		{
+			name:  "add host sets with zero version",
+			setup: setupFn,
+			args: args{
+				target:            TestTcpTarget(t, conn, proj.PublicId, "add host sets with zero version"),
+				targetVersion:     0,
+				hostSetIds:        []string{testHostSetIds[0], testHostSetIds[1]},
+				addToOrigHostSets: true,
+			},
+			wantErr: true,
+		},
+		{
+			name:  "remove existing and add users and grps",
+			setup: setupFn,
+			args: args{
+				target:            TestTcpTarget(t, conn, proj.PublicId, "remove existing and add users and grps"),
+				targetVersion:     2, // yep, since setupFn will increment it to 2
+				hostSetIds:        []string{testHostSetIds[0], testHostSetIds[1]},
+				addToOrigHostSets: false,
+			},
+			wantErr:          false,
+			wantAffectedRows: 12,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			var origHostSets []string
+			if tt.setup != nil {
+				origHostSets = tt.setup(tt.args.target)
+			}
+			if tt.args.addToOrigHostSets {
+				tt.args.hostSetIds = append(tt.args.hostSetIds, origHostSets...)
+			}
+			origTarget, lookedUpHs, err := repo.LookupTarget(context.Background(), tt.args.target.GetPublicId())
+			require.NoError(err)
+			assert.Equal(len(origHostSets), len(lookedUpHs))
+
+			got, affectedRows, err := repo.SetTargetHostSets(context.Background(), tt.args.target.GetPublicId(), tt.args.targetVersion, tt.args.hostSetIds, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				t.Log(err)
+				return
+			}
+			t.Log(err)
+			require.NoError(err)
+			assert.Equal(tt.wantAffectedRows, affectedRows)
+			assert.Equal(len(tt.args.hostSetIds), len(got))
+			var gotIds []string
+			for _, id := range got {
+				gotIds = append(gotIds, id)
+			}
+			var wantIds []string
+			wantIds = append(wantIds, tt.args.hostSetIds...)
+			sort.Strings(wantIds)
+			sort.Strings(gotIds)
+			assert.Equal(wantIds, gotIds)
+
+			foundTarget, _, err := repo.LookupTarget(context.Background(), tt.args.target.GetPublicId())
+			require.NoError(err)
+			if tt.name != "no-change" {
+				assert.Equalf(tt.args.targetVersion+1, foundTarget.GetVersion(), "%s unexpected version: %d/%d", tt.name, tt.args.targetVersion+1, foundTarget.GetVersion())
+				assert.Equalf(origTarget.GetVersion(), foundTarget.GetVersion()-1, "%s unexpected version: %d/%d", tt.name, origTarget.GetVersion(), foundTarget.GetVersion()-1)
+			}
+			t.Logf("target: %v and origVersion/newVersion: %d/%d", foundTarget.GetPublicId(), origTarget.GetVersion(), foundTarget.GetVersion())
 		})
 	}
 }
