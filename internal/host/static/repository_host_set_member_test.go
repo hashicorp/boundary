@@ -72,6 +72,7 @@ func TestRepository_ListSetMembers(t *testing.T) {
 				cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
 				protocmp.Transform(),
 			}
+			assert.Len(got, len(tt.want))
 			assert.Empty(cmp.Diff(tt.want, got, opts...))
 		})
 	}
@@ -149,7 +150,7 @@ func TestRepository_ListSetMembers_Limits(t *testing.T) {
 	}
 }
 
-func TestRepository_AddSetMembers_InvalidParameters(t *testing.T) {
+func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -265,13 +266,14 @@ func TestRepository_AddSetMembers_InvalidParameters(t *testing.T) {
 				cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
 				protocmp.Transform(),
 			}
+			assert.Len(got, len(tt.want))
 			assert.Empty(cmp.Diff(tt.want, got, opts...))
 			assert.NoError(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 		})
 	}
 }
 
-func TestRepository_AddSetMembers_InvalidHostCombinations(t *testing.T) {
+func TestRepository_AddSetMembers_Combinations(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -303,6 +305,7 @@ func TestRepository_AddSetMembers_InvalidHostCombinations(t *testing.T) {
 		cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
 		protocmp.Transform(),
 	}
+	assert.Len(got, len(hosts))
 	assert.Empty(cmp.Diff(hosts, got, opts...))
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
@@ -318,6 +321,7 @@ func TestRepository_AddSetMembers_InvalidHostCombinations(t *testing.T) {
 	require.NotNil(got2)
 
 	hosts = append(hosts, hosts2...)
+	assert.Len(got2, len(hosts))
 	assert.Empty(cmp.Diff(hosts, got2, opts...))
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
@@ -334,7 +338,7 @@ func TestRepository_AddSetMembers_InvalidHostCombinations(t *testing.T) {
 	require.Nil(got3)
 }
 
-func TestRepository_DeleteSetMembers_InvalidParameters(t *testing.T) {
+func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -456,7 +460,7 @@ func TestRepository_DeleteSetMembers_InvalidParameters(t *testing.T) {
 	}
 }
 
-func TestRepository_DeleteSetMembers_InvalidHostCombinations(t *testing.T) {
+func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -499,6 +503,7 @@ func TestRepository_DeleteSetMembers_InvalidHostCombinations(t *testing.T) {
 		cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
 		protocmp.Transform(),
 	}
+	assert.Len(members, len(hostsB))
 	assert.Empty(cmp.Diff(hostsB, members, opts...))
 
 	// second call - delete first half of hosts again - should fail
@@ -522,4 +527,322 @@ func TestRepository_DeleteSetMembers_InvalidHostCombinations(t *testing.T) {
 	members2, err := repo.ListSetMembers(context.Background(), set.PublicId)
 	require.NoError(err)
 	require.Empty(members2)
+}
+
+func TestRepository_SetSetMembers_Parameters(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	_, prj := iam.TestScopes(t, iamRepo)
+	c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	set := TestSets(t, conn, c.PublicId, 1)[0]
+
+	count := 5
+	hosts := TestHosts(t, conn, c.PublicId, count)
+
+	// hostsA has the first 3 hosts, hostsB has the last 3 hosts
+	// the middle host is shared in both.
+	hostsA, hostsB := hosts[:3], hosts[2:]
+	//hostsA is the initial set of hosts in the host set
+	TestSetMembers(t, conn, set.PublicId, hostsA)
+
+	var hostIds []string
+	for _, h := range hostsB {
+		hostIds = append(hostIds, h.PublicId)
+	}
+
+	badVersion := uint32(12345)
+
+	type args struct {
+		scopeId string
+		setId   string
+		version uint32
+		hostIds []string
+		opt     []Option
+	}
+
+	tests := []struct {
+		name      string
+		args      args
+		want      []*Host
+		wantCount int
+		wantErr   bool
+		wantIsErr error
+	}{
+		{
+			name: "empty-scope-id",
+			args: args{
+				setId:   set.PublicId,
+				version: set.Version,
+				hostIds: hostIds,
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-set-id",
+			args: args{
+				scopeId: prj.PublicId,
+				version: set.Version,
+				hostIds: hostIds,
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "zero-version",
+			args: args{
+				scopeId: prj.PublicId,
+				setId:   set.PublicId,
+				hostIds: hostIds,
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-version",
+			args: args{
+				scopeId: prj.PublicId,
+				setId:   set.PublicId,
+				version: badVersion,
+				hostIds: hostIds,
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid",
+			args: args{
+				scopeId: prj.PublicId,
+				setId:   set.PublicId,
+				version: set.Version,
+				hostIds: hostIds,
+			},
+			want:      hostsB,
+			wantCount: 4, // 2 deleted, 2 added
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kms)
+			require.NoError(err)
+			require.NotNil(repo)
+			got, gotCount, err := repo.SetSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(got)
+				assert.Equal(tt.wantCount, gotCount)
+				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+				return
+			}
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Nil(got)
+				assert.Equal(tt.wantCount, gotCount)
+				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+				return
+			}
+			require.NoError(err)
+			opts := []cmp.Option{
+				cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
+				protocmp.Transform(),
+			}
+			assert.Equal(tt.wantCount, gotCount)
+			assert.Len(got, len(tt.want))
+			assert.Empty(cmp.Diff(tt.want, got, opts...))
+			assert.NoError(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+		})
+	}
+}
+
+func TestRepository_SetSetMembers_Combinations(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	_, prj := iam.TestScopes(t, iamRepo)
+
+	assert, require := assert.New(t), require.New(t)
+	c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	set := TestSets(t, conn, c.PublicId, 1)[0]
+
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	count := 5
+	hosts := TestHosts(t, conn, c.PublicId, count)
+
+	var hostIds []string
+	for _, h := range hosts {
+		hostIds = append(hostIds, h.PublicId)
+	}
+
+	// hostsA has the first 3 hosts, hostsB has the last 3 hosts
+	// the middle host is shared in both.
+	hostsA, hostsB := hosts[:3], hosts[2:]
+	hostIdsA, hostIdsB := hostIds[:3], hostIds[2:]
+
+	opts := []cmp.Option{
+		cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
+		protocmp.Transform(),
+	}
+
+	// first call - empty set, empty host Ids - no additions no deletions
+	got1, gotCount1, err1 := repo.SetSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, nil)
+	assert.NoError(err1)
+	assert.Empty(got1)
+	assert.Zero(gotCount1)
+	assert.Error(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+
+	// second call - all additions
+	got2, gotCount2, err2 := repo.SetSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIdsA)
+	assert.NoError(err2)
+	assert.Equal(len(hostsA), gotCount2)
+	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+	assert.Len(got2, len(hostsA))
+	assert.Empty(cmp.Diff(hostsA, got2, opts...))
+
+	// third call - mix of additions and deletions
+	set.Version = set.Version + 1
+	got3, gotCount3, err3 := repo.SetSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIdsB)
+	assert.NoError(err3)
+	assert.Equal(4, gotCount3)
+	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+	assert.Len(got3, len(hostsB))
+	assert.Empty(cmp.Diff(hostsB, got3, opts...))
+
+	// fourth call - all deletions
+	set.Version = set.Version + 1
+	got4, gotCount4, err4 := repo.SetSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, nil)
+	assert.NoError(err4)
+	assert.Equal(len(hostsB), gotCount4)
+	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+	assert.Empty(got4)
+}
+
+func TestRepository_changes(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	_, prj := iam.TestScopes(t, iamRepo)
+
+	t.Run("all-additions", func(t *testing.T) {
+		c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+		set := TestSets(t, conn, c.PublicId, 1)[0]
+		count := 5
+		hosts := TestHosts(t, conn, c.PublicId, count)
+
+		var hostIds []string
+		for _, h := range hosts {
+			hostIds = append(hostIds, h.PublicId)
+		}
+
+		var want []*change
+		for _, h := range hosts {
+			chg := &change{
+				Action: "add",
+				HostId: h.PublicId,
+			}
+			want = append(want, chg)
+		}
+
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, kms)
+		require.NoError(err)
+		require.NotNil(repo)
+
+		got, err := repo.changes(context.Background(), set.PublicId, hostIds)
+		assert.NoError(err)
+		require.NotNil(got)
+		opts := []cmp.Option{
+			cmpopts.SortSlices(func(x, y *change) bool { return x.HostId < y.HostId }),
+		}
+		assert.Len(got, len(want))
+		assert.Empty(cmp.Diff(want, got, opts...))
+	})
+	t.Run("all-deletions", func(t *testing.T) {
+		c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+		set := TestSets(t, conn, c.PublicId, 1)[0]
+		count := 5
+		hosts := TestHosts(t, conn, c.PublicId, count)
+		TestSetMembers(t, conn, set.PublicId, hosts)
+
+		var want []*change
+		for _, h := range hosts {
+			chg := &change{
+				Action: "delete",
+				HostId: h.PublicId,
+			}
+			want = append(want, chg)
+		}
+
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, kms)
+		require.NoError(err)
+		require.NotNil(repo)
+
+		got, err := repo.changes(context.Background(), set.PublicId, nil)
+		assert.NoError(err)
+		require.NotNil(got)
+		opts := []cmp.Option{
+			cmpopts.SortSlices(func(x, y *change) bool { return x.HostId < y.HostId }),
+		}
+		assert.Len(got, len(want))
+		assert.Empty(cmp.Diff(want, got, opts...))
+	})
+	t.Run("additions-with-deletions", func(t *testing.T) {
+		c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+		set := TestSets(t, conn, c.PublicId, 1)[0]
+
+		count := 5
+		hosts := TestHosts(t, conn, c.PublicId, count)
+		initialHosts := hosts[:3]
+		TestSetMembers(t, conn, set.PublicId, initialHosts)
+		targetHosts := hosts[2:]
+		deleteHosts := hosts[:2]
+		insertHosts := hosts[3:]
+
+		var targetHostIds []string
+		for _, h := range targetHosts {
+			targetHostIds = append(targetHostIds, h.PublicId)
+		}
+
+		var want []*change
+		for _, h := range deleteHosts {
+			chg := &change{
+				Action: "delete",
+				HostId: h.PublicId,
+			}
+			want = append(want, chg)
+		}
+		for _, h := range insertHosts {
+			chg := &change{
+				Action: "add",
+				HostId: h.PublicId,
+			}
+			want = append(want, chg)
+		}
+
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, kms)
+		require.NoError(err)
+		require.NotNil(repo)
+
+		got, err := repo.changes(context.Background(), set.PublicId, targetHostIds)
+		assert.NoError(err)
+		require.NotNil(got)
+		opts := []cmp.Option{
+			cmpopts.SortSlices(func(x, y *change) bool { return x.HostId < y.HostId }),
+		}
+		assert.Len(got, len(want))
+		assert.Empty(cmp.Diff(want, got, opts...))
+	})
 }
