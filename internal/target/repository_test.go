@@ -405,9 +405,9 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 					return
 				}
 				require.NoError(err)
-				gotHostSet := map[string]bool{}
-				for _, id := range gotHostSets {
-					gotHostSet[id] = true
+				gotHostSet := map[string]*TargetSet{}
+				for _, s := range gotHostSets {
+					gotHostSet[s.PublicId] = s
 				}
 
 				// TODO (jimlambrt 9/2020) - unfortunately, we can currently
@@ -422,10 +422,10 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 				err = db.TestVerifyOplog(t, rw, targetId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.NoError(err)
 
-				foundHostSets, err := fetchHostSets(context.Background(), rw, targetId)
+				foundHostSets, err := fetchSets(context.Background(), rw, targetId)
 				require.NoError(err)
-				for _, id := range foundHostSets {
-					assert.NotEmpty(gotHostSet[id])
+				for _, s := range foundHostSets {
+					assert.NotEmpty(gotHostSet[s.PublicId])
 				}
 
 				t, ths, err := repo.LookupTarget(context.Background(), targetId)
@@ -644,7 +644,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 		return results
 	}
 
-	setupFn := func(target Target) []string {
+	setupFn := func(target Target) []*TargetSet {
 		hs := createHostSetsFn()
 		_, created, err := repo.AddTargeHostSets(context.Background(), target.GetPublicId(), 1, hs)
 		require.NoError(t, err)
@@ -660,7 +660,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 	}
 	tests := []struct {
 		name             string
-		setup            func(Target) []string
+		setup            func(Target) []*TargetSet
 		args             args
 		wantAffectedRows int
 		wantErr          bool
@@ -727,12 +727,16 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			var origHostSets []string
+			var origHostSets []*TargetSet
 			if tt.setup != nil {
 				origHostSets = tt.setup(tt.args.target)
 			}
 			if tt.args.addToOrigHostSets {
-				tt.args.hostSetIds = append(tt.args.hostSetIds, origHostSets...)
+				origIds := make([]string, 0, len(origHostSets))
+				for _, s := range origHostSets {
+					origIds = append(origIds, s.PublicId)
+				}
+				tt.args.hostSetIds = append(tt.args.hostSetIds, origIds...)
 			}
 			origTarget, lookedUpHs, err := repo.LookupTarget(context.Background(), tt.args.target.GetPublicId())
 			require.NoError(err)
@@ -752,8 +756,16 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 			var wantIds []string
 			wantIds = append(wantIds, tt.args.hostSetIds...)
 			sort.Strings(wantIds)
-			sort.Strings(got)
-			assert.Equal(wantIds, got)
+
+			var gotIds []string
+			if len(got) > 0 {
+				gotIds = make([]string, 0, len(got))
+				for _, s := range got {
+					gotIds = append(gotIds, s.PublicId)
+				}
+			}
+			sort.Strings(gotIds)
+			assert.Equal(wantIds, gotIds)
 
 			foundTarget, _, err := repo.LookupTarget(context.Background(), tt.args.target.GetPublicId())
 			require.NoError(err)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	hostStore "github.com/hashicorp/boundary/internal/host/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"google.golang.org/protobuf/proto"
@@ -90,4 +91,14 @@ func (t *TargetHostSet) oplog(op oplog.OpType) oplog.Metadata {
 		"op-type":            []string{op.String()},
 	}
 	return metadata
+}
+
+// TargetSet is returned from most repo operations as the target's host set.
+type TargetSet struct {
+	*hostStore.Set
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (ts *TargetSet) TableName() string {
+	return "target_set"
 }

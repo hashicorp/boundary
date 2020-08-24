@@ -12,7 +12,7 @@ import (
 
 // CreateTcpTarget inserts into the repository and returns the new Target with
 // its list of host sets.  WithHostSets is currently the only supported option.
-func (r *Repository) CreateTcpTarget(ctx context.Context, keyWrapper wrapping.Wrapper, target *TcpTarget, opt ...Option) (Target, []string, error) {
+func (r *Repository) CreateTcpTarget(ctx context.Context, keyWrapper wrapping.Wrapper, target *TcpTarget, opt ...Option) (Target, []*TargetSet, error) {
 	opts := getOpts(opt...)
 	if keyWrapper == nil {
 		return nil, nil, fmt.Errorf("create tcp target: missing key wrapper: %w", db.ErrNilParameter)
@@ -55,7 +55,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, keyWrapper wrapping.Wr
 
 	metadata := t.oplog(oplog.OpType_OP_TYPE_CREATE)
 	var returnedTarget interface{}
-	var returnedHostSet []string
+	var returnedHostSet []*TargetSet
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -77,7 +77,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, keyWrapper wrapping.Wr
 				if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSetOplogMsgs)); err != nil {
 					return fmt.Errorf("create tcp target: unable to add host sets: %w", err)
 				}
-				if returnedHostSet, err = fetchHostSets(ctx, read, t.PublicId); err != nil {
+				if returnedHostSet, err = fetchSets(ctx, read, t.PublicId); err != nil {
 					return fmt.Errorf("create tcp target: unable to read host sets: %w", err)
 				}
 				msgs = append(msgs, hostSetOplogMsgs...)

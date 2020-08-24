@@ -29,7 +29,11 @@ func Test_TestTcpTarget(t *testing.T) {
 	require.Equal(name, target.Name)
 
 	rw := db.New(conn)
-	foundSets, err := fetchHostSets(context.Background(), rw, target.PublicId)
+	foundSets, err := fetchSets(context.Background(), rw, target.PublicId)
 	require.NoError(err)
-	require.Equal(sets, foundSets)
+	foundIds := make([]string, 0, len(foundSets))
+	for _, s := range foundSets {
+		foundIds = append(foundIds, s.PublicId)
+	}
+	require.Equal(sets, foundIds)
 }

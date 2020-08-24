@@ -2992,6 +2992,8 @@ begin;
 drop table target cascade;
 drop table target_host_set cascade;
 drop table target_tcp;
+drop view target_all_subtypes;
+drop view target_host_set_catalog;
 
 
 delete
@@ -3163,6 +3165,18 @@ select
   update_time,
   'tcp' as type
   from target_tcp;
+
+create view target_set
+as
+select 
+  hs.public_id,
+  hs.catalog_id,
+  ths.target_id
+from
+  target_host_set ths,
+  host_set hs
+where
+  hs.public_id = ths.host_set_id;
 
 insert into oplog_ticket
   (name, version)

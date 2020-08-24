@@ -58,13 +58,13 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 // LookupTarget will look up a target in the repository and return the target
 // with its host set ids.  If the target is not found, it will return nil, nil, nil.
 // No options are currently supported.
-func (r *Repository) LookupTarget(ctx context.Context, publicId string, opt ...Option) (Target, []string, error) {
+func (r *Repository) LookupTarget(ctx context.Context, publicId string, opt ...Option) (Target, []*TargetSet, error) {
 	if publicId == "" {
 		return nil, nil, fmt.Errorf("lookup target: missing private id: %w", db.ErrNilParameter)
 	}
 	target := allocTargetView()
 	target.PublicId = publicId
-	var hostSets []string
+	var hostSets []*TargetSet
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -74,7 +74,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicId string, opt ...O
 				return fmt.Errorf("lookup target: failed %w for %s", err, publicId)
 			}
 			var err error
-			if hostSets, err = fetchHostSets(ctx, read, target.PublicId); err != nil {
+			if hostSets, err = fetchSets(ctx, read, target.PublicId); err != nil {
 				return err
 			}
 			return nil
@@ -90,19 +90,15 @@ func (r *Repository) LookupTarget(ctx context.Context, publicId string, opt ...O
 	return subType, hostSets, nil
 }
 
-func fetchHostSets(ctx context.Context, r db.Reader, targetId string) ([]string, error) {
-	var hostSets []*TargetHostSet
+func fetchSets(ctx context.Context, r db.Reader, targetId string) ([]*TargetSet, error) {
+	var hostSets []*TargetSet
 	if err := r.SearchWhere(ctx, &hostSets, "target_id = ?", []interface{}{targetId}); err != nil {
 		return nil, fmt.Errorf("fetch host sets: %w", err)
 	}
 	if len(hostSets) == 0 {
 		return nil, nil
 	}
-	hs := make([]string, 0, len(hostSets))
-	for _, h := range hostSets {
-		hs = append(hs, h.HostSetId)
-	}
-	return hs, nil
+	return hostSets, nil
 }
 
 // ListTargets in targets in a scope.  Supports the WithScopeId, WithLimit, WithTargetType options.
@@ -208,7 +204,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, opt ...O
 // targetVersion or an error will be returned.   The target and a list of
 // current host set ids will be returned on success. Zero is not a valid value
 // for the WithVersion option and will return an error.
-func (r *Repository) AddTargeHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, opt ...Option) (Target, []string, error) {
+func (r *Repository) AddTargeHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, opt ...Option) (Target, []*TargetSet, error) {
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("add target host sets: missing target id: %w", db.ErrInvalidParameter)
 	}
@@ -248,7 +244,7 @@ func (r *Repository) AddTargeHostSets(ctx context.Context, targetId string, targ
 	if err != nil {
 		return nil, nil, fmt.Errorf("add target host sets: unable to get oplog wrapper: %w", err)
 	}
-	var currentHostSets []string
+	var currentHostSets []*TargetSet
 	var updatedTarget interface{}
 	_, err = r.writer.DoTx(
 		ctx,
@@ -280,7 +276,7 @@ func (r *Repository) AddTargeHostSets(ctx context.Context, targetId string, targ
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("add target host sets: unable to write oplog: %w", err)
 			}
-			currentHostSets, err = fetchHostSets(ctx, reader, targetId)
+			currentHostSets, err = fetchSets(ctx, reader, targetId)
 			if err != nil {
 				return fmt.Errorf("add target host sets: unable to retrieve current host sets after adds: %w", err)
 			}
@@ -389,7 +385,7 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 // target host sets as need to reconcile the existing sets with the sets
 // requested. If hostSetIds is empty, the target host sets will be cleared. Zero
 // is not a valid value for the WithVersion option and will return an error.
-func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, opt ...Option) ([]string, int, error) {
+func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, opt ...Option) ([]*TargetSet, int, error) {
 	if targetId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("set target host sets: missing role id: %w", db.ErrInvalidParameter)
 	}
@@ -407,13 +403,13 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 	// operate on the same set of data from these queries that calculate the
 	// set.
 
-	foundThs, err := fetchHostSets(ctx, r.reader, targetId)
+	foundThs, err := fetchSets(ctx, r.reader, targetId)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set target host sets: unable to search for existing target host sets: %w", err)
 	}
-	found := map[string]string{}
-	for _, id := range foundThs {
-		found[id] = id
+	found := map[string]*TargetSet{}
+	for _, s := range foundThs {
+		found[s.PublicId] = s
 	}
 	addHostSets := make([]interface{}, 0, len(hostSetIds))
 	for _, id := range hostSetIds {
@@ -431,8 +427,8 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 	}
 	deleteHostSets := make([]interface{}, 0, len(hostSetIds))
 	if len(found) > 0 {
-		for _, id := range found {
-			hs, err := NewTargetHostSet(targetId, id)
+		for _, s := range found {
+			hs, err := NewTargetHostSet(targetId, s.PublicId)
 			if err != nil {
 				return nil, db.NoRowsAffected, fmt.Errorf("set target host set: unable to create in memory target host set: %w", err)
 			}
@@ -461,7 +457,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 	}
 
 	var totalRowsAffected int
-	var currentHostSets []string
+	var currentHostSets []*TargetSet
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -512,7 +508,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 				return fmt.Errorf("set target host sets: unable to write oplog: %w", err)
 			}
 
-			currentHostSets, err = fetchHostSets(ctx, reader, targetId)
+			currentHostSets, err = fetchSets(ctx, reader, targetId)
 			if err != nil {
 				return fmt.Errorf("set target host sets: unable to retrieve current target host sets after set: %w", err)
 			}

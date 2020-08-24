@@ -156,6 +156,18 @@ select
   'tcp' as type
   from target_tcp;
 
+create view target_set
+as
+select 
+  hs.public_id,
+  hs.catalog_id,
+  ths.target_id
+from
+  target_host_set ths,
+  host_set hs
+where
+  hs.public_id = ths.host_set_id;
+
 insert into oplog_ticket
   (name, version)
 values

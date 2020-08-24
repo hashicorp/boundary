@@ -141,7 +141,11 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(target.GetPublicId())
-			assert.Equal(tt.wantHostSets, hostSets)
+			gotIds := make([]string, 0, len(hostSets))
+			for _, s := range hostSets {
+				gotIds = append(gotIds, s.PublicId)
+			}
+			assert.Equal(tt.wantHostSets, gotIds)
 
 			foundTarget, foundHostSets, err := repo.LookupTarget(context.Background(), target.GetPublicId())
 			assert.NoError(err)
