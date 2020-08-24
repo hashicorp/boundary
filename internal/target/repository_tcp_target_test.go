@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -35,9 +34,8 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 	}
 
 	type args struct {
-		target     *TcpTarget
-		keyWrapper wrapping.Wrapper
-		opt        []Option
+		target *TcpTarget
+		opt    []Option
 	}
 	tests := []struct {
 		name         string
@@ -56,8 +54,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 					require.NoError(t, err)
 					return target
 				}(),
-				keyWrapper: wrapper,
-				opt:        []Option{WithHostSets(sets)},
+				opt: []Option{WithHostSets(sets)},
 			},
 			wantErr:      false,
 			wantHostSets: sets,
@@ -65,8 +62,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 		{
 			name: "nil-target",
 			args: args{
-				target:     nil,
-				keyWrapper: wrapper,
+				target: nil,
 			},
 			wantErr:     true,
 			wantIsError: db.ErrNilParameter,
@@ -78,7 +74,6 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 					target := &TcpTarget{}
 					return target
 				}(),
-				keyWrapper: wrapper,
 			},
 			wantErr:     true,
 			wantIsError: db.ErrNilParameter,
@@ -94,7 +89,6 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 					target.PublicId = id
 					return target
 				}(),
-				keyWrapper: wrapper,
 			},
 			wantErr:     true,
 			wantIsError: db.ErrInvalidParameter,
@@ -108,29 +102,15 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 					require.NoError(t, err)
 					return &target
 				}(),
-				keyWrapper: wrapper,
 			},
 			wantErr:     true,
 			wantIsError: db.ErrInvalidParameter,
-		},
-		{
-			name: "nil-wrapper",
-			args: args{
-				target: func() *TcpTarget {
-					target, err := NewTcpTarget(org.PublicId, "valid-org", WithDescription("valid-org"), WithDefaultPort(uint32(22)))
-					require.NoError(t, err)
-					return target
-				}(),
-				keyWrapper: nil,
-			},
-			wantErr:     true,
-			wantIsError: db.ErrNilParameter,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			target, hostSets, err := repo.CreateTcpTarget(context.Background(), tt.args.keyWrapper, tt.args.target, tt.args.opt...)
+			target, hostSets, err := repo.CreateTcpTarget(context.Background(), tt.args.target, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(target)

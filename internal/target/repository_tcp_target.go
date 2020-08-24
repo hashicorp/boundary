@@ -7,16 +7,12 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 // CreateTcpTarget inserts into the repository and returns the new Target with
 // its list of host sets.  WithHostSets is currently the only supported option.
-func (r *Repository) CreateTcpTarget(ctx context.Context, keyWrapper wrapping.Wrapper, target *TcpTarget, opt ...Option) (Target, []*TargetSet, error) {
+func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt ...Option) (Target, []*TargetSet, error) {
 	opts := getOpts(opt...)
-	if keyWrapper == nil {
-		return nil, nil, fmt.Errorf("create tcp target: missing key wrapper: %w", db.ErrNilParameter)
-	}
 	if target == nil {
 		return nil, nil, fmt.Errorf("create tcp target: missing target: %w", db.ErrNilParameter)
 	}
