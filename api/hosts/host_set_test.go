@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCatalog_List(t *testing.T) {
+func TestSet_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
@@ -28,42 +28,48 @@ func TestCatalog_List(t *testing.T) {
 	client := tc.Client()
 	_, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(proj.GetPublicId())
-	catalogClient := hosts.NewHostCatalogsClient(client)
 
-	ul, apiErr, err := catalogClient.List(tc.Context())
+	hc, apiErr, err := hosts.NewHostCatalogsClient(client).Create(tc.Context(), "static")
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(hc)
+
+	hClient := hosts.NewHostSetsClient(client)
+
+	ul, apiErr, err := hClient.List(tc.Context(), hc.Id)
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.Empty(ul)
 
-	var expected []*hosts.HostCatalog
+	var expected []*hosts.HostSet
 	for i := 0; i < 10; i++ {
-		expected = append(expected, &hosts.HostCatalog{Name: fmt.Sprint(i)})
+		expected = append(expected, &hosts.HostSet{Name: fmt.Sprint(i)})
 	}
 
-	expected[0], apiErr, err = catalogClient.Create(tc.Context(), "static", hosts.WithName(expected[0].Name))
+	expected[0], apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName(expected[0].Name))
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
-	ul, apiErr, err = catalogClient.List(tc.Context())
+	ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
 	assert.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul))
+	assert.ElementsMatch(comparableSetSlice(expected[:1]), comparableSetSlice(ul))
 
 	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = catalogClient.Create(tc.Context(), "static", hosts.WithName(expected[i].Name))
+		expected[i], apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName(expected[i].Name))
 		assert.NoError(err)
 		assert.Nil(apiErr)
 	}
-	ul, apiErr, err = catalogClient.List(tc.Context())
+	ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableCatalogSlice(expected), comparableCatalogSlice(ul))
+	assert.ElementsMatch(comparableSetSlice(expected), comparableSetSlice(ul))
 }
 
-func comparableCatalogSlice(in []*hosts.HostCatalog) []hosts.HostCatalog {
-	var filtered []hosts.HostCatalog
+func comparableSetSlice(in []*hosts.HostSet) []hosts.HostSet {
+	var filtered []hosts.HostSet
 	for _, i := range in {
-		p := hosts.HostCatalog{
+		p := hosts.HostSet{
 			Id:          i.Id,
 			Name:        i.Name,
 			Description: i.Description,
@@ -75,7 +81,7 @@ func comparableCatalogSlice(in []*hosts.HostCatalog) []hosts.HostCatalog {
 	return filtered
 }
 
-func TestCatalogs_Crud(t *testing.T) {
+func TestSet_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
@@ -92,45 +98,50 @@ func TestCatalogs_Crud(t *testing.T) {
 	projClient := client.Clone()
 	projClient.SetScopeId(proj.GetPublicId())
 
-	checkCatalog := func(step string, hc *hosts.HostCatalog, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
+	hc, apiErr, err := hosts.NewHostCatalogsClient(projClient).Create(tc.Context(), "static")
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(hc)
+
+	checkHost := func(step string, h *hosts.HostSet, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
 		require.NoError(err, step)
 		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
 			t.Errorf("ApiError message: %q", apiErr.Message)
 		}
-		assert.NotNil(hc, "returned no resource", step)
+		assert.NotNil(h, "returned no resource", step)
 		gotName := ""
-		if hc.Name != "" {
-			gotName = hc.Name
+		if h.Name != "" {
+			gotName = h.Name
 		}
 		assert.Equal(wantedName, gotName, step)
-		assert.Equal(wantVersion, hc.Version)
+		assert.Equal(wantVersion, h.Version)
 	}
 
-	hcClient := hosts.NewHostCatalogsClient(projClient)
+	hClient := hosts.NewHostSetsClient(projClient)
 
-	hc, apiErr, err := hcClient.Create(tc.Context(), "static", hosts.WithName("foo"))
-	checkCatalog("create", hc, apiErr, err, "foo", 1)
+	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"))
+	checkHost("create", h, apiErr, err, "foo", 1)
 
-	hc, apiErr, err = hcClient.Read(tc.Context(), hc.Id)
-	checkCatalog("read", hc, apiErr, err, "foo", 1)
+	h, apiErr, err = hClient.Read(tc.Context(), hc.Id, h.Id)
+	checkHost("read", h, apiErr, err, "foo", 1)
 
-	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Id, hc.Version, hosts.WithName("bar"))
-	checkCatalog("update", hc, apiErr, err, "bar", 2)
+	h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hosts.WithName("bar"))
+	checkHost("update", h, apiErr, err, "bar", 2)
 
-	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Id, hc.Version, hosts.DefaultName())
-	checkCatalog("update", hc, apiErr, err, "", 3)
+	h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hosts.DefaultName())
+	checkHost("update", h, apiErr, err, "", 3)
 
-	existed, apiErr, err := hcClient.Delete(tc.Context(), hc.Id)
+	existed, apiErr, err := hClient.Delete(tc.Context(), hc.Id, h.Id)
 	assert.NoError(err)
 	assert.True(existed, "Expected existing catalog when deleted, but it wasn't.")
 
-	existed, apiErr, err = hcClient.Delete(tc.Context(), hc.Id)
+	existed, apiErr, err = hClient.Delete(tc.Context(), hc.Id, h.Id)
 	assert.NoError(err)
 	assert.False(existed, "Expected catalog to not exist when deleted, but it did.")
 }
 
 // TODO: Get better coverage for expected errors and error formats.
-func TestCatalogs_Errors(t *testing.T) {
+func TestSet_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
@@ -144,24 +155,29 @@ func TestCatalogs_Errors(t *testing.T) {
 	client := tc.Client()
 	_, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(proj.GetPublicId())
-	pc := hosts.NewHostCatalogsClient(client)
 
-	hc, apiErr, err := pc.Create(tc.Context(), "static", hosts.WithName("foo"))
+	hc, apiErr, err := hosts.NewHostCatalogsClient(client).Create(tc.Context(), "static")
 	require.NoError(err)
-	assert.Nil(apiErr)
-	assert.NotNil(hc)
+	require.Nil(apiErr)
+	require.NotNil(hc)
 
-	_, apiErr, err = pc.Create(tc.Context(), "static", hosts.WithName("foo"))
+	hClient := hosts.NewHostSetsClient(client)
+
+	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"))
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.NotNil(h)
+
+	_, apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 
-	_, apiErr, err = pc.Read(tc.Context(), static.HostCatalogPrefix+"_doesntexis")
+	_, apiErr, err = hClient.Read(tc.Context(), hc.Id, static.HostSetPrefix+"_doesntexis")
 	require.NoError(err)
-	// TODO: Should this be nil instead of just a catalog that has no values set
 	assert.NotNil(apiErr)
 	assert.EqualValues(apiErr.Status, http.StatusNotFound)
 
-	_, apiErr, err = pc.Read(tc.Context(), "invalid id")
+	_, apiErr, err = hClient.Read(tc.Context(), hc.Id, "invalid id")
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusForbidden, apiErr.Status)

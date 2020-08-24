@@ -1,6 +1,7 @@
 package hosts_test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -12,6 +13,73 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestHost_List(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	amId := "paum_1234567890"
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		DisableAuthorizationFailures: true,
+		DefaultAuthMethodId:          amId,
+		DefaultLoginName:             "user",
+		DefaultPassword:              "passpass",
+	})
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	_, proj := iam.TestScopes(t, tc.IamRepo())
+	client.SetScopeId(proj.GetPublicId())
+
+	hc, apiErr, err := hosts.NewHostCatalogsClient(client).Create(tc.Context(), "static")
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(hc)
+
+	hClient := hosts.NewHostsClient(client)
+
+	ul, apiErr, err := hClient.List(tc.Context(), hc.Id)
+	assert.NoError(err)
+	assert.Nil(apiErr)
+	assert.Empty(ul)
+
+	var expected []*hosts.Host
+	for i := 0; i < 10; i++ {
+		expected = append(expected, &hosts.Host{Name: fmt.Sprint(i)})
+	}
+
+	expected[0], apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName(expected[0].Name), hosts.WithStaticHostAddress("someaddress"))
+	assert.NoError(err)
+	assert.Nil(apiErr)
+
+	ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
+	assert.NoError(err)
+	assert.Nil(apiErr)
+	assert.ElementsMatch(comparableHostSlice(expected[:1]), comparableHostSlice(ul))
+
+	for i := 1; i < 10; i++ {
+		expected[i], apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName(expected[i].Name), hosts.WithStaticHostAddress("someaddress"))
+		assert.NoError(err)
+		assert.Nil(apiErr)
+	}
+	ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
+	require.NoError(err)
+	assert.Nil(apiErr)
+	assert.ElementsMatch(comparableHostSlice(expected), comparableHostSlice(ul))
+}
+
+func comparableHostSlice(in []*hosts.Host) []hosts.Host {
+	var filtered []hosts.Host
+	for _, i := range in {
+		p := hosts.Host{
+			Id:          i.Id,
+			Name:        i.Name,
+			Description: i.Description,
+			CreatedTime: i.CreatedTime,
+			UpdatedTime: i.UpdatedTime,
+		}
+		filtered = append(filtered, p)
+	}
+	return filtered
+}
 
 func TestHost_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)

@@ -11,6 +11,8 @@ import (
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -26,6 +28,33 @@ type Info struct {
 	Nonce        string    `json:"nonce"`
 	NonceBytes   []byte    `json:"-"`
 	CreationTime time.Time `json:"creation_time"`
+}
+
+func GetWrapper(ctx context.Context, path string) (wrapping.Wrapper, error) {
+	kmses, err := configutil.LoadConfigKMSes(path)
+	if err != nil {
+		return nil, fmt.Errorf("Error parsing config file: %w", err)
+	}
+
+	var kms *configutil.KMS
+	for _, v := range kmses {
+		if strutil.StrListContains(v.Purpose, "recovery") {
+			if kms != nil {
+				return nil, fmt.Errorf("Only one %q block marked for %q purpose is allowed", "kms", "recovery")
+			}
+			kms = v
+		}
+	}
+	if kms == nil {
+		return nil, fmt.Errorf("No %q block marked for %q purpose is allowed", "kms", "recovery")
+	}
+
+	wrapper, err := configutil.ConfigureWrapper(kms, nil, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Error configuring kms: %w", err)
+	}
+
+	return wrapper, nil
 }
 
 func GenerateRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper) (string, error) {

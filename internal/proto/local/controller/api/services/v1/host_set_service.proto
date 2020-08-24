@@ -20,7 +20,10 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 };
 
 service HostSetService {
-  // This retrieves the host set specified in the request using the basic view.
+  // GetHostSet returns a stored Host Set if present.  The provided request
+  // must include the host catalog and host set ID for the resource being
+  // retrieved. If any of those IDs are missing, malformed or reference a
+   // non existing resource an error is returned.
   rpc GetHostSet(GetHostSetRequest) returns (GetHostSetResponse) {
     option (google.api.http) = {
       get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
@@ -30,6 +33,12 @@ service HostSetService {
       summary: "Get a single HostSet"
     };
   }
+
+  // ListHostSets returns a list of stored host sets which exist inside the scope
+  // referenced inside the request. The request must include the scope ID and
+  // the host catalog id for the host sets being retrieved. If the any of those
+  // are missing, malformed, or reference a non existing scope, an error is
+  // returned.
   rpc ListHostSets(ListHostSetsRequest) returns (ListHostSetsResponse) {
     option (google.api.http) = {
       get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets"
@@ -38,6 +47,13 @@ service HostSetService {
       summary: "List all HostSets under the specific catalog"
     };
   }
+
+  // CreateHostSet creates and stores a host set in boundary.  The provided
+  // request must include the scope and host catalog ids in which the host set
+  // will be created.  If the scope or catalog id are missing, malformed or
+  // references a non existing resource, an error is returned.  If a name is
+  // provided that is in use by another host set in the same host catalog, an
+  // error is returned.
   rpc CreateHostSet(CreateHostSetRequest) returns (CreateHostSetResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets"
@@ -48,6 +64,15 @@ service HostSetService {
       summary: "Create a HostSet"
     };
   }
+
+  // UpdateHostSet updates an existing host set in boundary.  The provided
+  // host set must not have any read only fields set.  The update mask must be
+  // included in the request and contain at least 1 mutable field.  To unset
+  // a field's value, include the field in the update mask and don't set it
+  // in the provided host set. An error is returned if either the scope
+  // or host catalog or host set ids are missing or reference a non existing
+  // resource.  An error is also returned if the request attempts to update the
+  // name to one that is already in use in this host catalog.
   rpc UpdateHostSet(UpdateHostSetRequest) returns (UpdateHostSetResponse) {
     option (google.api.http) = {
       patch: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
@@ -58,6 +83,12 @@ service HostSetService {
       summary: "Update a HostSet"
     };
   }
+
+  // DeleteHostSet removes a host set from Boundary. If the provided scope,
+  // host catalog, or host set ids are malformed or not provided an error is
+  // returned.  No error is returned if any of the ids reference resources that
+  // do not exist since the response itself specifies if the resource existed
+  // before the DeleteHostSet request was received.
   rpc DeleteHostSet(DeleteHostSetRequest) returns (DeleteHostSetResponse) {
     option (google.api.http) = {
       delete: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
@@ -67,33 +98,54 @@ service HostSetService {
     };
   }
 
+  // AddHostSetHosts adds a host to a host set. The provided request must
+  // include the scope ID and the host set ID to which the host will be added.
+  // All hosts added to the provided host set must be a child of the same
+  // catalog that this host set is a child of. If the scope or host set IDs are
+  // missing, malformed, or reference non-existing resources, an error is
+  // returned.
   rpc AddHostSetHosts(AddHostSetHostsRequest) returns (AddHostSetHostsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts"
+      body: "*"
+      response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds existing Hosts to the Host Set"
-      description: "Adds the hosts to this Host Set if possible.  All hosts added must be a child of the same host catalog this host set is a child of."
+      summary: "Adds existing Hosts to a Host Set."
     };
   }
 
+  // SetHostSetHosts sets the host set's hosts. Any existing hosts on the
+  // host set are deleted if they are not included in this request. The
+  // provided request must include the scope, host catalog, and the host set
+  // ID on which the hosts will be set.  All hosts in the request must be a
+  // child of the same catalog that the provided host set is. If any of those
+  // IDs are missing, malformed, or references a non-existing resource, an
+  // error is returned.
   rpc SetHostSetHosts(SetHostSetHostsRequest) returns (SetHostSetHostsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:set-hosts"
+      body: "*"
+      response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Sets the Hosts on the Host Set."
-      description: "Sets the Hosts on the Host Set, removing any hosts that are not specified in the request."
     };
   }
 
+  // RemoveHostSetHosts removes the hosts from the specified host set. The
+  // provided request must include the scope, host catalog, and the host set
+  // IDs for the host set from which the host will be removed. If any of the
+  // IDs are missing, malformed, or references a non-existing scope or catalog,
+  // an error is returned.
   rpc RemoveHostSetHosts(RemoveHostSetHostsRequest) returns (RemoveHostSetHostsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts"
+      body: "*"
+      response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes Hosts from the Host Set"
-      description: "Removes the hosts from this Host Set if present.  If it is not present then no action is taken and no error is returned."
+      summary: "Removes Hosts from the Host Set."
     };
   }
 }
@@ -130,9 +182,8 @@ message CreateHostSetResponse {
 message UpdateHostSetRequest {
   string host_catalog_id = 1 [json_name="host_catalog_id"];
   string id = 2;
-  uint32 version = 3;
-  api.resources.hosts.v1.HostSet item = 4;
-  google.protobuf.FieldMask update_mask = 5;
+  api.resources.hosts.v1.HostSet item = 3;
+  google.protobuf.FieldMask update_mask = 4;
 }
 
 message UpdateHostSetResponse {
@@ -160,6 +211,7 @@ message AddHostSetHostsRequest {
 }
 
 message AddHostSetHostsResponse {
+  api.resources.hosts.v1.HostSet item = 1;
 }
 
 message SetHostSetHostsRequest {
@@ -174,6 +226,7 @@ message SetHostSetHostsRequest {
 }
 
 message SetHostSetHostsResponse {
+  api.resources.hosts.v1.HostSet item = 1;
 }
 
 message RemoveHostSetHostsRequest {
@@ -188,4 +241,5 @@ message RemoveHostSetHostsRequest {
 }
 
 message RemoveHostSetHostsResponse {
+  api.resources.hosts.v1.HostSet item = 1;
 }

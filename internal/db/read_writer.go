@@ -485,10 +485,11 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	return rowsUpdated, nil
 }
 
-// Delete an object in the db with options: WithOplog and NewOplogMsg. WithOplog
-// will write an oplog entry for the delete. NewOplogMsg will return in-memory
-// oplog message.  WithOplog and NewOplogMsg cannot be used together. Delete
-// returns the number of rows deleted and any errors.
+// Delete an object in the db with options: WithOplog, NewOplogMsg, WithWhere.
+// WithOplog will write an oplog entry for the delete. NewOplogMsg will return
+// in-memory oplog message. WithOplog and NewOplogMsg cannot be used together.
+// WithWhere allows specifying a constraint. Delete returns the number of rows
+// deleted and any errors.
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("delete: missing underlying db %w", ErrNilParameter)
@@ -504,8 +505,10 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	// This is not a boundary scope, but rather a gorm Scope:
 	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
 	scope := rw.underlying.NewScope(i)
-	if scope.PrimaryKeyZero() {
-		return NoRowsAffected, fmt.Errorf("delete: primary key is not set")
+	if opts.withWhereClause == "" {
+		if scope.PrimaryKeyZero() {
+			return NoRowsAffected, fmt.Errorf("delete: primary key is not set")
+		}
 	}
 	if withOplog {
 		_, err := validateOplogArgs(i, opts)
@@ -521,11 +524,15 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 			return NoRowsAffected, fmt.Errorf("delete: unable to get ticket: %w", err)
 		}
 	}
-	underlying := rw.underlying.Delete(i)
-	if underlying.Error != nil {
-		return NoRowsAffected, fmt.Errorf("delete: failed %w", underlying.Error)
+	db := rw.underlying
+	if opts.withWhereClause != "" {
+		db = db.Where(opts.withWhereClause, opts.withWhereClauseArgs...)
 	}
-	rowsDeleted := int(underlying.RowsAffected)
+	db = db.Delete(i)
+	if db.Error != nil {
+		return NoRowsAffected, fmt.Errorf("delete: failed %w", db.Error)
+	}
+	rowsDeleted := int(db.RowsAffected)
 	if rowsDeleted > 0 && (withOplog || opts.newOplogMsg != nil) {
 		if withOplog {
 			if err := rw.addOplog(ctx, DeleteOp, opts, ticket, i); err != nil {
@@ -983,14 +990,26 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 		return errors.New("error interface parameter must to be a pointer for search by")
 	}
 	var err error
+	db := rw.underlying.Order(opts.withOrder)
+
+	// Perform limiting
 	switch {
 	case opts.WithLimit < 0: // any negative number signals unlimited results
-		err = rw.underlying.Order(opts.withOrder).Where(where, args...).Find(resources).Error
 	case opts.WithLimit == 0: // zero signals the default value and default limits
-		err = rw.underlying.Order(opts.withOrder).Limit(DefaultLimit).Where(where, args...).Find(resources).Error
+		db = db.Limit(DefaultLimit)
 	default:
-		err = rw.underlying.Order(opts.withOrder).Limit(opts.WithLimit).Where(where, args...).Find(resources).Error
+		db = db.Limit(opts.WithLimit)
 	}
+
+	// Perform argument subst
+	switch len(args) {
+	case 0:
+	default:
+		db = db.Where(where, args...)
+	}
+
+	// Perform the query
+	err = db.Find(resources).Error
 	if err != nil {
 		// searching with a slice parameter does not return a gorm.ErrRecordNotFound
 		return err

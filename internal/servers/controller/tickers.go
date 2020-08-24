@@ -13,6 +13,9 @@ const (
 	statusInterval = 10 * time.Second
 )
 
+// This is exported so it can be tweaked in tests
+var RecoveryNonceCleanupInterval = 2 * time.Minute
+
 func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 	go func() {
 		timer := time.NewTimer(0)
@@ -34,7 +37,7 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 				if err != nil {
 					c.logger.Error("error fetching repository for status update", "error", err)
 				} else {
-					_, _, err = repo.Upsert(cancelCtx, server)
+					_, _, err = repo.UpsertServer(cancelCtx, server)
 					if err != nil {
 						c.logger.Error("error performing status update", "error", err)
 					} else {
@@ -42,6 +45,33 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 					}
 				}
 				timer.Reset(statusInterval)
+			}
+		}
+	}()
+}
+
+func (c *Controller) startRecoveryNonceCleanupTicking(cancelCtx context.Context) {
+	go func() {
+		timer := time.NewTimer(0)
+		for {
+			select {
+			case <-cancelCtx.Done():
+				c.logger.Info("recovery nonce ticking shutting down")
+				return
+
+			case <-timer.C:
+				repo, err := c.ServersRepoFn()
+				if err != nil {
+					c.logger.Error("error fetching repository for recovery nonce cleanup", "error", err)
+				} else {
+					nonceCount, err := repo.CleanupNonces(cancelCtx)
+					if err != nil {
+						c.logger.Error("error performing recovery nonce cleanup", "error", err)
+					} else if nonceCount > 0 {
+						c.logger.Info("recovery nonce cleanup successful", "nonces_cleaned", nonceCount)
+					}
+				}
+				timer.Reset(RecoveryNonceCleanupInterval)
 			}
 		}
 	}()

@@ -4,6 +4,7 @@ package controller.api.resources.hosts.v1;
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts;hosts";
 
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "controller/api/resources/hosts/v1/host.proto";
@@ -36,19 +37,24 @@ message HostSet {
 
 	// The version can be used in subsequent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
-	// Output only.
 	uint32 version = 70;
 
 	// The type of the resource, to help differentiate schemas
-	google.protobuf.StringValue type = 80;
+	string type = 80;
 
-	// The total count of hosts in this host set
-	// Output only.
-	uint32 size = 90;
+	// The host catalog this host set is a part of
+	// Output only
+	string host_catalog_id = 90 [json_name="host_catalog_id"];
 
 	// A list of hosts in this host set
 	// TODO: Figure out if this should be in the basic HostSet view and what
 	// view to use on the Hosts.
 	// Output only.
-	repeated Host hosts = 100;
+	repeated string host_ids = 100;
+
+	// The attributes that are applied for the specific host set type.
+	google.protobuf.Struct attributes = 110;
+}
+
+message StaticHostSetAttributes {
 }
