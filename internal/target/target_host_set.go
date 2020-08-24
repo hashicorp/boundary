@@ -60,10 +60,10 @@ func (t *TargetHostSet) Clone() interface{} {
 func (t *TargetHostSet) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if opType == db.CreateOp {
 		if t.TargetId == "" {
-			return fmt.Errorf("target host set: vet for write: missing public id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("target host set: vet for write: missing target id: %w", db.ErrInvalidParameter)
 		}
 		if t.HostSetId == "" {
-			return fmt.Errorf("target host set: vet for write: missing public id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("target host set: vet for write: missing host set id: %w", db.ErrInvalidParameter)
 		}
 	}
 	return nil
