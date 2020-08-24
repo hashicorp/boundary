@@ -15,8 +15,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const orgIdFieldName = "org_id"
-
 // Service handles request as described by the pbs.AuthTokenServiceServer interface.
 type Service struct {
 	repoFn func() (*authtoken.Repository, error)
