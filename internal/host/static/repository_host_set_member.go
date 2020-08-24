@@ -132,10 +132,16 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 	}
 
 	// Get list of hosts
-	var hosts []*Host
-
 	// NOTE(mgaffney): Currently, this cannot be done within the
 	// transaction. Gorm panics when DB() is called during a transaction.
+	hosts, err := r.getHosts(ctx, setId)
+	if err != nil {
+		return nil, fmt.Errorf("add: static host set members: %w", err)
+	}
+	return hosts, nil
+}
+
+func (r *Repository) getHosts(ctx context.Context, setId string) ([]*Host, error) {
 	tx, err := r.reader.DB()
 	if err != nil {
 		return nil, fmt.Errorf("get hosts: unable to get DB: %w", err)
@@ -147,6 +153,7 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 	}
 	defer rows.Close()
 
+	var hosts []*Host
 	for rows.Next() {
 		var h Host
 		if err := r.reader.ScanRows(rows, &h); err != nil {
@@ -347,27 +354,11 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 	}
 
 	// Get list of hosts
-	var hosts []*Host
-
 	// NOTE(mgaffney): Currently, this cannot be done within the
 	// transaction. Gorm panics when DB() is called during a transaction.
-	tx, err := r.reader.DB()
+	hosts, err := r.getHosts(ctx, setId)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("get hosts: unable to get DB: %w", err)
-	}
-
-	rows, err := tx.QueryContext(ctx, setMembersQueryNoLimit, setId)
-	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("get hosts: query failed: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var h Host
-		if err := r.reader.ScanRows(rows, &h); err != nil {
-			return nil, db.NoRowsAffected, fmt.Errorf("get hosts: scan row failed: %w", err)
-		}
-		hosts = append(hosts, &h)
+		return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: %w", err)
 	}
 	return hosts, len(changes), nil
 }
