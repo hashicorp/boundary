@@ -15,10 +15,10 @@ import (
 // group.  No options are currently supported.
 func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Option) (*Group, error) {
 	if group == nil {
-		return nil, fmt.Errorf("create group: missing group %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create group: missing group %w", db.ErrInvalidParameter)
 	}
 	if group.Group == nil {
-		return nil, fmt.Errorf("create group: missing group store %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create group: missing group store %w", db.ErrInvalidParameter)
 	}
 	if group.PublicId != "" {
 		return nil, fmt.Errorf("create group: public id not empty: %w", db.ErrInvalidParameter)
@@ -49,10 +49,10 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Optio
 // If no updatable fields are included in the fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint32, fieldMaskPaths []string, opt ...Option) (*Group, []*GroupMember, int, error) {
 	if group == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group %w", db.ErrNilParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group %w", db.ErrInvalidParameter)
 	}
 	if group.Group == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group store %w", db.ErrNilParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group store %w", db.ErrInvalidParameter)
 	}
 	if group.PublicId == "" {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group public id %w", db.ErrInvalidParameter)
@@ -114,7 +114,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 // found, it will return nil, nil.
 func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, opt ...Option) (*Group, []*GroupMember, error) {
 	if withPublicId == "" {
-		return nil, nil, fmt.Errorf("lookup group: missing public id %w", db.ErrNilParameter)
+		return nil, nil, fmt.Errorf("lookup group: missing public id %w", db.ErrInvalidParameter)
 	}
 	g := allocGroup()
 	g.PublicId = withPublicId
@@ -147,7 +147,7 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, opt .
 // DeleteGroup will delete a group from the repository.
 func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
 	if withPublicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete group: missing public id %w", db.ErrNilParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete group: missing public id %w", db.ErrInvalidParameter)
 	}
 	g := allocGroup()
 	g.PublicId = withPublicId

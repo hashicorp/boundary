@@ -28,9 +28,6 @@ var (
 	// to the repository resulted in a unique constraint violation.
 	ErrNotUnique = errors.New("unique constraint violation")
 
-	// ErrNilParameter is returned when a required parameter is nil.
-	ErrNilParameter = errors.New("nil parameter")
-
 	// ErrRecordNotFound returns a "record not found" error and it only occurs
 	// when attempting to read from the database into struct.
 	// When reading into a slice it won't return this error.

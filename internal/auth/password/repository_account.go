@@ -27,10 +27,10 @@ import (
 // unique within a.AuthMethodId.
 func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Account, opt ...Option) (*Account, error) {
 	if a == nil {
-		return nil, fmt.Errorf("create: password account: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: password account: %w", db.ErrInvalidParameter)
 	}
 	if a.Account == nil {
-		return nil, fmt.Errorf("create: password account: embedded Account: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: password account: embedded Account: %w", db.ErrInvalidParameter)
 	}
 	if a.AuthMethodId == "" {
 		return nil, fmt.Errorf("create: password account: no auth method id: %w", db.ErrInvalidParameter)
@@ -214,10 +214,10 @@ func validLoginName(u string) bool {
 // cannot be set to NULL.
 func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Account, version uint32, fieldMaskPaths []string, opt ...Option) (*Account, int, error) {
 	if a == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", db.ErrInvalidParameter)
 	}
 	if a.Account == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: embedded Account: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: embedded Account: %w", db.ErrInvalidParameter)
 	}
 	if a.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: missing public id: %w", db.ErrInvalidParameter)

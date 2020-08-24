@@ -1334,7 +1334,7 @@ func TestDb_Delete(t *testing.T) {
 			wantOplog: true,
 			want:      0,
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "nil-metadata",
@@ -1347,7 +1347,7 @@ func TestDb_Delete(t *testing.T) {
 			wantOplog: true,
 			want:      0,
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "nil-underlying",
@@ -1358,7 +1358,7 @@ func TestDb_Delete(t *testing.T) {
 			},
 			want:      0,
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "not-found",
@@ -1625,7 +1625,7 @@ func TestDb_CreateItems(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "bad oplog opt: nil wrapper",
@@ -1643,7 +1643,7 @@ func TestDb_CreateItems(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "bad opt: WithLookup",
@@ -1653,7 +1653,7 @@ func TestDb_CreateItems(t *testing.T) {
 				opt:         []Option{WithLookup(true)},
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "nil underlying",
@@ -1662,7 +1662,7 @@ func TestDb_CreateItems(t *testing.T) {
 				createItems: createFn(),
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "empty items",
@@ -1822,7 +1822,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "bad oplog opt: nil wrapper",
@@ -1840,7 +1840,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "bad opt: WithLookup",
@@ -1850,7 +1850,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				opt:         []Option{WithLookup(true)},
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "nil underlying",
@@ -1859,7 +1859,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				deleteItems: createFn(),
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "empty items",
@@ -2059,7 +2059,7 @@ func TestDb_LookupById(t *testing.T) {
 				resourceWithIder: user,
 			},
 			wantErr:   true,
-			wantIsErr: ErrNilParameter,
+			wantIsErr: ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -2120,14 +2120,14 @@ func TestDb_GetTicket(t *testing.T) {
 			underlying:    db,
 			aggregateType: nil,
 			wantErr:       true,
-			wantErrIs:     ErrNilParameter,
+			wantErrIs:     ErrInvalidParameter,
 		},
 		{
 			name:          "no-underlying",
 			underlying:    nil,
 			aggregateType: &db_test.TestUser{},
 			wantErr:       true,
-			wantErrIs:     ErrNilParameter,
+			wantErrIs:     ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -2223,7 +2223,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 				msgs:     []*oplog.Message{&createMsg},
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "missing-db",
@@ -2235,7 +2235,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 				msgs:     []*oplog.Message{&createMsg},
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "missing-wrapper",
@@ -2247,7 +2247,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 				msgs:     []*oplog.Message{&createMsg},
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "nil-metadata",
@@ -2259,7 +2259,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 				msgs:     []*oplog.Message{&createMsg},
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "empty-metadata",

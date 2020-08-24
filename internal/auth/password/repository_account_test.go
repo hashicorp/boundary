@@ -57,12 +57,12 @@ func TestRepository_CreateAccount(t *testing.T) {
 	}{
 		{
 			name:      "nil-Account",
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-Account",
 			in:        &Account{},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-scope-id",
@@ -633,7 +633,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "nil-embedded-Account",
@@ -642,7 +642,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "no-public-id",

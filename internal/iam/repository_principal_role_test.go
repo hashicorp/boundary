@@ -772,7 +772,7 @@ func TestRepository_principalsToSet(t *testing.T) {
 		got, err := repo.principalsToSet(context.Background(), nil, users, grps)
 		require.Error(err)
 		assert.Nil(got)
-		assert.Truef(errors.Is(err, db.ErrNilParameter), "unexpected error %s", err.Error())
+		assert.Truef(errors.Is(err, db.ErrInvalidParameter), "unexpected error %s", err.Error())
 	})
 	t.Run("no change", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)

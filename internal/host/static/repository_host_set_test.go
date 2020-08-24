@@ -37,12 +37,12 @@ func TestRepository_CreateSet(t *testing.T) {
 	}{
 		{
 			name:      "nil-HostSet",
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-HostSet",
 			in:        &HostSet{},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-catalog-id",
@@ -273,7 +273,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "nil-embedded-host-set",
@@ -282,7 +282,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "no-public-id",

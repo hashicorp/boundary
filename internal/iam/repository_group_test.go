@@ -81,7 +81,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrMsg:  "create group: missing group nil parameter",
-			wantIsError: db.ErrNilParameter,
+			wantIsError: db.ErrInvalidParameter,
 		},
 		{
 			name: "nil-store",
@@ -94,7 +94,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrMsg:  "create group: missing group store nil parameter",
-			wantIsError: db.ErrNilParameter,
+			wantIsError: db.ErrInvalidParameter,
 		},
 		{
 			name: "bad-scope-id",

@@ -225,7 +225,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 
 	// Explicitly set to zero clears, but treat nil as a mistake
 	if grants == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: nil grants: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: nil grants: %w", db.ErrInvalidParameter)
 	}
 
 	role := allocRole()

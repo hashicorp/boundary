@@ -23,10 +23,10 @@ import (
 // unique within h.CatalogId.
 func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, opt ...Option) (*Host, error) {
 	if h == nil {
-		return nil, fmt.Errorf("create: static host: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: static host: %w", db.ErrInvalidParameter)
 	}
 	if h.Host == nil {
-		return nil, fmt.Errorf("create: static host: embedded Host: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: static host: embedded Host: %w", db.ErrInvalidParameter)
 	}
 	if h.CatalogId == "" {
 		return nil, fmt.Errorf("create: static host: no catalog id: %w", db.ErrInvalidParameter)
@@ -86,10 +86,10 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 // in h is the zero value and it is included in fieldMaskPaths.
 func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, version uint32, fieldMaskPaths []string, opt ...Option) (*Host, int, error) {
 	if h == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: %w", db.ErrInvalidParameter)
 	}
 	if h.Host == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: embedded Host: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: embedded Host: %w", db.ErrInvalidParameter)
 	}
 	if h.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: missing public id: %w", db.ErrInvalidParameter)

@@ -82,7 +82,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrMsg:  "create role: missing role nil parameter",
-			wantIsError: db.ErrNilParameter,
+			wantIsError: db.ErrInvalidParameter,
 		},
 		{
 			name: "nil-store",
@@ -95,7 +95,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrMsg:  "create role: missing role store nil parameter",
-			wantIsError: db.ErrNilParameter,
+			wantIsError: db.ErrInvalidParameter,
 		},
 		{
 			name: "bad-scope-id",

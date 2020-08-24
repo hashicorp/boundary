@@ -25,11 +25,11 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	switch {
 	case r == nil:
-		return nil, fmt.Errorf("db.Reader: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("db.Reader: %w", db.ErrInvalidParameter)
 	case w == nil:
-		return nil, fmt.Errorf("db.Writer: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("db.Writer: %w", db.ErrInvalidParameter)
 	case kms == nil:
-		return nil, fmt.Errorf("kms: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("kms: %w", db.ErrInvalidParameter)
 	}
 
 	opts := getOpts(opt...)

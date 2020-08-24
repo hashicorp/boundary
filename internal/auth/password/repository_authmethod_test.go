@@ -37,12 +37,12 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	}{
 		{
 			name:      "nil-AuthMethod",
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-AuthMethod",
 			in:        &AuthMethod{},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-scope-id",

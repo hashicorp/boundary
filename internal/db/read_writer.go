@@ -182,7 +182,7 @@ func New(underlying *gorm.DB) *Db {
 // DB returns the sql.DB
 func (rw *Db) DB() (*sql.DB, error) {
 	if rw.underlying == nil {
-		return nil, fmt.Errorf("missing underlying db: %w", ErrNilParameter)
+		return nil, fmt.Errorf("missing underlying db: %w", ErrInvalidParameter)
 	}
 	return rw.underlying.DB(), nil
 }
@@ -190,10 +190,10 @@ func (rw *Db) DB() (*sql.DB, error) {
 // Scan rows will scan the rows into the interface
 func (rw *Db) ScanRows(rows *sql.Rows, result interface{}) error {
 	if rw.underlying == nil {
-		return fmt.Errorf("scan rows: missing underlying db %w", ErrNilParameter)
+		return fmt.Errorf("scan rows: missing underlying db %w", ErrInvalidParameter)
 	}
 	if isNil(result) {
-		return fmt.Errorf("scan rows: result is missing %w", ErrNilParameter)
+		return fmt.Errorf("scan rows: result is missing %w", ErrInvalidParameter)
 	}
 	return rw.underlying.ScanRows(rows, result)
 }
@@ -217,10 +217,10 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 // cannot be used together.  WithLookup with to force a lookup after create.
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.underlying == nil {
-		return fmt.Errorf("create: missing underlying db: %w", ErrNilParameter)
+		return fmt.Errorf("create: missing underlying db: %w", ErrInvalidParameter)
 	}
 	if isNil(i) {
-		return fmt.Errorf("create: interface is missing: %w", ErrNilParameter)
+		return fmt.Errorf("create: interface is missing: %w", ErrInvalidParameter)
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
@@ -279,7 +279,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 // together.  WithLookup is not a supported option.
 func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error {
 	if rw.underlying == nil {
-		return fmt.Errorf("create items: missing underlying db: %w", ErrNilParameter)
+		return fmt.Errorf("create items: missing underlying db: %w", ErrInvalidParameter)
 	}
 	if len(createItems) == 0 {
 		return fmt.Errorf("create items: no interfaces to create: %w", ErrInvalidParameter)
@@ -358,10 +358,10 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 // WithVersion option and will return an error.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	if rw.underlying == nil {
-		return NoRowsAffected, fmt.Errorf("update: missing underlying db %w", ErrNilParameter)
+		return NoRowsAffected, fmt.Errorf("update: missing underlying db %w", ErrInvalidParameter)
 	}
 	if isNil(i) {
-		return NoRowsAffected, fmt.Errorf("update: interface is missing %w", ErrNilParameter)
+		return NoRowsAffected, fmt.Errorf("update: interface is missing %w", ErrInvalidParameter)
 	}
 	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
 		return NoRowsAffected, errors.New("update: both fieldMaskPaths and setToNullPaths are missing")
@@ -492,10 +492,10 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 // deleted and any errors.
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
 	if rw.underlying == nil {
-		return NoRowsAffected, fmt.Errorf("delete: missing underlying db %w", ErrNilParameter)
+		return NoRowsAffected, fmt.Errorf("delete: missing underlying db %w", ErrInvalidParameter)
 	}
 	if isNil(i) {
-		return NoRowsAffected, fmt.Errorf("delete: interface is missing %w", ErrNilParameter)
+		return NoRowsAffected, fmt.Errorf("delete: interface is missing %w", ErrInvalidParameter)
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
@@ -555,7 +555,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 // together.
 func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error) {
 	if rw.underlying == nil {
-		return NoRowsAffected, fmt.Errorf("delete items: missing underlying db: %w", ErrNilParameter)
+		return NoRowsAffected, fmt.Errorf("delete items: missing underlying db: %w", ErrInvalidParameter)
 	}
 	if len(deleteItems) == 0 {
 		return NoRowsAffected, fmt.Errorf("delete items: no interfaces to delete: %w", ErrInvalidParameter)
@@ -621,7 +621,7 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, error) {
 	oplogArgs := opts.oplogOpts
 	if oplogArgs.wrapper == nil {
-		return nil, fmt.Errorf("error no wrapper WithOplog: %w", ErrNilParameter)
+		return nil, fmt.Errorf("error no wrapper WithOplog: %w", ErrInvalidParameter)
 	}
 	if len(oplogArgs.metadata) == 0 {
 		return nil, fmt.Errorf("error no metadata for WithOplog: %w", ErrInvalidParameter)
@@ -635,7 +635,7 @@ func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, er
 
 func (rw *Db) getTicketFor(aggregateName string) (*store.Ticket, error) {
 	if rw.underlying == nil {
-		return nil, fmt.Errorf("get ticket for %s: underlying db missing: %w", aggregateName, ErrNilParameter)
+		return nil, fmt.Errorf("get ticket for %s: underlying db missing: %w", aggregateName, ErrInvalidParameter)
 	}
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
@@ -652,10 +652,10 @@ func (rw *Db) getTicketFor(aggregateName string) (*store.Ticket, error) {
 // be used to WriteOplogEntryWith for that aggregate root.
 func (rw *Db) GetTicket(i interface{}) (*store.Ticket, error) {
 	if rw.underlying == nil {
-		return nil, fmt.Errorf("get ticket: underlying db missing: %w", ErrNilParameter)
+		return nil, fmt.Errorf("get ticket: underlying db missing: %w", ErrInvalidParameter)
 	}
 	if isNil(i) {
-		return nil, fmt.Errorf("get ticket: interface is missing %w", ErrNilParameter)
+		return nil, fmt.Errorf("get ticket: interface is missing %w", ErrInvalidParameter)
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
@@ -693,19 +693,19 @@ func (rw *Db) oplogMsgsForItems(ctx context.Context, opType OpType, opts Options
 func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options, ticket *store.Ticket, items []interface{}) error {
 	oplogArgs := opts.oplogOpts
 	if ticket == nil {
-		return fmt.Errorf("oplog for items: ticket is missing: %w", ErrNilParameter)
+		return fmt.Errorf("oplog for items: ticket is missing: %w", ErrInvalidParameter)
 	}
 	if items == nil {
-		return fmt.Errorf("oplog for items: items are missing: %w", ErrNilParameter)
+		return fmt.Errorf("oplog for items: items are missing: %w", ErrInvalidParameter)
 	}
 	if len(items) == 0 {
 		return fmt.Errorf("oplog for items: items is empty: %w", ErrInvalidParameter)
 	}
 	if oplogArgs.metadata == nil {
-		return fmt.Errorf("oplog for items: metadata is missing: %w", ErrNilParameter)
+		return fmt.Errorf("oplog for items: metadata is missing: %w", ErrInvalidParameter)
 	}
 	if oplogArgs.wrapper == nil {
-		return fmt.Errorf("oplog for items: wrapper is missing: %w", ErrNilParameter)
+		return fmt.Errorf("oplog for items: wrapper is missing: %w", ErrInvalidParameter)
 	}
 
 	oplogMsgs, err := rw.oplogMsgsForItems(ctx, opType, opts, items)
@@ -748,7 +748,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 		return err
 	}
 	if ticket == nil {
-		return fmt.Errorf("add oplog: missing ticket %w", ErrNilParameter)
+		return fmt.Errorf("add oplog: missing ticket %w", ErrInvalidParameter)
 	}
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
@@ -783,19 +783,19 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 // the ticket's aggregateName. No options are currently supported.
 func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper, ticket *store.Ticket, metadata oplog.Metadata, msgs []*oplog.Message, opt ...Option) error {
 	if wrapper == nil {
-		return fmt.Errorf("write oplog: wrapper is unset %w", ErrNilParameter)
+		return fmt.Errorf("write oplog: wrapper is unset %w", ErrInvalidParameter)
 	}
 	if ticket == nil {
-		return fmt.Errorf("write oplog: ticket is unset %w", ErrNilParameter)
+		return fmt.Errorf("write oplog: ticket is unset %w", ErrInvalidParameter)
 	}
 	if len(msgs) == 0 {
 		return fmt.Errorf("write oplog: msgs are empty %w", ErrInvalidParameter)
 	}
 	if rw.underlying == nil {
-		return fmt.Errorf("write oplog: underlying is unset %w", ErrNilParameter)
+		return fmt.Errorf("write oplog: underlying is unset %w", ErrInvalidParameter)
 	}
 	if metadata == nil {
-		return fmt.Errorf("write oplog: metadata is unset %w", ErrNilParameter)
+		return fmt.Errorf("write oplog: metadata is unset %w", ErrInvalidParameter)
 	}
 	if len(metadata) == 0 {
 		return fmt.Errorf("write oplog: metadata is empty %w", ErrInvalidParameter)
@@ -918,7 +918,7 @@ func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...O
 // must be unique. Options are ignored.
 func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, opt ...Option) error {
 	if rw.underlying == nil {
-		return fmt.Errorf("lookup by id: underlying db nil %w", ErrNilParameter)
+		return fmt.Errorf("lookup by id: underlying db nil %w", ErrInvalidParameter)
 	}
 	if reflect.ValueOf(resourceWithIder).Kind() != reflect.Ptr {
 		return fmt.Errorf("lookup by id: interface parameter must to be a pointer: %w", ErrInvalidParameter)

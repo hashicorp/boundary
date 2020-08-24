@@ -29,12 +29,12 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	}{
 		{
 			name:      "nil-catalog",
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-catalog",
 			in:        &HostCatalog{},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "valid-no-options",
@@ -245,7 +245,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "nil-embedded-catalog",
@@ -254,7 +254,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "no-public-id",
