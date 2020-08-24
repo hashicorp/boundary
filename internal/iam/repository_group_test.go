@@ -80,7 +80,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 				group: nil,
 			},
 			wantErr:     true,
-			wantErrMsg:  "create group: missing group nil parameter",
+			wantErrMsg:  "create group: missing group invalid parameter",
 			wantIsError: db.ErrInvalidParameter,
 		},
 		{
@@ -93,7 +93,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantErrMsg:  "create group: missing group store nil parameter",
+			wantErrMsg:  "create group: missing group store invalid parameter",
 			wantIsError: db.ErrInvalidParameter,
 		},
 		{
@@ -503,7 +503,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete group: missing public id nil parameter",
+			wantErrMsg:      "delete group: missing public id invalid parameter",
 		},
 		{
 			name: "not-found",
