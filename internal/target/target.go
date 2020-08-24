@@ -69,8 +69,8 @@ func (t *targetView) SetTableName(n string) {
 	}
 }
 
-// TargetSubType converts the target view to the concrete subtype
-func (t *targetView) TargetSubType() (Target, error) {
+// targetSubType converts the target view to the concrete subtype
+func (t *targetView) targetSubType() (Target, error) {
 	switch t.Type {
 	case TcpTargetType.String():
 		tcpTarget := allocTcpTarget()

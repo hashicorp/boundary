@@ -83,7 +83,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicId string, opt ...O
 	if err != nil {
 		return nil, nil, fmt.Errorf("lookup target: %w", err)
 	}
-	subType, err := target.TargetSubType()
+	subType, err := target.targetSubType()
 	if err != nil {
 		return nil, nil, fmt.Errorf("lookup target: %w", err)
 	}
@@ -107,7 +107,7 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	if opts.withScopeId == "" && opts.withUserId == "" {
 		return nil, fmt.Errorf("list targets: must specify either a scope id or user id: %w", db.ErrInvalidParameter)
 	}
-	// TODO (jimlambrt) - implement WithUserId() optional filtering.
+	// TODO (jimlambrt 8/2020) - implement WithUserId() optional filtering.
 	var where []string
 	var args []interface{}
 	if opts.withScopeId != "" {
@@ -126,7 +126,7 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	targets := make([]Target, 0, len(foundTargets))
 
 	for _, t := range foundTargets {
-		subType, err := t.TargetSubType()
+		subType, err := t.targetSubType()
 		if err != nil {
 			return nil, fmt.Errorf("list targets: %w", err)
 		}
@@ -191,7 +191,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, opt ...O
 			)
 			if err == nil && rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
-				return errors.New("error more than 1 target would have been deleted ")
+				return db.ErrMultipleRecords
 			}
 			return err
 		},
