@@ -303,7 +303,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "update: interface is missing nil parameter",
+			wantErrMsg: "update: interface is missing invalid parameter",
 		},
 		{
 			name: "only read-only",
@@ -529,7 +529,7 @@ func TestDb_Update(t *testing.T) {
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: missing underlying db nil parameter", err.Error())
+		assert.Equal("update: missing underlying db invalid parameter", err.Error())
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -551,7 +551,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed: error no wrapper WithOplog: nil parameter", err.Error())
+		assert.Equal("update: oplog validation failed: error no wrapper WithOplog: invalid parameter", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -749,7 +749,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		require.Error(err)
-		assert.Equal("create: oplog validation failed: error no wrapper WithOplog: nil parameter", err.Error())
+		assert.Equal("create: oplog validation failed: error no wrapper WithOplog: invalid parameter", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -780,7 +780,7 @@ func TestDb_Create(t *testing.T) {
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
 		require.Error(err)
-		assert.Equal("create: missing underlying db: nil parameter", err.Error())
+		assert.Equal("create: missing underlying db: invalid parameter", err.Error())
 	})
 }
 
@@ -869,7 +869,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 		require.NoError(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		require.Error(err)
-		assert.Equal("lookup by id: underlying db nil nil parameter", err.Error())
+		assert.Equal("lookup by id: underlying db nil invalid parameter", err.Error())
 	})
 	t.Run("no-public-id-set", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -1087,7 +1087,7 @@ func TestDb_DB(t *testing.T) {
 		d, err := w.DB()
 		require.Error(err)
 		assert.Nil(d)
-		assert.Equal("missing underlying db: nil parameter", err.Error())
+		assert.Equal("missing underlying db: invalid parameter", err.Error())
 	})
 }
 
