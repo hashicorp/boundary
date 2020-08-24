@@ -220,11 +220,22 @@ func (c *Command) Run(args []string) int {
 	// Get a wrapped net.Conn so we can use io.Copy
 	netConn := websocket.NetConn(c.Context, conn, websocket.MessageBinary)
 
-	listeningConn, err := listener.Accept()
+	// Allow closing the listener from Ctrl-C
+	go func() {
+		<-c.Context.Done()
+		listener.Close()
+	}()
+
+	listeningConn, err := listener.AcceptTCP()
 	listener.Close()
 	if err != nil {
-		c.UI.Error(fmt.Errorf("Error accepting connection: %w", err).Error())
-		return 1
+		select {
+		case <-c.Context.Done():
+			return 0
+		default:
+			c.UI.Error(fmt.Errorf("Error accepting connection: %w", err).Error())
+			return 1
+		}
 	}
 
 	connWg := new(sync.WaitGroup)
@@ -248,7 +259,5 @@ func (c *Command) Run(args []string) int {
 		netConn.Close()
 	}()
 	connWg.Wait()
-
-	c.UI.Info("Exiting normally")
 	return 0
 }
