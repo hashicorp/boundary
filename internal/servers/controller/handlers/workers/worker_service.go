@@ -36,7 +36,7 @@ func NewWorkerServiceServer(logger hclog.Logger, repoFn common.ServersRepoFactor
 }
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
-	ws.logger.Trace("got status request from worker", "name", req.Worker.Name, "address", req.Worker.Address)
+	ws.logger.Trace("got status request from worker", "name", req.Worker.Name, "address", req.Worker.Address, "active_jobs", req.ActiveJobIds)
 	ws.updateTimes.Store(req.Worker.Name, time.Now())
 	repo, err := ws.repoFn()
 	if err != nil {

@@ -62,7 +62,6 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		defer func() {
 			cancel, loaded := w.cancellationMap.LoadAndDelete(jobId)
 			if !loaded {
-				w.logger.Warn("did not find job in cancellation map", "job_id", jobId)
 				return
 			}
 			cancel.(context.CancelFunc)()

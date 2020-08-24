@@ -46,8 +46,14 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 				return
 
 			case <-timer.C:
+				var activeJobs []string
+				w.cancellationMap.Range(func(key, value interface{}) bool {
+					activeJobs = append(activeJobs, key.(string))
+					return true
+				})
 				client := w.controllerConn.Load().(services.WorkerServiceClient)
 				result, err := client.Status(cancelCtx, &pbs.StatusRequest{
+					ActiveJobIds: activeJobs,
 					Worker: &servers.Server{
 						PrivateId:   w.conf.RawConfig.Worker.Name,
 						Name:        w.conf.RawConfig.Worker.Name,
