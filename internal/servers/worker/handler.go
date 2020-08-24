@@ -2,12 +2,13 @@ package worker
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/shared-secure-libs/configutil"
+	"nhooyr.io/websocket"
 )
 
 type HandlerProperties struct {
@@ -16,35 +17,68 @@ type HandlerProperties struct {
 
 // Handler returns an http.Handler for the API. This can be used on
 // its own to mount the Vault API within another web server.
-func (c *Worker) handler(props HandlerProperties) http.Handler {
+func (w *Worker) handler(props HandlerProperties) http.Handler {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	mux.Handle("/v1/proxy", handleProxy())
+	mux.Handle("/v1/proxy", w.handleProxy())
 
-	genericWrappedHandler := c.wrapGenericHandler(mux, props)
+	genericWrappedHandler := w.wrapGenericHandler(mux, props)
 
 	return genericWrappedHandler
 }
 
-func handleProxy() http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		ret := map[string]interface{}{
-			"job": r.TLS.ServerName,
-		}
-		b, err := json.Marshal(ret)
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			w.WriteHeader(http.StatusInternalServerError)
+func (w *Worker) handleProxy() http.HandlerFunc {
+	return http.HandlerFunc(func(wr http.ResponseWriter, r *http.Request) {
+		if r.TLS == nil {
+			w.logger.Error("no request TLS information found")
+			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.Write(b)
+		jobId := r.TLS.ServerName
+
+		jobInfoRaw, valid := w.jobInfoMap.LoadAndDelete(jobId)
+		if !valid {
+			w.logger.Error("job not found in info map", "job_id", jobId)
+			wr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		jobInfo := jobInfoRaw.(*services.ValidateSessionResponse)
+
+		opts := &websocket.AcceptOptions{
+			Subprotocols: []string{globals.TcpProxyV1},
+		}
+		conn, err := websocket.Accept(wr, r, opts)
+		if err != nil {
+			w.logger.Error("error during websocket upgrade", "error", err)
+			wr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		// Later calls will cause this to noop if they return a different status
+		defer conn.Close(websocket.StatusNormalClosure, "done")
+
+		connCtx, connCancel := context.WithCancel(r.Context())
+		w.cancellationMap.Store(jobId, connCancel)
+		defer func() {
+			cancel, loaded := w.cancellationMap.LoadAndDelete(jobId)
+			if !loaded {
+				w.logger.Warn("did not find job in cancellation map", "job_id", jobId)
+				return
+			}
+			cancel.(context.CancelFunc)()
+		}()
+
+		switch conn.Subprotocol() {
+		case globals.TcpProxyV1:
+			w.handleTcpProxyV1(connCtx, conn, jobInfo)
+		default:
+			conn.Close(websocket.StatusProtocolError, "unsupported-protocol")
+			return
+		}
 	})
 }
 
-func (c *Worker) wrapGenericHandler(h http.Handler, props HandlerProperties) http.Handler {
+func (w *Worker) wrapGenericHandler(h http.Handler, props HandlerProperties) http.Handler {
 	var maxRequestDuration time.Duration
 	var maxRequestSize int64
 	if props.ListenerConfig != nil {
@@ -57,9 +91,9 @@ func (c *Worker) wrapGenericHandler(h http.Handler, props HandlerProperties) htt
 	if maxRequestSize == 0 {
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(wr http.ResponseWriter, r *http.Request) {
 		// Set the Cache-Control header for all responses returned
-		w.Header().Set("Cache-Control", "no-store")
+		wr.Header().Set("Cache-Control", "no-store")
 
 		// Start with the request context
 		ctx := r.Context()
@@ -73,7 +107,7 @@ func (c *Worker) wrapGenericHandler(h http.Handler, props HandlerProperties) htt
 		ctx = context.WithValue(ctx, globals.ContextOriginalRequestPathTypeKey, r.URL.Path)
 		r = r.WithContext(ctx)
 
-		h.ServeHTTP(w, r)
+		h.ServeHTTP(wr, r)
 		cancelFunc()
 	})
 }

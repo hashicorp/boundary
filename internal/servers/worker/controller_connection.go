@@ -26,20 +26,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type controllerConnection struct {
-	controllerAddr string
-	client         services.WorkerServiceClient
-}
-
-func newControllerConnection(controllerAddr string, client services.WorkerServiceClient) *controllerConnection {
-	ret := &controllerConnection{
-		controllerAddr: controllerAddr,
-		client:         client,
-	}
-
-	return ret
-}
-
 func (w *Worker) startControllerConnections() error {
 	initialAddrs := make([]resolver.Address, 0, len(w.conf.RawConfig.Worker.Controllers))
 	for _, addr := range w.conf.RawConfig.Worker.Controllers {

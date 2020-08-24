@@ -76,5 +76,11 @@ func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 
 	//w.logger.Trace(litter.Sdump(tlsConf))
 
+	// TODO: Periodicially clean this up. We can't rely on things in here but
+	// not in cancellation because they could be on the way to being
+	// established. However, since cert lifetimes are short, we can simply range
+	// through and remove values that are expired.
+	w.jobInfoMap.Store(jobId, resp)
+
 	return tlsConf, nil
 }

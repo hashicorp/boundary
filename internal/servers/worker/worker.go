@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"sync"
 	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
@@ -30,6 +31,9 @@ type Worker struct {
 
 	controllerResolver        *atomic.Value
 	controllerResolverCleanup *atomic.Value
+
+	jobInfoMap      *sync.Map
+	cancellationMap *sync.Map
 }
 
 func New(conf *Config) (*Worker, error) {
@@ -40,6 +44,8 @@ func New(conf *Config) (*Worker, error) {
 		lastStatusSuccess:         new(atomic.Value),
 		controllerResolver:        new(atomic.Value),
 		controllerResolverCleanup: new(atomic.Value),
+		jobInfoMap:                new(sync.Map),
+		cancellationMap:           new(sync.Map),
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))

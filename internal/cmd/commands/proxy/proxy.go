@@ -6,11 +6,15 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/go-cleanhttp"
@@ -22,15 +26,13 @@ import (
 var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
 
-const (
-	supportedProto = "boundary-proxy-v1"
-)
-
 type Command struct {
 	*base.Command
 
 	flagAuth       string
+	flagListenAddr string
 	flagListenPort int
+	flagVerbose    bool
 }
 
 func (c *Command) Synopsis() string {
@@ -64,12 +66,27 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:      `The authorization string returned from the Boundary controller. If set to "-", the command will attempt to read in the authorization string from standard input.`,
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:       "listen-addr",
+		Target:     &c.flagListenAddr,
+		EnvVar:     "BOUNDARY_PROXY_LISTEN_ADDR",
+		Completion: complete.PredictAnything,
+		Usage:      `If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot, the command will error. If not set, defaults to the most common IPv4 loopback address (127.0.0.1)."`,
+	})
+
 	f.IntVar(&base.IntVar{
 		Name:       "listen-port",
 		Target:     &c.flagListenPort,
 		EnvVar:     "BOUNDARY_PROXY_LISTEN_PORT",
 		Completion: complete.PredictAnything,
 		Usage:      `If set, the CLI will attempt to bind its listening port to the given value. If it cannot, the command will error."`,
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:       "verbose",
+		Target:     &c.flagVerbose,
+		Completion: complete.PredictAnything,
+		Usage:      "Turns on some extra verbosity in the command output.",
 	})
 
 	return set
@@ -88,6 +105,15 @@ func (c *Command) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
+		return 1
+	}
+
+	if c.flagListenAddr == "" {
+		c.flagListenAddr = "127.0.0.1"
+	}
+	listenAddr := net.ParseIP(c.flagListenAddr)
+	if listenAddr == nil {
+		c.UI.Error(fmt.Sprintf("Could not successfully parse listen address of %s", c.flagListenAddr))
 		return 1
 	}
 
@@ -152,6 +178,16 @@ func (c *Command) Run(args []string) int {
 	transport.DisableKeepAlives = false
 	transport.TLSClientConfig = tlsConf
 
+	listener, err := net.ListenTCP("tcp", &net.TCPAddr{
+		IP:   listenAddr,
+		Port: c.flagListenPort,
+	})
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error starting listening port: %w", err).Error())
+		return 1
+	}
+	c.UI.Info(fmt.Sprintf("%s", listener.Addr().String()))
+
 	conn, resp, err := websocket.Dial(
 		c.Context,
 		fmt.Sprintf("wss://%s/v1/proxy", sessionInfo.GetWorkerInfo()[0].GetAddress()),
@@ -159,16 +195,13 @@ func (c *Command) Run(args []string) int {
 			HTTPClient: &http.Client{
 				Transport: transport,
 			},
-			Subprotocols: []string{supportedProto},
+			Subprotocols: []string{globals.TcpProxyV1},
 		},
 	)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error dialing the worker: %w", err).Error())
 		return 1
 	}
-	// TODO: Is this needed, or is the context sufficient?
-	//defer conn.Close(websocket.StatusNormalClosure, "done-client")
-	_ = conn
 
 	if resp == nil {
 		c.UI.Error("Response from worker is nil")
@@ -179,10 +212,43 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 	negProto := resp.Header.Get("Sec-WebSocket-Protocol")
-	if negProto != supportedProto {
+	if negProto != globals.TcpProxyV1 {
 		c.UI.Error(fmt.Sprintf("Unexpected negotiated protocol: %s", negProto))
 		return 1
 	}
 
+	// Get a wrapped net.Conn so we can use io.Copy
+	netConn := websocket.NetConn(c.Context, conn, websocket.MessageBinary)
+
+	listeningConn, err := listener.Accept()
+	listener.Close()
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error accepting connection: %w", err).Error())
+		return 1
+	}
+
+	connWg := new(sync.WaitGroup)
+	connWg.Add(2)
+	go func() {
+		defer connWg.Done()
+		_, err := io.Copy(netConn, listeningConn)
+		if c.flagVerbose {
+			c.UI.Info(fmt.Sprintf("copy from client to endpoint done, error: %v", err))
+		}
+		netConn.Close()
+		listeningConn.Close()
+	}()
+	go func() {
+		defer connWg.Done()
+		_, err := io.Copy(listeningConn, netConn)
+		if c.flagVerbose {
+			c.UI.Info(fmt.Sprintf("copy from endpoint to client done, error: %v", err))
+		}
+		listeningConn.Close()
+		netConn.Close()
+	}()
+	connWg.Wait()
+
+	c.UI.Info("Exiting normally")
 	return 0
 }

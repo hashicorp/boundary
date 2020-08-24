@@ -9,6 +9,10 @@ import "time"
 // import issues. These values should only ever be set at startup, but simply
 // available to reference from anywhere.
 
+const (
+	TcpProxyV1 = "boundary-tcp-proxy-v1"
+)
+
 type ContextMaxRequestSizeType int
 type ContextOriginalRequestPathType int
 
