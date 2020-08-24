@@ -2,20 +2,26 @@ package authenticate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
+	"github.com/btcsuite/btcutil/base58"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -29,24 +35,28 @@ var (
 
 // Service handles request as described by the pbs.OrgServiceServer interface.
 type Service struct {
+	kms           *kms.Kms
 	pwRepo        common.PasswordAuthRepoFactory
 	iamRepo       common.IamRepoFactory
 	authTokenRepo common.AuthTokenRepoFactory
 }
 
 // NewService returns an org service which handles org related requests to boundary.
-func NewService(pwRepo common.PasswordAuthRepoFactory, iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactory) (Service, error) {
+func NewService(kms *kms.Kms, pwRepo common.PasswordAuthRepoFactory, iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactory) (Service, error) {
+	if kms == nil {
+		return Service{}, errors.New("nil kms provided")
+	}
 	if iamRepo == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New("nil iam repository provided")
 	}
 	if atRepo == nil {
-		return Service{}, fmt.Errorf("nil auth token repository provided")
+		return Service{}, errors.New("nil auth token repository provided")
 	}
 	if pwRepo == nil {
-		return Service{}, fmt.Errorf("nil password repository provided")
+		return Service{}, errors.New("nil password repository provided")
 	}
 
-	return Service{pwRepo: pwRepo, iamRepo: iamRepo, authTokenRepo: atRepo}, nil
+	return Service{kms: kms, pwRepo: pwRepo, iamRepo: iamRepo, authTokenRepo: atRepo}, nil
 }
 
 var _ pbs.AuthenticationServiceServer = Service{}
@@ -103,7 +113,29 @@ func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId
 	if err != nil {
 		return nil, err
 	}
-	tok.Token = tok.GetPublicId() + "_" + tok.GetToken()
+
+	// Encrypt the token. We always use the global scope because on authenticate
+	// we don't have scope info at this point and the idea is to remove a DB
+	// lookup if the token is made up/invalid so as to prevent DDoS against a
+	// third party service by just randomly guessing tokens.
+	tokenWrapper, err := s.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeTokens)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get wrapper: %w", err)
+	}
+
+	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(tok.GetToken()), []byte(tok.GetPublicId()))
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting token: %w", err)
+	}
+
+	marshaledBlob, err := proto.Marshal(blobInfo)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling encrypted token: %w", err)
+	}
+
+	token := base58.CheckEncode(marshaledBlob, globals.TokenChecksumVersion)
+
+	tok.Token = tok.GetPublicId() + "_" + token
 	prot := toProto(tok)
 
 	scp, err := iamRepo.LookupScope(ctx, u.GetScopeId())

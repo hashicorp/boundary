@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -19,7 +20,9 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/recovery"
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/kr/pretty"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -504,7 +507,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 // split cookies and parses it. If it cannot be parsed successfully, the issue
 // is logged and we return blank, so logic will continue as the anonymous user.
 // The public ID and token are returned along with the token format.
-func GetTokenFromRequest(logger hclog.Logger, req *http.Request) (string, string, TokenFormat) {
+func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Request) (string, string, TokenFormat) {
 	// First, get the token, either from the authorization header or from split
 	// cookies
 	var receivedTokenType TokenFormat
@@ -548,8 +551,39 @@ func GetTokenFromRequest(logger hclog.Logger, req *http.Request) (string, string
 		return "", "", AuthTokenTypeUnknown
 	}
 
-	token := splitFullToken[2]
 	publicId := strings.Join(splitFullToken[0:2], "_")
+
+	// This is hardcoded to global because at this point we don't know the
+	// scope. But that's okay; this is not really a security feature so much as
+	// an anti-DDoSing-the-backing-database feature.
+	tokenWrapper, err := kmsCache.GetWrapper(req.Context(), scope.Global.String(), kms.KeyPurposeTokens)
+	if err != nil {
+		logger.Warn("get token from request: unable to get wrapper for tokens", "error", err)
+		return "", "", AuthTokenTypeUnknown
+	}
+
+	marshaledToken, version, err := base58.CheckDecode(splitFullToken[2])
+	switch {
+	case err != nil:
+		logger.Trace("error base58-decoding token", "error", err)
+		return "", "", AuthTokenTypeUnknown
+	case version != globals.TokenChecksumVersion:
+		logger.Trace("unexpected token version num", "version", fmt.Sprintf("%v", version))
+		return "", "", AuthTokenTypeUnknown
+	}
+
+	blobInfo := new(wrapping.EncryptedBlobInfo)
+	if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
+		logger.Trace("error decoding encrypted token", "error", err)
+		return "", "", AuthTokenTypeUnknown
+	}
+
+	tokenBytes, err := tokenWrapper.Decrypt(req.Context(), blobInfo, []byte(publicId))
+	if err != nil {
+		logger.Trace("error decrypting encrypted token", "error", err)
+		return "", "", AuthTokenTypeUnknown
+	}
+	token := string(tokenBytes)
 
 	if receivedTokenType == AuthTokenTypeUnknown || token == "" || publicId == "" {
 		logger.Trace("get token from request: after parsing, could not find valid token")

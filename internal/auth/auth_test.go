@@ -360,7 +360,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 				Path:   req.URL.Path,
 				Method: req.Method,
 			}
-			requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = GetTokenFromRequest(nil, req)
+			requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = GetTokenFromRequest(nil, kms, req)
 			assert.Equal(t, tc.tokenFormat, requestInfo.TokenFormat)
 
 			if tc.userId == "" {
