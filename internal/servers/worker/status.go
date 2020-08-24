@@ -69,6 +69,15 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 					w.Resolver().UpdateState(resolver.State{Addresses: addrs})
 					w.logger.Trace("found controllers", "addresses", strAddrs)
 					w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
+
+					for _, id := range result.GetCancelJobIds() {
+						if cancel, ok := w.cancellationMap.LoadAndDelete(id); ok {
+							cancel.(context.CancelFunc)()
+							w.logger.Info("canceled job", "job_id", id)
+						} else {
+							w.logger.Warn("asked to cancel job but could not find a cancellation function for it", "job_id", id)
+						}
+					}
 				}
 				timer.Reset(getRandomInterval())
 			}

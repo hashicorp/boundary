@@ -16,20 +16,22 @@ import (
 )
 
 type workerServiceServer struct {
-	logger      hclog.Logger
-	repoFn      common.ServersRepoFactory
-	updateTimes *sync.Map
-	kms         *kms.Kms
-	jobMap      *sync.Map
+	logger       hclog.Logger
+	repoFn       common.ServersRepoFactory
+	updateTimes  *sync.Map
+	kms          *kms.Kms
+	jobMap       *sync.Map
+	jobCancelMap *sync.Map
 }
 
 func NewWorkerServiceServer(logger hclog.Logger, repoFn common.ServersRepoFactory, updateTimes *sync.Map, kms *kms.Kms, jobMap *sync.Map) *workerServiceServer {
 	return &workerServiceServer{
-		logger:      logger,
-		repoFn:      repoFn,
-		updateTimes: updateTimes,
-		kms:         kms,
-		jobMap:      jobMap,
+		logger:       logger,
+		repoFn:       repoFn,
+		updateTimes:  updateTimes,
+		kms:          kms,
+		jobMap:       jobMap,
+		jobCancelMap: new(sync.Map),
 	}
 }
 
@@ -47,9 +49,17 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		ws.logger.Error("error storing worker status", "error", err)
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
-	return &pbs.StatusResponse{
+	ret := &pbs.StatusResponse{
 		Controllers: controllers,
-	}, nil
+	}
+	ws.jobCancelMap.Range(func(key, value interface{}) bool {
+		ret.CancelJobIds = append(ret.CancelJobIds, key.(string))
+		return true
+	})
+	for _, id := range ret.CancelJobIds {
+		ws.jobCancelMap.Delete(id)
+	}
+	return ret, nil
 }
 
 func (ws *workerServiceServer) ValidateSession(ctx context.Context, req *pbs.ValidateSessionRequest) (*pbs.ValidateSessionResponse, error) {
@@ -73,6 +83,12 @@ func (ws *workerServiceServer) ValidateSession(ctx context.Context, req *pbs.Val
 	if err != nil {
 		return &pbs.ValidateSessionResponse{}, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
 	}
+
+	defer func() {
+		time.AfterFunc(15*time.Second, func() {
+			ws.jobCancelMap.Store(req.GetId(), true)
+		})
+	}()
 
 	sessionInfo.PrivateKey = privKey
 	return sessionInfo, nil
