@@ -260,10 +260,10 @@ func (r *Repository) AddTargeHostSets(ctx context.Context, targetId string, targ
 			var targetOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, updatedTarget, []string{"Version"}, nil, db.NewOplogMsg(&targetOplogMsg), db.WithVersion(&targetVersion))
 			if err != nil {
-				return fmt.Errorf("add target host sets: unable to update role version: %w", err)
+				return fmt.Errorf("add target host sets: unable to update target version: %w", err)
 			}
 			if rowsUpdated != 1 {
-				return fmt.Errorf("add target host sets: updated role and %d rows updated", rowsUpdated)
+				return fmt.Errorf("add target host sets: updated target and %d rows updated", rowsUpdated)
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
@@ -284,12 +284,12 @@ func (r *Repository) AddTargeHostSets(ctx context.Context, targetId string, targ
 		},
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("add target host sets: error creating roles: %w", err)
+		return nil, nil, fmt.Errorf("add target host sets: error creating sets: %w", err)
 	}
 	return updatedTarget.(Target), currentHostSets, nil
 }
 
-// DeleteTargeHostSets deletes host sets from a target (targetId). The role's
+// DeleteTargeHostSets deletes host sets from a target (targetId). The target's
 // current db version must match the targetVersion or an error will be returned.
 // Zero is not a valid value for the WithVersion option and will return an
 // error.
@@ -343,7 +343,7 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(target)
+			targetTicket, err := w.GetTicket(target)
 			if err != nil {
 				return fmt.Errorf("delete target host sets: unable to get ticket: %w", err)
 			}
@@ -354,7 +354,7 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 				return fmt.Errorf("delete target host sets: unable to update target version: %w", err)
 			}
 			if rowsUpdated != 1 {
-				return fmt.Errorf("delete target host sets: updated role and %d rows updated", rowsUpdated)
+				return fmt.Errorf("delete target host sets: updated target and %d rows updated", rowsUpdated)
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
@@ -369,7 +369,7 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 			totalRowsDeleted += rowsDeleted
 			msgs = append(msgs, hostSetsOplogMsgs...)
 
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("delete target host sets: unable to write oplog: %w", err)
 			}
 			return nil
@@ -387,7 +387,7 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 // is not a valid value for the WithVersion option and will return an error.
 func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, opt ...Option) ([]*TargetSet, int, error) {
 	if targetId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("set target host sets: missing role id: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set target host sets: missing target id: %w", db.ErrInvalidParameter)
 	}
 	if targetVersion == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("set target host sets: version cannot be zero: %w", db.ErrInvalidParameter)
