@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -38,13 +39,7 @@ const (
 
 type key int
 
-var (
-	// RecoveryTokenValidityPeriod is exported so we can modify it in tests if
-	// we want
-	RecoveryTokenValidityPeriod = 5 * time.Minute
-
-	verifierKey key
-)
+var verifierKey key
 
 // RequestInfo contains request parameters necessary for checking authn/authz
 type RequestInfo struct {
@@ -73,6 +68,7 @@ type verifier struct {
 	logger          hclog.Logger
 	iamRepoFn       common.IamRepoFactory
 	authTokenRepoFn common.AuthTokenRepoFactory
+	serversRepoFn   common.ServersRepoFactory
 	kms             *kms.Kms
 	requestInfo     RequestInfo
 	res             *perms.Resource
@@ -88,12 +84,14 @@ func NewVerifierContext(ctx context.Context,
 	logger hclog.Logger,
 	iamRepoFn common.IamRepoFactory,
 	authTokenRepoFn common.AuthTokenRepoFactory,
+	serversRepoFn common.ServersRepoFactory,
 	kms *kms.Kms,
 	requestInfo RequestInfo) context.Context {
 	return context.WithValue(ctx, verifierKey, &verifier{
 		logger:          logger,
 		iamRepoFn:       iamRepoFn,
 		authTokenRepoFn: authTokenRepoFn,
+		serversRepoFn:   serversRepoFn,
 		kms:             kms,
 		requestInfo:     requestInfo,
 	})
@@ -423,16 +421,22 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 			retErr = fmt.Errorf("perform auth check: error validating recovery token: %w", err)
 			return
 		}
-
 		// If we add the validity period to the creation time (which we've
 		// verified is before the current time, with a minute of fudging), and
 		// it's before now, it's expired and might be a replay.
-		if info.CreationTime.Add(RecoveryTokenValidityPeriod).Before(time.Now()) {
-			retErr = errors.New("perform auth check: recovery token has expired")
+		if info.CreationTime.Add(globals.RecoveryTokenValidityPeriod).Before(time.Now()) {
+			retErr = errors.New("WARNING: perform auth check: recovery token has expired (possible replay attack)")
 			return
 		}
-		// TODO: verify nonce hasn't been used via the DB
-		_ = info
+		repo, err := v.serversRepoFn()
+		if err != nil {
+			retErr = fmt.Errorf("perform auth check: error fetching servers repo: %w", err)
+			return
+		}
+		if err := repo.AddRecoveryNonce(v.ctx, info.Nonce); err != nil {
+			retErr = fmt.Errorf("WARNING: perform auth check: error adding nonce to database (possible replay attack): %w", err)
+			return
+		}
 		v.logger.Warn("NOTE: recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
 	}
 

@@ -98,6 +98,16 @@ variable. For example:
 
   ```UI_COMMITISH=feature-branch make dev```
 
+#### UI Development
+
+It would be impractical to rebuild the binary on every change when actively
+developing the UI.  To make UI development more convenient, the binary
+supports a _passthrough directory_.  This is an arbitrary local
+directory from which UI assets are served.  Note this option is only available
+in dev mode.  For example:
+
+  ```BOUNDARY_DEV_PASSTHROUGH_DIRECTORY=/boundary-ui/ui/core/dist ~/go/bin/boundary dev```
+
 ### Download and Run from Release Page
 
 Download the latest release of the server binary and appropriate desktop

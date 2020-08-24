@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/kr/pretty"
@@ -281,6 +282,9 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	serversRepoFn := func() (*servers.Repository, error) {
+		return servers.NewRepository(rw, rw, kms)
+	}
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
@@ -362,7 +366,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 			if tc.userId == "" {
 				return
 			}
-			ctx := NewVerifierContext(context.Background(), nil, iamRepoFn, tokenRepoFn, kms, requestInfo)
+			ctx := NewVerifierContext(context.Background(), nil, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
 
 			v, ok := ctx.Value(verifierKey).(*verifier)
 			require.True(t, ok)

@@ -18,8 +18,7 @@ func TestAuthMethod_New(t *testing.T) {
 	w := db.New(conn)
 
 	type args struct {
-		scopeId string
-		opts    []Option
+		opts []Option
 	}
 
 	var tests = []struct {
