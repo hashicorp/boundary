@@ -8,7 +8,6 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
-	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
@@ -52,50 +51,17 @@ func (r *Repository) ListServers(ctx context.Context, serverType string, opt ...
 		liveness = defaultLiveness
 	}
 	updateTime := time.Now().Add(-1 * liveness)
-	q := `
-	select * from servers
-	where
-		type = $1
-		and
-		update_time > $2;`
-	underlying, err := r.reader.DB()
-	if err != nil {
-		return nil, fmt.Errorf("error fetching underlying DB for server list operation: %w", err)
+	var servers []*Server
+	if err := r.reader.SearchWhere(
+		ctx,
+		&servers,
+		"type = $1 and update_time > $2",
+		[]interface{}{serverType, updateTime.Format(time.RFC3339)},
+		db.WithLimit(-1),
+	); err != nil {
+		return nil, fmt.Errorf("error listing servers: %w", err)
 	}
-	rows, err := underlying.QueryContext(ctx, q,
-		serverType,
-		updateTime.Format(time.RFC3339))
-	if err != nil {
-		return nil, fmt.Errorf("error performing server list: %w", err)
-	}
-	results := make([]*Server, 0, 3)
-	var scanErr error
-	for rows.Next() {
-		server := &Server{
-			CreateTime: new(timestamp.Timestamp),
-			UpdateTime: new(timestamp.Timestamp),
-		}
-		if err := rows.Scan(
-			&server.PrivateId,
-			&server.Type,
-			&server.Name,
-			&server.Description,
-			&server.Address,
-			server.CreateTime,
-			server.UpdateTime,
-		); err != nil {
-			scanErr = fmt.Errorf("error scanning server row: %w", err)
-			break
-		}
-		results = append(results, server)
-	}
-	if scanErr != nil {
-		return nil, scanErr
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error performing scan over server rows: %w", err)
-	}
-	return results, nil
+	return servers, nil
 }
 
 // UpsertServer adds or updates a server in the DB
