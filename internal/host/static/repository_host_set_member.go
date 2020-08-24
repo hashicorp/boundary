@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -73,7 +75,7 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 	}
 
 	// Create in-memory host set members
-	members, err := r.createMembers(setId, hostIds)
+	members, err := r.newMembers(setId, hostIds)
 	if err != nil {
 		return nil, fmt.Errorf("add: static host set members: %w", err)
 	}
@@ -88,39 +90,12 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 		metadata := set.oplog(oplog.OpType_OP_TYPE_CREATE)
 
 		// Create host set members
-		var msgs []*oplog.Message
-		if err := w.CreateItems(ctx, members, db.NewOplogMsgs(&msgs)); err != nil {
-			return fmt.Errorf("unable to create host set members: %w", err)
-		}
-
-		// Update host set version
-		setMsg := new(oplog.Message)
-		rowsUpdated, err := w.Update(
-			ctx,
-			set,
-			[]string{"Version"},
-			nil,
-			db.NewOplogMsg(setMsg),
-			db.WithVersion(&version),
-		)
-		switch {
-		case err != nil:
-			return fmt.Errorf("unable to update host set version: %w", err)
-		case rowsUpdated > 1:
-			return fmt.Errorf("unable to update host set version: %w", db.ErrMultipleRecords)
-		}
-		msgs = append(msgs, setMsg)
-
-		// Write oplog
-		ticket, err := w.GetTicket(set)
+		msgs, err := createMembers(ctx, w, members)
 		if err != nil {
-			return fmt.Errorf("unable to get ticket: %w", err)
+			return err
 		}
-		if err := w.WriteOplogEntryWith(ctx, wrapper, ticket, metadata, msgs); err != nil {
-			return fmt.Errorf("unable to write oplog: %w", err)
-		}
-
-		return nil
+		// Update host set version
+		return updateVersion(ctx, w, wrapper, metadata, msgs, set, version)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("add: static host set members: %w", err)
@@ -136,17 +111,47 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 	return hosts, nil
 }
 
-func (r *Repository) createMembers(setId string, hostIds []string) ([]interface{}, error) {
+func (r *Repository) newMembers(setId string, hostIds []string) ([]interface{}, error) {
 	var members []interface{}
 	for _, id := range hostIds {
 		var m *HostSetMember
 		m, err := NewHostSetMember(setId, id)
 		if err != nil {
-			return nil, fmt.Errorf("create members: %w", err)
+			return nil, fmt.Errorf("new members: %w", err)
 		}
 		members = append(members, m)
 	}
 	return members, nil
+}
+
+func createMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*oplog.Message, error) {
+	var msgs []*oplog.Message
+	if err := w.CreateItems(ctx, members, db.NewOplogMsgs(&msgs)); err != nil {
+		return nil, fmt.Errorf("unable to create host set members: %w", err)
+	}
+	return msgs, nil
+}
+
+func updateVersion(ctx context.Context, w db.Writer, wrapper wrapping.Wrapper, metadata oplog.Metadata, msgs []*oplog.Message, set *HostSet, version uint32) error {
+	setMsg := new(oplog.Message)
+	rowsUpdated, err := w.Update(ctx, set, []string{"Version"}, nil, db.NewOplogMsg(setMsg), db.WithVersion(&version))
+	switch {
+	case err != nil:
+		return fmt.Errorf("unable to update host set version: %w", err)
+	case rowsUpdated > 1:
+		return fmt.Errorf("unable to update host set version: %w", db.ErrMultipleRecords)
+	}
+	msgs = append(msgs, setMsg)
+
+	// Write oplog
+	ticket, err := w.GetTicket(set)
+	if err != nil {
+		return fmt.Errorf("unable to get ticket: %w", err)
+	}
+	if err := w.WriteOplogEntryWith(ctx, wrapper, ticket, metadata, msgs); err != nil {
+		return fmt.Errorf("unable to write oplog: %w", err)
+	}
+	return nil
 }
 
 func (r *Repository) getHosts(ctx context.Context, setId string) ([]*Host, error) {
@@ -190,7 +195,7 @@ func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId
 	}
 
 	// Create in-memory host set members
-	members, err := r.createMembers(setId, hostIds)
+	members, err := r.newMembers(setId, hostIds)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: %w", err)
 	}
@@ -200,56 +205,36 @@ func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId
 		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: unable to get oplog wrapper: %w", err)
 	}
 
-	var rowsDeleted int
-
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
 		set := newHostSetForMembers(setId, version)
 		metadata := set.oplog(oplog.OpType_OP_TYPE_DELETE)
 
 		// Delete host set members
-		var msgs []*oplog.Message
-		rowsDeleted, err = w.DeleteItems(ctx, members, db.NewOplogMsgs(&msgs))
+		msgs, err := deleteMembers(ctx, w, members)
 		if err != nil {
-			return fmt.Errorf("unable to delete host set members: %w", err)
-		}
-		if rowsDeleted != len(members) {
-			return fmt.Errorf("set members deleted %d did not match request for %d", rowsDeleted, len(members))
+			return err
 		}
 
 		// Update host set version
-		setMsg := new(oplog.Message)
-		rowsUpdated, err := w.Update(
-			ctx,
-			set,
-			[]string{"Version"},
-			nil,
-			db.NewOplogMsg(setMsg),
-			db.WithVersion(&version),
-		)
-		switch {
-		case err != nil:
-			return fmt.Errorf("unable to update host set version: %w", err)
-		case rowsUpdated > 1:
-			return fmt.Errorf("unable to update host set version: %w", db.ErrMultipleRecords)
-		}
-		msgs = append(msgs, setMsg)
-
-		// Write oplog
-		ticket, err := w.GetTicket(set)
-		if err != nil {
-			return fmt.Errorf("unable to get ticket: %w", err)
-		}
-		if err := w.WriteOplogEntryWith(ctx, wrapper, ticket, metadata, msgs); err != nil {
-			return fmt.Errorf("unable to write oplog: %w", err)
-		}
-
-		return nil
+		return updateVersion(ctx, w, wrapper, metadata, msgs, set, version)
 	})
 
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: %w", err)
 	}
-	return rowsDeleted, nil
+	return len(hostIds), nil
+}
+
+func deleteMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*oplog.Message, error) {
+	var msgs []*oplog.Message
+	rowsDeleted, err := w.DeleteItems(ctx, members, db.NewOplogMsgs(&msgs))
+	if err != nil {
+		return nil, fmt.Errorf("unable to delete host set members: %w", err)
+	}
+	if rowsDeleted != len(members) {
+		return nil, fmt.Errorf("set members deleted %d did not match request for %d", rowsDeleted, len(members))
+	}
+	return msgs, nil
 }
 
 // SetSetMembers replaces the hosts in setId with hostIds in the
@@ -276,7 +261,7 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: %w", err)
 	}
-	var deleteMembers, addMembers []interface{}
+	var deletions, additions []interface{}
 	for _, c := range changes {
 		m, err := NewHostSetMember(setId, c.HostId)
 		if err != nil {
@@ -284,13 +269,13 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 		}
 		switch c.Action {
 		case "delete":
-			deleteMembers = append(deleteMembers, m)
+			deletions = append(deletions, m)
 		case "add":
-			addMembers = append(addMembers, m)
+			additions = append(additions, m)
 		}
 	}
 
-	if len(changes) != 0 {
+	if len(changes) > 0 {
 		wrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 		if err != nil {
 			return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: unable to get oplog wrapper: %w", err)
@@ -302,53 +287,27 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 			var msgs []*oplog.Message
 
 			// Delete host set members
-			if len(deleteMembers) > 0 {
-				rowsDeleted, err := w.DeleteItems(ctx, deleteMembers, db.NewOplogMsgs(&msgs))
+			if len(deletions) > 0 {
+				deletedMsgs, err := deleteMembers(ctx, w, deletions)
 				if err != nil {
-					return fmt.Errorf("unable to delete host set members: %w", err)
+					return err
 				}
-				if rowsDeleted != len(deleteMembers) {
-					return fmt.Errorf("set members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers))
-				}
+				msgs = append(msgs, deletedMsgs...)
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 			}
 
 			// Add host set members
-			if len(addMembers) > 0 {
-				if err := w.CreateItems(ctx, addMembers, db.NewOplogMsgs(&msgs)); err != nil {
-					return fmt.Errorf("unable to create host set members: %w", err)
+			if len(additions) > 0 {
+				createdMsgs, err := createMembers(ctx, w, additions)
+				if err != nil {
+					return err
 				}
+				msgs = append(msgs, createdMsgs...)
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 			}
 
 			// Update host set version
-			setMsg := new(oplog.Message)
-			rowsUpdated, err := w.Update(
-				ctx,
-				set,
-				[]string{"Version"},
-				nil,
-				db.NewOplogMsg(setMsg),
-				db.WithVersion(&version),
-			)
-			switch {
-			case err != nil:
-				return fmt.Errorf("unable to update host set version: %w", err)
-			case rowsUpdated > 1:
-				return fmt.Errorf("unable to update host set version: %w", db.ErrMultipleRecords)
-			}
-			msgs = append(msgs, setMsg)
-
-			// Write oplog
-			ticket, err := w.GetTicket(set)
-			if err != nil {
-				return fmt.Errorf("unable to get ticket: %w", err)
-			}
-			if err := w.WriteOplogEntryWith(ctx, wrapper, ticket, metadata, msgs); err != nil {
-				return fmt.Errorf("unable to write oplog: %w", err)
-			}
-
-			return nil
+			return updateVersion(ctx, w, wrapper, metadata, msgs, set, version)
 		})
 
 		if err != nil {
