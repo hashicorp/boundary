@@ -31,9 +31,9 @@ func (r *Repository) ListSetMembers(ctx context.Context, setId string, opt ...Op
 	var rows *sql.Rows
 	switch {
 	case limit > 0:
-		rows, err = tx.Query(setMembersQueryLimit, setId, limit)
+		rows, err = tx.QueryContext(ctx, setMembersQueryLimit, setId, limit)
 	default:
-		rows, err = tx.Query(setMembersQueryNoLimit, setId)
+		rows, err = tx.QueryContext(ctx, setMembersQueryNoLimit, setId)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("list: static host set members: %w", err)
@@ -141,7 +141,7 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 		return nil, fmt.Errorf("get hosts: unable to get DB: %w", err)
 	}
 
-	rows, err := tx.Query(setMembersQueryNoLimit, setId)
+	rows, err := tx.QueryContext(ctx, setMembersQueryNoLimit, setId)
 	if err != nil {
 		return nil, fmt.Errorf("get hosts: query failed: %w", err)
 	}
