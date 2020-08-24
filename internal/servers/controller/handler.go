@@ -330,7 +330,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			errorResp(err)
 			return
 		}
-		servers, err := repo.List(r.Context(), servers.ServerTypeWorker)
+		servers, err := repo.ListServers(r.Context(), servers.ServerTypeWorker)
 		if err != nil {
 			errorResp(err)
 			return
