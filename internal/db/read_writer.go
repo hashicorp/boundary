@@ -49,9 +49,6 @@ type Reader interface {
 	// ScanRows will scan sql rows into the interface provided
 	ScanRows(rows *sql.Rows, result interface{}) error
 
-	// GormDB returns the gorm.DB
-	GormDB() (*gorm.DB, error)
-
 	// DB returns the sql.DB
 	DB() (*sql.DB, error)
 }
@@ -102,9 +99,6 @@ type Writer interface {
 	// caller must decide what to do with the transaction, which almost always
 	// should be to rollback. Delete returns the number of rows deleted or an error.
 	DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error)
-
-	// GormDB returns the gorm.DB
-	GormDB() (*gorm.DB, error)
 
 	// DB returns the sql.DB
 	DB() (*sql.DB, error)
@@ -191,13 +185,6 @@ func (rw *Db) DB() (*sql.DB, error) {
 		return nil, fmt.Errorf("missing underlying db: %w", ErrNilParameter)
 	}
 	return rw.underlying.DB(), nil
-}
-
-func (rw *Db) GormDB() (*gorm.DB, error) {
-	if rw.underlying == nil {
-		return nil, fmt.Errorf("missing underlying db: %w", ErrNilParameter)
-	}
-	return rw.underlying, nil
 }
 
 // Scan rows will scan the rows into the interface
