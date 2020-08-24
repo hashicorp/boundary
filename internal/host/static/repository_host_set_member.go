@@ -73,14 +73,9 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 	}
 
 	// Create in-memory host set members
-	var members []interface{}
-	for _, id := range hostIds {
-		var m *HostSetMember
-		m, err := NewHostSetMember(setId, id)
-		if err != nil {
-			return nil, fmt.Errorf("add: static host set members: %w", err)
-		}
-		members = append(members, m)
+	members, err := r.createMembers(setId, hostIds)
+	if err != nil {
+		return nil, fmt.Errorf("add: static host set members: %w", err)
 	}
 
 	wrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
@@ -141,6 +136,19 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 	return hosts, nil
 }
 
+func (r *Repository) createMembers(setId string, hostIds []string) ([]interface{}, error) {
+	var members []interface{}
+	for _, id := range hostIds {
+		var m *HostSetMember
+		m, err := NewHostSetMember(setId, id)
+		if err != nil {
+			return nil, fmt.Errorf("create members: %w", err)
+		}
+		members = append(members, m)
+	}
+	return members, nil
+}
+
 func (r *Repository) getHosts(ctx context.Context, setId string) ([]*Host, error) {
 	tx, err := r.reader.DB()
 	if err != nil {
@@ -182,14 +190,9 @@ func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId
 	}
 
 	// Create in-memory host set members
-	var members []interface{}
-	for _, id := range hostIds {
-		var m *HostSetMember
-		m, err := NewHostSetMember(setId, id)
-		if err != nil {
-			return db.NoRowsAffected, fmt.Errorf("delete: static host set members: %w", err)
-		}
-		members = append(members, m)
+	members, err := r.createMembers(setId, hostIds)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: %w", err)
 	}
 
 	wrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
