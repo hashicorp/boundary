@@ -8,7 +8,7 @@ require (
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
-	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
+	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-bindata/go-bindata/v3 v3.1.3
 	github.com/go-swagger/go-swagger v0.25.0
 	github.com/golang-migrate/migrate/v4 v4.12.2
@@ -24,16 +24,16 @@ require (
 	github.com/hashicorp/go-kms-wrapping v0.5.14
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-plugin v1.2.0 // indirect
-	github.com/hashicorp/go-retryablehttp v0.6.6
+	github.com/hashicorp/go-retryablehttp v0.6.7
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/shared-secure-libs v0.0.2
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200805123347-1ef507638af6
-	github.com/iancoleman/strcase v0.0.0-20180726023541-3605ed457bf7
+	github.com/iancoleman/strcase v0.1.0
 	github.com/jackc/pgx/v4 v4.8.1
-	github.com/jinzhu/gorm v1.9.15
+	github.com/jinzhu/gorm v1.9.16
 	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.8.0
@@ -48,7 +48,6 @@ require (
 	github.com/pires/go-proxyproto v0.1.3
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
-	github.com/ryanuber/columnize v2.1.0+incompatible
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.6.1
 	github.com/zalando/go-keyring v0.1.0

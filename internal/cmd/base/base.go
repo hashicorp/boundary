@@ -19,9 +19,6 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/recovery"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
@@ -65,7 +62,6 @@ type Command struct {
 	flagTLSInsecure   bool
 
 	flagFormat           string
-	flagField            string
 	FlagTokenName        string
 	FlagRecoveryConfig   string
 	flagOutputCurlString bool
@@ -185,7 +181,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	tokenName := "default"
 	switch {
 	case c.FlagRecoveryConfig != "":
-		wrapper, err := getWrapper(c.Context, c.FlagRecoveryConfig)
+		wrapper, err := recovery.GetWrapper(c.Context, c.FlagRecoveryConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -557,31 +553,4 @@ func printFlagDetail(w io.Writer, f *flag.Flag) {
 	usage := reRemoveWhitespace.ReplaceAllString(f.Usage, " ")
 	indented := WrapAtLengthWithPadding(usage, 6)
 	fmt.Fprintf(w, "%s\n\n", indented)
-}
-
-func getWrapper(ctx context.Context, path string) (wrapping.Wrapper, error) {
-	kmses, err := configutil.LoadConfigKMSes(path)
-	if err != nil {
-		return nil, fmt.Errorf("Error parsing config file: %w", err)
-	}
-
-	var kms *configutil.KMS
-	for _, v := range kmses {
-		if strutil.StrListContains(v.Purpose, "recovery") {
-			if kms != nil {
-				return nil, fmt.Errorf("Only one %q block marked for %q purpose is allowed", "kms", "recovery")
-			}
-			kms = v
-		}
-	}
-	if kms == nil {
-		return nil, fmt.Errorf("No %q block marked for %q purpose is allowed", "kms", "recovery")
-	}
-
-	wrapper, err := configutil.ConfigureWrapper(kms, nil, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("Error configuring kms: %w", err)
-	}
-
-	return wrapper, nil
 }

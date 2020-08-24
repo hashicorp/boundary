@@ -54,7 +54,9 @@ func (c *GroupsClient) Create(ctx context.Context, opt ...Option) (*Group, *api.
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -84,7 +86,9 @@ func (c *GroupsClient) Read(ctx context.Context, groupId string, opt ...Option) 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -132,7 +136,9 @@ func (c *GroupsClient) Update(ctx context.Context, groupId string, version uint3
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -165,7 +171,9 @@ func (c *GroupsClient) Delete(ctx context.Context, groupId string, opt ...Option
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
-
+	if apiErr != nil {
+		return false, apiErr, nil
+	}
 	return target.Existed, apiErr, nil
 }
 
@@ -194,7 +202,9 @@ func (c *GroupsClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target.Items, apiErr, nil
 }
 
@@ -246,7 +256,9 @@ func (c *GroupsClient) AddMembers(ctx context.Context, groupId string, version u
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddMembers response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -301,7 +313,9 @@ func (c *GroupsClient) SetMembers(ctx context.Context, groupId string, version u
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetMembers response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -353,6 +367,8 @@ func (c *GroupsClient) RemoveMembers(ctx context.Context, groupId string, versio
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemoveMembers response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }

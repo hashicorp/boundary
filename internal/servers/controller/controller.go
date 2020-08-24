@@ -113,7 +113,7 @@ func New(conf *Config) (*Controller, error) {
 		return authtoken.NewRepository(dbase, dbase, c.kms)
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
-		return servers.NewRepository(c.logger.Named("servers.repository"), dbase, dbase, c.kms)
+		return servers.NewRepository(dbase, dbase, c.kms)
 	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(dbase, dbase, c.kms)
@@ -136,6 +136,7 @@ func (c *Controller) Start() error {
 	}
 
 	c.startStatusTicking(c.baseContext)
+	c.startRecoveryNonceCleanupTicking(c.baseContext)
 	c.started.Store(true)
 
 	return nil

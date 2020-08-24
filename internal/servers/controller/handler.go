@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 
@@ -83,6 +84,13 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	}
 	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
 		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
+	}
+	hss, err := host_sets.NewService(c.StaticHostRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create host set handler service: %w", err)
+	}
+	if err := services.RegisterHostSetServiceHandlerServer(ctx, mux, hss); err != nil {
+		return nil, fmt.Errorf("failed to register host set service handler: %w", err)
 	}
 	hs, err := hosts.NewService(c.StaticHostRepoFn)
 	if err != nil {
@@ -198,7 +206,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		}
 
 		requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, r)
-		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, c.kms, requestInfo)
+		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, requestInfo)
 
 		// Set the context back on the request
 		r = r.WithContext(ctx)

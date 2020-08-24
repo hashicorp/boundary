@@ -414,8 +414,10 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 	}
 
 	b.Database = dbase
-	gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
-	b.Database.SetLogger(db.GetGormLogger(b.Logger))
+	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
+		gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
+		b.Database.SetLogger(db.GetGormLogger(b.Logger))
+	}
 	return nil
 }
 

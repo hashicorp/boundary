@@ -28,7 +28,7 @@ func NewWorkerServiceServer(logger hclog.Logger, repoFn common.ServersRepoFactor
 }
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
-	ws.logger.Trace("got status request from worker", "name", req.Worker.Name)
+	ws.logger.Trace("got status request from worker", "name", req.Worker.Name, "address", req.Worker.Address)
 	ws.updateTimes.Store(req.Worker.Name, time.Now())
 	repo, err := ws.repoFn()
 	if err != nil {
@@ -36,7 +36,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error aqcuiring repo to store worker status: %v", err)
 	}
 	req.Worker.Type = resource.Worker.String()
-	controllers, _, err := repo.Upsert(ctx, req.Worker)
+	controllers, _, err := repo.UpsertServer(ctx, req.Worker)
 	if err != nil {
 		ws.logger.Error("error storing worker status", "error", err)
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)

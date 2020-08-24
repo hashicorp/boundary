@@ -14,16 +14,17 @@ import (
 )
 
 type HostSet struct {
-	Id          string            `json:"id,omitempty"`
-	Scope       *scopes.ScopeInfo `json:"scope,omitempty"`
-	Name        string            `json:"name,omitempty"`
-	Description string            `json:"description,omitempty"`
-	CreatedTime time.Time         `json:"created_time,omitempty"`
-	UpdatedTime time.Time         `json:"updated_time,omitempty"`
-	Version     uint32            `json:"version,omitempty"`
-	Type        string            `json:"type,omitempty"`
-	Size        uint32            `json:"size,omitempty"`
-	Hosts       []*Host           `json:"hosts,omitempty"`
+	Id            string                 `json:"id,omitempty"`
+	Scope         *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Name          string                 `json:"name,omitempty"`
+	Description   string                 `json:"description,omitempty"`
+	CreatedTime   time.Time              `json:"created_time,omitempty"`
+	UpdatedTime   time.Time              `json:"updated_time,omitempty"`
+	Version       uint32                 `json:"version,omitempty"`
+	Type          string                 `json:"type,omitempty"`
+	HostCatalogId string                 `json:"host_catalog_id,omitempty"`
+	HostIds       []string               `json:"host_ids,omitempty"`
+	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 }
 
 type HostSetsClient struct {
@@ -58,7 +59,9 @@ func (c *HostSetsClient) Create(ctx context.Context, hostCatalogId string, opt .
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -92,7 +95,9 @@ func (c *HostSetsClient) Read(ctx context.Context, hostCatalogId string, hostSet
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -143,7 +148,9 @@ func (c *HostSetsClient) Update(ctx context.Context, hostCatalogId string, hostS
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -180,7 +187,9 @@ func (c *HostSetsClient) Delete(ctx context.Context, hostCatalogId string, hostS
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
-
+	if apiErr != nil {
+		return false, apiErr, nil
+	}
 	return target.Existed, apiErr, nil
 }
 
@@ -213,7 +222,9 @@ func (c *HostSetsClient) List(ctx context.Context, hostCatalogId string, opt ...
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target.Items, apiErr, nil
 }
 
@@ -268,7 +279,9 @@ func (c *HostSetsClient) AddHosts(ctx context.Context, hostCatalogId string, hos
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddHosts response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -326,7 +339,9 @@ func (c *HostSetsClient) SetHosts(ctx context.Context, hostCatalogId string, hos
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetHosts response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 
@@ -381,6 +396,8 @@ func (c *HostSetsClient) RemoveHosts(ctx context.Context, hostCatalogId string, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemoveHosts response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }

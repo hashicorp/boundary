@@ -28,4 +28,22 @@ before
 insert on servers
   for each row execute procedure default_create_time();
 
+create table recovery_nonces (
+    nonce text
+      primary key,
+    create_time wt_timestamp
+  );
+
+create trigger 
+  default_create_time_column
+before
+insert on recovery_nonces
+  for each row execute procedure default_create_time();
+
+create trigger 
+  immutable_columns
+before
+update on recovery_nonces
+  for each row execute procedure immutable_columns('nonce', 'create_time');
+
 commit;

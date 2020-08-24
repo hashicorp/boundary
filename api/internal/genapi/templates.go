@@ -221,7 +221,9 @@ func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .Collection
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target.Items, apiErr, nil
 }
 `))
@@ -253,7 +255,9 @@ func (c *{{ .ClientName }}Client) Read(ctx context.Context, {{ range .ResourceFu
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 `))
@@ -288,7 +292,9 @@ func (c *{{ .ClientName }}Client) Delete(ctx context.Context, {{ range .Resource
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
-
+	if apiErr != nil {
+		return false, apiErr, nil
+	}
 	return target.Existed, apiErr, nil
 }
 `))
@@ -328,7 +334,9 @@ func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ if .TypeOnCreat
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 `))
@@ -380,7 +388,9 @@ func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .Resource
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 `))
@@ -452,7 +462,9 @@ func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding {{ $fullName }} response: %w", err)
 	}
-
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 	return target, apiErr, nil
 }
 {{ end }}

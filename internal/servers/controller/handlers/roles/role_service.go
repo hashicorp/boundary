@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
@@ -16,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -23,7 +22,6 @@ import (
 
 var (
 	maskManager handlers.MaskManager
-	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 )
 
 func init() {
@@ -528,105 +526,54 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetRoleRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetId(), iam.RolePrefix+"_") {
-		badFields["id"] = "Invalid formatted role id."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
-	}
-	return nil
+	return handlers.ValidateGetRequest(iam.RolePrefix, req, handlers.NoopValidatorFn)
 }
 
-func validateCreateRequest(req *pbs.CreateRoleRequest, scope *scopes.ScopeInfo) error {
-	badFields := map[string]string{}
-	item := req.GetItem()
-	if item.GetId() != "" {
-		badFields["id"] = "This is a read only field."
-	}
-	if item.GetCreatedTime() != nil {
-		badFields["created_time"] = "This is a read only field."
-	}
-	if item.GetUpdatedTime() != nil {
-		badFields["updated_time"] = "This is a read only field."
-	}
-	if item.GetGrantScopeId() != nil && scope.GetType() == "project" {
-		if item.GetGrantScopeId().Value != scope.GetId() {
-			badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
+func validateCreateRequest(req *pbs.CreateRoleRequest, s *scopes.ScopeInfo) error {
+	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		item := req.GetItem()
+		if item.GetGrantScopeId() != nil && s.GetType() == scope.Project.String() {
+			if item.GetGrantScopeId().Value != s.GetId() {
+				badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
+			}
 		}
-	}
-	if item.GetPrincipals() != nil {
-		badFields["principals"] = "This is a read only field."
-	}
-	if item.GetGrants() != nil {
-		badFields["grant_strings"] = "This is a read only field."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
-	}
-	return nil
+		if item.GetPrincipals() != nil {
+			badFields["principals"] = "This is a read only field."
+		}
+		if item.GetGrants() != nil {
+			badFields["grant_strings"] = "This is a read only field."
+		}
+		return badFields
+	})
 }
 
-func validateUpdateRequest(req *pbs.UpdateRoleRequest, scope *scopes.ScopeInfo) error {
-	badFields := map[string]string{}
-	if !validId(req.GetId(), iam.RolePrefix+"_") {
-		badFields["role_id"] = "Improperly formatted path identifier."
-	}
-	if req.GetUpdateMask() == nil {
-		badFields["update_mask"] = "UpdateMask not provided but is required to update a role."
-	}
-
-	item := req.GetItem()
-	if item == nil {
-		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
-		// the mask will be marked as unset.
-		return nil
-	}
-	if item.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
-	}
-	if item.GetId() != "" {
-		badFields["id"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetCreatedTime() != nil {
-		badFields["created_time"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetUpdatedTime() != nil {
-		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetPrincipalIds() != nil {
-		badFields["principal_ids"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetPrincipals() != nil {
-		badFields["principals"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetGrants() != nil {
-		badFields["grants"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetGrantStrings() != nil {
-		badFields["grant_strings"] = "This is a read only field and cannot be specified in an update request."
-	}
-	if item.GetGrantScopeId() != nil && scope.GetType() == "project" {
-		if item.GetGrantScopeId().Value != scope.GetId() {
-			badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
+func validateUpdateRequest(req *pbs.UpdateRoleRequest, s *scopes.ScopeInfo) error {
+	return handlers.ValidateUpdateRequest(iam.RolePrefix, req, req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		if req.GetItem().GetPrincipalIds() != nil {
+			badFields["principal_ids"] = "This is a read only field and cannot be specified in an update request."
 		}
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-
-	return nil
+		if req.GetItem().GetPrincipals() != nil {
+			badFields["principals"] = "This is a read only field and cannot be specified in an update request."
+		}
+		if req.GetItem().GetGrants() != nil {
+			badFields["grants"] = "This is a read only field and cannot be specified in an update request."
+		}
+		if req.GetItem().GetGrantStrings() != nil {
+			badFields["grant_strings"] = "This is a read only field and cannot be specified in an update request."
+		}
+		if req.GetItem().GetGrantScopeId() != nil && s.GetType() == scope.Project.String() {
+			if req.GetItem().GetGrantScopeId().Value != s.GetId() {
+				badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
+			}
+		}
+		return badFields
+	})
 }
 
 func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
-	badFields := map[string]string{}
-	if !validId(req.GetId(), iam.RolePrefix+"_") {
-		badFields["id"] = "Incorrectly formatted identifier."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-	return nil
+	return handlers.ValidateDeleteRequest(iam.RolePrefix, req, handlers.NoopValidatorFn)
 }
 
 func validateListRequest(req *pbs.ListRolesRequest) error {
@@ -639,7 +586,7 @@ func validateListRequest(req *pbs.ListRolesRequest) error {
 
 func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
+	if !handlers.ValidId(iam.RolePrefix, req.GetRoleId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -661,7 +608,7 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 
 func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
+	if !handlers.ValidId(iam.RolePrefix, req.GetRoleId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -680,7 +627,7 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 
 func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
+	if !handlers.ValidId(iam.RolePrefix, req.GetRoleId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -697,7 +644,7 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 
 func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
+	if !handlers.ValidId(iam.RolePrefix, req.GetRoleId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -714,7 +661,7 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 
 func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
+	if !handlers.ValidId(iam.RolePrefix, req.GetRoleId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -728,7 +675,7 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 
 func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
+	if !handlers.ValidId(iam.RolePrefix, req.GetRoleId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -741,12 +688,4 @@ func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
-}
-
-func validId(id, prefix string) bool {
-	if !strings.HasPrefix(id, prefix) {
-		return false
-	}
-	id = strings.TrimPrefix(id, prefix)
-	return !reInvalidID.Match([]byte(id))
 }

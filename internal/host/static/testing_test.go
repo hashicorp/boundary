@@ -38,10 +38,10 @@ func Test_TestHosts(t *testing.T) {
 	c := TestCatalogs(t, conn, org.GetPublicId(), 1)[0]
 
 	count := 4
-	accounts := TestHosts(t, conn, c.GetPublicId(), count)
-	assert.Len(accounts, count)
-	for _, a := range accounts {
-		assert.NotEmpty(a.GetPublicId())
+	hosts := TestHosts(t, conn, c.GetPublicId(), count)
+	assert.Len(hosts, count)
+	for _, h := range hosts {
+		assert.NotEmpty(h.GetPublicId())
 	}
 }
 
