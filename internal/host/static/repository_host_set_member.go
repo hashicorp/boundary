@@ -320,7 +320,7 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 	// transaction. Gorm panics when DB() is called during a transaction.
 	hosts, err := r.getHosts(ctx, setId)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: %w", err)
+		return nil, len(changes), fmt.Errorf("set: static host set members: %w", err)
 	}
 	return hosts, len(changes), nil
 }
