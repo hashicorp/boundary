@@ -123,7 +123,7 @@ func newArgon2Credential(accountId string, password string, conf *Argon2Configur
 		return nil, fmt.Errorf("new: password argon2 credential: no password: %w", db.ErrInvalidParameter)
 	}
 	if conf == nil {
-		return nil, fmt.Errorf("new: password argon2 credential: no argon2 configuration: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("new: password argon2 credential: no argon2 configuration: %w", db.ErrInvalidParameter)
 	}
 
 	id, err := newArgon2CredentialId()

@@ -75,7 +75,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 				keyWrapper: nil,
 			},
 			wantErr:     true,
-			wantIsError: db.ErrNilParameter,
+			wantIsError: db.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -238,7 +238,7 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 			createCnt:   5,
 			keyWrapper:  nil,
 			wantErr:     true,
-			wantIsError: db.ErrNilParameter,
+			wantIsError: db.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {

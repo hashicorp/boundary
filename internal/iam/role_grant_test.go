@@ -41,7 +41,7 @@ func TestRoleGrant_Create(t *testing.T) {
 				grant:  "id=*;actions=*",
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "nil-grant",
@@ -50,7 +50,7 @@ func TestRoleGrant_Create(t *testing.T) {
 				grant:  "",
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 			create:    true,
 		},
 		{

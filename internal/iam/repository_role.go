@@ -13,10 +13,10 @@ import (
 // role.  No options are currently supported.
 func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) (*Role, error) {
 	if role == nil {
-		return nil, fmt.Errorf("create role: missing role %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create role: missing role %w", db.ErrInvalidParameter)
 	}
 	if role.Role == nil {
-		return nil, fmt.Errorf("create role: missing role store %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create role: missing role store %w", db.ErrInvalidParameter)
 	}
 	if role.PublicId != "" {
 		return nil, fmt.Errorf("create role: public id not empty: %w", db.ErrInvalidParameter)
@@ -48,10 +48,10 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 // then an error is returned.
 func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32, fieldMaskPaths []string, opt ...Option) (*Role, []PrincipalRole, []*RoleGrant, int, error) {
 	if role == nil {
-		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role %w", db.ErrNilParameter)
+		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role %w", db.ErrInvalidParameter)
 	}
 	if role.Role == nil {
-		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role store %w", db.ErrNilParameter)
+		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role store %w", db.ErrInvalidParameter)
 	}
 	if role.PublicId == "" {
 		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role public id %w", db.ErrInvalidParameter)
@@ -120,7 +120,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 // found, it will return nil, nil.
 func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ...Option) (*Role, []PrincipalRole, []*RoleGrant, error) {
 	if withPublicId == "" {
-		return nil, nil, nil, fmt.Errorf("lookup role: missing public id %w", db.ErrNilParameter)
+		return nil, nil, nil, fmt.Errorf("lookup role: missing public id %w", db.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = withPublicId
@@ -158,7 +158,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 // DeleteRole will delete a role from the repository.
 func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
 	if withPublicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete role: missing public id %w", db.ErrNilParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete role: missing public id %w", db.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = withPublicId

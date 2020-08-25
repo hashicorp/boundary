@@ -63,7 +63,7 @@ func (u *User) Clone() interface{} {
 // before it's written.
 func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if u.PublicId == "" {
-		return fmt.Errorf("user vet for write: missing public id: %w", db.ErrNilParameter)
+		return fmt.Errorf("user vet for write: missing public id: %w", db.ErrInvalidParameter)
 	}
 	if err := validateScopeForWrite(ctx, r, u, opType, opt...); err != nil {
 		return err

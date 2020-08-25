@@ -289,7 +289,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 			},
 			wantUpdatedRows: 0,
 			wantErr:         true,
-			wantErrMsg:      "update scope: missing scope: nil parameter",
+			wantErrMsg:      "update scope: missing scope: invalid parameter",
 			wantNullFields:  nil,
 		},
 		{

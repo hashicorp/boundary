@@ -37,12 +37,12 @@ func TestRepository_CreateHost(t *testing.T) {
 	}{
 		{
 			name:      "nil-Host",
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-Host",
 			in:        &Host{},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-catalog-id",
@@ -320,7 +320,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "nil-embedded-host",
@@ -331,7 +331,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "no-public-id",

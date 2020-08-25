@@ -15,7 +15,7 @@ import (
 // CreateUser will create a user in the repository and return the written user
 func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) (*User, error) {
 	if user == nil {
-		return nil, fmt.Errorf("create user: missing user %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create user: missing user %w", db.ErrInvalidParameter)
 	}
 	if user.PublicId != "" {
 		return nil, fmt.Errorf("create user: public id is not empty %w", db.ErrInvalidParameter)
@@ -43,7 +43,7 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 // If no updatable fields are included in the fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32, fieldMaskPaths []string, opt ...Option) (*User, int, error) {
 	if user == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update user: missing user %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update user: missing user %w", db.ErrInvalidParameter)
 	}
 	if user.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update user: missing user public id %w", db.ErrInvalidParameter)
@@ -83,7 +83,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 // found, it will return nil, nil.
 func (r *Repository) LookupUser(ctx context.Context, withPublicId string, opt ...Option) (*User, error) {
 	if withPublicId == "" {
-		return nil, fmt.Errorf("lookup user: missing public id %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("lookup user: missing public id %w", db.ErrInvalidParameter)
 	}
 
 	user := allocUser()
@@ -97,7 +97,7 @@ func (r *Repository) LookupUser(ctx context.Context, withPublicId string, opt ..
 // DeleteUser will delete a user from the repository
 func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
 	if withPublicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete user: missing public id %w", db.ErrNilParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete user: missing public id %w", db.ErrInvalidParameter)
 	}
 	user := allocUser()
 	user.PublicId = withPublicId
