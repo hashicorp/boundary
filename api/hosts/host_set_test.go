@@ -14,6 +14,54 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCustom(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	amId := "paum_1234567890"
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		DisableAuthorizationFailures: true,
+		DefaultAuthMethodId:          amId,
+		DefaultLoginName:             "user",
+		DefaultPassword:              "passpass",
+	})
+	defer tc.Shutdown()
+
+	_, proj := iam.TestScopes(t, tc.IamRepo())
+	client := tc.Client().Clone()
+	client.SetScopeId(proj.GetPublicId())
+
+	hc, apiErr, err := hosts.NewHostCatalogsClient(client).Create(tc.Context(), "static")
+	require.NoError(err)
+	require.Nil(apiErr)
+
+	hClient := hosts.NewHostsClient(client)
+	h1, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithStaticHostAddress("someaddress"))
+	require.NoError(err)
+	require.Nil(apiErr)
+	h2, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithStaticHostAddress("someaddress"))
+	require.NoError(err)
+	require.Nil(apiErr)
+
+	hSetClient := hosts.NewHostSetsClient(client)
+	hSet, apiErr, err := hSetClient.Create(tc.Context(), hc.Id)
+	require.NoError(err)
+	require.Nil(apiErr)
+
+	hSet, apiErr, err = hSetClient.AddHosts(tc.Context(), hc.Id, hSet.Id, hSet.Version, []string{h1.Id, h2.Id})
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.Contains(hSet.HostIds, h1.Id, h2.Id)
+
+	hSet, apiErr, err = hSetClient.SetHosts(tc.Context(), hc.Id, hSet.Id, hSet.Version, []string{h1.Id})
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.ElementsMatch([]string{h1.Id}, hSet.HostIds)
+
+	hSet, apiErr, err = hSetClient.RemoveHosts(tc.Context(), hc.Id, hSet.Id, hSet.Version, []string{h1.Id})
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.Empty(hSet.HostIds)
+}
+
 func TestSet_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "paum_1234567890"
