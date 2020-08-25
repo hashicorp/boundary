@@ -56,7 +56,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			in: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
 					ScopeId:  org.PublicId,
-					PublicId: "sthc_OOOOOOOOOO",
+					PublicId: "hcst_OOOOOOOOOO",
 				},
 			},
 			wantIsErr: db.ErrInvalidParameter,

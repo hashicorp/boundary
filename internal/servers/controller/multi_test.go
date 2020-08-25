@@ -15,7 +15,7 @@ import (
 
 func TestAuthenticationMulti(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	user := "user"
 	password := "passpass"
 	logger := hclog.New(&hclog.LoggerOptions{

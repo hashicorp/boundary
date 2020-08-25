@@ -15,6 +15,7 @@ type Option func(*Options)
 // Options - how Options are represented.
 type Options struct {
 	withNoTokenScope bool
+	withNoTokenValue bool
 }
 
 func getDefaultOptions() Options {
@@ -27,5 +28,14 @@ func getDefaultOptions() Options {
 func WithNoTokenScope() Option {
 	return func(o *Options) {
 		o.withNoTokenScope = true
+	}
+}
+
+// WithNoTokenValue tells the client not to set a token for the client from a
+// saved token's value, as this can cause confusing behavior at authentication
+// time.
+func WithNoTokenValue() Option {
+	return func(o *Options) {
+		o.withNoTokenValue = true
 	}
 }

@@ -56,7 +56,7 @@ func (c *PasswordCommand) Help() string {
 			"",
 			"  Update a password-type auth-method given its ID. Example:",
 			"",
-			`    $ boundary auth-methods password update -id paum_1234567890 -name "devops" -description "Password auth-method for DevOps"`,
+			`    $ boundary auth-methods password update -id ampw_1234567890 -name "devops" -description "Password auth-method for DevOps"`,
 			"",
 			"",
 		})
