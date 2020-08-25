@@ -208,7 +208,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, c.kms, r)
 		if requestInfo.TokenFormat == auth.AuthTokenTypeInvalid {
 			if disableAuthzFailures {
-				requestInfo.TokenFormat = auth.AuthTokenTypeUnknown
+				requestInfo.TokenFormat = auth.AuthTokenTypeBearer
 			} else {
 				w.WriteHeader(http.StatusForbidden)
 				return
