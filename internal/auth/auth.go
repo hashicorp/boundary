@@ -471,8 +471,8 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	case "u_anon":
 		scopeInfo = &scopes.ScopeInfo{
 			Id:            scope.Global.String(),
-			Type:          scp.Global.String(),
-			Name:          scp.Global.String(),
+			Type:          scope.Global.String(),
+			Name:          scope.Global.String(),
 			Description:   "Global Scope",
 			ParentScopeId: "",
 		}
