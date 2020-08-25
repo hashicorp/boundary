@@ -85,7 +85,8 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 		return nil, fmt.Errorf("add: static host set members: unable to get oplog wrapper: %w", err)
 	}
 
-	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
+	var hosts []*Host
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
 		set := newHostSetForMembers(setId, version)
 		metadata := set.oplog(oplog.OpType_OP_TYPE_CREATE)
 
@@ -95,19 +96,17 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 			return err
 		}
 		// Update host set version
-		return updateVersion(ctx, w, wrapper, metadata, msgs, set, version)
+		if err := updateVersion(ctx, w, wrapper, metadata, msgs, set, version); err != nil {
+			return err
+		}
+
+		hosts, err = getHosts(ctx, reader, setId, unlimited)
+		return err
 	})
 	if err != nil {
 		return nil, fmt.Errorf("add: static host set members: %w", err)
 	}
 
-	// Get list of hosts
-	// NOTE(mgaffney): Currently, this cannot be done within the
-	// transaction. Gorm panics when DB() is called during a transaction.
-	hosts, err := r.getHosts(ctx, setId)
-	if err != nil {
-		return nil, fmt.Errorf("add: static host set members: %w", err)
-	}
 	return hosts, nil
 }
 
@@ -154,25 +153,42 @@ func updateVersion(ctx context.Context, w db.Writer, wrapper wrapping.Wrapper, m
 	return nil
 }
 
-func (r *Repository) getHosts(ctx context.Context, setId string) ([]*Host, error) {
-	tx, err := r.reader.DB()
-	if err != nil {
-		return nil, fmt.Errorf("get hosts: unable to get DB: %w", err)
-	}
+const unlimited = -1
 
-	rows, err := tx.QueryContext(ctx, setMembersQueryNoLimit, setId)
-	if err != nil {
-		return nil, fmt.Errorf("get hosts: query failed: %w", err)
+func getHosts(ctx context.Context, reader db.Reader, setId string, limit int) ([]*Host, error) {
+	const whereNoLimit = `public_id in
+       ( select host_id
+           from static_host_set_member
+          where set_id = $1
+       )`
+
+	const whereLimit = `public_id in
+       ( select host_id
+           from static_host_set_member
+          where set_id = $1
+          limit $2
+       )`
+
+	params := []interface{}{setId}
+	var where string
+	switch limit {
+	case unlimited:
+		where = whereNoLimit
+	default:
+		where = whereLimit
+		params = append(params, limit)
 	}
-	defer rows.Close()
 
 	var hosts []*Host
-	for rows.Next() {
-		var h Host
-		if err := r.reader.ScanRows(rows, &h); err != nil {
-			return nil, fmt.Errorf("get hosts: scan row failed: %w", err)
-		}
-		hosts = append(hosts, &h)
+	if err := reader.SearchWhere(ctx, &hosts,
+		where,
+		params,
+		db.WithLimit(limit),
+	); err != nil {
+		return nil, fmt.Errorf("get hosts: %w", err)
+	}
+	if len(hosts) == 0 {
+		return nil, nil
 	}
 	return hosts, nil
 }
@@ -275,13 +291,14 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 		}
 	}
 
+	var hosts []*Host
 	if len(changes) > 0 {
 		wrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 		if err != nil {
 			return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: unable to get oplog wrapper: %w", err)
 		}
 
-		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
+		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
 			set := newHostSetForMembers(setId, version)
 			metadata := set.oplog(oplog.OpType_OP_TYPE_UPDATE)
 			var msgs []*oplog.Message
@@ -307,20 +324,17 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 			}
 
 			// Update host set version
-			return updateVersion(ctx, w, wrapper, metadata, msgs, set, version)
+			if err := updateVersion(ctx, w, wrapper, metadata, msgs, set, version); err != nil {
+				return err
+			}
+
+			hosts, err = getHosts(ctx, reader, setId, unlimited)
+			return err
 		})
 
 		if err != nil {
 			return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: %w", err)
 		}
-	}
-
-	// Get list of hosts
-	// NOTE(mgaffney): Currently, this cannot be done within the
-	// transaction. Gorm panics when DB() is called during a transaction.
-	hosts, err := r.getHosts(ctx, setId)
-	if err != nil {
-		return nil, len(changes), fmt.Errorf("set: static host set members: %w", err)
 	}
 	return hosts, len(changes), nil
 }
