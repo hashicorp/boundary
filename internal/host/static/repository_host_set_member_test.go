@@ -61,7 +61,7 @@ func TestRepository_ListSetMembers(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListSetMembers(context.Background(), tt.in, tt.opts...)
+			got, err := repo.listSetMembers(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -143,7 +143,7 @@ func TestRepository_ListSetMembers_Limits(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListSetMembers(context.Background(), set.PublicId, tt.listOpts...)
+			got, err := repo.listSetMembers(context.Background(), set.PublicId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 		})
@@ -496,7 +496,7 @@ func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 
 	// verify hostsB are still members
-	members, err := repo.ListSetMembers(context.Background(), set.PublicId)
+	members, err := repo.listSetMembers(context.Background(), set.PublicId)
 	require.NoError(err)
 
 	opts := []cmp.Option{
@@ -524,7 +524,7 @@ func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 
 	// verify no members remain
-	members2, err := repo.ListSetMembers(context.Background(), set.PublicId)
+	members2, err := repo.listSetMembers(context.Background(), set.PublicId)
 	require.NoError(err)
 	require.Empty(members2)
 }

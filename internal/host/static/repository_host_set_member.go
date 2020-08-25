@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-// ListSetMembers returns a slice of all hosts in setId.
-func (r *Repository) ListSetMembers(ctx context.Context, setId string, opt ...Option) ([]*Host, error) {
+// listSetMembers returns a slice of all hosts in setId.
+func (r *Repository) listSetMembers(ctx context.Context, setId string, opt ...Option) ([]*Host, error) {
 	if setId == "" {
 		return nil, fmt.Errorf("list: static host set members: missing set id: %w", db.ErrInvalidParameter)
 	}
