@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/go-retryablehttp"
@@ -79,6 +81,10 @@ func TestHandler_CORS(t *testing.T) {
 	repo := tc.IamRepo()
 	require.NoError(t, err)
 	org := iam.TestOrg(t, repo)
+
+	encToken, err := authtoken.EncryptToken(context.Background(), tc.c.kms, "fo_o", "bar")
+	require.NoError(t, err)
+	token := "fo_o_" + encToken
 
 	cases := []struct {
 		name           string
@@ -189,7 +195,8 @@ func TestHandler_CORS(t *testing.T) {
 			client := tc.Client()
 			err := client.SetAddr(tc.ApiAddrs()[c.listenerNum-1])
 			require.NoError(t, err)
-			client.SetToken("fo_o_bar")
+
+			client.SetToken(token)
 
 			// Create the request
 			var req *retryablehttp.Request
