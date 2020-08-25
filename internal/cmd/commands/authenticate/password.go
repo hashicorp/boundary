@@ -43,7 +43,7 @@ func (c *PasswordCommand) Help() string {
 		"",
 		"  Invoke the password auth method to authenticate the Boundary CLI:",
 		"",
-		`    $ boundary authenticate password -auth-method-id paum_1234567890 -login-name foo -password "bar"`,
+		`    $ boundary authenticate password -auth-method-id ampw_1234567890 -login-name foo -password "bar"`,
 	}) + c.Flags().Help()
 }
 

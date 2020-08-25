@@ -46,7 +46,7 @@ func (c *Command) Help() string {
 			"",
 			"    Read an auth-method:",
 			"",
-			`      $ boundary auth-methods read -id paum_1234567890`,
+			`      $ boundary auth-methods read -id ampw_1234567890`,
 			"",
 			"  Please see the auth-methods subcommand help for detailed usage information.",
 		})

@@ -8,7 +8,7 @@ import (
 
 // PublicId prefixes for the resources in the password package.
 const (
-	AuthMethodPrefix = "paum"
+	AuthMethodPrefix = "ampw"
 	AccountPrefix    = "pacc"
 )
 
