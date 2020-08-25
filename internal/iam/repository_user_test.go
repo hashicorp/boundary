@@ -402,7 +402,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete user: missing public id nil parameter",
+			wantErrMsg:      "delete user: missing public id invalid parameter",
 		},
 		{
 			name: "not-found",

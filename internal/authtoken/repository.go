@@ -37,11 +37,11 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	switch {
 	case r == nil:
-		return nil, fmt.Errorf("db.Reader: auth token: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("db.Reader: auth token: %w", db.ErrInvalidParameter)
 	case w == nil:
-		return nil, fmt.Errorf("db.Writer: auth token: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("db.Writer: auth token: %w", db.ErrInvalidParameter)
 	case kms == nil:
-		return nil, fmt.Errorf("kms: auth token: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("kms: auth token: %w", db.ErrInvalidParameter)
 	}
 
 	opts := getOpts(opt...)
@@ -62,7 +62,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 // or an error will be returned. All options are ignored.
 func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User, withAuthAccountId string, opt ...Option) (*AuthToken, error) {
 	if withIamUser == nil {
-		return nil, fmt.Errorf("create: auth token: no user: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: auth token: no user: %w", db.ErrInvalidParameter)
 	}
 	if withIamUser.GetPublicId() == "" {
 		return nil, fmt.Errorf("create: auth token: no user id: %w", db.ErrInvalidParameter)

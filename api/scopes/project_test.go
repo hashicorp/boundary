@@ -15,7 +15,7 @@ import (
 
 func TestProjects_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,
@@ -64,7 +64,7 @@ func comparableSlice(in []*scopes.Scope) []scopes.Scope {
 
 func TestProjects_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,
@@ -117,7 +117,7 @@ func TestProjects_Crud(t *testing.T) {
 // TODO: Get better coverage for expected errors and error formats.
 func TestProject_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,

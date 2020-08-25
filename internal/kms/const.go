@@ -18,6 +18,9 @@ const (
 
 	// KeyPurposeRecovery is used for recovery access
 	KeyPurposeRecovery
+
+	// KeyPurposeTokens is used for token encryption
+	KeyPurposeTokens
 )
 
 // String returns the key purpose cast as a string, just so it can be called as
@@ -30,6 +33,8 @@ func (k KeyPurpose) String() string {
 		return "oplog"
 	case KeyPurposeRecovery:
 		return "recovery"
+	case KeyPurposeTokens:
+		return "tokens"
 	default:
 		return "unknown"
 	}

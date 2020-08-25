@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -19,7 +20,9 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/recovery"
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/kr/pretty"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -32,9 +35,19 @@ type TokenFormat int
 
 const (
 	AuthTokenTypeUnknown TokenFormat = iota
+
+	// Came in via the Authentication: Bearer header
 	AuthTokenTypeBearer
+
+	// Came in via split cookies
 	AuthTokenTypeSplitCookie
-	AuthTokenRecoveryKms
+
+	// It's of recovery type
+	AuthTokenTypeRecoveryKms
+
+	// It's _known_ to be invalid, that is, a token was provided that is simply
+	// not valid and may be part of a DDoS or other attack
+	AuthTokenTypeInvalid
 )
 
 type key int
@@ -124,6 +137,12 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		}
 		ret.UserId = v.requestInfo.userIdOverride
 		ret.Error = nil
+		return
+	}
+
+	// table stakes
+	if v.requestInfo.TokenFormat == AuthTokenTypeInvalid {
+		v.logger.Trace("got invalid token type in auth function, which should not have occurred")
 		return
 	}
 
@@ -405,7 +424,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 			userId = at.GetIamUserId()
 		}
 
-	case AuthTokenRecoveryKms:
+	case AuthTokenTypeRecoveryKms:
 		userId = "u_recovery"
 		if v.kms == nil {
 			retErr = errors.New("perform auth check: no KMS object available to authz system")
@@ -468,7 +487,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	}
 
 	// At this point we don't need to look up grants since it's automatically allowed
-	if v.requestInfo.TokenFormat == AuthTokenRecoveryKms {
+	if v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms {
 		aclResults = &perms.ACLResults{Allowed: true}
 		retErr = nil
 		return
@@ -504,7 +523,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 // split cookies and parses it. If it cannot be parsed successfully, the issue
 // is logged and we return blank, so logic will continue as the anonymous user.
 // The public ID and token are returned along with the token format.
-func GetTokenFromRequest(logger hclog.Logger, req *http.Request) (string, string, TokenFormat) {
+func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Request) (string, string, TokenFormat) {
 	// First, get the token, either from the authorization header or from split
 	// cookies
 	var receivedTokenType TokenFormat
@@ -539,17 +558,47 @@ func GetTokenFromRequest(logger hclog.Logger, req *http.Request) (string, string
 	}
 
 	if strings.HasPrefix(fullToken, "r_") {
-		return "", fullToken, AuthTokenRecoveryKms
+		return "", fullToken, AuthTokenTypeRecoveryKms
 	}
 
 	splitFullToken := strings.Split(fullToken, "_")
 	if len(splitFullToken) != 3 {
 		logger.Trace("get token from request: unexpected number of segments in token", "expected", 3, "found", len(splitFullToken))
-		return "", "", AuthTokenTypeUnknown
+		return "", "", AuthTokenTypeInvalid
 	}
 
-	token := splitFullToken[2]
 	publicId := strings.Join(splitFullToken[0:2], "_")
+
+	// This is hardcoded to global because at this point we don't know the
+	// scope. But that's okay; this is not really a security feature so much as
+	// an anti-DDoSing-the-backing-database feature.
+	tokenWrapper, err := kmsCache.GetWrapper(req.Context(), scope.Global.String(), kms.KeyPurposeTokens)
+	if err != nil {
+		logger.Warn("get token from request: unable to get wrapper for tokens", "error", err)
+		return "", "", AuthTokenTypeInvalid
+	}
+
+	version := string(splitFullToken[2][0])
+	switch version {
+	case globals.TokenEncryptionVersion:
+	default:
+		logger.Trace("unknown token encryption version", "version", version)
+		return "", "", AuthTokenTypeInvalid
+	}
+	marshaledToken := base58.Decode(splitFullToken[2][1:])
+
+	blobInfo := new(wrapping.EncryptedBlobInfo)
+	if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
+		logger.Trace("error decoding encrypted token", "error", err)
+		return "", "", AuthTokenTypeInvalid
+	}
+
+	tokenBytes, err := tokenWrapper.Decrypt(req.Context(), blobInfo, []byte(publicId))
+	if err != nil {
+		logger.Trace("error decrypting encrypted token", "error", err)
+		return "", "", AuthTokenTypeInvalid
+	}
+	token := string(tokenBytes)
 
 	if receivedTokenType == AuthTokenTypeUnknown || token == "" || publicId == "" {
 		logger.Trace("get token from request: after parsing, could not find valid token")

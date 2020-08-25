@@ -82,7 +82,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 				keyWrapper: nil,
 			},
 			wantErr:     true,
-			wantIsError: db.ErrNilParameter,
+			wantIsError: db.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {

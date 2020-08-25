@@ -22,10 +22,10 @@ import (
 // scope. Supported options include: WithPublicId and WithRandomReader.
 func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, opt ...Option) (*Scope, error) {
 	if s == nil {
-		return nil, fmt.Errorf("create scope: missing scope %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create scope: missing scope %w", db.ErrInvalidParameter)
 	}
 	if s.Scope == nil {
-		return nil, fmt.Errorf("create scope: missing scope store %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create scope: missing scope store %w", db.ErrInvalidParameter)
 	}
 	if s.PublicId != "" {
 		return nil, fmt.Errorf("create scope: public id not empty: %w", db.ErrInvalidParameter)
@@ -42,7 +42,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	default:
 		switch s.ParentId {
 		case "":
-			return nil, fmt.Errorf("create scope: missing parent id: %w", db.ErrNilParameter)
+			return nil, fmt.Errorf("create scope: missing parent id: %w", db.ErrInvalidParameter)
 		case scope.Global.String():
 			parentOplogWrapper, err = r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
 		default:
@@ -242,10 +242,10 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 // fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint32, fieldMaskPaths []string, opt ...Option) (*Scope, int, error) {
 	if scope == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update scope: missing scope: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update scope: missing scope: %w", db.ErrInvalidParameter)
 	}
 	if scope.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update scope: missing public id: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update scope: missing public id: %w", db.ErrInvalidParameter)
 	}
 	if contains(fieldMaskPaths, "ParentId") {
 		return nil, db.NoRowsAffected, fmt.Errorf("update scope: you cannot change a scope's parent: %w", db.ErrInvalidFieldMask)

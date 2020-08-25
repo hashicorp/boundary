@@ -16,7 +16,7 @@ import (
 
 func TestCatalog_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,
@@ -77,7 +77,7 @@ func comparableCatalogSlice(in []*hosts.HostCatalog) []hosts.HostCatalog {
 
 func TestCatalogs_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,
@@ -132,7 +132,7 @@ func TestCatalogs_Crud(t *testing.T) {
 // TODO: Get better coverage for expected errors and error formats.
 func TestCatalogs_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,

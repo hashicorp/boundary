@@ -29,12 +29,12 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	}{
 		{
 			name:      "nil-catalog",
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-catalog",
 			in:        &HostCatalog{},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "valid-no-options",
@@ -95,7 +95,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			assert.NotNil(got)
-			assertPublicId(t, "sthc", got.PublicId)
+			assertPublicId(t, "hcst", got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -120,7 +120,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		got, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
 		assert.NotNil(got)
-		assertPublicId(t, "sthc", got.PublicId)
+		assertPublicId(t, "hcst", got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -149,7 +149,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		got, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
 		assert.NotNil(got)
-		assertPublicId(t, "sthc", got.PublicId)
+		assertPublicId(t, "hcst", got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -159,7 +159,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		got2, err := repo.CreateCatalog(context.Background(), in2)
 		assert.NoError(err)
 		assert.NotNil(got2)
-		assertPublicId(t, "sthc", got2.PublicId)
+		assertPublicId(t, "hcst", got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -215,7 +215,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 	nonExistentPublicId := func() func(*HostCatalog) *HostCatalog {
 		return func(c *HostCatalog) *HostCatalog {
-			c.PublicId = "sthc_OOOOOOOOOO"
+			c.PublicId = "hcst_OOOOOOOOOO"
 			return c
 		}
 	}
@@ -245,7 +245,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "nil-embedded-catalog",
@@ -254,7 +254,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "no-public-id",
@@ -457,7 +457,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			assert.NotNil(got)
-			assertPublicId(t, "sthc", got.PublicId)
+			assertPublicId(t, "hcst", got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.ScopeId, got.ScopeId)
@@ -519,7 +519,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		got, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
 		assert.NotNil(got)
-		assertPublicId(t, "sthc", got.PublicId)
+		assertPublicId(t, "hcst", got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)

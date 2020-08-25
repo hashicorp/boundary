@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/armon/go-metrics v0.3.4
+	github.com/btcsuite/btcutil v1.0.2
 	github.com/bufbuild/buf v0.20.5
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
