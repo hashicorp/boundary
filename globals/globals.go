@@ -10,7 +10,7 @@ import "time"
 // only ever be set at startup, but simply available to reference from anywhere.
 
 const (
-	TokenChecksumVersion = '1'
+	TokenEncryptionVersion = "1"
 )
 
 type ContextMaxRequestSizeType int

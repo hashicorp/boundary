@@ -206,6 +206,10 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		}
 
 		requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, c.kms, r)
+		if requestInfo.TokenFormat == auth.AuthTokenTypeInvalid {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
 		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, requestInfo)
 
 		// Set the context back on the request

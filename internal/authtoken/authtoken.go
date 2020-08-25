@@ -121,5 +121,5 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, publicId, token string
 		return "", fmt.Errorf("error marshaling encrypted token: %w", err)
 	}
 
-	return base58.CheckEncode(marshaledBlob, globals.TokenChecksumVersion), nil
+	return globals.TokenEncryptionVersion + base58.Encode(marshaledBlob), nil
 }

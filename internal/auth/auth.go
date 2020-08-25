@@ -35,9 +35,19 @@ type TokenFormat int
 
 const (
 	AuthTokenTypeUnknown TokenFormat = iota
+
+	// Came in via the Authentication: Bearer header
 	AuthTokenTypeBearer
+
+	// Came in via split cookies
 	AuthTokenTypeSplitCookie
-	AuthTokenRecoveryKms
+
+	// It's of recovery type
+	AuthTokenTypeRecoveryKms
+
+	// It's _known_ to be invalid, that is, a token was provided that is simply
+	// not valid and may be part of a DDoS or other attack
+	AuthTokenTypeInvalid
 )
 
 type key int
@@ -127,6 +137,12 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		}
 		ret.UserId = v.requestInfo.userIdOverride
 		ret.Error = nil
+		return
+	}
+
+	// table stakes
+	if v.requestInfo.TokenFormat == AuthTokenTypeInvalid {
+		v.logger.Trace("got invalid token type in auth function, which should not have occurred")
 		return
 	}
 
@@ -408,7 +424,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 			userId = at.GetIamUserId()
 		}
 
-	case AuthTokenRecoveryKms:
+	case AuthTokenTypeRecoveryKms:
 		userId = "u_recovery"
 		if v.kms == nil {
 			retErr = errors.New("perform auth check: no KMS object available to authz system")
@@ -471,7 +487,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	}
 
 	// At this point we don't need to look up grants since it's automatically allowed
-	if v.requestInfo.TokenFormat == AuthTokenRecoveryKms {
+	if v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms {
 		aclResults = &perms.ACLResults{Allowed: true}
 		retErr = nil
 		return
@@ -542,13 +558,13 @@ func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Reque
 	}
 
 	if strings.HasPrefix(fullToken, "r_") {
-		return "", fullToken, AuthTokenRecoveryKms
+		return "", fullToken, AuthTokenTypeRecoveryKms
 	}
 
 	splitFullToken := strings.Split(fullToken, "_")
 	if len(splitFullToken) != 3 {
 		logger.Trace("get token from request: unexpected number of segments in token", "expected", 3, "found", len(splitFullToken))
-		return "", "", AuthTokenTypeUnknown
+		return "", "", AuthTokenTypeInvalid
 	}
 
 	publicId := strings.Join(splitFullToken[0:2], "_")
@@ -559,29 +575,28 @@ func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Reque
 	tokenWrapper, err := kmsCache.GetWrapper(req.Context(), scope.Global.String(), kms.KeyPurposeTokens)
 	if err != nil {
 		logger.Warn("get token from request: unable to get wrapper for tokens", "error", err)
-		return "", "", AuthTokenTypeUnknown
+		return "", "", AuthTokenTypeInvalid
 	}
 
-	marshaledToken, version, err := base58.CheckDecode(splitFullToken[2])
-	switch {
-	case err != nil:
-		logger.Trace("error base58-decoding token", "error", err)
-		return "", "", AuthTokenTypeUnknown
-	case version != globals.TokenChecksumVersion:
-		logger.Trace("unexpected token version num", "version", fmt.Sprintf("%v", version))
-		return "", "", AuthTokenTypeUnknown
+	version := string(splitFullToken[2][0])
+	switch version {
+	case globals.TokenEncryptionVersion:
+	default:
+		logger.Trace("unknown token encryption version", "version", version)
+		return "", "", AuthTokenTypeInvalid
 	}
+	marshaledToken := base58.Decode(splitFullToken[2][1:])
 
 	blobInfo := new(wrapping.EncryptedBlobInfo)
 	if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
 		logger.Trace("error decoding encrypted token", "error", err)
-		return "", "", AuthTokenTypeUnknown
+		return "", "", AuthTokenTypeInvalid
 	}
 
 	tokenBytes, err := tokenWrapper.Decrypt(req.Context(), blobInfo, []byte(publicId))
 	if err != nil {
 		logger.Trace("error decrypting encrypted token", "error", err)
-		return "", "", AuthTokenTypeUnknown
+		return "", "", AuthTokenTypeInvalid
 	}
 	token := string(tokenBytes)
 
