@@ -3,6 +3,7 @@ package target
 import (
 	"fmt"
 
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target/store"
 )
 
@@ -14,6 +15,7 @@ type Target interface {
 	GetName() string
 	GetDescription() string
 	GetVersion() uint32
+	oplog(op oplog.OpType) oplog.Metadata
 }
 
 // TargetType defines the possible types for targets.
