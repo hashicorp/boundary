@@ -13,7 +13,7 @@ import (
 
 func TestAuthenticate(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,

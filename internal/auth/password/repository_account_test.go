@@ -76,7 +76,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					PublicId:     "sthc_OOOOOOOOOO",
+					PublicId:     "hcst_OOOOOOOOOO",
 				},
 			},
 			wantIsErr: db.ErrInvalidParameter,

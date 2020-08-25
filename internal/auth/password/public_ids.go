@@ -8,8 +8,8 @@ import (
 
 // PublicId prefixes for the resources in the password package.
 const (
-	AuthMethodPrefix = "paum"
-	AccountPrefix    = "pacc"
+	AuthMethodPrefix = "ampw"
+	AccountPrefix    = "apw"
 )
 
 func newAuthMethodId() (string, error) {
