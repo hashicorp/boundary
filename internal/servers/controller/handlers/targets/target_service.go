@@ -1,0 +1,280 @@
+package targets
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/db"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+)
+
+var (
+	maskManager handlers.MaskManager
+)
+
+func init() {
+	var err error
+	if maskManager, err = handlers.NewMaskManager(&store.Target{}, &pb.Target{}); err != nil {
+		panic(err)
+	}
+}
+
+// Service handles request as described by the pbs.TargetServiceServer interface.
+type Service struct {
+	repoFn func() (*target.Repository, error)
+}
+
+// NewService returns a user service which handles user related requests to boundary.
+func NewService(repo func() (*target.Repository, error)) (Service, error) {
+	if repo == nil {
+		return Service{}, fmt.Errorf("nil target repository provided")
+	}
+	return Service{repoFn: repo}, nil
+}
+
+var _ pbs.TargetServiceServer = Service{}
+
+// ListTargets implements the interface pbs.TargetServiceServer.
+func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (*pbs.ListTargetsResponse, error) {
+	authResults := auth.Verify(ctx)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	if err := validateListRequest(req); err != nil {
+		return nil, err
+	}
+	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range ul {
+		item.Scope = authResults.Scope
+	}
+	return &pbs.ListTargetsResponse{Items: ul}, nil
+}
+
+// GetTargets implements the interface pbs.TargetServiceServer.
+func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs.GetTargetResponse, error) {
+	authResults := auth.Verify(ctx)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	if err := validateGetRequest(req); err != nil {
+		return nil, err
+	}
+	u, err := s.getFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	u.Scope = authResults.Scope
+	return &pbs.GetTargetResponse{Item: u}, nil
+}
+
+// CreateTarget implements the interface pbs.TargetServiceServer.
+func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest) (*pbs.CreateTargetResponse, error) {
+	authResults := auth.Verify(ctx)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	if err := validateCreateRequest(req); err != nil {
+		return nil, err
+	}
+	u, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
+	if err != nil {
+		return nil, err
+	}
+	u.Scope = authResults.Scope
+	return &pbs.CreateTargetResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/users/%s", authResults.Scope.GetId(), u.GetId())}, nil
+}
+
+// UpdateTarget implements the interface pbs.TargetServiceServer.
+func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest) (*pbs.UpdateTargetResponse, error) {
+	authResults := auth.Verify(ctx)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	if err := validateUpdateRequest(req); err != nil {
+		return nil, err
+	}
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	if err != nil {
+		return nil, err
+	}
+	u.Scope = authResults.Scope
+	return &pbs.UpdateTargetResponse{Item: u}, nil
+}
+
+// DeleteTarget implements the interface pbs.TargetServiceServer.
+func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest) (*pbs.DeleteTargetResponse, error) {
+	authResults := auth.Verify(ctx)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	if err := validateDeleteRequest(req); err != nil {
+		return nil, err
+	}
+	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.DeleteTargetResponse{Existed: existed}, nil
+}
+
+func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	u, err := repo.LookupTarget(ctx, id)
+	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+		}
+		return nil, err
+	}
+	if u == nil {
+		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+	}
+	return toProto(u), nil
+}
+
+func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Target) (*pb.Target, error) {
+	var opts []iam.Option
+	if item.GetName() != nil {
+		opts = append(opts, iam.WithName(item.GetName().GetValue()))
+	}
+	if item.GetDescription() != nil {
+		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
+	}
+	u, err := target.NewTarget(orgId, opts...)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to build user for creation: %v.", err)
+	}
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, err := repo.CreateTarget(ctx, u)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to create user: %v.", err)
+	}
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to create user but no error returned from repository.")
+	}
+	return toProto(out), nil
+}
+
+func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.Target) (*pb.Target, error) {
+	var opts []iam.Option
+	if desc := item.GetDescription(); desc != nil {
+		opts = append(opts, iam.WithDescription(desc.GetValue()))
+	}
+	if name := item.GetName(); name != nil {
+		opts = append(opts, iam.WithName(name.GetValue()))
+	}
+	version := item.GetVersion()
+	u, err := target.NewTarget(orgId, opts...)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to build user for update: %v.", err)
+	}
+	u.PublicId = id
+	dbMask := maskManager.Translate(mask)
+	if len(dbMask) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
+	}
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, rowsUpdated, err := repo.UpdateTarget(ctx, u, version, dbMask)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to update user: %v.", err)
+	}
+	if rowsUpdated == 0 {
+		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+	}
+	return toProto(out), nil
+}
+
+func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return false, err
+	}
+	rows, err := repo.DeleteTarget(ctx, id)
+	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, status.Errorf(codes.Internal, "Unable to delete user: %v.", err)
+	}
+	return rows > 0, nil
+}
+
+func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Target, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	ul, err := repo.ListTargets(ctx, orgId)
+	if err != nil {
+		return nil, err
+	}
+	var outUl []*pb.Target
+	for _, u := range ul {
+		outUl = append(outUl, toProto(u))
+	}
+	return outUl, nil
+}
+
+func toProto(in *target.TcpTargetPrefix) *pb.Target {
+	out := pb.Target{
+		Id:          in.GetPublicId(),
+		CreatedTime: in.GetCreateTime().GetTimestamp(),
+		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+		Version:     in.GetVersion(),
+	}
+	if in.GetDescription() != "" {
+		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
+	}
+	if in.GetName() != "" {
+		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	}
+	return &out
+}
+
+// A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
+// requirements on the structure of the request.  They verify that:
+//  * The path passed in is correctly formatted
+//  * All required parameters are set
+//  * There are no conflicting parameters provided
+func validateGetRequest(req *pbs.GetTargetRequest) error {
+	return handlers.ValidateGetRequest(target.TcpTargetPrefix, req, handlers.NoopValidatorFn)
+}
+
+func validateCreateRequest(req *pbs.CreateTargetRequest) error {
+	return handlers.ValidateCreateRequest(target.GetItem(), handlers.NoopValidatorFn)
+}
+
+func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
+	return handlers.ValidateUpdateRequest(target.TcpTargetPrefix, req, req.GetItem(), handlers.NoopValidatorFn)
+}
+
+func validateDeleteRequest(req *pbs.DeleteTargetRequest) error {
+	return handlers.ValidateDeleteRequest(target.TcpTargetPrefix, req, handlers.NoopValidatorFn)
+}
+
+func validateListRequest(req *pbs.ListTargetsRequest) error {
+	badFields := map[string]string{}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+	}
+	return nil
+}
