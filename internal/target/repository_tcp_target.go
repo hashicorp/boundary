@@ -3,6 +3,9 @@ package target
 import (
 	"context"
 	"fmt"
+	"strings"
+
+	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -89,4 +92,66 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 		return nil, nil, fmt.Errorf("create tcp target: %w for %s target id id", err, t.PublicId)
 	}
 	return returnedTarget.(*TcpTarget), returnedHostSet, err
+}
+
+// UpdateGroup will update a group in the repository and return the written
+// group. fieldMaskPaths provides field_mask.proto paths for fields that should
+// be updated.  Fields will be set to NULL if the field is a zero value and
+// included in fieldMask. Name and Description are the only updatable fields,
+// If no updatable fields are included in the fieldMaskPaths, then an error is returned.
+func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, version uint32, fieldMaskPaths []string, opt ...Option) (Target, []*TargetSet, int, error) {
+	if target == nil {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: missing target %w", db.ErrInvalidParameter)
+	}
+	if target.TcpTarget == nil {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: missing target store %w", db.ErrInvalidParameter)
+	}
+	if target.PublicId == "" {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: missing target public id %w", db.ErrInvalidParameter)
+	}
+	for _, f := range fieldMaskPaths {
+		switch {
+		case strings.EqualFold("name", f):
+		case strings.EqualFold("description", f):
+		case strings.EqualFold("defaultport", f):
+		default:
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: field: %s: %w", f, db.ErrInvalidFieldMask)
+		}
+	}
+	var dbMask, nullFields []string
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+		map[string]interface{}{
+			"Name":        target.Name,
+			"Description": target.Description,
+			"DefaultPort": target.DefaultPort,
+		},
+		fieldMaskPaths,
+	)
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: %w", db.ErrEmptyFieldMask)
+	}
+	var returnedTarget Target
+	var rowsUpdated int
+	var targetSets []*TargetSet
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, w db.Writer) error {
+			var err error
+			t := target.Clone().(*TcpTarget)
+			returnedTarget, targetSets, rowsUpdated, err = r.update(ctx, t, version, dbMask, nullFields)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		if db.IsUniqueError(err) {
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: target %s already exists in org %s: %w", target.Name, target.ScopeId, db.ErrNotUnique)
+		}
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: %w for %s", err, target.PublicId)
+	}
+	return returnedTarget.(Target), targetSets, rowsUpdated, err
 }

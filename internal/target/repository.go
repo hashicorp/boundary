@@ -199,6 +199,71 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, opt ...O
 	return rowsDeleted, err
 }
 
+// update a target in the db repository with an oplog entry.
+// It currently supports no options.
+func (r *Repository) update(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (Target, []*TargetSet, int, error) {
+	if version == 0 {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: version cannot be zero: %w", db.ErrInvalidParameter)
+	}
+	if target == nil {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: target is nil: %w", db.ErrInvalidParameter)
+	}
+	cloner, ok := target.(Cloneable)
+	if !ok {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: target is not Cloneable: %w", db.ErrInvalidParameter)
+	}
+	dbOpts := []db.Option{
+		db.WithVersion(&version),
+	}
+	scopeId := target.GetScopeId()
+	if scopeId == "" {
+		t := allocTargetView()
+		t.PublicId = target.GetPublicId()
+		if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update: lookup failed %w for %s", err, t.PublicId)
+		}
+		scopeId = t.ScopeId
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
+	}
+	metadata := target.oplog(oplog.OpType_OP_TYPE_UPDATE)
+	dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
+
+	var rowsUpdated int
+	var returnedTarget interface{}
+	var hostSets []*TargetSet
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			returnedTarget = cloner.Clone()
+			rowsUpdated, err = w.Update(
+				ctx,
+				returnedTarget,
+				fieldMaskPaths,
+				setToNullPaths,
+				dbOpts...,
+			)
+			if err != nil {
+				return err
+			}
+			if err == nil && rowsUpdated > 1 {
+				// return err, which will result in a rollback of the update
+				return fmt.Errorf("error more than 1 target would have been updated: %w", db.ErrMultipleRecords)
+			}
+			var err error
+			if hostSets, err = fetchSets(ctx, reader, target.GetPublicId()); err != nil {
+				return err
+			}
+			return err
+		},
+	)
+	return returnedTarget.(Target), hostSets, rowsUpdated, err
+}
+
 // AddTargeHostSets provides the ability to add host sets (hostSetIds) to a
 // target (targetId).  The target's current db version must match the
 // targetVersion or an error will be returned.   The target and a list of
