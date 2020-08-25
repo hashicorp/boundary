@@ -15,7 +15,7 @@ func ExampleNewHostCatalog() {
 }
 
 func ExampleNewHost() {
-	catalogPublicId := "sthc_1234"
+	catalogPublicId := "hcst_1234"
 	host, _ := static.NewHost(catalogPublicId, static.WithAddress("127.0.0.1"))
 	fmt.Println(host.Address)
 	// Output:
@@ -23,7 +23,7 @@ func ExampleNewHost() {
 }
 
 func ExampleNewHostSet() {
-	catalogPublicId := "sthc_1234"
+	catalogPublicId := "hcst_1234"
 	set, _ := static.NewHostSet(catalogPublicId, static.WithName("my host set"))
 	fmt.Println(set.Name)
 	// Output:
@@ -31,8 +31,8 @@ func ExampleNewHostSet() {
 }
 
 func ExampleNewHostSetMember() {
-	setPublicId := "sths_11111"
-	hostPublicId := "sth_22222"
+	setPublicId := "hsst_11111"
+	hostPublicId := "hst_22222"
 	member, _ := static.NewHostSetMember(setPublicId, hostPublicId)
 	fmt.Println(member.SetId)
 	fmt.Println(member.HostId)

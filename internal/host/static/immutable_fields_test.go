@@ -262,7 +262,7 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 			name: "host_id",
 			update: func() *HostSetMember {
 				c := new.testCloneHostSetMember()
-				c.HostId = "sth_01234567890"
+				c.HostId = "hst_01234567890"
 				return c
 			}(),
 			fieldMask: []string{"HostId"},
