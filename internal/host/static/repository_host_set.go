@@ -68,8 +68,8 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 // UpdateSet updates the repository entry for s.PublicId with the values in
 // s for the fields listed in fieldMaskPaths. It returns a new HostSet
-// containing the updated values and a count of the number of records
-// updated. s is not changed.
+// containing the updated values, the hosts assigned to the host set, and a
+// count of the number of records updated. s is not changed.
 //
 // s must contain a valid PublicId. Only s.Name and s.Description can be
 // updated. If s.Name is set to a non-empty string, it must be unique
@@ -77,21 +77,24 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 //
 // An attribute of s will be set to NULL in the database if the attribute
 // in s is the zero value and it is included in fieldMaskPaths.
-func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, version uint32, fieldMaskPaths []string, opt ...Option) (*HostSet, int, error) {
+//
+// The WithLimit option can be used to limit the number of hosts returned.
+// All other options are ignored.
+func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, version uint32, fieldMaskPaths []string, opt ...Option) (*HostSet, []*Host, int, error) {
 	if s == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host set: %w", db.ErrNilParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: static host set: %w", db.ErrNilParameter)
 	}
 	if s.HostSet == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host set: embedded HostSet: %w", db.ErrNilParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: static host set: embedded HostSet: %w", db.ErrNilParameter)
 	}
 	if s.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host set: missing public id: %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: static host set: missing public id: %w", db.ErrInvalidParameter)
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host set: no version supplied: %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: static host set: no version supplied: %w", db.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host set: no scopeId: %w", db.ErrNilParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: static host set: no scopeId: %w", db.ErrNilParameter)
 	}
 
 	for _, f := range fieldMaskPaths {
@@ -99,7 +102,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		case strings.EqualFold("Name", f):
 		case strings.EqualFold("Description", f):
 		default:
-			return nil, db.NoRowsAffected, fmt.Errorf("update: static host set: field: %s: %w", f, db.ErrInvalidFieldMask)
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update: static host set: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
 	}
 	var dbMask, nullFields []string
@@ -111,18 +114,26 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		fieldMaskPaths,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host set: %w", db.ErrEmptyFieldMask)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: static host set: %w", db.ErrEmptyFieldMask)
+	}
+
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host set: unable to get oplog wrapper: %w", err)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: static host set: unable to get oplog wrapper: %w", err)
 	}
 
 	var rowsUpdated int
 	var returnedHostSet *HostSet
+	var hosts []*Host
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(reader db.Reader, w db.Writer) error {
 			returnedHostSet = s.clone()
 			var err error
 			rowsUpdated, err = w.Update(ctx, returnedHostSet, dbMask, nullFields,
@@ -131,19 +142,23 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 			if err == nil && rowsUpdated > 1 {
 				return db.ErrMultipleRecords
 			}
+			if err != nil {
+				return err
+			}
+			hosts, err = getHosts(ctx, reader, s.PublicId, limit)
 			return err
 		},
 	)
 
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update: static host set: %s: name %s already exists: %w",
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update: static host set: %s: name %s already exists: %w",
 				s.PublicId, s.Name, db.ErrNotUnique)
 		}
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host set: %s: %w", s.PublicId, err)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: static host set: %s: %w", s.PublicId, err)
 	}
 
-	return returnedHostSet, rowsUpdated, nil
+	return returnedHostSet, hosts, rowsUpdated, nil
 }
 
 // LookupSet will look up a host set in the repository and return the host

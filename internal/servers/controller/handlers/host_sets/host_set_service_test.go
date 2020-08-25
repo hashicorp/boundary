@@ -439,7 +439,7 @@ func TestUpdate(t *testing.T) {
 
 	resetHostSet := func() {
 		version++
-		_, _, err = repo.UpdateSet(context.Background(), proj.GetPublicId(), h, version, []string{"Name", "Description"})
+		_, _, _, err = repo.UpdateSet(context.Background(), proj.GetPublicId(), h, version, []string{"Name", "Description"})
 		require.NoError(t, err, "Failed to reset host.")
 		version++
 	}

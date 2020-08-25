@@ -241,7 +241,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
+	out, _, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update host set: %v.", err)
 	}
