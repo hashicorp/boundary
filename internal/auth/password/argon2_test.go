@@ -349,7 +349,7 @@ func TestArgon2Credential_New(t *testing.T) {
 				conf:      nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "valid-password",

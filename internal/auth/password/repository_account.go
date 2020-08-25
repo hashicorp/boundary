@@ -27,10 +27,10 @@ import (
 // unique within a.AuthMethodId.
 func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Account, opt ...Option) (*Account, error) {
 	if a == nil {
-		return nil, fmt.Errorf("create: password account: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: password account: %w", db.ErrInvalidParameter)
 	}
 	if a.Account == nil {
-		return nil, fmt.Errorf("create: password account: embedded Account: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: password account: embedded Account: %w", db.ErrInvalidParameter)
 	}
 	if a.AuthMethodId == "" {
 		return nil, fmt.Errorf("create: password account: no auth method id: %w", db.ErrInvalidParameter)
@@ -39,7 +39,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		return nil, fmt.Errorf("create: password account: public id not empty: %w", db.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("create: password account: scope id empty: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: password account: scope id empty: %w", db.ErrInvalidParameter)
 	}
 	if !validLoginName(a.LoginName) {
 		return nil, fmt.Errorf("create: password account: invalid user name: %w", db.ErrInvalidParameter)
@@ -157,7 +157,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 		return db.NoRowsAffected, fmt.Errorf("delete: password account: missing public id: %w", db.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete: password account: scope id empty: %w", db.ErrNilParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete: password account: scope id empty: %w", db.ErrInvalidParameter)
 	}
 	ac := allocAccount()
 	ac.PublicId = withPublicId
@@ -214,10 +214,10 @@ func validLoginName(u string) bool {
 // cannot be set to NULL.
 func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Account, version uint32, fieldMaskPaths []string, opt ...Option) (*Account, int, error) {
 	if a == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", db.ErrInvalidParameter)
 	}
 	if a.Account == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: embedded Account: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: embedded Account: %w", db.ErrInvalidParameter)
 	}
 	if a.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: missing public id: %w", db.ErrInvalidParameter)
@@ -226,7 +226,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: no version supplied: %w", db.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: scope id empty: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: scope id empty: %w", db.ErrInvalidParameter)
 	}
 
 	var changeLoginName bool

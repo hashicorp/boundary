@@ -41,7 +41,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 		return nil, fmt.Errorf("password authenticate: no password: %w", db.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("password authenticate: no scopeId: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("password authenticate: no scopeId: %w", db.ErrInvalidParameter)
 	}
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
@@ -120,7 +120,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 		return nil, fmt.Errorf("change password: no version supplied: %w", db.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("change password: no scopeId: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("change password: no scopeId: %w", db.ErrInvalidParameter)
 	}
 
 	authAccount, err := r.LookupAccount(ctx, accountId)
@@ -258,7 +258,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 		return nil, fmt.Errorf("set password: no version supplied: %w", db.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("set password: no scopeId: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("set password: no scopeId: %w", db.ErrInvalidParameter)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
