@@ -88,7 +88,10 @@ insert on target_host_set
   for each row execute procedure target_host_set_scope_valid();
 
 create table target_tcp (
-  public_id wt_public_id primary key,
+  public_id wt_public_id primary key
+    references target(public_id)
+    on delete cascade
+    on update cascade,
   scope_id wt_scope_id not null 
     references iam_scope(public_id) 
     on delete cascade 
