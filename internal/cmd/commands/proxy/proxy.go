@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
@@ -188,9 +189,11 @@ func (c *Command) Run(args []string) int {
 	}
 	c.UI.Info(fmt.Sprintf("%s", listener.Addr().String()))
 
+	workerAddr := sessionInfo.GetWorkerInfo()[0].GetAddress()
+
 	conn, resp, err := websocket.Dial(
 		c.Context,
-		fmt.Sprintf("wss://%s/v1/proxy", sessionInfo.GetWorkerInfo()[0].GetAddress()),
+		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
 		&websocket.DialOptions{
 			HTTPClient: &http.Client{
 				Transport: transport,
@@ -199,7 +202,14 @@ func (c *Command) Run(args []string) int {
 		},
 	)
 	if err != nil {
-		c.UI.Error(fmt.Errorf("Error dialing the worker: %w", err).Error())
+		switch {
+		case strings.Contains(err.Error(), "tls: internal error"):
+			c.UI.Error("Session is unauthorized")
+		case strings.Contains(err.Error(), "connect: connection refused"):
+			c.UI.Error(fmt.Sprintf("Unable to connect to worker at %s", workerAddr))
+		default:
+			c.UI.Error(fmt.Errorf("Error dialing the worker: %w", err).Error())
+		}
 		return 1
 	}
 
