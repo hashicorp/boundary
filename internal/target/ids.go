@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	TcpTargetPrefix = "tcp"
+	TcpTargetPrefix = "ttcp"
 )
 
 func newTcpTargetId() (string, error) {
