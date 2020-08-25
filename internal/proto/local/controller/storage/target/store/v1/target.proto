@@ -29,26 +29,26 @@ message TargetView {
     that: "description"
   }];
 
-  // default port of the Target
-  // @inject_tag: `gorm:"default:null"`
-  uint32 default_port = 50;
-
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 60;
+  timestamp.v1.Timestamp create_time = 50;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp update_time = 70;
+  timestamp.v1.Timestamp update_time = 60;
 
   // version allows optimistic locking of the Target when modifying the
   // Target
   // @inject_tag: `gorm:"default:null"`
-  uint32 version = 80;
+  uint32 version = 70;
 
   // type represents the type of the Target
   // @inject_tag: `gorm:"default:null"`
-  string type = 90;
+  string type = 80;
+
+  // default port of the Target
+  // @inject_tag: `gorm:"default:null"`
+  uint32 default_port = 90;
 }
 
 message TargetHostSet {
@@ -87,20 +87,20 @@ message TcpTarget {
     that: "description"
   }];
 
-  // default port of the TargetTcp
-  // @inject_tag: `gorm:"default:null"`
-  uint32 default_port = 50;
-
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 60;
+  timestamp.v1.Timestamp create_time = 50;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp update_time = 70;
+  timestamp.v1.Timestamp update_time = 60;
 
   // version allows optimistic locking of the TargetTcp when modifying the
   // TargetTcp
   // @inject_tag: `gorm:"default:null"`
-  uint32 version = 80;
+  uint32 version = 70;
+
+  // default port of the TargetTcp
+  // @inject_tag: `gorm:"default:null"`
+  uint32 default_port = 80;
 }
