@@ -262,6 +262,10 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		}
 	}
 
+	if opts.withNoTokenValue {
+		c.client.SetToken("")
+	}
+
 	return c.client, nil
 }
 
