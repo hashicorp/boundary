@@ -3,12 +3,9 @@ package authenticate
 import (
 	"context"
 	"errors"
-	"fmt"
 	"regexp"
 	"strings"
 
-	"github.com/btcsuite/btcutil/base58"
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
@@ -18,10 +15,8 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -114,26 +109,10 @@ func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId
 		return nil, err
 	}
 
-	// Encrypt the token. We always use the global scope because on authenticate
-	// we don't have scope info at this point and the idea is to remove a DB
-	// lookup if the token is made up/invalid so as to prevent DDoS against a
-	// third party service by just randomly guessing tokens.
-	tokenWrapper, err := s.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeTokens)
+	token, err := authtoken.EncryptToken(ctx, s.kms, tok.GetPublicId(), tok.GetToken())
 	if err != nil {
-		return nil, fmt.Errorf("unable to get wrapper: %w", err)
+		return nil, err
 	}
-
-	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(tok.GetToken()), []byte(tok.GetPublicId()))
-	if err != nil {
-		return nil, fmt.Errorf("error encrypting token: %w", err)
-	}
-
-	marshaledBlob, err := proto.Marshal(blobInfo)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling encrypted token: %w", err)
-	}
-
-	token := base58.CheckEncode(marshaledBlob, globals.TokenChecksumVersion)
 
 	tok.Token = tok.GetPublicId() + "_" + token
 	prot := toProto(tok)

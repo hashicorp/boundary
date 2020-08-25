@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/go-hclog"
 	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -271,6 +272,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 func TestAuthTokenAuthenticator(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
+	logger := hclog.New(nil)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	tokenRepo, err := authtoken.NewRepository(rw, rw, kms)
@@ -288,8 +290,10 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	encToken, err := authtoken.EncryptToken(context.Background(), kms, at.GetPublicId(), at.GetToken())
+	require.NoError(t, err)
 
-	tokValue := at.GetPublicId() + "_" + at.GetToken()
+	tokValue := at.GetPublicId() + "_" + encToken
 	jsCookieVal, httpCookieVal := tokValue[:len(tokValue)/2], tokValue[len(tokValue)/2:]
 
 	cases := []struct {
@@ -360,13 +364,13 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 				Path:   req.URL.Path,
 				Method: req.Method,
 			}
-			requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = GetTokenFromRequest(nil, kms, req)
+			requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = GetTokenFromRequest(logger, kms, req)
 			assert.Equal(t, tc.tokenFormat, requestInfo.TokenFormat)
 
 			if tc.userId == "" {
 				return
 			}
-			ctx := NewVerifierContext(context.Background(), nil, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
 
 			v, ok := ctx.Value(verifierKey).(*verifier)
 			require.True(t, ok)
