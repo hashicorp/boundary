@@ -42,7 +42,11 @@ func TestGet(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
-	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 2)
+	static.TestSetMembers(t, conn, hs.GetPublicId(), h)
+	hIds := []string{h[0].GetPublicId(), h[1].GetPublicId()}
 
 	toMerge := &pbs.GetHostSetRequest{
 		HostCatalogId: hc.GetPublicId(),
@@ -50,11 +54,12 @@ func TestGet(t *testing.T) {
 
 	pHost := &pb.HostSet{
 		HostCatalogId: hc.GetPublicId(),
-		Id:            h.GetPublicId(),
-		CreatedTime:   h.CreateTime.GetTimestamp(),
-		UpdatedTime:   h.UpdateTime.GetTimestamp(),
+		Id:            hs.GetPublicId(),
+		CreatedTime:   hs.CreateTime.GetTimestamp(),
+		UpdatedTime:   hs.UpdateTime.GetTimestamp(),
 		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 		Type:          "static",
+		HostIds:       hIds,
 	}
 
 	cases := []struct {
@@ -65,7 +70,7 @@ func TestGet(t *testing.T) {
 	}{
 		{
 			name:    "Get an Existing Host",
-			req:     &pbs.GetHostSetRequest{Id: h.GetPublicId()},
+			req:     &pbs.GetHostSetRequest{Id: hs.GetPublicId()},
 			res:     &pbs.GetHostSetResponse{Item: pHost},
 			errCode: codes.OK,
 		},
@@ -430,25 +435,30 @@ func TestUpdate(t *testing.T) {
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
-	h, err := static.NewHostSet(hc.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 2)
+	hIds := []string{h[0].GetPublicId(), h[1].GetPublicId()}
+
+	hs, err := static.NewHostSet(hc.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
 	require.NoError(t, err)
-	h, err = repo.CreateSet(context.Background(), proj.GetPublicId(), h)
+	hs, err = repo.CreateSet(context.Background(), proj.GetPublicId(), hs)
 	require.NoError(t, err)
+
+	static.TestSetMembers(t, conn, hs.GetPublicId(), h)
 
 	var version uint32 = 1
 
 	resetHostSet := func() {
 		version++
-		_, _, _, err = repo.UpdateSet(context.Background(), proj.GetPublicId(), h, version, []string{"Name", "Description"})
+		_, _, _, err = repo.UpdateSet(context.Background(), proj.GetPublicId(), hs, version, []string{"Name", "Description"})
 		require.NoError(t, err, "Failed to reset host.")
 		version++
 	}
 
-	hCreated, err := ptypes.Timestamp(h.GetCreateTime().GetTimestamp())
+	hCreated, err := ptypes.Timestamp(hs.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Failed to convert proto to timestamp")
 	toMerge := &pbs.UpdateHostSetRequest{
 		HostCatalogId: hc.GetPublicId(),
-		Id:            h.GetPublicId(),
+		Id:            hs.GetPublicId(),
 	}
 
 	tested, err := host_sets.NewService(repoFn)
@@ -474,12 +484,13 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostSetResponse{
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
-					Id:            h.GetPublicId(),
+					Id:            hs.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:          &wrappers.StringValue{Value: "new"},
 					Description:   &wrappers.StringValue{Value: "desc"},
-					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					CreatedTime:   hs.GetCreateTime().GetTimestamp(),
 					Type:          "static",
+					HostIds:       hIds,
 				},
 			},
 			errCode: codes.OK,
@@ -498,12 +509,13 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostSetResponse{
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
-					Id:            h.GetPublicId(),
+					Id:            hs.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:          &wrappers.StringValue{Value: "new"},
 					Description:   &wrappers.StringValue{Value: "desc"},
-					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					CreatedTime:   hs.GetCreateTime().GetTimestamp(),
 					Type:          "static",
+					HostIds:       hIds,
 				},
 			},
 			errCode: codes.OK,
@@ -553,11 +565,12 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostSetResponse{
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
-					Id:            h.GetPublicId(),
+					Id:            hs.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Description:   &wrappers.StringValue{Value: "default"},
-					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					CreatedTime:   hs.GetCreateTime().GetTimestamp(),
 					Type:          "static",
+					HostIds:       hIds,
 				},
 			},
 			errCode: codes.OK,
@@ -575,11 +588,12 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostSetResponse{
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
-					Id:            h.GetPublicId(),
+					Id:            hs.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:          &wrappers.StringValue{Value: "default"},
-					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					CreatedTime:   hs.GetCreateTime().GetTimestamp(),
 					Type:          "static",
+					HostIds:       hIds,
 				},
 			},
 			errCode: codes.OK,
@@ -598,12 +612,13 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostSetResponse{
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
-					Id:            h.GetPublicId(),
+					Id:            hs.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:          &wrappers.StringValue{Value: "updated"},
 					Description:   &wrappers.StringValue{Value: "default"},
-					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					CreatedTime:   hs.GetCreateTime().GetTimestamp(),
 					Type:          "static",
+					HostIds:       hIds,
 				},
 			},
 			errCode: codes.OK,
@@ -622,12 +637,13 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostSetResponse{
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
-					Id:            h.GetPublicId(),
+					Id:            hs.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:          &wrappers.StringValue{Value: "default"},
 					Description:   &wrappers.StringValue{Value: "notignored"},
-					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					CreatedTime:   hs.GetCreateTime().GetTimestamp(),
 					Type:          "static",
+					HostIds:       hIds,
 				},
 			},
 			errCode: codes.OK,
