@@ -146,21 +146,43 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	return returnedHostSet, rowsUpdated, nil
 }
 
-// LookupSet will look up a host set in the repository. If the host set is
-// not found, it will return nil, nil. All options are ignored.
-func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Option) (*HostSet, error) {
+// LookupSet will look up a host set in the repository and return the host
+// set and the hosts assigned to the host set. If the host set is not
+// found, it will return nil, nil, nil. The WithLimit option can be used to
+// limit the number of hosts returned. All other options are ignored.
+func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Option) (*HostSet, []*Host, error) {
 	if publicId == "" {
-		return nil, fmt.Errorf("lookup: static host set: missing public id %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("lookup: static host set: missing public id %w", db.ErrInvalidParameter)
 	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+
 	s := allocHostSet()
 	s.PublicId = publicId
-	if err := r.reader.LookupByPublicId(ctx, s); err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, nil
+
+	var hosts []*Host
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, _ db.Writer) error {
+		if err := reader.LookupByPublicId(ctx, s); err != nil {
+			if errors.Is(err, db.ErrRecordNotFound) {
+				s = nil
+				return nil
+			}
+			return err
 		}
-		return nil, fmt.Errorf("lookup: static host set: failed %w for %s", err, publicId)
+		var err error
+		hosts, err = getHosts(ctx, reader, s.PublicId, limit)
+		return err
+	})
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("lookup: static host set: failed %w for %s", err, publicId)
 	}
-	return s, nil
+
+	return s, hosts, nil
 }
 
 // ListSets returns a slice of HostSets for the catalogId. WithLimit is the

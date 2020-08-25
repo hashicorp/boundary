@@ -184,7 +184,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostSet, error
 	if err != nil {
 		return nil, err
 	}
-	h, err := repo.LookupSet(ctx, id)
+	h, _, err := repo.LookupSet(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +288,7 @@ func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	// if err != nil {
 	// 	return nil, status.Errorf(codes.Internal, "Unable to add members to group: %v.", err)
 	// }
-	out, err := repo.LookupSet(ctx, setId)
+	out, _, err := repo.LookupSet(ctx, setId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
 	}
@@ -308,7 +308,7 @@ func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	// 	return nil, status.Errorf(codes.Internal, "Unable to set members on group: %v.", err)
 	// }
 
-	out, err := repo.LookupSet(ctx, setId)
+	out, _, err := repo.LookupSet(ctx, setId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
 	}
@@ -327,7 +327,7 @@ func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostId
 	// if err != nil {
 	// 	return nil, status.Errorf(codes.Internal, "Unable to remove members from group: %v.", err)
 	// }
-	out, err := repo.LookupSet(ctx, setId)
+	out, _, err := repo.LookupSet(ctx, setId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
 	}
