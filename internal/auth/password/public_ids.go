@@ -9,7 +9,7 @@ import (
 // PublicId prefixes for the resources in the password package.
 const (
 	AuthMethodPrefix = "ampw"
-	AccountPrefix    = "pacc"
+	AccountPrefix    = "apw"
 )
 
 func newAuthMethodId() (string, error) {
