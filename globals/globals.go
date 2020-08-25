@@ -9,6 +9,10 @@ import "time"
 // package as "freeing us from circular dependency hell". These values should
 // only ever be set at startup, but simply available to reference from anywhere.
 
+const (
+	TokenEncryptionVersion = "1"
+)
+
 type ContextMaxRequestSizeType int
 type ContextOriginalRequestPathType int
 

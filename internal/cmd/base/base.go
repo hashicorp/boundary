@@ -32,6 +32,7 @@ const (
 	// NotSetValue is a flag value for a not-set value
 	NotSetValue = "(not set)"
 
+	envToken          = "BOUNDARY_TOKEN"
 	envTokenName      = "BOUNDARY_TOKEN_NAME"
 	envRecoveryConfig = "BOUNDARY_RECOVERY_CONFIG"
 )
@@ -62,6 +63,7 @@ type Command struct {
 	flagTLSInsecure   bool
 
 	flagFormat           string
+	FlagToken            string
 	FlagTokenName        string
 	FlagRecoveryConfig   string
 	flagOutputCurlString bool
@@ -200,34 +202,35 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		}
 		c.client.SetToken(token)
 
+	case c.FlagToken != "":
+		c.client.SetToken(c.FlagToken)
+
 	case c.client.Token() == "":
-		if c.client.Token() == "" {
-			if c.FlagTokenName != "" {
-				tokenName = c.FlagTokenName
-			}
-			if tokenName != "none" {
-				token, err := keyring.Get("HashiCorp Boundary Auth Token", tokenName)
-				if err != nil {
-					if err == keyring.ErrNotFound {
-						c.UI.Info("No saved credential found, continuing without")
-					} else {
-						c.UI.Error(fmt.Sprintf("Error reading auth token from system credential store: %s", err))
-					}
-					token = ""
+		if c.FlagTokenName != "" {
+			tokenName = c.FlagTokenName
+		}
+		if tokenName != "none" {
+			token, err := keyring.Get("HashiCorp Boundary Auth Token", tokenName)
+			if err != nil {
+				if err == keyring.ErrNotFound {
+					c.UI.Info("No saved credential found, continuing without")
+				} else {
+					c.UI.Error(fmt.Sprintf("Error reading auth token from system credential store: %s", err))
 				}
-				if token != "" {
-					tokenBytes, err := base64.RawStdEncoding.DecodeString(token)
-					if err != nil {
-						c.UI.Error(fmt.Sprintf("Error unmarshaling stored token from system credential store: %s", err))
+				token = ""
+			}
+			if token != "" {
+				tokenBytes, err := base64.RawStdEncoding.DecodeString(token)
+				if err != nil {
+					c.UI.Error(fmt.Sprintf("Error unmarshaling stored token from system credential store: %s", err))
+				} else {
+					var authToken authtokens.AuthToken
+					if err := json.Unmarshal(tokenBytes, &authToken); err != nil {
+						c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
 					} else {
-						var authToken authtokens.AuthToken
-						if err := json.Unmarshal(tokenBytes, &authToken); err != nil {
-							c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
-						} else {
-							c.client.SetToken(authToken.Token)
-							if !opts.withNoTokenScope {
-								c.client.SetScopeId(authToken.Scope.Id)
-							}
+						c.client.SetToken(authToken.Token)
+						if !opts.withNoTokenScope {
+							c.client.SetScopeId(authToken.Scope.Id)
 						}
 					}
 				}
@@ -257,6 +260,10 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		if c.flagFormat == "table" && c.flagVerbose {
 			c.UI.Info(`Scope of "global" set by default`)
 		}
+	}
+
+	if opts.withNoTokenValue {
+		c.client.SetToken("")
 	}
 
 	return c.client, nil
@@ -373,6 +380,13 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Target: &c.FlagTokenName,
 				EnvVar: envTokenName,
 				Usage:  `If specified, the given value will be used as the name when storing the token in the system credential store. This can allow switching user identities for different commands. Set to "none" to disable storing the token.`,
+			})
+
+			f.StringVar(&StringVar{
+				Name:   "token",
+				Target: &c.FlagToken,
+				EnvVar: envToken,
+				Usage:  `If specified, the given value will be used as the token for the call. Overrides the "token-name" parameter.`,
 			})
 
 			f.StringVar(&StringVar{

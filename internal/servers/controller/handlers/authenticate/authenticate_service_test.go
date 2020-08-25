@@ -44,6 +44,7 @@ func TestAuthenticate(t *testing.T) {
 	require.NoError(t, err)
 	acct, err = pwRepo.CreateAccount(context.Background(), o.GetPublicId(), acct, password.WithPassword(testPassword))
 	require.NoError(t, err)
+	require.NotNil(t, acct)
 
 	cases := []struct {
 		name    string
@@ -147,7 +148,7 @@ func TestAuthenticate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := NewService(passwordRepoFn, iamRepoFn, authTokenRepoFn)
+			s, err := NewService(kms, passwordRepoFn, iamRepoFn, authTokenRepoFn)
 			require.NoError(err)
 
 			resp, err := s.Authenticate(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.request)
@@ -195,7 +196,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	iamUser, err := iamRepo.LookupUserWithLogin(context.Background(), acct.GetPublicId(), iam.WithAutoVivify(true))
 	require.NoError(err)
 
-	s, err := NewService(passwordRepoFn, iamRepoFn, authTokenRepoFn)
+	s, err := NewService(kms, passwordRepoFn, iamRepoFn, authTokenRepoFn)
 	require.NoError(err)
 	resp, err := s.Authenticate(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.AuthenticateRequest{
 		AuthMethodId: am.GetPublicId(),

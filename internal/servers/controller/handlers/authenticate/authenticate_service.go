@@ -2,7 +2,7 @@ package authenticate
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"regexp"
 	"strings"
 
@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
@@ -29,24 +30,28 @@ var (
 
 // Service handles request as described by the pbs.OrgServiceServer interface.
 type Service struct {
+	kms           *kms.Kms
 	pwRepo        common.PasswordAuthRepoFactory
 	iamRepo       common.IamRepoFactory
 	authTokenRepo common.AuthTokenRepoFactory
 }
 
 // NewService returns an org service which handles org related requests to boundary.
-func NewService(pwRepo common.PasswordAuthRepoFactory, iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactory) (Service, error) {
+func NewService(kms *kms.Kms, pwRepo common.PasswordAuthRepoFactory, iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactory) (Service, error) {
+	if kms == nil {
+		return Service{}, errors.New("nil kms provided")
+	}
 	if iamRepo == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New("nil iam repository provided")
 	}
 	if atRepo == nil {
-		return Service{}, fmt.Errorf("nil auth token repository provided")
+		return Service{}, errors.New("nil auth token repository provided")
 	}
 	if pwRepo == nil {
-		return Service{}, fmt.Errorf("nil password repository provided")
+		return Service{}, errors.New("nil password repository provided")
 	}
 
-	return Service{pwRepo: pwRepo, iamRepo: iamRepo, authTokenRepo: atRepo}, nil
+	return Service{kms: kms, pwRepo: pwRepo, iamRepo: iamRepo, authTokenRepo: atRepo}, nil
 }
 
 var _ pbs.AuthenticationServiceServer = Service{}
@@ -103,7 +108,13 @@ func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId
 	if err != nil {
 		return nil, err
 	}
-	tok.Token = tok.GetPublicId() + "_" + tok.GetToken()
+
+	token, err := authtoken.EncryptToken(ctx, s.kms, tok.GetPublicId(), tok.GetToken())
+	if err != nil {
+		return nil, err
+	}
+
+	tok.Token = tok.GetPublicId() + "_" + token
 	prot := toProto(tok)
 
 	scp, err := iamRepo.LookupScope(ctx, u.GetScopeId())
