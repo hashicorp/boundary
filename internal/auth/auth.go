@@ -459,6 +459,8 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		v.logger.Warn("NOTE: recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
 	}
 
+	// Fetch and parse grants for this user ID (which may include grants for
+	// u_anon and u_auth)
 	iamRepo, err := v.iamRepoFn()
 	if err != nil {
 		retErr = fmt.Errorf("perform auth check: failed to get iam repo: %w", err)
@@ -467,33 +469,21 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 
 	// Look up scope details to return
 	// TODO: maybe we can combine this info into the view used in GrantsForUser below
-	switch userId {
-	case "u_anon":
-		scopeInfo = &scopes.ScopeInfo{
-			Id:            scope.Global.String(),
-			Type:          scope.Global.String(),
-			Name:          scope.Global.String(),
-			Description:   "Global Scope",
-			ParentScopeId: "",
-		}
-
-	default:
-		scp, err := iamRepo.LookupScope(v.ctx, v.res.ScopeId)
-		if err != nil {
-			retErr = fmt.Errorf("perform auth check: failed to lookup scope: %w", err)
-			return
-		}
-		if scp == nil {
-			retErr = fmt.Errorf("perform auth check: non-existent scope %q", v.res.ScopeId)
-			return
-		}
-		scopeInfo = &scopes.ScopeInfo{
-			Id:            scp.GetPublicId(),
-			Type:          scp.GetType(),
-			Name:          scp.GetName(),
-			Description:   scp.GetDescription(),
-			ParentScopeId: scp.GetParentId(),
-		}
+	scp, err := iamRepo.LookupScope(v.ctx, v.res.ScopeId)
+	if err != nil {
+		retErr = fmt.Errorf("perform auth check: failed to lookup scope: %w", err)
+		return
+	}
+	if scp == nil {
+		retErr = fmt.Errorf("perform auth check: non-existent scope %q", v.res.ScopeId)
+		return
+	}
+	scopeInfo = &scopes.ScopeInfo{
+		Id:            scp.GetPublicId(),
+		Type:          scp.GetType(),
+		Name:          scp.GetName(),
+		Description:   scp.GetDescription(),
+		ParentScopeId: scp.GetParentId(),
 	}
 
 	// At this point we don't need to look up grants since it's automatically allowed
@@ -506,8 +496,6 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	var parsedGrants []perms.Grant
 	var grantPairs []perms.GrantPair
 
-	// Fetch and parse grants for this user ID (which may include grants for
-	// u_anon and u_auth)
 	grantPairs, err = iamRepo.GrantsForUser(v.ctx, userId)
 	if err != nil {
 		retErr = fmt.Errorf("perform auth check: failed to query for user grants: %w", err)
