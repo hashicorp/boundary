@@ -94,11 +94,12 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 	return returnedTarget.(*TcpTarget), returnedHostSet, err
 }
 
-// UpdateGroup will update a group in the repository and return the written
-// group. fieldMaskPaths provides field_mask.proto paths for fields that should
+// UpdateTcpTarget will update a target in the repository and return the written
+// target. fieldMaskPaths provides field_mask.proto paths for fields that should
 // be updated.  Fields will be set to NULL if the field is a zero value and
 // included in fieldMask. Name and Description are the only updatable fields,
-// If no updatable fields are included in the fieldMaskPaths, then an error is returned.
+// If no updatable fields are included in the fieldMaskPaths, then an error is
+// returned.
 func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, version uint32, fieldMaskPaths []string, opt ...Option) (Target, []*TargetSet, int, error) {
 	if target == nil {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: missing target %w", db.ErrInvalidParameter)
