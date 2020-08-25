@@ -146,14 +146,14 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	h, err := repo.LookupHost(ctx, id)
+	h, m, err := repo.LookupHost(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	if h == nil {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
 	}
-	return toProto(h, nil)
+	return toProto(h, m)
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.Host) (*pb.Host, error) {
@@ -218,14 +218,14 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateHost(ctx, scopeId, h, item.GetVersion(), dbMask)
+	out, m, rowsUpdated, err := repo.UpdateHost(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update host: %v.", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
 	}
-	return toProto(out, nil)
+	return toProto(out, m)
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
@@ -260,7 +260,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 	return outHl, nil
 }
 
-func toProto(in *static.Host, members []*static.HostSetMember) (*pb.Host, error) {
+func toProto(in *static.Host, members []*static.HostSet) (*pb.Host, error) {
 	out := pb.Host{
 		Id:            in.GetPublicId(),
 		HostCatalogId: in.GetCatalogId(),
@@ -276,7 +276,7 @@ func toProto(in *static.Host, members []*static.HostSetMember) (*pb.Host, error)
 		out.Name = wrapperspb.String(in.GetName())
 	}
 	for _, m := range members {
-		out.HostSetIds = append(out.HostSetIds, m.GetSetId())
+		out.HostSetIds = append(out.HostSetIds, m.GetPublicId())
 	}
 	st, err := handlers.ProtoToStruct(&pb.StaticHostAttributes{Address: wrapperspb.String(in.GetAddress())})
 	if err != nil {
