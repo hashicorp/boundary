@@ -81,8 +81,8 @@ func TestRepository_CreateRole(t *testing.T) {
 				role: nil,
 			},
 			wantErr:     true,
-			wantErrMsg:  "create role: missing role nil parameter",
-			wantIsError: db.ErrNilParameter,
+			wantErrMsg:  "create role: missing role invalid parameter",
+			wantIsError: db.ErrInvalidParameter,
 		},
 		{
 			name: "nil-store",
@@ -94,8 +94,8 @@ func TestRepository_CreateRole(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantErrMsg:  "create role: missing role store nil parameter",
-			wantIsError: db.ErrNilParameter,
+			wantErrMsg:  "create role: missing role store invalid parameter",
+			wantIsError: db.ErrInvalidParameter,
 		},
 		{
 			name: "bad-scope-id",
@@ -500,7 +500,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete role: missing public id nil parameter",
+			wantErrMsg:      "delete role: missing public id invalid parameter",
 		},
 		{
 			name: "not-found",

@@ -498,7 +498,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	}
 	amId := b.DevAuthMethodId
 	if amId == "" {
-		amId = "paum_1234567890"
+		amId = "ampw_1234567890"
 	}
 	_, err = pwRepo.CreateAuthMethod(ctx, authMethod, password.WithPublicId(amId))
 	if err != nil {

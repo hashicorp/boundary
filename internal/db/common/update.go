@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	// ErrNilParameter is returned when a required parameter is nil.
-	ErrNilParameter = errors.New("nil parameter")
+	// ErrInvalidParameter is returned when a required parameter is nil.
+	ErrInvalidParameter = errors.New("nil parameter")
 )
 
 // UpdateFields will create a map[string]interface of the update values to be
@@ -23,7 +23,7 @@ var (
 // intersect.  fieldMaskPaths and setToNullPaths cannot both be zero len.
 func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []string) (map[string]interface{}, error) {
 	if i == nil {
-		return nil, fmt.Errorf("interface is missing: %w", ErrNilParameter)
+		return nil, fmt.Errorf("interface is missing: %w", ErrInvalidParameter)
 	}
 	if fieldMaskPaths == nil {
 		fieldMaskPaths = []string{}
@@ -117,10 +117,10 @@ func findMissingPaths(paths []string, foundPaths map[string]struct{}) []string {
 // original
 func Intersection(av, bv []string) ([]string, map[string]string, map[string]string, error) {
 	if av == nil {
-		return nil, nil, nil, fmt.Errorf("av is missing: %w", ErrNilParameter)
+		return nil, nil, nil, fmt.Errorf("av is missing: %w", ErrInvalidParameter)
 	}
 	if bv == nil {
-		return nil, nil, nil, fmt.Errorf("bv is missing: %w", ErrNilParameter)
+		return nil, nil, nil, fmt.Errorf("bv is missing: %w", ErrInvalidParameter)
 	}
 	if len(av) == 0 && len(bv) == 0 {
 		return []string{}, map[string]string{}, map[string]string{}, nil

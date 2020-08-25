@@ -216,7 +216,7 @@ func TestRepository_SetConfiguration(t *testing.T) {
 	}{
 		{
 			name:      "invalid-nil-config",
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-config",

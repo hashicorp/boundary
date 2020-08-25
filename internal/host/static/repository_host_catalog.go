@@ -22,10 +22,10 @@ import (
 // Both c.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...Option) (*HostCatalog, error) {
 	if c == nil {
-		return nil, fmt.Errorf("create: static host catalog: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: static host catalog: %w", db.ErrInvalidParameter)
 	}
 	if c.HostCatalog == nil {
-		return nil, fmt.Errorf("create: static host catalog: embedded HostCatalog: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: static host catalog: embedded HostCatalog: %w", db.ErrInvalidParameter)
 	}
 	if c.ScopeId == "" {
 		return nil, fmt.Errorf("create: static host catalog: no scope id: %w", db.ErrInvalidParameter)
@@ -86,16 +86,16 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 // in c is the zero value and it is included in fieldMask.
 func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version uint32, fieldMask []string, opt ...Option) (*HostCatalog, int, error) {
 	if c == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", db.ErrInvalidParameter)
 	}
 	if c.HostCatalog == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: embedded HostCatalog: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: embedded HostCatalog: %w", db.ErrInvalidParameter)
 	}
 	if c.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: missing public id: %w", db.ErrInvalidParameter)
 	}
 	if c.ScopeId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: missing scope id: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: missing scope id: %w", db.ErrInvalidParameter)
 	}
 	if len(fieldMask) == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", db.ErrEmptyFieldMask)
@@ -214,7 +214,7 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: failed %w for %s", err, id)
 	}
 	if c.ScopeId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: missing scope id: %w", db.ErrNilParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: missing scope id: %w", db.ErrInvalidParameter)
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {

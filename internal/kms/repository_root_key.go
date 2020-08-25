@@ -39,7 +39,7 @@ func CreateRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapp
 		return nil, nil, fmt.Errorf("create root key: missing scope id: %w", db.ErrInvalidParameter)
 	}
 	if keyWrapper == nil {
-		return nil, nil, fmt.Errorf("create root key: missing key wrapper: %w", db.ErrNilParameter)
+		return nil, nil, fmt.Errorf("create root key: missing key wrapper: %w", db.ErrInvalidParameter)
 	}
 	if len(key) == 0 {
 		return nil, nil, fmt.Errorf("create root key: missing key: %w", db.ErrInvalidParameter)
@@ -80,10 +80,10 @@ func CreateRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapp
 // found, it will return nil, nil.
 func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, opt ...Option) (*RootKey, error) {
 	if privateId == "" {
-		return nil, fmt.Errorf("lookup root key: missing private id: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("lookup root key: missing private id: %w", db.ErrInvalidParameter)
 	}
 	if keyWrapper == nil {
-		return nil, fmt.Errorf("lookup root key: missing key wrapper: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("lookup root key: missing key wrapper: %w", db.ErrInvalidParameter)
 	}
 	k := AllocRootKey()
 	k.PrivateId = privateId

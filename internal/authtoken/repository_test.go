@@ -77,7 +77,7 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want:      nil,
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "nil-writer",
@@ -87,7 +87,7 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want:      nil,
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "nil-kms",
@@ -97,7 +97,7 @@ func TestRepository_New(t *testing.T) {
 				kms: nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "all-nils",
@@ -107,7 +107,7 @@ func TestRepository_New(t *testing.T) {
 				kms: nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {

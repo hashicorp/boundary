@@ -24,10 +24,10 @@ import (
 // unique within m.ScopeId.
 func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ...Option) (*AuthMethod, error) {
 	if m == nil {
-		return nil, fmt.Errorf("create: password auth method: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: password auth method: %w", db.ErrInvalidParameter)
 	}
 	if m.AuthMethod == nil {
-		return nil, fmt.Errorf("create: password auth method: embedded AuthMethod: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: password auth method: embedded AuthMethod: %w", db.ErrInvalidParameter)
 	}
 	if m.ScopeId == "" {
 		return nil, fmt.Errorf("create: password auth method: no scope id: %w", db.ErrInvalidParameter)
@@ -182,13 +182,13 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 // are included in the fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, version uint32, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
 	if authMethod == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod: %w", db.ErrInvalidParameter)
 	}
 	if authMethod.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod public id: %w", db.ErrInvalidParameter)
 	}
 	if authMethod.ScopeId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: scope id empty: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: scope id empty: %w", db.ErrInvalidParameter)
 	}
 	for _, f := range fieldMaskPaths {
 		switch {

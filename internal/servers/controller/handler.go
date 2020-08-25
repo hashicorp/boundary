@@ -119,7 +119,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	if err := services.RegisterAccountServiceHandlerServer(ctx, mux, accts); err != nil {
 		return nil, fmt.Errorf("failed to register account service handler: %w", err)
 	}
-	auths, err := authenticate.NewService(c.PasswordAuthRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
+	auths, err := authenticate.NewService(c.kms, c.PasswordAuthRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create authentication handler service: %w", err)
 	}
@@ -218,7 +218,11 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			DisableAuthzFailures: disableAuthzFailures,
 		}
 
-		requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, r)
+		requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, c.kms, r)
+		if requestInfo.TokenFormat == auth.AuthTokenTypeInvalid {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
 		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, requestInfo)
 
 		// Set the context back on the request

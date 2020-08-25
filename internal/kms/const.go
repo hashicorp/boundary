@@ -21,6 +21,8 @@ const (
 
 	// KeyPurposeSessions is used as a base key to derive session-specific keys
 	KeyPurposeSessions
+	// KeyPurposeTokens is used for token encryption
+	KeyPurposeTokens
 )
 
 // String returns the key purpose cast as a string, just so it can be called as
@@ -35,6 +37,8 @@ func (k KeyPurpose) String() string {
 		return "recovery"
 	case KeyPurposeSessions:
 		return "sessions"
+	case KeyPurposeTokens:
+		return "tokens"
 	default:
 		return "unknown"
 	}

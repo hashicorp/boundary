@@ -8,9 +8,9 @@ import (
 
 // PublicId prefixes for the resources in the static package.
 const (
-	HostCatalogPrefix = "sthc"
-	HostSetPrefix     = "sths"
-	HostPrefix        = "sth"
+	HostCatalogPrefix = "hcst"
+	HostSetPrefix     = "hsst"
+	HostPrefix        = "hst"
 )
 
 func newHostCatalogId() (string, error) {

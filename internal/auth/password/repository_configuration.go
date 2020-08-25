@@ -42,7 +42,7 @@ func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) 
 // updates AuthMethod to use the previous configuration.
 func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Configuration) (Configuration, error) {
 	if c == nil {
-		return nil, fmt.Errorf("set password configuration: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("set password configuration: %w", db.ErrInvalidParameter)
 	}
 	if c.AuthMethodId() == "" {
 		return nil, fmt.Errorf("set password configuration: no auth method id: %w", db.ErrInvalidParameter)

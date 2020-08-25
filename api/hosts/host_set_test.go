@@ -16,7 +16,7 @@ import (
 
 func TestSet_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,
@@ -83,7 +83,7 @@ func comparableSetSlice(in []*hosts.HostSet) []hosts.HostSet {
 
 func TestSet_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,
@@ -143,7 +143,7 @@ func TestSet_Crud(t *testing.T) {
 // TODO: Get better coverage for expected errors and error formats.
 func TestSet_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,

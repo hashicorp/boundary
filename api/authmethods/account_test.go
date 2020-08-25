@@ -16,7 +16,7 @@ import (
 
 func TestAccounts_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,
@@ -78,7 +78,7 @@ func comparableSlice(in []*authmethods.Account) []authmethods.Account {
 
 func TestAccount_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,
@@ -132,7 +132,7 @@ func TestAccount_Crud(t *testing.T) {
 
 func TestAccount_CustomMethods(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,
@@ -169,7 +169,7 @@ func TestAccount_CustomMethods(t *testing.T) {
 
 func TestAccount_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "paum_1234567890"
+	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
 		DefaultAuthMethodId:          amId,

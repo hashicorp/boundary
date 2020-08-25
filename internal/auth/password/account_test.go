@@ -19,7 +19,6 @@ func TestAccount_New(t *testing.T) {
 
 	type args struct {
 		authMethodId string
-		loginName    string
 		opts         []Option
 	}
 
