@@ -262,7 +262,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 					require.NoError(t, err)
 					target := allocTcpTarget()
 					target.PublicId = id
-					return target
+					return &target
 				}(),
 			},
 			wantRowsDeleted: 0,
