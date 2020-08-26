@@ -64,7 +64,6 @@ func TestTarget_ImmutableFields(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			conn.LogMode(true)
 
 			orig := new.Clone()
 			orig.(*TcpTarget).SetTableName("target")
