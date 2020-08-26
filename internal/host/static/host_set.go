@@ -72,3 +72,12 @@ func (s *HostSet) oplog(op oplog.OpType) oplog.Metadata {
 	}
 	return metadata
 }
+
+func newHostSetForMembers(setId string, version uint32) *HostSet {
+	return &HostSet{
+		HostSet: &store.HostSet{
+			PublicId: setId,
+			Version:  version + 1,
+		},
+	}
+}
