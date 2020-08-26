@@ -84,3 +84,24 @@ func TestSets(t *testing.T, conn *gorm.DB, catalogId string, count int) []*HostS
 	}
 	return sets
 }
+
+// TestSetMembers adds hosts to the specified setId in the provided DB.
+// The set and hosts must have been created previously and belong to the
+// same catalog. The test will fail if any errors are encountered.
+func TestSetMembers(t *testing.T, conn *gorm.DB, setId string, hosts []*Host) []*HostSetMember {
+	t.Helper()
+	assert := assert.New(t)
+
+	var members []*HostSetMember
+	for _, host := range hosts {
+		member, err := NewHostSetMember(setId, host.PublicId)
+		assert.NoError(err)
+		assert.NotNil(member)
+
+		w := db.New(conn)
+		err2 := w.Create(context.Background(), member)
+		assert.NoError(err2)
+		members = append(members, member)
+	}
+	return members
+}

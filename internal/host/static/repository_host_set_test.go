@@ -468,16 +468,18 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 			_, prj := iam.TestScopes(t, iamRepo)
 			catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+			hosts := TestHosts(t, conn, catalog.PublicId, 5)
 
 			tt.orig.CatalogId = catalog.PublicId
 			orig, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.orig)
 			assert.NoError(err)
 			require.NotNil(orig)
+			TestSetMembers(t, conn, orig.PublicId, hosts)
 
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
-			got, gotCount, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), orig, 1, tt.masks)
+			got, gotHosts, gotCount, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
@@ -505,6 +507,12 @@ func TestRepository_UpdateSet(t *testing.T) {
 			if tt.wantCount > 0 {
 				assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 			}
+			require.Len(gotHosts, len(hosts))
+			opts := []cmp.Option{
+				cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
+				protocmp.Transform(),
+			}
+			assert.Empty(cmp.Diff(hosts, gotHosts, opts...))
 		})
 	}
 
@@ -522,21 +530,23 @@ func TestRepository_UpdateSet(t *testing.T) {
 		sA, sB := ss[0], ss[1]
 
 		sA.Name = name
-		got1, gotCount1, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sA, 1, []string{"name"})
+		got1, gotHosts1, gotCount1, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sA, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(name, got1.Name)
 		assert.Equal(1, gotCount1, "row count")
 		assert.NoError(db.TestVerifyOplog(t, rw, sA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+		assert.Empty(gotHosts1)
 
 		sB.Name = name
-		got2, gotCount2, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sB, 1, []string{"name"})
+		got2, gotHosts2, gotCount2, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sB, 1, []string{"name"})
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, sB.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
 		assert.True(errors.Is(db.ErrRecordNotFound, err))
+		assert.Empty(gotHosts2)
 	})
 
 	t.Run("valid-duplicate-names-diff-Catalogs", func(t *testing.T) {
@@ -572,7 +582,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(got2)
 		got2.Name = got.Name
-		got3, gotCount3, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), got2, 1, []string{"name"})
+		got3, gotHosts3, gotCount3, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), got2, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got3)
 		assert.NotSame(got2, got3)
@@ -580,6 +590,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		assert.Equal(got2.Description, got3.Description)
 		assert.Equal(1, gotCount3, "row count")
 		assert.NoError(db.TestVerifyOplog(t, rw, got2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+		assert.Empty(gotHosts3)
 	})
 
 	t.Run("change-scope-id", func(t *testing.T) {
@@ -602,17 +613,18 @@ func TestRepository_UpdateSet(t *testing.T) {
 		sA.CatalogId = sB.CatalogId
 		assert.Equal(sA.CatalogId, sB.CatalogId)
 
-		got1, gotCount1, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sA, 1, []string{"name"})
+		got1, gotHosts1, gotCount1, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sA, 1, []string{"name"})
 
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(orig.CatalogId, got1.CatalogId)
 		assert.Equal(1, gotCount1, "row count")
 		assert.NoError(db.TestVerifyOplog(t, rw, sA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+		assert.Empty(gotHosts1)
 	})
 }
 
-func TestRepository_LookupSet(t *testing.T) {
+func TestRepository_UpdateSet_Limits(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -622,13 +634,96 @@ func TestRepository_LookupSet(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	hostSet := TestSets(t, conn, catalog.PublicId, 1)[0]
+	count := 10
+	hosts := TestHosts(t, conn, catalog.PublicId, count)
+	TestSetMembers(t, conn, hostSet.PublicId, hosts)
+
+	var tests = []struct {
+		name       string
+		repoOpts   []Option
+		updateOpts []Option
+		wantLen    int
+	}{
+		{
+			name:    "With no limits",
+			wantLen: count,
+		},
+		{
+			name:     "With repo limit",
+			repoOpts: []Option{WithLimit(3)},
+			wantLen:  3,
+		},
+		{
+			name:     "With negative repo limit",
+			repoOpts: []Option{WithLimit(-1)},
+			wantLen:  count,
+		},
+		{
+			name:       "With List limit",
+			updateOpts: []Option{WithLimit(3)},
+			wantLen:    3,
+		},
+		{
+			name:       "With negative List limit",
+			updateOpts: []Option{WithLimit(-1)},
+			wantLen:    count,
+		},
+		{
+			name:       "With repo smaller than list limit",
+			repoOpts:   []Option{WithLimit(2)},
+			updateOpts: []Option{WithLimit(6)},
+			wantLen:    6,
+		},
+		{
+			name:       "With repo larger than list limit",
+			repoOpts:   []Option{WithLimit(6)},
+			updateOpts: []Option{WithLimit(2)},
+			wantLen:    2,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
+			assert.NoError(err)
+			require.NotNil(repo)
+			hs := hostSet.clone()
+			hs.Description = tt.name
+			got, gotHosts, _, err := repo.UpdateSet(context.Background(), prj.PublicId, hs, hs.Version, []string{"Description"}, tt.updateOpts...)
+			require.NoError(err)
+			require.NotNil(got)
+			assert.Len(gotHosts, tt.wantLen)
+			require.Greater(got.Version, hs.Version)
+			hostSet = got
+		})
+	}
+}
+
+func TestRepository_LookupSet(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iamRepo)
+
+	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	hostSet := TestSets(t, conn, catalog.PublicId, 1)[0]
+	hosts := TestHosts(t, conn, catalog.PublicId, 1)
+	TestSetMembers(t, conn, hostSet.PublicId, hosts)
+
+	emptyHostSet := TestSets(t, conn, catalog.PublicId, 1)[0]
 
 	hostSetId, err := newHostSetId()
 	require.NoError(t, err)
+
 	var tests = []struct {
 		name      string
 		in        string
 		want      *HostSet
+		wantHosts []*Host
 		wantIsErr error
 	}{
 		{
@@ -640,9 +735,16 @@ func TestRepository_LookupSet(t *testing.T) {
 			in:   hostSetId,
 		},
 		{
-			name: "with-existing-host-set-id",
-			in:   hostSet.PublicId,
-			want: hostSet,
+			name:      "with-existing-host-set-id",
+			in:        hostSet.PublicId,
+			want:      hostSet,
+			wantHosts: hosts,
+		},
+		{
+			name:      "with-existing-host-set-id-empty-hosts",
+			in:        emptyHostSet.PublicId,
+			want:      emptyHostSet,
+			wantHosts: nil,
 		},
 	}
 
@@ -653,7 +755,7 @@ func TestRepository_LookupSet(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupSet(context.Background(), tt.in)
+			got, gotHosts, err := repo.LookupSet(context.Background(), tt.in)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -661,6 +763,85 @@ func TestRepository_LookupSet(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.EqualValues(tt.want, got)
+			require.Len(gotHosts, len(tt.wantHosts))
+			opts := []cmp.Option{
+				cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
+				protocmp.Transform(),
+			}
+			assert.Empty(cmp.Diff(tt.wantHosts, gotHosts, opts...))
+		})
+	}
+}
+
+func TestRepository_LookupSet_Limits(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	_, prj := iam.TestScopes(t, iamRepo)
+	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	hostSet := TestSets(t, conn, catalog.PublicId, 1)[0]
+	count := 10
+	hosts := TestHosts(t, conn, catalog.PublicId, count)
+	TestSetMembers(t, conn, hostSet.PublicId, hosts)
+
+	var tests = []struct {
+		name       string
+		repoOpts   []Option
+		lookupOpts []Option
+		wantLen    int
+	}{
+		{
+			name:    "With no limits",
+			wantLen: count,
+		},
+		{
+			name:     "With repo limit",
+			repoOpts: []Option{WithLimit(3)},
+			wantLen:  3,
+		},
+		{
+			name:     "With negative repo limit",
+			repoOpts: []Option{WithLimit(-1)},
+			wantLen:  count,
+		},
+		{
+			name:       "With List limit",
+			lookupOpts: []Option{WithLimit(3)},
+			wantLen:    3,
+		},
+		{
+			name:       "With negative List limit",
+			lookupOpts: []Option{WithLimit(-1)},
+			wantLen:    count,
+		},
+		{
+			name:       "With repo smaller than list limit",
+			repoOpts:   []Option{WithLimit(2)},
+			lookupOpts: []Option{WithLimit(6)},
+			wantLen:    6,
+		},
+		{
+			name:       "With repo larger than list limit",
+			repoOpts:   []Option{WithLimit(6)},
+			lookupOpts: []Option{WithLimit(2)},
+			wantLen:    2,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, gotHosts, err := repo.LookupSet(context.Background(), hostSet.PublicId, tt.lookupOpts...)
+			require.NoError(err)
+			require.NotNil(got)
+			assert.Len(gotHosts, tt.wantLen)
 		})
 	}
 }
