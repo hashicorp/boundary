@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -44,9 +45,17 @@ func (c *HostSetsClient) Create(ctx context.Context, hostCatalogId string, opt .
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets", hostCatalogId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets", hostCatalogId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -78,11 +87,19 @@ func (c *HostSetsClient) Read(ctx context.Context, hostCatalogId string, hostSet
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s/host-sets/%s", hostCatalogId, hostSetId), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -131,11 +148,19 @@ func (c *HostSetsClient) Update(ctx context.Context, hostCatalogId string, hostS
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s/host-sets/%s", hostCatalogId, hostSetId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s/host-sets/%s", hostCatalogId, hostSetId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -167,11 +192,19 @@ func (c *HostSetsClient) Delete(ctx context.Context, hostCatalogId string, hostS
 		return false, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-catalogs/%s/host-sets/%s", hostCatalogId, hostSetId), nil, apiOpts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -202,11 +235,19 @@ func (c *HostSetsClient) List(ctx context.Context, hostCatalogId string, opt ...
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s/host-sets", hostCatalogId), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -258,15 +299,23 @@ func (c *HostSetsClient) AddHosts(ctx context.Context, hostCatalogId string, hos
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
 	if len(hostIds) > 0 {
-		opts.valueMap["host_ids"] = hostIds
+		opts.postMap["host_ids"] = hostIds
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets/%s:add-hosts", hostCatalogId, hostSetId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets/%s:add-hosts", hostCatalogId, hostSetId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating AddHosts request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -315,18 +364,26 @@ func (c *HostSetsClient) SetHosts(ctx context.Context, hostCatalogId string, hos
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
 	if len(hostIds) > 0 {
-		opts.valueMap["host_ids"] = hostIds
+		opts.postMap["host_ids"] = hostIds
 	} else if hostIds != nil {
 		// In this function, a non-nil but empty list means clear out
-		opts.valueMap["host_ids"] = nil
+		opts.postMap["host_ids"] = nil
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets/%s:set-hosts", hostCatalogId, hostSetId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets/%s:set-hosts", hostCatalogId, hostSetId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating SetHosts request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -375,15 +432,23 @@ func (c *HostSetsClient) RemoveHosts(ctx context.Context, hostCatalogId string, 
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
 	if len(hostIds) > 0 {
-		opts.valueMap["host_ids"] = hostIds
+		opts.postMap["host_ids"] = hostIds
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets/%s:remove-hosts", hostCatalogId, hostSetId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets/%s:remove-hosts", hostCatalogId, hostSetId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating RemoveHosts request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)

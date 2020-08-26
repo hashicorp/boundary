@@ -26,6 +26,7 @@ type fieldInfo struct {
 	FieldType         string
 	GenerateSdkOption bool
 	SubtypeName       string
+	Query             bool
 }
 
 type structInfo struct {
@@ -112,6 +113,7 @@ var inputStructs = []*structInfo{
 				Name:      "SkipRoleCreation",
 				ProtoName: "skip_role_creation",
 				FieldType: "bool",
+				Query:     true,
 			},
 		},
 		versionEnabled: true,

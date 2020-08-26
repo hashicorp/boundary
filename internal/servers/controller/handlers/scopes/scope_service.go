@@ -106,6 +106,7 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
+
 	p, err := s.createInRepo(ctx, authResults, req)
 	if err != nil {
 		return nil, err
@@ -189,7 +190,7 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.CreateScope(ctx, iamScope, authResults.UserId)
+	out, err := repo.CreateScope(ctx, iamScope, authResults.UserId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to create scope: %v.", err)
 	}

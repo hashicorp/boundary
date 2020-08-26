@@ -40,14 +40,20 @@ func (c *ScopesClient) Create(ctx context.Context, scopeId string, opt ...Option
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", "scopes", opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", "scopes", opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
 
-	q := url.Values{}
-	q.Add("scope_id", scopeId)
-	req.URL.RawQuery = q.Encode()
+	opts.queryMap["scope_id"] = scopeId
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -74,11 +80,19 @@ func (c *ScopesClient) Read(ctx context.Context, scopeId string, opt ...Option) 
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes/%s", scopeId), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -124,11 +138,19 @@ func (c *ScopesClient) Update(ctx context.Context, scopeId string, version uint3
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("scopes/%s", scopeId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("scopes/%s", scopeId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -156,11 +178,19 @@ func (c *ScopesClient) Delete(ctx context.Context, scopeId string, opt ...Option
 		return false, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("scopes/%s", scopeId), nil, apiOpts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -191,16 +221,22 @@ func (c *ScopesClient) List(ctx context.Context, scopeId string, opt ...Option) 
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", "scopes", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
 
-	q := url.Values{}
-	q.Add("scope_id", scopeId)
-	req.URL.RawQuery = q.Encode()
+	opts.queryMap["scope_id"] = scopeId
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {

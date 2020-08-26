@@ -14,14 +14,16 @@ import (
 type Option func(*options)
 
 type options struct {
-	valueMap                map[string]interface{}
+	postMap                 map[string]interface{}
+	queryMap                map[string]string
 	withScopeId             string
 	withAutomaticVersioning bool
 }
 
 func getDefaultOptions() options {
 	return options{
-		valueMap: make(map[string]interface{}),
+		postMap:  make(map[string]interface{}),
+		queryMap: make(map[string]string),
 	}
 }
 

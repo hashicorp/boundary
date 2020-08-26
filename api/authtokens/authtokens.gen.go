@@ -4,6 +4,7 @@ package authtokens
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
@@ -39,11 +40,19 @@ func (c *AuthTokensClient) Read(ctx context.Context, authTokenId string, opt ...
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-tokens/%s", authTokenId), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -71,11 +80,19 @@ func (c *AuthTokensClient) Delete(ctx context.Context, authTokenId string, opt .
 		return false, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("auth-tokens/%s", authTokenId), nil, apiOpts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -102,11 +119,19 @@ func (c *AuthTokensClient) List(ctx context.Context, opt ...Option) ([]*AuthToke
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", "auth-tokens", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
