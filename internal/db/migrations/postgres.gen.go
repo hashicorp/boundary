@@ -1377,8 +1377,7 @@ commit;
 		bytes: []byte(`
 begin;
 
-  drop table workers;
-  drop table controllers;
+  drop table server;
 
 commit;
 
@@ -1393,7 +1392,7 @@ begin;
 -- to not have to persist some generated ID to worker and controller nodes.
 -- Eventually we may want them to diverge, so we have both here for now.
 
-create table servers (
+create table server (
     private_id text,
     type text,
     name text not null unique
@@ -1408,13 +1407,13 @@ create table servers (
 create trigger 
   immutable_columns
 before
-update on servers
+update on server
   for each row execute procedure immutable_columns('create_time');
   
 create trigger 
   default_create_time_column
 before
-insert on servers
+insert on server
   for each row execute procedure default_create_time();
 
 create table recovery_nonces (
