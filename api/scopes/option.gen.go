@@ -76,3 +76,15 @@ func DefaultName() Option {
 		o.valueMap["name"] = nil
 	}
 }
+
+func WithSkipRoleCreation(inSkipRoleCreation bool) Option {
+	return func(o *options) {
+		o.valueMap["skip_role_creation"] = inSkipRoleCreation
+	}
+}
+
+func DefaultSkipRoleCreation() Option {
+	return func(o *options) {
+		o.valueMap["skip_role_creation"] = nil
+	}
+}

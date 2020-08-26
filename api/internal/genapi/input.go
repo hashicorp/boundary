@@ -66,6 +66,11 @@ type structInfo struct {
 	// typeOnCreate indicates that create will be creating a concrete
 	// implementation of an abstract type and thus a type field is necessary
 	typeOnCreate bool
+
+	// extraOptions allows specifying extra options that will be created for a
+	// given type, e.g. arguments only valid for one call or purpose and not
+	// conveyed within the item itself
+	extraOptions []fieldInfo
 }
 
 var inputStructs = []*structInfo{
@@ -101,7 +106,14 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"scope"},
+		pathArgs: []string{"scope"},
+		extraOptions: []fieldInfo{
+			{
+				Name:      "SkipRoleCreation",
+				ProtoName: "skip_role_creation",
+				FieldType: "bool",
+			},
+		},
 		versionEnabled: true,
 	},
 	// User related resources

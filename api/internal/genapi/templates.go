@@ -69,6 +69,7 @@ type templateInput struct {
 	CollectionPath         string
 	ResourcePath           string
 	SliceSubTypes          map[string]string
+	ExtraOptions           []fieldInfo
 	VersionEnabled         bool
 	TypeOnCreate           bool
 }
@@ -83,6 +84,7 @@ func fillTemplates() {
 			Package:        in.generatedStructure.pkg,
 			Fields:         in.generatedStructure.fields,
 			PathArgs:       in.pathArgs,
+			ExtraOptions:   in.extraOptions,
 			VersionEnabled: in.versionEnabled,
 			TypeOnCreate:   in.typeOnCreate,
 		}
@@ -126,6 +128,17 @@ func fillTemplates() {
 			}
 			for name, val := range pkgOptionMap {
 				optionMap[name] = val
+			}
+			optionsMap[input.Package] = optionMap
+		}
+		// Add in extra defined options
+		if len(in.extraOptions) > 0 {
+			optionMap := optionsMap[input.Package]
+			if optionMap == nil {
+				optionMap = map[string]fieldInfo{}
+			}
+			for _, val := range in.extraOptions {
+				optionMap[val.Name] = val
 			}
 			optionsMap[input.Package] = optionMap
 		}

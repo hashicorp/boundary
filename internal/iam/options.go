@@ -16,16 +16,17 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withPublicId        string
-	withName            string
-	withDescription     string
-	withGroupGrants     bool
-	withLimit           int
-	withAutoVivify      bool
-	withGrantScopeId    string
-	withSkipVetForWrite bool
-	withDisassociate    bool
-	withRandomReader    io.Reader
+	withPublicId         string
+	withName             string
+	withDescription      string
+	withGroupGrants      bool
+	withLimit            int
+	withAutoVivify       bool
+	withGrantScopeId     string
+	withSkipVetForWrite  bool
+	withDisassociate     bool
+	withSkipRoleCreation bool
+	withRandomReader     io.Reader
 }
 
 func getDefaultOptions() options {
@@ -107,6 +108,14 @@ func WithSkipVetForWrite(enable bool) Option {
 func WithDisassociate(enable bool) Option {
 	return func(o *options) {
 		o.withDisassociate = enable
+	}
+}
+
+// WithSkipRoleCreation provides an option to disable the automatic creation of
+// a role when a new scope is created.
+func WithSkipRoleCreation(enable bool) Option {
+	return func(o *options) {
+		o.withSkipRoleCreation = enable
 	}
 }
 
