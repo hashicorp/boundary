@@ -468,6 +468,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 	// operate on the same set of data from these queries that calculate the
 	// set.
 
+	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
 	foundThs, err := fetchSets(ctx, r.reader, targetId)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set target host sets: unable to search for existing target host sets: %w", err)
