@@ -229,6 +229,15 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 	// operations. Push these operations to the database once bulk
 	// operations are added.
 
+	// NOTE(mgaffney) 08/2020: This establishes a new pattern for
+	// calculating change sets for "SetMembers" methods. The changes are
+	// calculated by the database using a single query. Existing
+	// "SetMembers" methods retrieve all of the members of the set and
+	// calculate the changes outside of the database. Our default moving
+	// forward is to use SQL for calculations on the data in the database.
+
+	// TODO(mgaffney) 08/2020: Change existing "SetMembers" methods to use
+	// this pattern.
 	changes, err := r.changes(ctx, setId, hostIds)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: %w", err)
