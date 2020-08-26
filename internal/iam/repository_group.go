@@ -381,6 +381,8 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 		return nil, db.NoRowsAffected, fmt.Errorf("set group members: unable to get members %s scope: %w", groupId, err)
 	}
 
+	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
+
 	// find existing members (since we're using groupVersion, we can safely do
 	// this here, outside the TxHandler)
 	currentMembers := []*GroupMember{}

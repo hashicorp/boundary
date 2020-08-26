@@ -260,7 +260,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 	return outHl, nil
 }
 
-func toProto(in *static.Host, members []*static.HostSetMember) (*pb.Host, error) {
+func toProto(in *static.Host, members []*static.HostSet) (*pb.Host, error) {
 	out := pb.Host{
 		Id:            in.GetPublicId(),
 		HostCatalogId: in.GetCatalogId(),
@@ -276,7 +276,7 @@ func toProto(in *static.Host, members []*static.HostSetMember) (*pb.Host, error)
 		out.Name = wrapperspb.String(in.GetName())
 	}
 	for _, m := range members {
-		out.HostSetIds = append(out.HostSetIds, m.GetSetId())
+		out.HostSetIds = append(out.HostSetIds, m.GetPublicId())
 	}
 	st, err := handlers.ProtoToStruct(&pb.StaticHostAttributes{Address: wrapperspb.String(in.GetAddress())})
 	if err != nil {

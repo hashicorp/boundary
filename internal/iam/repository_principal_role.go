@@ -408,6 +408,7 @@ type principalSet struct {
 
 // TODO: Should this be moved inside the transaction, at this point?
 func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, groupIds []string) (*principalSet, error) {
+	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
 	if role == nil {
 		return nil, fmt.Errorf("missing role: %w", db.ErrInvalidParameter)
 	}

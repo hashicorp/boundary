@@ -84,11 +84,11 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 	server.PrivateId = server.Name
 	// Build query
 	q := `
-	insert into servers
+	insert into server
 		(private_id, type, name, description, address, update_time)
 	values
 		($1, $2, $3, $4, $5, $6)
-	on conflict on constraint servers_pkey
+	on conflict on constraint server_pkey
 	do update set
 		name = $3,
 		description = $4,
