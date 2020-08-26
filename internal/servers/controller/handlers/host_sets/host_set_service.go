@@ -184,14 +184,14 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostSet, error
 	if err != nil {
 		return nil, err
 	}
-	h, _, err := repo.LookupSet(ctx, id)
+	h, m, err := repo.LookupSet(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	if h == nil {
 		return nil, handlers.NotFoundErrorf("Host set %q doesn't exist.", id)
 	}
-	return toProto(h, nil), nil
+	return toProto(h, m), nil
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.HostSet) (*pb.HostSet, error) {
@@ -241,14 +241,14 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	if err != nil {
 		return nil, err
 	}
-	out, _, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
+	out, m, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update host set: %v.", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host set %q doesn't exist.", id)
 	}
-	return toProto(out, nil), nil
+	return toProto(out, m), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
@@ -284,18 +284,18 @@ func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	if err != nil {
 		return nil, err
 	}
-	// _, err = repo.AddHostSetMembers(ctx, setId, version, hostIds)
-	// if err != nil {
-	// 	return nil, status.Errorf(codes.Internal, "Unable to add members to group: %v.", err)
-	// }
-	out, _, err := repo.LookupSet(ctx, setId)
+	_, err = repo.AddSetMembers(ctx, scopeId, setId, version, hostIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to add hosts to host set: %v.", err)
+	}
+	out, m, err := repo.LookupSet(ctx, setId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to look up host set: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup group after adding member to it.")
+		return nil, status.Error(codes.Internal, "Unable to lookup host set after adding hosts to it.")
 	}
-	return toProto(out, nil), nil
+	return toProto(out, m), nil
 }
 
 func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*pb.HostSet, error) {
@@ -303,19 +303,19 @@ func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	if err != nil {
 		return nil, err
 	}
-	// _, _, err = repo.SetHostSetMembers(ctx, groupId, version, userIds)
-	// if err != nil {
-	// 	return nil, status.Errorf(codes.Internal, "Unable to set members on group: %v.", err)
-	// }
+	_, _, err = repo.SetSetMembers(ctx, scopeId, setId, version, hostIds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to set hosts in host set: %v.", err)
+	}
 
-	out, _, err := repo.LookupSet(ctx, setId)
+	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
 	}
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to lookup group after setting members for it.")
 	}
-	return toProto(out, nil), nil
+	return toProto(out, m), nil
 }
 
 func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*pb.HostSet, error) {
@@ -323,21 +323,21 @@ func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostId
 	if err != nil {
 		return nil, err
 	}
-	// _, err = repo.RemoveHostSetMembers(ctx, hostSetId, version, userIds)
-	// if err != nil {
-	// 	return nil, status.Errorf(codes.Internal, "Unable to remove members from group: %v.", err)
-	// }
-	out, _, err := repo.LookupSet(ctx, setId)
+	_, err = repo.DeleteSetMembers(ctx, scopeId, setId, version, hostIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to remove hosts from host set: %v.", err)
+	}
+	out, m, err := repo.LookupSet(ctx, setId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to look up host set: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup group after removing members from it.")
+		return nil, status.Error(codes.Internal, "Unable to lookup host set after removing hosts from it.")
 	}
-	return toProto(out, nil), nil
+	return toProto(out, m), nil
 }
 
-func toProto(in *static.HostSet, members []*static.HostSetMember) *pb.HostSet {
+func toProto(in *static.HostSet, hs []*static.Host) *pb.HostSet {
 	out := pb.HostSet{
 		Id:            in.GetPublicId(),
 		HostCatalogId: in.GetCatalogId(),
@@ -352,8 +352,8 @@ func toProto(in *static.HostSet, members []*static.HostSetMember) *pb.HostSet {
 	if in.GetName() != "" {
 		out.Name = wrapperspb.String(in.GetName())
 	}
-	for _, m := range members {
-		out.HostIds = append(out.HostIds, m.GetHostId())
+	for _, h := range hs {
+		out.HostIds = append(out.HostIds, h.GetPublicId())
 	}
 	return &out
 }
