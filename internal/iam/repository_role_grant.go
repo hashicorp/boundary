@@ -231,6 +231,8 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	role := allocRole()
 	role.PublicId = roleId
 
+	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
+
 	// NOTE: Set calculation can safely take place out of the transaction since
 	// we are using roleVersion to ensure that we end up operating on the same
 	// set of data from this query to the final set in the transaction function

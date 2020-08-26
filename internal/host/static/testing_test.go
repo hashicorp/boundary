@@ -64,3 +64,26 @@ func Test_TestSets(t *testing.T) {
 		assert.NotEmpty(s.GetPublicId())
 	}
 }
+
+func Test_TestSetMembers(t *testing.T) {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	require.NotNil(prj)
+	assert.NotEmpty(prj.GetPublicId())
+
+	c := TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+	s := TestSets(t, conn, c.GetPublicId(), 1)[0]
+
+	count := 4
+	hosts := TestHosts(t, conn, c.GetPublicId(), count)
+	members := TestSetMembers(t, conn, s.PublicId, hosts)
+	assert.Len(members, count)
+	for _, m := range members {
+		assert.NotEmpty(m.GetSetId())
+		assert.NotEmpty(m.GetHostId())
+	}
+}
