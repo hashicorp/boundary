@@ -146,14 +146,14 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	h, m, err := repo.LookupHost(ctx, id)
+	h, err := repo.LookupHost(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	if h == nil {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
 	}
-	return toProto(h, m)
+	return toProto(h, nil)
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.Host) (*pb.Host, error) {
@@ -218,14 +218,14 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	if err != nil {
 		return nil, err
 	}
-	out, m, rowsUpdated, err := repo.UpdateHost(ctx, scopeId, h, item.GetVersion(), dbMask)
+	out, rowsUpdated, err := repo.UpdateHost(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update host: %v.", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
 	}
-	return toProto(out, m)
+	return toProto(out, nil)
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
