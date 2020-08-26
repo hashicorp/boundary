@@ -15,15 +15,15 @@ func Test_TestTcpTarget(t *testing.T) {
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	cats := static.TestCatalogs(t, conn, org.PublicId, 1)
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
 	hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 2)
 	var sets []string
 	for _, s := range hsets {
 		sets = append(sets, s.PublicId)
 	}
-	name := testTargetName(t, org.PublicId)
-	target := TestTcpTarget(t, conn, org.PublicId, name, WithHostSets(sets))
+	name := testTargetName(t, proj.PublicId)
+	target := TestTcpTarget(t, conn, proj.PublicId, name, WithHostSets(sets))
 	require.NotNil(t)
 	require.NotEmpty(target.PublicId)
 	require.Equal(name, target.Name)

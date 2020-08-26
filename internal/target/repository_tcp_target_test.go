@@ -25,9 +25,9 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 	testKms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
-	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	cats := static.TestCatalogs(t, conn, org.PublicId, 1)
+	cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
 	hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 2)
 	var sets []string
 	for _, s := range hsets {
@@ -49,7 +49,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			name: "valid-org",
 			args: args{
 				target: func() *TcpTarget {
-					target, err := NewTcpTarget(org.PublicId, "valid-org",
+					target, err := NewTcpTarget(proj.PublicId, "valid-org",
 						WithDescription("valid-org"),
 						WithDefaultPort(uint32(22)))
 					require.NoError(t, err)
@@ -83,7 +83,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			name: "public-id-not-empty",
 			args: args{
 				target: func() *TcpTarget {
-					target, err := NewTcpTarget(org.PublicId, "valid-org", WithDescription("valid-org"), WithDefaultPort(uint32(22)))
+					target, err := NewTcpTarget(proj.PublicId, "valid-org", WithDescription("valid-org"), WithDefaultPort(uint32(22)))
 					require.NoError(t, err)
 					id, err := newTcpTargetId()
 					require.NoError(t, err)
@@ -160,7 +160,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 	id := testId(t)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	org, proj := iam.TestScopes(t, iamRepo)
+	_, proj := iam.TestScopes(t, iamRepo)
 	pubId := func(s string) *string { return &s }
 
 	type args struct {
@@ -189,9 +189,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
-			newScopeId:     org.PublicId,
+			newScopeId:     proj.PublicId,
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
@@ -200,9 +200,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid-no-op" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
-			newScopeId:     org.PublicId,
+			newScopeId:     proj.PublicId,
 			newName:        "valid-no-op" + id,
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -212,10 +212,10 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "not-found" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 				PublicId:       func() *string { s := "1"; return &s }(),
 			},
-			newScopeId:     org.PublicId,
+			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update tcp target: update: lookup after write: record not found for 1",
@@ -226,9 +226,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "",
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
-			newScopeId:     org.PublicId,
+			newScopeId:     proj.PublicId,
 			newName:        "null-name" + id,
 			wantErr:        true,
 			wantRowsUpdate: 0,
@@ -239,9 +239,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "null-description",
 				fieldMaskPaths: []string{"Description"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
-			newScopeId:     org.PublicId,
+			newScopeId:     proj.PublicId,
 			newTargetOpts:  []Option{WithDescription("null-description" + id)},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -251,9 +251,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
-			newScopeId:     org.PublicId,
+			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update tcp target: empty field mask",
@@ -264,9 +264,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: nil,
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
-			newScopeId:     org.PublicId,
+			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update tcp target: empty field mask",
@@ -277,9 +277,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"CreateTime"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
-			newScopeId:     org.PublicId,
+			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update tcp target: field: CreateTime: invalid field mask",
@@ -290,9 +290,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"Alice"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
-			newScopeId:     org.PublicId,
+			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update tcp target: field: Alice: invalid field mask",
@@ -303,10 +303,10 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 				PublicId:       pubId(""),
 			},
-			newScopeId:     org.PublicId,
+			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantErrMsg:     "update tcp target: missing target public id invalid parameter",
 			wantIsError:    db.ErrInvalidParameter,
@@ -318,7 +318,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				name:    "proj-scope-id" + id,
 				ScopeId: proj.PublicId,
 			},
-			newScopeId:  org.PublicId,
+			newScopeId:  proj.PublicId,
 			wantErr:     true,
 			wantErrMsg:  "update tcp target: empty field mask",
 			wantIsError: db.ErrEmptyFieldMask,
@@ -330,34 +330,21 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        "",
 			},
-			newScopeId:     org.PublicId,
-			wantErr:        false,
-			wantRowsUpdate: 1,
-		},
-		{
-			name: "dup-name-in-diff-scope",
-			args: args{
-				name:           "dup-name-in-diff-scope" + id,
-				fieldMaskPaths: []string{"Name"},
-				ScopeId:        proj.PublicId,
-			},
 			newScopeId:     proj.PublicId,
-			newName:        "dup-name-in-diff-scope-pre-update",
 			wantErr:        false,
 			wantRowsUpdate: 1,
-			wantDup:        true,
 		},
 		{
 			name: "dup-name",
 			args: args{
 				name:           "dup-name" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
-			newScopeId:  org.PublicId,
+			newScopeId:  proj.PublicId,
 			wantErr:     true,
 			wantDup:     true,
-			wantErrMsg:  " already exists in org " + org.PublicId,
+			wantErrMsg:  " already exists in scope " + proj.PublicId,
 			wantIsError: db.ErrNotUnique,
 		},
 	}
@@ -365,10 +352,10 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
 			if tt.wantDup {
-				_ = TestTcpTarget(t, conn, org.PublicId, tt.args.name)
+				_ = TestTcpTarget(t, conn, proj.PublicId, tt.args.name)
 			}
 
-			testCats := static.TestCatalogs(t, conn, org.PublicId, 1)
+			testCats := static.TestCatalogs(t, conn, proj.PublicId, 1)
 			hsets := static.TestSets(t, conn, testCats[0].GetPublicId(), 5)
 			testHostSetIds := make([]string, 0, len(hsets))
 			for _, hs := range hsets {

@@ -150,7 +150,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 	)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: target %s already exists in org %s: %w", target.Name, target.ScopeId, db.ErrNotUnique)
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: target %s already exists in scope %s: %w", target.Name, target.ScopeId, db.ErrNotUnique)
 		}
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: %w for %s", err, target.PublicId)
 	}

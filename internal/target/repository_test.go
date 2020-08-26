@@ -107,7 +107,7 @@ func TestRepository_ListTargets(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	org, proj := iam.TestScopes(t, iamRepo)
+	_, proj := iam.TestScopes(t, iamRepo)
 	rw := db.New(conn)
 	repo, err := NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
@@ -129,25 +129,15 @@ func TestRepository_ListTargets(t *testing.T) {
 		{
 			name:          "tcp-target",
 			createCnt:     5,
-			createScopeId: org.PublicId,
+			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithTargetType(TcpTargetType), WithScopeId(org.PublicId)},
+				opt: []Option{WithTargetType(TcpTargetType), WithScopeId(proj.PublicId)},
 			},
 			wantCnt: 5,
 			wantErr: false,
 		},
 		{
-			name:          "no-limit-org",
-			createCnt:     testLimit + 1,
-			createScopeId: org.PublicId,
-			args: args{
-				opt: []Option{WithLimit(-1), WithScopeId(org.PublicId)},
-			},
-			wantCnt: testLimit + 1,
-			wantErr: false,
-		},
-		{
-			name:          "no-limit-proj",
+			name:          "no-limit",
 			createCnt:     testLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
@@ -159,9 +149,9 @@ func TestRepository_ListTargets(t *testing.T) {
 		{
 			name:          "default-limit",
 			createCnt:     testLimit + 1,
-			createScopeId: org.PublicId,
+			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithScopeId(org.PublicId)},
+				opt: []Option{WithScopeId(proj.PublicId)},
 			},
 			wantCnt: testLimit,
 			wantErr: false,
@@ -169,9 +159,9 @@ func TestRepository_ListTargets(t *testing.T) {
 		{
 			name:          "custom-limit",
 			createCnt:     testLimit + 1,
-			createScopeId: org.PublicId,
+			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithLimit(3), WithScopeId(org.PublicId)},
+				opt: []Option{WithLimit(3), WithScopeId(proj.PublicId)},
 			},
 			wantCnt: 3,
 			wantErr: false,
@@ -179,7 +169,7 @@ func TestRepository_ListTargets(t *testing.T) {
 		{
 			name:          "bad-org",
 			createCnt:     1,
-			createScopeId: org.PublicId,
+			createScopeId: proj.PublicId,
 			args: args{
 				opt: []Option{WithScopeId("bad-id")},
 			},
@@ -219,7 +209,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	org, _ := iam.TestScopes(t, iamRepo)
+	_, proj := iam.TestScopes(t, iamRepo)
 	repo, err := NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
 
@@ -237,7 +227,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				target: TestTcpTarget(t, conn, org.PublicId, "valid"),
+				target: TestTcpTarget(t, conn, proj.PublicId, "valid"),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -371,44 +361,26 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 			require.NoError(conn.Where("1=1").Delete(allocTargetHostSet()).Error)
 			require.NoError(conn.Where("1=1").Delete(allocTcpTarget()).Error)
 
-			orgTarget := TestTcpTarget(t, conn, staticOrg.PublicId, "static-org")
 			projTarget := TestTcpTarget(t, conn, staticProj.PublicId, "static-proj")
 
 			var hostSetIds []string
-			for _, targetId := range []string{projTarget.PublicId, orgTarget.PublicId} {
-				origTarget, origHostSet, err := repo.LookupTarget(context.Background(), targetId)
-				require.NoError(err)
-				require.Equal(0, len(origHostSet))
+			origTarget, origHostSet, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
+			require.NoError(err)
+			require.Equal(0, len(origHostSet))
 
-				if tt.args.wantTargetIds {
-					hostSetIds = createHostSetsFn([]string{staticOrg.PublicId}, []string{staticProj.PublicId})
+			if tt.args.wantTargetIds {
+				hostSetIds = createHostSetsFn([]string{staticOrg.PublicId}, []string{staticProj.PublicId})
+			}
+
+			gotTarget, gotHostSets, err := repo.AddTargeHostSets(context.Background(), projTarget.PublicId, tt.args.targetVersion, hostSetIds, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
-
-				gotTarget, gotHostSets, err := repo.AddTargeHostSets(context.Background(), targetId, tt.args.targetVersion, hostSetIds, tt.args.opt...)
-				if tt.wantErr {
-					require.Error(err)
-					if tt.wantErrIs != nil {
-						assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
-					}
-					// test to see of the target version update oplog was not created
-					err = db.TestVerifyOplog(t, rw, targetId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-					assert.Error(err)
-
-					// TODO (jimlambrt 9/2020) - unfortunately, we can currently
-					// test to make sure that the oplog entry for a target create
-					// doesn't exist because the db.TestVerifyOplog doesn't really
-					// support that level of testing and the previous call to
-					// TestTcpTarget would create an oplog entry for the
-					// create on the target.   Once TestVerifyOplog supports the
-					// appropriate granularity, we should add an appropriate assert.
-
-					return
-				}
-				require.NoError(err)
-				gotHostSet := map[string]*TargetSet{}
-				for _, s := range gotHostSets {
-					gotHostSet[s.PublicId] = s
-				}
+				// test to see of the target version update oplog was not created
+				err = db.TestVerifyOplog(t, rw, projTarget.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				assert.Error(err)
 
 				// TODO (jimlambrt 9/2020) - unfortunately, we can currently
 				// test to make sure that the oplog entry for a target create
@@ -418,23 +390,38 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 				// create on the target.   Once TestVerifyOplog supports the
 				// appropriate granularity, we should add an appropriate assert.
 
-				// test to see of the target version update oplog was  created
-				err = db.TestVerifyOplog(t, rw, targetId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-				assert.NoError(err)
-
-				foundHostSets, err := fetchSets(context.Background(), rw, targetId)
-				require.NoError(err)
-				for _, s := range foundHostSets {
-					assert.NotEmpty(gotHostSet[s.PublicId])
-				}
-
-				t, ths, err := repo.LookupTarget(context.Background(), targetId)
-				require.NoError(err)
-				assert.Equal(tt.args.targetVersion+1, t.GetVersion())
-				assert.Equal(origTarget.GetVersion(), t.GetVersion()-1)
-				assert.Equal(gotHostSets, ths)
-				assert.True(proto.Equal(gotTarget.(*TcpTarget), t.(*TcpTarget)))
+				return
 			}
+			require.NoError(err)
+			gotHostSet := map[string]*TargetSet{}
+			for _, s := range gotHostSets {
+				gotHostSet[s.PublicId] = s
+			}
+
+			// TODO (jimlambrt 9/2020) - unfortunately, we can currently
+			// test to make sure that the oplog entry for a target create
+			// doesn't exist because the db.TestVerifyOplog doesn't really
+			// support that level of testing and the previous call to
+			// TestTcpTarget would create an oplog entry for the
+			// create on the target.   Once TestVerifyOplog supports the
+			// appropriate granularity, we should add an appropriate assert.
+
+			// test to see of the target version update oplog was  created
+			err = db.TestVerifyOplog(t, rw, projTarget.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+
+			foundHostSets, err := fetchSets(context.Background(), rw, projTarget.PublicId)
+			require.NoError(err)
+			for _, s := range foundHostSets {
+				assert.NotEmpty(gotHostSet[s.PublicId])
+			}
+
+			target, ths, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
+			require.NoError(err)
+			assert.Equal(tt.args.targetVersion+1, target.GetVersion())
+			assert.Equal(origTarget.GetVersion(), target.GetVersion()-1)
+			assert.Equal(gotHostSets, ths)
+			assert.True(proto.Equal(gotTarget.(*TcpTarget), target.(*TcpTarget)))
 		})
 	}
 }
@@ -446,7 +433,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	org, _ := iam.TestScopes(t, iamRepo)
+	_, proj := iam.TestScopes(t, iamRepo)
 	repo, err := NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
 
@@ -468,7 +455,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				target:    TestTcpTarget(t, conn, org.PublicId, "valid"),
+				target:    TestTcpTarget(t, conn, proj.PublicId, "valid"),
 				createCnt: 5,
 				deleteCnt: 5,
 			},
@@ -478,7 +465,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "valid-keeping-some",
 			args: args{
-				target:    TestTcpTarget(t, conn, org.PublicId, "valid-keeping-some"),
+				target:    TestTcpTarget(t, conn, proj.PublicId, "valid-keeping-some"),
 				createCnt: 5,
 				deleteCnt: 2,
 			},
@@ -488,7 +475,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "no-deletes",
 			args: args{
-				target:    TestTcpTarget(t, conn, org.PublicId, "no-deletes"),
+				target:    TestTcpTarget(t, conn, proj.PublicId, "no-deletes"),
 				createCnt: 5,
 			},
 			wantRowsDeleted: 0,
@@ -498,7 +485,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "not-found",
 			args: args{
-				target:           TestTcpTarget(t, conn, org.PublicId, "not-found"),
+				target:           TestTcpTarget(t, conn, proj.PublicId, "not-found"),
 				targetIdOverride: func() *string { id := testId(t); return &id }(),
 				createCnt:        5,
 				deleteCnt:        5,
@@ -509,7 +496,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "missing-target-id",
 			args: args{
-				target:           TestTcpTarget(t, conn, org.PublicId, "missing-target-id"),
+				target:           TestTcpTarget(t, conn, proj.PublicId, "missing-target-id"),
 				targetIdOverride: func() *string { id := ""; return &id }(),
 				createCnt:        5,
 				deleteCnt:        5,
@@ -521,7 +508,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "zero-version",
 			args: args{
-				target:                TestTcpTarget(t, conn, org.PublicId, "zero-version"),
+				target:                TestTcpTarget(t, conn, proj.PublicId, "zero-version"),
 				targetVersionOverride: func() *uint32 { v := uint32(0); return &v }(),
 				createCnt:             5,
 				deleteCnt:             5,
@@ -533,7 +520,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "bad-version",
 			args: args{
-				target:                TestTcpTarget(t, conn, org.PublicId, "bad-version"),
+				target:                TestTcpTarget(t, conn, proj.PublicId, "bad-version"),
 				targetVersionOverride: func() *uint32 { v := uint32(1000); return &v }(),
 				createCnt:             5,
 				deleteCnt:             5,
@@ -548,7 +535,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			hsIds := make([]string, 0, tt.args.createCnt)
 			if tt.args.createCnt > 0 {
 				for i := 0; i < tt.args.createCnt; i++ {
-					cats := static.TestCatalogs(t, conn, org.PublicId, 1)
+					cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
 					hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 1)
 					hsIds = append(hsIds, hsets[0].PublicId)
 				}
@@ -623,9 +610,9 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	org, proj := iam.TestScopes(t, iamRepo)
+	_, proj := iam.TestScopes(t, iamRepo)
 
-	testCats := static.TestCatalogs(t, conn, org.PublicId, 1)
+	testCats := static.TestCatalogs(t, conn, proj.PublicId, 1)
 	hsets := static.TestSets(t, conn, testCats[0].GetPublicId(), 5)
 	testHostSetIds := make([]string, 0, len(hsets))
 	for _, hs := range hsets {
@@ -634,12 +621,10 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 
 	createHostSetsFn := func() []string {
 		results := []string{}
-		for _, publicId := range []string{org.PublicId, proj.PublicId} {
-			for i := 0; i < 5; i++ {
-				cats := static.TestCatalogs(t, conn, publicId, 1)
-				hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 1)
-				results = append(results, hsets[0].PublicId)
-			}
+		for i := 0; i < 10; i++ {
+			cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
+			hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 1)
+			results = append(results, hsets[0].PublicId)
 		}
 		return results
 	}

@@ -19,7 +19,7 @@ func TestTcpTarget_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	type args struct {
 		scopeId string
 		name    string
@@ -39,23 +39,6 @@ func TestTcpTarget_Create(t *testing.T) {
 			args:      args{},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
-		},
-		{
-			name: "valid-org-config",
-			args: args{
-				scopeId: org.PublicId,
-				name:    "valid-org-config",
-				opt:     []Option{WithDescription("valid-org-config-description"), WithDefaultPort(uint32(22))},
-			},
-			want: func() *TcpTarget {
-				t := allocTcpTarget()
-				t.ScopeId = org.PublicId
-				t.Name = "valid-org-config"
-				t.Description = "valid-org-config-description"
-				t.DefaultPort = uint32(22)
-				return &t
-			}(),
-			create: true,
 		},
 		{
 			name: "valid-proj-scope",
@@ -104,7 +87,7 @@ func TestTcpTarget_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	tests := []struct {
 		name            string
@@ -115,7 +98,7 @@ func TestTcpTarget_Delete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			target:          TestTcpTarget(t, conn, org.PublicId, testTargetName(t, org.PublicId)),
+			target:          TestTcpTarget(t, conn, proj.PublicId, testTargetName(t, proj.PublicId)),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
@@ -126,8 +109,8 @@ func TestTcpTarget_Delete(t *testing.T) {
 				id, err := newTcpTargetId()
 				require.NoError(t, err)
 				target.PublicId = id
-				target.ScopeId = org.PublicId
-				target.Name = testTargetName(t, org.PublicId)
+				target.ScopeId = proj.PublicId
+				target.Name = testTargetName(t, proj.PublicId)
 				return &target
 			}(),
 			wantErr:         false,
@@ -165,7 +148,7 @@ func TestTcpTarget_Update(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	type args struct {
 		name           string
@@ -187,20 +170,10 @@ func TestTcpTarget_Update(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
-		},
-		{
-			name: "proj-scope-id",
-			args: args{
-				name:           "proj-scope-id" + id,
-				fieldMaskPaths: []string{"ScopeId"},
-				ScopeId:        proj.PublicId,
-			},
-			wantErr:    true,
-			wantErrMsg: "update: failed: pq: immutable column: target_tcp.scope_id",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -227,7 +200,7 @@ func TestTcpTarget_Update(t *testing.T) {
 			args: args{
 				name:           "dup-name" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
 			wantDup:    true,
@@ -239,7 +212,7 @@ func TestTcpTarget_Update(t *testing.T) {
 				name:           "set description null" + id,
 				fieldMaskPaths: []string{"Name"},
 				nullPaths:      []string{"Description"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -250,7 +223,7 @@ func TestTcpTarget_Update(t *testing.T) {
 				description:    "set description null" + id,
 				fieldMaskPaths: []string{"Description"},
 				nullPaths:      []string{"Name"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
 			wantErrMsg: `update: failed: pq: null value in column "name" violates not-null constraint`,
@@ -261,7 +234,7 @@ func TestTcpTarget_Update(t *testing.T) {
 				name:           "set name null" + id,
 				fieldMaskPaths: []string{"Name"},
 				nullPaths:      []string{"Description"},
-				ScopeId:        org.PublicId,
+				ScopeId:        proj.PublicId,
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -271,14 +244,14 @@ func TestTcpTarget_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			if tt.wantDup {
-				target := TestTcpTarget(t, conn, org.PublicId, testTargetName(t, org.PublicId))
+				target := TestTcpTarget(t, conn, proj.PublicId, testTargetName(t, proj.PublicId))
 				target.Name = tt.args.name
 				_, err := rw.Update(context.Background(), target, tt.args.fieldMaskPaths, tt.args.nullPaths)
 				require.NoError(err)
 			}
 
 			id := testId(t)
-			target := TestTcpTarget(t, conn, org.PublicId, id, WithDescription(id))
+			target := TestTcpTarget(t, conn, proj.PublicId, id, WithDescription(id))
 
 			updateTarget := allocTcpTarget()
 			updateTarget.PublicId = target.PublicId
@@ -315,7 +288,8 @@ func TestTcpTarget_Update(t *testing.T) {
 	t.Run("update dup names in diff scopes", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		id := testId(t)
-		_ = TestTcpTarget(t, conn, org.PublicId, id, WithDescription(id))
+		_, proj2 := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		_ = TestTcpTarget(t, conn, proj2.PublicId, id, WithDescription(id))
 		projTarget := TestTcpTarget(t, conn, proj.PublicId, id)
 		projTarget.Name = id
 		updatedRows, err := rw.Update(context.Background(), projTarget, []string{"Name"}, nil)
@@ -336,17 +310,17 @@ func TestTcpTarget_Clone(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
-		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		target := TestTcpTarget(t, conn, org.PublicId, testTargetName(t, org.PublicId))
+		_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		target := TestTcpTarget(t, conn, proj.PublicId, testTargetName(t, proj.PublicId))
 		cp := target.Clone()
 		assert.True(proto.Equal(cp.(*TcpTarget).TcpTarget, target.TcpTarget))
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
-		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		target := TestTcpTarget(t, conn, org.PublicId, testTargetName(t, org.PublicId))
-		target2 := TestTcpTarget(t, conn, org2.PublicId, testTargetName(t, org2.PublicId))
+		_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		_, proj2 := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		target := TestTcpTarget(t, conn, proj.PublicId, testTargetName(t, proj.PublicId))
+		target2 := TestTcpTarget(t, conn, proj2.PublicId, testTargetName(t, proj2.PublicId))
 
 		cp := target.Clone()
 		assert.True(!proto.Equal(cp.(*TcpTarget).TcpTarget, target2.TcpTarget))
