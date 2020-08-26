@@ -60,7 +60,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 // No options are currently supported.
 func (r *Repository) LookupTarget(ctx context.Context, publicId string, opt ...Option) (Target, []*TargetSet, error) {
 	if publicId == "" {
-		return nil, nil, fmt.Errorf("lookup target: missing private id: %w", db.ErrNilParameter)
+		return nil, nil, fmt.Errorf("lookup target: missing private id: %w", db.ErrInvalidParameter)
 	}
 	target := allocTargetView()
 	target.PublicId = publicId
@@ -152,7 +152,7 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 // DeleteTarget will delete a target from the repository.
 func (r *Repository) DeleteTarget(ctx context.Context, publicId string, opt ...Option) (int, error) {
 	if publicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete target: missing public id %w", db.ErrNilParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete target: missing public id %w", db.ErrInvalidParameter)
 	}
 	t := allocTargetView()
 	t.PublicId = publicId

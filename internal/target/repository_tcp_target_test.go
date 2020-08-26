@@ -66,7 +66,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				target: nil,
 			},
 			wantErr:     true,
-			wantIsError: db.ErrNilParameter,
+			wantIsError: db.ErrInvalidParameter,
 		},
 		{
 			name: "nil-target-store",
@@ -77,7 +77,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrNilParameter,
+			wantIsError: db.ErrInvalidParameter,
 		},
 		{
 			name: "public-id-not-empty",

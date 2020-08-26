@@ -17,10 +17,10 @@ import (
 func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt ...Option) (Target, []*TargetSet, error) {
 	opts := getOpts(opt...)
 	if target == nil {
-		return nil, nil, fmt.Errorf("create tcp target: missing target: %w", db.ErrNilParameter)
+		return nil, nil, fmt.Errorf("create tcp target: missing target: %w", db.ErrInvalidParameter)
 	}
 	if target.TcpTarget == nil {
-		return nil, nil, fmt.Errorf("create tcp target: missing target store: %w", db.ErrNilParameter)
+		return nil, nil, fmt.Errorf("create tcp target: missing target store: %w", db.ErrInvalidParameter)
 	}
 	if target.ScopeId == "" {
 		return nil, nil, fmt.Errorf("create tcp target: scope id empty: %w", db.ErrInvalidParameter)

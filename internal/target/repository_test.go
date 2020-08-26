@@ -252,7 +252,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete target: missing public id nil parameter",
+			wantErrMsg:      "delete target: missing public id invalid parameter",
 		},
 		{
 			name: "not-found",
