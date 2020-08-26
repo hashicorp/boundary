@@ -43,14 +43,16 @@ message Target {
 	// resource has not changed and to fail the write if it has.
 	uint32 version = 70;
 
+	string type = 80;
+
 	// The ids of the host sets that make up this target.
-	repeated string host_set_ids = 80;
+	repeated string host_set_ids = 90;
 
 	// The host sets that make up this target.
 	// Output only.
-	repeated HostSet host_sets = 90;
+	repeated HostSet host_sets = 100;
 
-	google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.Struct attributes = 110 [(custom_options.v1.generate_sdk_option) = true];
 }
 
 message TCPTargetAttributes {

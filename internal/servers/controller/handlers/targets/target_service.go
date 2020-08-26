@@ -146,12 +146,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error)
 }
 
 func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Target) (*pb.Target, error) {
-	var opts []iam.Option
+	var opts []target.Option
 	if item.GetName() != nil {
-		opts = append(opts, iam.WithName(item.GetName().GetValue()))
+		opts = append(opts, target.WithName(item.GetName().GetValue()))
 	}
 	if item.GetDescription() != nil {
-		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
+		opts = append(opts, target.WithDescription(item.GetDescription().GetValue()))
 	}
 	u, err := target.NewTarget(orgId, opts...)
 	if err != nil {
@@ -172,12 +172,12 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Target
 }
 
 func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.Target) (*pb.Target, error) {
-	var opts []iam.Option
+	var opts []target.Option
 	if desc := item.GetDescription(); desc != nil {
-		opts = append(opts, iam.WithDescription(desc.GetValue()))
+		opts = append(opts, target.WithDescription(desc.GetValue()))
 	}
 	if name := item.GetName(); name != nil {
-		opts = append(opts, iam.WithName(name.GetValue()))
+		opts = append(opts, target.WithName(name.GetValue()))
 	}
 	version := item.GetVersion()
 	u, err := target.NewTarget(orgId, opts...)
@@ -240,6 +240,7 @@ func toProto(in *target.TcpTargetPrefix) *pb.Target {
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
+		Type:        "tcp",
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
