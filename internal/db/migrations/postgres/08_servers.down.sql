@@ -1,6 +1,5 @@
 begin;
 
-  drop table workers;
-  drop table controllers;
+  drop table server;
 
 commit;
