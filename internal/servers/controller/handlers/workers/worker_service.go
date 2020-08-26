@@ -84,11 +84,17 @@ func (ws *workerServiceServer) ValidateSession(ctx context.Context, req *pbs.Val
 		return &pbs.ValidateSessionResponse{}, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
 	}
 
-	defer func() {
-		time.AfterFunc(15*time.Second, func() {
-			ws.jobCancelMap.Store(req.GetId(), true)
-		})
-	}()
+	if sessionInfo.ExpirationTime.GetSeconds() > 0 {
+		timeDiff := time.Until(sessionInfo.GetExpirationTime().AsTime())
+		if timeDiff < 0 {
+			return &pbs.ValidateSessionResponse{}, status.Errorf(codes.OutOfRange, "Session has already expired")
+		}
+		defer func() {
+			time.AfterFunc(timeDiff, func() {
+				ws.jobCancelMap.Store(req.GetId(), true)
+			})
+		}()
+	}
 
 	sessionInfo.PrivateKey = privKey
 	return sessionInfo, nil

@@ -4,6 +4,7 @@ package controller.api.services.v1;
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
+import "google/protobuf/timestamp.proto";
 import "controller/servers/v1/servers.proto";
 
 service WorkerService {
@@ -63,8 +64,11 @@ message ValidateSessionResponse {
   // as the "password").
   bytes private_key = 70;
 
+  // After this time the connection will be expired, e.g. forcefully terminated
+  google.protobuf.Timestamp expiration_time = 80;
+
   // Worker information. The first worker in the slice should be prioritized.
-  repeated WorkerInfo worker_info = 80;
+  repeated WorkerInfo worker_info = 90;
 }
 
 message WorkerInfo {

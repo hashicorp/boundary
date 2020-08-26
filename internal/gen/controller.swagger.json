@@ -3604,6 +3604,11 @@
           "format": "byte",
           "description": "The private key to use when connecting (or if using custom certs, to pass\nas the \"password\")."
         },
+        "expiration_time": {
+          "type": "string",
+          "format": "date-time",
+          "title": "After this time the connection will be expired, e.g. forcefully terminated"
+        },
         "worker_info": {
           "type": "array",
           "items": {

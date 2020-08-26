@@ -43,6 +43,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type HandlerProperties struct {
@@ -328,6 +329,15 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 
+		timeout := 15 * time.Second
+		var err error
+		if t := r.URL.Query().Get("timeout"); t != "" {
+			if timeout, err = time.ParseDuration(t); err != nil {
+				errorResp(fmt.Errorf("error parsing timeout: %w", err))
+				return
+			}
+		}
+
 		var workers []*services.WorkerInfo
 		repo, err := c.ServersRepoFn()
 		if err != nil {
@@ -365,7 +375,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
 			SerialNumber:          big.NewInt(mathrand.Int63()),
 			NotBefore:             time.Now().Add(-1 * time.Minute),
-			NotAfter:              time.Now().Add(10 * time.Minute),
+			NotAfter:              time.Now().Add(5 * time.Minute),
 			BasicConstraintsValid: true,
 			IsCA:                  true,
 		}
@@ -377,14 +387,15 @@ func jobTestingHandler(c *Controller) http.Handler {
 		}
 
 		ret := &services.ValidateSessionResponse{
-			Id:          jobId,
-			ScopeId:     scope.Global.String(),
-			UserId:      "u_1234567890",
-			Type:        "tcp",
-			Endpoint:    endpoint,
-			Certificate: certBytes,
-			PrivateKey:  privKey,
-			WorkerInfo:  workers,
+			Id:             jobId,
+			ScopeId:        scope.Global.String(),
+			UserId:         "u_1234567890",
+			Type:           "tcp",
+			Endpoint:       endpoint,
+			Certificate:    certBytes,
+			PrivateKey:     privKey,
+			WorkerInfo:     workers,
+			ExpirationTime: &timestamppb.Timestamp{Seconds: time.Now().Add(timeout).Unix()},
 		}
 
 		marshaled, err := proto.Marshal(ret)
@@ -400,7 +411,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 
 		ret.PrivateKey = nil
 		c.jobMap.Store(jobId, ret)
-		c.logger.Info("stored entry", "job_id", jobId, "endpoint", endpoint, "workers", litter.Sdump(workers))
+		c.logger.Info("stored entry", "job_id", jobId, "exp", ret.GetExpirationTime().AsTime(), "endpoint", endpoint, "workers", litter.Sdump(workers))
 	})
 }
 
