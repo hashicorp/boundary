@@ -20,17 +20,32 @@ func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {
 	if opts.setWithConfigFile && opts.setWithConfigText {
 		return nil, fmt.Errorf("Cannot provide both WithConfigFile and WithConfigText")
 	}
+	var setDbParams bool
+	if opts.setDefaultAuthMethodId || opts.setDefaultLoginName || opts.setDefaultPassword {
+		setDbParams = true
+	}
+	if opts.setDisableAuthMethodCreation {
+		if setDbParams {
+			return nil, fmt.Errorf("Cannot both disable auth method creation and provide auth method parameters")
+		}
+	}
+	if opts.setDisableDatabaseCreation {
+		if setDbParams {
+			return nil, fmt.Errorf("Cannot both disable database creation and provide auth method parameters")
+		}
+	}
 	return opts.tcOptions, nil
 }
 
 type option struct {
-	tcOptions                  *controller.TestControllerOpts
-	setWithConfigFile          bool
-	setWithConfigText          bool
-	setDisableDatabaseCreation bool
-	setDefaultAuthMethodId     bool
-	setDefaultLoginName        bool
-	setDefaultPassword         bool
+	tcOptions                    *controller.TestControllerOpts
+	setWithConfigFile            bool
+	setWithConfigText            bool
+	setDisableAuthMethodCreation bool
+	setDisableDatabaseCreation   bool
+	setDefaultAuthMethodId       bool
+	setDefaultLoginName          bool
+	setDefaultPassword           bool
 }
 
 type Option func(*option) error
@@ -69,13 +84,19 @@ func WithConfigText(ct string) Option {
 	}
 }
 
+// DisableAuthMethodCreation skips creating a default auth method
+func DisableAuthMethodCreation() Option {
+	return func(c *option) error {
+		c.setDisableAuthMethodCreation = true
+		c.tcOptions.DisableAuthMethodCreation = true
+		return nil
+	}
+}
+
 // DisableDatabaseCreation skips creating a database in docker and allows one to
 // be provided through a tcOptions.
 func DisableDatabaseCreation() Option {
 	return func(c *option) error {
-		if c.setDisableDatabaseCreation {
-			return fmt.Errorf("DisableDatabaseCreation provided more than once.")
-		}
 		c.setDisableDatabaseCreation = true
 		c.tcOptions.DisableDatabaseCreation = true
 		return nil
@@ -84,9 +105,6 @@ func DisableDatabaseCreation() Option {
 
 func WithDefaultAuthMethodId(id string) Option {
 	return func(c *option) error {
-		if c.setDefaultAuthMethodId {
-			return fmt.Errorf("WithDefaultAuthMethodId provided more than once.")
-		}
 		c.setDefaultAuthMethodId = true
 		c.tcOptions.DefaultAuthMethodId = id
 		return nil
@@ -95,9 +113,6 @@ func WithDefaultAuthMethodId(id string) Option {
 
 func WithDefaultLoginName(ln string) Option {
 	return func(c *option) error {
-		if c.setDefaultLoginName {
-			return fmt.Errorf("WithDefaultLoginName provided more than once.")
-		}
 		c.setDefaultLoginName = true
 		c.tcOptions.DefaultLoginName = ln
 		return nil
@@ -106,9 +121,6 @@ func WithDefaultLoginName(ln string) Option {
 
 func WithDefaultPassword(pw string) Option {
 	return func(c *option) error {
-		if c.setDefaultPassword {
-			return fmt.Errorf("WithDefaultPassword provided more than once.")
-		}
 		c.setDefaultPassword = true
 		c.tcOptions.DefaultPassword = pw
 		return nil

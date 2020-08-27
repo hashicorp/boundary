@@ -14,14 +14,16 @@ import (
 type Option func(*options)
 
 type options struct {
-	valueMap                map[string]interface{}
+	postMap                 map[string]interface{}
+	queryMap                map[string]string
 	withScopeId             string
 	withAutomaticVersioning bool
 }
 
 func getDefaultOptions() options {
 	return options{
-		valueMap: make(map[string]interface{}),
+		postMap:  make(map[string]interface{}),
+		queryMap: make(map[string]string),
 	}
 }
 
@@ -55,132 +57,132 @@ func WithAutomaticVersioning() Option {
 
 func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
-		o.valueMap["attributes"] = inAttributes
+		o.postMap["attributes"] = inAttributes
 	}
 }
 
 func DefaultAttributes() Option {
 	return func(o *options) {
-		o.valueMap["attributes"] = nil
+		o.postMap["attributes"] = nil
 	}
 }
 
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
-		o.valueMap["description"] = inDescription
+		o.postMap["description"] = inDescription
 	}
 }
 
 func DefaultDescription() Option {
 	return func(o *options) {
-		o.valueMap["description"] = nil
+		o.postMap["description"] = nil
 	}
 }
 
 func WithPasswordAccountLoginName(inLoginName string) Option {
 	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
+		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
 		val["login_name"] = inLoginName
-		o.valueMap["attributes"] = val
+		o.postMap["attributes"] = val
 	}
 }
 
 func DefaultPasswordAccountLoginName() Option {
 	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
+		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
 		val["login_name"] = nil
-		o.valueMap["attributes"] = val
+		o.postMap["attributes"] = val
 	}
 }
 
 func WithPasswordAuthMethodMinLoginNameLength(inMinLoginNameLength uint32) Option {
 	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
+		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
 		val["min_login_name_length"] = inMinLoginNameLength
-		o.valueMap["attributes"] = val
+		o.postMap["attributes"] = val
 	}
 }
 
 func DefaultPasswordAuthMethodMinLoginNameLength() Option {
 	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
+		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
 		val["min_login_name_length"] = nil
-		o.valueMap["attributes"] = val
+		o.postMap["attributes"] = val
 	}
 }
 
 func WithPasswordAuthMethodMinPasswordLength(inMinPasswordLength uint32) Option {
 	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
+		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
 		val["min_password_length"] = inMinPasswordLength
-		o.valueMap["attributes"] = val
+		o.postMap["attributes"] = val
 	}
 }
 
 func DefaultPasswordAuthMethodMinPasswordLength() Option {
 	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
+		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
 		val["min_password_length"] = nil
-		o.valueMap["attributes"] = val
+		o.postMap["attributes"] = val
 	}
 }
 
 func WithName(inName string) Option {
 	return func(o *options) {
-		o.valueMap["name"] = inName
+		o.postMap["name"] = inName
 	}
 }
 
 func DefaultName() Option {
 	return func(o *options) {
-		o.valueMap["name"] = nil
+		o.postMap["name"] = nil
 	}
 }
 
 func WithPasswordAccountPassword(inPassword string) Option {
 	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
+		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
 		val["password"] = inPassword
-		o.valueMap["attributes"] = val
+		o.postMap["attributes"] = val
 	}
 }
 
 func DefaultPasswordAccountPassword() Option {
 	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
+		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
 		val["password"] = nil
-		o.valueMap["attributes"] = val
+		o.postMap["attributes"] = val
 	}
 }

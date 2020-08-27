@@ -1,6 +1,8 @@
 package scopes
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/boundary/api"
 )
 
@@ -14,14 +16,16 @@ import (
 type Option func(*options)
 
 type options struct {
-	valueMap                map[string]interface{}
+	postMap                 map[string]interface{}
+	queryMap                map[string]string
 	withScopeId             string
 	withAutomaticVersioning bool
 }
 
 func getDefaultOptions() options {
 	return options{
-		valueMap: make(map[string]interface{}),
+		postMap:  make(map[string]interface{}),
+		queryMap: make(map[string]string),
 	}
 }
 
@@ -55,24 +59,36 @@ func WithAutomaticVersioning() Option {
 
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
-		o.valueMap["description"] = inDescription
+		o.postMap["description"] = inDescription
 	}
 }
 
 func DefaultDescription() Option {
 	return func(o *options) {
-		o.valueMap["description"] = nil
+		o.postMap["description"] = nil
 	}
 }
 
 func WithName(inName string) Option {
 	return func(o *options) {
-		o.valueMap["name"] = inName
+		o.postMap["name"] = inName
 	}
 }
 
 func DefaultName() Option {
 	return func(o *options) {
-		o.valueMap["name"] = nil
+		o.postMap["name"] = nil
+	}
+}
+
+func WithSkipRoleCreation(inSkipRoleCreation bool) Option {
+	return func(o *options) {
+		o.queryMap["skip_role_creation"] = fmt.Sprintf("%v", inSkipRoleCreation)
+	}
+}
+
+func DefaultSkipRoleCreation() Option {
+	return func(o *options) {
+		o.postMap["skip_role_creation"] = nil
 	}
 }

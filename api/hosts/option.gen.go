@@ -14,14 +14,16 @@ import (
 type Option func(*options)
 
 type options struct {
-	valueMap                map[string]interface{}
+	postMap                 map[string]interface{}
+	queryMap                map[string]string
 	withScopeId             string
 	withAutomaticVersioning bool
 }
 
 func getDefaultOptions() options {
 	return options{
-		valueMap: make(map[string]interface{}),
+		postMap:  make(map[string]interface{}),
+		queryMap: make(map[string]string),
 	}
 }
 
@@ -55,60 +57,60 @@ func WithAutomaticVersioning() Option {
 
 func WithStaticHostAddress(inAddress string) Option {
 	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
+		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
 		val["address"] = inAddress
-		o.valueMap["attributes"] = val
+		o.postMap["attributes"] = val
 	}
 }
 
 func DefaultStaticHostAddress() Option {
 	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
+		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
 		val["address"] = nil
-		o.valueMap["attributes"] = val
+		o.postMap["attributes"] = val
 	}
 }
 
 func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
-		o.valueMap["attributes"] = inAttributes
+		o.postMap["attributes"] = inAttributes
 	}
 }
 
 func DefaultAttributes() Option {
 	return func(o *options) {
-		o.valueMap["attributes"] = nil
+		o.postMap["attributes"] = nil
 	}
 }
 
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
-		o.valueMap["description"] = inDescription
+		o.postMap["description"] = inDescription
 	}
 }
 
 func DefaultDescription() Option {
 	return func(o *options) {
-		o.valueMap["description"] = nil
+		o.postMap["description"] = nil
 	}
 }
 
 func WithName(inName string) Option {
 	return func(o *options) {
-		o.valueMap["name"] = inName
+		o.postMap["name"] = inName
 	}
 }
 
 func DefaultName() Option {
 	return func(o *options) {
-		o.valueMap["name"] = nil
+		o.postMap["name"] = nil
 	}
 }

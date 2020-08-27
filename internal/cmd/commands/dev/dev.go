@@ -31,10 +31,10 @@ type Command struct {
 	flagCombineLogs                    bool
 	flagDevLoginName                   string
 	flagDevPassword                    string
-	flagDevOrgId                       string
 	flagDevAuthMethodId                string
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
+	flagDevSkipAuthMethodCreation      bool
 }
 
 func (c *Command) Synopsis() string {
@@ -81,14 +81,6 @@ func (c *Command) Flags() *base.FlagSets {
 	f = set.NewFlagSet("Dev Options")
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-org-id",
-		Target: &c.flagDevOrgId,
-		EnvVar: "WATCHTWER_DEV_ORG_ID",
-		Usage: "Auto-created org ID. This only applies when running in \"dev\" " +
-			"mode.",
-	})
-
-	f.StringVar(&base.StringVar{
 		Name:   "dev-auth-method-id",
 		Target: &c.flagDevAuthMethodId,
 		EnvVar: "WATCHTWER_DEV_AUTH_METHOD_ID",
@@ -124,6 +116,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagDevControllerClusterListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for controller \"cluster\" purpose.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "dev-skip-auth-method-creation",
+		Target: &c.flagDevSkipAuthMethodCreation,
+		Usage:  "If set, an auth method will not be created as part of the dev instance. The recovery KMS will be needed to perform any actions.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -254,7 +252,17 @@ func (c *Command) Run(args []string) int {
 		}
 	}()
 
-	if err := c.CreateDevDatabase("postgres"); err != nil {
+	var opts []base.Option
+	if c.flagDevSkipAuthMethodCreation {
+		opts = append(opts, base.WithSkipAuthMethodCreation())
+		switch {
+		case c.flagDevAuthMethodId != "",
+			c.flagDevLoginName != "",
+			c.flagDevPassword != "":
+			c.UI.Warn("-dev-skip-auth-method-creation set, skipping any auth-method related flags")
+		}
+	}
+	if err := c.CreateDevDatabase("postgres", opts...); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 		return 1
 	}

@@ -23,6 +23,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
+	user := TestUser(t, repo, "global")
 
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -103,6 +104,31 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert.Error(err)
 		assert.Nil(p2)
 	})
+	for _, skipCreate := range []bool{false, true} {
+		t.Run(fmt.Sprintf("skipping-role-creation-%t", skipCreate), func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			id := testId(t)
+			s, err := NewOrg(WithName(id))
+			require.NoError(err)
+			s, err = repo.CreateScope(context.Background(), s, user.GetPublicId(), WithSkipRoleCreation(skipCreate))
+			require.NoError(err)
+			require.NotNil(s)
+			assert.NotEmpty(s.GetPublicId())
+			assert.Equal(s.GetName(), id)
+
+			foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
+			require.NoError(err)
+			assert.True(proto.Equal(foundScope, s))
+
+			foundRoles, err := repo.ListRoles(context.Background(), foundScope.GetPublicId())
+			require.NoError(err)
+			numFound := 1
+			if skipCreate {
+				numFound = 0
+			}
+			assert.Len(foundRoles, numFound)
+		})
+	}
 }
 
 func Test_Repository_Scope_Update(t *testing.T) {

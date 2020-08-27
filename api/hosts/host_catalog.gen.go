@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -41,12 +42,20 @@ func (c *HostCatalogsClient) Create(ctx context.Context, resourceType string, op
 	if resourceType == "" {
 		return nil, nil, fmt.Errorf("empty resourceType value passed into Create request")
 	} else {
-		opts.valueMap["type"] = resourceType
+		opts.postMap["type"] = resourceType
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", "host-catalogs", opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", "host-catalogs", opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -74,11 +83,19 @@ func (c *HostCatalogsClient) Read(ctx context.Context, hostCatalogId string, opt
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s", hostCatalogId), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -124,11 +141,19 @@ func (c *HostCatalogsClient) Update(ctx context.Context, hostCatalogId string, v
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s", hostCatalogId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s", hostCatalogId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -156,11 +181,19 @@ func (c *HostCatalogsClient) Delete(ctx context.Context, hostCatalogId string, o
 		return false, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-catalogs/%s", hostCatalogId), nil, apiOpts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -187,11 +220,19 @@ func (c *HostCatalogsClient) List(ctx context.Context, opt ...Option) ([]*HostCa
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", "host-catalogs", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
