@@ -33,7 +33,7 @@ type Service struct {
 	repoFn func() (*target.Repository, error)
 }
 
-// NewService returns a user service which handles user related requests to boundary.
+// NewService returns a target service which handles target related requests to boundary.
 func NewService(repo func() (*target.Repository, error)) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil target repository provided")
