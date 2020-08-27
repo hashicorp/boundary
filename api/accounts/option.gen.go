@@ -1,4 +1,4 @@
-package authmethods
+package accounts
 
 import (
 	"github.com/hashicorp/boundary/api"
@@ -79,50 +79,26 @@ func DefaultDescription() Option {
 	}
 }
 
-func WithPasswordAuthMethodMinLoginNameLength(inMinLoginNameLength uint32) Option {
+func WithPasswordAccountLoginName(inLoginName string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["min_login_name_length"] = inMinLoginNameLength
+		val["login_name"] = inLoginName
 		o.postMap["attributes"] = val
 	}
 }
 
-func DefaultPasswordAuthMethodMinLoginNameLength() Option {
+func DefaultPasswordAccountLoginName() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["min_login_name_length"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
-func WithPasswordAuthMethodMinPasswordLength(inMinPasswordLength uint32) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["min_password_length"] = inMinPasswordLength
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultPasswordAuthMethodMinPasswordLength() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["min_password_length"] = nil
+		val["login_name"] = nil
 		o.postMap["attributes"] = val
 	}
 }
@@ -136,5 +112,29 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.postMap["name"] = nil
+	}
+}
+
+func WithPasswordAccountPassword(inPassword string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["password"] = inPassword
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultPasswordAccountPassword() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["password"] = nil
+		o.postMap["attributes"] = val
 	}
 }

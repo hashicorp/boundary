@@ -59,7 +59,6 @@ func getArgsAndPaths(in []string, action string) (colArgs, resArgs []string, col
 }
 
 type templateInput struct {
-	ClientName             string
 	Name                   string
 	Package                string
 	Fields                 []fieldInfo
@@ -79,7 +78,6 @@ func fillTemplates() {
 	for _, in := range inputStructs {
 		outBuf := new(bytes.Buffer)
 		input := templateInput{
-			ClientName:     in.generatedStructure.name + "s",
 			Name:           in.generatedStructure.name,
 			Package:        in.generatedStructure.pkg,
 			Fields:         in.generatedStructure.fields,
@@ -200,7 +198,7 @@ func fillTemplates() {
 }
 
 var listTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opt... Option) ([]*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
+func (c *Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opt... Option) ([]*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 	}
@@ -247,7 +245,7 @@ func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .Collection
 `))
 
 var readTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+func (c *Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Read request")
 	}
@@ -289,7 +287,7 @@ func (c *{{ .ClientName }}Client) Read(ctx context.Context, {{ range .ResourceFu
 `))
 
 var deleteTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) Delete(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (bool, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+func (c *Client) Delete(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (bool, *api.Error, error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
 		return false, nil, fmt.Errorf("empty {{ . }} value passed into Delete request")
 	}
@@ -334,7 +332,7 @@ func (c *{{ .ClientName }}Client) Delete(ctx context.Context, {{ range .Resource
 `))
 
 var createTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
+func (c *Client) Create(ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Create request")
 	}
@@ -381,7 +379,7 @@ func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ if .TypeOnCreat
 `))
 
 var updateTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }}version uint32, opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+func (c *Client) Update(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }}version uint32, opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Update request")
 	}{{ end }}
@@ -456,7 +454,7 @@ var sliceSubTypeTemplate = template.Must(template.New("").Funcs(
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
 {{ $resPath := getPathWithAction $input.PathArgs $actionName }}
-func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ range $input.ResourceFunctionArgs }} {{ . }} string, {{ end }}version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}, *api.Error, error) { {{ range $input.ResourceFunctionArgs }}
+func (c *Client) {{ $fullName }}(ctx context.Context, {{ range $input.ResourceFunctionArgs }} {{ . }} string, {{ end }}version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}, *api.Error, error) { {{ range $input.ResourceFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into {{ $fullName }} request")
 	}{{ end }}
@@ -547,12 +545,12 @@ type {{ .Name }} struct { {{ range .Fields }}
 `)))
 
 var clientTemplate = template.Must(template.New("").Parse(`
-type {{ .ClientName }}Client struct {
+type Client struct {
 	client *api.Client
 }
 
-func New{{ .Name }}sClient(c *api.Client) *{{ .ClientName }}Client {
-	return &{{ .ClientName }}Client{ client: c }
+func NewClient(c *api.Client) *Client {
+	return &Client{ client: c }
 }
 `))
 

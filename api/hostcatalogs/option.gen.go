@@ -1,4 +1,4 @@
-package authmethods
+package hostcatalogs
 
 import (
 	"github.com/hashicorp/boundary/api"
@@ -76,54 +76,6 @@ func WithDescription(inDescription string) Option {
 func DefaultDescription() Option {
 	return func(o *options) {
 		o.postMap["description"] = nil
-	}
-}
-
-func WithPasswordAuthMethodMinLoginNameLength(inMinLoginNameLength uint32) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["min_login_name_length"] = inMinLoginNameLength
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultPasswordAuthMethodMinLoginNameLength() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["min_login_name_length"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
-func WithPasswordAuthMethodMinPasswordLength(inMinPasswordLength uint32) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["min_password_length"] = inMinPasswordLength
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultPasswordAuthMethodMinPasswordLength() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["min_password_length"] = nil
-		o.postMap["attributes"] = val
 	}
 }
 

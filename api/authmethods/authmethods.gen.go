@@ -26,15 +26,15 @@ type AuthMethod struct {
 	Attributes  map[string]interface{} `json:"attributes,omitempty"`
 }
 
-type AuthMethodsClient struct {
+type Client struct {
 	client *api.Client
 }
 
-func NewAuthMethodsClient(c *api.Client) *AuthMethodsClient {
-	return &AuthMethodsClient{client: c}
+func NewClient(c *api.Client) *Client {
+	return &Client{client: c}
 }
 
-func (c *AuthMethodsClient) Create(ctx context.Context, resourceType string, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *Client) Create(ctx context.Context, resourceType string, opt ...Option) (*AuthMethod, *api.Error, error) {
 	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
@@ -74,7 +74,7 @@ func (c *AuthMethodsClient) Create(ctx context.Context, resourceType string, opt
 	return target, apiErr, nil
 }
 
-func (c *AuthMethodsClient) Read(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethod, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Read request")
 	}
@@ -114,7 +114,7 @@ func (c *AuthMethodsClient) Read(ctx context.Context, authMethodId string, opt .
 	return target, apiErr, nil
 }
 
-func (c *AuthMethodsClient) Update(ctx context.Context, authMethodId string, version uint32, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *Client) Update(ctx context.Context, authMethodId string, version uint32, opt ...Option) (*AuthMethod, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Update request")
 	}
@@ -172,7 +172,7 @@ func (c *AuthMethodsClient) Update(ctx context.Context, authMethodId string, ver
 	return target, apiErr, nil
 }
 
-func (c *AuthMethodsClient) Delete(ctx context.Context, authMethodId string, opt ...Option) (bool, *api.Error, error) {
+func (c *Client) Delete(ctx context.Context, authMethodId string, opt ...Option) (bool, *api.Error, error) {
 	if authMethodId == "" {
 		return false, nil, fmt.Errorf("empty authMethodId value passed into Delete request")
 	}
@@ -215,7 +215,7 @@ func (c *AuthMethodsClient) Delete(ctx context.Context, authMethodId string, opt
 	return target.Existed, apiErr, nil
 }
 
-func (c *AuthMethodsClient) List(ctx context.Context, opt ...Option) ([]*AuthMethod, *api.Error, error) {
+func (c *Client) List(ctx context.Context, opt ...Option) ([]*AuthMethod, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}

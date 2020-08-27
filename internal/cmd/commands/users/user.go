@@ -102,7 +102,7 @@ func (c *Command) Run(args []string) int {
 		opts = append(opts, users.WithDescription(c.FlagDescription))
 	}
 
-	userClient := users.NewUsersClient(client)
+	userClient := users.NewClient(client)
 
 	// Perform check-and-set when needed
 	var version uint32
