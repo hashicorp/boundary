@@ -25,18 +25,15 @@ var _ oplog.ReplayableMessage = (*TcpTarget)(nil)
 
 // NewTcpTarget creates a new in memory tcp target.  WithName, WithDescription and
 // WithDefaultPort options are supported
-func NewTcpTarget(scopeId, name string, opt ...Option) (*TcpTarget, error) {
+func NewTcpTarget(scopeId string, opt ...Option) (*TcpTarget, error) {
 	opts := getOpts(opt...)
 	if scopeId == "" {
 		return nil, fmt.Errorf("new tcp target: missing scope id: %w", db.ErrInvalidParameter)
 	}
-	if name == "" {
-		return nil, fmt.Errorf("new tcp target: missing name: %w", db.ErrInvalidParameter)
-	}
 	t := &TcpTarget{
 		TcpTarget: &store.TcpTarget{
 			ScopeId:     scopeId,
-			Name:        name,
+			Name:        opts.withName,
 			Description: opts.withDescription,
 			DefaultPort: opts.withDefaultPort,
 		},

@@ -2817,7 +2817,7 @@
         },
         "name": {
           "type": "string",
-          "title": "Optional name for identification purposes"
+          "title": "Required name for identification purposes"
         },
         "description": {
           "type": "string",

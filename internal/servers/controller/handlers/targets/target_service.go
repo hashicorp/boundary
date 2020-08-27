@@ -10,6 +10,8 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/store"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -21,7 +23,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&store.Target{}, &pb.Target{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&store.TcpTarget{}, &pb.Target{}); err != nil {
 		panic(err)
 	}
 }
@@ -91,7 +93,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.CreateTargetResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/users/%s", authResults.Scope.GetId(), u.GetId())}, nil
+	return &pbs.CreateTargetResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/targets/%s", authResults.Scope.GetId(), u.GetId())}, nil
 }
 
 // UpdateTarget implements the interface pbs.TargetServiceServer.
@@ -132,7 +134,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error)
 	if err != nil {
 		return nil, err
 	}
-	u, err := repo.LookupTarget(ctx, id)
+	u, m, err := repo.LookupTarget(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
@@ -142,18 +144,15 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error)
 	if u == nil {
 		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 	}
-	return toProto(u), nil
+	return toProto(u, m), nil
 }
 
-func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Target) (*pb.Target, error) {
-	var opts []target.Option
-	if item.GetName() != nil {
-		opts = append(opts, target.WithName(item.GetName().GetValue()))
-	}
+func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Target) (*pb.Target, error) {
+	opts := []target.Option{target.WithName(item.GetName().GetValue())}
 	if item.GetDescription() != nil {
 		opts = append(opts, target.WithDescription(item.GetDescription().GetValue()))
 	}
-	u, err := target.NewTarget(orgId, opts...)
+	u, err := target.NewTcpTarget(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
@@ -161,17 +160,17 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Target
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.CreateTarget(ctx, u)
+	out, m, err := repo.CreateTcpTarget(ctx, u)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to create user: %v.", err)
 	}
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create user but no error returned from repository.")
 	}
-	return toProto(out), nil
+	return toProto(out, m), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.Target) (*pb.Target, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Target) (*pb.Target, error) {
 	var opts []target.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, target.WithDescription(desc.GetValue()))
@@ -180,7 +179,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 		opts = append(opts, target.WithName(name.GetValue()))
 	}
 	version := item.GetVersion()
-	u, err := target.NewTarget(orgId, opts...)
+	u, err := target.NewTcpTarget(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build user for update: %v.", err)
 	}
@@ -193,14 +192,14 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateTarget(ctx, u, version, dbMask)
+	out, m, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update user: %v.", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 	}
-	return toProto(out), nil
+	return toProto(out, m), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -218,35 +217,42 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Target, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Target, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListTargets(ctx, orgId)
+	ul, err := repo.ListTargets(ctx, target.WithScopeId(scopeId))
 	if err != nil {
 		return nil, err
 	}
 	var outUl []*pb.Target
 	for _, u := range ul {
-		outUl = append(outUl, toProto(u))
+		outUl = append(outUl, toProto(u, nil))
 	}
 	return outUl, nil
 }
 
-func toProto(in *target.TcpTargetPrefix) *pb.Target {
+func toProto(in target.Target, m []*target.TargetSet) *pb.Target {
 	out := pb.Target{
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
-		Type:        "tcp",
+		Type:        target.TcpTargetType.String(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	}
+	for _, hs := range m {
+		out.HostSetIds = append(out.HostSetIds, hs.GetPublicId())
+		out.HostSets = append(out.HostSets, &pb.HostSet{
+			Id:            hs.GetPublicId(),
+			HostCatalogId: hs.GetCatalogId(),
+		})
 	}
 	return &out
 }
@@ -261,11 +267,33 @@ func validateGetRequest(req *pbs.GetTargetRequest) error {
 }
 
 func validateCreateRequest(req *pbs.CreateTargetRequest) error {
-	return handlers.ValidateCreateRequest(target.GetItem(), handlers.NoopValidatorFn)
+	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		if req.GetItem().GetName() == nil || req.GetItem().GetName().GetValue() == "" {
+			badFields["name"] = "This field is required."
+		}
+		switch req.GetItem().GetType() {
+		case target.TcpTargetType.String():
+		case "":
+			badFields["type"] = "This is a required field."
+		default:
+			badFields["type"] = "Unknown type provided."
+		}
+		return badFields
+	})
 }
 
 func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
-	return handlers.ValidateUpdateRequest(target.TcpTargetPrefix, req, req.GetItem(), handlers.NoopValidatorFn)
+	return handlers.ValidateUpdateRequest(target.TcpTargetPrefix, req, req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		if req.GetItem().GetName() != nil && req.GetItem().GetName().GetValue() == "" {
+			badFields["name"] = "This field cannot be set to empty."
+		}
+		if req.GetItem().GetType() != "" {
+			badFields["type"] = "This field cannot be updated."
+		}
+		return badFields
+	})
 }
 
 func validateDeleteRequest(req *pbs.DeleteTargetRequest) error {

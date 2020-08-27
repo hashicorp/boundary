@@ -25,8 +25,8 @@ message Target {
 	// Output only.
 	resources.scopes.v1.ScopeInfo scope = 20;
 	
-	// Optional name for identification purposes
-	google.protobuf.StringValue name = 30 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+	// Required name for identification purposes
+	google.protobuf.StringValue name = 30 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
 	// Optional user-set description for identification purposes
 	google.protobuf.StringValue description = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
