@@ -144,12 +144,13 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"config encrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
 				Command: base.NewCommand(ui),
-				Encrypt: true,
+				Func:    "encrypt",
 			}, nil
 		},
 		"config decrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
 				Command: base.NewCommand(ui),
+				Func:    "decrypt",
 			}, nil
 		},
 
