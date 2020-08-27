@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
@@ -287,26 +286,38 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid target",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
-				Name:        &wrappers.StringValue{Value: "name"},
-				Description: &wrappers.StringValue{Value: "desc"},
+				Name:        wrapperspb.String("name"),
+				Description: wrapperspb.String("desc"),
 				Type:        target.TcpTargetType.String(),
+				DefaultPort: wrapperspb.UInt32(2),
 			}},
 			res: &pbs.CreateTargetResponse{
 				Uri: fmt.Sprintf("scopes/%s/targets/%s_", proj.GetPublicId(), target.TcpTargetPrefix),
 				Item: &pb.Target{
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "name"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        wrapperspb.String("name"),
+					Description: wrapperspb.String("desc"),
 					Type:        target.TcpTargetType.String(),
+					DefaultPort: wrapperspb.UInt32(2),
 				},
 			},
 			errCode: codes.OK,
 		},
 		{
+			name: "Create with default port 0",
+			req: &pbs.CreateTargetRequest{Item: &pb.Target{
+				Name:        wrapperspb.String("name"),
+				Description: wrapperspb.String("desc"),
+				Type:        target.TcpTargetType.String(),
+				DefaultPort: wrapperspb.UInt32(0),
+			}},
+			errCode: codes.InvalidArgument,
+		},
+		{
 			name: "Create with unknown type",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
-				Name:        &wrappers.StringValue{Value: "name"},
-				Description: &wrappers.StringValue{Value: "desc"},
+				Name:        wrapperspb.String("name"),
+				Description: wrapperspb.String("desc"),
 				Type:        "ThisIsMadeUp",
 			}},
 			errCode: codes.InvalidArgument,
@@ -314,8 +325,8 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create with no type",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
-				Name:        &wrappers.StringValue{Value: "no type name"},
-				Description: &wrappers.StringValue{Value: "no type desc"},
+				Name:        wrapperspb.String("name"),
+				Description: wrapperspb.String("desc"),
 			}},
 			errCode: codes.InvalidArgument,
 		},
@@ -394,6 +405,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	tar, err := target.NewTcpTarget(proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
+	tar.DefaultPort = 2
 	require.NoError(t, err)
 	gtar, _, err := repo.CreateTcpTarget(context.Background(), tar, target.WithHostSets([]string{hs[0].GetPublicId(), hs[1].GetPublicId()}))
 	require.NoError(t, err)
@@ -430,18 +442,19 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name", "description"},
 				},
 				Item: &pb.Target{
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        wrapperspb.String("name"),
+					Description: wrapperspb.String("desc"),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
-					CreatedTime: tar.GetCreateTime().GetTimestamp(),
+					Name:        wrapperspb.String("name"),
+					Description: wrapperspb.String("desc"),
 					Type:        target.TcpTargetType.String(),
+					DefaultPort: wrapperspb.UInt32(2),
+					CreatedTime: tar.GetCreateTime().GetTimestamp(),
 					HostSetIds:  hsIds,
 					HostSets:    hostSets,
 				},
@@ -455,18 +468,19 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name,description"},
 				},
 				Item: &pb.Target{
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        wrapperspb.String("name"),
+					Description: wrapperspb.String("desc"),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        wrapperspb.String("name"),
+					Description: wrapperspb.String("desc"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
 					Type:        target.TcpTargetType.String(),
+					DefaultPort: wrapperspb.UInt32(2),
 					HostSetIds:  hsIds,
 					HostSets:    hostSets,
 				},
@@ -477,8 +491,8 @@ func TestUpdate(t *testing.T) {
 			name: "No Update Mask",
 			req: &pbs.UpdateTargetRequest{
 				Item: &pb.Target{
-					Name:        &wrappers.StringValue{Value: "updated name"},
-					Description: &wrappers.StringValue{Value: "updated desc"},
+					Name:        wrapperspb.String("updated name"),
+					Description: wrapperspb.String("updated desc"),
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -488,8 +502,18 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateTargetRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
 				Item: &pb.Target{
-					Name:        &wrappers.StringValue{Value: "updated name"},
-					Description: &wrappers.StringValue{Value: "updated desc"},
+					Name:        wrapperspb.String("updated name"),
+					Description: wrapperspb.String("updated desc"),
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Update port to 0",
+			req: &pbs.UpdateTargetRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"default_port"}},
+				Item: &pb.Target{
+					DefaultPort: wrapperspb.UInt32(0),
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -499,8 +523,8 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateTargetRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
 				Item: &pb.Target{
-					Name:        &wrappers.StringValue{Value: "updated name"},
-					Description: &wrappers.StringValue{Value: "updated desc"},
+					Name:        wrapperspb.String("updated name"),
+					Description: wrapperspb.String("updated desc"),
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -512,7 +536,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name"},
 				},
 				Item: &pb.Target{
-					Description: &wrappers.StringValue{Value: "ignored"},
+					Description: wrapperspb.String("ignored"),
 				},
 			},
 			errCode: codes.Internal,
@@ -524,16 +548,17 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"description"},
 				},
 				Item: &pb.Target{
-					Name: &wrappers.StringValue{Value: "ignored"},
+					Name: wrapperspb.String("ignored"),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "default"},
+					Name:        wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
 					Type:        target.TcpTargetType.String(),
+					DefaultPort: wrapperspb.UInt32(2),
 					HostSetIds:  hsIds,
 					HostSets:    hostSets,
 				},
@@ -547,18 +572,19 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name"},
 				},
 				Item: &pb.Target{
-					Name:        &wrappers.StringValue{Value: "updated"},
-					Description: &wrappers.StringValue{Value: "ignored"},
+					Name:        wrapperspb.String("updated"),
+					Description: wrapperspb.String("ignored"),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "updated"},
-					Description: &wrappers.StringValue{Value: "default"},
+					Name:        wrapperspb.String("updated"),
+					Description: wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
 					Type:        target.TcpTargetType.String(),
+					DefaultPort: wrapperspb.UInt32(2),
 					HostSetIds:  hsIds,
 					HostSets:    hostSets,
 				},
@@ -572,17 +598,18 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"description"},
 				},
 				Item: &pb.Target{
-					Name:        &wrappers.StringValue{Value: "ignored"},
-					Description: &wrappers.StringValue{Value: "notignored"},
+					Name:        wrapperspb.String("ignored"),
+					Description: wrapperspb.String("notignored"),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "default"},
-					Description: &wrappers.StringValue{Value: "notignored"},
+					Name:        wrapperspb.String("default"),
+					Description: wrapperspb.String("notignored"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
+					DefaultPort: wrapperspb.UInt32(2),
 					Type:        target.TcpTargetType.String(),
 					HostSetIds:  hsIds,
 					HostSets:    hostSets,
@@ -591,16 +618,16 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Update a Non Existing Host Set",
+			name: "Update a Non Existing Target",
 			req: &pbs.UpdateTargetRequest{
 				Id: target.TcpTargetPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
 				Item: &pb.Target{
-					Name:        &wrappers.StringValue{Value: "new"},
+					Name:        wrapperspb.String("new"),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Description: wrapperspb.String("desc"),
 				},
 			},
 			errCode: codes.Internal,
@@ -615,8 +642,8 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Target{
 					Id:          "p_somethinge",
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "new desc"},
+					Name:        wrapperspb.String("new"),
+					Description: wrapperspb.String("new desc"),
 				}},
 			res:     nil,
 			errCode: codes.InvalidArgument,

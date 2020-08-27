@@ -52,9 +52,6 @@ message Target {
 	// Output only.
 	repeated HostSet host_sets = 100;
 
-	google.protobuf.Struct attributes = 110 [(custom_options.v1.generate_sdk_option) = true];
-}
-
-message TCPTargetAttributes {
-	uint32 default_port = 10;
+	// The  default port a target should use if present.
+	google.protobuf.UInt32Value default_port = 110 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"default_port" that: "DefaultPort"}];
 }

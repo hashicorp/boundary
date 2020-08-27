@@ -152,6 +152,9 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Targ
 	if item.GetDescription() != nil {
 		opts = append(opts, target.WithDescription(item.GetDescription().GetValue()))
 	}
+	if item.GetDefaultPort().GetValue() != 0 {
+		opts = append(opts, target.WithDefaultPort(item.GetDefaultPort().GetValue()))
+	}
 	u, err := target.NewTcpTarget(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build user for creation: %v.", err)
@@ -242,10 +245,13 @@ func toProto(in target.Target, m []*target.TargetSet) *pb.Target {
 		Type:        target.TcpTargetType.String(),
 	}
 	if in.GetDescription() != "" {
-		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
+		out.Description = wrapperspb.String(in.GetDescription())
 	}
 	if in.GetName() != "" {
-		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+		out.Name = wrapperspb.String(in.GetName())
+	}
+	if in.GetDefaultPort() != 0 {
+		out.DefaultPort = wrapperspb.UInt32(in.GetDefaultPort())
 	}
 	for _, hs := range m {
 		out.HostSetIds = append(out.HostSetIds, hs.GetPublicId())
@@ -272,6 +278,9 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 		if req.GetItem().GetName() == nil || req.GetItem().GetName().GetValue() == "" {
 			badFields["name"] = "This field is required."
 		}
+		if req.GetItem().GetDefaultPort() != nil && req.GetItem().GetDefaultPort().GetValue() == 0 {
+			badFields["default_port"] = "This optional field cannot be set to 0."
+		}
 		switch req.GetItem().GetType() {
 		case target.TcpTargetType.String():
 		case "":
@@ -288,6 +297,9 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 		badFields := map[string]string{}
 		if req.GetItem().GetName() != nil && req.GetItem().GetName().GetValue() == "" {
 			badFields["name"] = "This field cannot be set to empty."
+		}
+		if req.GetItem().GetDefaultPort() != nil && req.GetItem().GetDefaultPort().GetValue() == 0 {
+			badFields["default_port"] = "This optional field cannot be set to 0."
 		}
 		if req.GetItem().GetType() != "" {
 			badFields["type"] = "This field cannot be updated."
