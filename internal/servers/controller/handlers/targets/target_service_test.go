@@ -730,3 +730,300 @@ func TestUpdate(t *testing.T) {
 		})
 	}
 }
+
+func TestAddHostSets(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	rw := db.New(conn)
+	repoFn := func() (*target.Repository, error) {
+		return target.NewRepository(rw, rw, kms)
+	}
+	s, err := targets.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new target service.")
+
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
+
+	addCases := []struct {
+		name           string
+		tar            *target.TcpTarget
+		addHostSets    []string
+		resultHostSets []string
+	}{
+		{
+			name:           "Add set on empty target",
+			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
+			addHostSets:    []string{hs[1].GetPublicId()},
+			resultHostSets: []string{hs[1].GetPublicId()},
+		},
+		{
+			name:           "Add host on populated target",
+			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithHostSets([]string{hs[0].GetPublicId()})),
+			addHostSets:    []string{hs[1].GetPublicId()},
+			resultHostSets: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
+		},
+	}
+
+	for _, tc := range addCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &pbs.AddHostSetsRequest{
+				Id:         tc.tar.GetPublicId(),
+				Version:    tc.tar.GetVersion(),
+				HostSetIds: tc.addHostSets,
+			}
+
+			got, err := s.AddHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			s, ok := status.FromError(err)
+			require.True(t, ok)
+			require.NoError(t, err, "Got error: %v", s)
+
+			assert.ElementsMatch(t, tc.resultHostSets, got.GetItem().GetHostSetIds())
+		})
+	}
+
+	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test")
+
+	failCases := []struct {
+		name    string
+		req     *pbs.AddHostSetsRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Set Id",
+			req: &pbs.AddHostSetsRequest{
+				Id:         "bad id",
+				Version:    tar.GetVersion(),
+				HostSetIds: []string{hs[0].GetPublicId()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad version",
+			req: &pbs.AddHostSetsRequest{
+				Id:         tar.GetPublicId(),
+				Version:    tar.GetVersion() + 2,
+				HostSetIds: []string{hs[0].GetPublicId()},
+			},
+			errCode: codes.Internal,
+		},
+		{
+			name: "Empty host set list",
+			req: &pbs.AddHostSetsRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.AddHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}
+
+func TestSetHostSets(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	rw := db.New(conn)
+	repoFn := func() (*target.Repository, error) {
+		return target.NewRepository(rw, rw, kms)
+	}
+	s, err := targets.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new host set service.")
+
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
+
+	setCases := []struct {
+		name           string
+		tar            *target.TcpTarget
+		setHostSets    []string
+		resultHostSets []string
+	}{
+		{
+			name:           "Set host on empty set",
+			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
+			setHostSets:    []string{hs[1].GetPublicId()},
+			resultHostSets: []string{hs[1].GetPublicId()},
+		},
+		{
+			name:           "Set host on populated set",
+			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithHostSets([]string{hs[0].GetPublicId()})),
+			setHostSets:    []string{hs[1].GetPublicId()},
+			resultHostSets: []string{hs[1].GetPublicId()},
+		},
+		{
+			name:           "Set empty on populated set",
+			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "another populated", target.WithHostSets([]string{hs[0].GetPublicId()})),
+			setHostSets:    []string{},
+			resultHostSets: nil,
+		},
+	}
+	for _, tc := range setCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &pbs.SetHostSetsRequest{
+				Id:         tc.tar.GetPublicId(),
+				Version:    tc.tar.GetVersion(),
+				HostSetIds: tc.setHostSets,
+			}
+
+			got, err := s.SetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			require.NoError(t, err, "Got error: %v", s)
+			assert.ElementsMatch(t, tc.resultHostSets, got.GetItem().GetHostSetIds())
+		})
+	}
+
+	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test name")
+
+	failCases := []struct {
+		name    string
+		req     *pbs.SetHostSetsRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad target Id",
+			req: &pbs.SetHostSetsRequest{
+				Id:         "bad id",
+				Version:    tar.GetVersion(),
+				HostSetIds: []string{hs[0].GetPublicId()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad version",
+			req: &pbs.SetHostSetsRequest{
+				Id:         tar.GetPublicId(),
+				Version:    tar.GetVersion() + 3,
+				HostSetIds: []string{hs[0].GetPublicId()},
+			},
+			errCode: codes.Internal,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.SetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "SetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}
+
+func TestRemoveHostSets(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	rw := db.New(conn)
+	repoFn := func() (*target.Repository, error) {
+		return target.NewRepository(rw, rw, kms)
+	}
+	s, err := targets.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new host set service.")
+
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
+
+	removeCases := []struct {
+		name        string
+		tar         *target.TcpTarget
+		removeHosts []string
+		resultHosts []string
+		wantErr     bool
+	}{
+		{
+			name:        "Remove from empty",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
+			removeHosts: []string{hs[1].GetPublicId()},
+			wantErr:     true,
+		},
+		{
+			name:        "Remove 1 of 2 sets",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithHostSets([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
+			removeHosts: []string{hs[1].GetPublicId()},
+			resultHosts: []string{hs[0].GetPublicId()},
+		},
+		{
+			name:        "Remove all hosts from set",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove all", target.WithHostSets([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
+			removeHosts: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
+			resultHosts: []string{},
+		},
+	}
+
+	for _, tc := range removeCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &pbs.RemoveHostSetsRequest{
+				Id:         tc.tar.GetPublicId(),
+				Version:    tc.tar.GetVersion(),
+				HostSetIds: tc.removeHosts,
+			}
+
+			got, err := s.RemoveHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			s, ok := status.FromError(err)
+			require.True(t, ok)
+			require.NoError(t, err, "Got error: %v", s)
+
+			assert.ElementsMatch(t, tc.resultHosts, got.GetItem().GetHostSetIds())
+		})
+	}
+
+	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "testing")
+
+	failCases := []struct {
+		name    string
+		req     *pbs.RemoveHostSetsRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad version",
+			req: &pbs.RemoveHostSetsRequest{
+				Id:         tar.GetPublicId(),
+				Version:    tar.GetVersion() + 3,
+				HostSetIds: []string{hs[0].GetPublicId()},
+			},
+			errCode: codes.Internal,
+		},
+		{
+			name: "Bad target Id",
+			req: &pbs.RemoveHostSetsRequest{
+				Id:         "bad id",
+				Version:    tar.GetVersion(),
+				HostSetIds: []string{hs[0].GetPublicId()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "empty sets",
+			req: &pbs.RemoveHostSetsRequest{
+				Id:         "bad id",
+				Version:    tar.GetVersion(),
+				HostSetIds: []string{},
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.RemoveHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "RemoveHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}
