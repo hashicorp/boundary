@@ -208,7 +208,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Targ
 	}
 	u, err := target.NewTcpTarget(scopeId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build user for creation: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build target for creation: %v.", err)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -216,10 +216,10 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Targ
 	}
 	out, m, err := repo.CreateTcpTarget(ctx, u)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create user: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to create target: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create user but no error returned from repository.")
+		return nil, status.Error(codes.Internal, "Unable to create target but no error returned from repository.")
 	}
 	return toProto(out, m), nil
 }
@@ -235,7 +235,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	version := item.GetVersion()
 	u, err := target.NewTcpTarget(scopeId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build user for update: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build target for update: %v.", err)
 	}
 	u.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -248,7 +248,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, m, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update user: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to update target: %v.", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
@@ -266,7 +266,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
 		}
-		return false, status.Errorf(codes.Internal, "Unable to delete user: %v.", err)
+		return false, status.Errorf(codes.Internal, "Unable to delete target: %v.", err)
 	}
 	return rows > 0, nil
 }
@@ -400,7 +400,7 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 	return handlers.ValidateUpdateRequest(target.TcpTargetPrefix, req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.GetItem().GetName() != nil && req.GetItem().GetName().GetValue() == "" {
+		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "name") && req.GetItem().GetName().GetValue() == "" {
 			badFields["name"] = "This field cannot be set to empty."
 		}
 		if req.GetItem().GetDefaultPort() != nil && req.GetItem().GetDefaultPort().GetValue() == 0 {
