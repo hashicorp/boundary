@@ -1,8 +1,6 @@
 package config
 
 import (
-	"strings"
-
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/mitchellh/cli"
 )
@@ -18,23 +16,21 @@ func (c *Command) Synopsis() string {
 }
 
 func (c *Command) Help() string {
-	helpText := `
-Usage: boundary config <subcommand> [options] [args]
-
-  This command groups subcommands for operators interacting with Boundary's
-  config files. Here are a few examples of config commands:
-
-    Encrypt sensitive values in a config file:
-
-    $ boundary config encrypt config.hcl
-
-    Decrypt sensitive values in a config file:
-
-    $ boundary config decrypt config.hcl
-
-  Please see the individual subcommand help for detailed usage information.`
-
-	return strings.TrimSpace(helpText)
+	return base.WrapForHelpText([]string{
+		"Usage: boundary config <subcommand> [options] [args]",
+		"",
+		"  This command groups subcommands for operators interacting with Boundary's config files. Here are a few examples of config commands:",
+		"",
+		"    Encrypt sensitive values in a config file:",
+		"",
+		"      $ boundary config encrypt config.hcl",
+		"",
+		"    Decrypt sensitive values in a config file:",
+		"",
+		"      $ boundary config decrypt config.hcl",
+		"",
+		"  Please see the individual subcommand help for detailed usage information.",
+	})
 }
 
 func (c *Command) Run(args []string) int {

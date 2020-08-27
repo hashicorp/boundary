@@ -213,7 +213,13 @@ func (b *Server) PrintInfo(ui cli.Ui, mode string) {
 	}
 
 	// Server configuration output
-	padding := 36
+	padding := 0
+	for _, k := range b.InfoKeys {
+		currPadding := padding - len(k)
+		if currPadding < 2 {
+			padding = len(k) + 2
+		}
+	}
 	sort.Strings(b.InfoKeys)
 	ui.Output(fmt.Sprintf("==> Boundary %s configuration:\n", mode))
 	for _, k := range b.InfoKeys {
