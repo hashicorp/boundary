@@ -180,6 +180,10 @@ type TestControllerOpts struct {
 	// DefaultPassword is the password used when creating the default account.
 	DefaultPassword string
 
+	// DisableAuthMethodCreation can be set true to disable creating an auth
+	// method automatically.
+	DisableAuthMethodCreation bool
+
 	// DisableDatabaseCreation can be set true to disable creating a dev
 	// database
 	DisableDatabaseCreation bool
@@ -302,7 +306,11 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 			t.Fatal(err)
 		}
 	} else if !opts.DisableDatabaseCreation {
-		if err := tc.b.CreateDevDatabase("postgres"); err != nil {
+		var createOpts []base.Option
+		if opts.DisableAuthMethodCreation {
+			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
+		}
+		if err := tc.b.CreateDevDatabase("postgres", createOpts...); err != nil {
 			t.Fatal(err)
 		}
 	}
