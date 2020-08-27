@@ -539,7 +539,7 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("ignored"),
 				},
 			},
-			errCode: codes.Internal,
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Unset Description",
