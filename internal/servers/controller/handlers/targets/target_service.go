@@ -129,8 +129,8 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 	return &pbs.DeleteTargetResponse{Existed: existed}, nil
 }
 
-// AddHostSets implements the interface pbs.TargetServiceServer.
-func (s Service) AddHostSets(ctx context.Context, req *pbs.AddHostSetsRequest) (*pbs.AddHostSetsResponse, error) {
+// AddTargetHostSets implements the interface pbs.TargetServiceServer.
+func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSetsRequest) (*pbs.AddTargetHostSetsResponse, error) {
 	authResults := auth.Verify(ctx)
 	if authResults.Error != nil {
 		return nil, authResults.Error
@@ -143,11 +143,11 @@ func (s Service) AddHostSets(ctx context.Context, req *pbs.AddHostSetsRequest) (
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.AddHostSetsResponse{Item: u}, nil
+	return &pbs.AddTargetHostSetsResponse{Item: u}, nil
 }
 
-// SetHostSets implements the interface pbs.TargetServiceServer.
-func (s Service) SetHostSets(ctx context.Context, req *pbs.SetHostSetsRequest) (*pbs.SetHostSetsResponse, error) {
+// SetTargetHostSets implements the interface pbs.TargetServiceServer.
+func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSetsRequest) (*pbs.SetTargetHostSetsResponse, error) {
 	authResults := auth.Verify(ctx)
 	if authResults.Error != nil {
 		return nil, authResults.Error
@@ -160,11 +160,11 @@ func (s Service) SetHostSets(ctx context.Context, req *pbs.SetHostSetsRequest) (
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.SetHostSetsResponse{Item: u}, nil
+	return &pbs.SetTargetHostSetsResponse{Item: u}, nil
 }
 
-// RemoveHostSets implements the interface pbs.TargetServiceServer.
-func (s Service) RemoveHostSets(ctx context.Context, req *pbs.RemoveHostSetsRequest) (*pbs.RemoveHostSetsResponse, error) {
+// RemoveTargetHostSets implements the interface pbs.TargetServiceServer.
+func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTargetHostSetsRequest) (*pbs.RemoveTargetHostSetsResponse, error) {
 	authResults := auth.Verify(ctx)
 	if authResults.Error != nil {
 		return nil, authResults.Error
@@ -177,7 +177,7 @@ func (s Service) RemoveHostSets(ctx context.Context, req *pbs.RemoveHostSetsRequ
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.RemoveHostSetsResponse{Item: u}, nil
+	return &pbs.RemoveTargetHostSetsResponse{Item: u}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error) {
@@ -425,7 +425,7 @@ func validateListRequest(_ *pbs.ListTargetsRequest) error {
 	return nil
 }
 
-func validateAddRequest(req *pbs.AddHostSetsRequest) error {
+func validateAddRequest(req *pbs.AddTargetHostSetsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
@@ -442,7 +442,7 @@ func validateAddRequest(req *pbs.AddHostSetsRequest) error {
 	return nil
 }
 
-func validateSetRequest(req *pbs.SetHostSetsRequest) error {
+func validateSetRequest(req *pbs.SetTargetHostSetsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
@@ -456,7 +456,7 @@ func validateSetRequest(req *pbs.SetHostSetsRequest) error {
 	return nil
 }
 
-func validateRemoveRequest(req *pbs.RemoveHostSetsRequest) error {
+func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
 		badFields["id"] = "Incorrectly formatted identifier."

@@ -88,13 +88,13 @@ service TargetService {
   }
 
 
-  // AddHostSets adds host sets to this target. The provided request must
+  // AddTargetHostSets adds host sets to this target. The provided request must
   // include the scope ID and the target ID to which the host sets will be added.
   // All host sets added to the provided target must be a child of a catalog that
   // is a child of the same scope as this target. If the scope or target IDs are
   // missing, malformed, or reference non-existing resources, an error is
   // returned.
-  rpc AddHostSets(AddHostSetsRequest) returns (AddHostSetsResponse) {
+  rpc AddTargetHostSets(AddTargetHostSetsRequest) returns (AddTargetHostSetsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/targets/{id}:add-host-sets"
       body: "*"
@@ -105,14 +105,14 @@ service TargetService {
     };
   }
 
-  // SetHostSets sets the target's host sets. Any existing host sets on the
+  // SetTargetHostSets sets the target's host sets. Any existing host sets on the
   // target are deleted if they are not included in this request. The
   // provided request must include the scope, and the target ID on which the
   // host sets will be set.  All host sets in the request must be a child of
   // a catalog that is in the same scope as the provided target. If any
   // IDs are missing, malformed, or references a non-existing resource, an
   // error is returned.
-  rpc SetHostSets(SetHostSetsRequest) returns (SetHostSetsResponse) {
+  rpc SetTargetHostSets(SetTargetHostSetsRequest) returns (SetTargetHostSetsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/targets/{id}:set-host-sets"
       body: "*"
@@ -123,12 +123,12 @@ service TargetService {
     };
   }
 
-  // RemoveHostSets removes the host sets from the specified target. The
+  // RemoveTargetHostSets removes the host sets from the specified target. The
   // provided request must include the scope and the target IDs for the target
   // from which the host sets will be removed. If any of the IDs are missing,
   // malformed, or references a non-existing scope or catalog, an error is
   // returned.
-  rpc RemoveHostSets(RemoveHostSetsRequest) returns (RemoveHostSetsResponse) {
+  rpc RemoveTargetHostSets(RemoveTargetHostSetsRequest) returns (RemoveTargetHostSetsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/targets/{id}:remove-host-sets"
       body: "*"
@@ -185,7 +185,7 @@ message DeleteTargetResponse {
   bool existed = 1;
 }
 
-message AddHostSetsRequest {
+message AddTargetHostSetsRequest {
   string id = 1;
   uint32 version = 2;
 
@@ -195,11 +195,11 @@ message AddHostSetsRequest {
   repeated string host_set_ids = 3;
 }
 
-message AddHostSetsResponse {
+message AddTargetHostSetsResponse {
   api.resources.targets.v1.Target item = 1;
 }
 
-message SetHostSetsRequest {
+message SetTargetHostSetsRequest {
   string id = 1;
   uint32 version = 2;
 
@@ -209,11 +209,11 @@ message SetHostSetsRequest {
   repeated string host_set_ids = 3;
 }
 
-message SetHostSetsResponse {
+message SetTargetHostSetsResponse {
   api.resources.targets.v1.Target item = 1;
 }
 
-message RemoveHostSetsRequest {
+message RemoveTargetHostSetsRequest {
   // This host set's id.
   string id = 1;
   uint32 version = 2;
@@ -223,6 +223,6 @@ message RemoveHostSetsRequest {
   repeated string host_set_ids = 3;
 }
 
-message RemoveHostSetsResponse {
+message RemoveTargetHostSetsResponse {
   api.resources.targets.v1.Target item = 1;
 }

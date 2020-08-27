@@ -731,7 +731,7 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-func TestAddHostSets(t *testing.T) {
+func TestAddTargetHostSets(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -770,13 +770,13 @@ func TestAddHostSets(t *testing.T) {
 
 	for _, tc := range addCases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := &pbs.AddHostSetsRequest{
+			req := &pbs.AddTargetHostSetsRequest{
 				Id:         tc.tar.GetPublicId(),
 				Version:    tc.tar.GetVersion(),
 				HostSetIds: tc.addHostSets,
 			}
 
-			got, err := s.AddHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, err := s.AddTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			s, ok := status.FromError(err)
 			require.True(t, ok)
 			require.NoError(t, err, "Got error: %v", s)
@@ -789,12 +789,12 @@ func TestAddHostSets(t *testing.T) {
 
 	failCases := []struct {
 		name    string
-		req     *pbs.AddHostSetsRequest
+		req     *pbs.AddTargetHostSetsRequest
 		errCode codes.Code
 	}{
 		{
 			name: "Bad Set Id",
-			req: &pbs.AddHostSetsRequest{
+			req: &pbs.AddTargetHostSetsRequest{
 				Id:         "bad id",
 				Version:    tar.GetVersion(),
 				HostSetIds: []string{hs[0].GetPublicId()},
@@ -803,7 +803,7 @@ func TestAddHostSets(t *testing.T) {
 		},
 		{
 			name: "Bad version",
-			req: &pbs.AddHostSetsRequest{
+			req: &pbs.AddTargetHostSetsRequest{
 				Id:         tar.GetPublicId(),
 				Version:    tar.GetVersion() + 2,
 				HostSetIds: []string{hs[0].GetPublicId()},
@@ -812,7 +812,7 @@ func TestAddHostSets(t *testing.T) {
 		},
 		{
 			name: "Empty host set list",
-			req: &pbs.AddHostSetsRequest{
+			req: &pbs.AddTargetHostSetsRequest{
 				Id:      tar.GetPublicId(),
 				Version: tar.GetVersion(),
 			},
@@ -822,13 +822,13 @@ func TestAddHostSets(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.AddHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "AddHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			_, gErr := s.AddTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
 }
 
-func TestSetHostSets(t *testing.T) {
+func TestSetTargetHostSets(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -872,13 +872,13 @@ func TestSetHostSets(t *testing.T) {
 	}
 	for _, tc := range setCases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := &pbs.SetHostSetsRequest{
+			req := &pbs.SetTargetHostSetsRequest{
 				Id:         tc.tar.GetPublicId(),
 				Version:    tc.tar.GetVersion(),
 				HostSetIds: tc.setHostSets,
 			}
 
-			got, err := s.SetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, err := s.SetTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			require.NoError(t, err, "Got error: %v", s)
 			assert.ElementsMatch(t, tc.resultHostSets, got.GetItem().GetHostSetIds())
 		})
@@ -888,12 +888,12 @@ func TestSetHostSets(t *testing.T) {
 
 	failCases := []struct {
 		name    string
-		req     *pbs.SetHostSetsRequest
+		req     *pbs.SetTargetHostSetsRequest
 		errCode codes.Code
 	}{
 		{
 			name: "Bad target Id",
-			req: &pbs.SetHostSetsRequest{
+			req: &pbs.SetTargetHostSetsRequest{
 				Id:         "bad id",
 				Version:    tar.GetVersion(),
 				HostSetIds: []string{hs[0].GetPublicId()},
@@ -902,7 +902,7 @@ func TestSetHostSets(t *testing.T) {
 		},
 		{
 			name: "Bad version",
-			req: &pbs.SetHostSetsRequest{
+			req: &pbs.SetTargetHostSetsRequest{
 				Id:         tar.GetPublicId(),
 				Version:    tar.GetVersion() + 3,
 				HostSetIds: []string{hs[0].GetPublicId()},
@@ -913,13 +913,13 @@ func TestSetHostSets(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.SetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "SetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			_, gErr := s.SetTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "SetTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
 }
 
-func TestRemoveHostSets(t *testing.T) {
+func TestRemoveTargetHostSets(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -965,13 +965,13 @@ func TestRemoveHostSets(t *testing.T) {
 
 	for _, tc := range removeCases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := &pbs.RemoveHostSetsRequest{
+			req := &pbs.RemoveTargetHostSetsRequest{
 				Id:         tc.tar.GetPublicId(),
 				Version:    tc.tar.GetVersion(),
 				HostSetIds: tc.removeHosts,
 			}
 
-			got, err := s.RemoveHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, err := s.RemoveTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -988,12 +988,12 @@ func TestRemoveHostSets(t *testing.T) {
 
 	failCases := []struct {
 		name    string
-		req     *pbs.RemoveHostSetsRequest
+		req     *pbs.RemoveTargetHostSetsRequest
 		errCode codes.Code
 	}{
 		{
 			name: "Bad version",
-			req: &pbs.RemoveHostSetsRequest{
+			req: &pbs.RemoveTargetHostSetsRequest{
 				Id:         tar.GetPublicId(),
 				Version:    tar.GetVersion() + 3,
 				HostSetIds: []string{hs[0].GetPublicId()},
@@ -1002,7 +1002,7 @@ func TestRemoveHostSets(t *testing.T) {
 		},
 		{
 			name: "Bad target Id",
-			req: &pbs.RemoveHostSetsRequest{
+			req: &pbs.RemoveTargetHostSetsRequest{
 				Id:         "bad id",
 				Version:    tar.GetVersion(),
 				HostSetIds: []string{hs[0].GetPublicId()},
@@ -1011,7 +1011,7 @@ func TestRemoveHostSets(t *testing.T) {
 		},
 		{
 			name: "empty sets",
-			req: &pbs.RemoveHostSetsRequest{
+			req: &pbs.RemoveTargetHostSetsRequest{
 				Id:         "bad id",
 				Version:    tar.GetVersion(),
 				HostSetIds: []string{},
@@ -1022,8 +1022,8 @@ func TestRemoveHostSets(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.RemoveHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "RemoveHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			_, gErr := s.RemoveTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "RemoveTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
 }

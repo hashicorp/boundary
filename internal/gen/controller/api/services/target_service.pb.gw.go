@@ -321,8 +321,8 @@ func local_request_TargetService_DeleteTarget_0(ctx context.Context, marshaler r
 
 }
 
-func request_TargetService_AddHostSets_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq AddHostSetsRequest
+func request_TargetService_AddTargetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq AddTargetHostSetsRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -350,13 +350,13 @@ func request_TargetService_AddHostSets_0(ctx context.Context, marshaler runtime.
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.AddHostSets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.AddTargetHostSets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_TargetService_AddHostSets_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq AddHostSetsRequest
+func local_request_TargetService_AddTargetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq AddTargetHostSetsRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -384,13 +384,13 @@ func local_request_TargetService_AddHostSets_0(ctx context.Context, marshaler ru
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.AddHostSets(ctx, &protoReq)
+	msg, err := server.AddTargetHostSets(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_TargetService_SetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SetHostSetsRequest
+func request_TargetService_SetTargetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq SetTargetHostSetsRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -418,13 +418,13 @@ func request_TargetService_SetHostSets_0(ctx context.Context, marshaler runtime.
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.SetHostSets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.SetTargetHostSets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_TargetService_SetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SetHostSetsRequest
+func local_request_TargetService_SetTargetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq SetTargetHostSetsRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -452,13 +452,13 @@ func local_request_TargetService_SetHostSets_0(ctx context.Context, marshaler ru
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.SetHostSets(ctx, &protoReq)
+	msg, err := server.SetTargetHostSets(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_TargetService_RemoveHostSets_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq RemoveHostSetsRequest
+func request_TargetService_RemoveTargetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq RemoveTargetHostSetsRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -486,13 +486,13 @@ func request_TargetService_RemoveHostSets_0(ctx context.Context, marshaler runti
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.RemoveHostSets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.RemoveTargetHostSets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_TargetService_RemoveHostSets_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq RemoveHostSetsRequest
+func local_request_TargetService_RemoveTargetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq RemoveTargetHostSetsRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -520,7 +520,7 @@ func local_request_TargetService_RemoveHostSets_0(ctx context.Context, marshaler
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.RemoveHostSets(ctx, &protoReq)
+	msg, err := server.RemoveTargetHostSets(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -631,63 +631,63 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 
 	})
 
-	mux.Handle("POST", pattern_TargetService_AddHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_TargetService_AddTargetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddHostSets")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddTargetHostSets")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_TargetService_AddHostSets_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_TargetService_AddTargetHostSets_0(rctx, inboundMarshaler, server, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_TargetService_AddHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_AddHostSets_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_TargetService_AddTargetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_AddTargetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_TargetService_SetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_TargetService_SetTargetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetHostSets")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetTargetHostSets")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_TargetService_SetHostSets_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_TargetService_SetTargetHostSets_0(rctx, inboundMarshaler, server, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_TargetService_SetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_SetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_TargetService_SetTargetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_SetTargetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_TargetService_RemoveHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_TargetService_RemoveTargetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveHostSets")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveTargetHostSets")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_TargetService_RemoveHostSets_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_TargetService_RemoveTargetHostSets_0(rctx, inboundMarshaler, server, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_TargetService_RemoveHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_RemoveHostSets_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_TargetService_RemoveTargetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -832,63 +832,63 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 
 	})
 
-	mux.Handle("POST", pattern_TargetService_AddHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_TargetService_AddTargetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddHostSets")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddTargetHostSets")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_TargetService_AddHostSets_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_TargetService_AddTargetHostSets_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_TargetService_AddHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_AddHostSets_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_TargetService_AddTargetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_AddTargetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_TargetService_SetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_TargetService_SetTargetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetHostSets")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetTargetHostSets")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_TargetService_SetHostSets_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_TargetService_SetTargetHostSets_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_TargetService_SetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_SetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_TargetService_SetTargetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_SetTargetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_TargetService_RemoveHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_TargetService_RemoveTargetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveHostSets")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveTargetHostSets")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_TargetService_RemoveHostSets_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_TargetService_RemoveTargetHostSets_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_TargetService_RemoveHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_RemoveHostSets_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_TargetService_RemoveTargetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -922,30 +922,30 @@ func (m response_TargetService_UpdateTarget_0) XXX_ResponseBody() interface{} {
 	return response.Item
 }
 
-type response_TargetService_AddHostSets_0 struct {
+type response_TargetService_AddTargetHostSets_0 struct {
 	proto.Message
 }
 
-func (m response_TargetService_AddHostSets_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*AddHostSetsResponse)
+func (m response_TargetService_AddTargetHostSets_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*AddTargetHostSetsResponse)
 	return response.Item
 }
 
-type response_TargetService_SetHostSets_0 struct {
+type response_TargetService_SetTargetHostSets_0 struct {
 	proto.Message
 }
 
-func (m response_TargetService_SetHostSets_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*SetHostSetsResponse)
+func (m response_TargetService_SetTargetHostSets_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*SetTargetHostSetsResponse)
 	return response.Item
 }
 
-type response_TargetService_RemoveHostSets_0 struct {
+type response_TargetService_RemoveTargetHostSets_0 struct {
 	proto.Message
 }
 
-func (m response_TargetService_RemoveHostSets_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*RemoveHostSetsResponse)
+func (m response_TargetService_RemoveTargetHostSets_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*RemoveTargetHostSetsResponse)
 	return response.Item
 }
 
@@ -960,11 +960,11 @@ var (
 
 	pattern_TargetService_DeleteTarget_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "targets", "id"}, ""))
 
-	pattern_TargetService_AddHostSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "targets", "id"}, "add-host-sets"))
+	pattern_TargetService_AddTargetHostSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "targets", "id"}, "add-host-sets"))
 
-	pattern_TargetService_SetHostSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "targets", "id"}, "set-host-sets"))
+	pattern_TargetService_SetTargetHostSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "targets", "id"}, "set-host-sets"))
 
-	pattern_TargetService_RemoveHostSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "targets", "id"}, "remove-host-sets"))
+	pattern_TargetService_RemoveTargetHostSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "targets", "id"}, "remove-host-sets"))
 )
 
 var (
@@ -978,9 +978,9 @@ var (
 
 	forward_TargetService_DeleteTarget_0 = runtime.ForwardResponseMessage
 
-	forward_TargetService_AddHostSets_0 = runtime.ForwardResponseMessage
+	forward_TargetService_AddTargetHostSets_0 = runtime.ForwardResponseMessage
 
-	forward_TargetService_SetHostSets_0 = runtime.ForwardResponseMessage
+	forward_TargetService_SetTargetHostSets_0 = runtime.ForwardResponseMessage
 
-	forward_TargetService_RemoveHostSets_0 = runtime.ForwardResponseMessage
+	forward_TargetService_RemoveTargetHostSets_0 = runtime.ForwardResponseMessage
 )

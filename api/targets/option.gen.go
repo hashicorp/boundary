@@ -14,14 +14,16 @@ import (
 type Option func(*options)
 
 type options struct {
-	valueMap                map[string]interface{}
+	postMap                 map[string]interface{}
+	queryMap                map[string]string
 	withScopeId             string
 	withAutomaticVersioning bool
 }
 
 func getDefaultOptions() options {
 	return options{
-		valueMap: make(map[string]interface{}),
+		postMap:  make(map[string]interface{}),
+		queryMap: make(map[string]string),
 	}
 }
 
@@ -55,36 +57,36 @@ func WithAutomaticVersioning() Option {
 
 func WithDefaultPort(inDefaultPort uint32) Option {
 	return func(o *options) {
-		o.valueMap["default_port"] = inDefaultPort
+		o.postMap["default_port"] = inDefaultPort
 	}
 }
 
 func DefaultDefaultPort() Option {
 	return func(o *options) {
-		o.valueMap["default_port"] = nil
+		o.postMap["default_port"] = nil
 	}
 }
 
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
-		o.valueMap["description"] = inDescription
+		o.postMap["description"] = inDescription
 	}
 }
 
 func DefaultDescription() Option {
 	return func(o *options) {
-		o.valueMap["description"] = nil
+		o.postMap["description"] = nil
 	}
 }
 
 func WithName(inName string) Option {
 	return func(o *options) {
-		o.valueMap["name"] = inName
+		o.postMap["name"] = inName
 	}
 }
 
 func DefaultName() Option {
 	return func(o *options) {
-		o.valueMap["name"] = nil
+		o.postMap["name"] = nil
 	}
 }

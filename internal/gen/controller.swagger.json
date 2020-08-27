@@ -1946,7 +1946,7 @@
     "/v1/scopes/*/targets/{id}:add-host-sets": {
       "post": {
         "summary": "Adds existing Host Sets to a Target.",
-        "operationId": "TargetService_AddHostSets",
+        "operationId": "TargetService_AddTargetHostSets",
         "responses": {
           "200": {
             "description": "",
@@ -1967,7 +1967,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddHostSetsRequest"
+              "$ref": "#/definitions/controller.api.services.v1.AddTargetHostSetsRequest"
             }
           }
         ],
@@ -1979,7 +1979,7 @@
     "/v1/scopes/*/targets/{id}:remove-host-sets": {
       "post": {
         "summary": "Removes Host Sets from the Target.",
-        "operationId": "TargetService_RemoveHostSets",
+        "operationId": "TargetService_RemoveTargetHostSets",
         "responses": {
           "200": {
             "description": "",
@@ -2001,7 +2001,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveHostSetsRequest"
+              "$ref": "#/definitions/controller.api.services.v1.RemoveTargetHostSetsRequest"
             }
           }
         ],
@@ -2013,7 +2013,7 @@
     "/v1/scopes/*/targets/{id}:set-host-sets": {
       "post": {
         "summary": "Sets the Host Sets on the Target.",
-        "operationId": "TargetService_SetHostSets",
+        "operationId": "TargetService_SetTargetHostSets",
         "responses": {
           "200": {
             "description": "",
@@ -2034,7 +2034,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetHostSetsRequest"
+              "$ref": "#/definitions/controller.api.services.v1.SetTargetHostSetsRequest"
             }
           }
         ],
@@ -3071,33 +3071,6 @@
         }
       }
     },
-    "controller.api.services.v1.AddHostSetsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "host_set_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "A list of host set IDs which will be added to this target. Each host set\nreferenced here must be a child of a host catalog in the same scope as this\ntarget"
-        }
-      }
-    },
-    "controller.api.services.v1.AddHostSetsResponse": {
-      "type": "object",
-      "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-        }
-      }
-    },
     "controller.api.services.v1.AddRoleGrantsRequest": {
       "type": "object",
       "properties": {
@@ -3149,6 +3122,33 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.AddTargetHostSetsRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "host_set_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "A list of host set IDs which will be added to this target. Each host set\nreferenced here must be a child of a host catalog in the same scope as this\ntarget"
+        }
+      }
+    },
+    "controller.api.services.v1.AddTargetHostSetsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
         }
       }
     },
@@ -3682,34 +3682,6 @@
         }
       }
     },
-    "controller.api.services.v1.RemoveHostSetsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "This host set's id."
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "host_set_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "A list of host set IDs which should not be in the target when this request\nreturns."
-        }
-      }
-    },
-    "controller.api.services.v1.RemoveHostSetsResponse": {
-      "type": "object",
-      "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-        }
-      }
-    },
     "controller.api.services.v1.RemoveRoleGrantsRequest": {
       "type": "object",
       "properties": {
@@ -3761,6 +3733,34 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveTargetHostSetsRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "This host set's id."
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "host_set_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of host set IDs which should not be in the target when this request\nreturns."
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveTargetHostSetsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
         }
       }
     },
@@ -3818,33 +3818,6 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
-        }
-      }
-    },
-    "controller.api.services.v1.SetHostSetsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "host_set_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "A list of host set IDs which will be set on this target. Each host set\nreferenced here must be a child of a host catalog in the same scope as this\ntarget."
-        }
-      }
-    },
-    "controller.api.services.v1.SetHostSetsResponse": {
-      "type": "object",
-      "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
         }
       }
     },
@@ -3925,6 +3898,33 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.SetTargetHostSetsRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "host_set_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of host set IDs which will be set on this target. Each host set\nreferenced here must be a child of a host catalog in the same scope as this\ntarget."
+        }
+      }
+    },
+    "controller.api.services.v1.SetTargetHostSetsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
         }
       }
     },
