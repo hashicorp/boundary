@@ -15,31 +15,52 @@ import (
 )
 
 const (
-	configEncryptPath = "./fixtures/configEncrypt.hcl"
-	configDecryptPath = "./fixtures/configDecrypt.hcl"
+	configEncryptPath            = "./fixtures/config_encrypt.hcl"
+	configDecryptPath            = "./fixtures/config_decrypt.hcl"
+	configKmsPath                = "./fixtures/config_kms.hcl"
+	configExtEncryptPath         = "./fixtures/config_ext_encrypt.hcl"
+	configExtEncryptStrippedPath = "./fixtures/config_ext_encrypt_stripped.hcl"
+	configExtDecryptPath         = "./fixtures/config_ext_decrypt.hcl"
 )
 
 func TestEncryptDecrypt(t *testing.T) {
-
 	cases := []struct {
-		encrypt bool
-		config  string
-		exp     string
+		f         string
+		config    string
+		configKms string
+		exp       string
+		strip     bool
 	}{
 		{
-			encrypt: true,
-			config:  configEncryptPath,
-			exp:     "",
+			f:      "encrypt",
+			config: configEncryptPath,
 		},
 		{
-			encrypt: false,
-			config:  configDecryptPath,
-			exp:     configEncryptPath,
+			f:      "decrypt",
+			config: configDecryptPath,
+			exp:    configEncryptPath,
+		},
+		{
+			f:         "encrypt-ext",
+			config:    configExtEncryptPath,
+			configKms: configKmsPath,
+		},
+		{
+			f:         "decrypt-ext",
+			config:    configExtDecryptPath,
+			configKms: configKmsPath,
+			exp:       configExtEncryptPath,
+		},
+		{
+			f:         "decrypt-ext-strip",
+			config:    configExtDecryptPath,
+			configKms: configKmsPath,
+			exp:       configExtEncryptStrippedPath,
 		},
 	}
 
 	for _, c := range cases {
-		t.Run(fmt.Sprintf("Test encrypt %v", c.encrypt), func(t *testing.T) {
+		t.Run(fmt.Sprintf("Test encrypt %v", c.f), func(t *testing.T) {
 
 			var b bytes.Buffer
 
@@ -51,9 +72,17 @@ func TestEncryptDecrypt(t *testing.T) {
 
 			cmd := &EncryptDecryptCommand{
 				Command: base.NewCommand(ui),
-				Encrypt: c.encrypt}
+				Func:    c.f,
+			}
 
-			if err := cmd.Run([]string{c.config}); err != 0 {
+			args := []string{"-config", c.config}
+			if c.configKms != "" {
+				args = append(args, "-config-kms", c.configKms)
+			}
+			if c.strip {
+				args = append(args, "-strip")
+			}
+			if err := cmd.Run(args); err != 0 {
 				assert.Equal(t, err, 0)
 			}
 
@@ -64,7 +93,7 @@ func TestEncryptDecrypt(t *testing.T) {
 			// If it's encrypting, then we can assume that it did the right thing since
 			// there are many tests on the underlying codebase for that. If it's not
 			// encrypting, compare it to the cleartext to verify because we can.
-			if !c.encrypt {
+			if c.f == "decrypt" {
 				expected, err := ioutil.ReadFile(c.exp)
 				assert.NoError(t, err)
 

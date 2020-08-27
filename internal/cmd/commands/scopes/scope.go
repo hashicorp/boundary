@@ -21,6 +21,8 @@ type Command struct {
 	*base.Command
 
 	Func string
+
+	flagSkipRoleCreation bool
 }
 
 func (c *Command) Synopsis() string {
@@ -28,7 +30,7 @@ func (c *Command) Synopsis() string {
 }
 
 var flagsMap = map[string][]string{
-	"create": {"name", "description"},
+	"create": {"name", "description", "skip-role-creation"},
 	"update": {"id", "name", "description", "version"},
 	"read":   {"id"},
 	"delete": {"id"},
@@ -48,6 +50,13 @@ func (c *Command) Flags() *base.FlagSets {
 	if len(flagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
 		common.PopulateCommonFlags(c.Command, f, resource.Scope.String(), flagsMap[c.Func])
+		if c.Func == "create" {
+			f.BoolVar(&base.BoolVar{
+				Name:   "skip-role-creation",
+				Target: &c.flagSkipRoleCreation,
+				Usage:  "If set, a role granting the current user access to administer the newly-created scope will not automatically be created",
+			})
+		}
 	}
 
 	return set
@@ -101,6 +110,8 @@ func (c *Command) Run(args []string) int {
 	default:
 		opts = append(opts, scopes.WithDescription(c.FlagDescription))
 	}
+
+	opts = append(opts, scopes.WithSkipRoleCreation(c.flagSkipRoleCreation))
 
 	scopeClient := scopes.NewScopesClient(client)
 

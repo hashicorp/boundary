@@ -18,6 +18,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/internal/wrapper"
 	"github.com/hashicorp/boundary/recovery"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
@@ -183,9 +184,12 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	tokenName := "default"
 	switch {
 	case c.FlagRecoveryConfig != "":
-		wrapper, err := recovery.GetWrapper(c.Context, c.FlagRecoveryConfig)
+		wrapper, err := wrapper.GetWrapper(c.FlagRecoveryConfig, "recovery")
 		if err != nil {
 			return nil, err
+		}
+		if wrapper == nil {
+			return nil, errors.New(`No "kms" block with purpose "recovery" found`)
 		}
 		if err := wrapper.Init(c.Context); err != nil {
 			return nil, fmt.Errorf("Error initializing kms: %w", err)
@@ -283,11 +287,6 @@ const (
 func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 	c.flagsOnce.Do(func() {
 		set := NewFlagSets(c.UI)
-
-		// These flag sets will apply to all leaf subcommands.
-		// TODO: Optional, but FlagSetHTTP can be safely removed from the individual
-		// Flags() subcommands.
-		bit = bit | FlagSetHTTP
 
 		if bit&FlagSetHTTP != 0 {
 			f := set.NewFlagSet("Connection Options")

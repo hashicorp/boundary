@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -42,9 +43,17 @@ func (c *RolesClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Er
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", "roles", opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", "roles", opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -72,11 +81,19 @@ func (c *RolesClient) Read(ctx context.Context, roleId string, opt ...Option) (*
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("roles/%s", roleId), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -122,11 +139,19 @@ func (c *RolesClient) Update(ctx context.Context, roleId string, version uint32,
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("roles/%s", roleId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("roles/%s", roleId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -154,11 +179,19 @@ func (c *RolesClient) Delete(ctx context.Context, roleId string, opt ...Option) 
 		return false, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("roles/%s", roleId), nil, apiOpts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -185,11 +218,19 @@ func (c *RolesClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Er
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", "roles", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -238,15 +279,23 @@ func (c *RolesClient) AddGrants(ctx context.Context, roleId string, version uint
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
 	if len(grantStrings) > 0 {
-		opts.valueMap["grant_strings"] = grantStrings
+		opts.postMap["grant_strings"] = grantStrings
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", roleId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", roleId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating AddGrants request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -292,15 +341,23 @@ func (c *RolesClient) AddPrincipals(ctx context.Context, roleId string, version 
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
 	if len(principalIds) > 0 {
-		opts.valueMap["principal_ids"] = principalIds
+		opts.postMap["principal_ids"] = principalIds
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", roleId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", roleId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating AddPrincipals request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -346,18 +403,26 @@ func (c *RolesClient) SetGrants(ctx context.Context, roleId string, version uint
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
 	if len(grantStrings) > 0 {
-		opts.valueMap["grant_strings"] = grantStrings
+		opts.postMap["grant_strings"] = grantStrings
 	} else if grantStrings != nil {
 		// In this function, a non-nil but empty list means clear out
-		opts.valueMap["grant_strings"] = nil
+		opts.postMap["grant_strings"] = nil
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", roleId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", roleId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating SetGrants request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -403,18 +468,26 @@ func (c *RolesClient) SetPrincipals(ctx context.Context, roleId string, version 
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
 	if len(principalIds) > 0 {
-		opts.valueMap["principal_ids"] = principalIds
+		opts.postMap["principal_ids"] = principalIds
 	} else if principalIds != nil {
 		// In this function, a non-nil but empty list means clear out
-		opts.valueMap["principal_ids"] = nil
+		opts.postMap["principal_ids"] = nil
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", roleId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", roleId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating SetPrincipals request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -460,15 +533,23 @@ func (c *RolesClient) RemoveGrants(ctx context.Context, roleId string, version u
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
 	if len(grantStrings) > 0 {
-		opts.valueMap["grant_strings"] = grantStrings
+		opts.postMap["grant_strings"] = grantStrings
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", roleId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", roleId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating RemoveGrants request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -514,15 +595,23 @@ func (c *RolesClient) RemovePrincipals(ctx context.Context, roleId string, versi
 		version = existingTarget.Version
 	}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
 	if len(principalIds) > 0 {
-		opts.valueMap["principal_ids"] = principalIds
+		opts.postMap["principal_ids"] = principalIds
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", roleId), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", roleId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating RemovePrincipals request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)

@@ -14,8 +14,9 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
-	withNoTokenScope bool
-	withNoTokenValue bool
+	withNoTokenScope           bool
+	withNoTokenValue           bool
+	withSkipAuthMethodCreation bool
 }
 
 func getDefaultOptions() Options {
@@ -37,5 +38,13 @@ func WithNoTokenScope() Option {
 func WithNoTokenValue() Option {
 	return func(o *Options) {
 		o.withNoTokenValue = true
+	}
+}
+
+// WithSkipAuthMethodCreation tells the command not to instantiate an auth
+// method on first run.
+func WithSkipAuthMethodCreation() Option {
+	return func(o *Options) {
+		o.withSkipAuthMethodCreation = true
 	}
 }
