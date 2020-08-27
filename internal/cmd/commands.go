@@ -208,6 +208,49 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
+		"host-catalogs": func() (cli.Command, error) {
+			return &hostcatalogs.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"host-catalogs read": func() (cli.Command, error) {
+			return &hostcatalogs.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"host-catalogs delete": func() (cli.Command, error) {
+			return &hostcatalogs.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"host-catalogs list": func() (cli.Command, error) {
+			return &hostcatalogs.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"host-catalogs static": func() (cli.Command, error) {
+			return &hostcatalogs.Command{
+				Command: base.NewCommand(ui),
+				Func:    "password",
+			}, nil
+		},
+		"host-catalogs static create": func() (cli.Command, error) {
+			return &hostcatalogs.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+
+		"host-catalogs static update": func() (cli.Command, error) {
+			return &hostcatalogs.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+
 		"hosts create": func() (cli.Command, error) {
 			return &hosts.CreateCommand{
 				Command: base.NewCommand(ui),
