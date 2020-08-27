@@ -69,6 +69,7 @@ type templateInput struct {
 	CollectionPath         string
 	ResourcePath           string
 	SliceSubTypes          map[string]string
+	ExtraOptions           []fieldInfo
 	VersionEnabled         bool
 	TypeOnCreate           bool
 }
@@ -83,6 +84,7 @@ func fillTemplates() {
 			Package:        in.generatedStructure.pkg,
 			Fields:         in.generatedStructure.fields,
 			PathArgs:       in.pathArgs,
+			ExtraOptions:   in.extraOptions,
 			VersionEnabled: in.versionEnabled,
 			TypeOnCreate:   in.typeOnCreate,
 		}
@@ -126,6 +128,17 @@ func fillTemplates() {
 			}
 			for name, val := range pkgOptionMap {
 				optionMap[name] = val
+			}
+			optionsMap[input.Package] = optionMap
+		}
+		// Add in extra defined options
+		if len(in.extraOptions) > 0 {
+			optionMap := optionsMap[input.Package]
+			if optionMap == nil {
+				optionMap = map[string]fieldInfo{}
+			}
+			for _, val := range in.extraOptions {
+				optionMap[val.Name] = val
 			}
 			optionsMap[input.Package] = optionMap
 		}
@@ -196,17 +209,22 @@ func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .Collection
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", {{ .CollectionPath }}, nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
 	{{ if ( eq .CollectionPath "\"scopes\"" ) }}
-	q := url.Values{}
-	q.Add("scope_id", scopeId)
-	req.URL.RawQuery = q.Encode()
+	opts.queryMap["scope_id"] = scopeId
 	{{ end }}
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -238,11 +256,19 @@ func (c *{{ .ClientName }}Client) Read(ctx context.Context, {{ range .ResourceFu
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", {{ .ResourcePath }}, nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -272,11 +298,19 @@ func (c *{{ .ClientName }}Client) Delete(ctx context.Context, {{ range .Resource
 		return false, nil, fmt.Errorf("nil client")
 	}
 	
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", {{ .ResourcePath }}, nil, apiOpts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -311,18 +345,23 @@ func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ if .TypeOnCreat
 	{{ if .TypeOnCreate }} if resourceType == "" {
 		return nil, nil, fmt.Errorf("empty resourceType value passed into Create request")
 	} else {
-		opts.valueMap["type"] = resourceType
+		opts.postMap["type"] = resourceType
 	}{{ end }}
 
-	req, err := c.client.NewRequest(ctx, "POST", {{ .CollectionPath }}, opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", {{ .CollectionPath }}, opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
 	{{ if ( eq .CollectionPath "\"scopes\"" ) }}
-	q := url.Values{}
-	q.Add("scope_id", scopeId)
-	req.URL.RawQuery = q.Encode()
+	opts.queryMap["scope_id"] = scopeId
 	{{ end }}
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -371,11 +410,19 @@ func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .Resource
 	}
 	{{ end }}
 
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", {{ .ResourcePath }}, opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", {{ .ResourcePath }}, opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -437,19 +484,27 @@ func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ 
 		version = existingTarget.Version
 	}
 	{{ end }}
-	opts.valueMap["version"] = version
+	opts.postMap["version"] = version
 
 	if len({{ $value }}) > 0 {
-		opts.valueMap["{{ snakeCase $value }}"] = {{ $value }}
+		opts.postMap["{{ snakeCase $value }}"] = {{ $value }}
 	}{{ if ( eq $op "Set" ) }} else if {{ $value }} != nil {
 			// In this function, a non-nil but empty list means clear out
-			opts.valueMap["{{ snakeCase $value }}"] = nil
+			opts.postMap["{{ snakeCase $value }}"] = nil
 		}
 	{{ end }}
 
-	req, err := c.client.NewRequest(ctx, "POST", {{ $resPath }}, opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", {{ $resPath }}, opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating {{ $fullName }} request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := c.client.Do(req)
@@ -522,14 +577,16 @@ import (
 type Option func(*options)
 
 type options struct {
-	valueMap map[string]interface{}
+	postMap map[string]interface{}
+	queryMap map[string]string
 	withScopeId string
 	withAutomaticVersioning bool
 }
 
 func getDefaultOptions() options {
 	return options{
-		valueMap: make(map[string]interface{}),
+		postMap: make(map[string]interface{}),
+		queryMap: make(map[string]string),
 	}
 }
 
@@ -563,29 +620,31 @@ func WithAutomaticVersioning() Option {
 {{ range .Fields }}
 func With{{ .SubtypeName }}{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
 	return func(o *options) {		{{ if ( not ( eq .SubtypeName "" ) ) }}
-		raw, ok := o.valueMap["attributes"]
+		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
 		val["{{ .ProtoName }}"] = in{{ .Name }}
-		o.valueMap["attributes"] = val
+		o.postMap["attributes"] = val
+		{{ else if .Query }}
+		o.queryMap["{{ .ProtoName }}"] = fmt.Sprintf("%v", in{{ .Name }})
 		{{ else }}
-		o.valueMap["{{ .ProtoName }}"] = in{{ .Name }}
+		o.postMap["{{ .ProtoName }}"] = in{{ .Name }}
 		{{ end }}	}
 }
 
 func Default{{ .SubtypeName }}{{ .Name }}() Option {
 	return func(o *options) {		{{ if ( not ( eq .SubtypeName "" ) ) }}
-		raw, ok := o.valueMap["attributes"]
+		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
 		val["{{ .ProtoName }}"] = nil
-		o.valueMap["attributes"] = val
+		o.postMap["attributes"] = val
 		{{ else }}
-		o.valueMap["{{ .ProtoName }}"] = nil
+		o.postMap["{{ .ProtoName }}"] = nil
 		{{ end }}	}
 }
 {{ end }}

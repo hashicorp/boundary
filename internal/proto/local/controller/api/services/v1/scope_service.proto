@@ -106,7 +106,8 @@ message ListScopesResponse {
 
 message CreateScopeRequest {
   string scope_id = 1;
-  resources.scopes.v1.Scope item = 2;
+  bool skip_role_creation = 2;
+  resources.scopes.v1.Scope item = 3;
 }
 
 message CreateScopeResponse {
