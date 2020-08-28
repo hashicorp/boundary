@@ -60,16 +60,20 @@ func WrapSlice(prefixSpaces int, input []string) string {
 
 func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) string {
 	maxKeyLength := maxLengthOverride
-	var sortedKeys []string
 	if maxKeyLength == 0 {
 		for k := range input {
-			sortedKeys = append(sortedKeys, k)
 			if len(k) > maxKeyLength {
 				maxKeyLength = len(k)
 			}
 		}
 	}
+
+	var sortedKeys []string
+	for k := range input {
+		sortedKeys = append(sortedKeys, k)
+	}
 	sort.Strings(sortedKeys)
+
 	var ret []string
 	for _, k := range sortedKeys {
 		v := input[k]
