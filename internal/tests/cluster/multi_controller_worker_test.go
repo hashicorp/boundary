@@ -47,7 +47,7 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 				// expecting it we'll see an out-of-date entry
 				return true
 			}
-			assert.WithinDuration(time.Now(), v.(time.Time), 7*time.Second)
+			assert.WithinDuration(time.Now(), v.(time.Time), 30*time.Second)
 			delete(workerMap, k.(string))
 			return true
 		})
