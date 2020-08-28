@@ -1,27 +1,14 @@
-package authmethods
+package hostcatalogs
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
-func addPasswordFlags(c *PasswordCommand, f *base.FlagSet) {
-	f.StringVar(&base.StringVar{
-		Name:   "min-login-name-length",
-		Target: &c.flagMinLoginNameLength,
-		Usage:  "The minimum length of login names",
-	})
-	f.StringVar(&base.StringVar{
-		Name:   "min-password-length",
-		Target: &c.flagMinPasswordLength,
-		Usage:  "The minimum length of passwords",
-	})
-}
-
-func generateAuthMethodTableOutput(in *authmethods.AuthMethod) string {
+func generateHostCatalogTableOutput(in *hostcatalogs.HostCatalog) string {
 	var ret []string
 
 	nonAttributeMap := map[string]interface{}{
@@ -59,7 +46,7 @@ func generateAuthMethodTableOutput(in *authmethods.AuthMethod) string {
 		}
 	}
 
-	ret = append(ret, "", "Auth method information:")
+	ret = append(ret, "", "Host catalog information:")
 
 	ret = append(ret,
 		// We do +2 because there is another +2 offset for attributes below
@@ -80,7 +67,4 @@ func generateAuthMethodTableOutput(in *authmethods.AuthMethod) string {
 	return base.WrapForHelpText(ret)
 }
 
-var attributeMap = map[string]string{
-	"min_login_name_length": "Minimum Login Name Length",
-	"min_password_length":   "Minimum Password Length",
-}
+var attributeMap = map[string]string{}
