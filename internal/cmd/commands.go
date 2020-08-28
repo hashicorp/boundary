@@ -94,20 +94,25 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "list",
 			}, nil
 		},
-		"auth-methods password": func() (cli.Command, error) {
+		"auth-methods create": func() (cli.Command, error) {
 			return &authmethods.Command{
 				Command: base.NewCommand(ui),
-				Func:    "password",
+				Func:    "create",
 			}, nil
 		},
-		"auth-methods password create": func() (cli.Command, error) {
+		"auth-methods create password": func() (cli.Command, error) {
 			return &authmethods.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
-
-		"auth-methods password update": func() (cli.Command, error) {
+		"auth-methods update": func() (cli.Command, error) {
+			return &authmethods.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"auth-methods update password": func() (cli.Command, error) {
 			return &authmethods.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
@@ -233,20 +238,25 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "list",
 			}, nil
 		},
-		"host-catalogs static": func() (cli.Command, error) {
+		"host-catalogs create": func() (cli.Command, error) {
 			return &hostcatalogs.Command{
 				Command: base.NewCommand(ui),
-				Func:    "static",
+				Func:    "create",
 			}, nil
 		},
-		"host-catalogs static create": func() (cli.Command, error) {
+		"host-catalogs create static": func() (cli.Command, error) {
 			return &hostcatalogs.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
-
-		"host-catalogs static update": func() (cli.Command, error) {
+		"host-catalogs update": func() (cli.Command, error) {
+			return &hostcatalogs.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"host-catalogs update static": func() (cli.Command, error) {
 			return &hostcatalogs.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
@@ -276,20 +286,25 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "list",
 			}, nil
 		},
-		"host-sets static": func() (cli.Command, error) {
+		"host-sets create": func() (cli.Command, error) {
 			return &hostsets.Command{
 				Command: base.NewCommand(ui),
-				Func:    "static",
+				Func:    "create",
 			}, nil
 		},
-		"host-sets static create": func() (cli.Command, error) {
+		"host-sets create static": func() (cli.Command, error) {
 			return &hostsets.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
-
-		"host-sets static update": func() (cli.Command, error) {
+		"host-sets update": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"host-sets update static": func() (cli.Command, error) {
 			return &hostsets.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
