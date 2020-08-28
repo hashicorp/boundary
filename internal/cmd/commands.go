@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/controller"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groups"
+	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hosts"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
@@ -234,7 +235,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"host-catalogs static": func() (cli.Command, error) {
 			return &hostcatalogs.Command{
 				Command: base.NewCommand(ui),
-				Func:    "password",
+				Func:    "static",
 			}, nil
 		},
 		"host-catalogs static create": func() (cli.Command, error) {

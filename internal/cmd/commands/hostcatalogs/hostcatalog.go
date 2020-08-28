@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -24,10 +24,10 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	if c.Func == "password" {
-		return "Manage password auth-methods within Boundary"
+	if c.Func == "static" {
+		return "Manage static host catalogs within Boundary"
 	}
-	return common.SynopsisFunc(c.Func, "auth-method")
+	return common.SynopsisFunc(c.Func, "host-catalog")
 }
 
 var flagsMap = map[string][]string{
@@ -36,29 +36,29 @@ var flagsMap = map[string][]string{
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("auth-method")
+	helpMap := common.HelpMap("host-catalog")
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
-			"Usage: boundary auth-methods [sub command] [options] [args]",
+			"Usage: boundary host-catalogs [sub command] [options] [args]",
 			"",
-			"  This command allows operations on Boundary auth-method resources. Example:",
+			"  This command allows operations on Boundary host-catalog resources. Example:",
 			"",
-			"    Read an auth-method:",
+			"    Read a host-catalog:",
 			"",
-			`      $ boundary auth-methods read -id ampw_1234567890`,
+			`      $ boundary host-catalogs read -id hcst_1234567890`,
 			"",
-			"  Please see the auth-methods subcommand help for detailed usage information.",
+			"  Please see the host-catalogs subcommand help for detailed usage information.",
 		})
-	case "password":
+	case "static":
 		return base.WrapForHelpText([]string{
-			"Usage: boundary auth-methods password [sub command] [options] [args]",
+			"Usage: boundary host-catalogs static [sub command] [options] [args]",
 			"",
-			"  This command allows operations on Boundary password-type auth-method resources. Example:",
+			"  This command allows operations on Boundary static-type host-catalog resources. Example:",
 			"",
-			"    Create a password-type auth-method:",
+			"    Create a static-type host-catalog:",
 			"",
-			`      $ boundary auth-methods pasword create -name prodops -description "For ProdOps usage"`,
+			`      $ boundary host-catalogs static create -name prodops -description "For ProdOps usage"`,
 			"",
 			"  Please see the subcommand help for detailed usage information.",
 		})
@@ -72,7 +72,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	if len(flagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.User.String(), flagsMap[c.Func])
+		common.PopulateCommonFlags(c.Command, f, resource.HostCatalog.String(), flagsMap[c.Func])
 	}
 
 	return set
@@ -87,7 +87,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	if c.Func == "" || c.Func == "password" {
+	if c.Func == "" || c.Func == "static" {
 		return cli.RunResultHelp
 	}
 
@@ -109,43 +109,43 @@ func (c *Command) Run(args []string) int {
 		return 2
 	}
 
-	var opts []authmethods.Option
+	var opts []hostcatalogs.Option
 
 	switch c.FlagName {
 	case "":
 	case "null":
-		opts = append(opts, authmethods.DefaultName())
+		opts = append(opts, hostcatalogs.DefaultName())
 	default:
-		opts = append(opts, authmethods.WithName(c.FlagName))
+		opts = append(opts, hostcatalogs.WithName(c.FlagName))
 	}
 
 	switch c.FlagDescription {
 	case "":
 	case "null":
-		opts = append(opts, authmethods.DefaultDescription())
+		opts = append(opts, hostcatalogs.DefaultDescription())
 	default:
-		opts = append(opts, authmethods.WithDescription(c.FlagDescription))
+		opts = append(opts, hostcatalogs.WithDescription(c.FlagDescription))
 	}
 
-	authmethodClient := authmethods.NewAuthMethodsClient(client)
+	hostcatalogClient := hostcatalogs.NewClient(client)
 
 	var existed bool
-	var method *authmethods.AuthMethod
-	var listedMethods []*authmethods.AuthMethod
+	var catalog *hostcatalogs.HostCatalog
+	var listedCatalogs []*hostcatalogs.HostCatalog
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		method, apiErr, err = authmethodClient.Read(c.Context, c.FlagId, opts...)
+		catalog, apiErr, err = hostcatalogClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = authmethodClient.Delete(c.Context, c.FlagId, opts...)
+		existed, apiErr, err = hostcatalogClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedMethods, apiErr, err = authmethodClient.List(c.Context, opts...)
+		listedCatalogs, apiErr, err = hostcatalogClient.List(c.Context, opts...)
 	}
 
-	plural := "auth method"
+	plural := "host catalog"
 	if c.Func == "list" {
-		plural = "auth methods"
+		plural = "host catalogs"
 	}
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
@@ -176,11 +176,11 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
-			if len(listedMethods) == 0 {
+			if len(listedCatalogs) == 0 {
 				c.UI.Output("null")
 				return 0
 			}
-			b, err := base.JsonFormatter{}.Format(listedMethods)
+			b, err := base.JsonFormatter{}.Format(listedCatalogs)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 				return 1
@@ -188,16 +188,16 @@ func (c *Command) Run(args []string) int {
 			c.UI.Output(string(b))
 
 		case "table":
-			if len(listedMethods) == 0 {
-				c.UI.Output("No auth methods found")
+			if len(listedCatalogs) == 0 {
+				c.UI.Output("No host catalogs found")
 				return 0
 			}
 			var output []string
 			output = []string{
 				"",
-				"Auth Method information:",
+				"Host Catalog information:",
 			}
-			for i, m := range listedMethods {
+			for i, m := range listedCatalogs {
 				if i > 0 {
 					output = append(output, "")
 				}
@@ -226,9 +226,9 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateAuthMethodTableOutput(method))
+		c.UI.Output(generateHostCatalogTableOutput(catalog))
 	case "json":
-		b, err := base.JsonFormatter{}.Format(method)
+		b, err := base.JsonFormatter{}.Format(catalog)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1
