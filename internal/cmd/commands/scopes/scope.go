@@ -113,7 +113,7 @@ func (c *Command) Run(args []string) int {
 
 	opts = append(opts, scopes.WithSkipRoleCreation(c.flagSkipRoleCreation))
 
-	scopeClient := scopes.NewScopesClient(client)
+	scopeClient := scopes.NewClient(client)
 
 	// Perform check-and-set when needed
 	var version uint32

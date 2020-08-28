@@ -110,7 +110,7 @@ func (c *CreateCommand) Run(args []string) int {
 		return 2
 	}
 
-	host, apiErr, err := hosts.NewHostsClient(client).Create(c.Context,
+	host, apiErr, err := hosts.NewClient(client).Create(c.Context,
 		c.flagCatalogId,
 		hosts.WithStaticHostAddress(c.flagAddress),
 		hosts.WithName(c.flagName),

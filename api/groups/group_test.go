@@ -47,7 +47,7 @@ func TestGroup_List(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			grps := groups.NewGroupsClient(tt.scopeClient)
+			grps := groups.NewClient(tt.scopeClient)
 			pl, apiErr, err := grps.List(tc.Context())
 			assert.NoError(err)
 			assert.Nil(apiErr)
@@ -133,17 +133,17 @@ func TestGroup_Crud(t *testing.T) {
 		},
 	}
 
-	user1, apiErr, err := users.NewUsersClient(client).Create(tc.Context())
+	user1, apiErr, err := users.NewClient(client).Create(tc.Context())
 	require.NoError(err)
 	require.Nil(apiErr)
 
-	user2, apiErr, err := users.NewUsersClient(client).Create(tc.Context())
+	user2, apiErr, err := users.NewClient(client).Create(tc.Context())
 	require.NoError(err)
 	require.Nil(apiErr)
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			groupsClient := groups.NewGroupsClient(tt.scopeClient)
+			groupsClient := groups.NewClient(tt.scopeClient)
 			g, apiErr, err := groupsClient.Create(tc.Context(), groups.WithName("foo"))
 			checkGroup("create", g, apiErr, err, "foo", 1, nil)
 
@@ -209,7 +209,7 @@ func TestGroup_Errors(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			groupClient := groups.NewGroupsClient(tt.scopeClient)
+			groupClient := groups.NewClient(tt.scopeClient)
 
 			g, apiErr, err := groupClient.Create(tc.Context(), groups.WithName("first"))
 			require.NoError(err)

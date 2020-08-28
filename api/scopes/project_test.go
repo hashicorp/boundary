@@ -28,7 +28,7 @@ func TestProjects_List(t *testing.T) {
 	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
-	scps := scopes.NewScopesClient(client)
+	scps := scopes.NewClient(client)
 
 	pl, apiErr, err := scps.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
@@ -77,7 +77,7 @@ func TestProjects_Crud(t *testing.T) {
 	org, _ := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
-	scps := scopes.NewScopesClient(client)
+	scps := scopes.NewClient(client)
 
 	checkProject := func(step string, s *scopes.Scope, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
 		require.NoError(err, step)
@@ -130,7 +130,7 @@ func TestProject_Errors(t *testing.T) {
 	org, _ := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
-	scps := scopes.NewScopesClient(client)
+	scps := scopes.NewClient(client)
 
 	createdProj, apiErr, err := scps.Create(tc.Context(), org.GetPublicId())
 	require.NoError(err)
