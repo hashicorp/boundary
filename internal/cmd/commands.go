@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/groups"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hosts"
+	"github.com/hashicorp/boundary/internal/cmd/commands/hostsets"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/commands/users"
@@ -247,6 +248,49 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 
 		"host-catalogs static update": func() (cli.Command, error) {
 			return &hostcatalogs.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+
+		"host-sets": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"host-sets read": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"host-sets delete": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"host-sets list": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"host-sets static": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "static",
+			}, nil
+		},
+		"host-sets static create": func() (cli.Command, error) {
+			return &hostsets.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+
+		"host-sets static update": func() (cli.Command, error) {
+			return &hostsets.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil

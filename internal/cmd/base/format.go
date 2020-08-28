@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -45,24 +46,40 @@ func WrapForHelpText(lines []string) string {
 	return strings.Join(ret, "\n")
 }
 
+func WrapSlice(prefixSpaces int, input []string) string {
+	var ret []string
+	for _, v := range input {
+		ret = append(ret, fmt.Sprintf("%s%s",
+			strings.Repeat(" ", prefixSpaces),
+			fmt.Sprintf("%s: ", v),
+		))
+	}
+
+	return strings.Join(ret, "\n")
+}
+
 func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) string {
 	maxKeyLength := maxLengthOverride
+	var sortedKeys []string
 	if maxKeyLength == 0 {
 		for k := range input {
+			sortedKeys = append(sortedKeys, k)
 			if len(k) > maxKeyLength {
 				maxKeyLength = len(k)
 			}
 		}
 	}
+	sort.Strings(sortedKeys)
 	var ret []string
-	for k, v := range input {
+	for _, k := range sortedKeys {
+		v := input[k]
 		spaces := maxKeyLength - len(k)
 		ret = append(ret, fmt.Sprintf("%s%s%s%s",
 			strings.Repeat(" ", prefixSpaces),
 			fmt.Sprintf("%s: ", k),
 			strings.Repeat(" ", spaces),
-			fmt.Sprintf("%v", v)),
-		)
+			fmt.Sprintf("%v", v),
+		))
 	}
 
 	return strings.Join(ret, "\n")
