@@ -26,10 +26,14 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	if c.Func == "static" {
-		return "Manage static host sets within Boundary"
+	switch c.Func {
+	case "create":
+		return "Create host-set resources within Boundary"
+	case "update":
+		return "Update host-set resources within Boundary"
+	default:
+		return common.SynopsisFunc(c.Func, "host-set")
 	}
-	return common.SynopsisFunc(c.Func, "host-set")
 }
 
 var flagsMap = map[string][]string{
@@ -52,17 +56,29 @@ func (c *Command) Help() string {
 			"",
 			"  Please see the host-sets subcommand help for detailed usage information.",
 		})
-	case "static":
+	case "create":
 		return base.WrapForHelpText([]string{
-			"Usage: boundary host-sets static [sub command] [options] [args]",
+			"Usage: boundary host-sets create [type] [sub command] [options] [args]",
 			"",
-			"  This command allows operations on Boundary static-type host-set resources. Example:",
+			"  This command allows create operations on Boundary host-set resources. Example:",
 			"",
 			"    Create a static-type host-set:",
 			"",
-			`      $ boundary host-sets static create -name prodops -description "For ProdOps usage"`,
+			`      $ boundary host-sets create static -name prodops -description "For ProdOps usage"`,
 			"",
-			"  Please see the subcommand help for detailed usage information.",
+			"  Please see the typed subcommand help for detailed usage information.",
+		})
+	case "update":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary host-sets update [type] [sub command] [options] [args]",
+			"",
+			"  This command allows update operations on Boundary host-set resources. Example:",
+			"",
+			"    Update a static-type host-set:",
+			"",
+			`      $ boundary host-sets update static -id hsst_1234567890 -name devops -description "For DevOps usage"`,
+			"",
+			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	default:
 		return helpMap[c.Func]() + c.Flags().Help()
@@ -96,7 +112,8 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	if c.Func == "" || c.Func == "static" {
+	switch c.Func {
+	case "", "create", "update":
 		return cli.RunResultHelp
 	}
 
