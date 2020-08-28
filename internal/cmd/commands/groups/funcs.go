@@ -70,38 +70,39 @@ func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
 	}
 }
 
-func generateGroupTableOutput(group *groups.Group) string {
-	var output []string
-	if true {
-		output = []string{
-			"",
-			"Group information:",
-			fmt.Sprintf("  ID:           %s", group.Id),
-			fmt.Sprintf("  Version:      %d", group.Version),
-			fmt.Sprintf("  Created At:   %s", group.CreatedTime.Local().Format(time.RFC3339)),
-			fmt.Sprintf("  Updated At:   %s", group.UpdatedTime.Local().Format(time.RFC3339)),
-		}
+func generateGroupTableOutput(in *groups.Group) string {
+	var ret []string
+
+	nonAttributeMap := map[string]interface{}{
+		"ID":           in.Id,
+		"Version":      in.Version,
+		"Created Time": in.CreatedTime.Local().Format(time.RFC3339),
+		"Updated Time": in.UpdatedTime.Local().Format(time.RFC3339),
 	}
-	if group.Name != "" {
-		output = append(output,
-			fmt.Sprintf("  Name:         %s", group.Name),
-		)
+
+	if in.Name != "" {
+		nonAttributeMap["Name"] = in.Name
 	}
-	if group.Description != "" {
-		output = append(output,
-			fmt.Sprintf("  Description:  %s", group.Description),
-		)
+	if in.Description != "" {
+		nonAttributeMap["Description"] = in.Description
 	}
-	if len(group.Members) > 0 {
-		output = append(output,
+
+	ret = append(ret, "", "Group information:")
+
+	ret = append(ret,
+		base.WrapMap(2, 0, nonAttributeMap),
+	)
+
+	if len(in.Members) > 0 {
+		ret = append(ret,
 			fmt.Sprintf("  Members:      %s", ""),
 		)
 	}
-	for _, member := range group.Members {
-		output = append(output,
+	for _, member := range in.Members {
+		ret = append(ret,
 			fmt.Sprintf("    ID:         %s", member.Id),
 			fmt.Sprintf("      Scope ID: %s", member.ScopeId),
 		)
 	}
-	return base.WrapForHelpText(output)
+	return base.WrapForHelpText(ret)
 }

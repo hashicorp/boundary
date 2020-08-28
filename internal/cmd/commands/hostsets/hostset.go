@@ -1,10 +1,10 @@
-package authmethods
+package hostsets
 
 import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -21,13 +21,15 @@ type Command struct {
 	*base.Command
 
 	Func string
+
+	flagHostCatalogId string
 }
 
 func (c *Command) Synopsis() string {
-	if c.Func == "password" {
-		return "Manage password auth-methods within Boundary"
+	if c.Func == "static" {
+		return "Manage static host sets within Boundary"
 	}
-	return common.SynopsisFunc(c.Func, "auth-method")
+	return common.SynopsisFunc(c.Func, "host-set")
 }
 
 var flagsMap = map[string][]string{
@@ -36,29 +38,29 @@ var flagsMap = map[string][]string{
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("auth-method")
+	helpMap := common.HelpMap("host-set")
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
-			"Usage: boundary auth-methods [sub command] [options] [args]",
+			"Usage: boundary host-sets [sub command] [options] [args]",
 			"",
-			"  This command allows operations on Boundary auth-method resources. Example:",
+			"  This command allows operations on Boundary host-set resources. Example:",
 			"",
-			"    Read an auth-method:",
+			"    Read a host-set:",
 			"",
-			`      $ boundary auth-methods read -id ampw_1234567890`,
+			`      $ boundary host-sets read -id hsst_1234567890`,
 			"",
-			"  Please see the auth-methods subcommand help for detailed usage information.",
+			"  Please see the host-sets subcommand help for detailed usage information.",
 		})
-	case "password":
+	case "static":
 		return base.WrapForHelpText([]string{
-			"Usage: boundary auth-methods password [sub command] [options] [args]",
+			"Usage: boundary host-sets static [sub command] [options] [args]",
 			"",
-			"  This command allows operations on Boundary password-type auth-method resources. Example:",
+			"  This command allows operations on Boundary static-type host-set resources. Example:",
 			"",
-			"    Create a password-type auth-method:",
+			"    Create a static-type host-set:",
 			"",
-			`      $ boundary auth-methods pasword create -name prodops -description "For ProdOps usage"`,
+			`      $ boundary host-sets static create -name prodops -description "For ProdOps usage"`,
 			"",
 			"  Please see the subcommand help for detailed usage information.",
 		})
@@ -70,10 +72,17 @@ func (c *Command) Help() string {
 func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
+	f := set.NewFlagSet("Command Options")
+
 	if len(flagsMap[c.Func]) > 0 {
-		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.AuthMethod.String(), flagsMap[c.Func])
+		common.PopulateCommonFlags(c.Command, f, resource.HostSet.String(), flagsMap[c.Func])
 	}
+
+	f.StringVar(&base.StringVar{
+		Name:   "host-catalog-id",
+		Target: &c.flagHostCatalogId,
+		Usage:  "The host-catalog resource in which to create or update the host-set resource",
+	})
 
 	return set
 }
@@ -87,7 +96,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	if c.Func == "" || c.Func == "password" {
+	if c.Func == "" || c.Func == "static" {
 		return cli.RunResultHelp
 	}
 
@@ -109,43 +118,43 @@ func (c *Command) Run(args []string) int {
 		return 2
 	}
 
-	var opts []authmethods.Option
+	var opts []hostsets.Option
 
 	switch c.FlagName {
 	case "":
 	case "null":
-		opts = append(opts, authmethods.DefaultName())
+		opts = append(opts, hostsets.DefaultName())
 	default:
-		opts = append(opts, authmethods.WithName(c.FlagName))
+		opts = append(opts, hostsets.WithName(c.FlagName))
 	}
 
 	switch c.FlagDescription {
 	case "":
 	case "null":
-		opts = append(opts, authmethods.DefaultDescription())
+		opts = append(opts, hostsets.DefaultDescription())
 	default:
-		opts = append(opts, authmethods.WithDescription(c.FlagDescription))
+		opts = append(opts, hostsets.WithDescription(c.FlagDescription))
 	}
 
-	authmethodClient := authmethods.NewClient(client)
+	hostsetClient := hostsets.NewClient(client)
 
 	var existed bool
-	var method *authmethods.AuthMethod
-	var listedMethods []*authmethods.AuthMethod
+	var set *hostsets.HostSet
+	var listedSets []*hostsets.HostSet
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		method, apiErr, err = authmethodClient.Read(c.Context, c.FlagId, opts...)
+		set, apiErr, err = hostsetClient.Read(c.Context, c.flagHostCatalogId, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = authmethodClient.Delete(c.Context, c.FlagId, opts...)
+		existed, apiErr, err = hostsetClient.Delete(c.Context, c.flagHostCatalogId, c.FlagId, opts...)
 	case "list":
-		listedMethods, apiErr, err = authmethodClient.List(c.Context, opts...)
+		listedSets, apiErr, err = hostsetClient.List(c.Context, c.flagHostCatalogId, opts...)
 	}
 
-	plural := "auth method"
+	plural := "host set"
 	if c.Func == "list" {
-		plural = "auth methods"
+		plural = "host sets"
 	}
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
@@ -176,11 +185,11 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
-			if len(listedMethods) == 0 {
+			if len(listedSets) == 0 {
 				c.UI.Output("null")
 				return 0
 			}
-			b, err := base.JsonFormatter{}.Format(listedMethods)
+			b, err := base.JsonFormatter{}.Format(listedSets)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 				return 1
@@ -188,27 +197,24 @@ func (c *Command) Run(args []string) int {
 			c.UI.Output(string(b))
 
 		case "table":
-			if len(listedMethods) == 0 {
-				c.UI.Output("No auth methods found")
+			if len(listedSets) == 0 {
+				c.UI.Output("No host sets found")
 				return 0
 			}
 			var output []string
 			output = []string{
 				"",
-				"Auth Method information:",
+				"Host Set information:",
 			}
-			for i, m := range listedMethods {
+			for i, m := range listedSets {
 				if i > 0 {
 					output = append(output, "")
 				}
 				if true {
 					output = append(output,
 						fmt.Sprintf("  ID:             %s", m.Id),
-					)
-				}
-				if m.Description != "" {
-					output = append(output,
-						fmt.Sprintf("    Description:  %s", m.Description),
+						fmt.Sprintf("    Version:      %d", m.Version),
+						fmt.Sprintf("    Type:         %s", m.Type),
 					)
 				}
 				if m.Name != "" {
@@ -216,10 +222,9 @@ func (c *Command) Run(args []string) int {
 						fmt.Sprintf("    Name:         %s", m.Name),
 					)
 				}
-				if true {
+				if m.Description != "" {
 					output = append(output,
-						fmt.Sprintf("    Type:         %s", m.Type),
-						fmt.Sprintf("    Version:      %d", m.Version),
+						fmt.Sprintf("    Description:  %s", m.Description),
 					)
 				}
 			}
@@ -230,9 +235,9 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateAuthMethodTableOutput(method))
+		c.UI.Output(generateHostSetTableOutput(set))
 	case "json":
-		b, err := base.JsonFormatter{}.Format(method)
+		b, err := base.JsonFormatter{}.Format(set)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1
