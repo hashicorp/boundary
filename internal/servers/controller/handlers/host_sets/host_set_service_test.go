@@ -165,7 +165,7 @@ func TestList(t *testing.T) {
 			s, err := host_sets.NewService(repoFn)
 			require.NoError(err, "Couldn't create new host set service.")
 
-			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), &pbs.ListHostSetsRequest{HostCatalogId: tc.hostCatalogId})
+			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), &pbs.ListHostSetsRequest{ScopeId: proj.GetPublicId(), HostCatalogId: tc.hostCatalogId})
 			assert.Equal(tc.errCode, status.Code(gErr), "ListHostSets(%q) got error %v, wanted %v", tc.hostCatalogId, gErr, tc.errCode)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostSets(%q) got response %q, wanted %q", tc.hostCatalogId, got, tc.res)
 		})

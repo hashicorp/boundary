@@ -44,13 +44,15 @@ func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 }
 
 func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest) (*pbs.ListHostSetsResponse, error) {
+	if err := validateListRequest(req); err != nil {
+		return nil, err
+	}
+
 	authResults := auth.Verify(ctx)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	if err := validateListRequest(req); err != nil {
-		return nil, err
-	}
+
 	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId())
 	if err != nil {
 		return nil, err
@@ -425,6 +427,9 @@ func validateListRequest(req *pbs.ListHostSetsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
+	if req.GetScopeId() == "" {
+		badFields["scope_id"] = "Required field"
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

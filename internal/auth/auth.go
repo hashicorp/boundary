@@ -185,12 +185,9 @@ func (v *verifier) parseAuthParams() error {
 	splitPath := strings.Split(strings.TrimPrefix(trimmedPath, "v1/"), "/")
 	splitLen := len(splitPath)
 
-	// It must be at least length 1 and the first segment must be "scopes"
-	switch {
-	case splitLen == 0:
+	// It must be at least length 1. If so, figure out new vs. legacy parsing
+	if len(splitPath) == 0 {
 		return fmt.Errorf("parse auth params: invalid path")
-	case splitPath[0] != "scopes":
-		return fmt.Errorf("parse auth params: invalid first segment %q", splitPath[0])
 	}
 
 	for i := 1; i < splitLen; i++ {
@@ -198,6 +195,29 @@ func (v *verifier) parseAuthParams() error {
 			return fmt.Errorf("parse auth params: empty segment found")
 		}
 	}
+
+	switch splitPath[0] {
+	case "auth-methods",
+		"accounts",
+		"roles",
+		"users",
+		"groups",
+		"host-catalogs",
+		"host-sets",
+		"hosts":
+		return v.newstyleAuthParamParsing(splitPath)
+
+	default:
+		// The first segment must be "scopes"
+		if splitPath[0] != "scopes" {
+			return fmt.Errorf("parse auth params: invalid first segment %q", splitPath[0])
+		}
+		return v.legacyAuthParamParsing(splitPath)
+	}
+}
+
+func (v *verifier) legacyAuthParamParsing(splitPath []string) error {
+	splitLen := len(splitPath)
 
 	v.act = action.Unknown
 	v.res = &perms.Resource{
@@ -394,6 +414,97 @@ func (v *verifier) parseAuthParams() error {
 	// If the pin ended up being a scope, nil it out
 	if v.res.Pin != "" && v.res.Pin == v.res.ScopeId {
 		v.res.Pin = ""
+	}
+
+	return nil
+}
+
+func (v *verifier) newstyleAuthParamParsing(splitPath []string) error {
+	splitLen := len(splitPath)
+
+	v.res = new(perms.Resource)
+
+	// ID handling
+	{
+		if splitLen == 2 {
+			v.res.Id = splitPath[1]
+		}
+	}
+
+	// Action handling
+	{
+		v.act = action.Unknown
+		// Handle non-custom types. We'll deal with custom types, including list,
+		// after parsing the path.
+		switch v.requestInfo.Method {
+		case "GET":
+			v.act = action.Read
+		case "POST":
+			v.act = action.Create
+		case "PATCH":
+			v.act = action.Update
+		case "DELETE":
+			v.act = action.Delete
+		default:
+			return fmt.Errorf("parse auth params: unknown method %q", v.requestInfo.Method)
+		}
+
+		// Look for a custom action
+		colonSplit := strings.Split(splitPath[splitLen-1], ":")
+		switch len(colonSplit) {
+		case 1:
+			// No custom action specified
+
+		case 2:
+			// Parse and validate the action, then elide it
+			actStr := colonSplit[len(colonSplit)-1]
+			v.act = action.Map[actStr]
+			if v.act == action.Unknown || v.act == action.All {
+				return fmt.Errorf("parse auth params: unknown action %q", actStr)
+			}
+			// Keep going with the logic without the custom action
+			splitPath[splitLen-1] = colonSplit[0]
+
+		default:
+			return fmt.Errorf("parse auth params: unexpected number of colons in last segment %q", colonSplit[len(colonSplit)-1])
+		}
+
+		// If we're operating on a collection (that is, the ID is blank) and it's a
+		// GET, it's actually a list
+		if v.res.Id == "" && v.act == action.Read {
+			v.act = action.List
+		}
+	}
+
+	// Type handling
+	{
+		// We have the Map variable that we could use but being more explicit is
+		// good; then we don't need to check that we are operating on a resource
+		// type we actually don't understand/allow/is internal only
+		switch splitPath[0] {
+		case "scopes":
+			v.res.Type = resource.Scope
+		case "auth-methods":
+			v.res.Type = resource.AuthMethod
+		case "accounts":
+			v.res.Type = resource.Account
+		case "roles":
+			v.res.Type = resource.Role
+		case "users":
+			v.res.Type = resource.User
+		case "groups":
+			v.res.Type = resource.Group
+		case "host-catalogs":
+			v.res.Type = resource.HostCatalog
+		case "host-sets":
+			v.res.Type = resource.HostSet
+		case "hosts":
+			v.res.Type = resource.Host
+		}
+
+		if v.res.Type == resource.Unknown {
+			return fmt.Errorf("parse auth params: unknown resource type %q", splitPath[0])
+		}
 	}
 
 	return nil
