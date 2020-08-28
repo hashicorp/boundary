@@ -48,7 +48,18 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 		return nil, err
 	}
 
-	authResults := auth.Verify(ctx)
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	hostCatalog, err := repo.LookupCatalog(ctx, req.GetHostCatalogId())
+	if err != nil {
+		return nil, err
+	}
+	if hostCatalog == nil {
+		return nil, handlers.ForbiddenError()
+	}
+	authResults := auth.VerifyNewStyle(ctx, hostCatalog.ScopeId, "")
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}

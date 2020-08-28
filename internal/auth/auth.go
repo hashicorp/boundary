@@ -62,9 +62,12 @@ type RequestInfo struct {
 	Token       string
 	TokenFormat TokenFormat
 
-	// This is used for operations on the scopes collection
-	scopeIdOverride string
-	userIdOverride  string
+	// These are set by the service handlers via options
+	scopeId string
+	pin     string
+
+	// This is used by the scopes collection
+	userIdOverride string
 
 	// The following are useful for tests
 	DisableAuthzFailures bool
@@ -110,6 +113,13 @@ func NewVerifierContext(ctx context.Context,
 	})
 }
 
+// VerifyNewStyle is a transition method for new-style auth verification where
+// the repo supplies the scope and pin. Eventually Verify will not be used
+// directly any more and this can just be renamed to Verify.
+func VerifyNewStyle(ctx context.Context, scopeId, pin string, opt ...Option) (ret VerifyResults) {
+	return Verify(ctx, WithScopeId(scopeId), WithPin(pin))
+}
+
 // Verify takes in a context that has expected parameters as values and runs an
 // authn/authz check. It returns a user ID, the scope ID for the request (which
 // may come from the URL and may come from the token) and whether or not to
@@ -126,7 +136,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	opts := getOpts(opt...)
 	ret.Scope = new(scopes.ScopeInfo)
 	if v.requestInfo.DisableAuthEntirely {
-		ret.Scope.Id = v.requestInfo.scopeIdOverride
+		ret.Scope.Id = v.requestInfo.scopeId
 		switch {
 		case ret.Scope.Id == "global":
 			ret.Scope.Type = "global"
@@ -147,7 +157,8 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	}
 
 	v.ctx = ctx
-	v.requestInfo.scopeIdOverride = opts.withScopeId
+	v.requestInfo.scopeId = opts.withScopeId
+	v.requestInfo.pin = opts.withPin
 	if err := v.parseAuthParams(); err != nil {
 		v.logger.Trace("error reading auth parameters from URL", "url", v.requestInfo.Path, "method", v.requestInfo.Method, "error", err)
 		return
@@ -269,10 +280,10 @@ func (v *verifier) legacyAuthParamParsing(splitPath []string) error {
 		if v.act == action.Read {
 			v.act = action.List
 		}
-		if v.requestInfo.scopeIdOverride == "" {
+		if v.requestInfo.scopeId == "" {
 			return errors.New("parse auth params: missing scope ID information for scopes collection operation")
 		}
-		v.res.ScopeId = v.requestInfo.scopeIdOverride
+		v.res.ScopeId = v.requestInfo.scopeId
 		return nil
 
 	case 2:
@@ -424,13 +435,6 @@ func (v *verifier) newstyleAuthParamParsing(splitPath []string) error {
 
 	v.res = new(perms.Resource)
 
-	// ID handling
-	{
-		if splitLen == 2 {
-			v.res.Id = splitPath[1]
-		}
-	}
-
 	// Action handling
 	{
 		v.act = action.Unknown
@@ -476,6 +480,13 @@ func (v *verifier) newstyleAuthParamParsing(splitPath []string) error {
 		}
 	}
 
+	// ID handling
+	{
+		if splitLen == 2 {
+			v.res.Id = splitPath[1]
+		}
+	}
+
 	// Type handling
 	{
 		// We have the Map variable that we could use but being more explicit is
@@ -505,6 +516,14 @@ func (v *verifier) newstyleAuthParamParsing(splitPath []string) error {
 		if v.res.Type == resource.Unknown {
 			return fmt.Errorf("parse auth params: unknown resource type %q", splitPath[0])
 		}
+	}
+
+	v.res.ScopeId = v.requestInfo.scopeId
+	v.res.Pin = v.requestInfo.pin
+
+	// If the pin ended up being a scope, nil it out
+	if v.res.Pin != "" && v.res.Pin == v.res.ScopeId {
+		v.res.Pin = ""
 	}
 
 	return nil

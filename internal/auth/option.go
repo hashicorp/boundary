@@ -16,6 +16,7 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withScopeId string
+	withPin     string
 	withUserId  string
 	withKms     *kms.Kms
 }
@@ -30,6 +31,12 @@ func getDefaultOptions() options {
 func WithScopeId(id string) Option {
 	return func(o *options) {
 		o.withScopeId = id
+	}
+}
+
+func WithPin(pin string) Option {
+	return func(o *options) {
+		o.withPin = pin
 	}
 }
 
