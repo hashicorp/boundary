@@ -65,55 +65,65 @@ func TestCustom(t *testing.T) {
 }
 
 func TestSet_List(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
-	defer tc.Shutdown()
+	for _, newStyle := range []bool{false, true} {
+		assert, require := assert.New(t), require.New(t)
+		tc := controller.NewTestController(t, nil)
+		defer tc.Shutdown()
 
-	client := tc.Client()
-	_, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(proj.GetPublicId())
+		client := tc.Client()
+		token := tc.Token()
+		_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+		client.SetScopeId(proj.GetPublicId())
 
-	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
-	require.NoError(err)
-	require.Nil(apiErr)
-	require.NotNil(hc)
+		hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
+		require.NoError(err)
+		require.Nil(apiErr)
+		require.NotNil(hc)
 
-	hClient := hostsets.NewClient(client)
+		hClient := hostsets.NewClient(client)
+		var ul []*hostsets.HostSet
 
-	ul, apiErr, err := hClient.List(tc.Context(), hc.Id)
-	assert.NoError(err)
-	assert.Nil(apiErr)
-	assert.Empty(ul)
+		if newStyle {
+			ul, apiErr, err = hClient.List2(tc.Context(), hc.Id)
+		} else {
+			ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
+		}
+		require.NoError(err)
+		require.Nil(apiErr)
+		assert.Empty(ul)
 
-	var expected []*hostsets.HostSet
-	for i := 0; i < 10; i++ {
-		expected = append(expected, &hostsets.HostSet{Name: fmt.Sprint(i)})
+		var expected []*hostsets.HostSet
+		for i := 0; i < 10; i++ {
+			expected = append(expected, &hostsets.HostSet{Name: fmt.Sprint(i)})
+		}
+
+		expected[0], apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName(expected[0].Name))
+		require.NoError(err)
+		require.Nil(apiErr)
+
+		if newStyle {
+			ul, apiErr, err = hClient.List2(tc.Context(), hc.Id)
+		} else {
+			ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
+		}
+		require.NoError(err)
+		require.Nil(apiErr)
+		assert.ElementsMatch(comparableSetSlice(expected[:1]), comparableSetSlice(ul))
+
+		for i := 1; i < 10; i++ {
+			expected[i], apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName(expected[i].Name))
+			require.NoError(err)
+			require.Nil(apiErr)
+		}
+		if newStyle {
+			ul, apiErr, err = hClient.List2(tc.Context(), hc.Id)
+		} else {
+			ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
+		}
+		require.NoError(err)
+		require.Nil(apiErr)
+		assert.ElementsMatch(comparableSetSlice(expected), comparableSetSlice(ul))
 	}
-
-	expected[0], apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName(expected[0].Name))
-	assert.NoError(err)
-	assert.Nil(apiErr)
-
-	ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
-	assert.NoError(err)
-	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableSetSlice(expected[:1]), comparableSetSlice(ul))
-
-	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName(expected[i].Name))
-		assert.NoError(err)
-		assert.Nil(apiErr)
-	}
-	ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
-	require.NoError(err)
-	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableSetSlice(expected), comparableSetSlice(ul))
 }
 
 func comparableSetSlice(in []*hostsets.HostSet) []hostsets.HostSet {
@@ -132,62 +142,86 @@ func comparableSetSlice(in []*hostsets.HostSet) []hostsets.HostSet {
 }
 
 func TestSet_Crud(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
-	defer tc.Shutdown()
+	for _, newStyle := range []bool{true} {
+		assert, require := assert.New(t), require.New(t)
+		tc := controller.NewTestController(t, nil)
+		defer tc.Shutdown()
 
-	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+		client := tc.Client()
+		token := tc.Token()
+		org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+		client.SetScopeId(org.GetPublicId())
+		projClient := client.Clone()
+		projClient.SetScopeId(proj.GetPublicId())
 
-	hc, apiErr, err := hostcatalogs.NewClient(projClient).Create(tc.Context(), "static")
-	require.NoError(err)
-	require.Nil(apiErr)
-	require.NotNil(hc)
+		hc, apiErr, err := hostcatalogs.NewClient(projClient).Create(tc.Context(), "static")
+		require.NoError(err)
+		require.Nil(apiErr)
+		require.NotNil(hc)
 
-	checkHost := func(step string, h *hostsets.HostSet, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
-		require.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
-			t.Errorf("ApiError message: %q", apiErr.Message)
+		checkHost := func(t *testing.T, step string, h *hostsets.HostSet, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
+			t.Helper()
+			require.NoError(err, step)
+			if !assert.Nil(apiErr, step) && apiErr.Message != "" {
+				t.Errorf("ApiError message: %q", apiErr.Message)
+			}
+			assert.NotNil(h, "returned no resource", step)
+			gotName := ""
+			if h.Name != "" {
+				gotName = h.Name
+			}
+			assert.Equal(wantedName, gotName, step)
+			assert.Equal(wantVersion, h.Version)
 		}
-		assert.NotNil(h, "returned no resource", step)
-		gotName := ""
-		if h.Name != "" {
-			gotName = h.Name
+
+		hClient := hostsets.NewClient(projClient)
+
+		var h *hostsets.HostSet
+		if newStyle {
+			h, apiErr, err = hClient.Create2(tc.Context(), hc.Id, hostsets.WithName("foo"))
+		} else {
+			h, apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
 		}
-		assert.Equal(wantedName, gotName, step)
-		assert.Equal(wantVersion, h.Version)
+		checkHost(t, "create", h, apiErr, err, "foo", 1)
+
+		if newStyle {
+			h, apiErr, err = hClient.Read2(tc.Context(), h.Id)
+		} else {
+			h, apiErr, err = hClient.Read(tc.Context(), hc.Id, h.Id)
+		}
+		checkHost(t, "read", h, apiErr, err, "foo", 1)
+
+		if newStyle {
+			h, apiErr, err = hClient.Update2(tc.Context(), h.Id, h.Version, hostsets.WithName("bar"))
+		} else {
+			h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hostsets.WithName("bar"))
+		}
+		checkHost(t, "update", h, apiErr, err, "bar", 2)
+
+		if newStyle {
+			h, apiErr, err = hClient.Update2(tc.Context(), h.Id, h.Version, hostsets.DefaultName())
+		} else {
+			h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hostsets.DefaultName())
+		}
+		checkHost(t, "update", h, apiErr, err, "", 3)
+
+		var existed bool
+		if newStyle {
+			existed, apiErr, err = hClient.Delete2(tc.Context(), h.Id)
+		} else {
+			existed, apiErr, err = hClient.Delete(tc.Context(), hc.Id, h.Id)
+		}
+		assert.NoError(err)
+		assert.True(existed, "Expected existing catalog when deleted, but it wasn't.")
+
+		if newStyle {
+			existed, apiErr, err = hClient.Delete2(tc.Context(), h.Id)
+		} else {
+			existed, apiErr, err = hClient.Delete(tc.Context(), hc.Id, h.Id)
+		}
+		assert.NoError(err)
+		assert.False(existed, "Expected catalog to not exist when deleted, but it did.")
 	}
-
-	hClient := hostsets.NewClient(projClient)
-
-	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
-	checkHost("create", h, apiErr, err, "foo", 1)
-
-	h, apiErr, err = hClient.Read(tc.Context(), hc.Id, h.Id)
-	checkHost("read", h, apiErr, err, "foo", 1)
-
-	h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hostsets.WithName("bar"))
-	checkHost("update", h, apiErr, err, "bar", 2)
-
-	h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hostsets.DefaultName())
-	checkHost("update", h, apiErr, err, "", 3)
-
-	existed, apiErr, err := hClient.Delete(tc.Context(), hc.Id, h.Id)
-	assert.NoError(err)
-	assert.True(existed, "Expected existing catalog when deleted, but it wasn't.")
-
-	existed, apiErr, err = hClient.Delete(tc.Context(), hc.Id, h.Id)
-	assert.NoError(err)
-	assert.False(existed, "Expected catalog to not exist when deleted, but it did.")
 }
 
 // TODO: Get better coverage for expected errors and error formats.

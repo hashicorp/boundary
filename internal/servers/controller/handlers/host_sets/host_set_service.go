@@ -59,7 +59,7 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 	if hostCatalog == nil {
 		return nil, handlers.ForbiddenError()
 	}
-	authResults := auth.VerifyNewStyle(ctx, hostCatalog.ScopeId, "")
+	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -76,13 +76,34 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 
 // GetHostSet implements the interface pbs.HostSetServiceServer.
 func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*pbs.GetHostSetResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
+
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	hostSet, _, err := repo.LookupSet(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	if hostSet == nil {
+		return nil, handlers.ForbiddenError()
+	}
+	hostCatalog, err := repo.LookupCatalog(ctx, hostSet.GetCatalogId())
+	if err != nil {
+		return nil, err
+	}
+	if hostCatalog == nil {
+		return nil, handlers.ForbiddenError()
+	}
+
+	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
 	hc, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
@@ -93,34 +114,72 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 
 // CreateHostSet implements the interface pbs.HostSetServiceServer.
 func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetRequest) (*pbs.CreateHostSetResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	h, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetHostCatalogId(), req.GetItem())
+
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	hcId := req.GetItem().GetHostCatalogId()
+	if hcId == "" {
+		hcId = req.GetHostCatalogId()
+	}
+	hostCatalog, err := repo.LookupCatalog(ctx, hcId)
+	if err != nil {
+		return nil, err
+	}
+	if hostCatalog == nil {
+		return nil, handlers.ForbiddenError()
+	}
+	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	h, err := s.createInRepo(ctx, authResults.Scope.GetId(), hcId, req.GetItem())
 	if err != nil {
 		return nil, err
 	}
 	h.Scope = authResults.Scope
 	return &pbs.CreateHostSetResponse{
 		Item: h,
-		Uri:  fmt.Sprintf("scopes/%s/host-catalogs/%s/host-sets/%s", authResults.Scope.GetId(), req.GetHostCatalogId(), h.GetId()),
+		Uri:  fmt.Sprintf("scopes/%s/host-catalogs/%s/host-sets/%s", authResults.Scope.GetId(), hcId, h.GetId()),
 	}, nil
 }
 
 // UpdateHostSet implements the interface pbs.HostSetServiceServer.
 func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetRequest) (*pbs.UpdateHostSetResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetHostCatalogId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	hostSet, _, err := repo.LookupSet(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	if hostSet == nil {
+		return nil, handlers.ForbiddenError()
+	}
+	hostCatalog, err := repo.LookupCatalog(ctx, hostSet.GetCatalogId())
+	if err != nil {
+		return nil, err
+	}
+	if hostCatalog == nil {
+		return nil, handlers.ForbiddenError()
+	}
+
+	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), hostCatalog.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -130,13 +189,33 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 
 // DeleteHostSet implements the interface pbs.HostSetServiceServer.
 func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetRequest) (*pbs.DeleteHostSetResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	hostSet, _, err := repo.LookupSet(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	if hostSet == nil {
+		return nil, handlers.ForbiddenError()
+	}
+	hostCatalog, err := repo.LookupCatalog(ctx, hostSet.GetCatalogId())
+	if err != nil {
+		return nil, err
+	}
+	if hostCatalog == nil {
+		return nil, handlers.ForbiddenError()
+	}
+
+	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
 	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
@@ -381,8 +460,8 @@ func toProto(in *static.HostSet, hs []*static.Host) *pb.HostSet {
 func validateGetRequest(req *pbs.GetHostSetRequest) error {
 	return handlers.ValidateGetRequest(static.HostSetPrefix, req, func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
-			badFields["host_catalog_id"] = "The field is incorrectly formatted."
+		if !handlers.ValidId(static.HostSetPrefix, req.GetId()) {
+			badFields["id"] = "The field is incorrectly formatted."
 		}
 		return badFields
 	})
@@ -390,15 +469,15 @@ func validateGetRequest(req *pbs.GetHostSetRequest) error {
 
 func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
+		hcId := req.GetItem().GetHostCatalogId()
+		if hcId == "" {
+			hcId = req.GetHostCatalogId()
+		}
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
+		if !handlers.ValidId(static.HostCatalogPrefix, hcId) {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
-
-		if req.GetItem().GetHostCatalogId() != "" {
-			badFields["host_catalog_id"] = "This field is read only."
-		}
-		switch host.SubtypeFromId(req.GetHostCatalogId()) {
+		switch host.SubtypeFromId(hcId) {
 		case host.StaticSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
 				badFields["type"] = "Doesn't match the parent resource's type."
@@ -411,11 +490,8 @@ func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostSetRequest) error {
 	return handlers.ValidateUpdateRequest(static.HostSetPrefix, req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
-			badFields["host_catalog_id"] = "The field is incorrectly formatted."
-		}
-		if req.GetItem().GetHostCatalogId() != "" {
-			badFields["host_catalog_id"] = "This is a read only field and cannot be specified in an update request."
+		if !handlers.ValidId(static.HostSetPrefix, req.GetId()) {
+			badFields["id"] = "The field is incorrectly formatted."
 		}
 		if req.GetItem().GetType() != "" {
 			badFields["type"] = "This is a read only field and cannot be specified in an update request."
@@ -427,8 +503,8 @@ func validateUpdateRequest(req *pbs.UpdateHostSetRequest) error {
 func validateDeleteRequest(req *pbs.DeleteHostSetRequest) error {
 	return handlers.ValidateDeleteRequest(static.HostSetPrefix, req, func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
-			badFields["host_catalog_id"] = "The field is incorrectly formatted."
+		if !handlers.ValidId(static.HostSetPrefix, req.GetId()) {
+			badFields["id"] = "The field is incorrectly formatted."
 		}
 		return badFields
 	})
@@ -439,9 +515,6 @@ func validateListRequest(req *pbs.ListHostSetsRequest) error {
 	if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
 	}
-	if req.GetScopeId() == "" {
-		badFields["scope_id"] = "Required field"
-	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
@@ -450,9 +523,6 @@ func validateListRequest(req *pbs.ListHostSetsRequest) error {
 
 func validateAddRequest(req *pbs.AddHostSetHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
-		badFields["host_catalog_id"] = "The field is incorrectly formatted."
-	}
 	if !handlers.ValidId(static.HostSetPrefix, req.GetId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -470,9 +540,6 @@ func validateAddRequest(req *pbs.AddHostSetHostsRequest) error {
 
 func validateSetRequest(req *pbs.SetHostSetHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
-		badFields["host_catalog_id"] = "The field is incorrectly formatted."
-	}
 	if !handlers.ValidId(static.HostSetPrefix, req.GetId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -487,9 +554,6 @@ func validateSetRequest(req *pbs.SetHostSetHostsRequest) error {
 
 func validateRemoveRequest(req *pbs.RemoveHostSetHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
-		badFields["host_catalog_id"] = "The field is incorrectly formatted."
-	}
 	if !handlers.ValidId(static.HostSetPrefix, req.GetId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}

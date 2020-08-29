@@ -13,7 +13,8 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withScopeId string
+	withScopeId  string
+	withNewStyle bool
 }
 
 func getDefaultOptions() options {
@@ -25,5 +26,11 @@ func getDefaultOptions() options {
 func WithScopeId(id string) Option {
 	return func(o *options) {
 		o.withScopeId = id
+	}
+}
+
+func WithNewStyle() Option {
+	return func(o *options) {
+		o.withNewStyle = true
 	}
 }

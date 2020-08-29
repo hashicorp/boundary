@@ -29,7 +29,7 @@ service HostSetService {
       get: "/v1/host-sets/{id}"
       response_body: "item"
       additional_bindings {
-        get: "/v1/scopes/{scope_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
+        get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
         response_body: "item"
       }
     };
@@ -47,7 +47,7 @@ service HostSetService {
     option (google.api.http) = {
       get: "/v1/host-sets"
       additional_bindings {
-        get: "/v1/scopes/{scope_id}/host-catalogs/{host_catalog_id}/host-sets"
+        get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets"
       }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -67,7 +67,7 @@ service HostSetService {
       body: "item"
       response_body: "item"
       additional_bindings {
-        post: "/v1/scopes/{scope_id}/host-catalogs/{host_catalog_id}/host-sets"
+        post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets"
         body: "item"
         response_body: "item"
       }
@@ -91,7 +91,7 @@ service HostSetService {
       body: "item"
       response_body: "item"
       additional_bindings: {
-        patch: "/v1/scopes/{scope_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
+        patch: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
         body: "item"
         response_body: "item"
       }
@@ -110,7 +110,7 @@ service HostSetService {
     option (google.api.http) = {
       delete: "/v1/host-sets/{id}"
       additional_bindings: {
-        delete: "/v1/scopes/{scope_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
+        delete: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
       }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -130,7 +130,7 @@ service HostSetService {
       body: "*"
       response_body: "item"
       additional_bindings: {
-        post: "/v1/scopes/{scope_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts"
+        post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts"
         body: "*"
         response_body: "item"
       }
@@ -153,7 +153,7 @@ service HostSetService {
       body: "*"
       response_body: "item"
       additional_bindings: {
-        post: "/v1/scopes/{scope_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:set-hosts"
+        post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:set-hosts"
         body: "*"
         response_body: "item"
       }
@@ -174,7 +174,7 @@ service HostSetService {
       body: "*"
       response_body: "item"
       additional_bindings: {
-        post: "/v1/scopes/{scope_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts"
+        post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts"
         body: "*"
         response_body: "item"
       }
@@ -186,10 +186,9 @@ service HostSetService {
 }
 
 message GetHostSetRequest {
-  string scope_id = 1;
-  string host_catalog_id = 2 [json_name="host_catalog_id"];
-  string id = 3;
-  string view = 4;
+  string host_catalog_id = 1 [json_name="host_catalog_id"];
+  string id = 2;
+  string view = 3;
 }
 
 message GetHostSetResponse {
@@ -197,9 +196,8 @@ message GetHostSetResponse {
 }
 
 message ListHostSetsRequest {
-  string scope_id = 1;
-  string host_catalog_id = 2 [json_name="host_catalog_id"];
-  string view = 3;
+  string host_catalog_id = 1 [json_name="host_catalog_id"];
+  string view = 2;
 }
 
 message ListHostSetsResponse {
@@ -207,9 +205,8 @@ message ListHostSetsResponse {
 }
 
 message CreateHostSetRequest {
-  string scope_id = 1;
-  string host_catalog_id = 2 [json_name="host_catalog_id"];
-  api.resources.hostsets.v1.HostSet item = 3;
+  string host_catalog_id = 1 [json_name="host_catalog_id"];
+  api.resources.hostsets.v1.HostSet item = 2;
 }
 
 message CreateHostSetResponse {
@@ -218,11 +215,10 @@ message CreateHostSetResponse {
 }
 
 message UpdateHostSetRequest {
-  string scope_id = 1;
-  string host_catalog_id = 2 [json_name="host_catalog_id"];
-  string id = 3;
-  api.resources.hostsets.v1.HostSet item = 4;
-  google.protobuf.FieldMask update_mask = 5;
+  string host_catalog_id = 1 [json_name="host_catalog_id"];
+  string id = 2;
+  api.resources.hostsets.v1.HostSet item = 3;
+  google.protobuf.FieldMask update_mask = 4;
 }
 
 message UpdateHostSetResponse {
@@ -230,9 +226,8 @@ message UpdateHostSetResponse {
 }
 
 message DeleteHostSetRequest {
-  string scope_id = 1;
-  string host_catalog_id = 2 [json_name="host_catalog_id"];
-  string id = 3;
+  string host_catalog_id = 1 [json_name="host_catalog_id"];
+  string id = 2;
 }
 
 message DeleteHostSetResponse {
@@ -240,15 +235,14 @@ message DeleteHostSetResponse {
 }
 
 message AddHostSetHostsRequest {
-  string scope_id = 1;
-  string host_catalog_id = 2 [json_name="host_catalog_id"];
-  string id = 3;
-  uint32 version = 4;
+  string host_catalog_id = 1 [json_name="host_catalog_id"];
+  string id = 2;
+  uint32 version = 3;
 
   // A list of host IDs which will be added to this host set. Each host
   // referenced here must be a child of the same host catalog that this host
   // set is a child of.
-  repeated string host_ids = 5;
+  repeated string host_ids = 4;
 }
 
 message AddHostSetHostsResponse {
@@ -256,15 +250,14 @@ message AddHostSetHostsResponse {
 }
 
 message SetHostSetHostsRequest {
-  string scope_id = 1;
-  string host_catalog_id = 2 [json_name="host_catalog_id"];
-  string id = 3;
-  uint32 version = 4;
+  string host_catalog_id = 1 [json_name="host_catalog_id"];
+  string id = 2;
+  uint32 version = 3;
 
   // A list of host IDs which will be set on this host set. Each host
   // referenced here must be a child of the same host catalog that this host
   // set is a child of.
-  repeated string host_ids = 5;
+  repeated string host_ids = 4;
 }
 
 message SetHostSetHostsResponse {
@@ -272,15 +265,14 @@ message SetHostSetHostsResponse {
 }
 
 message RemoveHostSetHostsRequest {
-  string scope_id = 1;
-  string host_catalog_id = 2 [json_name="host_catalog_id"];
+  string host_catalog_id = 1 [json_name="host_catalog_id"];
   // This host set's id.
-  string id = 3;
-  uint32 version = 4;
+  string id = 2;
+  uint32 version = 3;
 
   // A list of host IDs which should not be in the host set when this request
   // returns.
-  repeated string host_ids = 5;
+  repeated string host_ids = 4;
 }
 
 message RemoveHostSetHostsResponse {

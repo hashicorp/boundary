@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -15,6 +17,13 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/jinzhu/gorm"
+	"github.com/kr/pretty"
+)
+
+const (
+	DefaultTestAuthMethodId = "ampw_1234567890"
+	DefaultTestLoginName    = "user"
+	DefaultTestPassword     = "passpass"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -30,6 +39,7 @@ type TestController struct {
 	ctx          context.Context
 	cancel       context.CancelFunc
 	name         string
+	opts         *TestControllerOpts
 }
 
 // Controller returns the underlying controller
@@ -83,6 +93,28 @@ func (tc *TestController) ClusterAddrs() []string {
 
 func (tc *TestController) DbConn() *gorm.DB {
 	return tc.b.Database
+}
+
+func (tc *TestController) Token() *authtokens.AuthToken {
+	if tc.opts.DisableAuthMethodCreation {
+		tc.t.Error("no default auth method ID configured")
+		return nil
+	}
+	token, apiErr, err := authmethods.NewClient(tc.Client()).Authenticate(
+		tc.Context(),
+		tc.b.DevAuthMethodId,
+		tc.b.DevLoginName,
+		tc.b.DevPassword,
+	)
+	if err != nil {
+		tc.t.Error(fmt.Errorf("error logging in: %w", err))
+		return nil
+	}
+	if apiErr != nil {
+		tc.t.Error(fmt.Errorf("api err from logging in: %s", pretty.Sprint(apiErr)))
+		return nil
+	}
+	return token
 }
 
 func (tc *TestController) addrs(purpose string) []string {
@@ -220,14 +252,15 @@ type TestControllerOpts struct {
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	if opts == nil {
+		opts = new(TestControllerOpts)
+	}
+
 	tc := &TestController{
 		t:      t,
 		ctx:    ctx,
 		cancel: cancel,
-	}
-
-	if opts == nil {
-		opts = new(TestControllerOpts)
+		opts:   opts,
 	}
 
 	// Base server
@@ -248,12 +281,18 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	if opts.DefaultAuthMethodId != "" {
 		tc.b.DevAuthMethodId = opts.DefaultAuthMethodId
+	} else {
+		tc.b.DevAuthMethodId = DefaultTestAuthMethodId
 	}
 	if opts.DefaultLoginName != "" {
 		tc.b.DevLoginName = opts.DefaultLoginName
+	} else {
+		tc.b.DevLoginName = DefaultTestLoginName
 	}
 	if opts.DefaultPassword != "" {
 		tc.b.DevPassword = opts.DefaultPassword
+	} else {
+		tc.b.DevPassword = DefaultTestPassword
 	}
 
 	// Start a logger
