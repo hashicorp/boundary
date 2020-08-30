@@ -16,7 +16,6 @@ import (
 
 // TODO (jimlambrt 8/2020) define tests for immutable fields in the remaining
 // kms tables:
-//	kms_database_key
 //	kms_database_key_version
 //	kms_oplog_key
 //	kms_oplog_key_version
@@ -174,6 +173,75 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*kms.RootKey), after.(*kms.RootKey)))
+
+		})
+	}
+}
+
+func TestDatabaseKey_ImmutableFields(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+
+	wrapper := db.TestWrapper(t)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocDatabaseKey()).Error)
+	rk := kms.TestRootKey(t, conn, org.PublicId)
+	new := kms.TestDatabaseKey(t, conn, rk.PrivateId)
+
+	var tests = []struct {
+		name      string
+		update    *kms.DatabaseKey
+		fieldMask []string
+	}{
+		{
+			name: "private_id",
+			update: func() *kms.DatabaseKey {
+				k := new.Clone().(*kms.DatabaseKey)
+				k.PrivateId = "o_thisIsNotAValidId"
+				return k
+			}(),
+			fieldMask: []string{"PrivateId"},
+		},
+		{
+			name: "create time",
+			update: func() *kms.DatabaseKey {
+				k := new.Clone().(*kms.DatabaseKey)
+				k.CreateTime = &ts
+				return k
+			}(),
+			fieldMask: []string{"CreateTime"},
+		},
+		{
+			name: "root_key_id",
+			update: func() *kms.DatabaseKey {
+				k := new.Clone().(*kms.DatabaseKey)
+				k.RootKeyId = "o_thisIsNotAValidId"
+				return k
+			}(),
+			fieldMask: []string{"ScopeId"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			orig := new.Clone()
+			err := rw.LookupById(context.Background(), orig)
+			require.NoError(err)
+
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			require.Error(err)
+			assert.Equal(0, rowsUpdated)
+
+			after := new.Clone()
+			err = rw.LookupById(context.Background(), after)
+			require.NoError(err)
+
+			assert.True(proto.Equal(orig.(*kms.DatabaseKey), after.(*kms.DatabaseKey)))
 
 		})
 	}
