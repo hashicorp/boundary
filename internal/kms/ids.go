@@ -7,8 +7,10 @@ import (
 )
 
 const (
-	RootKeyPrefix        = "krk"
-	RootKeyVersionPrefix = "krkv"
+	RootKeyPrefix            = "krk"
+	RootKeyVersionPrefix     = "krkv"
+	DatabaseKeyPrefix        = "kdk"
+	DatabaseKeyVersionPrefix = "kdkv"
 )
 
 func newRootKeyId() (string, error) {
@@ -23,6 +25,22 @@ func newRootKeyVersionId() (string, error) {
 	id, err := db.NewPublicId(RootKeyVersionPrefix)
 	if err != nil {
 		return "", fmt.Errorf("new root key version id: %w", err)
+	}
+	return id, nil
+}
+
+func newDatabaseKeyId() (string, error) {
+	id, err := db.NewPublicId(DatabaseKeyPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new database key id: %w", err)
+	}
+	return id, nil
+}
+
+func newDatabaseKeyVersionId() (string, error) {
+	id, err := db.NewPublicId(DatabaseKeyVersionPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new database key version id: %w", err)
 	}
 	return id, nil
 }

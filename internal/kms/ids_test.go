@@ -20,4 +20,14 @@ func Test_Ids(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, RootKeyVersionPrefix+"_"))
 	})
+	t.Run("kdk", func(t *testing.T) {
+		id, err := newDatabaseKeyId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, DatabaseKeyPrefix+"_"))
+	})
+	t.Run("kdkv", func(t *testing.T) {
+		id, err := newDatabaseKeyVersionId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, DatabaseKeyVersionPrefix+"_"))
+	})
 }
