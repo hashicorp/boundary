@@ -53,3 +53,37 @@ func TestKms(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper) *Kms {
 	require.NoError(err)
 	return kms
 }
+
+func TestDatabaseKey(t *testing.T, conn *gorm.DB, rootKeyId string) *DatabaseKey {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocDatabaseKey()).Error)
+	k, err := NewDatabaseKey(rootKeyId)
+	require.NoError(err)
+	id, err := newDatabaseKeyId()
+	require.NoError(err)
+	k.PrivateId = id
+	k.RootKeyId = rootKeyId
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestDatabaseKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapping.Wrapper, databaseKeyId string, key []byte) *DatabaseKeyVersion {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	require.NotEmpty(rootKeyVersionId)
+	k, err := NewDatabaseKeyVersion(databaseKeyId, key, rootKeyVersionId)
+	require.NoError(err)
+	id, err := newDatabaseKeyVersionId()
+	require.NoError(err)
+	k.PrivateId = id
+	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)
+	require.NoError(err)
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
