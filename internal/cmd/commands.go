@@ -310,6 +310,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "update",
 			}, nil
 		},
+		"host-sets add-hosts": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-hosts",
+			}, nil
+		},
+		"host-sets remove-hosts": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-hosts",
+			}, nil
+		},
+		"host-sets set-hosts": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-hosts",
+			}, nil
+		},
 
 		"hosts create": func() (cli.Command, error) {
 			return &hosts.CreateCommand{
