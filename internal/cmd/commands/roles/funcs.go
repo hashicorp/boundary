@@ -86,55 +86,54 @@ func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
 	}
 }
 
-func generateRoleTableOutput(role *roles.Role) string {
-	var output []string
-	if true {
-		output = []string{
-			"",
-			"Role information:",
-			fmt.Sprintf("  ID:               %s", role.Id),
-			fmt.Sprintf("  Version:          %d", role.Version),
-			fmt.Sprintf("  Created At:       %s", role.CreatedTime.Local().Format(time.RFC3339)),
-			fmt.Sprintf("  Updated At:       %s", role.UpdatedTime.Local().Format(time.RFC3339)),
-		}
+func generateRoleTableOutput(in *roles.Role) string {
+	var ret []string
+
+	nonAttributeMap := map[string]interface{}{
+		"ID":           in.Id,
+		"Version":      in.Version,
+		"Created Time": in.CreatedTime.Local().Format(time.RFC3339),
+		"Updated Time": in.UpdatedTime.Local().Format(time.RFC3339),
 	}
-	if role.Name != "" {
-		output = append(output,
-			fmt.Sprintf("  Name:             %s", role.Name),
-		)
+
+	if in.Name != "" {
+		nonAttributeMap["Name"] = in.Name
 	}
-	if role.Description != "" {
-		output = append(output,
-			fmt.Sprintf("  Description:      %s", role.Description),
-		)
+	if in.Description != "" {
+		nonAttributeMap["Description"] = in.Description
 	}
-	if role.GrantScopeId != "" {
-		output = append(output,
-			fmt.Sprintf("  Grant Scope ID:   %s", role.GrantScopeId),
-		)
+	if in.GrantScopeId != "" {
+		nonAttributeMap["Grant Scope ID"] = in.GrantScopeId
 	}
-	if len(role.Principals) > 0 {
-		output = append(output,
+
+	ret = append(ret, "", "Role information:")
+
+	ret = append(ret,
+		base.WrapMap(2, 0, nonAttributeMap),
+	)
+
+	if len(in.Principals) > 0 {
+		ret = append(ret,
 			fmt.Sprintf("  Principals:       %s", ""),
 		)
 	}
-	for _, principal := range role.Principals {
-		output = append(output,
+	for _, principal := range in.Principals {
+		ret = append(ret,
 			fmt.Sprintf("    ID:             %s", principal.Id),
 			fmt.Sprintf("      Type:         %s", principal.Type),
 			fmt.Sprintf("      Scope ID:     %s", principal.ScopeId),
 		)
 	}
-	if len(role.Grants) > 0 {
-		output = append(output,
+	if len(in.Grants) > 0 {
+		ret = append(ret,
 			fmt.Sprintf("  Canonical Grants: %s", ""),
 		)
 	}
-	for _, grant := range role.Grants {
-		output = append(output,
+	for _, grant := range in.Grants {
+		ret = append(ret,
 			fmt.Sprintf("    %s", grant.Canonical),
 		)
 
 	}
-	return base.WrapForHelpText(output)
+	return base.WrapForHelpText(ret)
 }
