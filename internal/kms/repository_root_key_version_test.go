@@ -129,7 +129,10 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				key: kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key")),
+				key: func() *kms.RootKeyVersion {
+					k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+					return k
+				}(),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -247,7 +250,8 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 			require.NoError(conn.Where("1=1").Delete(kms.AllocRootKeyVersion()).Error)
 			testKeys := []*kms.RootKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
-				testKeys = append(testKeys, kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key")))
+				k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+				testKeys = append(testKeys, k)
 			}
 			assert.Equal(tt.createCnt, len(testKeys))
 			got, err := repo.LatestRootKeyVersion(context.Background(), tt.keyWrapper, rk.PrivateId)
@@ -349,7 +353,8 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			require.NoError(conn.Where("1=1").Delete(kms.AllocRootKeyVersion()).Error)
 			testRootKeyVersions := []*kms.RootKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
-				testRootKeyVersions = append(testRootKeyVersions, kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key")))
+				k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+				testRootKeyVersions = append(testRootKeyVersions, k)
 			}
 			assert.Equal(tt.createCnt, len(testRootKeyVersions))
 			got, err := repo.ListRootKeyVersions(context.Background(), tt.args.keyWrapper, tt.args.rootKeyId, tt.args.opt...)

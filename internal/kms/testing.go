@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
@@ -25,10 +26,12 @@ func TestRootKey(t *testing.T, conn *gorm.DB, scopeId string) *RootKey {
 	return k
 }
 
-func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, rootId string, key []byte) *RootKeyVersion {
+func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, rootId string) (kv *RootKeyVersion, kvWrapper wrapping.Wrapper) {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
+	rootKeyVersionWrapper := db.TestWrapper(t)
+	key := rootKeyVersionWrapper.(*aead.Wrapper).GetKeyBytes()
 	k, err := NewRootKeyVersion(rootId, key)
 	require.NoError(err)
 	id, err := newRootKeyVersionId()
@@ -38,7 +41,11 @@ func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, r
 	require.NoError(err)
 	err = rw.Create(context.Background(), k)
 	require.NoError(err)
-	return k
+	_, err = rootKeyVersionWrapper.(*aead.Wrapper).SetConfig(map[string]string{
+		"key_id": k.GetPrivateId(),
+	})
+	require.NoError(err)
+	return k, rootKeyVersionWrapper
 }
 
 func TestKms(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper) *Kms {

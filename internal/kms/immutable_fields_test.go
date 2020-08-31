@@ -34,7 +34,7 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKeyVersion()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
-	new := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
+	new, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 
 	var tests = []struct {
 		name      string
