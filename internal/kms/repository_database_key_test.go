@@ -121,7 +121,7 @@ func TestRepository_CreateDatabaseKey(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(dk.CreateTime)
-			foundKey, err := repo.LookupDatabaseKey(context.Background(), tt.args.keyWrapper, dk.PrivateId)
+			foundKey, err := repo.LookupDatabaseKey(context.Background(), dk.PrivateId)
 			assert.NoError(err)
 			assert.True(proto.Equal(foundKey, dk))
 
@@ -220,7 +220,7 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundKey, err := repo.LookupDatabaseKey(context.Background(), wrapper, tt.args.key.PrivateId)
+			foundKey, err := repo.LookupDatabaseKey(context.Background(), tt.args.key.PrivateId)
 			assert.Error(err)
 			assert.Nil(foundKey)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))

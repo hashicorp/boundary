@@ -11,7 +11,7 @@ import (
 
 // CreateDatabaseKey inserts into the repository and returns the new database key and
 // database key version. There are no valid options at this time.
-func (r *Repository) CreateDatabaseKey(ctx context.Context, keyWrapper wrapping.Wrapper, key []byte, opt ...Option) (*DatabaseKey, *DatabaseKeyVersion, error) {
+func (r *Repository) CreateDatabaseKey(ctx context.Context, rkvWrapper wrapping.Wrapper, key []byte, opt ...Option) (*DatabaseKey, *DatabaseKeyVersion, error) {
 	var returnedDk, returnedDv interface{}
 	_, err := r.writer.DoTx(
 		ctx,
@@ -19,7 +19,7 @@ func (r *Repository) CreateDatabaseKey(ctx context.Context, keyWrapper wrapping.
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			if returnedDk, returnedDv, err = CreateDatabaseKeyTx(ctx, reader, w, keyWrapper, key); err != nil {
+			if returnedDk, returnedDv, err = CreateDatabaseKeyTx(ctx, reader, w, rkvWrapper, key); err != nil {
 				return err
 			}
 			return nil
@@ -34,14 +34,14 @@ func (r *Repository) CreateDatabaseKey(ctx context.Context, keyWrapper wrapping.
 // CreateDatabaseKeyTx inserts into the db (via db.Writer) and returns the new database key
 // and database key version. This function encapsulates all the work required within
 // a db.TxHandler and allows this capability to be shared with the iam repo.
-func CreateDatabaseKeyTx(ctx context.Context, r db.Reader, w db.Writer, keyWrapper wrapping.Wrapper, key []byte) (*DatabaseKey, *DatabaseKeyVersion, error) {
-	if keyWrapper == nil {
+func CreateDatabaseKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper wrapping.Wrapper, key []byte) (*DatabaseKey, *DatabaseKeyVersion, error) {
+	if rkvWrapper == nil {
 		return nil, nil, fmt.Errorf("create database key: missing key wrapper: %w", db.ErrInvalidParameter)
 	}
 	if len(key) == 0 {
 		return nil, nil, fmt.Errorf("create database key: missing key: %w", db.ErrInvalidParameter)
 	}
-	rootKeyVersionId := keyWrapper.KeyID()
+	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
 		return nil, nil, fmt.Errorf("create database key: root key id %s doesn't start with prefix %s: %w", rootKeyVersionId, RootKeyVersionPrefix, db.ErrInvalidParameter)
@@ -72,7 +72,7 @@ func CreateDatabaseKeyTx(ctx context.Context, r db.Reader, w db.Writer, keyWrapp
 	dv.DatabaseKeyId = dk.PrivateId
 	dv.RootKeyVersionId = rootKeyVersionId
 	dv.Key = key
-	if err := dv.Encrypt(ctx, keyWrapper); err != nil {
+	if err := dv.Encrypt(ctx, rkvWrapper); err != nil {
 		return nil, nil, fmt.Errorf("create database key: %w", err)
 	}
 
@@ -90,12 +90,9 @@ func CreateDatabaseKeyTx(ctx context.Context, r db.Reader, w db.Writer, keyWrapp
 
 // LookupDatabaseKey will look up a key in the repository.  If the key is not
 // found, it will return nil, nil.
-func (r *Repository) LookupDatabaseKey(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, opt ...Option) (*DatabaseKey, error) {
+func (r *Repository) LookupDatabaseKey(ctx context.Context, privateId string, opt ...Option) (*DatabaseKey, error) {
 	if privateId == "" {
 		return nil, fmt.Errorf("lookup database key: missing private id: %w", db.ErrInvalidParameter)
-	}
-	if keyWrapper == nil {
-		return nil, fmt.Errorf("lookup database key: missing key wrapper: %w", db.ErrInvalidParameter)
 	}
 	k := AllocDatabaseKey()
 	k.PrivateId = privateId
