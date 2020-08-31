@@ -1,4 +1,4 @@
-package authmethods_test
+package accounts_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -29,7 +29,7 @@ func TestAccounts_List(t *testing.T) {
 	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
-	accountClient := authmethods.NewAccountsClient(client)
+	accountClient := accounts.NewClient(client)
 
 	expected, apiErr, err := accountClient.List(tc.Context(), amId)
 	assert.NoError(err)
@@ -37,9 +37,9 @@ func TestAccounts_List(t *testing.T) {
 	// A default account is created when a test controller is started.
 	assert.Len(expected, 1)
 
-	expected = append(expected, &authmethods.Account{Attributes: map[string]interface{}{"login_name": "loginname1"}})
+	expected = append(expected, &accounts.Account{Attributes: map[string]interface{}{"login_name": "loginname1"}})
 
-	expected[1], apiErr, err = accountClient.Create(tc.Context(), amId, authmethods.WithPasswordAccountLoginName(expected[1].Attributes["login_name"].(string)))
+	expected[1], apiErr, err = accountClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName(expected[1].Attributes["login_name"].(string)))
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
@@ -49,7 +49,7 @@ func TestAccounts_List(t *testing.T) {
 	assert.ElementsMatch(comparableSlice(expected[:2]), comparableSlice(ul))
 
 	for i := 2; i < 10; i++ {
-		newAcct, apiErr, err := accountClient.Create(tc.Context(), amId, authmethods.WithPasswordAccountLoginName(fmt.Sprintf("loginname%d", i)))
+		newAcct, apiErr, err := accountClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName(fmt.Sprintf("loginname%d", i)))
 		expected = append(expected, newAcct)
 		assert.NoError(err)
 		assert.Nil(apiErr)
@@ -60,10 +60,10 @@ func TestAccounts_List(t *testing.T) {
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))
 }
 
-func comparableSlice(in []*authmethods.Account) []authmethods.Account {
-	var filtered []authmethods.Account
+func comparableSlice(in []*accounts.Account) []accounts.Account {
+	var filtered []accounts.Account
 	for _, i := range in {
-		p := authmethods.Account{
+		p := accounts.Account{
 			Id:          i.Id,
 			Name:        i.Name,
 			Description: i.Description,
@@ -91,9 +91,9 @@ func TestAccount_Crud(t *testing.T) {
 	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
-	accountClient := authmethods.NewAccountsClient(client)
+	accountClient := accounts.NewClient(client)
 
-	checkAccount := func(step string, u *authmethods.Account, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
+	checkAccount := func(step string, u *accounts.Account, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
 		assert.NoError(err, step)
 		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
 			t.Errorf("ApiError message: %q", apiErr.Message)
@@ -107,16 +107,16 @@ func TestAccount_Crud(t *testing.T) {
 		assert.EqualValues(wantedVersion, u.Version)
 	}
 
-	u, apiErr, err := accountClient.Create(tc.Context(), amId, authmethods.WithName("foo"), authmethods.WithPasswordAccountLoginName("loginname"))
+	u, apiErr, err := accountClient.Create(tc.Context(), amId, accounts.WithName("foo"), accounts.WithPasswordAccountLoginName("loginname"))
 	checkAccount("create", u, apiErr, err, "foo", 1)
 
 	u, apiErr, err = accountClient.Read(tc.Context(), amId, u.Id)
 	checkAccount("read", u, apiErr, err, "foo", 1)
 
-	u, apiErr, err = accountClient.Update(tc.Context(), amId, u.Id, u.Version, authmethods.WithName("bar"))
+	u, apiErr, err = accountClient.Update(tc.Context(), amId, u.Id, u.Version, accounts.WithName("bar"))
 	checkAccount("update", u, apiErr, err, "bar", 2)
 
-	u, apiErr, err = accountClient.Update(tc.Context(), amId, u.Id, u.Version, authmethods.DefaultName())
+	u, apiErr, err = accountClient.Update(tc.Context(), amId, u.Id, u.Version, accounts.DefaultName())
 	checkAccount("update", u, apiErr, err, "", 3)
 
 	existed, _, err := accountClient.Delete(tc.Context(), amId, u.Id)
@@ -145,7 +145,7 @@ func TestAccount_CustomMethods(t *testing.T) {
 	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
-	accountClient := authmethods.NewAccountsClient(client)
+	accountClient := accounts.NewClient(client)
 
 	al, apiErr, err := accountClient.List(tc.Context(), amId)
 	require.NoError(err)
@@ -182,15 +182,15 @@ func TestAccount_Errors(t *testing.T) {
 	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
-	accountClient := authmethods.NewAccountsClient(client)
+	accountClient := accounts.NewClient(client)
 
-	u, apiErr, err := accountClient.Create(tc.Context(), amId, authmethods.WithPasswordAccountLoginName("first"))
+	u, apiErr, err := accountClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName("first"))
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.NotNil(u)
 
 	// Create another resource with the same name.
-	_, apiErr, err = accountClient.Create(tc.Context(), amId, authmethods.WithPasswordAccountLoginName("first"))
+	_, apiErr, err = accountClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName("first"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 

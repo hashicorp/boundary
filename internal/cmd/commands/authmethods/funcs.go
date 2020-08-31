@@ -59,7 +59,7 @@ func generateAuthMethodTableOutput(in *authmethods.AuthMethod) string {
 		}
 	}
 
-	ret = append(ret, "", "User information:")
+	ret = append(ret, "", "Auth method information:")
 
 	ret = append(ret,
 		// We do +2 because there is another +2 offset for attributes below

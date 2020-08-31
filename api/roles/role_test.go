@@ -47,7 +47,7 @@ func TestCustom(t *testing.T) {
 		},
 	}
 
-	user, apiErr, err := users.NewUsersClient(client).Create(tc.Context())
+	user, apiErr, err := users.NewClient(client).Create(tc.Context())
 	require.NoError(err)
 	require.Nil(apiErr)
 
@@ -69,12 +69,12 @@ func TestCustom(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			g, apiErr, err := groups.NewGroupsClient(tt.scopeClient).Create(tc.Context())
+			g, apiErr, err := groups.NewClient(tt.scopeClient).Create(tc.Context())
 			require.NoError(err)
 			require.Nil(apiErr)
 			require.NotNil(g)
 
-			rc := roles.NewRolesClient(tt.scopeClient)
+			rc := roles.NewClient(tt.scopeClient)
 			var version uint32 = 1
 
 			r, apiErr, err := rc.Create(tc.Context(), roles.WithName("foo"))
@@ -162,7 +162,7 @@ func TestRole_List(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			roleClient := roles.NewRolesClient(tt.scopeClient)
+			roleClient := roles.NewClient(tt.scopeClient)
 			p1, apiErr, err := roleClient.List(tc.Context())
 			require.NoError(err)
 			assert.Nil(apiErr)
@@ -257,7 +257,7 @@ func TestRole_Crud(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			roleClient := roles.NewRolesClient(tt.scopeClient)
+			roleClient := roles.NewClient(tt.scopeClient)
 			g, apiErr, err := roleClient.Create(tc.Context(), roles.WithName("foo"))
 			checkRole("create", g, apiErr, err, "foo", 1)
 
@@ -316,7 +316,7 @@ func TestRole_Errors(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			roleClient := roles.NewRolesClient(tt.scopeClient)
+			roleClient := roles.NewClient(tt.scopeClient)
 			u, apiErr, err := roleClient.Create(tc.Context(), roles.WithName("first"))
 			require.NoError(err)
 			assert.Nil(apiErr)

@@ -172,7 +172,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           }
         },
@@ -188,7 +188,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           }
         ],
@@ -205,7 +205,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           }
         },
@@ -269,7 +269,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           }
         },
@@ -291,7 +291,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           },
           {
@@ -318,7 +318,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           }
         },
@@ -357,7 +357,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           }
         },
@@ -872,7 +872,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
           }
         },
@@ -882,7 +882,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
           }
         ],
@@ -928,7 +928,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           }
         },
@@ -944,7 +944,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           }
         ],
@@ -961,7 +961,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           }
         },
@@ -1025,7 +1025,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           }
         },
@@ -1047,7 +1047,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           },
           {
@@ -1074,7 +1074,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           }
         },
@@ -1113,7 +1113,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           }
         },
@@ -1153,7 +1153,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           }
         },
@@ -1368,7 +1368,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
           }
         },
@@ -1420,7 +1420,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
           }
         },
@@ -1436,7 +1436,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
           },
           {
@@ -2285,7 +2285,7 @@
     }
   },
   "definitions": {
-    "controller.api.resources.authmethods.v1.Account": {
+    "controller.api.resources.accounts.v1.Account": {
       "type": "object",
       "properties": {
         "id": {
@@ -2515,6 +2515,55 @@
         }
       }
     },
+    "controller.api.resources.hostcatalogs.v1.HostCatalog": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the host\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated\nOutput only.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has."
+        },
+        "type": {
+          "type": "string",
+          "title": "The type of the resource, to help differentiate schemas"
+        },
+        "attributes": {
+          "type": "object",
+          "title": "Attributes specific to the catalog type"
+        }
+      },
+      "title": "HostCatalog manages Hosts and HostSets"
+    },
     "controller.api.resources.hosts.v1.Host": {
       "type": "object",
       "properties": {
@@ -2576,56 +2625,7 @@
       },
       "title": "Host contains all fields related to a Host resource"
     },
-    "controller.api.resources.hosts.v1.HostCatalog": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "The ID of the host\nOutput only.",
-          "readOnly": true
-        },
-        "scope": {
-          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
-          "readOnly": true
-        },
-        "name": {
-          "type": "string",
-          "title": "Optional name for identification purposes"
-        },
-        "description": {
-          "type": "string",
-          "title": "Optional user-set description for identification purposes"
-        },
-        "created_time": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
-          "readOnly": true
-        },
-        "updated_time": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The time this resource was last updated\nOutput only.",
-          "readOnly": true
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has."
-        },
-        "type": {
-          "type": "string",
-          "title": "The type of the resource, to help differentiate schemas"
-        },
-        "attributes": {
-          "type": "object",
-          "title": "Attributes specific to the catalog type"
-        }
-      },
-      "title": "HostCatalog manages Hosts and HostSets"
-    },
-    "controller.api.resources.hosts.v1.HostSet": {
+    "controller.api.resources.hostsets.v1.HostSet": {
       "type": "object",
       "properties": {
         "id": {
@@ -3067,7 +3067,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+          "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
         }
       }
     },
@@ -3202,7 +3202,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+          "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
         }
       }
     },
@@ -3213,7 +3213,7 @@
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+          "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
         }
       }
     },
@@ -3246,7 +3246,7 @@
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+          "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
         }
       }
     },
@@ -3268,7 +3268,7 @@
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+          "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
         }
       }
     },
@@ -3419,7 +3419,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+          "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
         }
       }
     },
@@ -3451,7 +3451,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+          "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
         }
       }
     },
@@ -3467,7 +3467,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+          "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
         }
       }
     },
@@ -3509,7 +3509,7 @@
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+            "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
           }
         }
       }
@@ -3553,7 +3553,7 @@
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+            "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
           }
         }
       }
@@ -3564,7 +3564,7 @@
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+            "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
           }
         }
       }
@@ -3678,7 +3678,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+          "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
         }
       }
     },
@@ -3817,7 +3817,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+          "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
         }
       }
     },
@@ -3843,7 +3843,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+          "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
         }
       }
     },
@@ -3951,7 +3951,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+          "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
         }
       }
     },
@@ -3975,7 +3975,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+          "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
         }
       }
     },
@@ -3991,7 +3991,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+          "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
         }
       }
     },

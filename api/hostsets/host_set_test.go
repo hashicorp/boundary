@@ -1,4 +1,4 @@
-package hosts_test
+package hostsets_test
 
 import (
 	"fmt"
@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hosts"
+	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -29,11 +31,11 @@ func TestCustom(t *testing.T) {
 	client := tc.Client().Clone()
 	client.SetScopeId(proj.GetPublicId())
 
-	hc, apiErr, err := hosts.NewHostCatalogsClient(client).Create(tc.Context(), "static")
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
 	require.NoError(err)
 	require.Nil(apiErr)
 
-	hClient := hosts.NewHostsClient(client)
+	hClient := hosts.NewClient(client)
 	h1, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithStaticHostAddress("someaddress"))
 	require.NoError(err)
 	require.Nil(apiErr)
@@ -41,7 +43,7 @@ func TestCustom(t *testing.T) {
 	require.NoError(err)
 	require.Nil(apiErr)
 
-	hSetClient := hosts.NewHostSetsClient(client)
+	hSetClient := hostsets.NewClient(client)
 	hSet, apiErr, err := hSetClient.Create(tc.Context(), hc.Id)
 	require.NoError(err)
 	require.Nil(apiErr)
@@ -77,24 +79,24 @@ func TestSet_List(t *testing.T) {
 	_, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(proj.GetPublicId())
 
-	hc, apiErr, err := hosts.NewHostCatalogsClient(client).Create(tc.Context(), "static")
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(hc)
 
-	hClient := hosts.NewHostSetsClient(client)
+	hClient := hostsets.NewClient(client)
 
 	ul, apiErr, err := hClient.List(tc.Context(), hc.Id)
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.Empty(ul)
 
-	var expected []*hosts.HostSet
+	var expected []*hostsets.HostSet
 	for i := 0; i < 10; i++ {
-		expected = append(expected, &hosts.HostSet{Name: fmt.Sprint(i)})
+		expected = append(expected, &hostsets.HostSet{Name: fmt.Sprint(i)})
 	}
 
-	expected[0], apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName(expected[0].Name))
+	expected[0], apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName(expected[0].Name))
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
@@ -104,7 +106,7 @@ func TestSet_List(t *testing.T) {
 	assert.ElementsMatch(comparableSetSlice(expected[:1]), comparableSetSlice(ul))
 
 	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName(expected[i].Name))
+		expected[i], apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName(expected[i].Name))
 		assert.NoError(err)
 		assert.Nil(apiErr)
 	}
@@ -114,10 +116,10 @@ func TestSet_List(t *testing.T) {
 	assert.ElementsMatch(comparableSetSlice(expected), comparableSetSlice(ul))
 }
 
-func comparableSetSlice(in []*hosts.HostSet) []hosts.HostSet {
-	var filtered []hosts.HostSet
+func comparableSetSlice(in []*hostsets.HostSet) []hostsets.HostSet {
+	var filtered []hostsets.HostSet
 	for _, i := range in {
-		p := hosts.HostSet{
+		p := hostsets.HostSet{
 			Id:          i.Id,
 			Name:        i.Name,
 			Description: i.Description,
@@ -146,12 +148,12 @@ func TestSet_Crud(t *testing.T) {
 	projClient := client.Clone()
 	projClient.SetScopeId(proj.GetPublicId())
 
-	hc, apiErr, err := hosts.NewHostCatalogsClient(projClient).Create(tc.Context(), "static")
+	hc, apiErr, err := hostcatalogs.NewClient(projClient).Create(tc.Context(), "static")
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(hc)
 
-	checkHost := func(step string, h *hosts.HostSet, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
+	checkHost := func(step string, h *hostsets.HostSet, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
 		require.NoError(err, step)
 		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
 			t.Errorf("ApiError message: %q", apiErr.Message)
@@ -165,18 +167,18 @@ func TestSet_Crud(t *testing.T) {
 		assert.Equal(wantVersion, h.Version)
 	}
 
-	hClient := hosts.NewHostSetsClient(projClient)
+	hClient := hostsets.NewClient(projClient)
 
-	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"))
+	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
 	checkHost("create", h, apiErr, err, "foo", 1)
 
 	h, apiErr, err = hClient.Read(tc.Context(), hc.Id, h.Id)
 	checkHost("read", h, apiErr, err, "foo", 1)
 
-	h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hosts.WithName("bar"))
+	h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hostsets.WithName("bar"))
 	checkHost("update", h, apiErr, err, "bar", 2)
 
-	h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hosts.DefaultName())
+	h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hostsets.DefaultName())
 	checkHost("update", h, apiErr, err, "", 3)
 
 	existed, apiErr, err := hClient.Delete(tc.Context(), hc.Id, h.Id)
@@ -204,19 +206,19 @@ func TestSet_Errors(t *testing.T) {
 	_, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(proj.GetPublicId())
 
-	hc, apiErr, err := hosts.NewHostCatalogsClient(client).Create(tc.Context(), "static")
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(hc)
 
-	hClient := hosts.NewHostSetsClient(client)
+	hClient := hostsets.NewClient(client)
 
-	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"))
+	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
 	require.NoError(err)
 	require.Nil(apiErr)
 	assert.NotNil(h)
 
-	_, apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"))
+	_, apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 

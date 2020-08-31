@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -29,12 +30,12 @@ func TestHost_List(t *testing.T) {
 	_, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(proj.GetPublicId())
 
-	hc, apiErr, err := hosts.NewHostCatalogsClient(client).Create(tc.Context(), "static")
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(hc)
 
-	hClient := hosts.NewHostsClient(client)
+	hClient := hosts.NewClient(client)
 
 	ul, apiErr, err := hClient.List(tc.Context(), hc.Id)
 	assert.NoError(err)
@@ -98,7 +99,7 @@ func TestHost_Crud(t *testing.T) {
 	projClient := client.Clone()
 	projClient.SetScopeId(proj.GetPublicId())
 
-	hc, apiErr, err := hosts.NewHostCatalogsClient(projClient).Create(tc.Context(), "static")
+	hc, apiErr, err := hostcatalogs.NewClient(projClient).Create(tc.Context(), "static")
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(hc)
@@ -117,7 +118,7 @@ func TestHost_Crud(t *testing.T) {
 		assert.Equal(wantVersion, h.Version)
 	}
 
-	hClient := hosts.NewHostsClient(projClient)
+	hClient := hosts.NewClient(projClient)
 
 	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
 	checkHost("create", h, apiErr, err, "foo", 1)
@@ -156,12 +157,12 @@ func TestHost_Errors(t *testing.T) {
 	_, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(proj.GetPublicId())
 
-	hc, apiErr, err := hosts.NewHostCatalogsClient(client).Create(tc.Context(), "static")
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(hc)
 
-	hClient := hosts.NewHostsClient(client)
+	hClient := hosts.NewClient(client)
 
 	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
 	require.NoError(err)
