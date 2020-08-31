@@ -226,43 +226,58 @@ func TestSet_Crud(t *testing.T) {
 
 // TODO: Get better coverage for expected errors and error formats.
 func TestSet_Errors(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
-	defer tc.Shutdown()
+	for _, newStyle := range []bool{false, true} {
+		assert, require := assert.New(t), require.New(t)
+		tc := controller.NewTestController(t, nil)
+		defer tc.Shutdown()
 
-	client := tc.Client()
-	_, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(proj.GetPublicId())
+		client := tc.Client()
+		token := tc.Token()
+		_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+		client.SetScopeId(proj.GetPublicId())
 
-	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
-	require.NoError(err)
-	require.Nil(apiErr)
-	require.NotNil(hc)
+		hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
+		require.NoError(err)
+		require.Nil(apiErr)
+		require.NotNil(hc)
 
-	hClient := hostsets.NewClient(client)
+		hClient := hostsets.NewClient(client)
 
-	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
-	require.NoError(err)
-	require.Nil(apiErr)
-	assert.NotNil(h)
+		var h *hostsets.HostSet
+		if newStyle {
+			h, apiErr, err = hClient.Create2(tc.Context(), hc.Id, hostsets.WithName("foo"))
+		} else {
+			h, apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
+		}
+		require.NoError(err)
+		require.Nil(apiErr)
+		assert.NotNil(h)
 
-	_, apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
-	require.NoError(err)
-	assert.NotNil(apiErr)
+		if newStyle {
+			h, apiErr, err = hClient.Create2(tc.Context(), hc.Id, hostsets.WithName("foo"))
+		} else {
+			h, apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
+		}
+		require.NoError(err)
+		assert.NotNil(apiErr)
+		assert.Nil(h)
 
-	_, apiErr, err = hClient.Read(tc.Context(), hc.Id, static.HostSetPrefix+"_doesntexis")
-	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(apiErr.Status, http.StatusNotFound)
+		if newStyle {
+			_, apiErr, err = hClient.Read2(tc.Context(), static.HostSetPrefix+"_doesntexis")
+		} else {
+			_, apiErr, err = hClient.Read(tc.Context(), hc.Id, static.HostSetPrefix+"_doesntexis")
+		}
+		require.NoError(err)
+		assert.NotNil(apiErr)
+		assert.EqualValues(http.StatusForbidden, apiErr.Status)
 
-	_, apiErr, err = hClient.Read(tc.Context(), hc.Id, "invalid id")
-	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+		if newStyle {
+			_, apiErr, err = hClient.Read2(tc.Context(), "invalid id")
+		} else {
+			_, apiErr, err = hClient.Read(tc.Context(), hc.Id, "invalid id")
+		}
+		require.NoError(err)
+		assert.NotNil(apiErr)
+		assert.EqualValues(http.StatusBadRequest, apiErr.Status)
+	}
 }
