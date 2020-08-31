@@ -44,9 +44,9 @@ func CreateDatabaseKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapp
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, nil, fmt.Errorf("create database key: root key id %s doesn't start with prefix %s: %w", rootKeyVersionId, RootKeyVersionPrefix, db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create database key: root key version id %s doesn't start with prefix %s: %w", rootKeyVersionId, RootKeyVersionPrefix, db.ErrInvalidParameter)
 	case rootKeyVersionId == "":
-		return nil, nil, fmt.Errorf("create database key: missing root key id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create database key: missing root key version id: %w", db.ErrInvalidParameter)
 	}
 	rv := AllocRootKeyVersion()
 	rv.PrivateId = rootKeyVersionId
