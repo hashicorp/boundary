@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/hosts"
+	"github.com/hashicorp/boundary/api/hostcatalogs"
+	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -49,17 +50,17 @@ func TestCustom(t *testing.T) {
 		return foundInHostSets && foundInHostSetIds
 	}
 
-	hc, apiErr, err := hosts.NewHostCatalogsClient(projClient).Create(tc.Context(), "static")
+	hc, apiErr, err := hostcatalogs.NewClient(projClient).Create(tc.Context(), "static")
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(hc)
 
-	hs1, apiErr, err := hosts.NewHostSetsClient(projClient).Create(tc.Context(), hc.Id)
+	hs1, apiErr, err := hostsets.NewClient(projClient).Create(tc.Context(), hc.Id)
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(hs1)
 
-	hs2, apiErr, err := hosts.NewHostSetsClient(projClient).Create(tc.Context(), hc.Id)
+	hs2, apiErr, err := hostsets.NewClient(projClient).Create(tc.Context(), hc.Id)
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(hs2)
