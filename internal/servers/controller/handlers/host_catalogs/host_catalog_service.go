@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"

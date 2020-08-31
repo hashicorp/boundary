@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -23,7 +23,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&pb.HostSet{}, &store.HostSet{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&store.HostSet{}, &pb.HostSet{}); err != nil {
 		panic(err)
 	}
 }

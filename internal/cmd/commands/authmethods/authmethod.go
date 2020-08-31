@@ -144,7 +144,7 @@ func (c *Command) Run(args []string) int {
 		opts = append(opts, authmethods.WithDescription(c.FlagDescription))
 	}
 
-	authmethodClient := authmethods.NewAuthMethodsClient(client)
+	authmethodClient := authmethods.NewClient(client)
 
 	var existed bool
 	var method *authmethods.AuthMethod

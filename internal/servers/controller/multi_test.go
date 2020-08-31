@@ -35,14 +35,14 @@ func TestAuthenticationMulti(t *testing.T) {
 	})
 	defer c2.Shutdown()
 
-	auth := authmethods.NewAuthMethodsClient(c1.Client())
+	auth := authmethods.NewClient(c1.Client())
 	token1, apiErr, err := auth.Authenticate(c1.Context(), amId, user, password)
 	require.Nil(err)
 	require.Nil(apiErr)
 	require.NotNil(token1)
 
 	time.Sleep(5 * time.Second)
-	auth = authmethods.NewAuthMethodsClient(c2.Client())
+	auth = authmethods.NewClient(c2.Client())
 	token2, apiErr, err := auth.Authenticate(c2.Context(), amId, user, password)
 	require.Nil(err)
 	require.Nil(apiErr)
@@ -56,12 +56,12 @@ func TestAuthenticationMulti(t *testing.T) {
 	c2.Client().SetScopeId(scope.Global.String())
 
 	// Create a project, read from the other
-	org, apiErr, err := scopes.NewScopesClient(c1.Client()).Create(c1.Context(), scope.Global.String())
+	org, apiErr, err := scopes.NewClient(c1.Client()).Create(c1.Context(), scope.Global.String())
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(org)
 
-	proj, apiErr, err := scopes.NewScopesClient(c2.Client()).Read(c2.Context(), org.Id)
+	proj, apiErr, err := scopes.NewClient(c2.Client()).Read(c2.Context(), org.Id)
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(proj)
