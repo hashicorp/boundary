@@ -65,3 +65,34 @@ func Test_TestDatabaseKeyVersion(t *testing.T) {
 	require.NotNil(dv)
 	require.NotEmpty(dv.PrivateId)
 }
+
+func Test_TestOplogKey(t *testing.T) {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	k := kms.TestRootKey(t, conn, org.PublicId)
+	require.NotNil(k)
+	assert.NotEmpty(k.PrivateId)
+
+	dk := kms.TestOplogKey(t, conn, k.PrivateId)
+	require.NotNil(dk)
+	assert.NotEmpty(dk.PrivateId)
+}
+
+func Test_TestOplogKeyVersion(t *testing.T) {
+	t.Helper()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	kmsWrapper := db.TestWrapper(t)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, kmsWrapper))
+	require.NoError(conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	rk := kms.TestRootKey(t, conn, org.PublicId)
+	_, rootKeyVersionWrapper := kms.TestRootKeyVersion(t, conn, kmsWrapper, rk.PrivateId)
+	dk := kms.TestOplogKey(t, conn, rk.PrivateId)
+	dv := kms.TestOplogKeyVersion(t, conn, rootKeyVersionWrapper, dk.PrivateId, []byte("test dek key"))
+	require.NotNil(dv)
+	require.NotEmpty(dv.PrivateId)
+}
