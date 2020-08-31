@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -59,7 +60,11 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 	if hostCatalog == nil {
 		return nil, handlers.ForbiddenError()
 	}
-	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
+	authResults := auth.Verify(ctx,
+		auth.WithScopeId(hostCatalog.GetScopeId()),
+		auth.WithPin(hostCatalog.GetPublicId()),
+		auth.WithAction(action.List),
+	)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -98,8 +103,12 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 	if hostCatalog == nil {
 		return nil, handlers.ForbiddenError()
 	}
-
-	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
+	authResults := auth.Verify(ctx,
+		auth.WithScopeId(hostCatalog.GetScopeId()),
+		auth.WithId(hostSet.GetPublicId()),
+		auth.WithPin(hostCatalog.GetPublicId()),
+		auth.WithAction(action.Read),
+	)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -133,7 +142,11 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 	if hostCatalog == nil {
 		return nil, handlers.ForbiddenError()
 	}
-	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
+	authResults := auth.Verify(ctx,
+		auth.WithScopeId(hostCatalog.GetScopeId()),
+		auth.WithPin(hostCatalog.GetPublicId()),
+		auth.WithAction(action.Create),
+	)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -173,8 +186,12 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 	if hostCatalog == nil {
 		return nil, handlers.ForbiddenError()
 	}
-
-	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
+	authResults := auth.Verify(ctx,
+		auth.WithScopeId(hostCatalog.GetScopeId()),
+		auth.WithId(hostSet.GetPublicId()),
+		auth.WithPin(hostCatalog.GetPublicId()),
+		auth.WithAction(action.Update),
+	)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -210,8 +227,12 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 	if hostCatalog == nil {
 		return nil, handlers.ForbiddenError()
 	}
-
-	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
+	authResults := auth.Verify(ctx,
+		auth.WithScopeId(hostCatalog.GetScopeId()),
+		auth.WithId(hostSet.GetPublicId()),
+		auth.WithPin(hostCatalog.GetPublicId()),
+		auth.WithAction(action.Delete),
+	)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -246,8 +267,12 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 	if hostCatalog == nil {
 		return nil, handlers.ForbiddenError()
 	}
-
-	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
+	authResults := auth.Verify(ctx,
+		auth.WithScopeId(hostCatalog.GetScopeId()),
+		auth.WithId(hostSet.GetPublicId()),
+		auth.WithPin(hostCatalog.GetPublicId()),
+		auth.WithAction(action.AddHosts),
+	)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -282,7 +307,12 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 	if hostCatalog == nil {
 		return nil, handlers.ForbiddenError()
 	}
-	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
+	authResults := auth.Verify(ctx,
+		auth.WithScopeId(hostCatalog.GetScopeId()),
+		auth.WithId(hostSet.GetPublicId()),
+		auth.WithPin(hostCatalog.GetPublicId()),
+		auth.WithAction(action.SetHosts),
+	)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -317,7 +347,12 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 	if hostCatalog == nil {
 		return nil, handlers.ForbiddenError()
 	}
-	authResults := auth.VerifyNewStyle(ctx, hostCatalog.GetScopeId(), hostCatalog.GetPublicId())
+	authResults := auth.Verify(ctx,
+		auth.WithScopeId(hostCatalog.GetScopeId()),
+		auth.WithId(hostSet.GetPublicId()),
+		auth.WithPin(hostCatalog.GetPublicId()),
+		auth.WithAction(action.RemoveHosts),
+	)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
