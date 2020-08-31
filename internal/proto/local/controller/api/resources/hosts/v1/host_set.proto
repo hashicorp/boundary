@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package controller.api.resources.hostsets.v1;
+package controller.api.resources.hosts.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets;hostsets";
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts;hosts";
 
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
@@ -54,4 +54,7 @@ message HostSet {
 
 	// The attributes that are applied for the specific host set type.
 	google.protobuf.Struct attributes = 110;
+}
+
+message StaticHostSetAttributes {
 }

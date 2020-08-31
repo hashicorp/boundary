@@ -5,7 +5,8 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/go-cmp/cmp"
-	accountspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
+	hostpb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -22,8 +23,13 @@ func TestStructToProtoToStruct(t *testing.T) {
 	}{
 		{
 			name:     "password",
-			pb:       &accountspb.PasswordAccountAttributes{LoginName: "testun", Password: &wrapperspb.StringValue{Value: "testpw"}},
+			pb:       &authpb.PasswordAccountAttributes{LoginName: "testun", Password: &wrapperspb.StringValue{Value: "testpw"}},
 			wantJson: `{"login_name": "testun", "password": "testpw"}`,
+		},
+		{
+			name:     "ec2hostcatalog",
+			pb:       &hostpb.AwsEc2HostCatalogDetails{Regions: []string{"r1", "r2"}, AccessKey: &wrapperspb.StringValue{Value: "test"}},
+			wantJson: `{"regions": ["r1", "r2"], "access_key": "test"}`,
 		},
 	}
 	for _, tc := range testCases {

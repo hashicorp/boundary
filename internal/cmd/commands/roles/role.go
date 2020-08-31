@@ -188,7 +188,7 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	roleClient := roles.NewClient(client)
+	roleClient := roles.NewRolesClient(client)
 
 	// Perform check-and-set when needed
 	var version uint32

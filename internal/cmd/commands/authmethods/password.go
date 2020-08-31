@@ -164,7 +164,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		opts = append(opts, authmethods.WithAttributes(attributes))
 	}
 
-	authmethodClient := authmethods.NewClient(client)
+	authmethodClient := authmethods.NewAuthMethodsClient(client)
 
 	// Perform check-and-set when needed
 	var version uint32

@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"

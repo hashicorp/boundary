@@ -70,7 +70,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.AuthenticateResponse{Item: tok}, nil
+	return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
 }
 
 // Deauthenticate implements the interface pbs.AuthenticationServiceServer.
@@ -171,7 +171,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	}
 	// TODO: Update this when we enable split cookie token types.
 	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
-	if tType != "" && tType != "token" {
+	if tType != "" && tType != "token" && tType != "cookie" {
 		badFields["token_type"] = "The only accepted type is 'token'."
 	}
 	if len(badFields) > 0 {

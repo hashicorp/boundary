@@ -83,7 +83,7 @@ func (c *Command) Run(args []string) int {
 		return 2
 	}
 
-	authtokenClient := authtokens.NewClient(client)
+	authtokenClient := authtokens.NewAuthTokensClient(client)
 
 	var existed bool
 	var token *authtokens.AuthToken

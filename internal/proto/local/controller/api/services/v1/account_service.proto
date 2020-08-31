@@ -8,7 +8,7 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/wrappers.proto";
-import "controller/api/resources/accounts/v1/account.proto";
+import "controller/api/resources/authmethods/v1/account.proto";
 
 service AccountService {
 
@@ -124,7 +124,7 @@ message GetAccountRequest {
 }
 
 message GetAccountResponse {
-  resources.accounts.v1.Account item = 1;
+  resources.authmethods.v1.Account item = 1;
 }
 
 message ListAccountsRequest {
@@ -133,28 +133,28 @@ message ListAccountsRequest {
 }
 
 message ListAccountsResponse {
-  repeated resources.accounts.v1.Account items = 1;
+  repeated resources.authmethods.v1.Account items = 1;
 }
 
 message CreateAccountRequest {
   string auth_method_id = 1;
-  resources.accounts.v1.Account item = 2;
+  resources.authmethods.v1.Account item = 2;
 }
 
 message CreateAccountResponse {
   string uri = 1;
-  resources.accounts.v1.Account item = 2;
+  resources.authmethods.v1.Account item = 2;
 }
 
 message UpdateAccountRequest {
   string auth_method_id = 1;
   string id = 2;
-  resources.accounts.v1.Account item = 3;
+  resources.authmethods.v1.Account item = 3;
   google.protobuf.FieldMask update_mask = 4;
 }
 
 message UpdateAccountResponse {
-  resources.accounts.v1.Account item = 1;
+  resources.authmethods.v1.Account item = 1;
 }
 
 message DeleteAccountRequest {
@@ -174,7 +174,7 @@ message SetPasswordRequest {
 }
 
 message SetPasswordResponse {
-  resources.accounts.v1.Account item = 1;
+  resources.authmethods.v1.Account item = 1;
 }
 
 message ChangePasswordRequest {
@@ -186,5 +186,5 @@ message ChangePasswordRequest {
 }
 
 message ChangePasswordResponse {
-  resources.accounts.v1.Account item = 1;
+  resources.authmethods.v1.Account item = 1;
 }

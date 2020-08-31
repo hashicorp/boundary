@@ -39,7 +39,7 @@ func TestRecoveryNonces(t *testing.T) {
 
 	// Token 1, try 1
 	client.SetToken(token1)
-	roleClient := roles.NewClient(client)
+	roleClient := roles.NewRolesClient(client)
 	_, apiErr, err := roleClient.Create(tc.Context())
 	require.NoError(err)
 	assert.Nil(apiErr)

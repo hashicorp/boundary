@@ -141,7 +141,7 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	groupClient := groups.NewClient(client)
+	groupClient := groups.NewGroupsClient(client)
 
 	// Perform check-and-set when needed
 	var version uint32

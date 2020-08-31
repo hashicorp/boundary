@@ -7,7 +7,7 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "controller/api/resources/hostcatalogs/v1/host_catalog.proto";
+import "controller/api/resources/hosts/v1/host_catalog.proto";
 
 service HostCatalogService {
 	option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
@@ -98,7 +98,7 @@ message GetHostCatalogRequest {
 }
 
 message GetHostCatalogResponse {
-  api.resources.hostcatalogs.v1.HostCatalog item = 1;
+  api.resources.hosts.v1.HostCatalog item = 1;
 }
 
 message ListHostCatalogsRequest {
@@ -106,26 +106,26 @@ message ListHostCatalogsRequest {
 }
 
 message ListHostCatalogsResponse {
-  repeated api.resources.hostcatalogs.v1.HostCatalog items = 1;
+  repeated api.resources.hosts.v1.HostCatalog items = 1;
 }
 
 message CreateHostCatalogRequest {
-  api.resources.hostcatalogs.v1.HostCatalog item = 1;
+  api.resources.hosts.v1.HostCatalog item = 1;
 }
 
 message CreateHostCatalogResponse {
   string uri = 1;
-  api.resources.hostcatalogs.v1.HostCatalog item = 2;
+  api.resources.hosts.v1.HostCatalog item = 2;
 }
 
 message UpdateHostCatalogRequest {
   string id = 1;
-  api.resources.hostcatalogs.v1.HostCatalog item = 2;
+  api.resources.hosts.v1.HostCatalog item = 2;
   google.protobuf.FieldMask update_mask = 3;
 }
 
 message UpdateHostCatalogResponse {
-  api.resources.hostcatalogs.v1.HostCatalog item = 1;
+  api.resources.hosts.v1.HostCatalog item = 1;
 }
 
 message DeleteHostCatalogRequest {

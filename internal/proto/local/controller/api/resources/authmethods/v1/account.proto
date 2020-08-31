@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package controller.api.resources.accounts.v1;
+package controller.api.resources.authmethods.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts;accounts";
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods;authmethods";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";

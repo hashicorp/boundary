@@ -77,6 +77,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 			},
 		}),
 		runtime.WithErrorHandler(handlers.ErrorHandler(c.logger)),
+		runtime.WithForwardResponseOption(handlers.OutgoingIntercepter),
 	)
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
