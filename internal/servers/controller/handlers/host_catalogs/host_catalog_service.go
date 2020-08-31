@@ -265,10 +265,6 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 		badFields := map[string]string{}
 		switch host.SubtypeFromType(req.GetItem().GetType()) {
 		case host.StaticSubtype:
-			shcAttrs := &pb.StaticHostCatalogDetails{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), shcAttrs); err != nil {
-				badFields["attributes"] = "Attribute fields do not match the expected format."
-			}
 		default:
 			badFields["type"] = fmt.Sprintf("This is a required field and must be %q.", host.StaticSubtype.String())
 		}

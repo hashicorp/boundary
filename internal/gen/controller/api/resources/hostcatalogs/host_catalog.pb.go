@@ -156,119 +156,6 @@ func (x *HostCatalog) GetAttributes() *_struct.Struct {
 	return nil
 }
 
-type StaticHostCatalogDetails struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *StaticHostCatalogDetails) Reset() {
-	*x = StaticHostCatalogDetails{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_msgTypes[1]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *StaticHostCatalogDetails) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StaticHostCatalogDetails) ProtoMessage() {}
-
-func (x *StaticHostCatalogDetails) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_msgTypes[1]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use StaticHostCatalogDetails.ProtoReflect.Descriptor instead.
-func (*StaticHostCatalogDetails) Descriptor() ([]byte, []int) {
-	return file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_rawDescGZIP(), []int{1}
-}
-
-type AwsEc2HostCatalogDetails struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// The AWS regions from which this catalog will retrieve the EC2 instances.
-	Regions []string `protobuf:"bytes,10,rep,name=regions,proto3" json:"regions,omitempty"`
-	// The access key used for authenticating with AWS when retrieving EC2 instance details.
-	AccessKey *wrappers.StringValue `protobuf:"bytes,20,opt,name=access_key,proto3" json:"access_key,omitempty"`
-	// Input only.
-	SecretKey *wrappers.StringValue `protobuf:"bytes,30,opt,name=secret_key,proto3" json:"secret_key,omitempty"`
-	// This value will never be returned in a response.
-	Rotate *wrappers.BoolValue `protobuf:"bytes,40,opt,name=rotate,proto3" json:"rotate,omitempty"`
-}
-
-func (x *AwsEc2HostCatalogDetails) Reset() {
-	*x = AwsEc2HostCatalogDetails{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_msgTypes[2]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *AwsEc2HostCatalogDetails) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AwsEc2HostCatalogDetails) ProtoMessage() {}
-
-func (x *AwsEc2HostCatalogDetails) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_msgTypes[2]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AwsEc2HostCatalogDetails.ProtoReflect.Descriptor instead.
-func (*AwsEc2HostCatalogDetails) Descriptor() ([]byte, []int) {
-	return file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *AwsEc2HostCatalogDetails) GetRegions() []string {
-	if x != nil {
-		return x.Regions
-	}
-	return nil
-}
-
-func (x *AwsEc2HostCatalogDetails) GetAccessKey() *wrappers.StringValue {
-	if x != nil {
-		return x.AccessKey
-	}
-	return nil
-}
-
-func (x *AwsEc2HostCatalogDetails) GetSecretKey() *wrappers.StringValue {
-	if x != nil {
-		return x.SecretKey
-	}
-	return nil
-}
-
-func (x *AwsEc2HostCatalogDetails) GetRotate() *wrappers.BoolValue {
-	if x != nil {
-		return x.Rotate
-	}
-	return nil
-}
-
 var File_controller_api_resources_hostcatalogs_v1_host_catalog_proto protoreflect.FileDescriptor
 
 var file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_rawDesc = []byte{
@@ -322,29 +209,13 @@ var file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_rawDesc = [
 	0x5a, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x42, 0x04,
 	0xa0, 0xda, 0x29, 0x01, 0x52, 0x0a, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73,
-	0x22, 0x1a, 0x0a, 0x18, 0x53, 0x74, 0x61, 0x74, 0x69, 0x63, 0x48, 0x6f, 0x73, 0x74, 0x43, 0x61,
-	0x74, 0x61, 0x6c, 0x6f, 0x67, 0x44, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73, 0x22, 0xe4, 0x01, 0x0a,
-	0x18, 0x41, 0x77, 0x73, 0x45, 0x63, 0x32, 0x48, 0x6f, 0x73, 0x74, 0x43, 0x61, 0x74, 0x61, 0x6c,
-	0x6f, 0x67, 0x44, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73, 0x12, 0x18, 0x0a, 0x07, 0x72, 0x65, 0x67,
-	0x69, 0x6f, 0x6e, 0x73, 0x18, 0x0a, 0x20, 0x03, 0x28, 0x09, 0x52, 0x07, 0x72, 0x65, 0x67, 0x69,
-	0x6f, 0x6e, 0x73, 0x12, 0x3c, 0x0a, 0x0a, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x5f, 0x6b, 0x65,
-	0x79, 0x18, 0x14, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x53, 0x74, 0x72, 0x69, 0x6e, 0x67,
-	0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x0a, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x5f, 0x6b, 0x65,
-	0x79, 0x12, 0x3c, 0x0a, 0x0a, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x5f, 0x6b, 0x65, 0x79, 0x18,
-	0x1e, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x53, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x56, 0x61,
-	0x6c, 0x75, 0x65, 0x52, 0x0a, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x5f, 0x6b, 0x65, 0x79, 0x12,
-	0x32, 0x0a, 0x06, 0x72, 0x6f, 0x74, 0x61, 0x74, 0x65, 0x18, 0x28, 0x20, 0x01, 0x28, 0x0b, 0x32,
-	0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75,
-	0x66, 0x2e, 0x42, 0x6f, 0x6f, 0x6c, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x06, 0x72, 0x6f, 0x74,
-	0x61, 0x74, 0x65, 0x42, 0x5f, 0x5a, 0x5d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
-	0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e,
-	0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65,
-	0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69,
-	0x2f, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2f, 0x68, 0x6f, 0x73, 0x74, 0x63,
-	0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x73, 0x3b, 0x68, 0x6f, 0x73, 0x74, 0x63, 0x61, 0x74, 0x61,
-	0x6c, 0x6f, 0x67, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x42, 0x5f, 0x5a, 0x5d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68,
+	0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72,
+	0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63,
+	0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65,
+	0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2f, 0x68, 0x6f, 0x73, 0x74, 0x63, 0x61, 0x74, 0x61,
+	0x6c, 0x6f, 0x67, 0x73, 0x3b, 0x68, 0x6f, 0x73, 0x74, 0x63, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67,
+	0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -359,32 +230,26 @@ func file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_rawDescGZI
 	return file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_rawDescData
 }
 
-var file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_goTypes = []interface{}{
-	(*HostCatalog)(nil),              // 0: controller.api.resources.hostcatalogs.v1.HostCatalog
-	(*StaticHostCatalogDetails)(nil), // 1: controller.api.resources.hostcatalogs.v1.StaticHostCatalogDetails
-	(*AwsEc2HostCatalogDetails)(nil), // 2: controller.api.resources.hostcatalogs.v1.AwsEc2HostCatalogDetails
-	(*scopes.ScopeInfo)(nil),         // 3: controller.api.resources.scopes.v1.ScopeInfo
-	(*wrappers.StringValue)(nil),     // 4: google.protobuf.StringValue
-	(*timestamp.Timestamp)(nil),      // 5: google.protobuf.Timestamp
-	(*_struct.Struct)(nil),           // 6: google.protobuf.Struct
-	(*wrappers.BoolValue)(nil),       // 7: google.protobuf.BoolValue
+	(*HostCatalog)(nil),          // 0: controller.api.resources.hostcatalogs.v1.HostCatalog
+	(*scopes.ScopeInfo)(nil),     // 1: controller.api.resources.scopes.v1.ScopeInfo
+	(*wrappers.StringValue)(nil), // 2: google.protobuf.StringValue
+	(*timestamp.Timestamp)(nil),  // 3: google.protobuf.Timestamp
+	(*_struct.Struct)(nil),       // 4: google.protobuf.Struct
 }
 var file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_depIdxs = []int32{
-	3, // 0: controller.api.resources.hostcatalogs.v1.HostCatalog.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	4, // 1: controller.api.resources.hostcatalogs.v1.HostCatalog.name:type_name -> google.protobuf.StringValue
-	4, // 2: controller.api.resources.hostcatalogs.v1.HostCatalog.description:type_name -> google.protobuf.StringValue
-	5, // 3: controller.api.resources.hostcatalogs.v1.HostCatalog.created_time:type_name -> google.protobuf.Timestamp
-	5, // 4: controller.api.resources.hostcatalogs.v1.HostCatalog.updated_time:type_name -> google.protobuf.Timestamp
-	6, // 5: controller.api.resources.hostcatalogs.v1.HostCatalog.attributes:type_name -> google.protobuf.Struct
-	4, // 6: controller.api.resources.hostcatalogs.v1.AwsEc2HostCatalogDetails.access_key:type_name -> google.protobuf.StringValue
-	4, // 7: controller.api.resources.hostcatalogs.v1.AwsEc2HostCatalogDetails.secret_key:type_name -> google.protobuf.StringValue
-	7, // 8: controller.api.resources.hostcatalogs.v1.AwsEc2HostCatalogDetails.rotate:type_name -> google.protobuf.BoolValue
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	1, // 0: controller.api.resources.hostcatalogs.v1.HostCatalog.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	2, // 1: controller.api.resources.hostcatalogs.v1.HostCatalog.name:type_name -> google.protobuf.StringValue
+	2, // 2: controller.api.resources.hostcatalogs.v1.HostCatalog.description:type_name -> google.protobuf.StringValue
+	3, // 3: controller.api.resources.hostcatalogs.v1.HostCatalog.created_time:type_name -> google.protobuf.Timestamp
+	3, // 4: controller.api.resources.hostcatalogs.v1.HostCatalog.updated_time:type_name -> google.protobuf.Timestamp
+	4, // 5: controller.api.resources.hostcatalogs.v1.HostCatalog.attributes:type_name -> google.protobuf.Struct
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_init() }
@@ -405,30 +270,6 @@ func file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_init() {
 				return nil
 			}
 		}
-		file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StaticHostCatalogDetails); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AwsEc2HostCatalogDetails); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -436,7 +277,7 @@ func file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
