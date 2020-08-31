@@ -5,7 +5,7 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/go-cmp/cmp"
-	authpb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
+	accountspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	catalogpb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ func TestStructToProtoToStruct(t *testing.T) {
 	}{
 		{
 			name:     "password",
-			pb:       &authpb.PasswordAccountAttributes{LoginName: "testun", Password: &wrapperspb.StringValue{Value: "testpw"}},
+			pb:       &accountspb.PasswordAccountAttributes{LoginName: "testun", Password: &wrapperspb.StringValue{Value: "testpw"}},
 			wantJson: `{"login_name": "testun", "password": "testpw"}`,
 		},
 		{
