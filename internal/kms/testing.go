@@ -162,3 +162,37 @@ func TestTokenKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrap
 	require.NoError(err)
 	return k
 }
+
+func TestSessionKey(t *testing.T, conn *gorm.DB, rootKeyId string) *SessionKey {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocSessionKey()).Error)
+	k, err := NewSessionKey(rootKeyId)
+	require.NoError(err)
+	id, err := newSessionKeyId()
+	require.NoError(err)
+	k.PrivateId = id
+	k.RootKeyId = rootKeyId
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestSessionKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapping.Wrapper, sessionKeyId string, key []byte) *SessionKeyVersion {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	require.NotEmpty(rootKeyVersionId)
+	k, err := NewSessionKeyVersion(sessionKeyId, key, rootKeyVersionId)
+	require.NoError(err)
+	id, err := newSessionKeyVersionId()
+	require.NoError(err)
+	k.PrivateId = id
+	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)
+	require.NoError(err)
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
