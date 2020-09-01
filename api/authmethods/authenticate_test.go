@@ -23,7 +23,7 @@ func TestAuthenticate(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	methods := authmethods.NewAuthMethodsClient(client)
+	methods := authmethods.NewClient(client)
 
 	tok, apiErr, err := methods.Authenticate(tc.Context(), amId, "user", "passpass")
 	require.NoError(err)

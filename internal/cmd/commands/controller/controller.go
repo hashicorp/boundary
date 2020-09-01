@@ -10,9 +10,10 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/servers/controller"
+	"github.com/hashicorp/boundary/internal/wrapper"
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/mitchellh/cli"
@@ -33,9 +34,10 @@ type Command struct {
 	Config     *config.Config
 	controller *controller.Controller
 
-	configKMS *configutil.KMS
+	configWrapper wrapping.Wrapper
 
 	flagConfig                         string
+	flagConfigKms                      string
 	flagLogLevel                       string
 	flagLogFormat                      string
 	flagCombineLogs                    bool
@@ -78,7 +80,17 @@ func (c *Command) Flags() *base.FlagSets {
 			complete.PredictFiles("*.hcl"),
 			complete.PredictFiles("*.json"),
 		),
-		Usage: "Path to a configuration file.",
+		Usage: "Path to the configuration file.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "config-kms",
+		Target: &c.flagConfigKms,
+		Completion: complete.PredictOr(
+			complete.PredictFiles("*.hcl"),
+			complete.PredictFiles("*.json"),
+		),
+		Usage: `Path to a configuration file containing a "kms" block marked for "config" purpose, to perform decryption of the main configuration file. If not set, will look for such a block in the main configuration file, which has some drawbacks; see the help output for "boundary config encrypt -h" for details.`,
 	})
 
 	f.StringVar(&base.StringVar{
@@ -176,6 +188,14 @@ func (c *Command) Run(args []string) int {
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
 		return result
+	}
+
+	if c.configWrapper != nil {
+		defer func() {
+			if err := c.configWrapper.Finalize(c.Context); err != nil {
+				c.UI.Warn(fmt.Errorf("Error finalizing config kms: %w", err).Error())
+			}
+		}()
 	}
 
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
@@ -317,19 +337,20 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		return 1
 	}
 
-	// preload the KMS for encrypting/decrypting the config parameters
-	kmss, err := configutil.LoadConfigKMSes(c.flagConfig)
+	wrapperPath := c.flagConfig
+	if c.flagConfigKms != "" {
+		wrapperPath = c.flagConfigKms
+	}
+	wrapper, err := wrapper.GetWrapper(wrapperPath, "config")
 	if err != nil {
-		c.UI.Error("error loading KMS config: " + err.Error())
+		c.UI.Error(err.Error())
 		return 1
 	}
-
-	for _, kms := range kmss {
-		for _, purpose := range kms.Purpose {
-			if purpose == "config" {
-				c.configKMS = kms
-				break
-			}
+	if wrapper != nil {
+		c.configWrapper = wrapper
+		if err := wrapper.Init(c.Context); err != nil {
+			c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
+			return 1
 		}
 	}
 
@@ -351,7 +372,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 			c.flagDevLoginName = ""
 		}
 
-		c.Config, err = config.LoadFile(c.flagConfig, c.configKMS)
+		c.Config, err = config.LoadFile(c.flagConfig, wrapper)
 		if err != nil {
 			c.UI.Error("Error parsing config: " + err.Error())
 			return 1
@@ -361,7 +382,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		if len(c.flagConfig) == 0 {
 			c.Config, err = config.DevController()
 		} else {
-			c.Config, err = config.LoadFile(c.flagConfig, c.configKMS)
+			c.Config, err = config.LoadFile(c.flagConfig, wrapper)
 		}
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error creating dev config: %w", err).Error())
@@ -468,7 +489,7 @@ func (c *Command) WaitForInterrupt() int {
 				goto RUNRELOADFUNCS
 			}
 
-			newConf, err = config.LoadFile(c.flagConfig, c.configKMS)
+			newConf, err = config.LoadFile(c.flagConfig, c.configWrapper)
 			if err != nil {
 				c.Logger.Error("could not reload config", "path", c.flagConfig, "error", err)
 				goto RUNRELOADFUNCS
@@ -479,9 +500,6 @@ func (c *Command) WaitForInterrupt() int {
 				c.Logger.Error("no config found at reload time")
 				goto RUNRELOADFUNCS
 			}
-
-			// Commented out until we need this
-			//controller.SetConfig(config)
 
 			if newConf.LogLevel != "" {
 				configLogLevel := strings.ToLower(strings.TrimSpace(newConf.LogLevel))

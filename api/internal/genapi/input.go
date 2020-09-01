@@ -4,10 +4,13 @@ import (
 	"text/template"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
@@ -211,9 +214,10 @@ var inputStructs = []*structInfo{
 		outFile:     "authmethods/password_auth_method_attributes.gen.go",
 		subtypeName: "PasswordAuthMethod",
 	},
+	// Accounts
 	{
-		inProto: &authmethods.Account{},
-		outFile: "authmethods/account.gen.go",
+		inProto: &accounts.Account{},
+		outFile: "accounts/account.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
 			createTemplate,
@@ -226,8 +230,8 @@ var inputStructs = []*structInfo{
 		versionEnabled: true,
 	},
 	{
-		inProto:     &authmethods.PasswordAccountAttributes{},
-		outFile:     "authmethods/password_account_attributes.gen.go",
+		inProto:     &accounts.PasswordAccountAttributes{},
+		outFile:     "accounts/password_account_attributes.gen.go",
 		subtypeName: "PasswordAccount",
 	},
 	// Auth Tokens
@@ -244,8 +248,8 @@ var inputStructs = []*structInfo{
 	},
 	// Host related resources
 	{
-		inProto: &hosts.HostCatalog{},
-		outFile: "hosts/host_catalog.gen.go",
+		inProto: &hostcatalogs.HostCatalog{},
+		outFile: "hostcatalogs/host_catalog.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
 			createTemplate,
@@ -278,8 +282,8 @@ var inputStructs = []*structInfo{
 		subtypeName: "StaticHost",
 	},
 	{
-		inProto: &hosts.HostSet{},
-		outFile: "hosts/host_set.gen.go",
+		inProto: &hostsets.HostSet{},
+		outFile: "hostsets/host_set.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
 			createTemplate,

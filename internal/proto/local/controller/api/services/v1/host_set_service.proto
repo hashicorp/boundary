@@ -7,7 +7,7 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "controller/api/resources/hosts/v1/host_set.proto";
+import "controller/api/resources/hostsets/v1/host_set.proto";
 
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   info: {
@@ -157,7 +157,7 @@ message GetHostSetRequest {
 }
 
 message GetHostSetResponse {
-  api.resources.hosts.v1.HostSet item = 1;
+  api.resources.hostsets.v1.HostSet item = 1;
 }
 
 message ListHostSetsRequest {
@@ -166,28 +166,28 @@ message ListHostSetsRequest {
 }
 
 message ListHostSetsResponse {
-  repeated api.resources.hosts.v1.HostSet items = 1;
+  repeated api.resources.hostsets.v1.HostSet items = 1;
 }
 
 message CreateHostSetRequest {
   string host_catalog_id = 1 [json_name="host_catalog_id"];
-  api.resources.hosts.v1.HostSet item = 2;
+  api.resources.hostsets.v1.HostSet item = 2;
 }
 
 message CreateHostSetResponse {
   string uri = 1;
-  api.resources.hosts.v1.HostSet item = 2;
+  api.resources.hostsets.v1.HostSet item = 2;
 }
 
 message UpdateHostSetRequest {
   string host_catalog_id = 1 [json_name="host_catalog_id"];
   string id = 2;
-  api.resources.hosts.v1.HostSet item = 3;
+  api.resources.hostsets.v1.HostSet item = 3;
   google.protobuf.FieldMask update_mask = 4;
 }
 
 message UpdateHostSetResponse {
-  api.resources.hosts.v1.HostSet item = 1;
+  api.resources.hostsets.v1.HostSet item = 1;
 }
 
 message DeleteHostSetRequest {
@@ -211,7 +211,7 @@ message AddHostSetHostsRequest {
 }
 
 message AddHostSetHostsResponse {
-  api.resources.hosts.v1.HostSet item = 1;
+  api.resources.hostsets.v1.HostSet item = 1;
 }
 
 message SetHostSetHostsRequest {
@@ -226,7 +226,7 @@ message SetHostSetHostsRequest {
 }
 
 message SetHostSetHostsResponse {
-  api.resources.hosts.v1.HostSet item = 1;
+  api.resources.hostsets.v1.HostSet item = 1;
 }
 
 message RemoveHostSetHostsRequest {
@@ -241,5 +241,5 @@ message RemoveHostSetHostsRequest {
 }
 
 message RemoveHostSetHostsResponse {
-  api.resources.hosts.v1.HostSet item = 1;
+  api.resources.hostsets.v1.HostSet item = 1;
 }

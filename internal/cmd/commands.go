@@ -13,7 +13,9 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/controller"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groups"
+	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hosts"
+	"github.com/hashicorp/boundary/internal/cmd/commands/hostsets"
 	"github.com/hashicorp/boundary/internal/cmd/commands/proxy"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
@@ -98,20 +100,25 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "list",
 			}, nil
 		},
-		"auth-methods password": func() (cli.Command, error) {
+		"auth-methods create": func() (cli.Command, error) {
 			return &authmethods.Command{
 				Command: base.NewCommand(ui),
-				Func:    "password",
+				Func:    "create",
 			}, nil
 		},
-		"auth-methods password create": func() (cli.Command, error) {
+		"auth-methods create password": func() (cli.Command, error) {
 			return &authmethods.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
-
-		"auth-methods password update": func() (cli.Command, error) {
+		"auth-methods update": func() (cli.Command, error) {
+			return &authmethods.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"auth-methods update password": func() (cli.Command, error) {
 			return &authmethods.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
@@ -150,12 +157,13 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"config encrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
 				Command: base.NewCommand(ui),
-				Encrypt: true,
+				Func:    "encrypt",
 			}, nil
 		},
 		"config decrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
 				Command: base.NewCommand(ui),
+				Func:    "decrypt",
 			}, nil
 		},
 
@@ -210,6 +218,120 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &groups.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-members",
+			}, nil
+		},
+
+		"host-catalogs": func() (cli.Command, error) {
+			return &hostcatalogs.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"host-catalogs read": func() (cli.Command, error) {
+			return &hostcatalogs.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"host-catalogs delete": func() (cli.Command, error) {
+			return &hostcatalogs.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"host-catalogs list": func() (cli.Command, error) {
+			return &hostcatalogs.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"host-catalogs create": func() (cli.Command, error) {
+			return &hostcatalogs.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"host-catalogs create static": func() (cli.Command, error) {
+			return &hostcatalogs.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"host-catalogs update": func() (cli.Command, error) {
+			return &hostcatalogs.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"host-catalogs update static": func() (cli.Command, error) {
+			return &hostcatalogs.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+
+		"host-sets": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"host-sets read": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"host-sets delete": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"host-sets list": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"host-sets create": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"host-sets create static": func() (cli.Command, error) {
+			return &hostsets.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"host-sets update": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"host-sets update static": func() (cli.Command, error) {
+			return &hostsets.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"host-sets add-hosts": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-hosts",
+			}, nil
+		},
+		"host-sets remove-hosts": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-hosts",
+			}, nil
+		},
+		"host-sets set-hosts": func() (cli.Command, error) {
+			return &hostsets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-hosts",
 			}, nil
 		},
 

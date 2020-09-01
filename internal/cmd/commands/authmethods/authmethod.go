@@ -24,10 +24,14 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	if c.Func == "password" {
-		return "Manage password auth-methods within Boundary"
+	switch c.Func {
+	case "create":
+		return "Create auth-method resources within Boundary"
+	case "update":
+		return "Update auth-method resources within Boundary"
+	default:
+		return common.SynopsisFunc(c.Func, "auth-method")
 	}
-	return common.SynopsisFunc(c.Func, "auth-method")
 }
 
 var flagsMap = map[string][]string{
@@ -50,17 +54,29 @@ func (c *Command) Help() string {
 			"",
 			"  Please see the auth-methods subcommand help for detailed usage information.",
 		})
-	case "password":
+	case "create":
 		return base.WrapForHelpText([]string{
-			"Usage: boundary auth-methods password [sub command] [options] [args]",
+			"Usage: boundary auth-methods create [type] [sub command] [options] [args]",
 			"",
-			"  This command allows operations on Boundary password-type auth-method resources. Example:",
+			"  This command allows create operations on Boundary auth-method resources. Example:",
 			"",
 			"    Create a password-type auth-method:",
 			"",
-			`      $ boundary auth-methods pasword create -name prodops -description "For ProdOps usage"`,
+			`      $ boundary auth-methods create password -name prodops -description "For ProdOps usage"`,
 			"",
-			"  Please see the subcommand help for detailed usage information.",
+			"  Please see the typed subcommand help for detailed usage information.",
+		})
+	case "update":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary auth-methods update [type] [sub command] [options] [args]",
+			"",
+			"  This command allows update operations on Boundary auth-method resources. Example:",
+			"",
+			"    Update a password-type auth-method:",
+			"",
+			`      $ boundary auth-methods update password -id ampw_1234567890 -name devops -description "For DevOps usage"`,
+			"",
+			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	default:
 		return helpMap[c.Func]() + c.Flags().Help()
@@ -72,7 +88,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	if len(flagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.User.String(), flagsMap[c.Func])
+		common.PopulateCommonFlags(c.Command, f, resource.AuthMethod.String(), flagsMap[c.Func])
 	}
 
 	return set
@@ -87,7 +103,8 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	if c.Func == "" || c.Func == "password" {
+	switch c.Func {
+	case "", "create", "update":
 		return cli.RunResultHelp
 	}
 
@@ -127,7 +144,7 @@ func (c *Command) Run(args []string) int {
 		opts = append(opts, authmethods.WithDescription(c.FlagDescription))
 	}
 
-	authmethodClient := authmethods.NewAuthMethodsClient(client)
+	authmethodClient := authmethods.NewClient(client)
 
 	var existed bool
 	var method *authmethods.AuthMethod
@@ -204,8 +221,11 @@ func (c *Command) Run(args []string) int {
 				if true {
 					output = append(output,
 						fmt.Sprintf("  ID:             %s", m.Id),
-						fmt.Sprintf("    Version:      %d", m.Version),
-						fmt.Sprintf("    Type:         %s", m.Type),
+					)
+				}
+				if m.Description != "" {
+					output = append(output,
+						fmt.Sprintf("    Description:  %s", m.Description),
 					)
 				}
 				if m.Name != "" {
@@ -213,9 +233,10 @@ func (c *Command) Run(args []string) int {
 						fmt.Sprintf("    Name:         %s", m.Name),
 					)
 				}
-				if m.Description != "" {
+				if true {
 					output = append(output,
-						fmt.Sprintf("    Description:  %s", m.Description),
+						fmt.Sprintf("    Type:         %s", m.Type),
+						fmt.Sprintf("    Version:      %d", m.Version),
 					)
 				}
 			}

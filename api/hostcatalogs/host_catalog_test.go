@@ -1,4 +1,4 @@
-package hosts_test
+package hostcatalogs_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/hosts"
+	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -28,19 +28,19 @@ func TestCatalog_List(t *testing.T) {
 	client := tc.Client()
 	_, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(proj.GetPublicId())
-	catalogClient := hosts.NewHostCatalogsClient(client)
+	catalogClient := hostcatalogs.NewClient(client)
 
 	ul, apiErr, err := catalogClient.List(tc.Context())
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.Empty(ul)
 
-	var expected []*hosts.HostCatalog
+	var expected []*hostcatalogs.HostCatalog
 	for i := 0; i < 10; i++ {
-		expected = append(expected, &hosts.HostCatalog{Name: fmt.Sprint(i)})
+		expected = append(expected, &hostcatalogs.HostCatalog{Name: fmt.Sprint(i)})
 	}
 
-	expected[0], apiErr, err = catalogClient.Create(tc.Context(), "static", hosts.WithName(expected[0].Name))
+	expected[0], apiErr, err = catalogClient.Create(tc.Context(), "static", hostcatalogs.WithName(expected[0].Name))
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
@@ -50,7 +50,7 @@ func TestCatalog_List(t *testing.T) {
 	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul))
 
 	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = catalogClient.Create(tc.Context(), "static", hosts.WithName(expected[i].Name))
+		expected[i], apiErr, err = catalogClient.Create(tc.Context(), "static", hostcatalogs.WithName(expected[i].Name))
 		assert.NoError(err)
 		assert.Nil(apiErr)
 	}
@@ -60,10 +60,10 @@ func TestCatalog_List(t *testing.T) {
 	assert.ElementsMatch(comparableCatalogSlice(expected), comparableCatalogSlice(ul))
 }
 
-func comparableCatalogSlice(in []*hosts.HostCatalog) []hosts.HostCatalog {
-	var filtered []hosts.HostCatalog
+func comparableCatalogSlice(in []*hostcatalogs.HostCatalog) []hostcatalogs.HostCatalog {
+	var filtered []hostcatalogs.HostCatalog
 	for _, i := range in {
-		p := hosts.HostCatalog{
+		p := hostcatalogs.HostCatalog{
 			Id:          i.Id,
 			Name:        i.Name,
 			Description: i.Description,
@@ -92,7 +92,7 @@ func TestCatalogs_Crud(t *testing.T) {
 	projClient := client.Clone()
 	projClient.SetScopeId(proj.GetPublicId())
 
-	checkCatalog := func(step string, hc *hosts.HostCatalog, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
+	checkCatalog := func(step string, hc *hostcatalogs.HostCatalog, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
 		require.NoError(err, step)
 		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
 			t.Errorf("ApiError message: %q", apiErr.Message)
@@ -106,18 +106,18 @@ func TestCatalogs_Crud(t *testing.T) {
 		assert.Equal(wantVersion, hc.Version)
 	}
 
-	hcClient := hosts.NewHostCatalogsClient(projClient)
+	hcClient := hostcatalogs.NewClient(projClient)
 
-	hc, apiErr, err := hcClient.Create(tc.Context(), "static", hosts.WithName("foo"))
+	hc, apiErr, err := hcClient.Create(tc.Context(), "static", hostcatalogs.WithName("foo"))
 	checkCatalog("create", hc, apiErr, err, "foo", 1)
 
 	hc, apiErr, err = hcClient.Read(tc.Context(), hc.Id)
 	checkCatalog("read", hc, apiErr, err, "foo", 1)
 
-	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Id, hc.Version, hosts.WithName("bar"))
+	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Id, hc.Version, hostcatalogs.WithName("bar"))
 	checkCatalog("update", hc, apiErr, err, "bar", 2)
 
-	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Id, hc.Version, hosts.DefaultName())
+	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Id, hc.Version, hostcatalogs.DefaultName())
 	checkCatalog("update", hc, apiErr, err, "", 3)
 
 	existed, apiErr, err := hcClient.Delete(tc.Context(), hc.Id)
@@ -144,14 +144,14 @@ func TestCatalogs_Errors(t *testing.T) {
 	client := tc.Client()
 	_, proj := iam.TestScopes(t, tc.IamRepo())
 	client.SetScopeId(proj.GetPublicId())
-	pc := hosts.NewHostCatalogsClient(client)
+	pc := hostcatalogs.NewClient(client)
 
-	hc, apiErr, err := pc.Create(tc.Context(), "static", hosts.WithName("foo"))
+	hc, apiErr, err := pc.Create(tc.Context(), "static", hostcatalogs.WithName("foo"))
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.NotNil(hc)
 
-	_, apiErr, err = pc.Create(tc.Context(), "static", hosts.WithName("foo"))
+	_, apiErr, err = pc.Create(tc.Context(), "static", hostcatalogs.WithName("foo"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 

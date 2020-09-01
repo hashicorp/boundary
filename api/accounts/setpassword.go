@@ -1,4 +1,4 @@
-package authmethods
+package accounts
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/kr/pretty"
 )
 
-func (c *AccountsClient) SetPassword(ctx context.Context, authMethodId, accountId, password string, version uint32, opt ...Option) (*Account, *api.Error, error) {
+func (c *Client) SetPassword(ctx context.Context, authMethodId, accountId, password string, version uint32, opt ...Option) (*Account, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into SetPassword request")
 	}

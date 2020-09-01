@@ -26,12 +26,15 @@ func SynopsisFunc(inFunc, resType string) string {
 
 func HelpMap(resType string) map[string]func() string {
 	prefixMap := map[string]string{
-		resource.Scope.String():      "o",
-		resource.AuthToken.String():  "at",
-		resource.AuthMethod.String(): "am",
-		resource.Role.String():       "r",
-		resource.Group.String():      "g",
-		resource.User.String():       "u",
+		resource.Scope.String():       "o",
+		resource.AuthToken.String():   "at",
+		resource.AuthMethod.String():  "am",
+		resource.Role.String():        "r",
+		resource.Group.String():       "g",
+		resource.User.String():        "u",
+		resource.HostCatalog.String(): "hc",
+		resource.HostSet.String():     "hs",
+		resource.Host.String():        "h",
 	}
 	return map[string]func() string{
 		"base": func() string {

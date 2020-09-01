@@ -26,15 +26,15 @@ type Group struct {
 	Members     []*Member         `json:"members,omitempty"`
 }
 
-type GroupsClient struct {
+type Client struct {
 	client *api.Client
 }
 
-func NewGroupsClient(c *api.Client) *GroupsClient {
-	return &GroupsClient{client: c}
+func NewClient(c *api.Client) *Client {
+	return &Client{client: c}
 }
 
-func (c *GroupsClient) Create(ctx context.Context, opt ...Option) (*Group, *api.Error, error) {
+func (c *Client) Create(ctx context.Context, opt ...Option) (*Group, *api.Error, error) {
 	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
@@ -69,7 +69,7 @@ func (c *GroupsClient) Create(ctx context.Context, opt ...Option) (*Group, *api.
 	return target, apiErr, nil
 }
 
-func (c *GroupsClient) Read(ctx context.Context, groupId string, opt ...Option) (*Group, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, groupId string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into Read request")
 	}
@@ -109,7 +109,7 @@ func (c *GroupsClient) Read(ctx context.Context, groupId string, opt ...Option) 
 	return target, apiErr, nil
 }
 
-func (c *GroupsClient) Update(ctx context.Context, groupId string, version uint32, opt ...Option) (*Group, *api.Error, error) {
+func (c *Client) Update(ctx context.Context, groupId string, version uint32, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into Update request")
 	}
@@ -167,7 +167,7 @@ func (c *GroupsClient) Update(ctx context.Context, groupId string, version uint3
 	return target, apiErr, nil
 }
 
-func (c *GroupsClient) Delete(ctx context.Context, groupId string, opt ...Option) (bool, *api.Error, error) {
+func (c *Client) Delete(ctx context.Context, groupId string, opt ...Option) (bool, *api.Error, error) {
 	if groupId == "" {
 		return false, nil, fmt.Errorf("empty groupId value passed into Delete request")
 	}
@@ -210,7 +210,7 @@ func (c *GroupsClient) Delete(ctx context.Context, groupId string, opt ...Option
 	return target.Existed, apiErr, nil
 }
 
-func (c *GroupsClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.Error, error) {
+func (c *Client) List(ctx context.Context, opt ...Option) ([]*Group, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -249,7 +249,7 @@ func (c *GroupsClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.
 	return target.Items, apiErr, nil
 }
 
-func (c *GroupsClient) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into AddMembers request")
 	}
@@ -311,7 +311,7 @@ func (c *GroupsClient) AddMembers(ctx context.Context, groupId string, version u
 	return target, apiErr, nil
 }
 
-func (c *GroupsClient) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into SetMembers request")
 	}
@@ -376,7 +376,7 @@ func (c *GroupsClient) SetMembers(ctx context.Context, groupId string, version u
 	return target, apiErr, nil
 }
 
-func (c *GroupsClient) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into RemoveMembers request")
 	}

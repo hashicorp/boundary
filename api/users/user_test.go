@@ -27,7 +27,7 @@ func TestUsers_List(t *testing.T) {
 	client := tc.Client()
 	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
-	userClient := users.NewUsersClient(client)
+	userClient := users.NewClient(client)
 
 	ul, apiErr, err := userClient.List(tc.Context())
 	assert.NoError(err)
@@ -88,7 +88,7 @@ func TestUser_Crud(t *testing.T) {
 	client := tc.Client()
 	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
-	userClient := users.NewUsersClient(client)
+	userClient := users.NewClient(client)
 
 	checkUser := func(step string, u *users.User, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
 		assert.NoError(err, step)
@@ -141,7 +141,7 @@ func TestUser_Errors(t *testing.T) {
 	client := tc.Client()
 	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
-	userClient := users.NewUsersClient(client)
+	userClient := users.NewClient(client)
 
 	u, apiErr, err := userClient.Create(tc.Context(), users.WithName("first"))
 	require.NoError(err)
