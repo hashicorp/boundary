@@ -480,10 +480,7 @@ func toProto(in *static.HostSet, hs []*static.Host) *pb.HostSet {
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostSetRequest) error {
-	return handlers.ValidateGetRequest(static.HostSetPrefix, req, func() map[string]string {
-		badFields := map[string]string{}
-		return badFields
-	})
+	return handlers.ValidateGetRequest(static.HostSetPrefix, req, handlers.NoopValidatorFn)
 }
 
 func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
@@ -517,10 +514,7 @@ func validateUpdateRequest(req *pbs.UpdateHostSetRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostSetRequest) error {
-	return handlers.ValidateDeleteRequest(static.HostSetPrefix, req, func() map[string]string {
-		badFields := map[string]string{}
-		return badFields
-	})
+	return handlers.ValidateDeleteRequest(static.HostSetPrefix, req, handlers.NoopValidatorFn)
 }
 
 func validateListRequest(req *pbs.ListHostSetsRequest) error {
