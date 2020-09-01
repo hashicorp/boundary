@@ -44,21 +44,41 @@ func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 	return Service{staticRepoFn: repoFn}, nil
 }
 
+func (s Service) getHostStructs(ctx context.Context, id string, isHostSetId bool) (*static.HostCatalog, *static.HostSet, error) {
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, nil, err
+	}
+	hostCatalogId := id
+	var hostSet *static.HostSet
+	if isHostSetId {
+		hostSet, _, err = repo.LookupSet(ctx, id)
+		if err != nil {
+			return nil, nil, err
+		}
+		if hostSet == nil {
+			return nil, nil, handlers.ForbiddenError()
+		}
+		hostCatalogId = hostSet.GetCatalogId()
+	}
+	hostCatalog, err := repo.LookupCatalog(ctx, hostCatalogId)
+	if err != nil {
+		return nil, nil, err
+	}
+	if hostCatalog == nil {
+		return nil, nil, handlers.ForbiddenError()
+	}
+	return hostCatalog, hostSet, nil
+}
+
 func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest) (*pbs.ListHostSetsResponse, error) {
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
 
-	repo, err := s.staticRepoFn()
+	hostCatalog, _, err := s.getHostStructs(ctx, req.GetHostCatalogId(), false)
 	if err != nil {
 		return nil, err
-	}
-	hostCatalog, err := repo.LookupCatalog(ctx, req.GetHostCatalogId())
-	if err != nil {
-		return nil, err
-	}
-	if hostCatalog == nil {
-		return nil, handlers.ForbiddenError()
 	}
 	authResults := auth.Verify(ctx,
 		auth.WithScopeId(hostCatalog.GetScopeId()),
@@ -85,23 +105,9 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 		return nil, err
 	}
 
-	repo, err := s.staticRepoFn()
+	hostCatalog, hostSet, err := s.getHostStructs(ctx, req.GetId(), true)
 	if err != nil {
 		return nil, err
-	}
-	hostSet, _, err := repo.LookupSet(ctx, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	if hostSet == nil {
-		return nil, handlers.ForbiddenError()
-	}
-	hostCatalog, err := repo.LookupCatalog(ctx, hostSet.GetCatalogId())
-	if err != nil {
-		return nil, err
-	}
-	if hostCatalog == nil {
-		return nil, handlers.ForbiddenError()
 	}
 	authResults := auth.Verify(ctx,
 		auth.WithScopeId(hostCatalog.GetScopeId()),
@@ -127,20 +133,13 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 		return nil, err
 	}
 
-	repo, err := s.staticRepoFn()
-	if err != nil {
-		return nil, err
-	}
 	hcId := req.GetItem().GetHostCatalogId()
 	if hcId == "" {
 		hcId = req.GetHostCatalogId()
 	}
-	hostCatalog, err := repo.LookupCatalog(ctx, hcId)
+	hostCatalog, _, err := s.getHostStructs(ctx, hcId, false)
 	if err != nil {
 		return nil, err
-	}
-	if hostCatalog == nil {
-		return nil, handlers.ForbiddenError()
 	}
 	authResults := auth.Verify(ctx,
 		auth.WithScopeId(hostCatalog.GetScopeId()),
@@ -168,23 +167,9 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 		return nil, err
 	}
 
-	repo, err := s.staticRepoFn()
+	hostCatalog, hostSet, err := s.getHostStructs(ctx, req.GetId(), true)
 	if err != nil {
 		return nil, err
-	}
-	hostSet, _, err := repo.LookupSet(ctx, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	if hostSet == nil {
-		return nil, handlers.ForbiddenError()
-	}
-	hostCatalog, err := repo.LookupCatalog(ctx, hostSet.GetCatalogId())
-	if err != nil {
-		return nil, err
-	}
-	if hostCatalog == nil {
-		return nil, handlers.ForbiddenError()
 	}
 	authResults := auth.Verify(ctx,
 		auth.WithScopeId(hostCatalog.GetScopeId()),
@@ -209,23 +194,9 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	repo, err := s.staticRepoFn()
+	hostCatalog, hostSet, err := s.getHostStructs(ctx, req.GetId(), true)
 	if err != nil {
 		return nil, err
-	}
-	hostSet, _, err := repo.LookupSet(ctx, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	if hostSet == nil {
-		return nil, handlers.ForbiddenError()
-	}
-	hostCatalog, err := repo.LookupCatalog(ctx, hostSet.GetCatalogId())
-	if err != nil {
-		return nil, err
-	}
-	if hostCatalog == nil {
-		return nil, handlers.ForbiddenError()
 	}
 	authResults := auth.Verify(ctx,
 		auth.WithScopeId(hostCatalog.GetScopeId()),
@@ -249,23 +220,9 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 	if err := validateAddRequest(req); err != nil {
 		return nil, err
 	}
-	repo, err := s.staticRepoFn()
+	hostCatalog, hostSet, err := s.getHostStructs(ctx, req.GetId(), true)
 	if err != nil {
 		return nil, err
-	}
-	hostSet, _, err := repo.LookupSet(ctx, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	if hostSet == nil {
-		return nil, handlers.ForbiddenError()
-	}
-	hostCatalog, err := repo.LookupCatalog(ctx, hostSet.GetCatalogId())
-	if err != nil {
-		return nil, err
-	}
-	if hostCatalog == nil {
-		return nil, handlers.ForbiddenError()
 	}
 	authResults := auth.Verify(ctx,
 		auth.WithScopeId(hostCatalog.GetScopeId()),
@@ -289,23 +246,9 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 	if err := validateSetRequest(req); err != nil {
 		return nil, err
 	}
-	repo, err := s.staticRepoFn()
+	hostCatalog, hostSet, err := s.getHostStructs(ctx, req.GetId(), true)
 	if err != nil {
 		return nil, err
-	}
-	hostSet, _, err := repo.LookupSet(ctx, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	if hostSet == nil {
-		return nil, handlers.ForbiddenError()
-	}
-	hostCatalog, err := repo.LookupCatalog(ctx, hostSet.GetCatalogId())
-	if err != nil {
-		return nil, err
-	}
-	if hostCatalog == nil {
-		return nil, handlers.ForbiddenError()
 	}
 	authResults := auth.Verify(ctx,
 		auth.WithScopeId(hostCatalog.GetScopeId()),
@@ -329,23 +272,9 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 	if err := validateRemoveRequest(req); err != nil {
 		return nil, err
 	}
-	repo, err := s.staticRepoFn()
+	hostCatalog, hostSet, err := s.getHostStructs(ctx, req.GetId(), true)
 	if err != nil {
 		return nil, err
-	}
-	hostSet, _, err := repo.LookupSet(ctx, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	if hostSet == nil {
-		return nil, handlers.ForbiddenError()
-	}
-	hostCatalog, err := repo.LookupCatalog(ctx, hostSet.GetCatalogId())
-	if err != nil {
-		return nil, err
-	}
-	if hostCatalog == nil {
-		return nil, handlers.ForbiddenError()
 	}
 	authResults := auth.Verify(ctx,
 		auth.WithScopeId(hostCatalog.GetScopeId()),
