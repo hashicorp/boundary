@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package controller.api.resources.targets.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets;targets";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/struct.proto";
+import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/options.proto";
+
+message HostSet{
+	string id = 10;
+	string host_catalog_id = 20;
+}
+
+// Target contains all fields related to a Target resource
+message Target {
+	// The ID of the resource
+	// Output only.
+	string id = 10;
+
+	// The id of the parent of this resource.  This must be defined for creation of this resource, but is otherwise
+	// read only.
+	string scope_id = 20;
+
+	// Scope information for this resource
+	// Output only.
+	resources.scopes.v1.ScopeInfo scope = 30;
+	
+	// Required name for identification purposes
+	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+
+	// Optional user-set description for identification purposes
+	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+
+	// The time this resource was created
+	// Output only.
+	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];
+
+	// The time this resource was last updated.
+	// Output only.
+	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
+
+	// The version can be used in subsequent write requests to ensure this
+	// resource has not changed and to fail the write if it has.
+	uint32 version = 80;
+
+	string type = 90;
+
+	// The ids of the host sets that make up this target.
+	repeated string host_set_ids = 100;
+
+	// The host sets that make up this target.
+	// Output only.
+	repeated HostSet host_sets = 110;
+
+	// The  default port a target should use if present.
+	google.protobuf.UInt32Value default_port = 120 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"default_port" that: "DefaultPort"}];
+}

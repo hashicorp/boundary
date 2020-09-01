@@ -95,6 +95,13 @@ func TestHandleImplementedPaths(t *testing.T) {
 
 	for verb, paths := range map[string][]string{
 		"GET": {
+			// new paths
+			"v1/targets",
+			"v1/targets/someid",
+			"v1/host-sets",
+			"v1/host-sets/someid",
+
+			// old paths
 			"v1/scopes",
 			"v1/scopes/someid",
 			"v1/scopes/someid/auth-tokens",
@@ -115,10 +122,20 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/roles/someid",
 			"v1/scopes/someid/users",
 			"v1/scopes/someid/users/someid",
-			"v1/host-sets/someid",
 		},
 		"POST": {
 			// Creation end points
+			// new paths
+			"v1/targets",
+			"v1/targets/someid:add-host-sets",
+			"v1/targets/someid:set-host-sets",
+			"v1/targets/someid:remove-host-sets",
+			"v1/host-sets",
+			"v1/host-sets/someid:add-hosts",
+			"v1/host-sets/someid:set-hosts",
+			"v1/host-sets/someid:remove-hosts",
+
+			// old paths
 			"v1/scopes",
 			"v1/scopes/someid/groups",
 			"v1/scopes/someid/roles",
@@ -128,7 +145,6 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/host-catalogs",
 			"v1/scopes/someid/host-catalogs/someid/host-sets",
 			"v1/scopes/someid/host-catalogs/someid/hosts",
-			"v1/host-sets",
 
 			// custom methods
 			"v1/scopes/someid/auth-methods/someid:authenticate",
@@ -143,11 +159,13 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/groups/someid:add-members",
 			"v1/scopes/someid/groups/someid:set-members",
 			"v1/scopes/someid/groups/someid:remove-members",
-			"v1/host-sets/someid:add-hosts",
-			"v1/host-sets/someid:set-hosts",
-			"v1/host-sets/someid:remove-hosts",
 		},
 		"DELETE": {
+			// new paths
+			"v1/targets/someid",
+			"v1/host-sets/someid",
+
+			// old paths
 			"v1/scopes/someid",
 			"v1/scopes/someid/users/someid",
 			"v1/scopes/someid/roles/someid",
@@ -158,9 +176,13 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/host-catalogs/someid",
 			"v1/scopes/someid/host-catalogs/someid/host-sets/someid",
 			"v1/scopes/someid/host-catalogs/someid/hosts/someid",
-			"v1/host-sets/someid",
 		},
 		"PATCH": {
+			// new paths
+			"v1/targets/someid",
+			"v1/host-sets/someid",
+
+			// old paths
 			"v1/scopes/someid",
 			"v1/scopes/someid/users/someid",
 			"v1/scopes/someid/roles/someid",
@@ -169,7 +191,6 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/host-catalogs/someid",
 			"v1/scopes/someid/host-catalogs/someid/host-sets/someid",
 			"v1/scopes/someid/host-catalogs/someid/hosts/someid",
-			"v1/host-sets/someid",
 		},
 	} {
 		for _, p := range paths {

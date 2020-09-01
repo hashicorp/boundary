@@ -2312,6 +2312,257 @@
           "controller.api.services.v1.ScopeService"
         ]
       }
+    },
+    "/v1/targets": {
+      "get": {
+        "summary": "Lists all Targets",
+        "operationId": "TargetService_ListTargets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListTargetsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Target",
+        "operationId": "TargetService_CreateTarget",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}": {
+      "get": {
+        "summary": "Gets a single Target",
+        "operationId": "TargetService_GetTarget",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Target",
+        "operationId": "TargetService_DeleteTarget",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteTargetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Target",
+        "operationId": "TargetService_UpdateTarget",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:add-host-sets": {
+      "post": {
+        "summary": "Adds existing Host Sets to a Target.",
+        "operationId": "TargetService_AddTargetHostSets",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddTargetHostSetsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:remove-host-sets": {
+      "post": {
+        "summary": "Removes Host Sets from the Target.",
+        "operationId": "TargetService_RemoveTargetHostSets",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "This host set's id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveTargetHostSetsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:set-host-sets": {
+      "post": {
+        "summary": "Sets the Host Sets on the Target.",
+        "operationId": "TargetService_SetTargetHostSets",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetTargetHostSetsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -2928,6 +3179,85 @@
         }
       }
     },
+    "controller.api.resources.targets.v1.HostSet": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "host_catalog_id": {
+          "type": "string"
+        }
+      }
+    },
+    "controller.api.resources.targets.v1.Target": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the resource\nOutput only.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The id of the parent of this resource.  This must be defined for creation of this resource, but is otherwise\nread only."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Required name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has."
+        },
+        "type": {
+          "type": "string"
+        },
+        "host_set_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The ids of the host sets that make up this target."
+        },
+        "host_sets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.targets.v1.HostSet"
+          },
+          "description": "The host sets that make up this target.\nOutput only.",
+          "readOnly": true
+        },
+        "default_port": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The  default port a target should use if present."
+        }
+      },
+      "title": "Target contains all fields related to a Target resource"
+    },
     "controller.api.resources.users.v1.User": {
       "type": "object",
       "properties": {
@@ -2947,7 +3277,7 @@
         },
         "description": {
           "type": "string",
-          "title": "Optional user-set descripton for identification purposes"
+          "title": "Optional user-set description for identification purposes"
         },
         "created_time": {
           "type": "string",
@@ -3077,6 +3407,33 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.AddTargetHostSetsRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "host_set_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "A list of host set IDs which will be added to this target. Each host set\nreferenced here must be a child of a host catalog in the same scope as this\ntarget"
+        }
+      }
+    },
+    "controller.api.services.v1.AddTargetHostSetsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
         }
       }
     },
@@ -3226,6 +3583,17 @@
         }
       }
     },
+    "controller.api.services.v1.CreateTargetResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
     "controller.api.services.v1.CreateUserResponse": {
       "type": "object",
       "properties": {
@@ -3318,6 +3686,15 @@
         }
       }
     },
+    "controller.api.services.v1.DeleteTargetResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
     "controller.api.services.v1.DeleteUserResponse": {
       "type": "object",
       "properties": {
@@ -3396,6 +3773,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+        }
+      }
+    },
+    "controller.api.services.v1.GetTargetResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
         }
       }
     },
@@ -3502,6 +3887,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListTargetsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
           }
         }
       }
@@ -3626,6 +4022,34 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveTargetHostSetsRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "This host set's id."
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "host_set_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of host set IDs which should not be in the target when this request\nreturns."
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveTargetHostSetsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
         }
       }
     },
@@ -3766,6 +4190,33 @@
         }
       }
     },
+    "controller.api.services.v1.SetTargetHostSetsRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "host_set_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of host set IDs which will be set on this target. Each host set\nreferenced here must be a child of a host catalog in the same scope as this\ntarget."
+        }
+      }
+    },
+    "controller.api.services.v1.SetTargetHostSetsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
     "controller.api.services.v1.StatusResponse": {
       "type": "object",
       "properties": {
@@ -3846,6 +4297,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateTargetResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
         }
       }
     },

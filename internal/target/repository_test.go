@@ -276,9 +276,8 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundGroup, _, err := repo.LookupTarget(context.Background(), tt.args.target.GetPublicId())
-			assert.Error(err)
+			assert.NoError(err)
 			assert.Nil(foundGroup)
-			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
 			err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)

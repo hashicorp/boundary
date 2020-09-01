@@ -424,10 +424,10 @@ func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds [
 
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to look up host set: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup group after setting members for it.")
+		return nil, status.Error(codes.Internal, "Unable to lookup host set after setting hosts for it.")
 	}
 	return toProto(out, m), nil
 }
