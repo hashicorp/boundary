@@ -125,7 +125,7 @@ func TestOplogKeyVersion_Delete(t *testing.T) {
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
-	dk := kms.TestOplogKey(t, conn, rk.PrivateId)
+	opk := kms.TestOplogKey(t, conn, rk.PrivateId)
 
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocOplogKeyVersion()).Error)
 
@@ -138,7 +138,7 @@ func TestOplogKeyVersion_Delete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			key:             kms.TestOplogKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("test key")),
+			key:             kms.TestOplogKeyVersion(t, conn, rkvWrapper, opk.PrivateId, []byte("test key")),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
