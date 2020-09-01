@@ -9,9 +9,12 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/store"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -30,27 +33,31 @@ func init() {
 
 // Service handles request as described by the pbs.TargetServiceServer interface.
 type Service struct {
-	repoFn func() (*target.Repository, error)
+	repoFn    func() (*target.Repository, error)
+	iamRepoFn func() (*iam.Repository, error)
 }
 
 // NewService returns a target service which handles target related requests to boundary.
-func NewService(repo func() (*target.Repository, error)) (Service, error) {
-	if repo == nil {
+func NewService(repoFn func() (*target.Repository, error), iamRepoFn func() (*iam.Repository, error)) (Service, error) {
+	if repoFn == nil {
 		return Service{}, fmt.Errorf("nil target repository provided")
 	}
-	return Service{repoFn: repo}, nil
+	if iamRepoFn == nil {
+		return Service{}, fmt.Errorf("nil target repository provided")
+	}
+	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn}, nil
 }
 
 var _ pbs.TargetServiceServer = Service{}
 
 // ListTargets implements the interface pbs.TargetServiceServer.
 func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (*pbs.ListTargetsResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.collectionAuthVerify(ctx, req.GetScopeId(), action.List)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
 	if err != nil {
@@ -64,12 +71,12 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 
 // GetTargets implements the interface pbs.TargetServiceServer.
 func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs.GetTargetResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authVerify(ctx, req.GetId(), action.Read)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -81,29 +88,29 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 
 // CreateTarget implements the interface pbs.TargetServiceServer.
 func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest) (*pbs.CreateTargetResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
+	authResults := s.collectionAuthVerify(ctx, req.GetItem().GetScopeId(), action.Create)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	u, err := s.createInRepo(ctx, req.GetItem())
 	if err != nil {
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.CreateTargetResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/targets/%s", authResults.Scope.GetId(), u.GetId())}, nil
+	return &pbs.CreateTargetResponse{Item: u, Uri: fmt.Sprintf("targets/%s", u.GetId())}, nil
 }
 
 // UpdateTarget implements the interface pbs.TargetServiceServer.
 func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest) (*pbs.UpdateTargetResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authVerify(ctx, req.GetId(), action.Update)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
@@ -115,12 +122,12 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 
 // DeleteTarget implements the interface pbs.TargetServiceServer.
 func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest) (*pbs.DeleteTargetResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authVerify(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	existed, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -131,12 +138,12 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 
 // AddTargetHostSets implements the interface pbs.TargetServiceServer.
 func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSetsRequest) (*pbs.AddTargetHostSetsResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateAddRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authVerify(ctx, req.GetId(), action.AddHostSets)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.addInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
@@ -148,12 +155,12 @@ func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSe
 
 // SetTargetHostSets implements the interface pbs.TargetServiceServer.
 func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSetsRequest) (*pbs.SetTargetHostSetsResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateSetRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authVerify(ctx, req.GetId(), action.SetHostSets)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.setInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
@@ -165,12 +172,12 @@ func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSe
 
 // RemoveTargetHostSets implements the interface pbs.TargetServiceServer.
 func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTargetHostSetsRequest) (*pbs.RemoveTargetHostSetsResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateRemoveRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authVerify(ctx, req.GetId(), action.RemoveHostSets)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.removeInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
@@ -198,7 +205,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error)
 	return toProto(u, m), nil
 }
 
-func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Target) (*pb.Target, error) {
+func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target, error) {
 	opts := []target.Option{target.WithName(item.GetName().GetValue())}
 	if item.GetDescription() != nil {
 		opts = append(opts, target.WithDescription(item.GetDescription().GetValue()))
@@ -206,7 +213,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Targ
 	if item.GetDefaultPort().GetValue() != 0 {
 		opts = append(opts, target.WithDefaultPort(item.GetDefaultPort().GetValue()))
 	}
-	u, err := target.NewTcpTarget(scopeId, opts...)
+	u, err := target.NewTcpTarget(item.GetScopeId(), opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build target for creation: %v.", err)
 	}
@@ -341,9 +348,54 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	return toProto(out, m), nil
 }
 
+func (s Service) collectionAuthVerify(ctx context.Context, parentId string, a action.Type) auth.VerifyResults {
+	var res auth.VerifyResults
+	iamRep, err := s.iamRepoFn()
+	if err != nil {
+		res.Error = err
+		return res
+	}
+	sc, err := iamRep.LookupScope(ctx, parentId)
+	if err != nil {
+		res.Error = err
+		return res
+	}
+	if sc == nil {
+		res.Error = handlers.ForbiddenError()
+		return res
+	}
+	authResults := auth.Verify(ctx,
+		auth.WithScopeId(sc.GetPublicId()),
+		auth.WithAction(a))
+	return authResults
+}
+
+func (s Service) authVerify(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+	var res auth.VerifyResults
+	repo, err := s.repoFn()
+	if err != nil {
+		res.Error = err
+		return res
+	}
+	tar, _, err := repo.LookupTarget(ctx, id)
+	if err != nil {
+		res.Error = err
+		return res
+	}
+	if tar == nil {
+		res.Error = handlers.ForbiddenError()
+		return res
+	}
+	authResults := auth.Verify(ctx,
+		auth.WithScopeId(tar.GetScopeId()),
+		auth.WithAction(a))
+	return authResults
+}
+
 func toProto(in target.Target, m []*target.TargetSet) *pb.Target {
 	out := pb.Target{
 		Id:          in.GetPublicId(),
+		ScopeId:     in.GetScopeId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
@@ -380,6 +432,9 @@ func validateGetRequest(req *pbs.GetTargetRequest) error {
 func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		if !handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) {
+			badFields["scope_id"] = "This field is required to have a properly formatted project scope id."
+		}
 		if req.GetItem().GetName() == nil || req.GetItem().GetName().GetValue() == "" {
 			badFields["name"] = "This field is required."
 		}
@@ -417,8 +472,11 @@ func validateDeleteRequest(req *pbs.DeleteTargetRequest) error {
 	return handlers.ValidateDeleteRequest(target.TcpTargetPrefix, req, handlers.NoopValidatorFn)
 }
 
-func validateListRequest(_ *pbs.ListTargetsRequest) error {
+func validateListRequest(req *pbs.ListTargetsRequest) error {
 	badFields := map[string]string{}
+	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
+		badFields["scope_id"] = "This field is required to have a properly formatted project scope id."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}

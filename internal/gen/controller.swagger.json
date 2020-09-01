@@ -2073,251 +2073,6 @@
         ]
       }
     },
-    "/v1/scopes/*/targets": {
-      "get": {
-        "summary": "Lists all Targets",
-        "operationId": "TargetService_ListTargets",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListTargetsResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.TargetService"
-        ]
-      },
-      "post": {
-        "summary": "Creates a single Target",
-        "operationId": "TargetService_CreateTarget",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.TargetService"
-        ]
-      }
-    },
-    "/v1/scopes/*/targets/{id}": {
-      "get": {
-        "summary": "Gets a single Target",
-        "operationId": "TargetService_GetTarget",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.TargetService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a Target",
-        "operationId": "TargetService_DeleteTarget",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteTargetResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.TargetService"
-        ]
-      },
-      "patch": {
-        "summary": "Updates a Target",
-        "operationId": "TargetService_UpdateTarget",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-            }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.TargetService"
-        ]
-      }
-    },
-    "/v1/scopes/*/targets/{id}:add-host-sets": {
-      "post": {
-        "summary": "Adds existing Host Sets to a Target.",
-        "operationId": "TargetService_AddTargetHostSets",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddTargetHostSetsRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.TargetService"
-        ]
-      }
-    },
-    "/v1/scopes/*/targets/{id}:remove-host-sets": {
-      "post": {
-        "summary": "Removes Host Sets from the Target.",
-        "operationId": "TargetService_RemoveTargetHostSets",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "This host set's id.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveTargetHostSetsRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.TargetService"
-        ]
-      }
-    },
-    "/v1/scopes/*/targets/{id}:set-host-sets": {
-      "post": {
-        "summary": "Sets the Host Sets on the Target.",
-        "operationId": "TargetService_SetTargetHostSets",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetTargetHostSetsRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.TargetService"
-        ]
-      }
-    },
     "/v1/scopes/*/users": {
       "get": {
         "summary": "Lists all Users",
@@ -2555,6 +2310,257 @@
         ],
         "tags": [
           "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
+    "/v1/targets": {
+      "get": {
+        "summary": "Lists all Targets",
+        "operationId": "TargetService_ListTargets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListTargetsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Target",
+        "operationId": "TargetService_CreateTarget",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}": {
+      "get": {
+        "summary": "Gets a single Target",
+        "operationId": "TargetService_GetTarget",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Target",
+        "operationId": "TargetService_DeleteTarget",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteTargetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Target",
+        "operationId": "TargetService_UpdateTarget",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:add-host-sets": {
+      "post": {
+        "summary": "Adds existing Host Sets to a Target.",
+        "operationId": "TargetService_AddTargetHostSets",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddTargetHostSetsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:remove-host-sets": {
+      "post": {
+        "summary": "Removes Host Sets from the Target.",
+        "operationId": "TargetService_RemoveTargetHostSets",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "This host set's id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveTargetHostSetsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:set-host-sets": {
+      "post": {
+        "summary": "Sets the Host Sets on the Target.",
+        "operationId": "TargetService_SetTargetHostSets",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetTargetHostSetsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
         ]
       }
     }
@@ -3191,6 +3197,10 @@
           "type": "string",
           "description": "The ID of the resource\nOutput only.",
           "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The id of the parent of this resource.  This must be defined for creation of this resource, but is otherwise\nread only."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",

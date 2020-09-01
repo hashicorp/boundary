@@ -17,7 +17,7 @@ service TargetService {
   // resource an error is returned.
   rpc GetTarget(GetTargetRequest) returns (GetTargetResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/targets/{id}"
+      get: "/v1/targets/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -31,7 +31,7 @@ service TargetService {
   // reference a non existing scope, an error is returned.
   rpc ListTargets(ListTargetsRequest) returns (ListTargetsResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/targets"
+      get: "/v1/targets"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all Targets"
@@ -45,7 +45,7 @@ service TargetService {
   // use in another target in the same scope, an error is returned.
   rpc CreateTarget(CreateTargetRequest) returns (CreateTargetResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/targets"
+      post: "/v1/targets"
       body: "item"
       response_body: "item"
     };
@@ -64,7 +64,7 @@ service TargetService {
   // already in use in this scope.
   rpc UpdateTarget(UpdateTargetRequest) returns (UpdateTargetResponse) {
     option (google.api.http) = {
-      patch: "/v1/scopes/*/targets/{id}"
+      patch: "/v1/targets/{id}"
       body: "item"
       response_body: "item"
     };
@@ -80,7 +80,7 @@ service TargetService {
   // received.
   rpc DeleteTarget(DeleteTargetRequest) returns (DeleteTargetResponse) {
     option (google.api.http) = {
-      delete: "/v1/scopes/*/targets/{id}"
+      delete: "/v1/targets/{id}"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes a Target"
@@ -96,7 +96,7 @@ service TargetService {
   // returned.
   rpc AddTargetHostSets(AddTargetHostSetsRequest) returns (AddTargetHostSetsResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/targets/{id}:add-host-sets"
+      post: "/v1/targets/{id}:add-host-sets"
       body: "*"
       response_body: "item"
     };
@@ -114,7 +114,7 @@ service TargetService {
   // error is returned.
   rpc SetTargetHostSets(SetTargetHostSetsRequest) returns (SetTargetHostSetsResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/targets/{id}:set-host-sets"
+      post: "/v1/targets/{id}:set-host-sets"
       body: "*"
       response_body: "item"
     };
@@ -130,7 +130,7 @@ service TargetService {
   // returned.
   rpc RemoveTargetHostSets(RemoveTargetHostSetsRequest) returns (RemoveTargetHostSetsResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/targets/{id}:remove-host-sets"
+      post: "/v1/targets/{id}:remove-host-sets"
       body: "*"
       response_body: "item"
     };
@@ -151,7 +151,8 @@ message GetTargetResponse {
 }
 
 message ListTargetsRequest {
-  string view = 1;
+  string scope_id = 1;
+  string view = 2;
 }
 
 message ListTargetsResponse {

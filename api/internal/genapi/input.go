@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	"google.golang.org/protobuf/proto"
 )
@@ -297,29 +296,6 @@ var inputStructs = []*structInfo{
 		sliceSubTypes: map[string]string{
 			"Hosts": "hostIds",
 		},
-		versionEnabled: true,
-	},
-	{
-		inProto:    &targets.HostSet{},
-		outFile:    "targets/host_set.gen.go",
-		outputOnly: true,
-	},
-	{
-		inProto: &targets.Target{},
-		outFile: "targets/target.gen.go",
-		templates: []*template.Template{
-			clientTemplate,
-			createTemplate,
-			readTemplate,
-			updateTemplate,
-			deleteTemplate,
-			listTemplate,
-		},
-		pathArgs: []string{"target"},
-		sliceSubTypes: map[string]string{
-			"HostSets": "hostSetIds",
-		},
-		typeOnCreate:   true,
 		versionEnabled: true,
 	},
 }

@@ -143,7 +143,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	if err := services.RegisterUserServiceHandlerServer(ctx, mux, us); err != nil {
 		return nil, fmt.Errorf("failed to register user service handler: %w", err)
 	}
-	ts, err := targets.NewService(c.TargetRepoFn)
+	ts, err := targets.NewService(c.TargetRepoFn, c.IamRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create target handler service: %w", err)
 	}
