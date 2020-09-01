@@ -15,6 +15,8 @@ const (
 	OplogKeyVersionPrefix    = "kopkv"
 	TokenKeyPrefix           = "ktk"
 	TokenKeyVersionPrefix    = "ktv"
+	SessionKeyPrefix         = "ksk"
+	SessionKeyVersionPrefix  = "kskv"
 )
 
 func newRootKeyId() (string, error) {
@@ -77,6 +79,22 @@ func newTokenKeyVersionId() (string, error) {
 	id, err := db.NewPublicId(TokenKeyVersionPrefix)
 	if err != nil {
 		return "", fmt.Errorf("new token key version id: %w", err)
+	}
+	return id, nil
+}
+
+func newSessionKeyId() (string, error) {
+	id, err := db.NewPublicId(SessionKeyPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new session key id: %w", err)
+	}
+	return id, nil
+}
+
+func newSessionKeyVersionId() (string, error) {
+	id, err := db.NewPublicId(SessionKeyVersionPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new session key version id: %w", err)
 	}
 	return id, nil
 }

@@ -50,4 +50,14 @@ func Test_Ids(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, TokenKeyVersionPrefix+"_"))
 	})
+	t.Run("ksk", func(t *testing.T) {
+		id, err := newSessionKeyId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, SessionKeyPrefix+"_"))
+	})
+	t.Run("kskv", func(t *testing.T) {
+		id, err := newSessionKeyVersionId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, SessionKeyVersionPrefix+"_"))
+	})
 }
