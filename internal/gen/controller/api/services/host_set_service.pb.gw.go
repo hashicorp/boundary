@@ -2068,11 +2068,11 @@ var (
 
 	pattern_HostSetService_AddHostSetHosts_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "add-hosts"))
 
-	pattern_HostSetService_SetHostSetHosts_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-sets", "id"}, "add-hosts"))
+	pattern_HostSetService_SetHostSetHosts_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-sets", "id"}, "set-hosts"))
 
 	pattern_HostSetService_SetHostSetHosts_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "set-hosts"))
 
-	pattern_HostSetService_RemoveHostSetHosts_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-sets", "id"}, "add-hosts"))
+	pattern_HostSetService_RemoveHostSetHosts_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-sets", "id"}, "remove-hosts"))
 
 	pattern_HostSetService_RemoveHostSetHosts_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "remove-hosts"))
 )

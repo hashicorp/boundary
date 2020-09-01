@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
+	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,16 +62,16 @@ func TestCustom(t *testing.T) {
 		if newStyle {
 			hSet, apiErr, err = hSetClient.SetHosts(tc.Context(), hc.Id, hSet.Id, hSet.Version, []string{h1.Id})
 		} else {
-			hSet, apiErr, err = hSetClient.SetHosts2(tc.Context(), hc.Id, hSet.Version, []string{h1.Id})
+			hSet, apiErr, err = hSetClient.SetHosts2(tc.Context(), hSet.Id, hSet.Version, []string{h1.Id})
 		}
 		require.NoError(err)
-		require.Nil(apiErr)
+		require.Nil(apiErr, pretty.Sprint(apiErr))
 		assert.ElementsMatch([]string{h1.Id}, hSet.HostIds)
 
 		if newStyle {
 			hSet, apiErr, err = hSetClient.RemoveHosts(tc.Context(), hc.Id, hSet.Id, hSet.Version, []string{h1.Id})
 		} else {
-			hSet, apiErr, err = hSetClient.RemoveHosts2(tc.Context(), hc.Id, hSet.Version, []string{h1.Id})
+			hSet, apiErr, err = hSetClient.RemoveHosts2(tc.Context(), hSet.Id, hSet.Version, []string{h1.Id})
 		}
 		require.NoError(err)
 		require.Nil(apiErr)

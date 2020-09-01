@@ -149,7 +149,7 @@ service HostSetService {
   // error is returned.
   rpc SetHostSetHosts(SetHostSetHostsRequest) returns (SetHostSetHostsResponse) {
     option (google.api.http) = {
-      post: "/v1/host-sets/{id}:add-hosts"
+      post: "/v1/host-sets/{id}:set-hosts"
       body: "*"
       response_body: "item"
       additional_bindings: {
@@ -170,7 +170,7 @@ service HostSetService {
   // an error is returned.
   rpc RemoveHostSetHosts(RemoveHostSetHostsRequest) returns (RemoveHostSetHostsResponse) {
     option (google.api.http) = {
-      post: "/v1/host-sets/{id}:add-hosts"
+      post: "/v1/host-sets/{id}:remove-hosts"
       body: "*"
       response_body: "item"
       additional_bindings: {

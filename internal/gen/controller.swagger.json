@@ -193,6 +193,39 @@
     },
     "/v1/host-sets/{id}:add-hosts": {
       "post": {
+        "summary": "Adds existing Hosts to a Host Set.",
+        "operationId": "HostSetService_AddHostSetHosts",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddHostSetHostsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      }
+    },
+    "/v1/host-sets/{id}:remove-hosts": {
+      "post": {
         "summary": "Removes Hosts from the Host Set.",
         "operationId": "HostSetService_RemoveHostSetHosts",
         "responses": {
@@ -217,6 +250,39 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.RemoveHostSetHostsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      }
+    },
+    "/v1/host-sets/{id}:set-hosts": {
+      "post": {
+        "summary": "Sets the Hosts on the Host Set.",
+        "operationId": "HostSetService_SetHostSetHosts",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetHostSetHostsRequest"
             }
           }
         ],
