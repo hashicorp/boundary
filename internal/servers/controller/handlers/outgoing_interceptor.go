@@ -14,7 +14,7 @@ const (
 	JsVisibleCookieName = "wt-js-token-cookie"
 )
 
-func OutgoingIntercepter(ctx context.Context, w http.ResponseWriter, m proto.Message) error {
+func OutgoingInterceptor(ctx context.Context, w http.ResponseWriter, m proto.Message) error {
 	m = m.ProtoReflect().Interface()
 	switch m := m.(type) {
 	case *pbs.AuthenticateResponse:
