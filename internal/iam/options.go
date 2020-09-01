@@ -26,6 +26,7 @@ type options struct {
 	withSkipVetForWrite  bool
 	withDisassociate     bool
 	withSkipRoleCreation bool
+	withUserId           string
 	withRandomReader     io.Reader
 }
 
@@ -116,6 +117,13 @@ func WithDisassociate(enable bool) Option {
 func WithSkipRoleCreation(enable bool) Option {
 	return func(o *options) {
 		o.withSkipRoleCreation = enable
+	}
+}
+
+// WithUserId provides an option to specify the user ID to use when creating roles with new scopes.
+func WithUserId(id string) Option {
+	return func(o *options) {
+		o.withUserId = id
 	}
 }
 

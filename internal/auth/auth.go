@@ -25,12 +25,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const (
-	HeaderAuthMethod    = "Authorization"
-	HttpOnlyCookieName  = "wt-http-token-cookie"
-	JsVisibleCookieName = "wt-js-token-cookie"
-)
-
 type TokenFormat int
 
 const (
@@ -62,9 +56,12 @@ type RequestInfo struct {
 	Token       string
 	TokenFormat TokenFormat
 
-	// This is used for operations on the scopes collection
-	scopeIdOverride string
-	userIdOverride  string
+	// These are set by the service handlers via options
+	scopeId string
+	pin     string
+
+	// This is used by the scopes collection
+	userIdOverride string
 
 	// The following are useful for tests
 	DisableAuthzFailures bool
@@ -123,10 +120,16 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		// context we won't catch in tests
 		panic("no verifier information found in context")
 	}
+	v.ctx = ctx
+
 	opts := getOpts(opt...)
+
 	ret.Scope = new(scopes.ScopeInfo)
 	if v.requestInfo.DisableAuthEntirely {
-		ret.Scope.Id = v.requestInfo.scopeIdOverride
+		ret.Scope.Id = v.requestInfo.scopeId
+		if ret.Scope.Id == "" {
+			ret.Scope.Id = opts.withScopeId
+		}
 		switch {
 		case ret.Scope.Id == "global":
 			ret.Scope.Type = "global"
@@ -146,11 +149,21 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		return
 	}
 
-	v.ctx = ctx
-	v.requestInfo.scopeIdOverride = opts.withScopeId
-	if err := v.parseAuthParams(); err != nil {
-		v.logger.Trace("error reading auth parameters from URL", "url", v.requestInfo.Path, "method", v.requestInfo.Method, "error", err)
-		return
+	// check if it's new style
+	if opts.withAction != action.Unknown {
+		v.act = opts.withAction
+		v.res = &perms.Resource{
+			ScopeId: opts.withScopeId,
+			Id:      opts.withId,
+			Pin:     opts.withPin,
+		}
+	} else {
+		// This remains for legacy
+		v.requestInfo.scopeId = opts.withScopeId
+		if err := v.parseAuthParams(); err != nil {
+			v.logger.Trace("error reading auth parameters from URL", "url", v.requestInfo.Path, "method", v.requestInfo.Method, "error", err)
+			return
+		}
 	}
 	if v.res == nil {
 		v.logger.Trace("got nil resource information after decorating auth parameters")
@@ -185,18 +198,20 @@ func (v *verifier) parseAuthParams() error {
 	splitPath := strings.Split(strings.TrimPrefix(trimmedPath, "v1/"), "/")
 	splitLen := len(splitPath)
 
-	// It must be at least length 1 and the first segment must be "scopes"
-	switch {
-	case splitLen == 0:
+	// It must be at least length 1. If so, figure out new vs. legacy parsing
+	if len(splitPath) == 0 {
 		return fmt.Errorf("parse auth params: invalid path")
-	case splitPath[0] != "scopes":
-		return fmt.Errorf("parse auth params: invalid first segment %q", splitPath[0])
 	}
 
 	for i := 1; i < splitLen; i++ {
 		if splitPath[i] == "" {
 			return fmt.Errorf("parse auth params: empty segment found")
 		}
+	}
+
+	// The first segment must be "scopes"
+	if splitPath[0] != "scopes" {
+		return fmt.Errorf("parse auth params: invalid first segment %q", splitPath[0])
 	}
 
 	v.act = action.Unknown
@@ -249,10 +264,10 @@ func (v *verifier) parseAuthParams() error {
 		if v.act == action.Read {
 			v.act = action.List
 		}
-		if v.requestInfo.scopeIdOverride == "" {
+		if v.requestInfo.scopeId == "" {
 			return errors.New("parse auth params: missing scope ID information for scopes collection operation")
 		}
-		v.res.ScopeId = v.requestInfo.scopeIdOverride
+		v.res.ScopeId = v.requestInfo.scopeId
 		return nil
 
 	case 2:
@@ -554,10 +569,10 @@ func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Reque
 	if receivedTokenType != AuthTokenTypeBearer {
 		var httpCookiePayload string
 		var jsCookiePayload string
-		if hc, err := req.Cookie(HttpOnlyCookieName); err == nil {
+		if hc, err := req.Cookie(handlers.HttpOnlyCookieName); err == nil {
 			httpCookiePayload = hc.Value
 		}
-		if jc, err := req.Cookie(JsVisibleCookieName); err == nil {
+		if jc, err := req.Cookie(handlers.JsVisibleCookieName); err == nil {
 			jsCookiePayload = jc.Value
 		}
 		if httpCookiePayload != "" && jsCookiePayload != "" {

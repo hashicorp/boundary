@@ -46,20 +46,22 @@ func TestRepo(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper, opt ...
 }
 
 // TestScopes creates an org and project suitable for testing.
-func TestScopes(t *testing.T, repo *Repository) (org *Scope, prj *Scope) {
+func TestScopes(t *testing.T, repo *Repository, opt ...Option) (org *Scope, prj *Scope) {
 	t.Helper()
 	require := require.New(t)
 
+	opts := getOpts(opt...)
+
 	org, err := NewOrg()
 	require.NoError(err)
-	org, err = repo.CreateScope(context.Background(), org, "")
+	org, err = repo.CreateScope(context.Background(), org, opts.withUserId)
 	require.NoError(err)
 	require.NotNil(org)
 	require.NotEmpty(org.GetPublicId())
 
 	prj, err = NewProject(org.GetPublicId())
 	require.NoError(err)
-	prj, err = repo.CreateScope(context.Background(), prj, "")
+	prj, err = repo.CreateScope(context.Background(), prj, opts.withUserId)
 	require.NoError(err)
 	require.NotNil(prj)
 	require.NotEmpty(prj.GetPublicId())
@@ -71,9 +73,11 @@ func TestOrg(t *testing.T, repo *Repository, opt ...Option) (org *Scope) {
 	t.Helper()
 	require := require.New(t)
 
+	opts := getOpts(opt...)
+
 	org, err := NewOrg(opt...)
 	require.NoError(err)
-	org, err = repo.CreateScope(context.Background(), org, "")
+	org, err = repo.CreateScope(context.Background(), org, opts.withUserId)
 	require.NoError(err)
 	require.NotNil(org)
 	require.NotEmpty(org.GetPublicId())
