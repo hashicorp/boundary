@@ -110,33 +110,33 @@ func TestRepository_CreateOplogKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			dk, dv, err := repo.CreateOplogKey(context.Background(), tt.args.keyWrapper, tt.args.key, tt.args.opt...)
+			opk, opv, err := repo.CreateOplogKey(context.Background(), tt.args.keyWrapper, tt.args.key, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
-				assert.Nil(dk)
+				assert.Nil(opk)
 				if tt.wantIsError != nil {
 					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				return
 			}
 			require.NoError(err)
-			assert.NotNil(dk.CreateTime)
-			foundKey, err := repo.LookupOplogKey(context.Background(), dk.PrivateId)
+			assert.NotNil(opk.CreateTime)
+			foundKey, err := repo.LookupOplogKey(context.Background(), opk.PrivateId)
 			assert.NoError(err)
-			assert.True(proto.Equal(foundKey, dk))
+			assert.True(proto.Equal(foundKey, opk))
 
 			// make sure there was no oplog written
-			err = db.TestVerifyOplog(t, rw, dk.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, opk.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
-			assert.NotNil(dv.CreateTime)
-			foundKeyVersion, err := repo.LookupOplogKeyVersion(context.Background(), tt.args.keyWrapper, dv.PrivateId)
+			assert.NotNil(opv.CreateTime)
+			foundKeyVersion, err := repo.LookupOplogKeyVersion(context.Background(), tt.args.keyWrapper, opv.PrivateId)
 			assert.NoError(err)
-			assert.True(proto.Equal(foundKeyVersion, dv))
+			assert.True(proto.Equal(foundKeyVersion, opv))
 
 			// make sure there was no oplog written
-			err = db.TestVerifyOplog(t, rw, dv.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, opv.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 		})
