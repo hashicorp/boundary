@@ -47,7 +47,7 @@ func (k *OplogKey) Clone() interface{} {
 	}
 }
 
-// VetForWrite implements db.VetForWrite() interface and validates the kms root
+// VetForWrite implements db.VetForWrite() interface and validates the key
 // before it's written.
 func (k *OplogKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if k.PrivateId == "" {
