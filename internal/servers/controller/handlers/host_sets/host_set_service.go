@@ -553,9 +553,6 @@ func toProto(in *static.HostSet, hs []*static.Host) *pb.HostSet {
 func validateGetRequest(req *pbs.GetHostSetRequest) error {
 	return handlers.ValidateGetRequest(static.HostSetPrefix, req, func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostSetPrefix, req.GetId()) {
-			badFields["id"] = "The field is incorrectly formatted."
-		}
 		return badFields
 	})
 }
@@ -583,9 +580,6 @@ func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostSetRequest) error {
 	return handlers.ValidateUpdateRequest(static.HostSetPrefix, req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostSetPrefix, req.GetId()) {
-			badFields["id"] = "The field is incorrectly formatted."
-		}
 		if req.GetItem().GetType() != "" {
 			badFields["type"] = "This is a read only field and cannot be specified in an update request."
 		}
@@ -596,9 +590,6 @@ func validateUpdateRequest(req *pbs.UpdateHostSetRequest) error {
 func validateDeleteRequest(req *pbs.DeleteHostSetRequest) error {
 	return handlers.ValidateDeleteRequest(static.HostSetPrefix, req, func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostSetPrefix, req.GetId()) {
-			badFields["id"] = "The field is incorrectly formatted."
-		}
 		return badFields
 	})
 }
