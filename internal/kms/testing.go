@@ -128,3 +128,37 @@ func TestOplogKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrap
 	require.NoError(err)
 	return k
 }
+
+func TestTokenKey(t *testing.T, conn *gorm.DB, rootKeyId string) *TokenKey {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocTokenKey()).Error)
+	k, err := NewTokenKey(rootKeyId)
+	require.NoError(err)
+	id, err := newTokenKeyId()
+	require.NoError(err)
+	k.PrivateId = id
+	k.RootKeyId = rootKeyId
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestTokenKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapping.Wrapper, tokenKeyId string, key []byte) *TokenKeyVersion {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	require.NotEmpty(rootKeyVersionId)
+	k, err := NewTokenKeyVersion(tokenKeyId, key, rootKeyVersionId)
+	require.NoError(err)
+	id, err := newTokenKeyVersionId()
+	require.NoError(err)
+	k.PrivateId = id
+	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)
+	require.NoError(err)
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
