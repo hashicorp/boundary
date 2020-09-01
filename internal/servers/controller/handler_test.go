@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,12 +23,23 @@ func TestAuthenticationHandler(t *testing.T) {
 	})
 	defer c.Shutdown()
 
-	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/%s/auth-methods/ampw_1234567890:authenticate", c.ApiAddrs()[0], scope.Global.String()), "application/json",
-		strings.NewReader(`{"token_type": null, "credentials": {"login_name":"admin", "password": "password123"}}`))
+	request := map[string]interface{}{
+		"credentials": map[string]interface{}{
+			"login_name": "admin",
+			"password":   "password123",
+		},
+	}
+	// No token_type defined means "token" type
+	b, err := json.Marshal(request)
+	require.NoError(t, err)
+
+	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/%s/auth-methods/ampw_1234567890:authenticate", c.ApiAddrs()[0],
+		scope.Global.String()), "application/json", bytes.NewReader(b))
+
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	body := make(map[string]interface{})
 	require.NoError(t, json.Unmarshal(b, &body))
@@ -36,6 +49,41 @@ func TestAuthenticationHandler(t *testing.T) {
 	pubId, tok := body["id"].(string), body["token"].(string)
 	assert.NotEmpty(t, pubId)
 	assert.NotEmpty(t, tok)
+	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
+
+	// Set the token type to cookie and make sure the body does not contain the token anymore.
+	request["token_type"] = "cookie"
+	b, err = json.Marshal(request)
+	resp, err = http.Post(fmt.Sprintf("%s/v1/scopes/%s/auth-methods/ampw_1234567890:authenticate", c.ApiAddrs()[0],
+		scope.Global.String()), "application/json", bytes.NewReader(b))
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
+
+	b, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	body = make(map[string]interface{})
+	require.NoError(t, json.Unmarshal(b, &body))
+
+	require.Contains(t, body, "id")
+	require.Contains(t, body, "auth_method_id")
+	require.Contains(t, body, "user_id")
+	require.NotContains(t, body, "token")
+
+	cookies := make(map[string]*http.Cookie)
+	for _, c := range resp.Cookies() {
+		cookies[c.Name] = c
+	}
+	require.Contains(t, cookies, handlers.HttpOnlyCookieName)
+	require.Contains(t, cookies, handlers.JsVisibleCookieName)
+	assert.NotEmpty(t, cookies[handlers.HttpOnlyCookieName].Value)
+	assert.NotEmpty(t, cookies[handlers.JsVisibleCookieName].Value)
+	assert.True(t, cookies[handlers.HttpOnlyCookieName].HttpOnly)
+	assert.False(t, cookies[handlers.JsVisibleCookieName].HttpOnly)
+	tok = cookies[handlers.JsVisibleCookieName].Value
+
+	pubId = body["id"].(string)
+	assert.NotEmpty(t, pubId)
 	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
 }
 

@@ -2814,7 +2814,7 @@
         },
         "token_type": {
           "type": "string",
-          "description": "This can be \"cookie\" or \"token\".  If not provided, \"token\" will be used.  For now only type \"token\" is returned."
+          "description": "This can be \"cookie\" or \"token\".  If not provided, \"token\" will be used."
         },
         "credentials": {
           "type": "object",
@@ -2827,6 +2827,10 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+        },
+        "token_type": {
+          "type": "string",
+          "description": "This can be \"cookie\" or \"token\".  If not present, \"token\" should be assumed."
         }
       }
     },

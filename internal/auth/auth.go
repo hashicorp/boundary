@@ -25,12 +25,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const (
-	HeaderAuthMethod    = "Authorization"
-	HttpOnlyCookieName  = "wt-http-token-cookie"
-	JsVisibleCookieName = "wt-js-token-cookie"
-)
-
 type TokenFormat int
 
 const (
@@ -554,10 +548,10 @@ func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Reque
 	if receivedTokenType != AuthTokenTypeBearer {
 		var httpCookiePayload string
 		var jsCookiePayload string
-		if hc, err := req.Cookie(HttpOnlyCookieName); err == nil {
+		if hc, err := req.Cookie(handlers.HttpOnlyCookieName); err == nil {
 			httpCookiePayload = hc.Value
 		}
-		if jc, err := req.Cookie(JsVisibleCookieName); err == nil {
+		if jc, err := req.Cookie(handlers.JsVisibleCookieName); err == nil {
 			jsCookiePayload = jc.Value
 		}
 		if httpCookiePayload != "" && jsCookiePayload != "" {
