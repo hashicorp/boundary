@@ -40,4 +40,14 @@ func Test_Ids(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, OplogKeyVersionPrefix+"_"))
 	})
+	t.Run("ktk", func(t *testing.T) {
+		id, err := newTokenKeyId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, TokenKeyPrefix+"_"))
+	})
+	t.Run("ktkv", func(t *testing.T) {
+		id, err := newTokenKeyVersionId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, TokenKeyVersionPrefix+"_"))
+	})
 }

@@ -13,6 +13,8 @@ const (
 	DatabaseKeyVersionPrefix = "kdkv"
 	OplogKeyPrefix           = "kopk"
 	OplogKeyVersionPrefix    = "kopkv"
+	TokenKeyPrefix           = "ktk"
+	TokenKeyVersionPrefix    = "ktv"
 )
 
 func newRootKeyId() (string, error) {
@@ -59,6 +61,22 @@ func newOplogKeyVersionId() (string, error) {
 	id, err := db.NewPublicId(OplogKeyVersionPrefix)
 	if err != nil {
 		return "", fmt.Errorf("new oplog key version id: %w", err)
+	}
+	return id, nil
+}
+
+func newTokenKeyId() (string, error) {
+	id, err := db.NewPublicId(TokenKeyPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new token key id: %w", err)
+	}
+	return id, nil
+}
+
+func newTokenKeyVersionId() (string, error) {
+	id, err := db.NewPublicId(TokenKeyVersionPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new token key version id: %w", err)
 	}
 	return id, nil
 }
