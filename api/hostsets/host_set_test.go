@@ -157,85 +157,87 @@ func comparableSetSlice(in []*hostsets.HostSet) []hostsets.HostSet {
 }
 
 func TestSet_Crud(t *testing.T) {
-	for _, newStyle := range []bool{true} {
-		assert, require := assert.New(t), require.New(t)
-		tc := controller.NewTestController(t, nil)
-		defer tc.Shutdown()
+	for _, newStyle := range []bool{false, true} {
+		t.Run(fmt.Sprintf("crud_%t", newStyle), func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			tc := controller.NewTestController(t, nil)
+			defer tc.Shutdown()
 
-		client := tc.Client()
-		token := tc.Token()
-		org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
-		client.SetScopeId(org.GetPublicId())
-		projClient := client.Clone()
-		projClient.SetScopeId(proj.GetPublicId())
+			client := tc.Client()
+			token := tc.Token()
+			org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+			client.SetScopeId(org.GetPublicId())
+			projClient := client.Clone()
+			projClient.SetScopeId(proj.GetPublicId())
 
-		hc, apiErr, err := hostcatalogs.NewClient(projClient).Create(tc.Context(), "static")
-		require.NoError(err)
-		require.Nil(apiErr)
-		require.NotNil(hc)
+			hc, apiErr, err := hostcatalogs.NewClient(projClient).Create(tc.Context(), "static")
+			require.NoError(err)
+			require.Nil(apiErr)
+			require.NotNil(hc)
 
-		checkHost := func(t *testing.T, step string, h *hostsets.HostSet, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
-			t.Helper()
-			require.NoError(err, step)
-			if !assert.Nil(apiErr, step) && apiErr.Message != "" {
-				t.Errorf("ApiError message: %q", apiErr.Message)
+			checkHost := func(t *testing.T, step string, h *hostsets.HostSet, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
+				t.Helper()
+				require.NoError(err, step)
+				if !assert.Nil(apiErr, step) && apiErr.Message != "" {
+					t.Errorf("ApiError message: %q", apiErr.Message)
+				}
+				assert.NotNil(h, "returned no resource", step)
+				gotName := ""
+				if h.Name != "" {
+					gotName = h.Name
+				}
+				assert.Equal(wantedName, gotName, step)
+				assert.Equal(wantVersion, h.Version)
 			}
-			assert.NotNil(h, "returned no resource", step)
-			gotName := ""
-			if h.Name != "" {
-				gotName = h.Name
+
+			hClient := hostsets.NewClient(projClient)
+
+			var h *hostsets.HostSet
+			if newStyle {
+				h, apiErr, err = hClient.Create2(tc.Context(), hc.Id, hostsets.WithName("foo"))
+			} else {
+				h, apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
 			}
-			assert.Equal(wantedName, gotName, step)
-			assert.Equal(wantVersion, h.Version)
-		}
+			checkHost(t, "create", h, apiErr, err, "foo", 1)
 
-		hClient := hostsets.NewClient(projClient)
+			if newStyle {
+				h, apiErr, err = hClient.Read2(tc.Context(), h.Id)
+			} else {
+				h, apiErr, err = hClient.Read(tc.Context(), hc.Id, h.Id)
+			}
+			checkHost(t, "read", h, apiErr, err, "foo", 1)
 
-		var h *hostsets.HostSet
-		if newStyle {
-			h, apiErr, err = hClient.Create2(tc.Context(), hc.Id, hostsets.WithName("foo"))
-		} else {
-			h, apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
-		}
-		checkHost(t, "create", h, apiErr, err, "foo", 1)
+			if newStyle {
+				h, apiErr, err = hClient.Update2(tc.Context(), h.Id, h.Version, hostsets.WithName("bar"))
+			} else {
+				h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hostsets.WithName("bar"))
+			}
+			checkHost(t, "update", h, apiErr, err, "bar", 2)
 
-		if newStyle {
-			h, apiErr, err = hClient.Read2(tc.Context(), h.Id)
-		} else {
-			h, apiErr, err = hClient.Read(tc.Context(), hc.Id, h.Id)
-		}
-		checkHost(t, "read", h, apiErr, err, "foo", 1)
+			if newStyle {
+				h, apiErr, err = hClient.Update2(tc.Context(), h.Id, h.Version, hostsets.DefaultName())
+			} else {
+				h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hostsets.DefaultName())
+			}
+			checkHost(t, "update", h, apiErr, err, "", 3)
 
-		if newStyle {
-			h, apiErr, err = hClient.Update2(tc.Context(), h.Id, h.Version, hostsets.WithName("bar"))
-		} else {
-			h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hostsets.WithName("bar"))
-		}
-		checkHost(t, "update", h, apiErr, err, "bar", 2)
+			var existed bool
+			if newStyle {
+				existed, apiErr, err = hClient.Delete2(tc.Context(), h.Id)
+			} else {
+				existed, apiErr, err = hClient.Delete(tc.Context(), hc.Id, h.Id)
+			}
+			assert.NoError(err)
+			assert.True(existed, "Expected existing catalog when deleted, but it wasn't.")
 
-		if newStyle {
-			h, apiErr, err = hClient.Update2(tc.Context(), h.Id, h.Version, hostsets.DefaultName())
-		} else {
-			h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hostsets.DefaultName())
-		}
-		checkHost(t, "update", h, apiErr, err, "", 3)
-
-		var existed bool
-		if newStyle {
-			existed, apiErr, err = hClient.Delete2(tc.Context(), h.Id)
-		} else {
-			existed, apiErr, err = hClient.Delete(tc.Context(), hc.Id, h.Id)
-		}
-		assert.NoError(err)
-		assert.True(existed, "Expected existing catalog when deleted, but it wasn't.")
-
-		if newStyle {
-			existed, apiErr, err = hClient.Delete2(tc.Context(), h.Id)
-		} else {
-			existed, apiErr, err = hClient.Delete(tc.Context(), hc.Id, h.Id)
-		}
-		assert.NoError(err)
-		assert.False(existed, "Expected catalog to not exist when deleted, but it did.")
+			if newStyle {
+				existed, apiErr, err = hClient.Delete2(tc.Context(), h.Id)
+			} else {
+				existed, apiErr, err = hClient.Delete(tc.Context(), hc.Id, h.Id)
+			}
+			assert.NoError(err)
+			assert.False(existed, "Expected catalog to not exist when deleted, but it did.")
+		})
 	}
 }
 

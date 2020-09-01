@@ -291,6 +291,11 @@ var inputStructs = []*structInfo{
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
+			createTemplate2,
+			readTemplate2,
+			updateTemplate2,
+			deleteTemplate2,
+			listTemplate2,
 		},
 		pathArgs: []string{"host-catalog", "host-set"},
 		sliceSubTypes: map[string]string{
