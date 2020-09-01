@@ -55,37 +55,37 @@ func CreateOplogKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper 
 		return nil, nil, fmt.Errorf("create oplog key: unable to lookup root key version %s: %w", rootKeyVersionId, err)
 	}
 
-	dk := AllocOplogKey()
-	dv := AllocOplogKeyVersion()
+	opk := AllocOplogKey()
+	opv := AllocOplogKeyVersion()
 	id, err := newOplogKeyId()
 	if err != nil {
 		return nil, nil, fmt.Errorf("create oplog key: %w", err)
 	}
-	dk.PrivateId = id
-	dk.RootKeyId = rv.RootKeyId
+	opk.PrivateId = id
+	opk.RootKeyId = rv.RootKeyId
 
 	id, err = newOplogKeyVersionId()
 	if err != nil {
 		return nil, nil, fmt.Errorf("create oplog key: %w", err)
 	}
-	dv.PrivateId = id
-	dv.OplogKeyId = dk.PrivateId
-	dv.RootKeyVersionId = rootKeyVersionId
-	dv.Key = key
-	if err := dv.Encrypt(ctx, rkvWrapper); err != nil {
+	opv.PrivateId = id
+	opv.OplogKeyId = opk.PrivateId
+	opv.RootKeyVersionId = rootKeyVersionId
+	opv.Key = key
+	if err := opv.Encrypt(ctx, rkvWrapper); err != nil {
 		return nil, nil, fmt.Errorf("create oplog key: %w", err)
 	}
 
 	// no oplog entries for keys
-	if err := w.Create(ctx, &dk); err != nil {
+	if err := w.Create(ctx, &opk); err != nil {
 		return nil, nil, fmt.Errorf("create oplog key: key create: %w", err)
 	}
 	// no oplog entries for key versions
-	if err := w.Create(ctx, &dv); err != nil {
+	if err := w.Create(ctx, &opv); err != nil {
 		return nil, nil, fmt.Errorf("create oplog key: version create: %w", err)
 	}
 
-	return &dk, &dv, err
+	return &opk, &opv, err
 }
 
 // LookupOplogKey will look up a key in the repository.  If the key is not
