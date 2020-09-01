@@ -13,7 +13,7 @@ import (
 
 func TestOutgoingSplitCookie(t *testing.T) {
 	rec := httptest.NewRecorder()
-	OutgoingIntercepter(context.Background(), rec, &pbs.AuthenticateResponse{
+	OutgoingInterceptor(context.Background(), rec, &pbs.AuthenticateResponse{
 		TokenType: "cookie",
 		Item:      &pb.AuthToken{Token: "t_abc_1234567890"},
 	})
