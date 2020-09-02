@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/shared-secure-libs/gatedwriter"
 	"github.com/hashicorp/shared-secure-libs/reloadutil"
@@ -481,13 +480,9 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		cancel()
 	}()
 
-	rootKey, err := uuid.GenerateRandomBytesWithReader(32, b.SecureRandomReader)
+	_, err = kms.CreateKeysTx(ctx, rw, rw, b.RootKms, b.SecureRandomReader, scope.Global.String())
 	if err != nil {
-		return fmt.Errorf("error generating random bytes for scope root key: %w", err)
-	}
-	_, _, err = kmsRepo.CreateRootKey(ctx, b.RootKms, scope.Global.String(), rootKey)
-	if err != nil {
-		return fmt.Errorf("error saving global scope root key: %w", err)
+		return fmt.Errorf("error creating global scope kms keys: %w", err)
 	}
 
 	if opts.withSkipAuthMethodCreation {

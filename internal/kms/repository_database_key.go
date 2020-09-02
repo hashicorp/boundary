@@ -137,11 +137,15 @@ func (r *Repository) DeleteDatabaseKey(ctx context.Context, privateId string, op
 }
 
 // ListDatabaseKeys will list the keys.  Supports the WithLimit option.
-func (r *Repository) ListDatabaseKeys(ctx context.Context, opt ...Option) ([]*DatabaseKey, error) {
+func (r *Repository) ListDatabaseKeys(ctx context.Context, opt ...Option) ([]Dek, error) {
 	var keys []*DatabaseKey
 	err := r.list(ctx, &keys, "1=1", nil, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("list database keys: %w", err)
 	}
-	return keys, nil
+	deks := make([]Dek, 0, len(keys))
+	for _, key := range keys {
+		deks = append(deks, key)
+	}
+	return deks, nil
 }

@@ -137,11 +137,15 @@ func (r *Repository) DeleteSessionKey(ctx context.Context, privateId string, opt
 }
 
 // ListSessionKeys will list the keys.  Supports the WithLimit option.
-func (r *Repository) ListSessionKeys(ctx context.Context, opt ...Option) ([]*SessionKey, error) {
+func (r *Repository) ListSessionKeys(ctx context.Context, opt ...Option) ([]Dek, error) {
 	var keys []*SessionKey
 	err := r.list(ctx, &keys, "1=1", nil, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("list session keys: %w", err)
 	}
-	return keys, nil
+	deks := make([]Dek, 0, len(keys))
+	for _, key := range keys {
+		deks = append(deks, key)
+	}
+	return deks, nil
 }

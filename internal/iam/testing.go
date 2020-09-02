@@ -24,13 +24,7 @@ func TestRepo(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper, opt ...
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 	wrapper, err := kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeOplog)
 	if err != nil {
-		var kmsRepo *kms.Repository
-		// Assume the root hasn't been created and try to insert it
-		kmsRepo, err = kms.NewRepository(rw, rw)
-		require.NoError(err)
-		rootKey, err := uuid.GenerateRandomBytesWithReader(32, rand.Reader)
-		require.NoError(err)
-		_, _, err = kmsRepo.CreateRootKey(context.Background(), rootWrapper, scope.Global.String(), rootKey)
+		_, err = kms.CreateKeysTx(context.Background(), rw, rw, rootWrapper, rand.Reader, scope.Global.String())
 		require.NoError(err)
 		wrapper, err = kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeOplog)
 		if err != nil {
