@@ -55,7 +55,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	gl, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+	gl, err := s.listFromRepo(ctx, req.GetScopeId())
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*p
 	if err := validateCreateRequest(req, authResults.Scope); err != nil {
 		return nil, err
 	}
-	r, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
+	r, err := s.createInRepo(ctx, req.GetItem().GetScopeId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -533,6 +533,9 @@ func validateCreateRequest(req *pbs.CreateRoleRequest, s *scopes.ScopeInfo) erro
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		item := req.GetItem()
+		if !handlers.ValidId(scope.Org.Prefix(), item.GetScopeId()) && !handlers.ValidId(scope.Project.Prefix(), item.GetScopeId()) {
+			badFields["scope_id"] = "Improperly formatted field."
+		}
 		if item.GetGrantScopeId() != nil && s.GetType() == scope.Project.String() {
 			if item.GetGrantScopeId().Value != s.GetId() {
 				badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
@@ -578,6 +581,9 @@ func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
 
 func validateListRequest(req *pbs.ListRolesRequest) error {
 	badFields := map[string]string{}
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) && !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
+		badFields["scope_id"] = "Improperly formatted field."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}

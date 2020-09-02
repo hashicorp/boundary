@@ -17,8 +17,12 @@ service UserService {
   // resource an error is returned.
   rpc GetUser(GetUserRequest) returns (GetUserResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/users/{id}"
+      get: "/v1/users/{id}"
       response_body: "item"
+      additional_bindings: {
+        get: "/v1/scopes/*/users/{id}"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single User"
@@ -31,7 +35,10 @@ service UserService {
   // reference a non existing scope, an error is returned.
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/users"
+      get: "/v1/users"
+      additional_bindings: {
+        get: "/v1/scopes/{scope_id}/users"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all Users"
@@ -45,9 +52,14 @@ service UserService {
   // use in another user in the same scope, an error is returned.
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/users"
+      post: "/v1/users"
       body: "item"
       response_body: "item"
+      additional_bindings: {
+        post: "/v1/scopes/{item.scope_id}/users"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Creates a single User"
@@ -64,9 +76,14 @@ service UserService {
   // already in use in this scope.
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse) {
     option (google.api.http) = {
-      patch: "/v1/scopes/*/users/{id}"
+      patch: "/v1/users/{id}"
       body: "item"
       response_body: "item"
+      additional_bindings: {
+        patch: "/v1/scopes/*/users/{id}"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Updates a User"
@@ -80,7 +97,10 @@ service UserService {
   // received.
   rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
     option (google.api.http) = {
-      delete: "/v1/scopes/*/users/{id}"
+      delete: "/v1/users/{id}"
+      additional_bindings: {
+        delete: "/v1/scopes/*/users/{id}"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes a User"
@@ -98,7 +118,8 @@ message GetUserResponse {
 }
 
 message ListUsersRequest {
-  string view = 1;
+  string scope_id = 1;
+  string view = 2;
 }
 
 message ListUsersResponse {

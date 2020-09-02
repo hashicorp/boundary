@@ -208,36 +208,31 @@ func TestList(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		scopeId string
 		req     *pbs.ListRolesRequest
 		res     *pbs.ListRolesResponse
 		errCode codes.Code
 	}{
 		{
 			name:    "List Many Role",
-			scopeId: oWithRoles.GetPublicId(),
-			req:     &pbs.ListRolesRequest{},
+			req:     &pbs.ListRolesRequest{ScopeId: oWithRoles.GetPublicId()},
 			res:     &pbs.ListRolesResponse{Items: wantOrgRoles},
 			errCode: codes.OK,
 		},
 		{
 			name:    "List No Roles",
-			scopeId: oNoRoles.GetPublicId(),
-			req:     &pbs.ListRolesRequest{},
+			req:     &pbs.ListRolesRequest{ScopeId: oNoRoles.GetPublicId()},
 			res:     &pbs.ListRolesResponse{},
 			errCode: codes.OK,
 		},
 		{
 			name:    "List Many Project Role",
-			scopeId: pWithRoles.GetPublicId(),
-			req:     &pbs.ListRolesRequest{},
+			req:     &pbs.ListRolesRequest{ScopeId: pWithRoles.GetPublicId()},
 			res:     &pbs.ListRolesResponse{Items: wantProjRoles},
 			errCode: codes.OK,
 		},
 		{
 			name:    "List No Project Roles",
-			scopeId: pNoRoles.GetPublicId(),
-			req:     &pbs.ListRolesRequest{},
+			req:     &pbs.ListRolesRequest{ScopeId: pNoRoles.GetPublicId()},
 			res:     &pbs.ListRolesResponse{},
 			errCode: codes.OK,
 		},
@@ -247,7 +242,7 @@ func TestList(t *testing.T) {
 			s, err := roles.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.ListRoles(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.ListRoles(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "ListRoles(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListRoles(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -314,7 +309,6 @@ func TestDelete(t *testing.T) {
 			name:    "Project Scoped Delete bad Role id",
 			scopeId: pr.GetPublicId(),
 			req: &pbs.DeleteRoleRequest{
-
 				Id: iam.RolePrefix + "_doesntexis",
 			},
 			res: &pbs.DeleteRoleResponse{
@@ -373,15 +367,14 @@ func TestCreate(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		scopeId string
 		req     *pbs.CreateRoleRequest
 		res     *pbs.CreateRoleResponse
 		errCode codes.Code
 	}{
 		{
-			name:    "Create a valid Role",
-			scopeId: defaultOrgRole.GetScopeId(),
+			name: "Create a valid Role",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
+				ScopeId:      defaultOrgRole.GetScopeId(),
 				Name:         &wrapperspb.StringValue{Value: "name"},
 				Description:  &wrapperspb.StringValue{Value: "desc"},
 				GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
@@ -399,10 +392,10 @@ func TestCreate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name:    "Create a valid Project Scoped Role",
-			scopeId: defaultProjRole.GetScopeId(),
+			name: "Create a valid Project Scoped Role",
 			req: &pbs.CreateRoleRequest{
 				Item: &pb.Role{
+					ScopeId:     defaultProjRole.GetScopeId(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -420,10 +413,10 @@ func TestCreate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name:    "Invalid grant scope ID",
-			scopeId: defaultProjRole.GetScopeId(),
+			name: "Invalid grant scope ID",
 			req: &pbs.CreateRoleRequest{
 				Item: &pb.Role{
+					ScopeId:      defaultProjRole.GetScopeId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					GrantScopeId: &wrapperspb.StringValue{Value: defaultOrgRole.GetScopeId()},
@@ -433,27 +426,27 @@ func TestCreate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name:    "Can't specify Id",
-			scopeId: defaultProjRole.GetScopeId(),
+			name: "Can't specify Id",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
-				Id: iam.RolePrefix + "_notallowed",
+				ScopeId: defaultProjRole.GetScopeId(),
+				Id:      iam.RolePrefix + "_notallowed",
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name:    "Can't specify Created Time",
-			scopeId: defaultProjRole.GetScopeId(),
+			name: "Can't specify Created Time",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
+				ScopeId:     defaultProjRole.GetScopeId(),
 				CreatedTime: ptypes.TimestampNow(),
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name:    "Can't specify Update Time",
-			scopeId: defaultProjRole.GetScopeId(),
+			name: "Can't specify Update Time",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
+				ScopeId:     defaultProjRole.GetScopeId(),
 				UpdatedTime: ptypes.TimestampNow(),
 			}},
 			res:     nil,
@@ -469,7 +462,7 @@ func TestCreate(t *testing.T) {
 			s, err := roles.NewService(repo)
 			require.NoError(err, "Error when getting new role service.")
 
-			got, gErr := s.CreateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			got, gErr := s.CreateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetItem().GetScopeId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)

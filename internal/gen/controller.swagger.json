@@ -1274,6 +1274,355 @@
         ]
       }
     },
+    "/v1/roles": {
+      "get": {
+        "summary": "Lists all Roles",
+        "operationId": "RoleService_ListRoles",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListRolesResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Role",
+        "operationId": "RoleService_CreateRole",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/roles/{id}": {
+      "get": {
+        "summary": "Gets a single Role",
+        "operationId": "RoleService_GetRole",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Role",
+        "operationId": "RoleService_DeleteRole",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteRoleResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Role",
+        "operationId": "RoleService_UpdateRole",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/roles/{role_id}:add-grants": {
+      "post": {
+        "summary": "Adds grants to a role",
+        "operationId": "RoleService_AddRoleGrants",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddRoleGrantsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/roles/{role_id}:add-principals": {
+      "post": {
+        "summary": "Adds Users and/or Groups to a Role",
+        "operationId": "RoleService_AddRolePrincipals",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/roles/{role_id}:remove-grants": {
+      "post": {
+        "summary": "Removes grants from a role.",
+        "operationId": "RoleService_RemoveRoleGrants",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveRoleGrantsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/roles/{role_id}:remove-principals": {
+      "post": {
+        "summary": "Removes the specified Users and/or Groups from a Role.",
+        "operationId": "RoleService_RemoveRolePrincipals",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/roles/{role_id}:set-grants": {
+      "post": {
+        "summary": "Set grants for a role, removing any grants that are not specified in the request.",
+        "operationId": "RoleService_SetRoleGrants",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetRoleGrantsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/roles/{role_id}:set-principals": {
+      "post": {
+        "summary": "Set Users and/or Groups to a Role, removing any principals that are not specified in the request.",
+        "operationId": "RoleService_SetRolePrincipals",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/scopes": {
       "get": {
         "summary": "Lists all Scopes within the scope of the token making the request",
@@ -1323,12 +1672,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
             }
-          },
-          {
-            "name": "scope_id",
-            "in": "query",
-            "required": false,
-            "type": "string"
           },
           {
             "name": "skip_role_creation",
@@ -2462,60 +2805,10 @@
         ]
       }
     },
-    "/v1/scopes/*/roles": {
-      "get": {
-        "summary": "Lists all Roles",
-        "operationId": "RoleService_ListRoles",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListRolesResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      },
-      "post": {
-        "summary": "Creates a single Role",
-        "operationId": "RoleService_CreateRole",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      }
-    },
     "/v1/scopes/*/roles/{id}": {
       "get": {
         "summary": "Gets a single Role",
-        "operationId": "RoleService_GetRole",
+        "operationId": "RoleService_GetRole2",
         "responses": {
           "200": {
             "description": "",
@@ -2544,7 +2837,7 @@
       },
       "delete": {
         "summary": "Deletes a Role",
-        "operationId": "RoleService_DeleteRole",
+        "operationId": "RoleService_DeleteRole2",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -2567,7 +2860,7 @@
       },
       "patch": {
         "summary": "Updates a Role",
-        "operationId": "RoleService_UpdateRole",
+        "operationId": "RoleService_UpdateRole2",
         "responses": {
           "200": {
             "description": "",
@@ -2610,7 +2903,7 @@
     "/v1/scopes/*/roles/{role_id}:add-grants": {
       "post": {
         "summary": "Adds grants to a role",
-        "operationId": "RoleService_AddRoleGrants",
+        "operationId": "RoleService_AddRoleGrants2",
         "responses": {
           "200": {
             "description": "",
@@ -2643,7 +2936,7 @@
     "/v1/scopes/*/roles/{role_id}:add-principals": {
       "post": {
         "summary": "Adds Users and/or Groups to a Role",
-        "operationId": "RoleService_AddRolePrincipals",
+        "operationId": "RoleService_AddRolePrincipals2",
         "responses": {
           "200": {
             "description": "",
@@ -2676,7 +2969,7 @@
     "/v1/scopes/*/roles/{role_id}:remove-grants": {
       "post": {
         "summary": "Removes grants from a role.",
-        "operationId": "RoleService_RemoveRoleGrants",
+        "operationId": "RoleService_RemoveRoleGrants2",
         "responses": {
           "200": {
             "description": "",
@@ -2709,7 +3002,7 @@
     "/v1/scopes/*/roles/{role_id}:remove-principals": {
       "post": {
         "summary": "Removes the specified Users and/or Groups from a Role.",
-        "operationId": "RoleService_RemoveRolePrincipals",
+        "operationId": "RoleService_RemoveRolePrincipals2",
         "responses": {
           "200": {
             "description": "",
@@ -2742,7 +3035,7 @@
     "/v1/scopes/*/roles/{role_id}:set-grants": {
       "post": {
         "summary": "Set grants for a role, removing any grants that are not specified in the request.",
-        "operationId": "RoleService_SetRoleGrants",
+        "operationId": "RoleService_SetRoleGrants2",
         "responses": {
           "200": {
             "description": "",
@@ -2775,7 +3068,7 @@
     "/v1/scopes/*/roles/{role_id}:set-principals": {
       "post": {
         "summary": "Set Users and/or Groups to a Role, removing any principals that are not specified in the request.",
-        "operationId": "RoleService_SetRolePrincipals",
+        "operationId": "RoleService_SetRolePrincipals2",
         "responses": {
           "200": {
             "description": "",
@@ -2805,60 +3098,10 @@
         ]
       }
     },
-    "/v1/scopes/*/users": {
-      "get": {
-        "summary": "Lists all Users",
-        "operationId": "UserService_ListUsers",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListUsersResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.UserService"
-        ]
-      },
-      "post": {
-        "summary": "Creates a single User",
-        "operationId": "UserService_CreateUser",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.users.v1.User"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.users.v1.User"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.UserService"
-        ]
-      }
-    },
     "/v1/scopes/*/users/{id}": {
       "get": {
         "summary": "Gets a single User",
-        "operationId": "UserService_GetUser",
+        "operationId": "UserService_GetUser2",
         "responses": {
           "200": {
             "description": "",
@@ -2887,7 +3130,7 @@
       },
       "delete": {
         "summary": "Deletes a User",
-        "operationId": "UserService_DeleteUser",
+        "operationId": "UserService_DeleteUser2",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -2910,7 +3153,7 @@
       },
       "patch": {
         "summary": "Updates a User",
-        "operationId": "UserService_UpdateUser",
+        "operationId": "UserService_UpdateUser2",
         "responses": {
           "200": {
             "description": "",
@@ -3148,6 +3391,74 @@
         ]
       }
     },
+    "/v1/scopes/{item.scope_id}/roles": {
+      "post": {
+        "summary": "Creates a single Role",
+        "operationId": "RoleService_CreateRole2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item.scope_id",
+            "description": "The id of the scope this resource is in.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/{item.scope_id}/users": {
+      "post": {
+        "summary": "Creates a single User",
+        "operationId": "UserService_CreateUser2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item.scope_id",
+            "description": "The id of the scope this resource is in.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
+    },
     "/v1/scopes/{scope_id}/auth-methods": {
       "get": {
         "summary": "Lists all AuthMethods",
@@ -3269,6 +3580,68 @@
         ],
         "tags": [
           "controller.api.services.v1.HostCatalogService"
+        ]
+      }
+    },
+    "/v1/scopes/{scope_id}/roles": {
+      "get": {
+        "summary": "Lists all Roles",
+        "operationId": "RoleService_ListRoles2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListRolesResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/{scope_id}/users": {
+      "get": {
+        "summary": "Lists all Users",
+        "operationId": "UserService_ListUsers2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListUsersResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
         ]
       }
     },
@@ -3520,6 +3893,157 @@
         ],
         "tags": [
           "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/users": {
+      "get": {
+        "summary": "Lists all Users",
+        "operationId": "UserService_ListUsers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListUsersResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single User",
+        "operationId": "UserService_CreateUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
+    },
+    "/v1/users/{id}": {
+      "get": {
+        "summary": "Gets a single User",
+        "operationId": "UserService_GetUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a User",
+        "operationId": "UserService_DeleteUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteUserResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a User",
+        "operationId": "UserService_UpdateUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
         ]
       }
     }

@@ -423,8 +423,8 @@ func TestCreate(t *testing.T) {
 			name:    "Create a valid Project",
 			scopeId: defaultOrg.GetPublicId(),
 			req: &pbs.CreateScopeRequest{
-				ScopeId: defaultOrg.GetPublicId(),
 				Item: &pb.Scope{
+					ScopeId:     defaultOrg.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -444,8 +444,8 @@ func TestCreate(t *testing.T) {
 			name:    "Create a valid Org",
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateScopeRequest{
-				ScopeId: scope.Global.String(),
 				Item: &pb.Scope{
+					ScopeId:     scope.Global.String(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
