@@ -19,7 +19,7 @@ func (r *Repository) CreateOplogKey(ctx context.Context, rkvWrapper wrapping.Wra
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			if returnedDk, returnedDv, err = CreateOplogKeyTx(ctx, reader, w, rkvWrapper, key); err != nil {
+			if returnedDk, returnedDv, err = createOplogKeyTx(ctx, reader, w, rkvWrapper, key); err != nil {
 				return err
 			}
 			return nil
@@ -31,10 +31,10 @@ func (r *Repository) CreateOplogKey(ctx context.Context, rkvWrapper wrapping.Wra
 	return returnedDk.(*OplogKey), returnedDv.(*OplogKeyVersion), err
 }
 
-// CreateOplogKeyTx inserts into the db (via db.Writer) and returns the new key
+// createOplogKeyTx inserts into the db (via db.Writer) and returns the new key
 // and the key version. This function encapsulates all the work required within
 // a db.TxHandler and allows this capability to be shared with the iam repo.
-func CreateOplogKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper wrapping.Wrapper, key []byte) (*OplogKey, *OplogKeyVersion, error) {
+func createOplogKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper wrapping.Wrapper, key []byte) (*OplogKey, *OplogKeyVersion, error) {
 	if rkvWrapper == nil {
 		return nil, nil, fmt.Errorf("create oplog key: missing key wrapper: %w", db.ErrInvalidParameter)
 	}

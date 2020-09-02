@@ -19,7 +19,7 @@ func (r *Repository) CreateSessionKey(ctx context.Context, rkvWrapper wrapping.W
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			if returnedDk, returnedDv, err = CreateSessionKeyTx(ctx, reader, w, rkvWrapper, key); err != nil {
+			if returnedDk, returnedDv, err = createSessionKeyTx(ctx, reader, w, rkvWrapper, key); err != nil {
 				return err
 			}
 			return nil
@@ -31,10 +31,10 @@ func (r *Repository) CreateSessionKey(ctx context.Context, rkvWrapper wrapping.W
 	return returnedDk.(*SessionKey), returnedDv.(*SessionKeyVersion), err
 }
 
-// CreateSessionKeyTx inserts into the db (via db.Writer) and returns the new key
+// createSessionKeyTx inserts into the db (via db.Writer) and returns the new key
 // and the key version. This function encapsulates all the work required within
 // a db.TxHandler and allows this capability to be shared with the iam repo.
-func CreateSessionKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper wrapping.Wrapper, key []byte) (*SessionKey, *SessionKeyVersion, error) {
+func createSessionKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper wrapping.Wrapper, key []byte) (*SessionKey, *SessionKeyVersion, error) {
 	if rkvWrapper == nil {
 		return nil, nil, fmt.Errorf("create session key: missing key wrapper: %w", db.ErrInvalidParameter)
 	}
