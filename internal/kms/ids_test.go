@@ -30,4 +30,34 @@ func Test_Ids(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, DatabaseKeyVersionPrefix+"_"))
 	})
+	t.Run("kopk", func(t *testing.T) {
+		id, err := newOplogKeyId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, OplogKeyPrefix+"_"))
+	})
+	t.Run("kopkv", func(t *testing.T) {
+		id, err := newOplogKeyVersionId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, OplogKeyVersionPrefix+"_"))
+	})
+	t.Run("ktk", func(t *testing.T) {
+		id, err := newTokenKeyId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, TokenKeyPrefix+"_"))
+	})
+	t.Run("ktkv", func(t *testing.T) {
+		id, err := newTokenKeyVersionId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, TokenKeyVersionPrefix+"_"))
+	})
+	t.Run("ksk", func(t *testing.T) {
+		id, err := newSessionKeyId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, SessionKeyPrefix+"_"))
+	})
+	t.Run("kskv", func(t *testing.T) {
+		id, err := newSessionKeyVersionId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, SessionKeyVersionPrefix+"_"))
+	})
 }

@@ -17,7 +17,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestRepository_CreateDatabaseKey(t *testing.T) {
+func TestRepository_CreateOplogKey(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -110,40 +110,40 @@ func TestRepository_CreateDatabaseKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			dk, dv, err := repo.CreateDatabaseKey(context.Background(), tt.args.keyWrapper, tt.args.key, tt.args.opt...)
+			opk, opv, err := repo.CreateOplogKey(context.Background(), tt.args.keyWrapper, tt.args.key, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
-				assert.Nil(dk)
+				assert.Nil(opk)
 				if tt.wantIsError != nil {
 					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				return
 			}
 			require.NoError(err)
-			assert.NotNil(dk.CreateTime)
-			foundKey, err := repo.LookupDatabaseKey(context.Background(), dk.PrivateId)
+			assert.NotNil(opk.CreateTime)
+			foundKey, err := repo.LookupOplogKey(context.Background(), opk.PrivateId)
 			assert.NoError(err)
-			assert.True(proto.Equal(foundKey, dk))
+			assert.True(proto.Equal(foundKey, opk))
 
 			// make sure there was no oplog written
-			err = db.TestVerifyOplog(t, rw, dk.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, opk.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
-			assert.NotNil(dv.CreateTime)
-			foundKeyVersion, err := repo.LookupDatabaseKeyVersion(context.Background(), tt.args.keyWrapper, dv.PrivateId)
+			assert.NotNil(opv.CreateTime)
+			foundKeyVersion, err := repo.LookupOplogKeyVersion(context.Background(), tt.args.keyWrapper, opv.PrivateId)
 			assert.NoError(err)
-			assert.True(proto.Equal(foundKeyVersion, dv))
+			assert.True(proto.Equal(foundKeyVersion, opv))
 
 			// make sure there was no oplog written
-			err = db.TestVerifyOplog(t, rw, dv.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, opv.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 		})
 	}
 }
 
-func TestRepository_DeleteDatabaseKey(t *testing.T) {
+func TestRepository_DeleteOplogKey(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -155,7 +155,7 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 
 	type args struct {
-		key *kms.DatabaseKey
+		key *kms.OplogKey
 		opt []kms.Option
 	}
 	tests := []struct {
@@ -168,7 +168,7 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				key: kms.TestDatabaseKey(t, conn, rk.PrivateId),
+				key: kms.TestOplogKey(t, conn, rk.PrivateId),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -176,8 +176,8 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 		{
 			name: "no-private-id",
 			args: args{
-				key: func() *kms.DatabaseKey {
-					k := kms.AllocDatabaseKey()
+				key: func() *kms.OplogKey {
+					k := kms.AllocOplogKey()
 					return &k
 				}(),
 			},
@@ -188,10 +188,10 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 		{
 			name: "not-found",
 			args: args{
-				key: func() *kms.DatabaseKey {
+				key: func() *kms.OplogKey {
 					id, err := db.NewPublicId(kms.RootKeyPrefix)
 					require.NoError(t, err)
-					k := kms.AllocDatabaseKey()
+					k := kms.AllocOplogKey()
 					k.PrivateId = id
 					require.NoError(t, err)
 					return &k
@@ -205,7 +205,7 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deletedRows, err := repo.DeleteDatabaseKey(context.Background(), tt.args.key.PrivateId, tt.args.opt...)
+			deletedRows, err := repo.DeleteOplogKey(context.Background(), tt.args.key.PrivateId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, deletedRows)
@@ -220,7 +220,7 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundKey, err := repo.LookupDatabaseKey(context.Background(), tt.args.key.PrivateId)
+			foundKey, err := repo.LookupOplogKey(context.Background(), tt.args.key.PrivateId)
 			assert.Error(err)
 			assert.Nil(foundKey)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
@@ -233,7 +233,7 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 	}
 }
 
-func TestRepository_ListDatabaseKeys(t *testing.T) {
+func TestRepository_ListOplogKeys(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
@@ -286,10 +286,10 @@ func TestRepository_ListDatabaseKeys(t *testing.T) {
 				org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				require.NoError(conn.Where("scope_id in(?)", []interface{}{org.PublicId, proj.PublicId}).Delete(kms.AllocRootKey()).Error)
 				rk := kms.TestRootKey(t, conn, proj.PublicId)
-				kms.TestDatabaseKey(t, conn, rk.PrivateId)
+				kms.TestOplogKey(t, conn, rk.PrivateId)
 				require.NoError(err)
 			}
-			got, err := repo.ListDatabaseKeys(context.Background(), tt.args.opt...)
+			got, err := repo.ListOplogKeys(context.Background(), tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return

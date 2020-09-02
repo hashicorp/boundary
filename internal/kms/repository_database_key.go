@@ -19,7 +19,7 @@ func (r *Repository) CreateDatabaseKey(ctx context.Context, rkvWrapper wrapping.
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			if returnedDk, returnedDv, err = CreateDatabaseKeyTx(ctx, reader, w, rkvWrapper, key); err != nil {
+			if returnedDk, returnedDv, err = createDatabaseKeyTx(ctx, reader, w, rkvWrapper, key); err != nil {
 				return err
 			}
 			return nil
@@ -31,10 +31,10 @@ func (r *Repository) CreateDatabaseKey(ctx context.Context, rkvWrapper wrapping.
 	return returnedDk.(*DatabaseKey), returnedDv.(*DatabaseKeyVersion), err
 }
 
-// CreateDatabaseKeyTx inserts into the db (via db.Writer) and returns the new database key
+// createDatabaseKeyTx inserts into the db (via db.Writer) and returns the new database key
 // and database key version. This function encapsulates all the work required within
 // a db.TxHandler and allows this capability to be shared with the iam repo.
-func CreateDatabaseKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper wrapping.Wrapper, key []byte) (*DatabaseKey, *DatabaseKeyVersion, error) {
+func createDatabaseKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper wrapping.Wrapper, key []byte) (*DatabaseKey, *DatabaseKeyVersion, error) {
 	if rkvWrapper == nil {
 		return nil, nil, fmt.Errorf("create database key: missing key wrapper: %w", db.ErrInvalidParameter)
 	}
