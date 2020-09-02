@@ -49,16 +49,19 @@ func (k *RootKey) Clone() interface{} {
 	}
 }
 
-// VetForWrite implements db.VetForWrite() interface and validates the kms root
+// VetForWrite implements db.VetForWrite() interface and validates the key
 // before it's written.
 func (k *RootKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if k.PrivateId == "" {
 		return fmt.Errorf("root key vet for write: missing private id: %w", db.ErrInvalidParameter)
 	}
-	if opType == db.CreateOp {
+	switch opType {
+	case db.CreateOp:
 		if k.ScopeId == "" {
 			return fmt.Errorf("root key vet for write: missing scope id: %w", db.ErrInvalidParameter)
 		}
+	case db.UpdateOp:
+		return fmt.Errorf("root key vet for write: key is immutable: %w", db.ErrInvalidParameter)
 	}
 	return nil
 }
