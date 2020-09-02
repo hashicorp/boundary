@@ -266,7 +266,7 @@ func TestList(t *testing.T) {
 			s, err := groups.NewService(repoFn)
 			require.NoError(err, "Couldn't create new group service.")
 
-			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListGroupsRequest{})
+			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListGroupsRequest{ScopeId: tc.scopeId})
 			assert.Equal(tc.errCode, status.Code(gErr), "ListGroups(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.errCode)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListGroups(%q) got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
@@ -414,15 +414,14 @@ func TestCreate(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		scopeId string
 		req     *pbs.CreateGroupRequest
 		res     *pbs.CreateGroupResponse
 		errCode codes.Code
 	}{
 		{
-			name:    "Create a valid Group",
-			scopeId: defaultOGroup.GetScopeId(),
+			name: "Create a valid Group",
 			req: &pbs.CreateGroupRequest{Item: &pb.Group{
+				ScopeId:     defaultOGroup.GetScopeId(),
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
@@ -438,10 +437,10 @@ func TestCreate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name:    "Create a valid Project Scoped Group",
-			scopeId: defaultPGroup.GetScopeId(),
+			name: "Create a valid Project Scoped Group",
 			req: &pbs.CreateGroupRequest{
 				Item: &pb.Group{
+					ScopeId:     defaultPGroup.GetScopeId(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -491,7 +490,7 @@ func TestCreate(t *testing.T) {
 			s, err := groups.NewService(repo)
 			require.NoError(err, "Error when getting new group service.")
 
-			got, gErr := s.CreateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			got, gErr := s.CreateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(req.GetItem().GetScopeId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)

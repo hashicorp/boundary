@@ -90,7 +90,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, req.GetAuthMethodId(), authResults.Scope.GetId(), req.GetItem())
+	u, err := s.createInRepo(ctx, req.GetItem().GetAuthMethodId(), authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, req.GetAuthMethodId(), authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string,
 	return toProto(out)
 }
 
-func (s Service) updateInRepo(ctx context.Context, authMethodId, scopeId, id string, mask []string, item *pb.Account) (*pb.Account, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Account) (*pb.Account, error) {
 	var opts []password.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, password.WithDescription(desc.GetValue()))
@@ -226,7 +226,7 @@ func (s Service) updateInRepo(ctx context.Context, authMethodId, scopeId, id str
 	if name := item.GetName(); name != nil {
 		opts = append(opts, password.WithName(name.GetValue()))
 	}
-	u, err := password.NewAccount(authMethodId, opts...)
+	u, err := password.NewAccount("ignored", opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build auth method for update: %v.", err)
 	}
@@ -350,22 +350,16 @@ func toProto(in *password.Account) (*pb.Account, error) {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAccountRequest) error {
-	return handlers.ValidateGetRequest(password.AccountPrefix, req, func() map[string]string {
-		badFields := map[string]string{}
-		if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
-			badFields["auth_method_id"] = "Invalid formatted identifier."
-		}
-		return badFields
-	})
+	return handlers.ValidateGetRequest(password.AccountPrefix, req, handlers.NoopValidatorFn)
 }
 
 func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.GetItem().GetAuthMethodId() != "" {
-			badFields["auth_method_id"] = "This is a read only field."
+		if req.GetItem().GetAuthMethodId() == "" {
+			badFields["auth_method_id"] = "This field is required."
 		}
-		switch auth.SubtypeFromId(req.GetAuthMethodId()) {
+		switch auth.SubtypeFromId(req.GetItem().GetAuthMethodId()) {
 		case auth.PasswordSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.PasswordSubtype.String() {
 				badFields["type"] = "Doesn't match the parent resource's type."
@@ -383,20 +377,11 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
-	return handlers.ValidateUpdateRequest(password.AccountPrefix, req, req.GetItem(), func() map[string]string {
-		badFields := map[string]string{}
-		return badFields
-	})
+	return handlers.ValidateUpdateRequest(password.AccountPrefix, req, req.GetItem(), handlers.NoopValidatorFn)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
-	return handlers.ValidateDeleteRequest(password.AccountPrefix, req, func() map[string]string {
-		badFields := map[string]string{}
-		if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
-			badFields["auth_method_id"] = "Invalid formatted identifier."
-		}
-		return badFields
-	})
+	return handlers.ValidateDeleteRequest(password.AccountPrefix, req, handlers.NoopValidatorFn)
 }
 
 func validateListRequest(req *pbs.ListAccountsRequest) error {
@@ -414,9 +399,6 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(password.AccountPrefix, req.GetId()) {
 		badFields["id"] = "Improperly formatted identifier."
-	}
-	if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
-		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Existing resource version is required for an update."
@@ -437,9 +419,6 @@ func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(password.AccountPrefix, req.GetId()) {
 		badFields["id"] = "Improperly formatted identifier."
-	}
-	if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
-		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Existing resource version is required for an update."

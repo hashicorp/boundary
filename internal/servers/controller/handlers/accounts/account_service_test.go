@@ -64,25 +64,25 @@ func TestGet(t *testing.T) {
 	}{
 		{
 			name:    "Get an existing account",
-			req:     &pbs.GetAccountRequest{AuthMethodId: wireAccount.GetAuthMethodId(), Id: wireAccount.GetId()},
+			req:     &pbs.GetAccountRequest{Id: wireAccount.GetId()},
 			res:     &pbs.GetAccountResponse{Item: &wireAccount},
 			errCode: codes.OK,
 		},
 		{
 			name:    "Get a non existing account",
-			req:     &pbs.GetAccountRequest{AuthMethodId: wireAccount.GetAuthMethodId(), Id: password.AccountPrefix + "_DoesntExis"},
+			req:     &pbs.GetAccountRequest{Id: password.AccountPrefix + "_DoesntExis"},
 			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
-			req:     &pbs.GetAccountRequest{AuthMethodId: wireAccount.GetAuthMethodId(), Id: "j_1234567890"},
+			req:     &pbs.GetAccountRequest{Id: "j_1234567890"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name:    "space in id",
-			req:     &pbs.GetAccountRequest{AuthMethodId: wireAccount.GetAuthMethodId(), Id: authtoken.AuthTokenPrefix + "_1 23456789"},
+			req:     &pbs.GetAccountRequest{Id: authtoken.AuthTokenPrefix + "_1 23456789"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
@@ -192,11 +192,8 @@ func TestDelete(t *testing.T) {
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
-	ams := password.TestAuthMethods(t, conn, o.GetPublicId(), 2)
-	am1, wrongAm := ams[0], ams[1]
-
+	am1 := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	ac := password.TestAccounts(t, conn, am1.GetPublicId(), 1)[0]
-	wrongAc := password.TestAccounts(t, conn, wrongAm.GetPublicId(), 1)[0]
 
 	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service.")
@@ -211,22 +208,8 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete an existing token",
 			req: &pbs.DeleteAccountRequest{
-				AuthMethodId: am1.GetPublicId(),
-				Id:           ac.GetPublicId(),
+				Id: ac.GetPublicId(),
 			},
-			res: &pbs.DeleteAccountResponse{
-				Existed: true,
-			},
-			errCode: codes.OK,
-		},
-		{
-			name: "Delete account from wrong auth method",
-			req: &pbs.DeleteAccountRequest{
-				AuthMethodId: am1.GetPublicId(),
-				Id:           wrongAc.GetPublicId(),
-			},
-			// TODO(toddknight): This should return Existed:false. Figure out if this test is testing something valid
-			// and if so make it pass.
 			res: &pbs.DeleteAccountResponse{
 				Existed: true,
 			},
@@ -235,8 +218,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete bad account id",
 			req: &pbs.DeleteAccountRequest{
-				AuthMethodId: am1.GetPublicId(),
-				Id:           password.AccountPrefix + "_doesntexis",
+				Id: password.AccountPrefix + "_doesntexis",
 			},
 			res: &pbs.DeleteAccountResponse{
 				Existed: false,
@@ -246,8 +228,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Bad account id formatting",
 			req: &pbs.DeleteAccountRequest{
-				AuthMethodId: am1.GetPublicId(),
-				Id:           "bad_format",
+				Id: "bad_format",
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -280,8 +261,7 @@ func TestDelete_twice(t *testing.T) {
 	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service")
 	req := &pbs.DeleteAccountRequest{
-		AuthMethodId: am.GetPublicId(),
-		Id:           ac.GetPublicId(),
+		Id: ac.GetPublicId(),
 	}
 	got, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.NoError(gErr, "First attempt")
@@ -328,12 +308,12 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Account",
 			req: &pbs.CreateAccountRequest{
-				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        "password",
-					Attributes:  createAttr("validaccount", ""),
+					AuthMethodId: defaultAccount.GetAuthMethodId(),
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					Type:         "password",
+					Attributes:   createAttr("validaccount", ""),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -353,9 +333,9 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Account without type defined",
 			req: &pbs.CreateAccountRequest{
-				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
-					Attributes: createAttr("notypedefined", ""),
+					AuthMethodId: defaultAccount.GetAuthMethodId(),
+					Attributes:   createAttr("notypedefined", ""),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -373,11 +353,11 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Account with password defined",
 			req: &pbs.CreateAccountRequest{
-				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
-					Name:        &wrapperspb.StringValue{Value: "name_with_password"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Attributes:  createAttr("haspassword", "somepassword"),
+					AuthMethodId: defaultAccount.GetAuthMethodId(),
+					Name:         &wrapperspb.StringValue{Value: "name_with_password"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					Attributes:   createAttr("haspassword", "somepassword"),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -397,10 +377,10 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Cant specify mismatching type",
 			req: &pbs.CreateAccountRequest{
-				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
-					Type:       "wrong",
-					Attributes: createAttr("nopwprovided", ""),
+					AuthMethodId: defaultAccount.GetAuthMethodId(),
+					Type:         "wrong",
+					Attributes:   createAttr("nopwprovided", ""),
 				},
 			},
 			res:     nil,
@@ -409,24 +389,11 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateAccountRequest{
-				AuthMethodId: defaultAccount.GetAuthMethodId(),
-				Item: &pb.Account{
-					Id:         password.AccountPrefix + "_notallowed",
-					Type:       "password",
-					Attributes: createAttr("cantprovideid", ""),
-				},
-			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Can't specify AuthMethodId",
-			req: &pbs.CreateAccountRequest{
-				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
+					Id:           password.AccountPrefix + "_notallowed",
 					Type:         "password",
-					Attributes:   createAttr("noauthmethod", ""),
+					Attributes:   createAttr("cantprovideid", ""),
 				},
 			},
 			res:     nil,
@@ -435,11 +402,11 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateAccountRequest{
-				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
-					CreatedTime: ptypes.TimestampNow(),
-					Type:        "password",
-					Attributes:  createAttr("nocreatedtime", ""),
+					AuthMethodId: defaultAccount.GetAuthMethodId(),
+					CreatedTime:  ptypes.TimestampNow(),
+					Type:         "password",
+					Attributes:   createAttr("nocreatedtime", ""),
 				},
 			},
 			res:     nil,
@@ -448,11 +415,11 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateAccountRequest{
-				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
-					UpdatedTime: ptypes.TimestampNow(),
-					Type:        "password",
-					Attributes:  createAttr("noupdatetime", ""),
+					AuthMethodId: defaultAccount.GetAuthMethodId(),
+					UpdatedTime:  ptypes.TimestampNow(),
+					Type:         "password",
+					Attributes:   createAttr("noupdatetime", ""),
 				},
 			},
 			res:     nil,
@@ -461,9 +428,9 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Must specify login name for password type",
 			req: &pbs.CreateAccountRequest{
-				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
-					Type: "password",
+					AuthMethodId: defaultAccount.GetAuthMethodId(),
+					Type:         "password",
 				},
 			},
 			res:     nil,
@@ -522,19 +489,19 @@ func TestUpdate(t *testing.T) {
 		t.Helper()
 		acc, err := tested.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
 			&pbs.CreateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
 				Item: &pb.Account{
-					Name:        wrapperspb.String("default"),
-					Description: wrapperspb.String("default"),
-					Type:        "password",
-					Attributes:  defaultAttributes,
+					AuthMethodId: am.GetPublicId(),
+					Name:         wrapperspb.String("default"),
+					Description:  wrapperspb.String("default"),
+					Type:         "password",
+					Attributes:   defaultAttributes,
 				}},
 		)
 		require.NoError(t, err)
 
 		clean := func() {
 			_, err := tested.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
-				&pbs.DeleteAccountRequest{AuthMethodId: am.GetPublicId(), Id: acc.GetItem().GetId()})
+				&pbs.DeleteAccountRequest{Id: acc.GetItem().GetId()})
 			require.NoError(t, err)
 		}
 
@@ -550,7 +517,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update an Existing AuthMethod",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name", "description"},
 				},
@@ -574,7 +540,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Multiple Paths in single string",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name,description"},
 				},
@@ -598,7 +563,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "No Update Mask",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
@@ -610,8 +574,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "No Paths in Mask",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
-				UpdateMask:   &field_mask.FieldMask{Paths: []string{}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
@@ -623,8 +586,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Only non-existant paths in Mask",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
-				UpdateMask:   &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
@@ -636,7 +598,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Unset Name",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
 				},
@@ -659,7 +620,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update Only Name",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
 				},
@@ -684,7 +644,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update Only Description",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -709,7 +668,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update Only LoginName",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"attributes.login_name"},
 				},
@@ -736,8 +694,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update a Non Existing Account",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
-				Id:           password.AccountPrefix + "_DoesntExis",
+				Id: password.AccountPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -751,7 +708,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Cant change Id",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"id"},
 				},
@@ -766,7 +722,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Cant specify Created Time",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"created_time"},
 				},
@@ -780,7 +735,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Cant specify Updated Time",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"updated_time"},
 				},
@@ -794,7 +748,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Cant specify Type",
 			req: &pbs.UpdateAccountRequest{
-				AuthMethodId: am.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"type"},
 				},
@@ -875,10 +828,10 @@ func TestSetPassword(t *testing.T) {
 		}
 		attrs, err := handlers.ProtoToStruct(pwAttrs)
 		createResp, err := tested.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.CreateAccountRequest{
-			AuthMethodId: am.GetPublicId(),
 			Item: &pb.Account{
-				Type:       "password",
-				Attributes: attrs,
+				AuthMethodId: am.GetPublicId(),
+				Type:         "password",
+				Attributes:   attrs,
 			},
 		})
 		require.NoError(t, err)
@@ -915,10 +868,9 @@ func TestSetPassword(t *testing.T) {
 			acct := createAccount(t, tt.oldPw)
 
 			setResp, err := tested.SetPassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.SetPasswordRequest{
-				AuthMethodId: acct.GetAuthMethodId(),
-				Id:           acct.GetId(),
-				Version:      acct.GetVersion(),
-				Password:     tt.newPw,
+				Id:       acct.GetId(),
+				Version:  acct.GetVersion(),
+				Password: tt.newPw,
 			})
 			require.NoError(err)
 			assert.Equal(acct.GetVersion()+1, setResp.GetItem().GetVersion())
@@ -932,32 +884,22 @@ func TestSetPassword(t *testing.T) {
 
 	defaultAcct := createAccount(t, "")
 	badRequestCases := []struct {
-		name         string
-		authMethodId string
-		accountId    string
-		version      uint32
-		password     string
+		name      string
+		accountId string
+		version   uint32
+		password  string
 	}{
 		{
-			name:         "empty auth method",
-			authMethodId: "",
-			accountId:    defaultAcct.GetId(),
-			version:      defaultAcct.GetVersion(),
-			password:     "somepassword",
+			name:      "empty account id",
+			accountId: "",
+			version:   defaultAcct.GetVersion(),
+			password:  "somepassword",
 		},
 		{
-			name:         "empty account id",
-			authMethodId: defaultAcct.GetAuthMethodId(),
-			accountId:    "",
-			version:      defaultAcct.GetVersion(),
-			password:     "somepassword",
-		},
-		{
-			name:         "unset version",
-			authMethodId: defaultAcct.GetAuthMethodId(),
-			accountId:    defaultAcct.GetId(),
-			version:      0,
-			password:     "somepassword",
+			name:      "unset version",
+			accountId: defaultAcct.GetId(),
+			version:   0,
+			password:  "somepassword",
 		},
 	}
 
@@ -966,10 +908,9 @@ func TestSetPassword(t *testing.T) {
 			assert := assert.New(t)
 
 			setResp, err := tested.SetPassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.SetPasswordRequest{
-				AuthMethodId: tt.authMethodId,
-				Id:           tt.accountId,
-				Version:      tt.version,
-				Password:     tt.password,
+				Id:       tt.accountId,
+				Version:  tt.version,
+				Password: tt.password,
 			})
 			assert.Error(err)
 			assert.Nil(setResp)
@@ -1000,10 +941,10 @@ func TestChangePassword(t *testing.T) {
 		}
 		attrs, err := handlers.ProtoToStruct(pwAttrs)
 		createResp, err := tested.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.CreateAccountRequest{
-			AuthMethodId: am.GetPublicId(),
 			Item: &pb.Account{
-				Type:       "password",
-				Attributes: attrs,
+				AuthMethodId: am.GetPublicId(),
+				Type:         "password",
+				Attributes:   attrs,
 			},
 		})
 		require.NoError(t, err)
@@ -1017,11 +958,10 @@ func TestChangePassword(t *testing.T) {
 		acct := createAccount(t, "originalpassword")
 
 		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
-			AuthMethodId: acct.GetAuthMethodId(),
-			Id:           acct.GetId(),
-			Version:      acct.GetVersion(),
-			OldPassword:  "originalpassword",
-			NewPassword:  "a different password",
+			Id:          acct.GetId(),
+			Version:     acct.GetVersion(),
+			OldPassword: "originalpassword",
+			NewPassword: "a different password",
 		})
 		require.NoError(err)
 		assert.Equal(acct.GetVersion()+1, changeResp.GetItem().GetVersion())
@@ -1037,11 +977,10 @@ func TestChangePassword(t *testing.T) {
 		acct := createAccount(t, "originalpassword")
 
 		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
-			AuthMethodId: acct.GetAuthMethodId(),
-			Id:           acct.GetId(),
-			Version:      acct.GetVersion(),
-			OldPassword:  "thewrongpassword",
-			NewPassword:  "a different password",
+			Id:          acct.GetId(),
+			Version:     acct.GetVersion(),
+			OldPassword: "thewrongpassword",
+			NewPassword: "a different password",
 		})
 		assert.Error(err)
 		assert.Nil(changeResp)
@@ -1111,11 +1050,10 @@ func TestChangePassword(t *testing.T) {
 			assert := assert.New(t)
 
 			changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
-				AuthMethodId: tt.authMethodId,
-				Id:           tt.accountId,
-				Version:      tt.version,
-				OldPassword:  tt.oldPW,
-				NewPassword:  tt.newPW,
+				Id:          tt.accountId,
+				Version:     tt.version,
+				OldPassword: tt.oldPW,
+				NewPassword: tt.newPW,
 			})
 			assert.Error(err)
 			assert.Nil(changeResp)

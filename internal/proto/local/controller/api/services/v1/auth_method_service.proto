@@ -16,8 +16,12 @@ service AuthMethodService {
   // resource an error is returned.
   rpc GetAuthMethod(GetAuthMethodRequest) returns (GetAuthMethodResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/auth-methods/{id}"
+      get: "/v1/auth-methods/{id}"
       response_body: "item"
+      additional_bindings: {
+        get: "/v1/scopes/*/auth-methods/{id}"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single AuthMethod"
@@ -30,7 +34,10 @@ service AuthMethodService {
   // reference a non existing organization, an error is returned.
   rpc ListAuthMethods(ListAuthMethodsRequest) returns (ListAuthMethodsResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/auth-methods"
+      get: "/v1/auth-methods"
+      additional_bindings: {
+        get: "/v1/scopes/{scope_id}/auth-methods"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all AuthMethods"
@@ -44,9 +51,14 @@ service AuthMethodService {
   // use in another user in the same org, an error is returned.
   rpc CreateAuthMethod(CreateAuthMethodRequest) returns (CreateAuthMethodResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/auth-methods"
+      post: "/v1/auth-methods"
       body: "item"
       response_body: "item"
+      additional_bindings: {
+        post: "/v1/scopes/{item.scope_id}/auth-methods"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Creates a single AuthMethod"
@@ -63,9 +75,14 @@ service AuthMethodService {
   // already in use in this org.
   rpc UpdateAuthMethod(UpdateAuthMethodRequest) returns (UpdateAuthMethodResponse) {
     option (google.api.http) = {
-      patch: "/v1/scopes/*/auth-methods/{id}"
+      patch: "/v1/auth-methods/{id}"
       body: "item"
       response_body: "item"
+      additional_bindings: {
+        patch: "/v1/scopes/*/auth-methods/{id}"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Updates an AuthMethod"
@@ -79,7 +96,10 @@ service AuthMethodService {
   // received.
   rpc DeleteAuthMethod(DeleteAuthMethodRequest) returns (DeleteAuthMethodResponse) {
     option (google.api.http) = {
-      delete: "/v1/scopes/*/auth-methods/{id}"
+      delete: "/v1/auth-methods/{id}"
+      additional_bindings: {
+        delete: "/v1/scopes/*/auth-methods/{id}"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes an AuthMethod"
@@ -97,7 +117,8 @@ message GetAuthMethodResponse {
 }
 
 message ListAuthMethodsRequest {
-  string view = 1;
+  string scope_id = 1 [json_name="scope_id"];
+  string view = 2;
 }
 
 message ListAuthMethodsResponse {

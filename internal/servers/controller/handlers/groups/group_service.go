@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -52,7 +53,7 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	gl, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+	gl, err := s.listFromRepo(ctx, req.GetScopeId())
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +89,7 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
+	u, err := s.createInRepo(ctx, req.GetItem().GetScopeId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +375,13 @@ func validateGetRequest(req *pbs.GetGroupRequest) error {
 }
 
 func validateCreateRequest(req *pbs.CreateGroupRequest) error {
-	return handlers.ValidateCreateRequest(req.GetItem(), handlers.NoopValidatorFn)
+	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		if !handlers.ValidId(scope.Org.Prefix(), req.GetItem().GetScopeId()) && !handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) {
+			badFields["scope_id"] = "Incorrectly formatted identifier."
+		}
+		return badFields
+	})
 }
 
 func validateUpdateRequest(req *pbs.UpdateGroupRequest) error {
@@ -387,6 +394,9 @@ func validateDeleteRequest(req *pbs.DeleteGroupRequest) error {
 
 func validateListRequest(req *pbs.ListGroupsRequest) error {
 	badFields := map[string]string{}
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) && !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
+		badFields["scope_id"] = "Incorrectly formatted identifier."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}

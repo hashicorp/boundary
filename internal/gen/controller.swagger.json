@@ -16,6 +16,862 @@
     "application/json"
   ],
   "paths": {
+    "/v1/accounts": {
+      "get": {
+        "summary": "Lists all accounts in a specific auth method.",
+        "operationId": "AccountService_ListAccounts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListAccountsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AccountService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single account in the provided auth method.",
+        "operationId": "AccountService_CreateAccount",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AccountService"
+        ]
+      }
+    },
+    "/v1/accounts/{id}": {
+      "get": {
+        "summary": "Gets a single Account",
+        "operationId": "AccountService_GetAccount",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AccountService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes an account.",
+        "operationId": "AccountService_DeleteAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteAccountResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AccountService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates an account.",
+        "operationId": "AccountService_UpdateAccount",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AccountService"
+        ]
+      }
+    },
+    "/v1/accounts/{id}:change-password": {
+      "post": {
+        "summary": "Sets the password for the provided account.",
+        "operationId": "AccountService_ChangePassword",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ChangePasswordRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AccountService"
+        ]
+      }
+    },
+    "/v1/accounts/{id}:set-password": {
+      "post": {
+        "summary": "Sets the password for the provided account.",
+        "operationId": "AccountService_SetPassword",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetPasswordRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AccountService"
+        ]
+      }
+    },
+    "/v1/auth-methods": {
+      "get": {
+        "summary": "Lists all AuthMethods",
+        "operationId": "AuthMethodService_ListAuthMethods",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListAuthMethodsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single AuthMethod",
+        "operationId": "AuthMethodService_CreateAuthMethod",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      }
+    },
+    "/v1/auth-methods/{id}": {
+      "get": {
+        "summary": "Gets a single AuthMethod",
+        "operationId": "AuthMethodService_GetAuthMethod",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes an AuthMethod",
+        "operationId": "AuthMethodService_DeleteAuthMethod",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthMethodResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates an AuthMethod",
+        "operationId": "AuthMethodService_UpdateAuthMethod",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      }
+    },
+    "/v1/auth-tokens": {
+      "get": {
+        "summary": "Lists all AuthTokens",
+        "operationId": "AuthTokenService_ListAuthTokens",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListAuthTokensResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthTokenService"
+        ]
+      }
+    },
+    "/v1/auth-tokens/{id}": {
+      "get": {
+        "summary": "Gets a single AuthToken",
+        "operationId": "AuthTokenService_GetAuthToken",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthTokenService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes an AuthTokens",
+        "operationId": "AuthTokenService_DeleteAuthToken",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthTokenResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthTokenService"
+        ]
+      }
+    },
+    "/v1/groups": {
+      "get": {
+        "summary": "Lists all Groups",
+        "operationId": "GroupService_ListGroups",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListGroupsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Group",
+        "operationId": "GroupService_CreateGroup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/groups/{id}": {
+      "get": {
+        "summary": "Gets a single Group",
+        "operationId": "GroupService_GetGroup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Group",
+        "operationId": "GroupService_DeleteGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteGroupResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Group",
+        "operationId": "GroupService_UpdateGroup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/groups/{id}:add-members": {
+      "post": {
+        "summary": "Adds Users as members to a Group",
+        "operationId": "GroupService_AddGroupMembers",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddGroupMembersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/groups/{id}:remove-members": {
+      "post": {
+        "summary": "Removes the specified members from a Group.",
+        "operationId": "GroupService_RemoveGroupMembers",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveGroupMembersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/groups/{id}:set-members": {
+      "post": {
+        "summary": "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified.",
+        "operationId": "GroupService_SetGroupMembers",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetGroupMembersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/host-catalogs": {
+      "get": {
+        "summary": "Gets a list of HostCatalogs",
+        "operationId": "HostCatalogService_ListHostCatalogs",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListHostCatalogsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostCatalogService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a HostCatalog",
+        "description": "Creates a single host catalog under the specified scope",
+        "operationId": "HostCatalogService_CreateHostCatalog",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostCatalogService"
+        ]
+      }
+    },
+    "/v1/host-catalogs/{id}": {
+      "get": {
+        "summary": "Gets a single HostCatalog",
+        "description": "Gets a single Host Catalog with the provided identifier.",
+        "operationId": "HostCatalogService_GetHostCatalog",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostCatalogService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a HostCatalog",
+        "operationId": "HostCatalogService_DeleteHostCatalog",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteHostCatalogResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostCatalogService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a HostCatalog",
+        "operationId": "HostCatalogService_UpdateHostCatalog",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostCatalogService"
+        ]
+      }
+    },
     "/v1/host-sets": {
       "get": {
         "summary": "List all HostSets under the specific catalog",
@@ -360,122 +1216,10 @@
         ]
       }
     },
-    "/v1/scopes/*/auth-methods": {
-      "get": {
-        "summary": "Lists all AuthMethods",
-        "operationId": "AuthMethodService_ListAuthMethods",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListAuthMethodsResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.AuthMethodService"
-        ]
-      },
-      "post": {
-        "summary": "Creates a single AuthMethod",
-        "operationId": "AuthMethodService_CreateAuthMethod",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.AuthMethodService"
-        ]
-      }
-    },
-    "/v1/scopes/*/auth-methods/{auth_method_id}/accounts": {
-      "get": {
-        "summary": "Lists all accounts in a specific auth method.",
-        "operationId": "AccountService_ListAccounts",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListAccountsResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "auth_method_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.AccountService"
-        ]
-      },
-      "post": {
-        "summary": "Creates a single account in the provided auth method.",
-        "operationId": "AccountService_CreateAccount",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "auth_method_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.AccountService"
-        ]
-      }
-    },
-    "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}": {
+    "/v1/scopes/*/auth-methods/*/accounts/{id}": {
       "get": {
         "summary": "Gets a single Account",
-        "operationId": "AccountService_GetAccount",
+        "operationId": "AccountService_GetAccount2",
         "responses": {
           "200": {
             "description": "",
@@ -485,12 +1229,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "auth_method_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -510,7 +1248,7 @@
       },
       "delete": {
         "summary": "Deletes an account.",
-        "operationId": "AccountService_DeleteAccount",
+        "operationId": "AccountService_DeleteAccount2",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -520,12 +1258,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "auth_method_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -539,7 +1271,7 @@
       },
       "patch": {
         "summary": "Updates an account.",
-        "operationId": "AccountService_UpdateAccount",
+        "operationId": "AccountService_UpdateAccount2",
         "responses": {
           "200": {
             "description": "",
@@ -549,12 +1281,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "auth_method_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -585,10 +1311,10 @@
         ]
       }
     },
-    "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}:change-password": {
+    "/v1/scopes/*/auth-methods/*/accounts/{id}:change-password": {
       "post": {
         "summary": "Sets the password for the provided account.",
-        "operationId": "AccountService_ChangePassword",
+        "operationId": "AccountService_ChangePassword2",
         "responses": {
           "200": {
             "description": "",
@@ -598,12 +1324,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "auth_method_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -624,10 +1344,10 @@
         ]
       }
     },
-    "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}:set-password": {
+    "/v1/scopes/*/auth-methods/*/accounts/{id}:set-password": {
       "post": {
         "summary": "Sets the password for the provided account.",
-        "operationId": "AccountService_SetPassword",
+        "operationId": "AccountService_SetPassword2",
         "responses": {
           "200": {
             "description": "",
@@ -637,12 +1357,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "auth_method_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -656,6 +1370,37 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.SetPasswordRequest"
             }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AccountService"
+        ]
+      }
+    },
+    "/v1/scopes/*/auth-methods/{auth_method_id}/accounts": {
+      "get": {
+        "summary": "Lists all accounts in a specific auth method.",
+        "operationId": "AccountService_ListAccounts2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListAccountsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -700,7 +1445,7 @@
     "/v1/scopes/*/auth-methods/{id}": {
       "get": {
         "summary": "Gets a single AuthMethod",
-        "operationId": "AuthMethodService_GetAuthMethod",
+        "operationId": "AuthMethodService_GetAuthMethod2",
         "responses": {
           "200": {
             "description": "",
@@ -729,7 +1474,7 @@
       },
       "delete": {
         "summary": "Deletes an AuthMethod",
-        "operationId": "AuthMethodService_DeleteAuthMethod",
+        "operationId": "AuthMethodService_DeleteAuthMethod2",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -752,7 +1497,7 @@
       },
       "patch": {
         "summary": "Updates an AuthMethod",
-        "operationId": "AuthMethodService_UpdateAuthMethod",
+        "operationId": "AuthMethodService_UpdateAuthMethod2",
         "responses": {
           "200": {
             "description": "",
@@ -792,35 +1537,44 @@
         ]
       }
     },
-    "/v1/scopes/*/auth-tokens": {
-      "get": {
-        "summary": "Lists all AuthTokens",
-        "operationId": "AuthTokenService_ListAuthTokens",
+    "/v1/scopes/*/auth-methods/{item.auth_method_id}/accounts": {
+      "post": {
+        "summary": "Creates a single account in the provided auth method.",
+        "operationId": "AccountService_CreateAccount2",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListAuthTokensResponse"
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           }
         },
         "parameters": [
           {
-            "name": "view",
-            "in": "query",
-            "required": false,
+            "name": "item.auth_method_id",
+            "description": "The auth method this account is created for.\nOutput only.",
+            "in": "path",
+            "required": true,
             "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+            }
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthTokenService"
+          "controller.api.services.v1.AccountService"
         ]
       }
     },
     "/v1/scopes/*/auth-tokens/{id}": {
       "get": {
         "summary": "Gets a single AuthToken",
-        "operationId": "AuthTokenService_GetAuthToken",
+        "operationId": "AuthTokenService_GetAuthToken2",
         "responses": {
           "200": {
             "description": "",
@@ -849,7 +1603,7 @@
       },
       "delete": {
         "summary": "Deletes an AuthTokens",
-        "operationId": "AuthTokenService_DeleteAuthToken",
+        "operationId": "AuthTokenService_DeleteAuthToken2",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -871,60 +1625,10 @@
         ]
       }
     },
-    "/v1/scopes/*/groups": {
-      "get": {
-        "summary": "Lists all Groups",
-        "operationId": "GroupService_ListGroups",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListGroupsResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.GroupService"
-        ]
-      },
-      "post": {
-        "summary": "Creates a single Group",
-        "operationId": "GroupService_CreateGroup",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.GroupService"
-        ]
-      }
-    },
     "/v1/scopes/*/groups/{id}": {
       "get": {
         "summary": "Gets a single Group",
-        "operationId": "GroupService_GetGroup",
+        "operationId": "GroupService_GetGroup2",
         "responses": {
           "200": {
             "description": "",
@@ -953,7 +1657,7 @@
       },
       "delete": {
         "summary": "Deletes a Group",
-        "operationId": "GroupService_DeleteGroup",
+        "operationId": "GroupService_DeleteGroup2",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -976,7 +1680,7 @@
       },
       "patch": {
         "summary": "Updates a Group",
-        "operationId": "GroupService_UpdateGroup",
+        "operationId": "GroupService_UpdateGroup2",
         "responses": {
           "200": {
             "description": "",
@@ -1019,7 +1723,7 @@
     "/v1/scopes/*/groups/{id}:add-members": {
       "post": {
         "summary": "Adds Users as members to a Group",
-        "operationId": "GroupService_AddGroupMembers",
+        "operationId": "GroupService_AddGroupMembers2",
         "responses": {
           "200": {
             "description": "",
@@ -1052,7 +1756,7 @@
     "/v1/scopes/*/groups/{id}:remove-members": {
       "post": {
         "summary": "Removes the specified members from a Group.",
-        "operationId": "GroupService_RemoveGroupMembers",
+        "operationId": "GroupService_RemoveGroupMembers2",
         "responses": {
           "200": {
             "description": "",
@@ -1085,7 +1789,7 @@
     "/v1/scopes/*/groups/{id}:set-members": {
       "post": {
         "summary": "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified.",
-        "operationId": "GroupService_SetGroupMembers",
+        "operationId": "GroupService_SetGroupMembers2",
         "responses": {
           "200": {
             "description": "",
@@ -1112,57 +1816,6 @@
         ],
         "tags": [
           "controller.api.services.v1.GroupService"
-        ]
-      }
-    },
-    "/v1/scopes/*/host-catalogs": {
-      "get": {
-        "summary": "Gets a list of HostCatalogs",
-        "operationId": "HostCatalogService_ListHostCatalogs",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListHostCatalogsResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.HostCatalogService"
-        ]
-      },
-      "post": {
-        "summary": "Creates a HostCatalog",
-        "description": "Creates a single host catalog under the specified scope",
-        "operationId": "HostCatalogService_CreateHostCatalog",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.HostCatalogService"
         ]
       }
     },
@@ -1638,7 +2291,7 @@
       "get": {
         "summary": "Gets a single HostCatalog",
         "description": "Gets a single Host Catalog with the provided identifier.",
-        "operationId": "HostCatalogService_GetHostCatalog",
+        "operationId": "HostCatalogService_GetHostCatalog2",
         "responses": {
           "200": {
             "description": "",
@@ -1667,7 +2320,7 @@
       },
       "delete": {
         "summary": "Deletes a HostCatalog",
-        "operationId": "HostCatalogService_DeleteHostCatalog",
+        "operationId": "HostCatalogService_DeleteHostCatalog2",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -1690,7 +2343,7 @@
       },
       "patch": {
         "summary": "Updates a HostCatalog",
-        "operationId": "HostCatalogService_UpdateHostCatalog",
+        "operationId": "HostCatalogService_UpdateHostCatalog2",
         "responses": {
           "200": {
             "description": "",
@@ -2313,6 +2966,233 @@
         ]
       }
     },
+    "/v1/scopes/{item.scope_id}/auth-methods": {
+      "post": {
+        "summary": "Creates a single AuthMethod",
+        "operationId": "AuthMethodService_CreateAuthMethod2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item.scope_id",
+            "description": "The id of the scope this resource is a part of",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      }
+    },
+    "/v1/scopes/{item.scope_id}/groups": {
+      "post": {
+        "summary": "Creates a single Group",
+        "operationId": "GroupService_CreateGroup2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item.scope_id",
+            "description": "The id of the scope this resource is a part of.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/scopes/{item.scope_id}/host-catalogs": {
+      "post": {
+        "summary": "Creates a HostCatalog",
+        "description": "Creates a single host catalog under the specified scope",
+        "operationId": "HostCatalogService_CreateHostCatalog2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item.scope_id",
+            "description": "The id of the scope this resource belongs to.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostCatalogService"
+        ]
+      }
+    },
+    "/v1/scopes/{scope_id}/auth-methods": {
+      "get": {
+        "summary": "Lists all AuthMethods",
+        "operationId": "AuthMethodService_ListAuthMethods2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListAuthMethodsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      }
+    },
+    "/v1/scopes/{scope_id}/auth-tokens": {
+      "get": {
+        "summary": "Lists all AuthTokens",
+        "operationId": "AuthTokenService_ListAuthTokens2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListAuthTokensResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthTokenService"
+        ]
+      }
+    },
+    "/v1/scopes/{scope_id}/groups": {
+      "get": {
+        "summary": "Lists all Groups",
+        "operationId": "GroupService_ListGroups2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListGroupsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/scopes/{scope_id}/host-catalogs": {
+      "get": {
+        "summary": "Gets a list of HostCatalogs",
+        "operationId": "HostCatalogService_ListHostCatalogs2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListHostCatalogsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostCatalogService"
+        ]
+      }
+    },
     "/v1/targets": {
       "get": {
         "summary": "Lists all Targets",
@@ -2628,6 +3508,10 @@
           "description": "The ID of the AuthMethod\nOutput only.",
           "readOnly": true
         },
+        "scope_id": {
+          "type": "string",
+          "title": "The id of the scope this resource is a part of"
+        },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
           "description": "Scope information for this resource\nOutput only.",
@@ -2676,6 +3560,10 @@
           "type": "string",
           "description": "The ID of the AuthToken\nOutput only.",
           "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope this auth token is in."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
@@ -2731,6 +3619,10 @@
           "type": "string",
           "description": "The ID of the Project\nOutput only.",
           "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The id of the scope this resource is a part of."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
@@ -2803,6 +3695,10 @@
           "type": "string",
           "description": "The ID of the host\nOutput only.",
           "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The id of the scope this resource belongs to."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
@@ -3038,6 +3934,10 @@
           "description": "The ID of the Role\nOutput only.",
           "readOnly": true
         },
+        "scope_id": {
+          "type": "string",
+          "description": "The id of the scope this resource is in."
+        },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
           "description": "Scope information for this resource\nOutput only.",
@@ -3114,6 +4014,10 @@
           "type": "string",
           "description": "The ID of the Scope\nOutput only.",
           "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The id of the scope this resource is in."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
@@ -3265,6 +4169,10 @@
           "type": "string",
           "description": "The ID of the Project\nOutput only.",
           "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The id of the scope this resource is in."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
@@ -3469,9 +4377,6 @@
     "controller.api.services.v1.ChangePasswordRequest": {
       "type": "object",
       "properties": {
-        "auth_method_id": {
-          "type": "string"
-        },
         "id": {
           "type": "string"
         },
@@ -4113,9 +5018,6 @@
     "controller.api.services.v1.SetPasswordRequest": {
       "type": "object",
       "properties": {
-        "auth_method_id": {
-          "type": "string"
-        },
         "id": {
           "type": "string"
         },

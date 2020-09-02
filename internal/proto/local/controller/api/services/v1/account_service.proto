@@ -18,8 +18,12 @@ service AccountService {
   // returned.
   rpc GetAccount(GetAccountRequest) returns (GetAccountResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}"
-      response_body: "item"
+        get: "/v1/accounts/{id}"
+        response_body: "item"
+        additional_bindings: {
+          get: "/v1/scopes/*/auth-methods/*/accounts/{id}"
+          response_body: "item"
+        }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single Account"
@@ -32,7 +36,10 @@ service AccountService {
   // malformed, or references a non-existing auth method, an error is returned.
   rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts"
+      get: "/v1/accounts"
+      additional_bindings: {
+        get: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all accounts in a specific auth method."
@@ -46,9 +53,14 @@ service AccountService {
   // use in another account in the same auth method, an error is returned.
   rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts"
+      post: "/v1/accounts"
       body: "item"
       response_body: "item"
+      additional_bindings: {
+        post: "/v1/scopes/*/auth-methods/{item.auth_method_id}/accounts"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Creates a single account in the provided auth method."
@@ -65,9 +77,14 @@ service AccountService {
   // auth method.
   rpc UpdateAccount(UpdateAccountRequest) returns (UpdateAccountResponse) {
     option (google.api.http) = {
-      patch: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}"
+      patch: "/v1/accounts/{id}"
       body: "item"
       response_body: "item"
+      additional_bindings: {
+        patch: "/v1/scopes/*/auth-methods/*/accounts/{id}"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Updates an account."
@@ -81,7 +98,10 @@ service AccountService {
   // request was received.
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse) {
     option (google.api.http) = {
-      delete: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}"
+      delete: "/v1/accounts/{id}"
+      additional_bindings: {
+        delete: "/v1/scopes/*/auth-methods/*/accounts/{id}"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes an account."
@@ -93,9 +113,14 @@ service AccountService {
   // does not require the old password.
   rpc SetPassword(SetPasswordRequest) returns (SetPasswordResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}:set-password"
+      post: "/v1/accounts/{id}:set-password"
       body: "*"
       response_body: "item"
+      additional_bindings: {
+        post: "/v1/scopes/*/auth-methods/*/accounts/{id}:set-password"
+        body: "*"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Sets the password for the provided account."
@@ -107,9 +132,14 @@ service AccountService {
   // password to be provided for authentication purposes.
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}:change-password"
+      post: "/v1/accounts/{id}:change-password"
       body: "*"
       response_body: "item"
+      additional_bindings: {
+        post: "/v1/scopes/*/auth-methods/*/accounts/{id}:change-password"
+        body: "*"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Sets the password for the provided account."
@@ -118,9 +148,8 @@ service AccountService {
 }
 
 message GetAccountRequest {
-  string auth_method_id = 1;
-  string id = 2;
-  string view = 3;
+  string id = 1;
+  string view = 2;
 }
 
 message GetAccountResponse {
@@ -137,7 +166,6 @@ message ListAccountsResponse {
 }
 
 message CreateAccountRequest {
-  string auth_method_id = 1;
   resources.accounts.v1.Account item = 2;
 }
 
@@ -147,10 +175,9 @@ message CreateAccountResponse {
 }
 
 message UpdateAccountRequest {
-  string auth_method_id = 1;
-  string id = 2;
-  resources.accounts.v1.Account item = 3;
-  google.protobuf.FieldMask update_mask = 4;
+  string id = 1;
+  resources.accounts.v1.Account item = 2;
+  google.protobuf.FieldMask update_mask = 3;
 }
 
 message UpdateAccountResponse {
@@ -158,8 +185,7 @@ message UpdateAccountResponse {
 }
 
 message DeleteAccountRequest {
-  string auth_method_id = 1;
-  string id = 2;
+  string id = 1;
 }
 
 message DeleteAccountResponse {
@@ -167,10 +193,9 @@ message DeleteAccountResponse {
 }
 
 message SetPasswordRequest {
-  string auth_method_id = 1;
-  string id = 2;
-  uint32 version = 3;
-  string password = 4;
+  string id = 1;
+  uint32 version = 2;
+  string password = 3;
 }
 
 message SetPasswordResponse {
@@ -178,11 +203,10 @@ message SetPasswordResponse {
 }
 
 message ChangePasswordRequest {
-  string auth_method_id = 1;
-  string id = 2;
-  uint32 version = 3;
-  string old_password = 4 [json_name="old_password"];
-  string new_password = 5 [json_name="new_password"];
+  string id = 1;
+  uint32 version = 2;
+  string old_password = 3 [json_name="old_password"];
+  string new_password = 4 [json_name="new_password"];
 }
 
 message ChangePasswordResponse {

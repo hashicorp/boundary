@@ -29,6 +29,8 @@ commit;
 	"migrations/01_domain_types.up.sql": {
 		name: "01_domain_types.up.sql",
 		bytes: []byte(`
+
+
 begin;
 
 create domain wt_public_id as text

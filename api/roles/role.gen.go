@@ -16,6 +16,7 @@ import (
 
 type Role struct {
 	Id           string            `json:"id,omitempty"`
+	ScopeId      string            `json:"scope_id,omitempty"`
 	Scope        *scopes.ScopeInfo `json:"scope,omitempty"`
 	Name         string            `json:"name,omitempty"`
 	Description  string            `json:"description,omitempty"`
