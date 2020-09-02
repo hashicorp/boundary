@@ -3281,49 +3281,44 @@ begin;
   create table session (
     public_id wt_public_id primary key,
     -- the user of the session
-    user_id wt_user_id -- fk1
-      not null
+    user_id text -- fk1
+      -- not using the wt_user_id domain type because it is marked 'not null'
       references iam_user (public_id)
-      on delete cascade
+      on delete set null
       on update cascade,
     -- the host the user is connected to via this session
     host_id wt_public_id -- fk2
-      not null
       references host (public_id)
-      on delete cascade
+      on delete set null
       on update cascade,
     -- the worker proxying the connection between the user and the host
-    server_id text not null, -- fk3
-    server_type text not null,-- fk3
+    server_id text, -- fk3
+    server_type text,-- fk3
     foreign key (server_id, server_type)
       references server (private_id, type)
-      on delete cascade
+      on delete set null
       on update cascade,
     -- the target the host was chosen from and the user was authorized to
     -- connect to
     target_id wt_public_id -- fk4
-      not null
       references target (public_id)
-      on delete cascade
+      on delete set null
       on update cascade,
     -- the host set the host was chosen from and the user was authorized to
     -- connect to via the target
     set_id wt_public_id -- fk5
-      not null
       references host_set (public_id)
-      on delete cascade
+      on delete set null
       on update cascade,
     -- the auth token of the user when this session was created
     auth_token_id wt_public_id -- fk6
-      not null
       references auth_token (public_id)
-      on delete cascade
+      on delete set null
       on update cascade,
     -- the organization which owns this session
     scope_id wt_scope_id -- fk7
-      not null
       references iam_scope_org (scope_id)
-      on delete cascade
+      on delete set null
       on update cascade,
     -- the reason this session ended (null until terminated)
     termination_reason text -- fk8
@@ -3369,7 +3364,7 @@ begin;
   create table session_state_enm (
     name text primary key
       check (
-        name in ('pending', 'connected', 'closed')
+        name in ('pending', 'connected', 'canceling', 'closed')
       )
   );
 
@@ -3377,15 +3372,19 @@ begin;
   values
     ('pending'),
     ('connected'),
+    ('canceling'),
     ('closed');
 
 /*
 
-          (●) Start
-           │
-           │
-           │
-           ▼
+                                              ┌────────────────┐
+         start                                │                │
+           .                                  │   Canceling    │
+          (●)                           ┌────▶│                │─────┐
+           '                            │     │                │     │
+           │                            │     └────────────────┘     │
+           │                            │                            │
+           ▼                            │                            ▼
   ┌────────────────┐           ┌────────────────┐           ┌────────────────┐
   │                │           │                │           │                │
   │    Pending     │           │   Connected    │           │     Closed     │
