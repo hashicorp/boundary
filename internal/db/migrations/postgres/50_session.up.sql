@@ -98,27 +98,28 @@ begin;
       references host (public_id)
       on delete cascade
       on update cascade,
-    -- the worker the hosting the proxied connection
+    -- the worker proxying the connection between the user and the host
     server_id text not null, -- fk3
     server_type text not null,-- fk3
     foreign key (server_id, server_type)
       references server (private_id, type)
       on delete cascade
       on update cascade,
-    -- the target the host was chosen from and the user was authorized to use
+    -- the target the host was chosen from and the user was authorized to
+    -- connect to
     target_id wt_public_id -- fk4
       not null
       references target (public_id)
       on delete cascade
       on update cascade,
-    -- the host set the host was chosen from and the user was authorized to use
-    -- via the target
+    -- the host set the host was chosen from and the user was authorized to
+    -- connect to via the target
     set_id wt_public_id -- fk5
       not null
       references host_set (public_id)
       on delete cascade
       on update cascade,
-    -- the auth token of the user when the session was created
+    -- the auth token of the user when this session was created
     auth_token_id wt_public_id -- fk6
       not null
       references auth_token (public_id)
@@ -130,7 +131,7 @@ begin;
       references iam_scope_org (scope_id)
       on delete cascade
       on update cascade,
-    -- the reason the session ended (null until terminated)
+    -- the reason this session ended (null until terminated)
     termination_reason text -- fk8
       references session_termination_reason_enm (name)
       on delete restrict
@@ -153,16 +154,16 @@ begin;
         and
         port <= 65535
       ),
-    -- the total number of bytes received from the user and sent to the host for
-    -- this session
+    -- the total number of bytes received by the worker from the user and sent
+    -- to the host for this session
     bytes_up bigint -- can be null
       check (
         bytes_up is null
         or
         bytes_up >= 0
       ),
-    -- the total number of bytes received from the host and sent to the user for
-    -- this session
+    -- the total number of bytes received by the worker from the host and sent
+    -- to the user for this session
     bytes_down bigint -- can be null
       check (
         bytes_down is null
