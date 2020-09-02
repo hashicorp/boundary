@@ -283,8 +283,8 @@ func TestRepository_ListOplogKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			for i := 0; i < tt.createCnt; i++ {
-				_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-				require.NoError(conn.Where("scope_id=?", []interface{}{proj.PublicId}).Delete(kms.AllocRootKey()).Error)
+				org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				require.NoError(conn.Where("scope_id in(?)", []interface{}{org.PublicId, proj.PublicId}).Delete(kms.AllocRootKey()).Error)
 				rk := kms.TestRootKey(t, conn, proj.PublicId)
 				kms.TestOplogKey(t, conn, rk.PrivateId)
 				require.NoError(err)
