@@ -8,40 +8,45 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/kms/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
-// NOTE: there are no update tests since all the RootKeyVersion attributes are
-// immutable and those tests are covered by TestRootKeyVersion_ImmutableFields
+// NOTE: there are no update tests since all the OplogKeyVersion attributes are
+// immutable and those tests are covered by TestOplogKey_ImmutableFields
 
-func TestRootKeyVersion_Create(t *testing.T) {
+func TestOplogKeyVersion_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-	rootKey := kms.TestRootKey(t, conn, org.PublicId)
+	rk := kms.TestRootKey(t, conn, org.PublicId)
+	rkv, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+
+	dk := kms.TestOplogKey(t, conn, rk.PrivateId)
+
 	type args struct {
-		rootId string
-		key    []byte
-		opt    []kms.Option
+		oplogKeyId       string
+		key              []byte
+		rootKeyVersionId string
+		opt              []kms.Option
 	}
 	tests := []struct {
 		name          string
 		args          args
-		want          *kms.RootKeyVersion
+		want          *kms.OplogKeyVersion
 		wantErr       bool
 		wantIsErr     error
 		create        bool
 		wantCreateErr bool
 	}{
 		{
-			name: "empty-root-id",
+			name: "empty-id",
 			args: args{
-				key: []byte("test key"),
+				key:              []byte("test key"),
+				rootKeyVersionId: rkv.PrivateId,
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -49,7 +54,17 @@ func TestRootKeyVersion_Create(t *testing.T) {
 		{
 			name: "empty-key",
 			args: args{
-				rootId: rootKey.PrivateId,
+				oplogKeyId:       dk.PrivateId,
+				rootKeyVersionId: rkv.PrivateId,
+			},
+			wantErr:   true,
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-root-key-version-id",
+			args: args{
+				oplogKeyId: dk.PrivateId,
+				key:        []byte("test key"),
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -57,13 +72,15 @@ func TestRootKeyVersion_Create(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				rootId: rootKey.PrivateId,
-				key:    []byte("test key"),
+				oplogKeyId:       dk.PrivateId,
+				key:              []byte("test key"),
+				rootKeyVersionId: rkv.PrivateId,
 			},
-			want: func() *kms.RootKeyVersion {
-				k := kms.AllocRootKeyVersion()
-				k.RootKeyId = rootKey.PrivateId
+			want: func() *kms.OplogKeyVersion {
+				k := kms.AllocOplogKeyVersion()
+				k.RootKeyVersionId = rkv.PrivateId
 				k.Key = []byte("test key")
+				k.OplogKeyId = dk.PrivateId
 				return &k
 			}(),
 			create: true,
@@ -72,8 +89,8 @@ func TestRootKeyVersion_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocRootKeyVersion()).Error)
-			got, err := kms.NewRootKeyVersion(tt.args.rootId, tt.args.key, tt.args.opt...)
+			require.NoError(conn.Where("1=1").Delete(kms.AllocOplogKeyVersion()).Error)
+			got, err := kms.NewOplogKeyVersion(tt.args.oplogKeyId, tt.args.key, tt.args.rootKeyVersionId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Is(err, tt.wantIsErr))
@@ -82,10 +99,10 @@ func TestRootKeyVersion_Create(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				id, err := db.NewPublicId(kms.RootKeyVersionPrefix)
+				id, err := db.NewPublicId(kms.OplogKeyPrefix)
 				require.NoError(err)
 				got.PrivateId = id
-				err = got.Encrypt(context.Background(), wrapper)
+				err = got.Encrypt(context.Background(), rkvWrapper)
 				require.NoError(err)
 				err = db.New(conn).Create(context.Background(), got)
 				if tt.wantCreateErr {
@@ -94,39 +111,42 @@ func TestRootKeyVersion_Create(t *testing.T) {
 				} else {
 					assert.NoError(err)
 				}
-				assert.Equal(uint32(1), got.Version)
 			}
 		})
 	}
 }
 
-func TestRootKeyVersion_Delete(t *testing.T) {
+func TestOplogKeyVersion_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
 	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
+	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+	opk := kms.TestOplogKey(t, conn, rk.PrivateId)
+
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocOplogKeyVersion()).Error)
 
 	tests := []struct {
 		name            string
-		key             *kms.RootKeyVersion
+		key             *kms.OplogKeyVersion
 		wantRowsDeleted int
 		wantErr         bool
 		wantErrMsg      string
 	}{
 		{
 			name:            "valid",
-			key:             func() *kms.RootKeyVersion { k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId); return k }(),
+			key:             kms.TestOplogKeyVersion(t, conn, rkvWrapper, opk.PrivateId, []byte("test key")),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
 		{
 			name: "bad-id",
-			key: func() *kms.RootKeyVersion {
-				k := kms.AllocRootKeyVersion()
-				id, err := db.NewPublicId(kms.RootKeyVersionPrefix)
+			key: func() *kms.OplogKeyVersion {
+				k := kms.AllocOplogKeyVersion()
+				id, err := db.NewPublicId(kms.OplogKeyVersionPrefix)
 				require.NoError(t, err)
 				k.PrivateId = id
 				return &k
@@ -138,7 +158,7 @@ func TestRootKeyVersion_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deleteKey := kms.AllocRootKeyVersion()
+			deleteKey := kms.AllocOplogKeyVersion()
 			deleteKey.PrivateId = tt.key.PrivateId
 			deletedRows, err := rw.Delete(context.Background(), &deleteKey)
 			if tt.wantErr {
@@ -151,7 +171,7 @@ func TestRootKeyVersion_Delete(t *testing.T) {
 				return
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundKey := kms.AllocRootKey()
+			foundKey := kms.AllocOplogKeyVersion()
 			foundKey.PrivateId = tt.key.PrivateId
 			err = rw.LookupById(context.Background(), &foundKey)
 			require.Error(err)
@@ -160,7 +180,7 @@ func TestRootKeyVersion_Delete(t *testing.T) {
 	}
 }
 
-func TestRootKeyVersion_Clone(t *testing.T) {
+func TestOplogKeyVersion_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -168,26 +188,38 @@ func TestRootKeyVersion_Clone(t *testing.T) {
 		assert := assert.New(t)
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+
 		rk := kms.TestRootKey(t, conn, org.PublicId)
-		k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
-		cp := k.Clone()
-		assert.True(proto.Equal(cp.(*kms.RootKeyVersion).RootKeyVersion, k.RootKeyVersion))
+		_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+
+		k := kms.TestOplogKey(t, conn, rk.PrivateId)
+		kv := kms.TestOplogKeyVersion(t, conn, rkvWrapper, k.PrivateId, []byte("test key"))
+		cp := kv.Clone()
+		assert.True(proto.Equal(cp.(*kms.OplogKeyVersion).OplogKeyVersion, kv.OplogKeyVersion))
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 		rk := kms.TestRootKey(t, conn, org.PublicId)
-		k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
-		k2, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
-		cp := k.Clone()
-		assert.True(!proto.Equal(cp.(*kms.RootKeyVersion).RootKeyVersion, k2.RootKeyVersion))
+		rk2 := kms.TestRootKey(t, conn, org2.PublicId)
+		_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+		_, rkvWrapper2 := kms.TestRootKeyVersion(t, conn, wrapper, rk2.PrivateId)
+
+		k := kms.TestOplogKey(t, conn, rk.PrivateId)
+		k2 := kms.TestOplogKey(t, conn, rk2.PrivateId)
+		kv := kms.TestOplogKeyVersion(t, conn, rkvWrapper, k.PrivateId, []byte("test key"))
+		kv2 := kms.TestOplogKeyVersion(t, conn, rkvWrapper2, k2.PrivateId, []byte("test key 2"))
+
+		cp := kv.Clone()
+		assert.True(!proto.Equal(cp.(*kms.OplogKeyVersion).OplogKeyVersion, kv2.OplogKeyVersion))
 	})
 }
 
-func TestRootKeyVersion_SetTableName(t *testing.T) {
+func TestOplogKeyVersion_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := kms.DefaultRootKeyVersionTableName
+	defaultTableName := kms.DefaultOplogKeyVersionTableName
 	tests := []struct {
 		name      string
 		setNameTo string
@@ -207,11 +239,9 @@ func TestRootKeyVersion_SetTableName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			def := kms.AllocRootKeyVersion()
+			def := kms.AllocOplogKeyVersion()
 			require.Equal(defaultTableName, def.TableName())
-			s := &kms.RootKeyVersion{
-				RootKeyVersion: &store.RootKeyVersion{},
-			}
+			s := kms.AllocOplogKeyVersion()
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, s.TableName())
 		})

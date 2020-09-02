@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
@@ -25,10 +26,12 @@ func TestRootKey(t *testing.T, conn *gorm.DB, scopeId string) *RootKey {
 	return k
 }
 
-func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, rootId string, key []byte) *RootKeyVersion {
+func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, rootId string) (kv *RootKeyVersion, kvWrapper wrapping.Wrapper) {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
+	rootKeyVersionWrapper := db.TestWrapper(t)
+	key := rootKeyVersionWrapper.(*aead.Wrapper).GetKeyBytes()
 	k, err := NewRootKeyVersion(rootId, key)
 	require.NoError(err)
 	id, err := newRootKeyVersionId()
@@ -38,7 +41,11 @@ func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, r
 	require.NoError(err)
 	err = rw.Create(context.Background(), k)
 	require.NoError(err)
-	return k
+	_, err = rootKeyVersionWrapper.(*aead.Wrapper).SetConfig(map[string]string{
+		"key_id": k.GetPrivateId(),
+	})
+	require.NoError(err)
+	return k, rootKeyVersionWrapper
 }
 
 func TestKms(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper) *Kms {
@@ -52,4 +59,140 @@ func TestKms(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper) *Kms {
 	err = kms.AddExternalWrappers(WithRootWrapper(rootWrapper))
 	require.NoError(err)
 	return kms
+}
+
+func TestDatabaseKey(t *testing.T, conn *gorm.DB, rootKeyId string) *DatabaseKey {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocDatabaseKey()).Error)
+	k, err := NewDatabaseKey(rootKeyId)
+	require.NoError(err)
+	id, err := newDatabaseKeyId()
+	require.NoError(err)
+	k.PrivateId = id
+	k.RootKeyId = rootKeyId
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestDatabaseKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapping.Wrapper, databaseKeyId string, key []byte) *DatabaseKeyVersion {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	require.NotEmpty(rootKeyVersionId)
+	k, err := NewDatabaseKeyVersion(databaseKeyId, key, rootKeyVersionId)
+	require.NoError(err)
+	id, err := newDatabaseKeyVersionId()
+	require.NoError(err)
+	k.PrivateId = id
+	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)
+	require.NoError(err)
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestOplogKey(t *testing.T, conn *gorm.DB, rootKeyId string) *OplogKey {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocOplogKey()).Error)
+	k, err := NewOplogKey(rootKeyId)
+	require.NoError(err)
+	id, err := newOplogKeyId()
+	require.NoError(err)
+	k.PrivateId = id
+	k.RootKeyId = rootKeyId
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestOplogKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapping.Wrapper, oplogKeyId string, key []byte) *OplogKeyVersion {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	require.NotEmpty(rootKeyVersionId)
+	k, err := NewOplogKeyVersion(oplogKeyId, key, rootKeyVersionId)
+	require.NoError(err)
+	id, err := newOplogKeyVersionId()
+	require.NoError(err)
+	k.PrivateId = id
+	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)
+	require.NoError(err)
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestTokenKey(t *testing.T, conn *gorm.DB, rootKeyId string) *TokenKey {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocTokenKey()).Error)
+	k, err := NewTokenKey(rootKeyId)
+	require.NoError(err)
+	id, err := newTokenKeyId()
+	require.NoError(err)
+	k.PrivateId = id
+	k.RootKeyId = rootKeyId
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestTokenKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapping.Wrapper, tokenKeyId string, key []byte) *TokenKeyVersion {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	require.NotEmpty(rootKeyVersionId)
+	k, err := NewTokenKeyVersion(tokenKeyId, key, rootKeyVersionId)
+	require.NoError(err)
+	id, err := newTokenKeyVersionId()
+	require.NoError(err)
+	k.PrivateId = id
+	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)
+	require.NoError(err)
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestSessionKey(t *testing.T, conn *gorm.DB, rootKeyId string) *SessionKey {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocSessionKey()).Error)
+	k, err := NewSessionKey(rootKeyId)
+	require.NoError(err)
+	id, err := newSessionKeyId()
+	require.NoError(err)
+	k.PrivateId = id
+	k.RootKeyId = rootKeyId
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestSessionKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapping.Wrapper, sessionKeyId string, key []byte) *SessionKeyVersion {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	require.NotEmpty(rootKeyVersionId)
+	k, err := NewSessionKeyVersion(sessionKeyId, key, rootKeyVersionId)
+	require.NoError(err)
+	id, err := newSessionKeyVersionId()
+	require.NoError(err)
+	k.PrivateId = id
+	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)
+	require.NoError(err)
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
 }

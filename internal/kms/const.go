@@ -21,6 +21,9 @@ const (
 
 	// KeyPurposeTokens is used for token encryption
 	KeyPurposeTokens
+
+	// KeyPurposeSessions is used for session encryption
+	KeyPurposeSessions
 )
 
 // String returns the key purpose cast as a string, just so it can be called as
@@ -35,6 +38,56 @@ func (k KeyPurpose) String() string {
 		return "recovery"
 	case KeyPurposeTokens:
 		return "tokens"
+	case KeyPurposeSessions:
+		return "sessions"
+	default:
+		return "unknown"
+	}
+}
+
+// KeyType allows the kms repo to return a map[KeyType]Key which can be easily
+// used without type casting.
+type KeyType uint
+
+const (
+	KeyTypeUnknown KeyType = iota
+	KeyTypeRootKey
+	KeyTypeRootKeyVersion
+	KeyTypeDatabaseKey
+	KeyTypeDatabaseKeyVersion
+	KeyTypeOplogKey
+	KeyTypeOplogKeyVersion
+	KeyTypeTokenKey
+	KeyTypeTokenKeyVersion
+	KeyTypeSessionKey
+	KeyTypeSessionKeyVersion
+)
+
+// String returns the key type cast as a string, just so it can be called as
+// a function instead of direct casting elsewhere, yw
+func (k KeyType) String() string {
+	switch k {
+	case KeyTypeRootKey:
+		return "rootKey"
+	case KeyTypeRootKeyVersion:
+		return "rootKeyVersion"
+	case KeyTypeDatabaseKey:
+		return "databaseKey"
+	case KeyTypeDatabaseKeyVersion:
+		return "databaseKeyVersion"
+	case KeyTypeOplogKey:
+		return "oplogKey"
+	case KeyTypeOplogKeyVersion:
+		return "oplogKeyVersion"
+	case KeyTypeTokenKey:
+		return "tokenKey"
+	case KeyTypeTokenKeyVersion:
+		return "tokenKeyVersion"
+	case KeyTypeSessionKey:
+		return "sessionKey"
+	case KeyTypeSessionKeyVersion:
+		return "sessionKeyVersion"
+
 	default:
 		return "unknown"
 	}

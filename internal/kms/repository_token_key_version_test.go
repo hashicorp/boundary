@@ -16,7 +16,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestRepository_CreateRootKeyVersion(t *testing.T) {
+func TestRepository_CreateTokenKeyVersion(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -26,10 +26,12 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
+	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+	dk := kms.TestTokenKey(t, conn, rk.PrivateId)
 
 	type args struct {
-		rootKeyId  string
 		key        []byte
+		tokenKeyId string
 		keyWrapper wrapping.Wrapper
 		opt        []kms.Option
 	}
@@ -43,17 +45,17 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 			name: "valid",
 			args: args{
 				key:        []byte("test key"),
-				rootKeyId:  rk.PrivateId,
-				keyWrapper: wrapper,
+				keyWrapper: rkvWrapper,
+				tokenKeyId: dk.PrivateId,
 			},
 			wantErr: false,
 		},
 		{
-			name: "invalid-root-key",
+			name: "invalid-rkv-wrapper",
 			args: args{
 				key:        []byte("test key"),
-				rootKeyId:  "krk_thisIsNotValid",
 				keyWrapper: wrapper,
+				tokenKeyId: dk.PrivateId,
 			},
 			wantErr: true,
 		},
@@ -61,8 +63,8 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 			name: "empty-key",
 			args: args{
 				key:        nil,
-				rootKeyId:  rk.PrivateId,
 				keyWrapper: wrapper,
+				tokenKeyId: dk.PrivateId,
 			},
 			wantErr:     true,
 			wantIsError: db.ErrInvalidParameter,
@@ -71,7 +73,6 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 			name: "nil-wrapper",
 			args: args{
 				key:        []byte("test key"),
-				rootKeyId:  rk.PrivateId,
 				keyWrapper: nil,
 			},
 			wantErr:     true,
@@ -81,7 +82,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			k, err := repo.CreateRootKeyVersion(context.Background(), tt.args.keyWrapper, tt.args.rootKeyId, tt.args.key, tt.args.opt...)
+			k, err := repo.CreateTokenKeyVersion(context.Background(), tt.args.keyWrapper, tt.args.tokenKeyId, tt.args.key, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(k)
@@ -92,7 +93,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(k.CreateTime)
-			foundKey, err := repo.LookupRootKeyVersion(context.Background(), tt.args.keyWrapper, k.PrivateId)
+			foundKey, err := repo.LookupTokenKeyVersion(context.Background(), tt.args.keyWrapper, k.PrivateId)
 			assert.NoError(err)
 			assert.True(proto.Equal(foundKey, k))
 
@@ -104,7 +105,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 	}
 }
 
-func TestRepository_DeleteRootKeyVersion(t *testing.T) {
+func TestRepository_DeleteTokenKeyVersion(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -114,9 +115,11 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
+	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+	dk := kms.TestTokenKey(t, conn, rk.PrivateId)
 
 	type args struct {
-		key *kms.RootKeyVersion
+		key *kms.TokenKeyVersion
 		opt []kms.Option
 	}
 	tests := []struct {
@@ -129,10 +132,7 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				key: func() *kms.RootKeyVersion {
-					k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
-					return k
-				}(),
+				key: kms.TestTokenKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("token key")),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -140,8 +140,8 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 		{
 			name: "no-private-id",
 			args: args{
-				key: func() *kms.RootKeyVersion {
-					k := kms.AllocRootKeyVersion()
+				key: func() *kms.TokenKeyVersion {
+					k := kms.AllocTokenKeyVersion()
 					return &k
 				}(),
 			},
@@ -152,10 +152,10 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 		{
 			name: "not-found",
 			args: args{
-				key: func() *kms.RootKeyVersion {
-					id, err := db.NewPublicId(kms.RootKeyPrefix)
+				key: func() *kms.TokenKeyVersion {
+					id, err := db.NewPublicId(kms.TokenKeyPrefix)
 					require.NoError(t, err)
-					k := kms.AllocRootKeyVersion()
+					k := kms.AllocTokenKeyVersion()
 					k.PrivateId = id
 					require.NoError(t, err)
 					return &k
@@ -169,7 +169,7 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deletedRows, err := repo.DeleteRootKeyVersion(context.Background(), tt.args.key.PrivateId, tt.args.opt...)
+			deletedRows, err := repo.DeleteTokenKeyVersion(context.Background(), tt.args.key.PrivateId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, deletedRows)
@@ -183,7 +183,7 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundKey, err := repo.LookupRootKeyVersion(context.Background(), wrapper, tt.args.key.PrivateId)
+			foundKey, err := repo.LookupTokenKeyVersion(context.Background(), wrapper, tt.args.key.PrivateId)
 			assert.Error(err)
 			assert.Nil(foundKey)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
@@ -196,7 +196,7 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 	}
 }
 
-func TestRepository_LatestRootKeyVersion(t *testing.T) {
+func TestRepository_LatestTokenKeyVersion(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -206,6 +206,8 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
+	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+	dk := kms.TestTokenKey(t, conn, rk.PrivateId)
 
 	tests := []struct {
 		name        string
@@ -218,21 +220,21 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 		{
 			name:        "5",
 			createCnt:   5,
-			keyWrapper:  wrapper,
+			keyWrapper:  rkvWrapper,
 			wantVersion: 5,
 			wantErr:     false,
 		},
 		{
 			name:        "1",
 			createCnt:   1,
-			keyWrapper:  wrapper,
+			keyWrapper:  rkvWrapper,
 			wantVersion: 1,
 			wantErr:     false,
 		},
 		{
 			name:        "0",
 			createCnt:   0,
-			keyWrapper:  wrapper,
+			keyWrapper:  rkvWrapper,
 			wantErr:     true,
 			wantIsError: db.ErrRecordNotFound,
 		},
@@ -247,14 +249,14 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocRootKeyVersion()).Error)
-			testKeys := []*kms.RootKeyVersion{}
+			require.NoError(conn.Where("1=1").Delete(kms.AllocTokenKeyVersion()).Error)
+			testKeys := []*kms.TokenKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
-				k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+				k := kms.TestTokenKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("test key"))
 				testKeys = append(testKeys, k)
 			}
 			assert.Equal(tt.createCnt, len(testKeys))
-			got, err := repo.LatestRootKeyVersion(context.Background(), tt.keyWrapper, rk.PrivateId)
+			got, err := repo.LatestTokenKeyVersion(context.Background(), tt.keyWrapper, dk.PrivateId)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -270,7 +272,7 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 	}
 }
 
-func TestRepository_ListRootKeyVersions(t *testing.T) {
+func TestRepository_ListTokenKeyVersions(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
@@ -281,9 +283,11 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	rk := kms.TestRootKey(t, conn, org.PublicId)
+	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+	dk := kms.TestTokenKey(t, conn, rk.PrivateId)
 
 	type args struct {
-		rootKeyId  string
+		tokenKeyId string
 		keyWrapper wrapping.Wrapper
 		opt        []kms.Option
 	}
@@ -298,8 +302,8 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			name:      "no-limit",
 			createCnt: repo.DefaultLimit() + 1,
 			args: args{
-				rootKeyId:  rk.PrivateId,
-				keyWrapper: wrapper,
+				tokenKeyId: dk.PrivateId,
+				keyWrapper: rkvWrapper,
 				opt:        []kms.Option{kms.WithLimit(-1)},
 			},
 			wantCnt: repo.DefaultLimit() + 1,
@@ -309,8 +313,8 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			name:      "default-limit",
 			createCnt: repo.DefaultLimit() + 1,
 			args: args{
-				keyWrapper: wrapper,
-				rootKeyId:  rk.PrivateId,
+				keyWrapper: rkvWrapper,
+				tokenKeyId: dk.PrivateId,
 			},
 			wantCnt: repo.DefaultLimit(),
 			wantErr: false,
@@ -319,8 +323,8 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			name:      "custom-limit",
 			createCnt: repo.DefaultLimit() + 1,
 			args: args{
-				keyWrapper: wrapper,
-				rootKeyId:  rk.PrivateId,
+				keyWrapper: rkvWrapper,
+				tokenKeyId: dk.PrivateId,
 				opt:        []kms.Option{kms.WithLimit(3)},
 			},
 			wantCnt: 3,
@@ -330,8 +334,8 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			name:      "bad-org",
 			createCnt: 1,
 			args: args{
-				keyWrapper: wrapper,
-				rootKeyId:  "bad-id",
+				keyWrapper: rkvWrapper,
+				tokenKeyId: "bad-id",
 			},
 			wantCnt: 0,
 			wantErr: false,
@@ -341,7 +345,7 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			createCnt: 1,
 			args: args{
 				keyWrapper: nil,
-				rootKeyId:  rk.PrivateId,
+				tokenKeyId: dk.PrivateId,
 			},
 			wantCnt: 0,
 			wantErr: true,
@@ -350,14 +354,14 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocRootKeyVersion()).Error)
-			testRootKeyVersions := []*kms.RootKeyVersion{}
+			require.NoError(conn.Where("1=1").Delete(kms.AllocTokenKeyVersion()).Error)
+			keyVersions := []*kms.TokenKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
-				k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
-				testRootKeyVersions = append(testRootKeyVersions, k)
+				k := kms.TestTokenKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("token key"))
+				keyVersions = append(keyVersions, k)
 			}
-			assert.Equal(tt.createCnt, len(testRootKeyVersions))
-			got, err := repo.ListRootKeyVersions(context.Background(), tt.args.keyWrapper, tt.args.rootKeyId, tt.args.opt...)
+			assert.Equal(tt.createCnt, len(keyVersions))
+			got, err := repo.ListTokenKeyVersions(context.Background(), tt.args.keyWrapper, tt.args.tokenKeyId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
