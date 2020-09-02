@@ -234,4 +234,35 @@ begin;
       references session_state (session_id, end_time)
   );
 
+
+  create or replace function
+    insert_session_state()
+    returns trigger
+  as $$
+  begin
+
+    update session_state
+       set end_time = now()
+     where session_id = new.session_id
+       and end_time is null;
+
+    if not found then
+      new.previous_end_time = null;
+      new.start_time = now();
+      new.end_time = null;
+      return new;
+    end if;
+
+    new.previous_end_time = now();
+    new.start_time = now();
+    new.end_time = null;
+    return new;
+
+  end;
+  $$ language plpgsql;
+
+
+  create trigger insert_session_state before insert on session_state
+    for each row execute procedure insert_session_state();
+
 commit;
