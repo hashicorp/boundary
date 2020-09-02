@@ -43,7 +43,7 @@ type User struct {
 	Scope *scopes.ScopeInfo `protobuf:"bytes,20,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes
 	Name *wrappers.StringValue `protobuf:"bytes,30,opt,name=name,proto3" json:"name,omitempty"`
-	// Optional user-set descripton for identification purposes
+	// Optional user-set description for identification purposes
 	Description *wrappers.StringValue `protobuf:"bytes,40,opt,name=description,proto3" json:"description,omitempty"`
 	// The time this resource was created
 	// Output only.
