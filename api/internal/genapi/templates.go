@@ -119,8 +119,12 @@ func fillTemplates() {
 
 		if len(in.sliceSubTypes) > 0 {
 			input.SliceSubTypes = in.sliceSubTypes
-			in.templates = append(in.templates, sliceSubTypeTemplate)
-			in.templates = append(in.templates, sliceSubTypeTemplate2)
+			if !in.disableOldStyle {
+				in.templates = append(in.templates, sliceSubTypeTemplate)
+			}
+			if in.useNewStyle {
+				in.templates = append(in.templates, sliceSubTypeTemplate2)
+			}
 		}
 
 		for _, t := range in.templates {
