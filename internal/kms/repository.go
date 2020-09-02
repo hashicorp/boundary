@@ -81,7 +81,7 @@ func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, r
 	if err != nil {
 		return nil, fmt.Errorf("create keys: error generating random bytes for root key in scope %s: %w", scopeId, err)
 	}
-	rootKey, rootKeyVersion, err := CreateRootKeyTx(ctx, dbWriter, rootWrapper, scopeId, k)
+	rootKey, rootKeyVersion, err := createRootKeyTx(ctx, dbWriter, rootWrapper, scopeId, k)
 	if err != nil {
 		return nil, fmt.Errorf("create keys: unable to create root key in scope %s: %w", scopeId, err)
 	}
