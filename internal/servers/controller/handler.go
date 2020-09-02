@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 
@@ -77,6 +78,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 			},
 		}),
 		runtime.WithErrorHandler(handlers.ErrorHandler(c.logger)),
+		runtime.WithForwardResponseOption(handlers.OutgoingInterceptor),
 	)
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
@@ -140,6 +142,13 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	}
 	if err := services.RegisterUserServiceHandlerServer(ctx, mux, us); err != nil {
 		return nil, fmt.Errorf("failed to register user service handler: %w", err)
+	}
+	ts, err := targets.NewService(c.TargetRepoFn, c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create target handler service: %w", err)
+	}
+	if err := services.RegisterTargetServiceHandlerServer(ctx, mux, ts); err != nil {
+		return nil, fmt.Errorf("failed to register target service handler: %w", err)
 	}
 	gs, err := groups.NewService(c.IamRepoFn)
 	if err != nil {

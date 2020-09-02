@@ -685,20 +685,30 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		scopeId = "global"
 	}
 
-	scopedPath := strings.TrimPrefix(requestPath, "/")
-	switch requestPath {
-	case "scopes":
-		// This is a special case for creating or listing scopes; don't do
-		// anything
-
+	var finalPath string
+	switch opts.withNewStyle {
+	case true:
+		// Do nothing. Eventually, remove the notion of a scoped client; calls
+		// to specific resources won't need it, and calls to collections can
+		// take care of it in the functions themselves as part of the api
+		// parameters.
+		finalPath = path.Join(u.Path, "/v1/", requestPath)
 	default:
-		// If their path already has 'scopes/' in it, use the given request path
-		// instead of building it from the client's scope information
-		if !strings.HasPrefix(scopedPath, "scopes/") {
-			scopedPath = path.Join("scopes", scopeId, scopedPath)
+		scopedPath := strings.TrimPrefix(requestPath, "/")
+		switch requestPath {
+		case "scopes":
+			// This is a special case for creating or listing scopes; don't do
+			// anything
+
+		default:
+			// If their path already has 'scopes/' in it, use the given request path
+			// instead of building it from the client's scope information
+			if !strings.HasPrefix(scopedPath, "scopes/") {
+				scopedPath = path.Join("scopes", scopeId, scopedPath)
+			}
 		}
+		finalPath = path.Join(u.Path, "/v1", scopedPath)
 	}
-	scopedPath = path.Join(u.Path, "/v1", scopedPath)
 
 	req := &http.Request{
 		Method: method,
@@ -706,7 +716,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 			User:   u.User,
 			Scheme: u.Scheme,
 			Host:   host,
-			Path:   scopedPath,
+			Path:   finalPath,
 		},
 		Host: u.Host,
 	}

@@ -1,6 +1,9 @@
 package auth
 
-import "github.com/hashicorp/boundary/internal/kms"
+import (
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/types/action"
+)
 
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -16,6 +19,9 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withScopeId string
+	withPin     string
+	withId      string
+	withAction  action.Type
 	withUserId  string
 	withKms     *kms.Kms
 }
@@ -30,6 +36,24 @@ func getDefaultOptions() options {
 func WithScopeId(id string) Option {
 	return func(o *options) {
 		o.withScopeId = id
+	}
+}
+
+func WithPin(pin string) Option {
+	return func(o *options) {
+		o.withPin = pin
+	}
+}
+
+func WithId(id string) Option {
+	return func(o *options) {
+		o.withId = id
+	}
+}
+
+func WithAction(action action.Type) Option {
+	return func(o *options) {
+		o.withAction = action
 	}
 }
 

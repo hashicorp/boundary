@@ -48,7 +48,7 @@ message AuthenticateRequest {
   // The id to the authmethod in the system being used for authentication.  The auth method must be in the scope
   // being logged in to.
   string auth_method_id = 1;
-  // This can be "cookie" or "token".  If not provided, "token" will be used.  For now only type "token" is returned.
+  // This can be "cookie" or "token".  If not provided, "token" will be used.
   string token_type = 2;
 
   // credentials are the different possible credential names depending on what type of auth method is used.
@@ -58,6 +58,8 @@ message AuthenticateRequest {
 
 message AuthenticateResponse {
   resources.authtokens.v1.AuthToken item = 1;
+  // This can be "cookie" or "token".  If not present, "token" should be assumed.
+  string token_type = 2;
 }
 
 message DeauthenticateRequest {}

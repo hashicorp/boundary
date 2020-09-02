@@ -26,8 +26,12 @@ service HostSetService {
    // non existing resource an error is returned.
   rpc GetHostSet(GetHostSetRequest) returns (GetHostSetResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
+      get: "/v1/host-sets/{id}"
       response_body: "item"
+      additional_bindings {
+        get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Get a single HostSet"
@@ -41,7 +45,10 @@ service HostSetService {
   // returned.
   rpc ListHostSets(ListHostSetsRequest) returns (ListHostSetsResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets"
+      get: "/v1/host-sets"
+      additional_bindings {
+        get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "List all HostSets under the specific catalog"
@@ -56,9 +63,14 @@ service HostSetService {
   // error is returned.
   rpc CreateHostSet(CreateHostSetRequest) returns (CreateHostSetResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets"
+      post: "/v1/host-sets"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Create a HostSet"
@@ -75,9 +87,14 @@ service HostSetService {
   // name to one that is already in use in this host catalog.
   rpc UpdateHostSet(UpdateHostSetRequest) returns (UpdateHostSetResponse) {
     option (google.api.http) = {
-      patch: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
+      patch: "/v1/host-sets/{id}"
       body: "item"
       response_body: "item"
+      additional_bindings: {
+        patch: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Update a HostSet"
@@ -91,7 +108,10 @@ service HostSetService {
   // before the DeleteHostSet request was received.
   rpc DeleteHostSet(DeleteHostSetRequest) returns (DeleteHostSetResponse) {
     option (google.api.http) = {
-      delete: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
+      delete: "/v1/host-sets/{id}"
+      additional_bindings: {
+        delete: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Delete a HostSet"
@@ -106,9 +126,14 @@ service HostSetService {
   // returned.
   rpc AddHostSetHosts(AddHostSetHostsRequest) returns (AddHostSetHostsResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts"
+      post: "/v1/host-sets/{id}:add-hosts"
       body: "*"
       response_body: "item"
+      additional_bindings: {
+        post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts"
+        body: "*"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Adds existing Hosts to a Host Set."
@@ -124,9 +149,14 @@ service HostSetService {
   // error is returned.
   rpc SetHostSetHosts(SetHostSetHostsRequest) returns (SetHostSetHostsResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:set-hosts"
+      post: "/v1/host-sets/{id}:set-hosts"
       body: "*"
       response_body: "item"
+      additional_bindings: {
+        post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:set-hosts"
+        body: "*"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Sets the Hosts on the Host Set."
@@ -140,9 +170,14 @@ service HostSetService {
   // an error is returned.
   rpc RemoveHostSetHosts(RemoveHostSetHostsRequest) returns (RemoveHostSetHostsResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts"
+      post: "/v1/host-sets/{id}:remove-hosts"
       body: "*"
       response_body: "item"
+      additional_bindings: {
+        post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts"
+        body: "*"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Removes Hosts from the Host Set."

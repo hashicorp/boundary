@@ -55,10 +55,13 @@ func (k *RootKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 	if k.PrivateId == "" {
 		return fmt.Errorf("root key vet for write: missing private id: %w", db.ErrInvalidParameter)
 	}
-	if opType == db.CreateOp {
+	switch opType {
+	case db.CreateOp:
 		if k.ScopeId == "" {
 			return fmt.Errorf("root key vet for write: missing scope id: %w", db.ErrInvalidParameter)
 		}
+	case db.UpdateOp:
+		return fmt.Errorf("root key vet for write: key is immutable: %w", db.ErrInvalidParameter)
 	}
 	return nil
 }

@@ -81,6 +81,9 @@ func (r *Repository) LookupTarget(ctx context.Context, publicId string, opt ...O
 		},
 	)
 	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, nil, nil
+		}
 		return nil, nil, fmt.Errorf("lookup target: %w", err)
 	}
 	subType, err := target.targetSubType()

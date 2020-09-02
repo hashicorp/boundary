@@ -22,7 +22,6 @@ func TestTcpTarget_Create(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	type args struct {
 		scopeId string
-		name    string
 		opt     []Option
 	}
 	tests := []struct {
@@ -44,7 +43,7 @@ func TestTcpTarget_Create(t *testing.T) {
 			name: "valid-proj-scope",
 			args: args{
 				scopeId: prj.PublicId,
-				name:    "valid-proj-scope",
+				opt:     []Option{WithName("valid-proj-scope")},
 			},
 			want: func() *TcpTarget {
 				t := allocTcpTarget()
@@ -58,7 +57,7 @@ func TestTcpTarget_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewTcpTarget(tt.args.scopeId, tt.args.name, tt.args.opt...)
+			got, err := NewTcpTarget(tt.args.scopeId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Is(err, tt.wantIsErr))
