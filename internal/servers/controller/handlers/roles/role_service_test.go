@@ -77,6 +77,7 @@ func TestGet(t *testing.T) {
 
 	wantOrgRole := &pb.Role{
 		Id:           or.GetPublicId(),
+		ScopeId:      or.GetScopeId(),
 		Scope:        &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
 		Name:         &wrapperspb.StringValue{Value: or.GetName()},
 		Description:  &wrapperspb.StringValue{Value: or.GetDescription()},
@@ -88,6 +89,7 @@ func TestGet(t *testing.T) {
 
 	wantProjRole := &pb.Role{
 		Id:           pr.GetPublicId(),
+		ScopeId:      pr.GetScopeId(),
 		Scope:        &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String()},
 		Name:         &wrapperspb.StringValue{Value: pr.GetName()},
 		Description:  &wrapperspb.StringValue{Value: pr.GetDescription()},
@@ -189,6 +191,7 @@ func TestList(t *testing.T) {
 		or := iam.TestRole(t, conn, oWithRoles.GetPublicId())
 		wantOrgRoles = append(wantOrgRoles, &pb.Role{
 			Id:           or.GetPublicId(),
+			ScopeId:      or.GetScopeId(),
 			Scope:        &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
 			CreatedTime:  or.GetCreateTime().GetTimestamp(),
 			UpdatedTime:  or.GetUpdateTime().GetTimestamp(),
@@ -198,6 +201,7 @@ func TestList(t *testing.T) {
 		pr := iam.TestRole(t, conn, pWithRoles.GetPublicId())
 		wantProjRoles = append(wantProjRoles, &pb.Role{
 			Id:           pr.GetPublicId(),
+			ScopeId:      pr.GetScopeId(),
 			Scope:        &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String()},
 			CreatedTime:  pr.GetCreateTime().GetTimestamp(),
 			UpdatedTime:  pr.GetUpdateTime().GetTimestamp(),
@@ -380,8 +384,9 @@ func TestCreate(t *testing.T) {
 				GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
 			}},
 			res: &pbs.CreateRoleResponse{
-				Uri: fmt.Sprintf("scopes/%s/roles/%s_", defaultOrgRole.GetScopeId(), iam.RolePrefix),
+				Uri: fmt.Sprintf("roles/%s_", iam.RolePrefix),
 				Item: &pb.Role{
+					ScopeId:      defaultOrgRole.GetScopeId(),
 					Scope:        &scopes.ScopeInfo{Id: defaultOrgRole.GetScopeId(), Type: scope.Org.String()},
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
@@ -401,8 +406,9 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateRoleResponse{
-				Uri: fmt.Sprintf("scopes/%s/roles/%s_", defaultProjRole.GetScopeId(), iam.RolePrefix),
+				Uri: fmt.Sprintf("roles/%s_", iam.RolePrefix),
 				Item: &pb.Role{
+					ScopeId:      defaultProjRole.GetScopeId(),
 					Scope:        &scopes.ScopeInfo{Id: defaultProjRole.GetScopeId(), Type: scope.Project.String()},
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
@@ -574,6 +580,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           or.GetPublicId(),
+					ScopeId:      or.GetScopeId(),
 					Scope:        &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
 					Name:         &wrapperspb.StringValue{Value: "new"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
@@ -602,6 +609,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           or.GetPublicId(),
+					ScopeId:      or.GetScopeId(),
 					Scope:        &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
 					Name:         &wrapperspb.StringValue{Value: "new"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
@@ -631,6 +639,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           pr.GetPublicId(),
+					ScopeId:      pr.GetScopeId(),
 					Scope:        &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String()},
 					Name:         &wrapperspb.StringValue{Value: "new"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
@@ -660,6 +669,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           pr.GetPublicId(),
+					ScopeId:      pr.GetScopeId(),
 					Scope:        &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String()},
 					Name:         &wrapperspb.StringValue{Value: "new"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
@@ -721,6 +731,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           or.GetPublicId(),
+					ScopeId:      or.GetScopeId(),
 					Scope:        &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
 					Description:  &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:  or.GetCreateTime().GetTimestamp(),
@@ -748,6 +759,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           or.GetPublicId(),
+					ScopeId:      or.GetScopeId(),
 					Scope:        &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
 					Name:         &wrapperspb.StringValue{Value: "updated"},
 					Description:  &wrapperspb.StringValue{Value: "default"},
@@ -776,6 +788,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           or.GetPublicId(),
+					ScopeId:      or.GetScopeId(),
 					Scope:        &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
 					Name:         &wrapperspb.StringValue{Value: "default"},
 					Description:  &wrapperspb.StringValue{Value: "notignored"},

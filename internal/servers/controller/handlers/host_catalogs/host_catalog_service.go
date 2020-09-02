@@ -94,7 +94,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 	hc.Scope = authResults.Scope
 	return &pbs.CreateHostCatalogResponse{
 		Item: hc,
-		Uri:  fmt.Sprintf("scopes/%s/host-catalogs/%s", authResults.Scope.GetId(), hc.GetId()),
+		Uri:  fmt.Sprintf("host-catalogs/%s", hc.GetId()),
 	}, nil
 }
 
@@ -235,6 +235,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 func toProto(in *static.HostCatalog) *pb.HostCatalog {
 	out := pb.HostCatalog{
 		Id:          in.GetPublicId(),
+		ScopeId:     in.GetScopeId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),

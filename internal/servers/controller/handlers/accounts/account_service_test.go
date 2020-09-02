@@ -317,7 +317,7 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s_", o.GetPublicId(), defaultAccount.GetAuthMethodId(), password.AccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", password.AccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
@@ -339,7 +339,7 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s_", o.GetPublicId(), defaultAccount.GetAuthMethodId(), password.AccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", password.AccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
@@ -361,7 +361,7 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s_", o.GetPublicId(), defaultAccount.GetAuthMethodId(), password.AccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", password.AccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Name:         &wrapperspb.StringValue{Value: "name_with_password"},

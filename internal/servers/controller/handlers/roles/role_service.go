@@ -96,7 +96,7 @@ func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*p
 		return nil, err
 	}
 	r.Scope = authResults.Scope
-	return &pbs.CreateRoleResponse{Item: r, Uri: fmt.Sprintf("scopes/%s/roles/%s", authResults.Scope.GetId(), r.GetId())}, nil
+	return &pbs.CreateRoleResponse{Item: r, Uri: fmt.Sprintf("roles/%s", r.GetId())}, nil
 }
 
 // UpdateRole implements the interface pbs.RoleServiceServer.
@@ -471,6 +471,7 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGrant) *pb.Role {
 	out := pb.Role{
 		Id:          in.GetPublicId(),
+		ScopeId:     in.GetScopeId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
@@ -533,7 +534,9 @@ func validateCreateRequest(req *pbs.CreateRoleRequest, s *scopes.ScopeInfo) erro
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		item := req.GetItem()
-		if !handlers.ValidId(scope.Org.Prefix(), item.GetScopeId()) && !handlers.ValidId(scope.Project.Prefix(), item.GetScopeId()) {
+		if !handlers.ValidId(scope.Org.Prefix(), item.GetScopeId()) &&
+			!handlers.ValidId(scope.Project.Prefix(), item.GetScopeId()) &&
+			scope.Global.String() != item.GetScopeId() {
 			badFields["scope_id"] = "Improperly formatted field."
 		}
 		if item.GetGrantScopeId() != nil && s.GetType() == scope.Project.String() {

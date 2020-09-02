@@ -95,7 +95,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.CreateAccountResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s", authResults.Scope.GetId(), u.GetAuthMethodId(), u.GetId())}, nil
+	return &pbs.CreateAccountResponse{Item: u, Uri: fmt.Sprintf("accounts/%s", u.GetId())}, nil
 }
 
 // UpdateAccount implements the interface pbs.AccountServiceServer.

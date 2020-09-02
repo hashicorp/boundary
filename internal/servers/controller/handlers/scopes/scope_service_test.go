@@ -62,6 +62,7 @@ func TestGet(t *testing.T) {
 
 	oScope := &pb.Scope{
 		Id:          org.GetPublicId(),
+		ScopeId:     org.GetParentId(),
 		Scope:       &pb.ScopeInfo{Id: "global", Type: scope.Global.String()},
 		Name:        &wrapperspb.StringValue{Value: org.GetName()},
 		Description: &wrapperspb.StringValue{Value: org.GetDescription()},
@@ -72,6 +73,7 @@ func TestGet(t *testing.T) {
 
 	pScope := &pb.Scope{
 		Id:          proj.GetPublicId(),
+		ScopeId:     proj.GetParentId(),
 		Scope:       &pb.ScopeInfo{Id: oScope.Id, Type: scope.Org.String()},
 		Name:        &wrapperspb.StringValue{Value: proj.GetName()},
 		Description: &wrapperspb.StringValue{Value: proj.GetDescription()},
@@ -216,6 +218,7 @@ func TestList(t *testing.T) {
 		require.NoError(t, err)
 		wantOrgs = append(wantOrgs, &pb.Scope{
 			Id:          o.GetPublicId(),
+			ScopeId:     globalScope.GetId(),
 			Scope:       globalScope,
 			CreatedTime: o.GetCreateTime().GetTimestamp(),
 			UpdatedTime: o.GetUpdateTime().GetTimestamp(),
@@ -233,6 +236,7 @@ func TestList(t *testing.T) {
 		require.NoError(t, err)
 		wantProjects = append(wantProjects, &pb.Scope{
 			Id:          p.GetPublicId(),
+			ScopeId:     oWithProjects.GetPublicId(),
 			Scope:       &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String()},
 			CreatedTime: p.GetCreateTime().GetTimestamp(),
 			UpdatedTime: p.GetUpdateTime().GetTimestamp(),
@@ -432,6 +436,7 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateScopeResponse{
 				Uri: "scopes/p_",
 				Item: &pb.Scope{
+					ScopeId:     defaultOrg.GetPublicId(),
 					Scope:       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -453,6 +458,7 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateScopeResponse{
 				Uri: "scopes/o_",
 				Item: &pb.Scope{
+					ScopeId:     scope.Global.String(),
 					Scope:       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -621,6 +627,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
 					Id:          proj.GetPublicId(),
+					ScopeId:     org.GetPublicId(),
 					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -644,6 +651,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
 					Id:          org.GetPublicId(),
+					ScopeId:     scope.Global.String(),
 					Scope:       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -667,6 +675,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
 					Id:          proj.GetPublicId(),
+					ScopeId:     org.GetPublicId(),
 					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -724,6 +733,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
 					Id:          proj.GetPublicId(),
+					ScopeId:     org.GetPublicId(),
 					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 					Description: &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
@@ -745,6 +755,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
 					Id:          proj.GetPublicId(),
+					ScopeId:     org.GetPublicId(),
 					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrappers.StringValue{Value: "defaultProj"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
@@ -767,6 +778,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
 					Id:          proj.GetPublicId(),
+					ScopeId:     org.GetPublicId(),
 					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "defaultProj"},
@@ -790,6 +802,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
 					Id:          proj.GetPublicId(),
+					ScopeId:     org.GetPublicId(),
 					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "defaultProj"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},

@@ -290,6 +290,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope,
 func ToProto(in *iam.Scope) *pb.Scope {
 	out := pb.Scope{
 		Id:          in.GetPublicId(),
+		ScopeId:     in.GetParentId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),

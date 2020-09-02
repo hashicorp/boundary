@@ -94,7 +94,7 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/groups/%s", authResults.Scope.GetId(), u.GetId())}, nil
+	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("groups/%s", u.GetId())}, nil
 }
 
 // UpdateGroup implements the interface pbs.GroupServiceServer.
@@ -345,6 +345,7 @@ func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userId
 func toProto(in *iam.Group, members []*iam.GroupMember) *pb.Group {
 	out := pb.Group{
 		Id:          in.GetPublicId(),
+		ScopeId:     in.GetScopeId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.Version,

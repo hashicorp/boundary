@@ -136,6 +136,7 @@ func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.AuthToke
 func toProto(in *authtoken.AuthToken) *pb.AuthToken {
 	out := pb.AuthToken{
 		Id:                      in.GetPublicId(),
+		ScopeId:                 in.GetScopeId(),
 		CreatedTime:             in.GetCreateTime().GetTimestamp(),
 		UpdatedTime:             in.GetUpdateTime().GetTimestamp(),
 		ApproximateLastUsedTime: in.GetApproximateLastAccessTime().GetTimestamp(),

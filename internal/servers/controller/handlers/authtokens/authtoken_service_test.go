@@ -39,6 +39,7 @@ func TestGet(t *testing.T) {
 
 	wireAuthToken := pb.AuthToken{
 		Id:                      at.GetPublicId(),
+		ScopeId:                 at.GetScopeId(),
 		UserId:                  at.GetIamUserId(),
 		AuthMethodId:            at.GetAuthMethodId(),
 		CreatedTime:             at.GetCreateTime().GetTimestamp(),
@@ -107,6 +108,7 @@ func TestList(t *testing.T) {
 		at := authtoken.TestAuthToken(t, conn, kms, orgWithSomeTokens.GetPublicId())
 		wantSomeTokens = append(wantSomeTokens, &pb.AuthToken{
 			Id:                      at.GetPublicId(),
+			ScopeId:                 at.GetScopeId(),
 			UserId:                  at.GetIamUserId(),
 			AuthMethodId:            at.GetAuthMethodId(),
 			CreatedTime:             at.GetCreateTime().GetTimestamp(),
@@ -123,6 +125,7 @@ func TestList(t *testing.T) {
 		at := authtoken.TestAuthToken(t, conn, kms, orgWithOtherTokens.GetPublicId())
 		wantOtherTokens = append(wantOtherTokens, &pb.AuthToken{
 			Id:                      at.GetPublicId(),
+			ScopeId:                 at.GetScopeId(),
 			UserId:                  at.GetIamUserId(),
 			AuthMethodId:            at.GetAuthMethodId(),
 			CreatedTime:             at.GetCreateTime().GetTimestamp(),

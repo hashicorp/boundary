@@ -50,6 +50,7 @@ func TestGet(t *testing.T) {
 
 	wantU := &pb.User{
 		Id:          u.GetPublicId(),
+		ScopeId:     u.GetScopeId(),
 		Scope:       &scopes.ScopeInfo{Id: u.ScopeId, Type: scope.Org.String()},
 		Name:        &wrapperspb.StringValue{Value: u.GetName()},
 		Description: &wrapperspb.StringValue{Value: u.GetDescription()},
@@ -126,6 +127,7 @@ func TestList(t *testing.T) {
 		require.NoError(err)
 		wantUsers = append(wantUsers, &pb.User{
 			Id:          u.GetPublicId(),
+			ScopeId:     u.GetScopeId(),
 			Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 			CreatedTime: u.GetCreateTime().GetTimestamp(),
 			UpdatedTime: u.GetUpdateTime().GetTimestamp(),
@@ -255,8 +257,9 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateUserResponse{
-				Uri: fmt.Sprintf("scopes/%s/users/u_", defaultUser.GetScopeId()),
+				Uri: fmt.Sprintf("users/%s_", iam.UserPrefix),
 				Item: &pb.User{
+					ScopeId:     defaultUser.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: defaultUser.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -364,6 +367,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					ScopeId:     u.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -386,6 +390,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					ScopeId:     u.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -439,6 +444,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					ScopeId:     u.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
@@ -460,6 +466,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					ScopeId:     u.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
@@ -482,6 +489,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					ScopeId:     u.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},

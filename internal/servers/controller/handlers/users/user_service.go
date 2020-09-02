@@ -94,7 +94,7 @@ func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*p
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.CreateUserResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/users/%s", authResults.Scope.GetId(), u.GetId())}, nil
+	return &pbs.CreateUserResponse{Item: u, Uri: fmt.Sprintf("users/%s", u.GetId())}, nil
 }
 
 // UpdateUser implements the interface pbs.UserServiceServer.
@@ -240,6 +240,7 @@ func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.User, er
 func toProto(in *iam.User) *pb.User {
 	out := pb.User{
 		Id:          in.GetPublicId(),
+		ScopeId:     in.GetScopeId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),

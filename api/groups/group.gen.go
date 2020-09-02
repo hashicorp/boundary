@@ -45,7 +45,6 @@ func (c *Client) Create(ctx context.Context, opt ...Option) (*Group, *api.Error,
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
-
 	if len(opts.queryMap) > 0 {
 		q := url.Values{}
 		for k, v := range opts.queryMap {

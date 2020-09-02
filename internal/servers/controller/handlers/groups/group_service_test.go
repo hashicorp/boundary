@@ -90,6 +90,7 @@ func TestGet(t *testing.T) {
 
 	wantOrgGroup := &pb.Group{
 		Id:          og.GetPublicId(),
+		ScopeId:     og.GetScopeId(),
 		Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 		Name:        &wrapperspb.StringValue{Value: og.GetName()},
 		Description: &wrapperspb.StringValue{Value: og.GetDescription()},
@@ -107,6 +108,7 @@ func TestGet(t *testing.T) {
 
 	wantProjGroup := &pb.Group{
 		Id:          pg.GetPublicId(),
+		ScopeId:     pg.GetScopeId(),
 		Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId(), Type: scope.Project.String()},
 		Name:        &wrapperspb.StringValue{Value: pg.GetName()},
 		Description: &wrapperspb.StringValue{Value: pg.GetDescription()},
@@ -214,6 +216,7 @@ func TestList(t *testing.T) {
 		og := iam.TestGroup(t, conn, oWithGroups.GetPublicId())
 		wantOrgGroups = append(wantOrgGroups, &pb.Group{
 			Id:          og.GetPublicId(),
+			ScopeId:     og.GetScopeId(),
 			Scope:       &scopes.ScopeInfo{Id: oWithGroups.GetPublicId(), Type: scope.Org.String()},
 			CreatedTime: og.GetCreateTime().GetTimestamp(),
 			UpdatedTime: og.GetUpdateTime().GetTimestamp(),
@@ -222,6 +225,7 @@ func TestList(t *testing.T) {
 		pg := iam.TestGroup(t, conn, pWithGroups.GetPublicId())
 		wantProjGroups = append(wantProjGroups, &pb.Group{
 			Id:          pg.GetPublicId(),
+			ScopeId:     pg.GetScopeId(),
 			Scope:       &scopes.ScopeInfo{Id: pWithGroups.GetPublicId(), Type: scope.Project.String()},
 			CreatedTime: pg.GetCreateTime().GetTimestamp(),
 			UpdatedTime: pg.GetUpdateTime().GetTimestamp(),
@@ -426,8 +430,9 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateGroupResponse{
-				Uri: fmt.Sprintf("scopes/%s/groups/%s_", defaultOGroup.GetScopeId(), iam.GroupPrefix),
+				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
 				Item: &pb.Group{
+					ScopeId:     defaultOGroup.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: defaultOGroup.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -446,8 +451,9 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateGroupResponse{
-				Uri: fmt.Sprintf("scopes/%s/groups/%s_", defaultPGroup.GetScopeId(), iam.GroupPrefix),
+				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
 				Item: &pb.Group{
+					ScopeId:     defaultPGroup.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: defaultPGroup.GetScopeId(), Type: scope.Project.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -579,6 +585,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
+					ScopeId:     og.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -609,6 +616,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
+					ScopeId:     og.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -640,6 +648,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          pg.GetPublicId(),
+					ScopeId:     pg.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId(), Type: scope.Project.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -671,6 +680,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          pg.GetPublicId(),
+					ScopeId:     pg.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId(), Type: scope.Project.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -734,6 +744,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
+					ScopeId:     og.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: og.GetCreateTime().GetTimestamp(),
@@ -763,6 +774,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
+					ScopeId:     og.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
@@ -793,6 +805,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
+					ScopeId:     og.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},

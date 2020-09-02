@@ -43,6 +43,7 @@ func TestGet(t *testing.T) {
 
 	wantU := &pb.AuthMethod{
 		Id:          am.GetPublicId(),
+		ScopeId:     am.GetScopeId(),
 		CreatedTime: am.CreateTime.GetTimestamp(),
 		UpdatedTime: am.UpdateTime.GetTimestamp(),
 		Type:        "password",
@@ -125,6 +126,7 @@ func TestList(t *testing.T) {
 	for _, am := range password.TestAuthMethods(t, conn, oWithAuthMethods.GetPublicId(), 3) {
 		wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
 			Id:          am.GetPublicId(),
+			ScopeId:     oWithAuthMethods.GetPublicId(),
 			CreatedTime: am.GetCreateTime().GetTimestamp(),
 			UpdatedTime: am.GetUpdateTime().GetTimestamp(),
 			Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String()},
@@ -141,6 +143,7 @@ func TestList(t *testing.T) {
 	for _, aa := range password.TestAuthMethods(t, conn, oWithOtherAuthMethods.GetPublicId(), 3) {
 		wantOtherAuthMethods = append(wantOtherAuthMethods, &pb.AuthMethod{
 			Id:          aa.GetPublicId(),
+			ScopeId:     oWithOtherAuthMethods.GetPublicId(),
 			CreatedTime: aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime: aa.GetUpdateTime().GetTimestamp(),
 			Scope:       &scopepb.ScopeInfo{Id: oWithOtherAuthMethods.GetPublicId(), Type: scope.Org.String()},
@@ -311,14 +314,16 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid AuthMethod",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:     o.GetPublicId(),
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
 				Type:        "password",
 			}},
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("scopes/%s/auth-methods/%s_", o.GetPublicId(), password.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", password.AuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
+					ScopeId:     o.GetPublicId(),
 					CreatedTime: defaultAm.GetCreateTime().GetTimestamp(),
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
@@ -337,8 +342,9 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
-				Id:   password.AuthMethodPrefix + "_notallowed",
-				Type: "password",
+				ScopeId: o.GetPublicId(),
+				Id:      password.AuthMethodPrefix + "_notallowed",
+				Type:    "password",
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -346,6 +352,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:     o.GetPublicId(),
 				CreatedTime: ptypes.TimestampNow(),
 			}},
 			res:     nil,
@@ -354,6 +361,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:     o.GetPublicId(),
 				UpdatedTime: ptypes.TimestampNow(),
 				Type:        "password",
 			}},
@@ -363,6 +371,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:     o.GetPublicId(),
 				UpdatedTime: ptypes.TimestampNow(),
 				Type:        "password",
 			}},
@@ -372,6 +381,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Must specify type",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:     o.GetPublicId(),
 				Name:        &wrapperspb.StringValue{Value: "must specify type"},
 				Description: &wrapperspb.StringValue{Value: "must specify type"},
 			}},
@@ -381,6 +391,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Attributes must be valid for type",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:     o.GetPublicId(),
 				Name:        &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
 				Description: &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
 				Type:        "password",
@@ -479,6 +490,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Type:        "password",
@@ -504,6 +516,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Type:        "password",
@@ -560,6 +573,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -584,6 +598,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        "password",
@@ -609,6 +624,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 					Type:        "password",
@@ -707,6 +723,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        "password",
@@ -736,6 +753,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        "password",
