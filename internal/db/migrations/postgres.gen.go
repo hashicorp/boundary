@@ -2703,7 +2703,7 @@ before insert on kms_root_key_version
 
 create table kms_database_key (
   private_id wt_private_id primary key,
-  root_key_id wt_private_id not null
+  root_key_id wt_private_id not null unique -- there can be only one database dek per root key
     references kms_root_key(private_id)
     on delete cascade
     on update cascade,
@@ -2759,7 +2759,7 @@ before insert on kms_database_key_version
 
 create table kms_oplog_key (
   private_id wt_private_id primary key,
-  root_key_id wt_private_id not null
+  root_key_id wt_private_id not null unique -- there can be only one oplog dek per root key
     references kms_root_key(private_id)
     on delete cascade
     on update cascade,
@@ -2815,7 +2815,7 @@ before insert on kms_oplog_key_version
 
 create table kms_session_key (
   private_id wt_private_id primary key,
-  root_key_id wt_private_id not null
+  root_key_id wt_private_id not null unique -- there can be only one session dek per root key
     references kms_root_key(private_id)
     on delete cascade
     on update cascade,
