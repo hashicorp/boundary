@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	"google.golang.org/protobuf/proto"
 )
@@ -75,6 +76,10 @@ type structInfo struct {
 	// given type, e.g. arguments only valid for one call or purpose and not
 	// conveyed within the item itself
 	extraOptions []fieldInfo
+
+	useNewStyle bool
+
+	disableOldStyle bool
 }
 
 var inputStructs = []*structInfo{
@@ -291,11 +296,41 @@ var inputStructs = []*structInfo{
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
+			createTemplate2,
+			readTemplate2,
+			updateTemplate2,
+			deleteTemplate2,
+			listTemplate2,
 		},
 		pathArgs: []string{"host-catalog", "host-set"},
 		sliceSubTypes: map[string]string{
 			"Hosts": "hostIds",
 		},
 		versionEnabled: true,
+		useNewStyle:    true,
+	},
+	{
+		inProto: &targets.HostSet{},
+		outFile: "targets/host_set.gen.go",
+	},
+	{
+		inProto: &targets.Target{},
+		outFile: "targets/target.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate2,
+			readTemplate2,
+			updateTemplate2,
+			deleteTemplate2,
+			listTemplate2,
+		},
+		pathArgs: []string{"target"},
+		sliceSubTypes: map[string]string{
+			"HostSets": "hostSetIds",
+		},
+		versionEnabled:  true,
+		typeOnCreate:    true,
+		useNewStyle:     true,
+		disableOldStyle: true,
 	},
 }
