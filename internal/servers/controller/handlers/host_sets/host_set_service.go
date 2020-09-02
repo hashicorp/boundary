@@ -133,11 +133,7 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 		return nil, err
 	}
 
-	hcId := req.GetItem().GetHostCatalogId()
-	if hcId == "" {
-		hcId = req.GetHostCatalogId()
-	}
-	hostCatalog, _, err := s.getHostStructs(ctx, hcId, false)
+	hostCatalog, _, err := s.getHostStructs(ctx, req.GetItem().GetHostCatalogId(), false)
 	if err != nil {
 		return nil, err
 	}
@@ -150,14 +146,14 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 		return nil, authResults.Error
 	}
 
-	h, err := s.createInRepo(ctx, authResults.Scope.GetId(), hcId, req.GetItem())
+	h, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem().GetHostCatalogId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
 	h.Scope = authResults.Scope
 	return &pbs.CreateHostSetResponse{
 		Item: h,
-		Uri:  fmt.Sprintf("scopes/%s/host-catalogs/%s/host-sets/%s", authResults.Scope.GetId(), hcId, h.GetId()),
+		Uri:  fmt.Sprintf("host-sets/%s", h.GetId()),
 	}, nil
 }
 
@@ -485,15 +481,11 @@ func validateGetRequest(req *pbs.GetHostSetRequest) error {
 
 func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
-		hcId := req.GetItem().GetHostCatalogId()
-		if hcId == "" {
-			hcId = req.GetHostCatalogId()
-		}
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostCatalogPrefix, hcId) {
+		if !handlers.ValidId(static.HostCatalogPrefix, req.GetItem().GetHostCatalogId()) {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
-		switch host.SubtypeFromId(hcId) {
+		switch host.SubtypeFromId(req.GetItem().GetHostCatalogId()) {
 		case host.StaticSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
 				badFields["type"] = "Doesn't match the parent resource's type."

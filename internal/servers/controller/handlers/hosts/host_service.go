@@ -93,14 +93,14 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	h, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetHostCatalogId(), req.GetItem())
+	h, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem().GetHostCatalogId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
 	h.Scope = authResults.Scope
 	return &pbs.CreateHostResponse{
 		Item: h,
-		Uri:  fmt.Sprintf("scopes/%s/host-catalogs/%s/hosts/%s", authResults.Scope.GetId(), req.GetHostCatalogId(), h.GetId()),
+		Uri:  fmt.Sprintf("hosts/%s", h.GetId()),
 	}, nil
 }
 
@@ -117,7 +117,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetHostCatalogId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +190,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	return toProto(out, nil)
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.Host) (*pb.Host, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Host) (*pb.Host, error) {
 	ha := &pb.StaticHostAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed converting attributes to subtype proto: %s", err)
@@ -205,7 +205,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	if addr := ha.GetAddress(); addr != nil {
 		opts = append(opts, static.WithAddress(addr.GetValue()))
 	}
-	h, err := static.NewHost(catalogId, opts...)
+	h, err := static.NewHost("ignored", opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build host for update: %v.", err)
 	}
@@ -294,26 +294,16 @@ func toProto(in *static.Host, members []*static.HostSet) (*pb.Host, error) {
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostRequest) error {
-	return handlers.ValidateGetRequest(static.HostPrefix, req, func() map[string]string {
-		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
-			badFields["host_catalog_id"] = "The field is incorrectly formatted."
-		}
-		return badFields
-	})
+	return handlers.ValidateGetRequest(static.HostPrefix, req, handlers.NoopValidatorFn)
 }
 
 func validateCreateRequest(req *pbs.CreateHostRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
+		if !handlers.ValidId(static.HostCatalogPrefix, req.GetItem().GetHostCatalogId()) {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
-
-		if req.GetItem().GetHostCatalogId() != "" {
-			badFields["host_catalog_id"] = "This field is read only."
-		}
-		switch host.SubtypeFromId(req.GetHostCatalogId()) {
+		switch host.SubtypeFromId(req.GetItem().GetHostCatalogId()) {
 		case host.StaticSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
 				badFields["type"] = "Doesn't match the parent resource's type."
@@ -333,12 +323,6 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 	return handlers.ValidateUpdateRequest(static.HostPrefix, req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
-			badFields["host_catalog_id"] = "The field is incorrectly formatted."
-		}
-		if req.GetItem().GetHostCatalogId() != "" {
-			badFields["host_catalog_id"] = "This is a read only field and cannot be specified in an update request."
-		}
 		if req.GetItem().GetType() != "" {
 			badFields["type"] = "This is a read only field and cannot be specified in an update request."
 		}
@@ -347,13 +331,7 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
-	return handlers.ValidateDeleteRequest(static.HostPrefix, req, func() map[string]string {
-		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
-			badFields["host_catalog_id"] = "The field is incorrectly formatted."
-		}
-		return badFields
-	})
+	return handlers.ValidateDeleteRequest(static.HostPrefix, req, handlers.NoopValidatorFn)
 }
 
 func validateListRequest(req *pbs.ListHostsRequest) error {

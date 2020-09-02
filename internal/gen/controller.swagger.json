@@ -921,12 +921,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
-          },
-          {
-            "name": "host_catalog_id",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -951,12 +945,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
-            "in": "query",
-            "required": false,
             "type": "string"
           },
           {
@@ -986,12 +974,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -1024,12 +1006,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
-          },
-          {
-            "name": "host_catalog_id",
-            "in": "query",
-            "required": false,
-            "type": "string"
           },
           {
             "name": "update_mask",
@@ -1144,6 +1120,157 @@
         ],
         "tags": [
           "controller.api.services.v1.HostSetService"
+        ]
+      }
+    },
+    "/v1/hosts": {
+      "get": {
+        "summary": "List all Hosts for the specified catalog",
+        "operationId": "HostService_ListHosts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListHostsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "host_catalog_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
+        ]
+      },
+      "post": {
+        "summary": "Create a single Host",
+        "operationId": "HostService_CreateHost",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
+        ]
+      }
+    },
+    "/v1/hosts/{id}": {
+      "get": {
+        "summary": "Gets a single Host",
+        "operationId": "HostService_GetHost",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
+        ]
+      },
+      "delete": {
+        "summary": "Delete a Host",
+        "operationId": "HostService_DeleteHost",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteHostResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
+        ]
+      },
+      "patch": {
+        "summary": "Update a Host",
+        "operationId": "HostService_UpdateHost",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
         ]
       }
     },
@@ -1819,69 +1946,7 @@
         ]
       }
     },
-    "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets": {
-      "get": {
-        "summary": "List all HostSets under the specific catalog",
-        "operationId": "HostSetService_ListHostSets2",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListHostSetsResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.HostSetService"
-        ]
-      },
-      "post": {
-        "summary": "Create a HostSet",
-        "operationId": "HostSetService_CreateHostSet2",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.HostSetService"
-        ]
-      }
-    },
-    "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}": {
+    "/v1/scopes/*/host-catalogs/*/host-sets/{id}": {
       "get": {
         "summary": "Get a single HostSet",
         "operationId": "HostSetService_GetHostSet2",
@@ -1894,12 +1959,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -1930,12 +1989,6 @@
         },
         "parameters": [
           {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "id",
             "in": "path",
             "required": true,
@@ -1959,12 +2012,6 @@
         },
         "parameters": [
           {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "id",
             "in": "path",
             "required": true,
@@ -1994,7 +2041,7 @@
         ]
       }
     },
-    "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts": {
+    "/v1/scopes/*/host-catalogs/*/host-sets/{id}:add-hosts": {
       "post": {
         "summary": "Adds existing Hosts to a Host Set.",
         "operationId": "HostSetService_AddHostSetHosts2",
@@ -2007,12 +2054,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -2033,7 +2074,7 @@
         ]
       }
     },
-    "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts": {
+    "/v1/scopes/*/host-catalogs/*/host-sets/{id}:remove-hosts": {
       "post": {
         "summary": "Removes Hosts from the Host Set.",
         "operationId": "HostSetService_RemoveHostSetHosts2",
@@ -2046,12 +2087,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "description": "This host set's id.",
@@ -2073,7 +2108,7 @@
         ]
       }
     },
-    "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:set-hosts": {
+    "/v1/scopes/*/host-catalogs/*/host-sets/{id}:set-hosts": {
       "post": {
         "summary": "Sets the Hosts on the Host Set.",
         "operationId": "HostSetService_SetHostSetHosts2",
@@ -2086,12 +2121,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -2112,72 +2141,10 @@
         ]
       }
     },
-    "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts": {
-      "get": {
-        "summary": "List all Hosts for the specified catalog",
-        "operationId": "HostService_ListHosts",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListHostsResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.HostService"
-        ]
-      },
-      "post": {
-        "summary": "Create a single Host",
-        "operationId": "HostService_CreateHost",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.HostService"
-        ]
-      }
-    },
-    "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts/{id}": {
+    "/v1/scopes/*/host-catalogs/*/hosts/{id}": {
       "get": {
         "summary": "Gets a single Host",
-        "operationId": "HostService_GetHost",
+        "operationId": "HostService_GetHost2",
         "responses": {
           "200": {
             "description": "",
@@ -2187,12 +2154,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -2212,7 +2173,7 @@
       },
       "delete": {
         "summary": "Delete a Host",
-        "operationId": "HostService_DeleteHost",
+        "operationId": "HostService_DeleteHost2",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -2222,12 +2183,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -2241,7 +2196,7 @@
       },
       "patch": {
         "summary": "Update a Host",
-        "operationId": "HostService_UpdateHost",
+        "operationId": "HostService_UpdateHost2",
         "responses": {
           "200": {
             "description": "",
@@ -2251,12 +2206,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -2280,6 +2229,68 @@
               "type": "string"
             },
             "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
+        ]
+      }
+    },
+    "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets": {
+      "get": {
+        "summary": "List all HostSets under the specific catalog",
+        "operationId": "HostSetService_ListHostSets2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListHostSetsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      }
+    },
+    "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts": {
+      "get": {
+        "summary": "List all Hosts for the specified catalog",
+        "operationId": "HostService_ListHosts2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListHostsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -2380,6 +2391,74 @@
         ],
         "tags": [
           "controller.api.services.v1.HostCatalogService"
+        ]
+      }
+    },
+    "/v1/scopes/*/host-catalogs/{item.host_catalog_id}/host-sets": {
+      "post": {
+        "summary": "Create a HostSet",
+        "operationId": "HostSetService_CreateHostSet2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item.host_catalog_id",
+            "description": "The host catalog this host set is a part of\nOutput only",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      }
+    },
+    "/v1/scopes/*/host-catalogs/{item.host_catalog_id}/hosts": {
+      "post": {
+        "summary": "Create a single Host",
+        "operationId": "HostService_CreateHost2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item.host_catalog_id",
+            "description": "The host catalog this host set is a part of\nOutput only",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
         ]
       }
     },
@@ -3749,6 +3828,10 @@
           "description": "The ID of the host\nOutput only.",
           "readOnly": true
         },
+        "host_catalog_id": {
+          "type": "string",
+          "title": "The host catalog this host set is a part of\nOutput only"
+        },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
           "description": "Scope information for this resource\nOutput only.",
@@ -3782,10 +3865,6 @@
         "type": {
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
-        },
-        "host_catalog_id": {
-          "type": "string",
-          "title": "The host catalog this host set is a part of\nOutput only"
         },
         "host_set_ids": {
           "type": "array",
@@ -4237,9 +4316,6 @@
     "controller.api.services.v1.AddHostSetHostsRequest": {
       "type": "object",
       "properties": {
-        "host_catalog_id": {
-          "type": "string"
-        },
         "id": {
           "type": "string"
         },
@@ -4848,9 +4924,6 @@
     "controller.api.services.v1.RemoveHostSetHostsRequest": {
       "type": "object",
       "properties": {
-        "host_catalog_id": {
-          "type": "string"
-        },
         "id": {
           "type": "string",
           "description": "This host set's id."
@@ -4988,9 +5061,6 @@
     "controller.api.services.v1.SetHostSetHostsRequest": {
       "type": "object",
       "properties": {
-        "host_catalog_id": {
-          "type": "string"
-        },
         "id": {
           "type": "string"
         },
