@@ -10,12 +10,10 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/kms"
-	kmsCommon "github.com/hashicorp/boundary/internal/kms/common"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-uuid"
 )
 
 // CreateScope will create a scope in the repository and return the written
@@ -127,10 +125,6 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	if reader == nil {
 		reader = rand.Reader
 	}
-	rootKey, err := uuid.GenerateRandomBytesWithReader(32, reader)
-	if err != nil {
-		return nil, fmt.Errorf("create scope: error generating random bytes for scope root key: %w", err)
-	}
 
 	_, err = r.writer.DoTx(
 		ctx,
@@ -147,10 +141,10 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 			s := scopeRaw.(*Scope)
 
-			// Create the scope's root key
-			_, _, err := kmsCommon.CreateRootKeyTx(ctx, w, externalWrappers.Root(), s.PublicId, rootKey)
+			// Create the scope's keys
+			_, err = kms.CreateKeysTx(ctx, dbr, w, externalWrappers.Root(), reader, s.PublicId)
 			if err != nil {
-				return fmt.Errorf("error creating scope root key: %w", err)
+				return fmt.Errorf("error creating scope keys: %w", err)
 			}
 
 			kmsRepo, err := kms.NewRepository(dbr, w)
