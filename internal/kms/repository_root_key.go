@@ -32,8 +32,7 @@ func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 
 // CreateRootKeyTx inserts into the db (via db.Writer) and returns the new root key
 // and root key version. This function encapsulates all the work required within
-// a db.TxHandler and allows this capability to be shared with the iam repo via
-// a common pkg without circular dependencies: kms/common.CreateRootKeyTx
+// a db.TxHandler and allows this capability to be shared with the iam repo.
 func CreateRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapper, scopeId string, key []byte) (*RootKey, *RootKeyVersion, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("create root key: missing scope id: %w", db.ErrInvalidParameter)
