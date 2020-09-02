@@ -77,6 +77,21 @@ type Keys map[KeyType]KeyIder
 // function encapsulates all the work required within a db.TxHandler and allows
 // this capability to be shared with the iam repo.
 func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string) (Keys, error) {
+	if dbReader == nil {
+		return nil, fmt.Errorf("create keys: missing db reader: %w", db.ErrInvalidParameter)
+	}
+	if dbWriter == nil {
+		return nil, fmt.Errorf("create keys: missing db writer: %w", db.ErrInvalidParameter)
+	}
+	if rootWrapper == nil {
+		return nil, fmt.Errorf("create keys: missing root wrapper: %w", db.ErrInvalidParameter)
+	}
+	if randomReader == nil {
+		return nil, fmt.Errorf("create keys: missing random reader: %w", db.ErrInvalidParameter)
+	}
+	if scopeId == "" {
+		return nil, fmt.Errorf("create keys: missing scope id: %w", db.ErrInvalidParameter)
+	}
 	k, err := generateKey(randomReader)
 	if err != nil {
 		return nil, fmt.Errorf("create keys: error generating random bytes for root key in scope %s: %w", scopeId, err)
