@@ -10,7 +10,10 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,27 +21,31 @@ import (
 
 // Service handles request as described by the pbs.AuthTokenServiceServer interface.
 type Service struct {
-	repoFn func() (*authtoken.Repository, error)
+	repoFn    common.AuthTokenRepoFactory
+	iamRepoFn common.IamRepoFactory
 }
 
 // NewService returns a user service which handles user related requests to boundary.
-func NewService(repo func() (*authtoken.Repository, error)) (Service, error) {
+func NewService(repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	if repo == nil {
+		return Service{}, fmt.Errorf("nil auth token repository provided")
+	}
+	if iamRepoFn == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
-	return Service{repoFn: repo}, nil
+	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
 }
 
 var _ pbs.AuthTokenServiceServer = Service{}
 
 // ListAuthTokens implements the interface pbs.AuthTokenServiceServer.
 func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequest) (*pbs.ListAuthTokensResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetScopeId(), action.List)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	ul, err := s.listFromRepo(ctx, req.GetScopeId())
 	if err != nil {
@@ -52,12 +59,12 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 
 // GetAuthToken implements the interface pbs.AuthTokenServiceServer.
 func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest) (*pbs.GetAuthTokenResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Read)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -69,12 +76,12 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 
 // DeleteAuthToken implements the interface pbs.AuthTokenServiceServer.
 func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRequest) (*pbs.DeleteAuthTokenResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	existed, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -131,6 +138,63 @@ func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.AuthToke
 		outUl = append(outUl, toProto(u))
 	}
 	return outUl, nil
+}
+
+func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
+	res := auth.VerifyResults{}
+	repo, err := s.repoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	iamRepo, err := s.iamRepoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+
+	var scp *iam.Scope
+	opts := []auth.Option{auth.WithAction(a)}
+	switch a {
+	case action.List:
+		fallthrough
+	case action.Create:
+		scp, err = iamRepo.LookupScope(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		opts = append(opts, auth.WithScopeId(id))
+	default:
+		// If the action isn't one of the above ones, than it is an action on an individual resource and the
+		// id provided is for the resource itself.
+		authTok, err := repo.LookupAuthToken(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if authTok == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+
+		scp, err = iamRepo.LookupScope(ctx, authTok.GetScopeId())
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		opts = append(opts, auth.WithId(id), auth.WithScopeId(scp.GetPublicId()))
+	}
+	authResults := auth.Verify(ctx, opts...)
+	return scp, authResults
 }
 
 func toProto(in *authtoken.AuthToken) *pb.AuthToken {

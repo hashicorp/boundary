@@ -11,7 +11,9 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -31,11 +33,11 @@ func init() {
 
 // Service handles request as described by the pbs.UserServiceServer interface.
 type Service struct {
-	repoFn func() (*iam.Repository, error)
+	repoFn common.IamRepoFactory
 }
 
 // NewService returns a user service which handles user related requests to boundary.
-func NewService(repo func() (*iam.Repository, error)) (Service, error) {
+func NewService(repo common.IamRepoFactory) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
@@ -46,12 +48,12 @@ var _ pbs.UserServiceServer = Service{}
 
 // ListUsers implements the interface pbs.UserServiceServer.
 func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs.ListUsersResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetScopeId(), action.List)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	ul, err := s.listFromRepo(ctx, req.GetScopeId())
 	if err != nil {
@@ -65,12 +67,12 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 
 // GetUsers implements the interface pbs.UserServiceServer.
 func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.GetUserResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Read)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -82,12 +84,12 @@ func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.Get
 
 // CreateUser implements the interface pbs.UserServiceServer.
 func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*pbs.CreateUserResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
@@ -99,12 +101,12 @@ func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*p
 
 // UpdateUser implements the interface pbs.UserServiceServer.
 func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*pbs.UpdateUserResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Update)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
@@ -116,12 +118,12 @@ func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*p
 
 // DeleteUser implements the interface pbs.UserServiceServer.
 func (s Service) DeleteUser(ctx context.Context, req *pbs.DeleteUserRequest) (*pbs.DeleteUserResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	existed, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -235,6 +237,58 @@ func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.User, er
 		outUl = append(outUl, toProto(u))
 	}
 	return outUl, nil
+}
+
+func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
+	res := auth.VerifyResults{}
+	repo, err := s.repoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+
+	var scp *iam.Scope
+	opts := []auth.Option{auth.WithAction(a)}
+	switch a {
+	case action.List:
+		fallthrough
+	case action.Create:
+		scp, err = repo.LookupScope(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		opts = append(opts, auth.WithScopeId(scp.GetPublicId()))
+	default:
+		// If the action isn't one of the above ones, than it is an action on an individual resource and the
+		// id provided is for the resource itself.
+		u, err := repo.LookupUser(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if u == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+
+		scp, err = repo.LookupScope(ctx, u.GetScopeId())
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		opts = append(opts, auth.WithId(id), auth.WithScopeId(scp.GetPublicId()))
+	}
+	authResults := auth.Verify(ctx, opts...)
+	return scp, authResults
 }
 
 func toProto(in *iam.User) *pb.User {

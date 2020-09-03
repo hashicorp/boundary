@@ -33,6 +33,9 @@ func TestGet(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -77,7 +80,7 @@ func TestGet(t *testing.T) {
 			scopeId: o.GetPublicId(),
 			req:     &pbs.GetAuthMethodRequest{Id: password.AuthMethodPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.NotFound,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -98,7 +101,7 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := authmethods.NewService(repoFn)
+			s, err := authmethods.NewService(repoFn, iamRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			got, gErr := s.GetAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
@@ -113,6 +116,9 @@ func TestList(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -184,17 +190,16 @@ func TestList(t *testing.T) {
 		{
 			name:    "Unfound Auth Method",
 			scopeId: password.AuthMethodPrefix + "_DoesntExis",
-			res:     &pbs.ListAuthMethodsResponse{},
-			errCode: codes.OK,
+			errCode: codes.PermissionDenied,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(repoFn)
+			s, err := authmethods.NewService(repoFn, iamRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListAuthMethodsRequest{})
+			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListAuthMethodsRequest{ScopeId: tc.scopeId})
 			assert.Equal(tc.errCode, status.Code(gErr), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.scopeId, gErr, tc.errCode)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
@@ -206,6 +211,9 @@ func TestDelete(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -214,7 +222,7 @@ func TestDelete(t *testing.T) {
 	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
-	s, err := authmethods.NewService(repoFn)
+	s, err := authmethods.NewService(repoFn, iamRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	cases := []struct {
@@ -238,10 +246,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthMethodRequest{
 				Id: password.AuthMethodPrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteAuthMethodResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name: "Bad AuthMethod Id formatting",
@@ -268,6 +273,9 @@ func TestDelete_twice(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -276,7 +284,7 @@ func TestDelete_twice(t *testing.T) {
 	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
-	s, err := authmethods.NewService(repoFn)
+	s, err := authmethods.NewService(repoFn, iamRepoFn)
 	require.NoError(err, "Error when getting new auth_method service.")
 
 	req := &pbs.DeleteAuthMethodRequest{
@@ -286,8 +294,8 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
-	assert.NoError(gErr, "Second attempt")
-	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+	assert.Error(gErr, "Second attempt")
+	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -295,6 +303,9 @@ func TestCreate(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -408,7 +419,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := authmethods.NewService(repoFn)
+			s, err := authmethods.NewService(repoFn, iamRepoFn)
 			require.NoError(err, "Error when getting new auth_method service.")
 
 			got, gErr := s.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
@@ -442,13 +453,16 @@ func TestUpdate(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(repoFn)
+	tested, err := authmethods.NewService(repoFn, iamRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()}
@@ -456,6 +470,7 @@ func TestUpdate(t *testing.T) {
 	freshAuthMethod := func() (*pb.AuthMethod, func()) {
 		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
 			&pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:     o.GetPublicId(),
 				Name:        wrapperspb.String("default"),
 				Description: wrapperspb.String("default"),
 				Type:        "password",
@@ -637,8 +652,6 @@ func TestUpdate(t *testing.T) {
 			},
 			errCode: codes.OK,
 		},
-		// TODO: Updating a non existant auth_method should result in a NotFound exception but currently results in
-		// the repoFn returning an internal error.
 		{
 			name: "Update a Non Existing AuthMethod",
 			req: &pbs.UpdateAuthMethodRequest{
@@ -651,7 +664,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.Internal,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name: "Cant change Id",

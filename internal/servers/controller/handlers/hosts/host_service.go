@@ -3,7 +3,6 @@ package hosts
 import (
 	"context"
 	"fmt"
-	"regexp"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
@@ -13,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -20,7 +20,6 @@ import (
 
 var (
 	maskManager handlers.MaskManager
-	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 )
 
 func init() {
@@ -46,12 +45,12 @@ func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 }
 
 func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs.ListHostsResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetHostCatalogId(), action.List)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId())
 	if err != nil {
@@ -65,16 +64,12 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 
 // GetHost implements the interface pbs.HostServiceServer.
 func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.GetHostResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	ct := host.SubtypeFromId(req.GetId())
-	if ct == host.UnknownSubtype {
-		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
-	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Read)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	hc, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -86,12 +81,12 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 
 // CreateHost implements the interface pbs.HostServiceServer.
 func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*pbs.CreateHostResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	h, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem().GetHostCatalogId(), req.GetItem())
 	if err != nil {
@@ -106,18 +101,14 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 
 // UpdateHost implements the interface pbs.HostServiceServer.
 func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*pbs.UpdateHostResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	ct := host.SubtypeFromId(req.GetId())
-	if ct == host.UnknownSubtype {
-		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
-	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	cat, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Update)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -127,12 +118,12 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 
 // DeleteHost implements the interface pbs.HostServiceServer.
 func (s Service) DeleteHost(ctx context.Context, req *pbs.DeleteHostRequest) (*pbs.DeleteHostResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
@@ -190,7 +181,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	return toProto(out, nil)
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Host) (*pb.Host, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.Host) (*pb.Host, error) {
 	ha := &pb.StaticHostAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed converting attributes to subtype proto: %s", err)
@@ -205,7 +196,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if addr := ha.GetAddress(); addr != nil {
 		opts = append(opts, static.WithAddress(addr.GetValue()))
 	}
-	h, err := static.NewHost("ignored", opts...)
+	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build host for update: %v.", err)
 	}
@@ -260,6 +251,58 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 	return outHl, nil
 }
 
+func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type) (*static.HostCatalog, auth.VerifyResults) {
+	res := auth.VerifyResults{}
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+
+	var cat *static.HostCatalog
+	opts := []auth.Option{auth.WithAction(a)}
+	switch a {
+	case action.List:
+		fallthrough
+	case action.Create:
+		cat, err = repo.LookupCatalog(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if cat == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		opts = append(opts, auth.WithScopeId(cat.GetScopeId()), auth.WithPin(id))
+	default:
+		// If the action isn't one of the above ones, than it is an action on an individual resource and the
+		// id provided is for the resource itself.
+		h, err := repo.LookupHost(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if h == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+
+		cat, err = repo.LookupCatalog(ctx, h.GetCatalogId())
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if cat == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		opts = append(opts, auth.WithId(id), auth.WithScopeId(cat.GetScopeId()), auth.WithPin(cat.GetPublicId()))
+	}
+	authResults := auth.Verify(ctx, opts...)
+	return cat, authResults
+}
+
 func toProto(in *static.Host, members []*static.HostSet) (*pb.Host, error) {
 	out := pb.Host{
 		Id:            in.GetPublicId(),
@@ -294,7 +337,14 @@ func toProto(in *static.Host, members []*static.HostSet) (*pb.Host, error) {
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostRequest) error {
-	return handlers.ValidateGetRequest(static.HostPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(static.HostPrefix, req, func() map[string]string {
+		badFields := map[string]string{}
+		ct := host.SubtypeFromId(req.GetId())
+		if ct == host.UnknownSubtype {
+			badFields["id"] = "Improperly formatted identifier used."
+		}
+		return badFields
+	})
 }
 
 func validateCreateRequest(req *pbs.CreateHostRequest) error {
@@ -323,6 +373,10 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 	return handlers.ValidateUpdateRequest(static.HostPrefix, req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		ct := host.SubtypeFromId(req.GetId())
+		if ct == host.UnknownSubtype {
+			badFields["id"] = "Improperly formatted identifier used."
+		}
 		if req.GetItem().GetType() != "" {
 			badFields["type"] = "This is a read only field and cannot be specified in an update request."
 		}

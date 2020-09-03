@@ -237,8 +237,9 @@ func TestSet_Crud(t *testing.T) {
 			} else {
 				existed, apiErr, err = hClient.Delete(tc.Context(), hc.Id, h.Id)
 			}
-			assert.NoError(err)
-			assert.False(existed, "Expected catalog to not exist when deleted, but it did.")
+			require.NoError(err)
+			assert.NotNil(apiErr)
+			assert.EqualValues(http.StatusForbidden, apiErr.Status)
 		})
 	}
 }

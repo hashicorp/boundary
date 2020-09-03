@@ -73,7 +73,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existing Host Set",
 			req:     &pbs.GetHostRequest{Id: static.HostPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.NotFound,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -208,10 +208,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostRequest{
 				Id: static.HostPrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteHostResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Bad Host Id formatting",
@@ -259,8 +256,8 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteHost(ctx, req)
-	assert.NoError(gErr, "Second attempt")
-	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+	assert.Error(gErr, "Second attempt")
+	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -666,7 +663,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.Internal,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name: "Cant change Id",

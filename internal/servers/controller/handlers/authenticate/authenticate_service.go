@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -58,12 +59,12 @@ var _ pbs.AuthenticationServiceServer = Service{}
 
 // Authenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateAuthenticateRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetAuthMethodId(), action.Authenticate)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	creds := req.GetCredentials().GetFields()
 	tok, err := s.authenticateWithRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), creds[loginNameKey].GetStringValue(), creds[pwKey].GetStringValue())
@@ -133,6 +134,48 @@ func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId
 	return prot, nil
 }
 
+func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
+	res := auth.VerifyResults{}
+	repo, err := s.pwRepo()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	iamRepo, err := s.iamRepo()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+
+	var scp *iam.Scope
+	authMeth, err := repo.LookupAuthMethod(ctx, id)
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	if authMeth == nil {
+		res.Error = handlers.ForbiddenError()
+		return nil, res
+	}
+
+	scp, err = iamRepo.LookupScope(ctx, authMeth.GetScopeId())
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	if scp == nil {
+		res.Error = handlers.ForbiddenError()
+		return nil, res
+	}
+
+	authResults := auth.Verify(ctx)
+	// auth.WithAction(a),
+	// auth.WithType(resource.AuthMethod),
+	// auth.WithScopeId(scp.GetPublicId()),
+	// auth.WithId(id))
+	return scp, authResults
+}
+
 func toProto(t *authtoken.AuthToken) *pba.AuthToken {
 	return &pba.AuthToken{
 		Id:                      t.GetPublicId(),
@@ -169,7 +212,6 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	if _, ok := creds[pwKey]; !ok {
 		badFields["credentials.password"] = "This is a required field."
 	}
-	// TODO: Update this when we enable split cookie token types.
 	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
 	if tType != "" && tType != "token" && tType != "cookie" {
 		badFields["token_type"] = "The only accepted type is 'token'."

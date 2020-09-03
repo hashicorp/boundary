@@ -72,7 +72,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existing account",
 			req:     &pbs.GetAccountRequest{Id: password.AccountPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.NotFound,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -162,12 +162,10 @@ func TestList(t *testing.T) {
 			res:        &pbs.ListAccountsResponse{},
 			errCode:    codes.OK,
 		},
-		// TODO: When an auth method doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:       "Unfound Auth Method",
 			authMethod: password.AuthMethodPrefix + "_DoesntExis",
-			res:        &pbs.ListAccountsResponse{},
-			errCode:    codes.OK,
+			errCode:    codes.PermissionDenied,
 		},
 	}
 	for _, tc := range cases {
@@ -220,17 +218,13 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAccountRequest{
 				Id: password.AccountPrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteAccountResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name: "Bad account id formatting",
 			req: &pbs.DeleteAccountRequest{
 				Id: "bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -267,8 +261,8 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
-	assert.NoError(gErr, "Second attempt")
-	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+	assert.Error(gErr, "Second attempt")
+	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -689,8 +683,6 @@ func TestUpdate(t *testing.T) {
 			},
 			errCode: codes.OK,
 		},
-		// TODO: Updating a non existant auth_method should result in a NotFound exception but currently results in
-		// the repoFn returning an internal error.
 		{
 			name: "Update a Non Existing Account",
 			req: &pbs.UpdateAccountRequest{
@@ -703,7 +695,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.Internal,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name: "Cant change Id",

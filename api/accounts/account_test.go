@@ -124,11 +124,6 @@ func TestAccount_Crud(t *testing.T) {
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.True(existed, "Expected existing account when deleted, but it wasn't.")
-
-	existed, apiErr, err = accountClient.Delete(tc.Context(), amId, u.Id)
-	require.NoError(err)
-	assert.Nil(apiErr)
-	assert.False(existed, "Expected account to not exist when deleted, but it did.")
 }
 
 func TestAccount_CustomMethods(t *testing.T) {
@@ -198,12 +193,12 @@ func TestAccount_Errors(t *testing.T) {
 	_, apiErr, err = accountClient.Read(tc.Context(), amId, password.AccountPrefix+"_doesntexis")
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.EqualValues(http.StatusForbidden, apiErr.Status)
 
 	_, apiErr, err = accountClient.Read(tc.Context(), amId, "invalid id")
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
 	_, apiErr, err = accountClient.Update(tc.Context(), amId, u.Id, u.Version)
 	require.NoError(err)

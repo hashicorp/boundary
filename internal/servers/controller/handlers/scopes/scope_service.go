@@ -3,7 +3,6 @@ package scopes
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -23,7 +23,6 @@ import (
 
 var (
 	maskManager handlers.MaskManager
-	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 )
 
 func init() {
@@ -35,7 +34,7 @@ func init() {
 
 // Service handles requests as described by the pbs.ScopeServiceServer interface.
 type Service struct {
-	repo common.IamRepoFactory
+	repoFn common.IamRepoFactory
 }
 
 // NewService returns a project service which handles project related requests to boundary.
@@ -43,7 +42,7 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
-	return Service{repo: repo}, nil
+	return Service{repoFn: repo}, nil
 }
 
 var _ pbs.ScopeServiceServer = Service{}
@@ -53,13 +52,12 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 	if req.GetScopeId() == "" {
 		req.ScopeId = scope.Global.String()
 	}
-	authResults := auth.Verify(ctx, auth.WithScopeId(req.GetScopeId()))
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-
 	if err := validateListRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetScopeId(), action.List)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	pl, err := s.listFromRepo(ctx, authResults.Scope.GetId())
 	if err != nil {
@@ -75,12 +73,12 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 
 // GetScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.GetScopeResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Read)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	p, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -92,21 +90,13 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 
 // CreateScope implements the interface pbs.ScopeServiceServer.
 func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (*pbs.CreateScopeResponse, error) {
-	if req.GetItem().GetScopeId() == "" {
-		return nil, handlers.InvalidArgumentErrorf(
-			"Argument errors found in the request.",
-			map[string]string{"scope_id": "Missing value for scope_id"},
-		)
-	}
-	authResults := auth.Verify(ctx, auth.WithScopeId(req.GetItem().GetScopeId()))
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-
+	_, authResults := s.pinAndAuthResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
 	p, err := s.createInRepo(ctx, authResults, req)
 	if err != nil {
 		return nil, err
@@ -117,12 +107,12 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 
 // UpdateScope implements the interface pbs.ScopeServiceServer.
 func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (*pbs.UpdateScopeResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Update)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	p, err := s.updateInRepo(ctx, authResults.Scope, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
@@ -134,12 +124,12 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 
 // DeleteScope implements the interface pbs.ScopeServiceServer.
 func (s Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (*pbs.DeleteScopeResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	existed, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -149,7 +139,7 @@ func (s Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Scope, error) {
-	repo, err := s.repo()
+	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +176,7 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build new scope for creation: %v.", err)
 	}
-	repo, err := s.repo()
+	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +216,7 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
-	repo, err := s.repo()
+	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +231,7 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, error) {
-	repo, err := s.repo()
+	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
 	}
@@ -261,7 +251,7 @@ func SortScopes(scps []*pb.Scope) {
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope, error) {
-	repo, err := s.repo()
+	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -285,6 +275,48 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope,
 	}
 	SortScopes(outPl)
 	return outPl, nil
+}
+
+func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
+	res := auth.VerifyResults{}
+	repo, err := s.repoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+
+	var scp *iam.Scope
+	opts := []auth.Option{auth.WithAction(a)}
+	switch a {
+	case action.List:
+		fallthrough
+	case action.Create:
+		scp, err = repo.LookupScope(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		opts = append(opts, auth.WithScopeId(id))
+	default:
+		// If the action isn't one of the above ones, than it is an action on an individual resource and the
+		// id provided is for the resource itself.
+		s, err := repo.LookupScope(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if s == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		opts = append(opts, auth.WithId(id), auth.WithScopeId(s.GetParentId()))
+	}
+	authResults := auth.Verify(ctx, opts...)
+	return scp, authResults
 }
 
 func ToProto(in *iam.Scope) *pb.Scope {
@@ -315,11 +347,11 @@ func validateGetRequest(req *pbs.GetScopeRequest) error {
 	switch {
 	case id == "global":
 	case strings.HasPrefix(id, scope.Org.Prefix()):
-		if !validId(id, scope.Org.Prefix()+"_") {
+		if !handlers.ValidId(scope.Org.Prefix(), id) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	case strings.HasPrefix(id, scope.Project.Prefix()):
-		if !validId(id, scope.Project.Prefix()+"_") {
+		if !handlers.ValidId(scope.Project.Prefix(), id) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	default:
@@ -334,6 +366,9 @@ func validateGetRequest(req *pbs.GetScopeRequest) error {
 func validateCreateRequest(req *pbs.CreateScopeRequest) error {
 	badFields := map[string]string{}
 	item := req.GetItem()
+	if item.GetScopeId() == "" {
+		badFields["scope_id"] = "Missing value for scope_id"
+	}
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field."
 	}
@@ -358,11 +393,11 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	switch {
 	case id == "global":
 	case strings.HasPrefix(id, scope.Org.Prefix()):
-		if !validId(id, scope.Org.Prefix()+"_") {
+		if !handlers.ValidId(scope.Org.Prefix(), id) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	case strings.HasPrefix(id, scope.Project.Prefix()):
-		if !validId(id, scope.Project.Prefix()+"_") {
+		if !handlers.ValidId(scope.Project.Prefix(), id) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	default:
@@ -407,11 +442,11 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 	case id == "global":
 		badFields["id"] = "Invalid to delete the global scope."
 	case strings.HasPrefix(id, scope.Org.Prefix()):
-		if !validId(id, scope.Org.Prefix()+"_") {
+		if !handlers.ValidId(scope.Org.Prefix(), id) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	case strings.HasPrefix(id, scope.Project.Prefix()):
-		if !validId(id, scope.Project.Prefix()+"_") {
+		if !handlers.ValidId(scope.Project.Prefix(), id) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	default:
@@ -429,12 +464,4 @@ func validateListRequest(req *pbs.ListScopesRequest) error {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
-}
-
-func validId(id, prefix string) bool {
-	if !strings.HasPrefix(id, prefix) {
-		return false
-	}
-	id = strings.TrimPrefix(id, prefix)
-	return !reInvalidID.Match([]byte(id))
 }

@@ -437,9 +437,8 @@ func TestRepository_DeleteUser(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundUser, err := repo.LookupUser(context.Background(), tt.args.user.PublicId)
-			require.Error(err)
+			require.NoError(err)
 			assert.Nil(foundUser)
-			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
 			err = db.TestVerifyOplog(t, rw, tt.args.user.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			require.NoError(err)

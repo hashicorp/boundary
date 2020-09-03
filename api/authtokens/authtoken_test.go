@@ -119,12 +119,7 @@ func TestAuthToken_Crud(t *testing.T) {
 	existed, _, err := tokens.Delete(tc.Context(), at.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.True(existed, "Expected existing user when deleted, but it wasn't.")
-
-	existed, apiErr, err = tokens.Delete(tc.Context(), at.Id)
-	require.NoError(err)
-	assert.Nil(apiErr)
-	assert.False(existed, "Expected user to not exist when deleted, but it did.")
+	assert.True(existed, "Expected existing token when deleted, but it wasn't.")
 }
 
 func TestAuthToken_Errors(t *testing.T) {
@@ -144,10 +139,10 @@ func TestAuthToken_Errors(t *testing.T) {
 	_, apiErr, err := tokens.Read(tc.Context(), authtoken.AuthTokenPrefix+"_doesntexis")
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.EqualValues(http.StatusForbidden, apiErr.Status)
 
 	_, apiErr, err = tokens.Read(tc.Context(), "invalid id")
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 }

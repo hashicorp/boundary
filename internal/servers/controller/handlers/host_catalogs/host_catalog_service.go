@@ -10,8 +10,10 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -30,26 +32,30 @@ func init() {
 
 type Service struct {
 	staticRepoFn common.StaticRepoFactory
+	iamRepoFn    common.IamRepoFactory
 }
 
 var _ pbs.HostCatalogServiceServer = Service{}
 
 // NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.
-func NewService(repoFn common.StaticRepoFactory) (Service, error) {
+func NewService(repoFn common.StaticRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	if repoFn == nil {
 		return Service{}, fmt.Errorf("nil static repository provided")
 	}
-	return Service{staticRepoFn: repoFn}, nil
+	if iamRepoFn == nil {
+		return Service{}, fmt.Errorf("nil iam repository provided")
+	}
+	return Service{staticRepoFn: repoFn, iamRepoFn: iamRepoFn}, nil
 }
 
 func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogsRequest) (*pbs.ListHostCatalogsResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetScopeId(), action.List)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
 	if err != nil {
@@ -63,12 +69,12 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 
 // GetHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Read)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	hc, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -80,12 +86,12 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 
 // CreateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatalogRequest) (*pbs.CreateHostCatalogResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	hc, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
@@ -100,12 +106,12 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 
 // UpdateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Update)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
@@ -117,12 +123,12 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 
 // DeleteHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatalogRequest) (*pbs.DeleteHostCatalogResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	existed, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -230,6 +236,63 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		return false, status.Errorf(codes.Internal, "Unable to delete host: %v.", err)
 	}
 	return rows > 0, nil
+}
+
+func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
+	res := auth.VerifyResults{}
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	iamRepo, err := s.iamRepoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+
+	var scp *iam.Scope
+	opts := []auth.Option{auth.WithAction(a)}
+	switch a {
+	case action.List:
+		fallthrough
+	case action.Create:
+		scp, err = iamRepo.LookupScope(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		opts = append(opts, auth.WithScopeId(id))
+	default:
+		// If the action isn't one of the above ones, than it is an action on an individual resource and the
+		// id provided is for the resource itself.
+		cat, err := repo.LookupCatalog(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if cat == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+
+		scp, err = iamRepo.LookupScope(ctx, cat.GetScopeId())
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		opts = append(opts, auth.WithId(id), auth.WithScopeId(scp.GetPublicId()))
+	}
+	authResults := auth.Verify(ctx, opts...)
+	return scp, authResults
 }
 
 func toProto(in *static.HostCatalog) *pb.HostCatalog {

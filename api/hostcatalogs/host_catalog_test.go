@@ -125,8 +125,9 @@ func TestCatalogs_Crud(t *testing.T) {
 	assert.True(existed, "Expected existing catalog when deleted, but it wasn't.")
 
 	existed, apiErr, err = hcClient.Delete(tc.Context(), hc.Id)
-	assert.NoError(err)
-	assert.False(existed, "Expected catalog to not exist when deleted, but it did.")
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusForbidden, apiErr.Status)
 }
 
 // TODO: Get better coverage for expected errors and error formats.
@@ -159,10 +160,10 @@ func TestCatalogs_Errors(t *testing.T) {
 	require.NoError(err)
 	// TODO: Should this be nil instead of just a catalog that has no values set
 	assert.NotNil(apiErr)
-	assert.EqualValues(apiErr.Status, http.StatusNotFound)
+	assert.EqualValues(apiErr.Status, http.StatusForbidden)
 
 	_, apiErr, err = pc.Read(tc.Context(), "invalid id")
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 }

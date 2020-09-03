@@ -10,6 +10,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/store"
@@ -33,17 +34,17 @@ func init() {
 
 // Service handles request as described by the pbs.TargetServiceServer interface.
 type Service struct {
-	repoFn    func() (*target.Repository, error)
-	iamRepoFn func() (*iam.Repository, error)
+	repoFn    common.TargetRepoFactory
+	iamRepoFn common.IamRepoFactory
 }
 
 // NewService returns a target service which handles target related requests to boundary.
-func NewService(repoFn func() (*target.Repository, error), iamRepoFn func() (*iam.Repository, error)) (Service, error) {
+func NewService(repoFn common.TargetRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	if repoFn == nil {
 		return Service{}, fmt.Errorf("nil target repository provided")
 	}
 	if iamRepoFn == nil {
-		return Service{}, fmt.Errorf("nil target repository provided")
+		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
 	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn}, nil
 }
@@ -55,7 +56,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.collectionAuthVerify(ctx, req.GetScopeId(), action.List)
+	_, authResults := s.pinAndAuthResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -74,7 +75,7 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authVerify(ctx, req.GetId(), action.Read)
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -91,7 +92,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.collectionAuthVerify(ctx, req.GetItem().GetScopeId(), action.Create)
+	_, authResults := s.pinAndAuthResult(ctx, req.GetItem().GetScopeId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -108,7 +109,7 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authVerify(ctx, req.GetId(), action.Update)
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -125,7 +126,7 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authVerify(ctx, req.GetId(), action.Delete)
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -141,7 +142,7 @@ func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSe
 	if err := validateAddRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authVerify(ctx, req.GetId(), action.AddHostSets)
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.AddHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -158,7 +159,7 @@ func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSe
 	if err := validateSetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authVerify(ctx, req.GetId(), action.SetHostSets)
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.SetHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -175,7 +176,7 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 	if err := validateRemoveRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authVerify(ctx, req.GetId(), action.RemoveHostSets)
+	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.RemoveHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -348,48 +349,62 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	return toProto(out, m), nil
 }
 
-func (s Service) collectionAuthVerify(ctx context.Context, parentId string, a action.Type) auth.VerifyResults {
-	var res auth.VerifyResults
-	iamRep, err := s.iamRepoFn()
+func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
+	res := auth.VerifyResults{}
+	iamRepo, err := s.iamRepoFn()
 	if err != nil {
 		res.Error = err
-		return res
+		return nil, res
 	}
-	sc, err := iamRep.LookupScope(ctx, parentId)
-	if err != nil {
-		res.Error = err
-		return res
-	}
-	if sc == nil {
-		res.Error = handlers.ForbiddenError()
-		return res
-	}
-	authResults := auth.Verify(ctx,
-		auth.WithScopeId(sc.GetPublicId()),
-		auth.WithAction(a))
-	return authResults
-}
 
-func (s Service) authVerify(ctx context.Context, id string, a action.Type) auth.VerifyResults {
-	var res auth.VerifyResults
-	repo, err := s.repoFn()
-	if err != nil {
-		res.Error = err
-		return res
+	var scp *iam.Scope
+	opts := []auth.Option{auth.WithAction(a)}
+	switch a {
+	case action.List:
+		fallthrough
+	case action.Create:
+		scp, err = iamRepo.LookupScope(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		opts = append(opts, auth.WithScopeId(id))
+	default:
+		// If the action isn't one of the above ones, than it is an action on an individual resource and the
+		// id provided is for the resource itself.
+		repo, err := s.repoFn()
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+
+		t, _, err := repo.LookupTarget(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if t == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+
+		scp, err = iamRepo.LookupScope(ctx, t.GetScopeId())
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		opts = append(opts, auth.WithId(id), auth.WithScopeId(scp.GetPublicId()))
 	}
-	tar, _, err := repo.LookupTarget(ctx, id)
-	if err != nil {
-		res.Error = err
-		return res
-	}
-	if tar == nil {
-		res.Error = handlers.ForbiddenError()
-		return res
-	}
-	authResults := auth.Verify(ctx,
-		auth.WithScopeId(tar.GetScopeId()),
-		auth.WithAction(a))
-	return authResults
+	authResults := auth.Verify(ctx, opts...)
+	return scp, authResults
 }
 
 func toProto(in target.Target, m []*target.TargetSet) *pb.Target {
