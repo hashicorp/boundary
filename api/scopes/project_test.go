@@ -52,6 +52,7 @@ func comparableSlice(in []*scopes.Scope) []scopes.Scope {
 	for _, i := range in {
 		p := scopes.Scope{
 			Id:          i.Id,
+			ScopeId:     i.ScopeId,
 			Name:        i.Name,
 			Description: i.Description,
 			CreatedTime: i.CreatedTime,

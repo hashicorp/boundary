@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/accounts"
+	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -16,45 +17,45 @@ import (
 
 func TestAccounts_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
 
 	client := tc.Client()
 	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
+	amClient := authmethods.NewClient(client)
+	am, apiErr, err := amClient.Create(tc.Context(), "password")
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(am)
 
 	accountClient := accounts.NewClient(client)
 
-	expected, apiErr, err := accountClient.List(tc.Context(), amId)
+	expected, apiErr, err := accountClient.List(tc.Context(), am.Id)
 	assert.NoError(err)
 	assert.Nil(apiErr)
-	// A default account is created when a test controller is started.
-	assert.Len(expected, 1)
+	assert.Len(expected, 0)
 
-	expected = append(expected, &accounts.Account{Attributes: map[string]interface{}{"login_name": "loginname1"}})
+	expected = append(expected, &accounts.Account{Attributes: map[string]interface{}{"login_name": "loginname0"}})
 
-	expected[1], apiErr, err = accountClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName(expected[1].Attributes["login_name"].(string)))
+	expected[0], apiErr, err = accountClient.Create(tc.Context(), am.Id, accounts.WithPasswordAccountLoginName(expected[0].Attributes["login_name"].(string)))
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
-	ul, apiErr, err := accountClient.List(tc.Context(), amId)
+	ul, apiErr, err := accountClient.List(tc.Context(), am.Id)
 	assert.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableSlice(expected[:2]), comparableSlice(ul))
+	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul))
 
-	for i := 2; i < 10; i++ {
-		newAcct, apiErr, err := accountClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName(fmt.Sprintf("loginname%d", i)))
+	for i := 1; i < 10; i++ {
+		newAcct, apiErr, err := accountClient.Create(tc.Context(), am.Id, accounts.WithPasswordAccountLoginName(fmt.Sprintf("loginname%d", i)))
 		expected = append(expected, newAcct)
 		assert.NoError(err)
 		assert.Nil(apiErr)
 	}
-	ul, apiErr, err = accountClient.List(tc.Context(), amId)
+	ul, apiErr, err = accountClient.List(tc.Context(), am.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))

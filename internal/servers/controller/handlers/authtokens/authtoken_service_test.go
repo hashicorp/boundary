@@ -39,6 +39,7 @@ func TestGet(t *testing.T) {
 
 	wireAuthToken := pb.AuthToken{
 		Id:                      at.GetPublicId(),
+		ScopeId:                 at.GetScopeId(),
 		UserId:                  at.GetIamUserId(),
 		AuthMethodId:            at.GetAuthMethodId(),
 		CreatedTime:             at.GetCreateTime().GetTimestamp(),
@@ -107,6 +108,7 @@ func TestList(t *testing.T) {
 		at := authtoken.TestAuthToken(t, conn, kms, orgWithSomeTokens.GetPublicId())
 		wantSomeTokens = append(wantSomeTokens, &pb.AuthToken{
 			Id:                      at.GetPublicId(),
+			ScopeId:                 at.GetScopeId(),
 			UserId:                  at.GetIamUserId(),
 			AuthMethodId:            at.GetAuthMethodId(),
 			CreatedTime:             at.GetCreateTime().GetTimestamp(),
@@ -123,6 +125,7 @@ func TestList(t *testing.T) {
 		at := authtoken.TestAuthToken(t, conn, kms, orgWithOtherTokens.GetPublicId())
 		wantOtherTokens = append(wantOtherTokens, &pb.AuthToken{
 			Id:                      at.GetPublicId(),
+			ScopeId:                 at.GetScopeId(),
 			UserId:                  at.GetIamUserId(),
 			AuthMethodId:            at.GetAuthMethodId(),
 			CreatedTime:             at.GetCreateTime().GetTimestamp(),
@@ -170,7 +173,7 @@ func TestList(t *testing.T) {
 			s, err := authtokens.NewService(repoFn)
 			require.NoError(t, err, "Couldn't create new user service.")
 
-			got, gErr := s.ListAuthTokens(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scope)), &pbs.ListAuthTokensRequest{})
+			got, gErr := s.ListAuthTokens(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scope)), &pbs.ListAuthTokensRequest{ScopeId: tc.scope})
 			assert.Equal(t, tc.errCode, status.Code(gErr), "ListAuthTokens() with scope %q got error %v, wanted %v", tc.scope, gErr, tc.errCode)
 			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAuthTokens() with scope %q got response %q, wanted %q", tc.scope, got, tc.res)
 		})

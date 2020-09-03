@@ -96,10 +96,26 @@ func TestHandleImplementedPaths(t *testing.T) {
 	for verb, paths := range map[string][]string{
 		"GET": {
 			// new paths
-			"v1/targets",
-			"v1/targets/someid",
+			"v1/scopes",
+			"v1/scopes/someid",
+			"v1/auth-tokens",
+			"v1/auth-tokens/someid",
+			"v1/auth-methods",
+			"v1/auth-methods/someid",
+			"v1/accounts",
+			"v1/accounts/someid",
+			"v1/groups",
+			"v1/groups/someid",
+			"v1/host-catalogs",
+			"v1/host-catalogs/someid",
 			"v1/host-sets",
 			"v1/host-sets/someid",
+			"v1/hosts",
+			"v1/hosts/someid",
+			"v1/roles",
+			"v1/roles/someid",
+			"v1/users",
+			"v1/users/someid",
 
 			// old paths
 			"v1/scopes",
@@ -126,14 +142,29 @@ func TestHandleImplementedPaths(t *testing.T) {
 		"POST": {
 			// Creation end points
 			// new paths
-			"v1/targets",
-			"v1/targets/someid:add-host-sets",
-			"v1/targets/someid:set-host-sets",
-			"v1/targets/someid:remove-host-sets",
+			"v1/scopes",
+			"v1/groups",
+			"v1/roles",
+			"v1/users",
+			"v1/auth-methods",
+			"v1/accounts",
+			"v1/host-catalogs",
 			"v1/host-sets",
-			"v1/host-sets/someid:add-hosts",
-			"v1/host-sets/someid:set-hosts",
-			"v1/host-sets/someid:remove-hosts",
+			"v1/hosts",
+
+			// custom methods
+			"v1/auth-methods/someid:authenticate",
+			"v1/accounts/someid:set-password",
+			"v1/accounts/someid:change-password",
+			"v1/roles/someid:add-principals",
+			"v1/roles/someid:set-principals",
+			"v1/roles/someid:remove-principals",
+			"v1/roles/someid:add-grants",
+			"v1/roles/someid:set-grants",
+			"v1/roles/someid:remove-grants",
+			"v1/groups/someid:add-members",
+			"v1/groups/someid:set-members",
+			"v1/groups/someid:remove-members",
 
 			// old paths
 			"v1/scopes",
@@ -162,8 +193,16 @@ func TestHandleImplementedPaths(t *testing.T) {
 		},
 		"DELETE": {
 			// new paths
-			"v1/targets/someid",
+			"v1/scopes/someid",
+			"v1/users/someid",
+			"v1/roles/someid",
+			"v1/groups/someid",
+			"v1/auth-tokens/someid",
+			"v1/auth-methods/someid",
+			"v1/accounts/someid",
+			"v1/host-catalogs/someid",
 			"v1/host-sets/someid",
+			"v1/hosts/someid",
 
 			// old paths
 			"v1/scopes/someid",
@@ -179,8 +218,14 @@ func TestHandleImplementedPaths(t *testing.T) {
 		},
 		"PATCH": {
 			// new paths
-			"v1/targets/someid",
+			"v1/scopes/someid",
+			"v1/users/someid",
+			"v1/roles/someid",
+			"v1/groups/someid",
+			"v1/auth-methods/someid",
+			"v1/host-catalogs/someid",
 			"v1/host-sets/someid",
+			"v1/hosts/someid",
 
 			// old paths
 			"v1/scopes/someid",

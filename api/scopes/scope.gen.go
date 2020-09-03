@@ -15,6 +15,7 @@ import (
 
 type Scope struct {
 	Id          string     `json:"id,omitempty"`
+	ScopeId     string     `json:"scope_id,omitempty"`
 	Scope       *ScopeInfo `json:"scope,omitempty"`
 	Name        string     `json:"name,omitempty"`
 	Description string     `json:"description,omitempty"`
@@ -40,13 +41,12 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Sc
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
+	opts.postMap["scope_id"] = scopeId
+
 	req, err := c.client.NewRequest(ctx, "POST", "scopes", opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
-
-	opts.queryMap["scope_id"] = scopeId
-
 	if len(opts.queryMap) > 0 {
 		q := url.Values{}
 		for k, v := range opts.queryMap {

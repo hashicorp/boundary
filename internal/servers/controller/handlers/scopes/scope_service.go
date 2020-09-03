@@ -92,13 +92,13 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 
 // CreateScope implements the interface pbs.ScopeServiceServer.
 func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (*pbs.CreateScopeResponse, error) {
-	if req.GetScopeId() == "" {
+	if req.GetItem().GetScopeId() == "" {
 		return nil, handlers.InvalidArgumentErrorf(
 			"Argument errors found in the request.",
 			map[string]string{"scope_id": "Missing value for scope_id"},
 		)
 	}
-	authResults := auth.Verify(ctx, auth.WithScopeId(req.GetScopeId()))
+	authResults := auth.Verify(ctx, auth.WithScopeId(req.GetItem().GetScopeId()))
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -290,6 +290,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope,
 func ToProto(in *iam.Scope) *pb.Scope {
 	out := pb.Scope{
 		Id:          in.GetPublicId(),
+		ScopeId:     in.GetParentId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),

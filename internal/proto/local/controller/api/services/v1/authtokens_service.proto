@@ -16,8 +16,12 @@ service AuthTokenService {
   // resource an error is returned.
   rpc GetAuthToken(GetAuthTokenRequest) returns (GetAuthTokenResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/auth-tokens/{id}"
+      get: "/v1/auth-tokens/{id}"
       response_body: "item"
+      additional_bindings: {
+        get: "/v1/scopes/*/auth-tokens/{id}"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single AuthToken"
@@ -30,7 +34,10 @@ service AuthTokenService {
   // reference a non existing organization, an error is returned.
   rpc ListAuthTokens(ListAuthTokensRequest) returns (ListAuthTokensResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/auth-tokens"
+      get: "/v1/auth-tokens"
+      additional_bindings: {
+        get: "/v1/scopes/{scope_id}/auth-tokens"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all AuthTokens"
@@ -44,7 +51,10 @@ service AuthTokenService {
   // received.
   rpc DeleteAuthToken(DeleteAuthTokenRequest) returns (DeleteAuthTokenResponse) {
     option (google.api.http) = {
-      delete: "/v1/scopes/*/auth-tokens/{id}"
+      delete: "/v1/auth-tokens/{id}"
+      additional_bindings: {
+        delete: "/v1/scopes/*/auth-tokens/{id}"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes an AuthTokens"
@@ -62,7 +72,8 @@ message GetAuthTokenResponse {
 }
 
 message ListAuthTokensRequest {
-  string view = 1;
+  string scope_id = 1 [json_name="scope_id"];
+  string view = 2;
 }
 
 message ListAuthTokensResponse {

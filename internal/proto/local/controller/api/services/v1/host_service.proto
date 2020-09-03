@@ -16,8 +16,12 @@ service HostService {
   // non existing resource an error is returned.
   rpc GetHost(GetHostRequest) returns (GetHostResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts/{id}"
+      get: "/v1/hosts/{id}"
       response_body: "item"
+      additional_bindings: {
+        get: "/v1/scopes/*/host-catalogs/*/hosts/{id}"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single Host"
@@ -31,7 +35,10 @@ service HostService {
   // returned.
   rpc ListHosts(ListHostsRequest) returns (ListHostsResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts"
+      get: "/v1/hosts"
+      additional_bindings: {
+        get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "List all Hosts for the specified catalog"
@@ -45,9 +52,14 @@ service HostService {
   // is in use by another host in the same host catalog, an error is returned.
   rpc CreateHost(CreateHostRequest) returns (CreateHostResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts"
+      post: "/v1/hosts"
       body: "item"
       response_body: "item"
+      additional_bindings: {
+        post: "/v1/scopes/*/host-catalogs/{item.host_catalog_id}/hosts"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Create a single Host"
@@ -64,9 +76,14 @@ service HostService {
   // name to one that is already in use in this host catalog.
   rpc UpdateHost(UpdateHostRequest) returns (UpdateHostResponse) {
     option (google.api.http) = {
-      patch: "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts/{id}"
+      patch: "/v1/hosts/{id}"
       body: "item"
       response_body: "item"
+      additional_bindings: {
+        patch: "/v1/scopes/*/host-catalogs/*/hosts/{id}"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Update a Host"
@@ -80,7 +97,10 @@ service HostService {
   // before the DeleteHost request was received.
   rpc DeleteHost(DeleteHostRequest) returns (DeleteHostResponse) {
     option (google.api.http) = {
-      delete: "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts/{id}"
+      delete: "/v1/hosts/{id}"
+      additional_bindings: {
+        delete: "/v1/scopes/*/host-catalogs/*/hosts/{id}"
+      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Delete a Host"
@@ -89,9 +109,8 @@ service HostService {
 }
 
 message GetHostRequest {
-  string host_catalog_id = 1 [json_name="host_catalog_id"];
-  string id = 2;
-  string view = 3;
+  string id = 1;
+  string view = 2;
 }
 
 message GetHostResponse {
@@ -108,8 +127,7 @@ message ListHostsResponse {
 }
 
 message CreateHostRequest {
-  string host_catalog_id = 1 [json_name="host_catalog_id"];
-  api.resources.hosts.v1.Host item = 2;
+  api.resources.hosts.v1.Host item = 1;
 }
 
 message CreateHostResponse {
@@ -118,10 +136,9 @@ message CreateHostResponse {
 }
 
 message UpdateHostRequest {
-  string host_catalog_id = 1 [json_name="host_catalog_id"];
-  string id = 2;
-  api.resources.hosts.v1.Host item = 3;
-  google.protobuf.FieldMask update_mask = 4;
+  string id = 1;
+  api.resources.hosts.v1.Host item = 2;
+  google.protobuf.FieldMask update_mask = 3;
 }
 
 message UpdateHostResponse {
@@ -129,8 +146,7 @@ message UpdateHostResponse {
 }
 
 message DeleteHostRequest {
-  string host_catalog_id = 1 [json_name="host_catalog_id"];
-  string id = 2;
+  string id = 1;
 }
 
 message DeleteHostResponse {

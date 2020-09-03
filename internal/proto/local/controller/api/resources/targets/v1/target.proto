@@ -23,7 +23,7 @@ message Target {
 
 	// The id of the parent of this resource.  This must be defined for creation of this resource, but is otherwise
 	// read only.
-	string scope_id = 20;
+	string scope_id = 20 [json_name="scope_id"];
 
 	// Scope information for this resource
 	// Output only.

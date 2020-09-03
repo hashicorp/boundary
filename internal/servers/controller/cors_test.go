@@ -206,15 +206,22 @@ func TestHandler_CORS(t *testing.T) {
 			scopeId := "global"
 			if c.provideScopeId {
 				scopeId = org.GetPublicId()
-				if c.method == http.MethodPost {
-					body = map[string]interface{}{}
+			}
+
+			if c.method == http.MethodPost {
+				body = map[string]interface{}{
+					"scope_id": scopeId,
 				}
 			}
+
 			req, err = client.NewRequest(tc.Context(), c.method, "scopes", body)
 			require.NoError(t, err)
-			q := url.Values{}
-			q.Add("scope_id", scopeId)
-			req.URL.RawQuery = q.Encode()
+
+			if c.method == http.MethodGet {
+				q := url.Values{}
+				q.Add("scope_id", scopeId)
+				req.URL.RawQuery = q.Encode()
+			}
 
 			// Append headers
 			if c.origin != "" {

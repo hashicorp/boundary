@@ -96,7 +96,7 @@ type GetRequest interface {
 func ValidateGetRequest(prefix string, r GetRequest, fn CustomValidatorFunc) error {
 	badFields := map[string]string{}
 	if !ValidId(prefix, r.GetId()) {
-		badFields["id"] = "Invalid formatted group id."
+		badFields["id"] = "Invalid formatted identifier."
 	}
 	for k, v := range fn() {
 		badFields[k] = v

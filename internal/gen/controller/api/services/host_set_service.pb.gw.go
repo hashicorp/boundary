@@ -100,7 +100,7 @@ func local_request_HostSetService_GetHostSet_0(ctx context.Context, marshaler ru
 }
 
 var (
-	filter_HostSetService_GetHostSet_1 = &utilities.DoubleArray{Encoding: map[string]int{"host_catalog_id": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_HostSetService_GetHostSet_1 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
 func request_HostSetService_GetHostSet_1(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -113,16 +113,6 @@ func request_HostSetService_GetHostSet_1(ctx context.Context, marshaler runtime.
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["host_catalog_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
-	}
-
-	protoReq.HostCatalogId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -156,16 +146,6 @@ func local_request_HostSetService_GetHostSet_1(ctx context.Context, marshaler ru
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["host_catalog_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
-	}
-
-	protoReq.HostCatalogId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -295,10 +275,6 @@ func local_request_HostSetService_ListHostSets_1(ctx context.Context, marshaler 
 
 }
 
-var (
-	filter_HostSetService_CreateHostSet_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
-)
-
 func request_HostSetService_CreateHostSet_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq CreateHostSetRequest
 	var metadata runtime.ServerMetadata
@@ -308,13 +284,6 @@ func request_HostSetService_CreateHostSet_0(ctx context.Context, marshaler runti
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_HostSetService_CreateHostSet_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -332,13 +301,6 @@ func local_request_HostSetService_CreateHostSet_0(ctx context.Context, marshaler
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_HostSetService_CreateHostSet_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -366,14 +328,14 @@ func request_HostSetService_CreateHostSet_1(ctx context.Context, marshaler runti
 		_   = err
 	)
 
-	val, ok = pathParams["host_catalog_id"]
+	val, ok = pathParams["item.host_catalog_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "item.host_catalog_id")
 	}
 
-	protoReq.HostCatalogId, err = runtime.String(val)
+	err = runtime.PopulateFieldFromPath(&protoReq, "item.host_catalog_id", val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "item.host_catalog_id", err)
 	}
 
 	msg, err := client.CreateHostSet(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -400,14 +362,14 @@ func local_request_HostSetService_CreateHostSet_1(ctx context.Context, marshaler
 		_   = err
 	)
 
-	val, ok = pathParams["host_catalog_id"]
+	val, ok = pathParams["item.host_catalog_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "item.host_catalog_id")
 	}
 
-	protoReq.HostCatalogId, err = runtime.String(val)
+	err = runtime.PopulateFieldFromPath(&protoReq, "item.host_catalog_id", val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "item.host_catalog_id", err)
 	}
 
 	msg, err := server.CreateHostSet(ctx, &protoReq)
@@ -516,7 +478,7 @@ func local_request_HostSetService_UpdateHostSet_0(ctx context.Context, marshaler
 }
 
 var (
-	filter_HostSetService_UpdateHostSet_1 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "host_catalog_id": 1, "id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
+	filter_HostSetService_UpdateHostSet_1 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
 func request_HostSetService_UpdateHostSet_1(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -544,16 +506,6 @@ func request_HostSetService_UpdateHostSet_1(ctx context.Context, marshaler runti
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["host_catalog_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
-	}
-
-	protoReq.HostCatalogId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -603,16 +555,6 @@ func local_request_HostSetService_UpdateHostSet_1(ctx context.Context, marshaler
 		_   = err
 	)
 
-	val, ok = pathParams["host_catalog_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
-	}
-
-	protoReq.HostCatalogId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
-	}
-
 	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -635,10 +577,6 @@ func local_request_HostSetService_UpdateHostSet_1(ctx context.Context, marshaler
 
 }
 
-var (
-	filter_HostSetService_DeleteHostSet_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
-)
-
 func request_HostSetService_DeleteHostSet_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteHostSetRequest
 	var metadata runtime.ServerMetadata
@@ -658,13 +596,6 @@ func request_HostSetService_DeleteHostSet_0(ctx context.Context, marshaler runti
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_HostSetService_DeleteHostSet_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.DeleteHostSet(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -693,13 +624,6 @@ func local_request_HostSetService_DeleteHostSet_0(ctx context.Context, marshaler
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_HostSetService_DeleteHostSet_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
 	msg, err := server.DeleteHostSet(ctx, &protoReq)
 	return msg, metadata, err
 
@@ -715,16 +639,6 @@ func request_HostSetService_DeleteHostSet_1(ctx context.Context, marshaler runti
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["host_catalog_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
-	}
-
-	protoReq.HostCatalogId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -751,16 +665,6 @@ func local_request_HostSetService_DeleteHostSet_1(ctx context.Context, marshaler
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["host_catalog_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
-	}
-
-	protoReq.HostCatalogId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -864,16 +768,6 @@ func request_HostSetService_AddHostSetHosts_1(ctx context.Context, marshaler run
 		_   = err
 	)
 
-	val, ok = pathParams["host_catalog_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
-	}
-
-	protoReq.HostCatalogId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
-	}
-
 	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -907,16 +801,6 @@ func local_request_HostSetService_AddHostSetHosts_1(ctx context.Context, marshal
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["host_catalog_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
-	}
-
-	protoReq.HostCatalogId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -1020,16 +904,6 @@ func request_HostSetService_SetHostSetHosts_1(ctx context.Context, marshaler run
 		_   = err
 	)
 
-	val, ok = pathParams["host_catalog_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
-	}
-
-	protoReq.HostCatalogId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
-	}
-
 	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -1063,16 +937,6 @@ func local_request_HostSetService_SetHostSetHosts_1(ctx context.Context, marshal
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["host_catalog_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
-	}
-
-	protoReq.HostCatalogId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -1176,16 +1040,6 @@ func request_HostSetService_RemoveHostSetHosts_1(ctx context.Context, marshaler 
 		_   = err
 	)
 
-	val, ok = pathParams["host_catalog_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
-	}
-
-	protoReq.HostCatalogId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
-	}
-
 	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -1219,16 +1073,6 @@ func local_request_HostSetService_RemoveHostSetHosts_1(ctx context.Context, mars
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["host_catalog_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "host_catalog_id")
-	}
-
-	protoReq.HostCatalogId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "host_catalog_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -2046,7 +1890,7 @@ func (m response_HostSetService_RemoveHostSetHosts_1) XXX_ResponseBody() interfa
 var (
 	pattern_HostSetService_GetHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-sets", "id"}, ""))
 
-	pattern_HostSetService_GetHostSet_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "host-catalogs", "host_catalog_id", "host-sets", "id"}, ""))
+	pattern_HostSetService_GetHostSet_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "scopes", "host-catalogs", "host-sets", "id"}, ""))
 
 	pattern_HostSetService_ListHostSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "host-sets"}, ""))
 
@@ -2054,27 +1898,27 @@ var (
 
 	pattern_HostSetService_CreateHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "host-sets"}, ""))
 
-	pattern_HostSetService_CreateHostSet_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "scopes", "host-catalogs", "host_catalog_id", "host-sets"}, ""))
+	pattern_HostSetService_CreateHostSet_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "scopes", "host-catalogs", "item.host_catalog_id", "host-sets"}, ""))
 
 	pattern_HostSetService_UpdateHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-sets", "id"}, ""))
 
-	pattern_HostSetService_UpdateHostSet_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "host-catalogs", "host_catalog_id", "host-sets", "id"}, ""))
+	pattern_HostSetService_UpdateHostSet_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "scopes", "host-catalogs", "host-sets", "id"}, ""))
 
 	pattern_HostSetService_DeleteHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-sets", "id"}, ""))
 
-	pattern_HostSetService_DeleteHostSet_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "host-catalogs", "host_catalog_id", "host-sets", "id"}, ""))
+	pattern_HostSetService_DeleteHostSet_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "scopes", "host-catalogs", "host-sets", "id"}, ""))
 
 	pattern_HostSetService_AddHostSetHosts_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-sets", "id"}, "add-hosts"))
 
-	pattern_HostSetService_AddHostSetHosts_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "add-hosts"))
+	pattern_HostSetService_AddHostSetHosts_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "scopes", "host-catalogs", "host-sets", "id"}, "add-hosts"))
 
 	pattern_HostSetService_SetHostSetHosts_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-sets", "id"}, "set-hosts"))
 
-	pattern_HostSetService_SetHostSetHosts_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "set-hosts"))
+	pattern_HostSetService_SetHostSetHosts_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "scopes", "host-catalogs", "host-sets", "id"}, "set-hosts"))
 
 	pattern_HostSetService_RemoveHostSetHosts_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-sets", "id"}, "remove-hosts"))
 
-	pattern_HostSetService_RemoveHostSetHosts_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "remove-hosts"))
+	pattern_HostSetService_RemoveHostSetHosts_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "scopes", "host-catalogs", "host-sets", "id"}, "remove-hosts"))
 )
 
 var (

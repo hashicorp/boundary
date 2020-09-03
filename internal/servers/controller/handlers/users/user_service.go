@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -52,7 +53,7 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+	ul, err := s.listFromRepo(ctx, req.GetScopeId())
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +94,7 @@ func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*p
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.CreateUserResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/users/%s", authResults.Scope.GetId(), u.GetId())}, nil
+	return &pbs.CreateUserResponse{Item: u, Uri: fmt.Sprintf("users/%s", u.GetId())}, nil
 }
 
 // UpdateUser implements the interface pbs.UserServiceServer.
@@ -239,6 +240,7 @@ func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.User, er
 func toProto(in *iam.User) *pb.User {
 	out := pb.User{
 		Id:          in.GetPublicId(),
+		ScopeId:     in.GetScopeId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
@@ -262,7 +264,13 @@ func validateGetRequest(req *pbs.GetUserRequest) error {
 }
 
 func validateCreateRequest(req *pbs.CreateUserRequest) error {
-	return handlers.ValidateCreateRequest(req.GetItem(), handlers.NoopValidatorFn)
+	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		if !handlers.ValidId(scope.Org.Prefix(), req.GetItem().GetScopeId()) {
+			badFields["scope_id"] = "Invalidly formatted required identifer."
+		}
+		return badFields
+	})
 }
 
 func validateUpdateRequest(req *pbs.UpdateUserRequest) error {
@@ -275,6 +283,9 @@ func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
 
 func validateListRequest(req *pbs.ListUsersRequest) error {
 	badFields := map[string]string{}
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) {
+		badFields["scope_id"] = "Invalidly formatted required identifer."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}

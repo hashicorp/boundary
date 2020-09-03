@@ -5,9 +5,11 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,16 +17,26 @@ import (
 
 func TestAuthTokens_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
-
 	client := tc.Client()
+	org := iam.TestOrg(t, tc.IamRepo())
+	client.SetScopeId(org.GetPublicId())
+	amClient := authmethods.NewClient(client)
+	am, apiErr, err := amClient.Create(tc.Context(), "password")
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(am)
+	amId := am.Id
+
+	acctClient := accounts.NewClient(client)
+	acct, apiErr, err := acctClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName("user"), accounts.WithPasswordAccountPassword("passpass"))
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(acct)
+
 	tokens := authtokens.NewClient(client)
 	methods := authmethods.NewClient(client)
 

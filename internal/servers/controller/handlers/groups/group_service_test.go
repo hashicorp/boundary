@@ -90,6 +90,7 @@ func TestGet(t *testing.T) {
 
 	wantOrgGroup := &pb.Group{
 		Id:          og.GetPublicId(),
+		ScopeId:     og.GetScopeId(),
 		Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 		Name:        &wrapperspb.StringValue{Value: og.GetName()},
 		Description: &wrapperspb.StringValue{Value: og.GetDescription()},
@@ -107,6 +108,7 @@ func TestGet(t *testing.T) {
 
 	wantProjGroup := &pb.Group{
 		Id:          pg.GetPublicId(),
+		ScopeId:     pg.GetScopeId(),
 		Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId(), Type: scope.Project.String()},
 		Name:        &wrapperspb.StringValue{Value: pg.GetName()},
 		Description: &wrapperspb.StringValue{Value: pg.GetDescription()},
@@ -214,6 +216,7 @@ func TestList(t *testing.T) {
 		og := iam.TestGroup(t, conn, oWithGroups.GetPublicId())
 		wantOrgGroups = append(wantOrgGroups, &pb.Group{
 			Id:          og.GetPublicId(),
+			ScopeId:     og.GetScopeId(),
 			Scope:       &scopes.ScopeInfo{Id: oWithGroups.GetPublicId(), Type: scope.Org.String()},
 			CreatedTime: og.GetCreateTime().GetTimestamp(),
 			UpdatedTime: og.GetUpdateTime().GetTimestamp(),
@@ -222,6 +225,7 @@ func TestList(t *testing.T) {
 		pg := iam.TestGroup(t, conn, pWithGroups.GetPublicId())
 		wantProjGroups = append(wantProjGroups, &pb.Group{
 			Id:          pg.GetPublicId(),
+			ScopeId:     pg.GetScopeId(),
 			Scope:       &scopes.ScopeInfo{Id: pWithGroups.GetPublicId(), Type: scope.Project.String()},
 			CreatedTime: pg.GetCreateTime().GetTimestamp(),
 			UpdatedTime: pg.GetUpdateTime().GetTimestamp(),
@@ -266,7 +270,7 @@ func TestList(t *testing.T) {
 			s, err := groups.NewService(repoFn)
 			require.NoError(err, "Couldn't create new group service.")
 
-			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListGroupsRequest{})
+			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListGroupsRequest{ScopeId: tc.scopeId})
 			assert.Equal(tc.errCode, status.Code(gErr), "ListGroups(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.errCode)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListGroups(%q) got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
@@ -414,21 +418,21 @@ func TestCreate(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		scopeId string
 		req     *pbs.CreateGroupRequest
 		res     *pbs.CreateGroupResponse
 		errCode codes.Code
 	}{
 		{
-			name:    "Create a valid Group",
-			scopeId: defaultOGroup.GetScopeId(),
+			name: "Create a valid Group",
 			req: &pbs.CreateGroupRequest{Item: &pb.Group{
+				ScopeId:     defaultOGroup.GetScopeId(),
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateGroupResponse{
-				Uri: fmt.Sprintf("scopes/%s/groups/%s_", defaultOGroup.GetScopeId(), iam.GroupPrefix),
+				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
 				Item: &pb.Group{
+					ScopeId:     defaultOGroup.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: defaultOGroup.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -438,17 +442,18 @@ func TestCreate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name:    "Create a valid Project Scoped Group",
-			scopeId: defaultPGroup.GetScopeId(),
+			name: "Create a valid Project Scoped Group",
 			req: &pbs.CreateGroupRequest{
 				Item: &pb.Group{
+					ScopeId:     defaultPGroup.GetScopeId(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
 			res: &pbs.CreateGroupResponse{
-				Uri: fmt.Sprintf("scopes/%s/groups/%s_", defaultPGroup.GetScopeId(), iam.GroupPrefix),
+				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
 				Item: &pb.Group{
+					ScopeId:     defaultPGroup.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: defaultPGroup.GetScopeId(), Type: scope.Project.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -491,7 +496,7 @@ func TestCreate(t *testing.T) {
 			s, err := groups.NewService(repo)
 			require.NoError(err, "Error when getting new group service.")
 
-			got, gErr := s.CreateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			got, gErr := s.CreateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(req.GetItem().GetScopeId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
@@ -580,6 +585,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
+					ScopeId:     og.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -610,6 +616,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
+					ScopeId:     og.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -641,6 +648,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          pg.GetPublicId(),
+					ScopeId:     pg.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId(), Type: scope.Project.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -672,6 +680,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          pg.GetPublicId(),
+					ScopeId:     pg.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId(), Type: scope.Project.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -735,6 +744,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
+					ScopeId:     og.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: og.GetCreateTime().GetTimestamp(),
@@ -764,6 +774,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
+					ScopeId:     og.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
@@ -794,6 +805,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
+					ScopeId:     og.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},

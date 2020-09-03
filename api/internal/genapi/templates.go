@@ -570,14 +570,14 @@ func (c *Client) Create(ctx context.Context, {{ if .TypeOnCreate }} resourceType
 	} else {
 		opts.postMap["type"] = resourceType
 	}{{ end }}
+	{{ if ( eq .CollectionPath "\"scopes\"" ) }}
+	opts.postMap["scope_id"] = scopeId
+	{{ end }}
 
 	req, err := c.client.NewRequest(ctx, "POST", {{ .CollectionPath }}, opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
-	{{ if ( eq .CollectionPath "\"scopes\"" ) }}
-	opts.queryMap["scope_id"] = scopeId
-	{{ end }}
 	if len(opts.queryMap) > 0 {
 		q := url.Values{}
 		for k, v := range opts.queryMap {

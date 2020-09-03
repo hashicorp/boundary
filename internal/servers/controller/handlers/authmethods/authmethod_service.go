@@ -95,7 +95,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.CreateAuthMethodResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/auth-methods/%s", authResults.Scope.GetId(), u.GetId())}, nil
+	return &pbs.CreateAuthMethodResponse{Item: u, Uri: fmt.Sprintf("auth-methods/%s", u.GetId())}, nil
 }
 
 // UpdateAuthMethod implements the interface pbs.AuthMethodServiceServer.
@@ -257,6 +257,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
 	out := pb.AuthMethod{
 		Id:          in.GetPublicId(),
+		ScopeId:     in.GetScopeId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),

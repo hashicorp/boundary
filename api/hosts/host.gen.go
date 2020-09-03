@@ -16,6 +16,7 @@ import (
 
 type Host struct {
 	Id            string                 `json:"id,omitempty"`
+	HostCatalogId string                 `json:"host_catalog_id,omitempty"`
 	Scope         *scopes.ScopeInfo      `json:"scope,omitempty"`
 	Name          string                 `json:"name,omitempty"`
 	Description   string                 `json:"description,omitempty"`
@@ -23,7 +24,6 @@ type Host struct {
 	UpdatedTime   time.Time              `json:"updated_time,omitempty"`
 	Version       uint32                 `json:"version,omitempty"`
 	Type          string                 `json:"type,omitempty"`
-	HostCatalogId string                 `json:"host_catalog_id,omitempty"`
 	HostSetIds    []string               `json:"host_set_ids,omitempty"`
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 }
@@ -49,7 +49,6 @@ func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
-
 	if len(opts.queryMap) > 0 {
 		q := url.Values{}
 		for k, v := range opts.queryMap {

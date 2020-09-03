@@ -62,6 +62,7 @@ func TestGet(t *testing.T) {
 
 	pHostCatalog := &pb.HostCatalog{
 		Id:          hc.GetPublicId(),
+		ScopeId:     hc.GetScopeId(),
 		Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 		Name:        &wrappers.StringValue{Value: hc.GetName()},
 		Description: &wrappers.StringValue{Value: hc.GetDescription()},
@@ -139,6 +140,7 @@ func TestList(t *testing.T) {
 	for _, hc := range static.TestCatalogs(t, conn, pWithCatalogs.GetPublicId(), 3) {
 		wantSomeCatalogs = append(wantSomeCatalogs, &pb.HostCatalog{
 			Id:          hc.GetPublicId(),
+			ScopeId:     hc.GetScopeId(),
 			CreatedTime: hc.GetCreateTime().GetTimestamp(),
 			UpdatedTime: hc.GetUpdateTime().GetTimestamp(),
 			Scope:       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String()},
@@ -151,6 +153,7 @@ func TestList(t *testing.T) {
 	for _, hc := range static.TestCatalogs(t, conn, pWithOtherCatalogs.GetPublicId(), 3) {
 		wantOtherCatalogs = append(wantOtherCatalogs, &pb.HostCatalog{
 			Id:          hc.GetPublicId(),
+			ScopeId:     hc.GetScopeId(),
 			CreatedTime: hc.GetCreateTime().GetTimestamp(),
 			UpdatedTime: hc.GetUpdateTime().GetTimestamp(),
 			Scope:       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String()},
@@ -325,8 +328,9 @@ func TestCreate(t *testing.T) {
 				Type:        "static",
 			}},
 			res: &pbs.CreateHostCatalogResponse{
-				Uri: fmt.Sprintf("scopes/%s/host-catalogs/%s_", proj.GetPublicId(), static.HostCatalogPrefix),
+				Uri: fmt.Sprintf("host-catalogs/%s_", static.HostCatalogPrefix),
 				Item: &pb.HostCatalog{
+					ScopeId:     proj.GetPublicId(),
 					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "name"},
 					Description: &wrappers.StringValue{Value: "desc"},
@@ -456,6 +460,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
+					ScopeId:     hc.GetScopeId(),
 					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
@@ -479,6 +484,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
+					ScopeId:     hc.GetScopeId(),
 					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
@@ -533,6 +539,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
+					ScopeId:     hc.GetScopeId(),
 					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -554,6 +561,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
+					ScopeId:     hc.GetScopeId(),
 					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -576,6 +584,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
+					ScopeId:     hc.GetScopeId(),
 					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "updated"},
 					Description: &wrappers.StringValue{Value: "default"},
@@ -599,6 +608,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
+					ScopeId:     hc.GetScopeId(),
 					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "default"},
 					Description: &wrappers.StringValue{Value: "notignored"},

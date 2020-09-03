@@ -11,6 +11,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -39,7 +40,7 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+	ul, err := s.listFromRepo(ctx, req.GetScopeId())
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +136,7 @@ func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.AuthToke
 func toProto(in *authtoken.AuthToken) *pb.AuthToken {
 	out := pb.AuthToken{
 		Id:                      in.GetPublicId(),
+		ScopeId:                 in.GetScopeId(),
 		CreatedTime:             in.GetCreateTime().GetTimestamp(),
 		UpdatedTime:             in.GetUpdateTime().GetTimestamp(),
 		ApproximateLastUsedTime: in.GetApproximateLastAccessTime().GetTimestamp(),
@@ -158,8 +160,11 @@ func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
 	return handlers.ValidateDeleteRequest(authtoken.AuthTokenPrefix, req, handlers.NoopValidatorFn)
 }
 
-func validateListRequest(_ *pbs.ListAuthTokensRequest) error {
+func validateListRequest(req *pbs.ListAuthTokensRequest) error {
 	badFields := map[string]string{}
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) {
+		badFields["scope_id"] = "Incorrectly formatted identifier."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}

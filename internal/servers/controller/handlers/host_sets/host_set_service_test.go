@@ -228,8 +228,7 @@ func TestDelete(t *testing.T) {
 			name:    "Bad Host Id formatting",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				HostCatalogId: hc.GetPublicId(),
-				Id:            static.HostSetPrefix + "_bad_format",
+				Id: static.HostSetPrefix + "_bad_format",
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -264,8 +263,7 @@ func TestDelete_twice(t *testing.T) {
 	s, err := host_sets.NewService(repoFn)
 	require.NoError(t, err, "Couldn't create a new host set service.")
 	req := &pbs.DeleteHostSetRequest{
-		HostCatalogId: hc.GetPublicId(),
-		Id:            h.GetPublicId(),
+		Id: h.GetPublicId(),
 	}
 	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
 	got, gErr := s.DeleteHostSet(ctx, req)
@@ -290,10 +288,6 @@ func TestCreate(t *testing.T) {
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
-	toMerge := &pbs.CreateHostSetRequest{
-		HostCatalogId: hc.GetPublicId(),
-	}
-
 	defaultHcCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
 	require.NoError(t, err)
 
@@ -306,12 +300,13 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Host",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-				Name:        &wrappers.StringValue{Value: "name"},
-				Description: &wrappers.StringValue{Value: "desc"},
-				Type:        "static",
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "name"},
+				Description:   &wrappers.StringValue{Value: "desc"},
+				Type:          "static",
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("scopes/%s/host-catalogs/%s/host-sets/%s_", proj.GetPublicId(), hc.GetPublicId(), static.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", static.HostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
@@ -325,20 +320,22 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create with unknown type",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-				Name:        &wrappers.StringValue{Value: "name"},
-				Description: &wrappers.StringValue{Value: "desc"},
-				Type:        "ThisIsMadeUp",
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "name"},
+				Description:   &wrappers.StringValue{Value: "desc"},
+				Type:          "ThisIsMadeUp",
 			}},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Create with no type",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-				Name:        &wrappers.StringValue{Value: "no type name"},
-				Description: &wrappers.StringValue{Value: "no type desc"},
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "no type name"},
+				Description:   &wrappers.StringValue{Value: "no type desc"},
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("scopes/%s/host-catalogs/%s/host-sets/%s_", proj.GetPublicId(), hc.GetPublicId(), static.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", static.HostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
@@ -352,7 +349,8 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-				Id: "not allowed to be set",
+				HostCatalogId: hc.GetPublicId(),
+				Id:            "not allowed to be set",
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -360,7 +358,8 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-				CreatedTime: ptypes.TimestampNow(),
+				HostCatalogId: hc.GetPublicId(),
+				CreatedTime:   ptypes.TimestampNow(),
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -368,7 +367,8 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-				UpdatedTime: ptypes.TimestampNow(),
+				HostCatalogId: hc.GetPublicId(),
+				UpdatedTime:   ptypes.TimestampNow(),
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -377,14 +377,12 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			req := proto.Clone(toMerge).(*pbs.CreateHostSetRequest)
-			proto.Merge(req, tc.req)
 
 			s, err := host_sets.NewService(repoFn)
 			require.NoError(err, "Failed to create a new host set service.")
 
-			got, gErr := s.CreateHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "CreateHostSet(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			got, gErr := s.CreateHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "CreateHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostSetPrefix), got.GetItem().GetId())
@@ -404,7 +402,7 @@ func TestCreate(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateHostSet(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -796,10 +794,9 @@ func TestAddHostSetHosts(t *testing.T) {
 			ss := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 			tc.setup(ss)
 			req := &pbs.AddHostSetHostsRequest{
-				HostCatalogId: hc.GetPublicId(),
-				Id:            ss.GetPublicId(),
-				Version:       ss.GetVersion(),
-				HostIds:       tc.addHosts,
+				Id:      ss.GetPublicId(),
+				Version: ss.GetVersion(),
+				HostIds: tc.addHosts,
 			}
 
 			got, err := s.AddHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)

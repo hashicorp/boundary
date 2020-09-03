@@ -50,6 +50,7 @@ func TestGet(t *testing.T) {
 
 	wantU := &pb.User{
 		Id:          u.GetPublicId(),
+		ScopeId:     u.GetScopeId(),
 		Scope:       &scopes.ScopeInfo{Id: u.ScopeId, Type: scope.Org.String()},
 		Name:        &wrapperspb.StringValue{Value: u.GetName()},
 		Description: &wrapperspb.StringValue{Value: u.GetDescription()},
@@ -126,6 +127,7 @@ func TestList(t *testing.T) {
 		require.NoError(err)
 		wantUsers = append(wantUsers, &pb.User{
 			Id:          u.GetPublicId(),
+			ScopeId:     u.GetScopeId(),
 			Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 			CreatedTime: u.GetCreateTime().GetTimestamp(),
 			UpdatedTime: u.GetUpdateTime().GetTimestamp(),
@@ -135,22 +137,19 @@ func TestList(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		scopeId string
 		req     *pbs.ListUsersRequest
 		res     *pbs.ListUsersResponse
 		errCode codes.Code
 	}{
 		{
 			name:    "List Many Users",
-			scopeId: oWithUsers.GetPublicId(),
-			req:     &pbs.ListUsersRequest{},
+			req:     &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId()},
 			res:     &pbs.ListUsersResponse{Items: wantUsers},
 			errCode: codes.OK,
 		},
 		{
 			name:    "List No Users",
-			scopeId: oNoUsers.GetPublicId(),
-			req:     &pbs.ListUsersRequest{},
+			req:     &pbs.ListUsersRequest{ScopeId: oNoUsers.GetPublicId()},
 			res:     &pbs.ListUsersResponse{},
 			errCode: codes.OK,
 		},
@@ -160,7 +159,7 @@ func TestList(t *testing.T) {
 			s, err := users.NewService(repoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -243,7 +242,6 @@ func TestCreate(t *testing.T) {
 	defaultUser, repo := createDefaultUserAndRepo(t)
 	defaultCreated, err := ptypes.Timestamp(defaultUser.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp.")
-	toMerge := &pbs.CreateUserRequest{}
 
 	cases := []struct {
 		name    string
@@ -254,12 +252,14 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid User",
 			req: &pbs.CreateUserRequest{Item: &pb.User{
+				ScopeId:     defaultUser.GetScopeId(),
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateUserResponse{
-				Uri: fmt.Sprintf("scopes/%s/users/u_", defaultUser.GetScopeId()),
+				Uri: fmt.Sprintf("users/%s_", iam.UserPrefix),
 				Item: &pb.User{
+					ScopeId:     defaultUser.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: defaultUser.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -271,7 +271,8 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateUserRequest{Item: &pb.User{
-				Id: iam.UserPrefix + "_notallowed",
+				ScopeId: defaultUser.GetScopeId(),
+				Id:      iam.UserPrefix + "_notallowed",
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -279,6 +280,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateUserRequest{Item: &pb.User{
+				ScopeId:     defaultUser.GetScopeId(),
 				CreatedTime: ptypes.TimestampNow(),
 			}},
 			res:     nil,
@@ -287,6 +289,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateUserRequest{Item: &pb.User{
+				ScopeId:     defaultUser.GetScopeId(),
 				UpdatedTime: ptypes.TimestampNow(),
 			}},
 			res:     nil,
@@ -296,14 +299,11 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			req := proto.Clone(toMerge).(*pbs.CreateUserRequest)
-			proto.Merge(req, tc.req)
-
 			s, err := users.NewService(repo)
 			require.NoError(err, "Error when getting new user service.")
 
-			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(auth.WithScopeId(defaultUser.GetScopeId())), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "CreateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(auth.WithScopeId(defaultUser.GetScopeId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "CreateUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.UserPrefix+"_"))
@@ -320,7 +320,7 @@ func TestCreate(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateUser(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateUser(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -367,6 +367,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					ScopeId:     u.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -389,6 +390,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					ScopeId:     u.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -442,6 +444,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					ScopeId:     u.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
@@ -463,6 +466,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					ScopeId:     u.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
@@ -485,6 +489,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					ScopeId:     u.GetScopeId(),
 					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},

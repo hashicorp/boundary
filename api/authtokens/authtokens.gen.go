@@ -13,6 +13,7 @@ import (
 
 type AuthToken struct {
 	Id                      string            `json:"id,omitempty"`
+	ScopeId                 string            `json:"scope_id,omitempty"`
 	Scope                   *scopes.ScopeInfo `json:"scope,omitempty"`
 	Token                   string            `json:"token,omitempty"`
 	UserId                  string            `json:"user_id,omitempty"`
