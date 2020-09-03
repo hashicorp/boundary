@@ -188,7 +188,7 @@ func (c *Command) Run(args []string) int {
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 
-	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"worker-alpn-tls"}); err != nil {
+	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"proxy"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}

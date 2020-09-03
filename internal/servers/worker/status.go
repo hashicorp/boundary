@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -15,6 +16,11 @@ import (
 const (
 	statusInterval = 2 * time.Second
 )
+
+type LastStatusInformation struct {
+	*pbs.StatusResponse
+	StatusTime time.Time
+}
 
 func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 	go func() {
@@ -40,43 +46,51 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 				return
 
 			case <-timer.C:
-				w.controllerConns.Range(func(_, v interface{}) bool {
-					// If something is removed from the map while ranging, ignore it
-					if v == nil {
-						return true
-					}
-					c := v.(*controllerConnection)
-					result, err := c.client.Status(cancelCtx, &pbs.StatusRequest{
-						Worker: &servers.Server{
-							PrivateId:   w.conf.RawConfig.Worker.Name,
-							Name:        w.conf.RawConfig.Worker.Name,
-							Type:        resource.Worker.String(),
-							Description: w.conf.RawConfig.Worker.Description,
-							Address:     w.listeningAddress,
-						},
-					})
-					if err != nil {
-						w.logger.Error("error making status request to controller", "error", err)
-					} else {
-						w.logger.Trace("successfully sent status to controller")
-						addrs := make([]resolver.Address, 0, len(result.Controllers))
-						strAddrs := make([]string, 0, len(result.Controllers))
-						for _, v := range result.Controllers {
-							addrs = append(addrs, resolver.Address{Addr: v.Address})
-							strAddrs = append(strAddrs, v.Address)
-						}
-						w.Resolver().UpdateState(resolver.State{Addresses: addrs})
-						w.logger.Trace("found controllers", "addresses", strAddrs)
-						w.lastStatusSuccess.Store(time.Now())
-					}
+				var activeJobs []string
+				w.cancellationMap.Range(func(key, value interface{}) bool {
+					activeJobs = append(activeJobs, key.(string))
 					return true
 				})
+				client := w.controllerConn.Load().(services.WorkerServiceClient)
+				result, err := client.Status(cancelCtx, &pbs.StatusRequest{
+					ActiveJobIds: activeJobs,
+					Worker: &servers.Server{
+						PrivateId:   w.conf.RawConfig.Worker.Name,
+						Name:        w.conf.RawConfig.Worker.Name,
+						Type:        resource.Worker.String(),
+						Description: w.conf.RawConfig.Worker.Description,
+						Address:     w.listeningAddress,
+					},
+				})
+				if err != nil {
+					w.logger.Error("error making status request to controller", "error", err)
+				} else {
+					w.logger.Trace("successfully sent status to controller")
+					addrs := make([]resolver.Address, 0, len(result.Controllers))
+					strAddrs := make([]string, 0, len(result.Controllers))
+					for _, v := range result.Controllers {
+						addrs = append(addrs, resolver.Address{Addr: v.Address})
+						strAddrs = append(strAddrs, v.Address)
+					}
+					w.Resolver().UpdateState(resolver.State{Addresses: addrs})
+					w.logger.Trace("found controllers", "addresses", strAddrs)
+					w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
+
+					for _, id := range result.GetCancelJobIds() {
+						if cancel, ok := w.cancellationMap.LoadAndDelete(id); ok {
+							cancel.(context.CancelFunc)()
+							w.logger.Info("canceled job", "job_id", id)
+						} else {
+							w.logger.Warn("asked to cancel job but could not find a cancellation function for it", "job_id", id)
+						}
+					}
+				}
 				timer.Reset(getRandomInterval())
 			}
 		}
 	}()
 }
 
-func (w *Worker) LastStatusSuccess() time.Time {
-	return w.lastStatusSuccess.Load().(time.Time)
+func (w *Worker) LastStatusSuccess() *LastStatusInformation {
+	return w.lastStatusSuccess.Load().(*LastStatusInformation)
 }

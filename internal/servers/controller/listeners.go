@@ -108,7 +108,7 @@ func (c *Controller) startListeners() error {
 		// Clear out in case this is a second start of the controller
 		ln.Mux.UnregisterProto(alpnmux.DefaultProto)
 		l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
-			GetConfigForClient: c.validateWorkerTLS,
+			GetConfigForClient: c.validateWorkerTls,
 		})
 		if err != nil {
 			return fmt.Errorf("error getting sub-listener for worker proto: %w", err)
@@ -120,7 +120,7 @@ func (c *Controller) startListeners() error {
 			grpc.MaxRecvMsgSize(math.MaxInt32),
 			grpc.MaxSendMsgSize(math.MaxInt32),
 		)
-		services.RegisterWorkerServiceServer(workerServer, workers.NewWorkerServiceServer(c.logger.Named("worker-handler"), c.ServersRepoFn, c.workerStatusUpdateTimes))
+		services.RegisterWorkerServiceServer(workerServer, workers.NewWorkerServiceServer(c.logger.Named("worker-handler"), c.ServersRepoFn, c.workerStatusUpdateTimes, c.kms, c.jobMap))
 
 		interceptor := newInterceptingListener(c, l)
 		ln.ALPNListener = interceptor
@@ -144,7 +144,7 @@ func (c *Controller) startListeners() error {
 				} else {
 					err = configureForCluster(ln)
 				}
-			case "worker-alpn-tls":
+			case "proxy":
 				// Do nothing, in a dev mode we might see it here
 			default:
 				err = fmt.Errorf("unknown listener purpose %q", purpose)

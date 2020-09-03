@@ -20,7 +20,7 @@ type workerAuthEntry struct {
 	conn net.Conn
 }
 
-func (c Controller) validateWorkerTLS(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+func (c Controller) validateWorkerTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	for _, p := range hello.SupportedProtos {
 		switch {
 		case strings.HasPrefix(p, "v1workerauth-"):
@@ -84,7 +84,6 @@ func (c Controller) v1WorkerAuthConfig(protos []string) (*tls.Config, *base.Work
 		NextProtos:   []string{firstMatchProto},
 		MinVersion:   tls.VersionTLS13,
 	}
-	tlsConfig.BuildNameToCertificate()
 
 	return tlsConfig, info, nil
 }

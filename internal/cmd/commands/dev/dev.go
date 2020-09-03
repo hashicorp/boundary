@@ -235,7 +235,7 @@ func (c *Command) Run(args []string) int {
 	c.Info["[Recovery] AEAD Key Bytes"] = devConfig.Controller.DevRecoveryKey
 
 	// Initialize the listeners
-	if err := c.SetupListeners(c.UI, devConfig.SharedConfig, []string{"api", "cluster", "worker-alpn-tls"}); err != nil {
+	if err := c.SetupListeners(c.UI, devConfig.SharedConfig, []string{"api", "cluster", "proxy"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
