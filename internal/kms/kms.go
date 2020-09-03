@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"hash"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -12,7 +11,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/multiwrapper"
-	"golang.org/x/crypto/blake2b"
 )
 
 // ExternalWrappers holds wrappers defined outside of Boundary, e.g. in its
@@ -148,6 +146,10 @@ func generateKeyId(scopeId string, purpose KeyPurpose, version uint32) string {
 // multiwrapper. This is not necesary for encryption but should be supplied for
 // decryption.
 func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, opt ...Option) (wrapping.Wrapper, error) {
+	if scopeId == "" {
+		return nil, errors.New("no scope ID provided")
+	}
+
 	switch purpose {
 	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions:
 	case KeyPurposeUnknown:
@@ -155,6 +157,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	default:
 		return nil, fmt.Errorf("unsupported purpose %q", purpose)
 	}
+
 	opts := getOpts(opt...)
 	// Fast-path: we have a valid key at the scope/purpose. Verify the key with
 	// that ID is in the multiwrapper; if not, fall through to reload from the
@@ -172,33 +175,24 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	// root for the scope as we'll need it to decrypt the value coming from the
 	// DB. We don't cache the roots as we expect that after a few calls the
 	// scope-purpose cache will catch everything in steady-state.
-	rootWrapper, err := k.loadRoot(ctx, scopeId, opt...)
+	rootWrapper, rootKeyId, err := k.loadRoot(ctx, scopeId, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error loading root key for scope %s: %w", scopeId, err)
 	}
-
-	// TODO: Look up dek in the db, then decrypt with the root wrapper. If we
-	// have a key ID passed in verify that we find it. For now since we don't
-	// have DEKs, derive a key.
-	baseWrapper := rootWrapper.WrapperForKeyID("__base__").(*aead.Wrapper)
-	derived, err := baseWrapper.NewDerivedWrapper(&aead.DerivedWrapperOptions{
-		KeyID: generateKeyId(scopeId, purpose, 1),
-		Hash:  func() hash.Hash { b, _ := blake2b.New256(nil); return b },
-		Salt:  []byte(scopeId),
-		Info:  []byte(purpose.String()),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error creating derived wrapper: %w", err)
+	if rootWrapper == nil {
+		return nil, fmt.Errorf("got nil root wrapper for scope %s", scopeId)
 	}
 
-	// Store the looked-up value into the scope cache.
-	multi := multiwrapper.NewMultiWrapper(derived)
-	k.scopePurposeCache.Store(scopeId+purpose.String(), multi)
+	wrapper, err := k.loadDek(ctx, scopeId, purpose, rootWrapper, rootKeyId, opt...)
+	if err != nil {
+		return nil, fmt.Errorf("error loading %s for scope %s: %w", purpose.String(), scopeId, err)
+	}
+	k.scopePurposeCache.Store(scopeId+purpose.String(), wrapper)
 
-	return multi, nil
+	return wrapper, nil
 }
 
-func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multiwrapper.MultiWrapper, error) {
+func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multiwrapper.MultiWrapper, string, error) {
 	opts := getOpts(opt...)
 	repo := opts.withRepository
 	if repo == nil {
@@ -206,7 +200,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	}
 	rootKeys, err := repo.ListRootKeys(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error listing root keys: %w", err)
+		return nil, "", fmt.Errorf("error listing root keys: %w", err)
 	}
 	var rootKeyId string
 	for _, k := range rootKeys {
@@ -216,7 +210,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 		}
 	}
 	if rootKeyId == "" {
-		return nil, fmt.Errorf("error finding root key for scope %s", scopeId)
+		return nil, "", fmt.Errorf("error finding root key for scope %s", scopeId)
 	}
 
 	// Now: find the external KMS that can be used to decrypt the root values
@@ -225,21 +219,21 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	externalWrappers := k.externalScopeCache[scope.Global.String()]
 	k.externalScopeCacheMutex.Unlock()
 	if externalWrappers == nil {
-		return nil, errors.New("could not find kms information at either the needed scope or global fallback")
+		return nil, "", errors.New("could not find kms information at either the needed scope or global fallback")
 	}
 
 	externalWrappers.m.RLock()
 	defer externalWrappers.m.RUnlock()
 
 	if externalWrappers.root == nil {
-		return nil, fmt.Errorf("root key wrapper for scope %s is nil", scopeId)
+		return nil, "", fmt.Errorf("root key wrapper for scope %s is nil", scopeId)
 	}
 	rootKeyVersions, err := repo.ListRootKeyVersions(ctx, externalWrappers.root, rootKeyId, WithOrder("version desc"))
 	if err != nil {
-		return nil, fmt.Errorf("error looking up root key versions for scope %s with key ID %s: %w", scopeId, externalWrappers.root.KeyID(), err)
+		return nil, "", fmt.Errorf("error looking up root key versions for scope %s with key ID %s: %w", scopeId, externalWrappers.root.KeyID(), err)
 	}
 	if len(rootKeyVersions) == 0 {
-		return nil, fmt.Errorf("no root key versions found for scope %s", scopeId)
+		return nil, "", fmt.Errorf("no root key versions found for scope %s", scopeId)
 	}
 
 	var multi *multiwrapper.MultiWrapper
@@ -248,10 +242,101 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 		if _, err := wrapper.SetConfig(map[string]string{
 			"key_id": key.GetPrivateId(),
 		}); err != nil {
-			return nil, fmt.Errorf("error setting config on aead root wrapper in scope %s: %w", scopeId, err)
+			return nil, "", fmt.Errorf("error setting config on aead root wrapper in scope %s: %w", scopeId, err)
 		}
 		if err := wrapper.SetAESGCMKeyBytes(key.GetKey()); err != nil {
-			return nil, fmt.Errorf("error setting key bytes on aead root wrapper in scope %s: %w", scopeId, err)
+			return nil, "", fmt.Errorf("error setting key bytes on aead root wrapper in scope %s: %w", scopeId, err)
+		}
+		if i == 0 {
+			multi = multiwrapper.NewMultiWrapper(wrapper)
+		} else {
+			multi.AddWrapper(wrapper)
+		}
+	}
+
+	return multi, rootKeyId, err
+}
+
+// Dek is an interface wrapping dek types to allow a lot less switching in loadDek
+type Dek interface {
+	GetRootKeyId() string
+	GetPrivateId() string
+}
+
+// DekVersion is an interface wrapping versioned dek types to allow a lot less switching in loadDek
+type DekVersion interface {
+	GetPrivateId() string
+	GetKey() []byte
+}
+
+func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) (*multiwrapper.MultiWrapper, error) {
+	if rootWrapper == nil {
+		return nil, fmt.Errorf("got nil root wrapper in loadDek for scope %s", scopeId)
+	}
+	if rootKeyId == "" {
+		return nil, fmt.Errorf("no root key ID provided for scope %s", scopeId)
+	}
+
+	opts := getOpts(opt...)
+	repo := opts.withRepository
+	if repo == nil {
+		repo = k.repo
+	}
+
+	var keys []Dek
+	var err error
+	switch purpose {
+	case KeyPurposeDatabase:
+		keys, err = repo.ListDatabaseKeys(ctx)
+	case KeyPurposeOplog:
+		keys, err = repo.ListOplogKeys(ctx)
+	case KeyPurposeTokens:
+		keys, err = repo.ListTokenKeys(ctx)
+	case KeyPurposeSessions:
+		keys, err = repo.ListSessionKeys(ctx)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error listing root keys: %w", err)
+	}
+	var keyId string
+	for _, k := range keys {
+		if k.GetRootKeyId() == rootKeyId {
+			keyId = k.GetPrivateId()
+			break
+		}
+	}
+	if keyId == "" {
+		return nil, fmt.Errorf("error finding %s key for scope %s", purpose.String(), scopeId)
+	}
+
+	var keyVersions []DekVersion
+	switch purpose {
+	case KeyPurposeDatabase:
+		keyVersions, err = repo.ListDatabaseKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
+	case KeyPurposeOplog:
+		keyVersions, err = repo.ListOplogKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
+	case KeyPurposeTokens:
+		keyVersions, err = repo.ListTokenKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
+	case KeyPurposeSessions:
+		keyVersions, err = repo.ListSessionKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error looking up %s key versions for scope %s with key ID %s: %w", purpose.String(), scopeId, rootWrapper.KeyID(), err)
+	}
+	if len(keyVersions) == 0 {
+		return nil, fmt.Errorf("no %s key versions found for scope %s", purpose.String(), scopeId)
+	}
+
+	var multi *multiwrapper.MultiWrapper
+	for i, keyVersion := range keyVersions {
+		wrapper := aead.NewWrapper(nil)
+		if _, err := wrapper.SetConfig(map[string]string{
+			"key_id": keyVersion.GetPrivateId(),
+		}); err != nil {
+			return nil, fmt.Errorf("error setting config on aead %s wrapper in scope %s: %w", purpose.String(), scopeId, err)
+		}
+		if err := wrapper.SetAESGCMKeyBytes(keyVersion.GetKey()); err != nil {
+			return nil, fmt.Errorf("error setting key bytes on aead %s wrapper in scope %s: %w", purpose.String(), scopeId, err)
 		}
 		if i == 0 {
 			multi = multiwrapper.NewMultiWrapper(wrapper)

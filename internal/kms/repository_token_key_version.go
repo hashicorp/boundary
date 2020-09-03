@@ -139,7 +139,7 @@ func (r *Repository) LatestTokenKeyVersion(ctx context.Context, rkvWrapper wrapp
 }
 
 // ListTokenKeyVersions will lists versions of a key.  Supports the WithLimit option.
-func (r *Repository) ListTokenKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, tokenKeyId string, opt ...Option) ([]*TokenKeyVersion, error) {
+func (r *Repository) ListTokenKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, tokenKeyId string, opt ...Option) ([]DekVersion, error) {
 	if tokenKeyId == "" {
 		return nil, fmt.Errorf("list token key versions: missing token key id %w", db.ErrInvalidParameter)
 	}
@@ -156,5 +156,9 @@ func (r *Repository) ListTokenKeyVersions(ctx context.Context, rkvWrapper wrappi
 			return nil, fmt.Errorf("list token key versions: error decrypting key num %d: %w", i, err)
 		}
 	}
-	return versions, nil
+	dekVersions := make([]DekVersion, 0, len(versions))
+	for _, version := range versions {
+		dekVersions = append(dekVersions, version)
+	}
+	return dekVersions, nil
 }

@@ -137,11 +137,15 @@ func (r *Repository) DeleteOplogKey(ctx context.Context, privateId string, opt .
 }
 
 // ListOplogKeys will list the keys.  Supports the WithLimit option.
-func (r *Repository) ListOplogKeys(ctx context.Context, opt ...Option) ([]*OplogKey, error) {
+func (r *Repository) ListOplogKeys(ctx context.Context, opt ...Option) ([]Dek, error) {
 	var keys []*OplogKey
 	err := r.list(ctx, &keys, "1=1", nil, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("list oplog keys: %w", err)
 	}
-	return keys, nil
+	deks := make([]Dek, 0, len(keys))
+	for _, key := range keys {
+		deks = append(deks, key)
+	}
+	return deks, nil
 }

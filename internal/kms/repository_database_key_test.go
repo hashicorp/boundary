@@ -284,7 +284,7 @@ func TestRepository_ListDatabaseKeys(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			for i := 0; i < tt.createCnt; i++ {
 				org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-				require.NoError(conn.Where("scope_id in(?)", []interface{}{org.PublicId, proj.PublicId}).Delete(kms.AllocRootKey()).Error)
+				require.NoError(conn.Where("scope_id in(?)", []interface{}{"global", org.PublicId, proj.PublicId}).Delete(kms.AllocRootKey()).Error)
 				rk := kms.TestRootKey(t, conn, proj.PublicId)
 				kms.TestDatabaseKey(t, conn, rk.PrivateId)
 				require.NoError(err)

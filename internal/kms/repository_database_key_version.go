@@ -139,7 +139,7 @@ func (r *Repository) LatestDatabaseKeyVersion(ctx context.Context, rkvWrapper wr
 }
 
 // ListDatabaseKeyVersions will lists versions of a key.  Supports the WithLimit option.
-func (r *Repository) ListDatabaseKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, opt ...Option) ([]*DatabaseKeyVersion, error) {
+func (r *Repository) ListDatabaseKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, opt ...Option) ([]DekVersion, error) {
 	if databaseKeyId == "" {
 		return nil, fmt.Errorf("list database key versions: missing database key id %w", db.ErrInvalidParameter)
 	}
@@ -156,5 +156,9 @@ func (r *Repository) ListDatabaseKeyVersions(ctx context.Context, rkvWrapper wra
 			return nil, fmt.Errorf("list database key versions: error decrypting key num %d: %w", i, err)
 		}
 	}
-	return versions, nil
+	dekVersions := make([]DekVersion, 0, len(versions))
+	for _, version := range versions {
+		dekVersions = append(dekVersions, version)
+	}
+	return dekVersions, nil
 }
