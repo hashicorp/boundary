@@ -397,6 +397,27 @@ func TestCreate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
+			name: "Create a valid Global Role",
+			req: &pbs.CreateRoleRequest{Item: &pb.Role{
+				ScopeId:      scope.Global.String(),
+				Name:         &wrapperspb.StringValue{Value: "name"},
+				Description:  &wrapperspb.StringValue{Value: "desc"},
+				GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
+			}},
+			res: &pbs.CreateRoleResponse{
+				Uri: fmt.Sprintf("roles/%s_", iam.RolePrefix),
+				Item: &pb.Role{
+					ScopeId:      scope.Global.String(),
+					Scope:        &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
+					Version:      1,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
 			name: "Create a valid Project Scoped Role",
 			req: &pbs.CreateRoleRequest{
 				Item: &pb.Role{

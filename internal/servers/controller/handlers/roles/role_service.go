@@ -537,7 +537,7 @@ func validateCreateRequest(req *pbs.CreateRoleRequest, s *scopes.ScopeInfo) erro
 		if !handlers.ValidId(scope.Org.Prefix(), item.GetScopeId()) &&
 			!handlers.ValidId(scope.Project.Prefix(), item.GetScopeId()) &&
 			scope.Global.String() != item.GetScopeId() {
-			badFields["scope_id"] = "Improperly formatted field."
+			badFields["scope_id"] = "This field is missing or improperly formatted."
 		}
 		if item.GetGrantScopeId() != nil && s.GetType() == scope.Project.String() {
 			if item.GetGrantScopeId().Value != s.GetId() {

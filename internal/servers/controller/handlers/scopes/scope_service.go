@@ -92,21 +92,13 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 
 // CreateScope implements the interface pbs.ScopeServiceServer.
 func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (*pbs.CreateScopeResponse, error) {
-	if req.GetItem().GetScopeId() == "" {
-		return nil, handlers.InvalidArgumentErrorf(
-			"Argument errors found in the request.",
-			map[string]string{"scope_id": "Missing value for scope_id"},
-		)
+	if err := validateCreateRequest(req); err != nil {
+		return nil, err
 	}
 	authResults := auth.Verify(ctx, auth.WithScopeId(req.GetItem().GetScopeId()))
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-
-	if err := validateCreateRequest(req); err != nil {
-		return nil, err
-	}
-
 	p, err := s.createInRepo(ctx, authResults, req)
 	if err != nil {
 		return nil, err
@@ -334,6 +326,9 @@ func validateGetRequest(req *pbs.GetScopeRequest) error {
 func validateCreateRequest(req *pbs.CreateScopeRequest) error {
 	badFields := map[string]string{}
 	item := req.GetItem()
+	if req.GetItem().GetScopeId() == "" {
+		badFields["scope_id"] = "This is a required field."
+	}
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field."
 	}

@@ -13,6 +13,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -90,7 +91,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
+	u, err := s.createInRepo(ctx, req.GetItem().GetScopeId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -292,6 +293,10 @@ func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		if !handlers.ValidId(scope.Org.Prefix(), req.GetItem().GetScopeId()) &&
+			scope.Global.String() != req.GetItem().GetScopeId() {
+			badFields["scope_id"] = "This field is missing or improperly formatted."
+		}
 		switch auth.SubtypeFromType(req.GetItem().GetType()) {
 		case auth.PasswordSubtype:
 			pwAttrs := &pb.PasswordAuthMethodAttributes{}
