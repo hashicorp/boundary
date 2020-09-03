@@ -25,12 +25,12 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/sessions"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
-	"github.com/sanity-io/litter"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authenticate"
@@ -91,6 +91,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 			},
 		}),
 		runtime.WithErrorHandler(handlers.ErrorHandler(c.logger)),
+		runtime.WithForwardResponseOption(handlers.OutgoingInterceptor),
 	)
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
@@ -154,6 +155,13 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	}
 	if err := services.RegisterUserServiceHandlerServer(ctx, mux, us); err != nil {
 		return nil, fmt.Errorf("failed to register user service handler: %w", err)
+	}
+	ts, err := targets.NewService(c.TargetRepoFn, c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create target handler service: %w", err)
+	}
+	if err := services.RegisterTargetServiceHandlerServer(ctx, mux, ts); err != nil {
+		return nil, fmt.Errorf("failed to register target service handler: %w", err)
 	}
 	gs, err := groups.NewService(c.IamRepoFn)
 	if err != nil {
@@ -415,7 +423,6 @@ func jobTestingHandler(c *Controller) http.Handler {
 
 		ret.PrivateKey = nil
 		c.jobMap.Store(jobId, ret)
-		c.logger.Info("stored entry", "job_id", jobId, "exp", ret.GetExpirationTime().AsTime(), "endpoint", endpoint, "workers", litter.Sdump(workers))
 	})
 }
 

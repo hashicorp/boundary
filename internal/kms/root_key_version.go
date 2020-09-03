@@ -60,13 +60,16 @@ func (k *RootKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db
 	if k.PrivateId == "" {
 		return fmt.Errorf("root key version vet for write: missing private id: %w", db.ErrInvalidParameter)
 	}
-	if opType == db.CreateOp {
+	switch opType {
+	case db.CreateOp:
 		if k.CtKey == nil {
 			return fmt.Errorf("root key version vet for write: missing key: %w", db.ErrInvalidParameter)
 		}
 		if k.RootKeyId == "" {
 			return fmt.Errorf("root key version vet for write: missing root key id: %w", db.ErrInvalidParameter)
 		}
+	case db.UpdateOp:
+		return fmt.Errorf("root key version vet for write: key is immutable: %w", db.ErrInvalidParameter)
 	}
 	return nil
 }

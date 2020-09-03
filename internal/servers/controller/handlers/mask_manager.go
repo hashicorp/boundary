@@ -81,3 +81,12 @@ func (m MaskManager) Translate(paths []string) []string {
 	}
 	return result
 }
+
+func MaskContains(paths []string, s string) bool {
+	for _, p := range paths {
+		if p == s {
+			return true
+		}
+	}
+	return false
+}

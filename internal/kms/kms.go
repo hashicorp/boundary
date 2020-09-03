@@ -149,7 +149,7 @@ func generateKeyId(scopeId string, purpose KeyPurpose, version uint32) string {
 // decryption.
 func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, opt ...Option) (wrapping.Wrapper, error) {
 	switch purpose {
-	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeSessions, KeyPurposeTokens:
+	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions:
 	case KeyPurposeUnknown:
 		return nil, errors.New("key purpose not specified")
 	default:

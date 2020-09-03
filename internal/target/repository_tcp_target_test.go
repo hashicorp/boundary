@@ -49,7 +49,8 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			name: "valid-org",
 			args: args{
 				target: func() *TcpTarget {
-					target, err := NewTcpTarget(proj.PublicId, "valid-org",
+					target, err := NewTcpTarget(proj.PublicId,
+						WithName("valid-org"),
 						WithDescription("valid-org"),
 						WithDefaultPort(uint32(22)))
 					require.NoError(t, err)
@@ -83,7 +84,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			name: "public-id-not-empty",
 			args: args{
 				target: func() *TcpTarget {
-					target, err := NewTcpTarget(proj.PublicId, "valid-org", WithDescription("valid-org"), WithDefaultPort(uint32(22)))
+					target, err := NewTcpTarget(proj.PublicId, WithName("valid-org"), WithDescription("valid-org"), WithDefaultPort(uint32(22)))
 					require.NoError(t, err)
 					id, err := newTcpTargetId()
 					require.NoError(t, err)

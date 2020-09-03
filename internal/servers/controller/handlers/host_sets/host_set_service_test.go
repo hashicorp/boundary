@@ -48,9 +48,7 @@ func TestGet(t *testing.T) {
 	static.TestSetMembers(t, conn, hs.GetPublicId(), h)
 	hIds := []string{h[0].GetPublicId(), h[1].GetPublicId()}
 
-	toMerge := &pbs.GetHostSetRequest{
-		HostCatalogId: hc.GetPublicId(),
-	}
+	toMerge := &pbs.GetHostSetRequest{}
 
 	pHost := &pb.HostSet{
 		HostCatalogId: hc.GetPublicId(),
@@ -78,7 +76,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existing Host Set",
 			req:     &pbs.GetHostSetRequest{Id: static.HostSetPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.NotFound,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -201,8 +199,7 @@ func TestDelete(t *testing.T) {
 			name:    "Delete an Existing Host",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				HostCatalogId: hc.GetPublicId(),
-				Id:            h.GetPublicId(),
+				Id: h.GetPublicId(),
 			},
 			res: &pbs.DeleteHostSetResponse{
 				Existed: true,
@@ -213,25 +210,19 @@ func TestDelete(t *testing.T) {
 			name:    "Delete bad id Host",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				HostCatalogId: hc.GetPublicId(),
-				Id:            static.HostSetPrefix + "_doesntexis",
+				Id: static.HostSetPrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteHostSetResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
+			res:     nil,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Delete bad host catalog id in Host",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				HostCatalogId: static.HostCatalogPrefix + "_doesntexis",
-				Id:            h.GetPublicId(),
+				Id: h.GetPublicId(),
 			},
-			res: &pbs.DeleteHostSetResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
+			res:     nil,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Bad Host Id formatting",
@@ -280,9 +271,9 @@ func TestDelete_twice(t *testing.T) {
 	got, gErr := s.DeleteHostSet(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteHostSet(ctx, req)
-	assert.NoError(gErr, "Second attempt")
-	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+	_, gErr = s.DeleteHostSet(ctx, req)
+	assert.Error(gErr, "Second attempt")
+	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -457,8 +448,7 @@ func TestUpdate(t *testing.T) {
 	hCreated, err := ptypes.Timestamp(hs.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Failed to convert proto to timestamp")
 	toMerge := &pbs.UpdateHostSetRequest{
-		HostCatalogId: hc.GetPublicId(),
-		Id:            hs.GetPublicId(),
+		Id: hs.GetPublicId(),
 	}
 
 	tested, err := host_sets.NewService(repoFn)
@@ -661,7 +651,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.Internal,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name: "Cant change Id",
@@ -831,29 +821,17 @@ func TestAddHostSetHosts(t *testing.T) {
 		{
 			name: "Bad Set Id",
 			req: &pbs.AddHostSetHostsRequest{
-				HostCatalogId: hc.GetPublicId(),
-				Id:            "bad id",
-				Version:       ss.GetVersion(),
-				HostIds:       []string{hs[0].GetPublicId()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Bad Catalog Id",
-			req: &pbs.AddHostSetHostsRequest{
-				HostCatalogId: "bad catalog id",
-				Id:            ss.GetPublicId(),
-				Version:       ss.GetVersion(),
-				HostIds:       []string{hs[0].GetPublicId()},
+				Id:      "bad id",
+				Version: ss.GetVersion(),
+				HostIds: []string{hs[0].GetPublicId()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Empty host list",
 			req: &pbs.AddHostSetHostsRequest{
-				HostCatalogId: hc.GetPublicId(),
-				Id:            ss.GetPublicId(),
-				Version:       ss.GetVersion(),
+				Id:      ss.GetPublicId(),
+				Version: ss.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -918,10 +896,9 @@ func TestSetHostSetHosts(t *testing.T) {
 			ss := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 			tc.setup(ss)
 			req := &pbs.SetHostSetHostsRequest{
-				HostCatalogId: hc.GetPublicId(),
-				Id:            ss.GetPublicId(),
-				Version:       ss.GetVersion(),
-				HostIds:       tc.setHosts,
+				Id:      ss.GetPublicId(),
+				Version: ss.GetVersion(),
+				HostIds: tc.setHosts,
 			}
 
 			got, err := s.SetHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
@@ -940,20 +917,9 @@ func TestSetHostSetHosts(t *testing.T) {
 		{
 			name: "Bad Set Id",
 			req: &pbs.SetHostSetHostsRequest{
-				HostCatalogId: hc.GetPublicId(),
-				Id:            "bad id",
-				Version:       ss.GetVersion(),
-				HostIds:       []string{hs[0].GetPublicId()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Bad Catalog Id",
-			req: &pbs.SetHostSetHostsRequest{
-				HostCatalogId: "bad catalog id",
-				Id:            ss.GetPublicId(),
-				Version:       ss.GetVersion(),
-				HostIds:       []string{hs[0].GetPublicId()},
+				Id:      "bad id",
+				Version: ss.GetVersion(),
+				HostIds: []string{hs[0].GetPublicId()},
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1020,10 +986,9 @@ func TestRemoveHostSetHosts(t *testing.T) {
 			ss := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 			tc.setup(ss)
 			req := &pbs.RemoveHostSetHostsRequest{
-				HostCatalogId: hc.GetPublicId(),
-				Id:            ss.GetPublicId(),
-				Version:       ss.GetVersion(),
-				HostIds:       tc.removeHosts,
+				Id:      ss.GetPublicId(),
+				Version: ss.GetVersion(),
+				HostIds: tc.removeHosts,
 			}
 
 			got, err := s.RemoveHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
@@ -1047,32 +1012,20 @@ func TestRemoveHostSetHosts(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name: "Bad catalog Id",
-			req: &pbs.RemoveHostSetHostsRequest{
-				HostCatalogId: "bad id",
-				Id:            ss.GetPublicId(),
-				Version:       ss.GetVersion(),
-				HostIds:       []string{hs[0].GetPublicId()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
 			name: "Bad set Id",
 			req: &pbs.RemoveHostSetHostsRequest{
-				HostCatalogId: hc.GetPublicId(),
-				Id:            "bad id",
-				Version:       ss.GetVersion(),
-				HostIds:       []string{hs[0].GetPublicId()},
+				Id:      "bad id",
+				Version: ss.GetVersion(),
+				HostIds: []string{hs[0].GetPublicId()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "empty hosts",
 			req: &pbs.RemoveHostSetHostsRequest{
-				HostCatalogId: hc.GetPublicId(),
-				Id:            "bad id",
-				Version:       ss.GetVersion(),
-				HostIds:       []string{},
+				Id:      "bad id",
+				Version: ss.GetVersion(),
+				HostIds: []string{},
 			},
 			errCode: codes.InvalidArgument,
 		},

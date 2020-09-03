@@ -13,10 +13,11 @@ import (
 
 func TestTcpTarget(t *testing.T, conn *gorm.DB, scopeId, name string, opt ...Option) *TcpTarget {
 	t.Helper()
+	opt = append(opt, WithName(name))
 	opts := getOpts(opt...)
 	require := require.New(t)
 	rw := db.New(conn)
-	target, err := NewTcpTarget(scopeId, name, opt...)
+	target, err := NewTcpTarget(scopeId, opt...)
 	require.NoError(err)
 	id, err := newTcpTargetId()
 	require.NoError(err)

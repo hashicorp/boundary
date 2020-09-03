@@ -118,7 +118,7 @@ func TestRootKeyVersion_Delete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			key:             kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key")),
+			key:             func() *kms.RootKeyVersion { k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId); return k }(),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
@@ -169,7 +169,7 @@ func TestRootKeyVersion_Clone(t *testing.T) {
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 		rk := kms.TestRootKey(t, conn, org.PublicId)
-		k := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
+		k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 		cp := k.Clone()
 		assert.True(proto.Equal(cp.(*kms.RootKeyVersion).RootKeyVersion, k.RootKeyVersion))
 	})
@@ -178,8 +178,8 @@ func TestRootKeyVersion_Clone(t *testing.T) {
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 		rk := kms.TestRootKey(t, conn, org.PublicId)
-		k := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
-		k2 := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
+		k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+		k2, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 		cp := k.Clone()
 		assert.True(!proto.Equal(cp.(*kms.RootKeyVersion).RootKeyVersion, k2.RootKeyVersion))
 	})

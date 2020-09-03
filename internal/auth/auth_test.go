@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/go-hclog"
@@ -317,8 +318,8 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 		{
 			name: "Split cookie token",
 			cookies: []http.Cookie{
-				{Name: HttpOnlyCookieName, Value: httpCookieVal},
-				{Name: JsVisibleCookieName, Value: jsCookieVal},
+				{Name: handlers.HttpOnlyCookieName, Value: httpCookieVal},
+				{Name: handlers.JsVisibleCookieName, Value: jsCookieVal},
 			},
 			userId:      at.GetIamUserId(),
 			tokenFormat: AuthTokenTypeSplitCookie,
@@ -326,14 +327,14 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 		{
 			name: "Split cookie token only http cookie",
 			cookies: []http.Cookie{
-				{Name: HttpOnlyCookieName, Value: httpCookieVal},
+				{Name: handlers.HttpOnlyCookieName, Value: httpCookieVal},
 			},
 			tokenFormat: AuthTokenTypeUnknown,
 		},
 		{
 			name: "Split cookie token only js cookie",
 			cookies: []http.Cookie{
-				{Name: JsVisibleCookieName, Value: jsCookieVal},
+				{Name: handlers.JsVisibleCookieName, Value: jsCookieVal},
 			},
 			tokenFormat: AuthTokenTypeUnknown,
 		},
@@ -341,8 +342,8 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 			name:    "Cookie and auth header",
 			headers: map[string]string{"Authorization": fmt.Sprintf("Bearer %s", tokValue)},
 			cookies: []http.Cookie{
-				{Name: HttpOnlyCookieName, Value: httpCookieVal},
-				{Name: JsVisibleCookieName, Value: jsCookieVal},
+				{Name: handlers.HttpOnlyCookieName, Value: httpCookieVal},
+				{Name: handlers.JsVisibleCookieName, Value: jsCookieVal},
 			},
 			userId:      at.GetIamUserId(),
 			tokenFormat: AuthTokenTypeBearer,

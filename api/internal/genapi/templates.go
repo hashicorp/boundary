@@ -58,6 +58,22 @@ func getArgsAndPaths(in []string, action string) (colArgs, resArgs []string, col
 	return
 }
 
+func getArgsAndPathsNewStyle(in []string, action string) (colArg, resArg string, colPath, resPath string) {
+	resArg = fmt.Sprintf("%sId", strcase.ToLowerCamel(strings.ReplaceAll(in[len(in)-1], "-", "_")))
+	if len(in) == 1 {
+		colArg = "scopeId"
+	} else {
+		colArg = fmt.Sprintf("%sId", strcase.ToLowerCamel(strings.ReplaceAll(in[len(in)-2], "-", "_")))
+	}
+	colPath = fmt.Sprintf("%ss", in[len(in)-1])
+
+	if action != "" {
+		action = fmt.Sprintf(":%s", action)
+	}
+	resPath = fmt.Sprintf("fmt.Sprintf(\"%s/%%s%s\", %s)", colPath, action, resArg)
+	return
+}
+
 type templateInput struct {
 	Name                   string
 	Package                string
@@ -67,10 +83,15 @@ type templateInput struct {
 	ResourceFunctionArgs   []string
 	CollectionPath         string
 	ResourcePath           string
+	CollectionFunctionArg2 string
+	ResourceFunctionArg2   string
+	CollectionPath2        string
+	ResourcePath2          string
 	SliceSubTypes          map[string]string
 	ExtraOptions           []fieldInfo
 	VersionEnabled         bool
 	TypeOnCreate           bool
+	Two                    string
 }
 
 func fillTemplates() {
@@ -85,10 +106,16 @@ func fillTemplates() {
 			ExtraOptions:   in.extraOptions,
 			VersionEnabled: in.versionEnabled,
 			TypeOnCreate:   in.typeOnCreate,
+			Two:            "2",
+		}
+
+		if in.useNewStyle && in.disableOldStyle {
+			input.Two = ""
 		}
 
 		if len(in.pathArgs) > 0 {
 			input.CollectionFunctionArgs, input.ResourceFunctionArgs, input.CollectionPath, input.ResourcePath = getArgsAndPaths(in.pathArgs, "")
+			input.CollectionFunctionArg2, input.ResourceFunctionArg2, input.CollectionPath2, input.ResourcePath2 = getArgsAndPathsNewStyle(in.pathArgs, "")
 		}
 
 		if err := structTemplate.Execute(outBuf, input); err != nil {
@@ -98,7 +125,12 @@ func fillTemplates() {
 
 		if len(in.sliceSubTypes) > 0 {
 			input.SliceSubTypes = in.sliceSubTypes
-			in.templates = append(in.templates, sliceSubTypeTemplate)
+			if !in.disableOldStyle {
+				in.templates = append(in.templates, sliceSubTypeTemplate)
+			}
+			if in.useNewStyle {
+				in.templates = append(in.templates, sliceSubTypeTemplate2)
+			}
 		}
 
 		for _, t := range in.templates {
@@ -197,6 +229,58 @@ func fillTemplates() {
 	}
 }
 
+var listTemplate2 = template.Must(template.New("").Funcs(
+	template.FuncMap{
+		"snakeCase": snakeCase,
+	},
+).Parse(`
+func (c *Client) List{{ .Two }}(ctx context.Context, {{ .CollectionFunctionArg2 }} string, opt... Option) ([]*{{ .Name }}, *api.Error, error) {
+	if {{ .CollectionFunctionArg2 }} == "" {
+		return nil, nil, fmt.Errorf("empty {{ .CollectionFunctionArg2 }} value passed into List request")
+	}
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+	apiOpts = append(apiOpts, api.WithNewStyle())
+	opts.queryMap["{{ snakeCase .CollectionFunctionArg2 }}"] = {{ .CollectionFunctionArg2 }}
+
+	req, err := c.client.NewRequest(ctx, "GET", "{{ .CollectionPath2 }}", nil, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	}
+	{{ if ( eq .CollectionPath "\"scopes\"" ) }}
+	opts.queryMap["scope_id"] = scopeId
+	{{ end }}
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
+	}
+
+	type listResponse struct {
+		Items []*{{ .Name }}
+	}
+	target := &listResponse{}
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
+	return target.Items, apiErr, nil
+}
+`))
+
 var listTemplate = template.Must(template.New("").Parse(`
 func (c *Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opt... Option) ([]*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
 	if {{ . }} == "" {
@@ -244,6 +328,48 @@ func (c *Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {
 }
 `))
 
+var readTemplate2 = template.Must(template.New("").Parse(`
+func (c *Client) Read{{ .Two }}(ctx context.Context, {{ .ResourceFunctionArg2 }} string, opt... Option) (*{{ .Name }}, *api.Error, error) {
+	if {{ .ResourceFunctionArg2 }} == "" {
+		return nil, nil, fmt.Errorf("empty  {{ .ResourceFunctionArg2 }} value passed into Read request")
+	}
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+	apiOpts = append(apiOpts, api.WithNewStyle())
+
+	req, err := c.client.NewRequest(ctx, "GET", {{ .ResourcePath2 }}, nil, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+	}
+
+	target := new({{ .Name }})
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
+	return target, apiErr, nil
+}
+`))
+
 var readTemplate = template.Must(template.New("").Parse(`
 func (c *Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
@@ -283,6 +409,51 @@ func (c *Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ 
 		return nil, apiErr, nil
 	}
 	return target, apiErr, nil
+}
+`))
+
+var deleteTemplate2 = template.Must(template.New("").Parse(`
+func (c *Client) Delete{{ .Two }}(ctx context.Context, {{ .ResourceFunctionArg2 }} string, opt... Option) (bool, *api.Error, error) { 
+	if {{ .ResourceFunctionArg2 }} == "" {
+		return false, nil, fmt.Errorf("empty {{ .ResourceFunctionArg2 }} value passed into Delete request")
+	}
+	if c.client == nil {
+		return false, nil, fmt.Errorf("nil client")
+	}
+	
+	opts, apiOpts := getOpts(opt...)
+	apiOpts = append(apiOpts, api.WithNewStyle())
+
+	req, err := c.client.NewRequest(ctx, "DELETE", {{ .ResourcePath2 }}, nil, apiOpts...)
+	if err != nil {
+		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+	}
+
+	type deleteResponse struct {
+		Existed bool
+	}
+	target := &deleteResponse{}
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
+	}
+	if apiErr != nil {
+		return false, apiErr, nil
+	}
+	return target.Existed, apiErr, nil
 }
 `))
 
@@ -331,6 +502,60 @@ func (c *Client) Delete(ctx context.Context, {{ range .ResourceFunctionArgs }} {
 }
 `))
 
+var createTemplate2 = template.Must(template.New("").Funcs(
+	template.FuncMap{
+		"snakeCase": snakeCase,
+	},
+).Parse(`
+func (c *Client) Create{{ .Two }} (ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ .CollectionFunctionArg2 }} string, opt... Option) (*{{ .Name }}, *api.Error, error) {
+	if {{ .CollectionFunctionArg2 }} == "" {
+		return nil, nil, fmt.Errorf("empty {{ .CollectionFunctionArg2 }} value passed into Create request")
+	}
+	opts, apiOpts := getOpts(opt...)
+	apiOpts = append(apiOpts, api.WithNewStyle())
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+	{{ if .TypeOnCreate }} if resourceType == "" {
+		return nil, nil, fmt.Errorf("empty resourceType value passed into Create request")
+	} else {
+		opts.postMap["type"] = resourceType
+	}{{ end }}
+
+	opts.postMap["{{ snakeCase .CollectionFunctionArg2 }}"] = {{ .CollectionFunctionArg2 }}
+
+	req, err := c.client.NewRequest(ctx, "POST", "{{ .CollectionPath2 }}", opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+	}
+	{{ if ( eq .CollectionPath "\"scopes\"" ) }}
+	opts.queryMap["scope_id"] = scopeId
+	{{ end }}
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
+	}
+
+	target := new({{ .Name }})
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
+	return target, apiErr, nil
+}
+`))
+
 var createTemplate = template.Must(template.New("").Parse(`
 func (c *Client) Create(ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
 	if {{ . }} == "" {
@@ -370,6 +595,69 @@ func (c *Client) Create(ctx context.Context, {{ if .TypeOnCreate }} resourceType
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
+	return target, apiErr, nil
+}
+`))
+
+var updateTemplate2 = template.Must(template.New("").Parse(`
+func (c *Client) Update{{ .Two }}(ctx context.Context, {{ .ResourceFunctionArg2 }} string, version uint32, opt... Option) (*{{ .Name }}, *api.Error, error) {
+	if {{ .ResourceFunctionArg2 }} == "" {
+		return nil, nil, fmt.Errorf("empty {{ .ResourceFunctionArg2 }} value passed into Update request")
+	}
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+	apiOpts = append(apiOpts, api.WithNewStyle())
+
+	{{ if .VersionEnabled }}
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read{{ .Two }}(ctx, {{ .ResourceFunctionArg2 }}, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
+	{{ end }}
+
+	opts.postMap["version"] = version
+
+	req, err := c.client.NewRequest(ctx, "PATCH", {{ .ResourcePath2 }}, opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
+	}
+
+	target := new({{ .Name }})
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
@@ -470,6 +758,91 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ range $input.ResourceFu
 			return nil, nil, errors.New("zero version number passed into {{ $fullName }} request")
 		}
 		existingTarget, existingApiErr, existingErr := c.Read(ctx, {{ range $input.ResourceFunctionArgs }} {{ . }}, {{ end }} opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
+	{{ end }}
+	opts.postMap["version"] = version
+
+	if len({{ $value }}) > 0 {
+		opts.postMap["{{ snakeCase $value }}"] = {{ $value }}
+	}{{ if ( eq $op "Set" ) }} else if {{ $value }} != nil {
+			// In this function, a non-nil but empty list means clear out
+			opts.postMap["{{ snakeCase $value }}"] = nil
+		}
+	{{ end }}
+
+	req, err := c.client.NewRequest(ctx, "POST", {{ $resPath }}, opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating {{ $fullName }} request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during {{ $fullName }} call: %w", err)
+	}
+
+	target := new({{ $input.Name }})
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding {{ $fullName }} response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
+	return target, apiErr, nil
+}
+{{ end }}
+{{ end }}
+`))
+
+var sliceSubTypeTemplate2 = template.Must(template.New("").Funcs(
+	template.FuncMap{
+		"makeSlice":                 makeSlice,
+		"snakeCase":                 snakeCase,
+		"kebabCase":                 kebabCase,
+		"getPathWithActionNewStyle": getPathWithActionNewStyle,
+	},
+).Parse(`
+{{ $input := . }}
+{{ range $index, $op := makeSlice "Add" "Set" "Remove" }}
+{{ range $key, $value := $input.SliceSubTypes }}
+{{ $fullName := print $op $key }}
+{{ $actionName := kebabCase $fullName }}
+{{ $resPath := getPathWithActionNewStyle $input.PathArgs $actionName }}
+func (c *Client) {{ $fullName }}{{ $input.Two }}(ctx context.Context, {{ $input.ResourceFunctionArg2 }} string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}, *api.Error, error) { 
+	if {{ $input.ResourceFunctionArg2 }} == "" {
+		return nil, nil, fmt.Errorf("empty {{ $input.ResourceFunctionArg2 }} value passed into {{ $fullName }} request")
+	}
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+	apiOpts = append(apiOpts, api.WithNewStyle())
+
+	{{ if $input.VersionEnabled }}
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into {{ $fullName }} request")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read{{ $input.Two }}(ctx, {{ $input.ResourceFunctionArg2 }}, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
@@ -662,5 +1035,10 @@ func kebabCase(in string) string {
 
 func getPathWithAction(resArgs []string, action string) string {
 	_, _, _, resPath := getArgsAndPaths(resArgs, action)
+	return resPath
+}
+
+func getPathWithActionNewStyle(resArgs []string, action string) string {
+	_, _, _, resPath := getArgsAndPathsNewStyle(resArgs, action)
 	return resPath
 }
