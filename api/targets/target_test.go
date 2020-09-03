@@ -41,25 +41,25 @@ func TestCustom(t *testing.T) {
 	require.NotNil(hSet2)
 
 	tarClient := targets.NewClient(client)
-	tar, apiErr, err := tarClient.Create2(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
+	tar, apiErr, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(tar)
 	assert.Empty(tar.HostSetIds)
 
-	tar, apiErr, err = tarClient.AddHostSets2(tc.Context(), tar.Id, tar.Version, []string{hSet.Id})
+	tar, apiErr, err = tarClient.AddHostSets(tc.Context(), tar.Id, tar.Version, []string{hSet.Id})
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(tar)
 	assert.ElementsMatch(tar.HostSetIds, []string{hSet.Id})
 
-	tar, apiErr, err = tarClient.SetHostSets2(tc.Context(), tar.Id, tar.Version, []string{hSet2.Id})
+	tar, apiErr, err = tarClient.SetHostSets(tc.Context(), tar.Id, tar.Version, []string{hSet2.Id})
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(tar)
 	assert.ElementsMatch(tar.HostSetIds, []string{hSet2.Id})
 
-	tar, apiErr, err = tarClient.RemoveHostSets2(tc.Context(), tar.Id, tar.Version, []string{hSet2.Id})
+	tar, apiErr, err = tarClient.RemoveHostSets(tc.Context(), tar.Id, tar.Version, []string{hSet2.Id})
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(tar)
@@ -77,7 +77,7 @@ func TestList(t *testing.T) {
 	client.SetScopeId(proj.GetPublicId())
 
 	tarClient := targets.NewClient(client)
-	ul, apiErr, err := tarClient.List2(tc.Context(), proj.GetPublicId())
+	ul, apiErr, err := tarClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 	assert.Empty(ul)
@@ -87,21 +87,21 @@ func TestList(t *testing.T) {
 		expected = append(expected, &targets.Target{Name: fmt.Sprint(i)})
 	}
 
-	expected[0], apiErr, err = tarClient.Create2(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName(expected[0].Name))
+	expected[0], apiErr, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName(expected[0].Name))
 	require.NoError(err)
 	require.Nil(apiErr)
 
-	ul, apiErr, err = tarClient.List2(tc.Context(), proj.GetPublicId())
+	ul, apiErr, err = tarClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul))
 
 	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = tarClient.Create2(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName(expected[i].Name))
+		expected[i], apiErr, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName(expected[i].Name))
 		require.NoError(err)
 		require.Nil(apiErr)
 	}
-	ul, apiErr, err = tarClient.List2(tc.Context(), proj.GetPublicId())
+	ul, apiErr, err = tarClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))
@@ -148,20 +148,20 @@ func TestCrud(t *testing.T) {
 
 	tarClient := targets.NewClient(client)
 
-	tar, apiErr, err := tarClient.Create2(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
+	tar, apiErr, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
 	checkResource(t, "create", tar, apiErr, err, "foo", 1)
 
-	tar, apiErr, err = tarClient.Read2(tc.Context(), tar.Id)
+	tar, apiErr, err = tarClient.Read(tc.Context(), tar.Id)
 	checkResource(t, "read", tar, apiErr, err, "foo", 1)
 
-	tar, apiErr, err = tarClient.Update2(tc.Context(), tar.Id, tar.Version, targets.WithName("bar"))
+	tar, apiErr, err = tarClient.Update(tc.Context(), tar.Id, tar.Version, targets.WithName("bar"))
 	checkResource(t, "update", tar, apiErr, err, "bar", 2)
 
-	existed, apiErr, err := tarClient.Delete2(tc.Context(), tar.Id)
+	existed, apiErr, err := tarClient.Delete(tc.Context(), tar.Id)
 	assert.NoError(err)
 	assert.True(existed, "Expected existing target when deleted, but it wasn't.")
 
-	existed, apiErr, err = tarClient.Delete2(tc.Context(), tar.Id)
+	existed, apiErr, err = tarClient.Delete(tc.Context(), tar.Id)
 	assert.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(apiErr.Status, http.StatusForbidden)
@@ -179,21 +179,21 @@ func TestSet_Errors(t *testing.T) {
 
 	tarClient := targets.NewClient(client)
 
-	tar, apiErr, err := tarClient.Create2(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
+	tar, apiErr, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
 	require.NoError(err)
 	require.Nil(apiErr)
 	assert.NotNil(tar)
-	tar, apiErr, err = tarClient.Create2(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
+	tar, apiErr, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.Nil(tar)
 
-	_, apiErr, err = tarClient.Read2(tc.Context(), target.TcpTargetPrefix+"_doesntexis")
+	_, apiErr, err = tarClient.Read(tc.Context(), target.TcpTargetPrefix+"_doesntexis")
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusForbidden, apiErr.Status)
 
-	_, apiErr, err = tarClient.Read2(tc.Context(), "invalid id")
+	_, apiErr, err = tarClient.Read(tc.Context(), "invalid id")
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)

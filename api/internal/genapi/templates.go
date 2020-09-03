@@ -91,6 +91,7 @@ type templateInput struct {
 	ExtraOptions           []fieldInfo
 	VersionEnabled         bool
 	TypeOnCreate           bool
+	Two                    string
 }
 
 func fillTemplates() {
@@ -105,6 +106,11 @@ func fillTemplates() {
 			ExtraOptions:   in.extraOptions,
 			VersionEnabled: in.versionEnabled,
 			TypeOnCreate:   in.typeOnCreate,
+			Two:            "2",
+		}
+
+		if in.useNewStyle && in.disableOldStyle {
+			input.Two = ""
 		}
 
 		if len(in.pathArgs) > 0 {
@@ -228,7 +234,7 @@ var listTemplate2 = template.Must(template.New("").Funcs(
 		"snakeCase": snakeCase,
 	},
 ).Parse(`
-func (c *Client) List2(ctx context.Context, {{ .CollectionFunctionArg2 }} string, opt... Option) ([]*{{ .Name }}, *api.Error, error) {
+func (c *Client) List{{ .Two }}(ctx context.Context, {{ .CollectionFunctionArg2 }} string, opt... Option) ([]*{{ .Name }}, *api.Error, error) {
 	if {{ .CollectionFunctionArg2 }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ .CollectionFunctionArg2 }} value passed into List request")
 	}
@@ -323,7 +329,7 @@ func (c *Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {
 `))
 
 var readTemplate2 = template.Must(template.New("").Parse(`
-func (c *Client) Read2(ctx context.Context, {{ .ResourceFunctionArg2 }} string, opt... Option) (*{{ .Name }}, *api.Error, error) {
+func (c *Client) Read{{ .Two }}(ctx context.Context, {{ .ResourceFunctionArg2 }} string, opt... Option) (*{{ .Name }}, *api.Error, error) {
 	if {{ .ResourceFunctionArg2 }} == "" {
 		return nil, nil, fmt.Errorf("empty  {{ .ResourceFunctionArg2 }} value passed into Read request")
 	}
@@ -407,7 +413,7 @@ func (c *Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ 
 `))
 
 var deleteTemplate2 = template.Must(template.New("").Parse(`
-func (c *Client) Delete2(ctx context.Context, {{ .ResourceFunctionArg2 }} string, opt... Option) (bool, *api.Error, error) { 
+func (c *Client) Delete{{ .Two }}(ctx context.Context, {{ .ResourceFunctionArg2 }} string, opt... Option) (bool, *api.Error, error) { 
 	if {{ .ResourceFunctionArg2 }} == "" {
 		return false, nil, fmt.Errorf("empty {{ .ResourceFunctionArg2 }} value passed into Delete request")
 	}
@@ -501,7 +507,7 @@ var createTemplate2 = template.Must(template.New("").Funcs(
 		"snakeCase": snakeCase,
 	},
 ).Parse(`
-func (c *Client) Create2(ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ .CollectionFunctionArg2 }} string, opt... Option) (*{{ .Name }}, *api.Error, error) {
+func (c *Client) Create{{ .Two }} (ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ .CollectionFunctionArg2 }} string, opt... Option) (*{{ .Name }}, *api.Error, error) {
 	if {{ .CollectionFunctionArg2 }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ .CollectionFunctionArg2 }} value passed into Create request")
 	}
@@ -598,7 +604,7 @@ func (c *Client) Create(ctx context.Context, {{ if .TypeOnCreate }} resourceType
 `))
 
 var updateTemplate2 = template.Must(template.New("").Parse(`
-func (c *Client) Update2(ctx context.Context, {{ .ResourceFunctionArg2 }} string, version uint32, opt... Option) (*{{ .Name }}, *api.Error, error) {
+func (c *Client) Update{{ .Two }}(ctx context.Context, {{ .ResourceFunctionArg2 }} string, version uint32, opt... Option) (*{{ .Name }}, *api.Error, error) {
 	if {{ .ResourceFunctionArg2 }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ .ResourceFunctionArg2 }} value passed into Update request")
 	}
@@ -614,7 +620,7 @@ func (c *Client) Update2(ctx context.Context, {{ .ResourceFunctionArg2 }} string
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read2(ctx, {{ .ResourceFunctionArg2 }}, opt...)
+		existingTarget, existingApiErr, existingErr := c.Read{{ .Two }}(ctx, {{ .ResourceFunctionArg2 }}, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
@@ -820,7 +826,7 @@ var sliceSubTypeTemplate2 = template.Must(template.New("").Funcs(
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
 {{ $resPath := getPathWithActionNewStyle $input.PathArgs $actionName }}
-func (c *Client) {{ $fullName }}2(ctx context.Context, {{ $input.ResourceFunctionArg2 }} string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}, *api.Error, error) { 
+func (c *Client) {{ $fullName }}{{ $input.Two }}(ctx context.Context, {{ $input.ResourceFunctionArg2 }} string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}, *api.Error, error) { 
 	if {{ $input.ResourceFunctionArg2 }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ $input.ResourceFunctionArg2 }} value passed into {{ $fullName }} request")
 	}
@@ -836,7 +842,7 @@ func (c *Client) {{ $fullName }}2(ctx context.Context, {{ $input.ResourceFunctio
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into {{ $fullName }} request")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read2(ctx, {{ $input.ResourceFunctionArg2 }}, opt...)
+		existingTarget, existingApiErr, existingErr := c.Read{{ $input.Two }}(ctx, {{ $input.ResourceFunctionArg2 }}, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}

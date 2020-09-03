@@ -37,7 +37,7 @@ func NewClient(c *api.Client) *Client {
 	return &Client{client: c}
 }
 
-func (c *Client) Create2(ctx context.Context, resourceType string, scopeId string, opt ...Option) (*Target, *api.Error, error) {
+func (c *Client) Create(ctx context.Context, resourceType string, scopeId string, opt ...Option) (*Target, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
@@ -83,7 +83,7 @@ func (c *Client) Create2(ctx context.Context, resourceType string, scopeId strin
 	return target, apiErr, nil
 }
 
-func (c *Client) Read2(ctx context.Context, targetId string, opt ...Option) (*Target, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, targetId string, opt ...Option) (*Target, *api.Error, error) {
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("empty  targetId value passed into Read request")
 	}
@@ -123,7 +123,7 @@ func (c *Client) Read2(ctx context.Context, targetId string, opt ...Option) (*Ta
 	return target, apiErr, nil
 }
 
-func (c *Client) Update2(ctx context.Context, targetId string, version uint32, opt ...Option) (*Target, *api.Error, error) {
+func (c *Client) Update(ctx context.Context, targetId string, version uint32, opt ...Option) (*Target, *api.Error, error) {
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("empty targetId value passed into Update request")
 	}
@@ -138,7 +138,7 @@ func (c *Client) Update2(ctx context.Context, targetId string, version uint32, o
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read2(ctx, targetId, opt...)
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, targetId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
@@ -182,7 +182,7 @@ func (c *Client) Update2(ctx context.Context, targetId string, version uint32, o
 	return target, apiErr, nil
 }
 
-func (c *Client) Delete2(ctx context.Context, targetId string, opt ...Option) (bool, *api.Error, error) {
+func (c *Client) Delete(ctx context.Context, targetId string, opt ...Option) (bool, *api.Error, error) {
 	if targetId == "" {
 		return false, nil, fmt.Errorf("empty targetId value passed into Delete request")
 	}
@@ -225,7 +225,7 @@ func (c *Client) Delete2(ctx context.Context, targetId string, opt ...Option) (b
 	return target.Existed, apiErr, nil
 }
 
-func (c *Client) List2(ctx context.Context, scopeId string, opt ...Option) ([]*Target, *api.Error, error) {
+func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) ([]*Target, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
 	}
@@ -269,7 +269,7 @@ func (c *Client) List2(ctx context.Context, scopeId string, opt ...Option) ([]*T
 	return target.Items, apiErr, nil
 }
 
-func (c *Client) AddHostSets2(ctx context.Context, targetId string, version uint32, hostSetIds []string, opt ...Option) (*Target, *api.Error, error) {
+func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint32, hostSetIds []string, opt ...Option) (*Target, *api.Error, error) {
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("empty targetId value passed into AddHostSets request")
 	}
@@ -284,7 +284,7 @@ func (c *Client) AddHostSets2(ctx context.Context, targetId string, version uint
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into AddHostSets request")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read2(ctx, targetId, opt...)
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, targetId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
@@ -332,7 +332,7 @@ func (c *Client) AddHostSets2(ctx context.Context, targetId string, version uint
 	return target, apiErr, nil
 }
 
-func (c *Client) SetHostSets2(ctx context.Context, targetId string, version uint32, hostSetIds []string, opt ...Option) (*Target, *api.Error, error) {
+func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint32, hostSetIds []string, opt ...Option) (*Target, *api.Error, error) {
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("empty targetId value passed into SetHostSets request")
 	}
@@ -347,7 +347,7 @@ func (c *Client) SetHostSets2(ctx context.Context, targetId string, version uint
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into SetHostSets request")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read2(ctx, targetId, opt...)
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, targetId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
@@ -398,7 +398,7 @@ func (c *Client) SetHostSets2(ctx context.Context, targetId string, version uint
 	return target, apiErr, nil
 }
 
-func (c *Client) RemoveHostSets2(ctx context.Context, targetId string, version uint32, hostSetIds []string, opt ...Option) (*Target, *api.Error, error) {
+func (c *Client) RemoveHostSets(ctx context.Context, targetId string, version uint32, hostSetIds []string, opt ...Option) (*Target, *api.Error, error) {
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("empty targetId value passed into RemoveHostSets request")
 	}
@@ -413,7 +413,7 @@ func (c *Client) RemoveHostSets2(ctx context.Context, targetId string, version u
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into RemoveHostSets request")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read2(ctx, targetId, opt...)
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, targetId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
