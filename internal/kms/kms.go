@@ -146,6 +146,10 @@ func generateKeyId(scopeId string, purpose KeyPurpose, version uint32) string {
 // multiwrapper. This is not necesary for encryption but should be supplied for
 // decryption.
 func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, opt ...Option) (wrapping.Wrapper, error) {
+	if scopeId == "" {
+		return nil, errors.New("no scope ID provided")
+	}
+
 	switch purpose {
 	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions:
 	case KeyPurposeUnknown:
@@ -153,6 +157,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	default:
 		return nil, fmt.Errorf("unsupported purpose %q", purpose)
 	}
+
 	opts := getOpts(opt...)
 	// Fast-path: we have a valid key at the scope/purpose. Verify the key with
 	// that ID is in the multiwrapper; if not, fall through to reload from the
@@ -173,6 +178,9 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	rootWrapper, rootKeyId, err := k.loadRoot(ctx, scopeId, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error loading root key for scope %s: %w", scopeId, err)
+	}
+	if rootWrapper == nil {
+		return nil, fmt.Errorf("got nil root wrapper for scope %s", scopeId)
 	}
 
 	wrapper, err := k.loadDek(ctx, scopeId, purpose, rootWrapper, rootKeyId, opt...)
@@ -249,17 +257,26 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	return multi, rootKeyId, err
 }
 
+// Dek is an interface wrapping dek types to allow a lot less switching in loadDek
 type Dek interface {
 	GetRootKeyId() string
 	GetPrivateId() string
 }
 
+// DekVersion is an interface wrapping versioned dek types to allow a lot less switching in loadDek
 type DekVersion interface {
 	GetPrivateId() string
 	GetKey() []byte
 }
 
 func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) (*multiwrapper.MultiWrapper, error) {
+	if rootWrapper == nil {
+		return nil, fmt.Errorf("got nil root wrapper in loadDek for scope %s", scopeId)
+	}
+	if rootKeyId == "" {
+		return nil, fmt.Errorf("no root key ID provided for scope %s", scopeId)
+	}
+
 	opts := getOpts(opt...)
 	repo := opts.withRepository
 	if repo == nil {
