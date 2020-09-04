@@ -11,7 +11,10 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -31,11 +34,11 @@ func init() {
 
 // Service handles request as described by the pbs.GroupServiceServer interface.
 type Service struct {
-	repoFn func() (*iam.Repository, error)
+	repoFn common.IamRepoFactory
 }
 
 // NewService returns a group service which handles group related requests to boundary.
-func NewService(repo func() (*iam.Repository, error)) (Service, error) {
+func NewService(repo common.IamRepoFactory) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
@@ -46,12 +49,12 @@ var _ pbs.GroupServiceServer = Service{}
 
 // ListGroups implements the interface pbs.GroupServiceServer.
 func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*pbs.ListGroupsResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	gl, err := s.listFromRepo(ctx, req.GetScopeId())
 	if err != nil {
@@ -65,12 +68,12 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 
 // GetGroups implements the interface pbs.GroupServiceServer.
 func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.GetGroupResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -82,14 +85,14 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 
 // CreateGroup implements the interface pbs.GroupServiceServer.
 func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (*pbs.CreateGroupResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, req.GetItem().GetScopeId(), req.GetItem())
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	u, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -99,12 +102,12 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 
 // UpdateGroup implements the interface pbs.GroupServiceServer.
 func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (*pbs.UpdateGroupResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
@@ -116,12 +119,12 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 
 // DeleteGroup implements the interface pbs.GroupServiceServer.
 func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (*pbs.DeleteGroupResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	existed, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -132,12 +135,12 @@ func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (
 
 // AddGroupMembers implements the interface pbs.GroupServiceServer.
 func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRequest) (*pbs.AddGroupMembersResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateAddGroupMembersRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.AddMembers)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	g, err := s.addMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion())
 	if err != nil {
@@ -148,12 +151,12 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 
 // SetGroupMembers implements the interface pbs.GroupServiceServer.
 func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRequest) (*pbs.SetGroupMembersResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateSetGroupMembersRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.SetMembers)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	g, err := s.setMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion())
 	if err != nil {
@@ -164,12 +167,12 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 
 // RemoveGroupMembers implements the interface pbs.GroupServiceServer.
 func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMembersRequest) (*pbs.RemoveGroupMembersResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateRemoveGroupMembersRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveMembers)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	g, err := s.removeMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion())
 	if err != nil {
@@ -340,6 +343,45 @@ func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userId
 		return nil, status.Error(codes.Internal, "Unable to lookup group after removing members from it.")
 	}
 	return toProto(out, m), nil
+}
+
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+	res := auth.VerifyResults{}
+	repo, err := s.repoFn()
+	if err != nil {
+		res.Error = err
+		return res
+	}
+
+	var parentId string
+	opts := []auth.Option{auth.WithType(resource.Group), auth.WithAction(a)}
+	switch a {
+	case action.List, action.Create:
+		parentId = id
+		scp, err := repo.LookupScope(ctx, parentId)
+		if err != nil {
+			res.Error = err
+			return res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return res
+		}
+	default:
+		grp, _, err := repo.LookupGroup(ctx, id)
+		if err != nil {
+			res.Error = err
+			return res
+		}
+		if grp == nil {
+			res.Error = handlers.ForbiddenError()
+			return res
+		}
+		parentId = grp.GetScopeId()
+		opts = append(opts, auth.WithId(id))
+	}
+	opts = append(opts, auth.WithScopeId(parentId))
+	return auth.Verify(ctx, opts...)
 }
 
 func toProto(in *iam.Group, members []*iam.GroupMember) *pb.Group {

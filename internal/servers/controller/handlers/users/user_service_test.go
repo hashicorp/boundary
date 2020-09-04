@@ -75,7 +75,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existant User",
 			req:     &pbs.GetUserRequest{Id: iam.UserPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.NotFound,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -194,10 +194,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteUserRequest{
 				Id: iam.UserPrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteUserResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name: "Bad User Id formatting",
@@ -233,8 +230,8 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteUser(ctx, req)
-	assert.NoError(gErr, "Second attempt")
-	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+	assert.Error(gErr, "Second attempt")
+	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -517,8 +514,6 @@ func TestUpdate(t *testing.T) {
 			},
 			errCode: codes.OK,
 		},
-		// TODO: Updating a non existant user should result in a NotFound exception but currently results in
-		// the repoFn returning an internal error.
 		{
 			name: "Update a Non Existing User",
 			req: &pbs.UpdateUserRequest{
@@ -531,7 +526,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.Internal,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name: "Cant change Id",

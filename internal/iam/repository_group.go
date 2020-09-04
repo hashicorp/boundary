@@ -2,6 +2,7 @@ package iam
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -139,6 +140,9 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, opt .
 		},
 	)
 	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, nil, nil
+		}
 		return nil, nil, fmt.Errorf("lookup group: failed %w for %s", err, withPublicId)
 	}
 	return &g, members, nil

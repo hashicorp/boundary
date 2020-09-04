@@ -700,14 +700,14 @@ func request_RoleService_AddRolePrincipals_0(ctx context.Context, marshaler runt
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := client.AddRolePrincipals(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -734,14 +734,14 @@ func local_request_RoleService_AddRolePrincipals_0(ctx context.Context, marshale
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := server.AddRolePrincipals(ctx, &protoReq)
@@ -768,14 +768,14 @@ func request_RoleService_AddRolePrincipals_1(ctx context.Context, marshaler runt
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := client.AddRolePrincipals(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -802,14 +802,14 @@ func local_request_RoleService_AddRolePrincipals_1(ctx context.Context, marshale
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := server.AddRolePrincipals(ctx, &protoReq)
@@ -836,14 +836,14 @@ func request_RoleService_SetRolePrincipals_0(ctx context.Context, marshaler runt
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := client.SetRolePrincipals(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -870,14 +870,14 @@ func local_request_RoleService_SetRolePrincipals_0(ctx context.Context, marshale
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := server.SetRolePrincipals(ctx, &protoReq)
@@ -904,14 +904,14 @@ func request_RoleService_SetRolePrincipals_1(ctx context.Context, marshaler runt
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := client.SetRolePrincipals(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -938,14 +938,14 @@ func local_request_RoleService_SetRolePrincipals_1(ctx context.Context, marshale
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := server.SetRolePrincipals(ctx, &protoReq)
@@ -972,14 +972,14 @@ func request_RoleService_RemoveRolePrincipals_0(ctx context.Context, marshaler r
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := client.RemoveRolePrincipals(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1006,14 +1006,14 @@ func local_request_RoleService_RemoveRolePrincipals_0(ctx context.Context, marsh
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := server.RemoveRolePrincipals(ctx, &protoReq)
@@ -1040,14 +1040,14 @@ func request_RoleService_RemoveRolePrincipals_1(ctx context.Context, marshaler r
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := client.RemoveRolePrincipals(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1074,14 +1074,14 @@ func local_request_RoleService_RemoveRolePrincipals_1(ctx context.Context, marsh
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := server.RemoveRolePrincipals(ctx, &protoReq)
@@ -1108,14 +1108,14 @@ func request_RoleService_AddRoleGrants_0(ctx context.Context, marshaler runtime.
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := client.AddRoleGrants(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1142,14 +1142,14 @@ func local_request_RoleService_AddRoleGrants_0(ctx context.Context, marshaler ru
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := server.AddRoleGrants(ctx, &protoReq)
@@ -1176,14 +1176,14 @@ func request_RoleService_AddRoleGrants_1(ctx context.Context, marshaler runtime.
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := client.AddRoleGrants(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1210,14 +1210,14 @@ func local_request_RoleService_AddRoleGrants_1(ctx context.Context, marshaler ru
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := server.AddRoleGrants(ctx, &protoReq)
@@ -1244,14 +1244,14 @@ func request_RoleService_SetRoleGrants_0(ctx context.Context, marshaler runtime.
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := client.SetRoleGrants(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1278,14 +1278,14 @@ func local_request_RoleService_SetRoleGrants_0(ctx context.Context, marshaler ru
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := server.SetRoleGrants(ctx, &protoReq)
@@ -1312,14 +1312,14 @@ func request_RoleService_SetRoleGrants_1(ctx context.Context, marshaler runtime.
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := client.SetRoleGrants(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1346,14 +1346,14 @@ func local_request_RoleService_SetRoleGrants_1(ctx context.Context, marshaler ru
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := server.SetRoleGrants(ctx, &protoReq)
@@ -1380,14 +1380,14 @@ func request_RoleService_RemoveRoleGrants_0(ctx context.Context, marshaler runti
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := client.RemoveRoleGrants(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1414,14 +1414,14 @@ func local_request_RoleService_RemoveRoleGrants_0(ctx context.Context, marshaler
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := server.RemoveRoleGrants(ctx, &protoReq)
@@ -1448,14 +1448,14 @@ func request_RoleService_RemoveRoleGrants_1(ctx context.Context, marshaler runti
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := client.RemoveRoleGrants(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1482,14 +1482,14 @@ func local_request_RoleService_RemoveRoleGrants_1(ctx context.Context, marshaler
 		_   = err
 	)
 
-	val, ok = pathParams["role_id"]
+	val, ok = pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "role_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.RoleId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
 	msg, err := server.RemoveRoleGrants(ctx, &protoReq)
@@ -2610,29 +2610,29 @@ var (
 
 	pattern_RoleService_DeleteRole_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "id"}, ""))
 
-	pattern_RoleService_AddRolePrincipals_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "roles", "role_id"}, "add-principals"))
+	pattern_RoleService_AddRolePrincipals_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "roles", "id"}, "add-principals"))
 
-	pattern_RoleService_AddRolePrincipals_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "role_id"}, "add-principals"))
+	pattern_RoleService_AddRolePrincipals_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "id"}, "add-principals"))
 
-	pattern_RoleService_SetRolePrincipals_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "roles", "role_id"}, "set-principals"))
+	pattern_RoleService_SetRolePrincipals_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "roles", "id"}, "set-principals"))
 
-	pattern_RoleService_SetRolePrincipals_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "role_id"}, "set-principals"))
+	pattern_RoleService_SetRolePrincipals_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "id"}, "set-principals"))
 
-	pattern_RoleService_RemoveRolePrincipals_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "roles", "role_id"}, "remove-principals"))
+	pattern_RoleService_RemoveRolePrincipals_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "roles", "id"}, "remove-principals"))
 
-	pattern_RoleService_RemoveRolePrincipals_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "role_id"}, "remove-principals"))
+	pattern_RoleService_RemoveRolePrincipals_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "id"}, "remove-principals"))
 
-	pattern_RoleService_AddRoleGrants_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "roles", "role_id"}, "add-grants"))
+	pattern_RoleService_AddRoleGrants_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "roles", "id"}, "add-grants"))
 
-	pattern_RoleService_AddRoleGrants_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "role_id"}, "add-grants"))
+	pattern_RoleService_AddRoleGrants_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "id"}, "add-grants"))
 
-	pattern_RoleService_SetRoleGrants_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "roles", "role_id"}, "set-grants"))
+	pattern_RoleService_SetRoleGrants_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "roles", "id"}, "set-grants"))
 
-	pattern_RoleService_SetRoleGrants_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "role_id"}, "set-grants"))
+	pattern_RoleService_SetRoleGrants_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "id"}, "set-grants"))
 
-	pattern_RoleService_RemoveRoleGrants_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "roles", "role_id"}, "remove-grants"))
+	pattern_RoleService_RemoveRoleGrants_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "roles", "id"}, "remove-grants"))
 
-	pattern_RoleService_RemoveRoleGrants_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "role_id"}, "remove-grants"))
+	pattern_RoleService_RemoveRoleGrants_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "roles", "id"}, "remove-grants"))
 )
 
 var (

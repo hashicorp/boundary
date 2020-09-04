@@ -2,6 +2,7 @@ package iam
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -150,6 +151,9 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		},
 	)
 	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, nil, nil, nil
+		}
 		return nil, nil, nil, err
 	}
 	return &role, pr, rg, nil

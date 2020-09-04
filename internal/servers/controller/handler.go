@@ -93,7 +93,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 		runtime.WithErrorHandler(handlers.ErrorHandler(c.logger)),
 		runtime.WithForwardResponseOption(handlers.OutgoingInterceptor),
 	)
-	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
+	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.IamRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
 	}
@@ -128,14 +128,14 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	if err := services.RegisterAuthenticationServiceHandlerServer(ctx, mux, auths); err != nil {
 		return nil, fmt.Errorf("failed to register authenticate service handler: %w", err)
 	}
-	authMethods, err := authmethods.NewService(c.PasswordAuthRepoFn)
+	authMethods, err := authmethods.NewService(c.PasswordAuthRepoFn, c.IamRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth method handler service: %w", err)
 	}
 	if err := services.RegisterAuthMethodServiceHandlerServer(ctx, mux, authMethods); err != nil {
 		return nil, fmt.Errorf("failed to register auth method service handler: %w", err)
 	}
-	authtoks, err := authtokens.NewService(c.AuthTokenRepoFn)
+	authtoks, err := authtokens.NewService(c.AuthTokenRepoFn, c.IamRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth token handler service: %w", err)
 	}

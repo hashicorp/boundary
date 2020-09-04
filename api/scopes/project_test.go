@@ -147,5 +147,5 @@ func TestProject_Errors(t *testing.T) {
 	_, apiErr, err = scps.Read(tc.Context(), "invalid id")
 	assert.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -29,7 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Scope, func() (*static.Repository, error)) {
+func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Scope, common.StaticRepoFactory, common.IamRepoFactory) {
 	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -42,6 +43,9 @@ func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Sc
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
 
 	hc, err := static.NewHostCatalog(pRes.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
 	require.NoError(err, "Couldn't get new catalog.")
@@ -50,12 +54,12 @@ func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Sc
 	hcRes, err := repo.CreateCatalog(context.Background(), hc)
 	require.NoError(err, "Couldn't persist new catalog.")
 
-	return hcRes, pRes, repoFn
+	return hcRes, pRes, repoFn, iamRepoFn
 }
 
 func TestGet(t *testing.T) {
 	t.Parallel()
-	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
+	hc, proj, repo, iamRepoFn := createDefaultHostCatalogAndRepo(t)
 	toMerge := &pbs.GetHostCatalogRequest{
 		Id: hc.GetPublicId(),
 	}
@@ -87,7 +91,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existing Host Catalog",
 			req:     &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.NotFound,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -108,7 +112,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_catalogs.NewService(repo)
+			s, err := host_catalogs.NewService(repo, iamRepoFn)
 			require.NoError(t, err, "Couldn't create a new host catalog service.")
 
 			got, gErr := s.GetHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
@@ -127,6 +131,9 @@ func TestList(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
@@ -186,21 +193,19 @@ func TestList(t *testing.T) {
 			res:     &pbs.ListHostCatalogsResponse{},
 			errCode: codes.OK,
 		},
-		// TODO: When an auth method doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:    "Unfound Catalogs",
 			scopeId: scope.Project.Prefix() + "_DoesntExis",
-			res:     &pbs.ListHostCatalogsResponse{},
-			errCode: codes.OK,
+			errCode: codes.PermissionDenied,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := host_catalogs.NewService(repoFn)
+			s, err := host_catalogs.NewService(repoFn, iamRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.ListHostCatalogs(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListHostCatalogsRequest{})
+			got, gErr := s.ListHostCatalogs(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListHostCatalogsRequest{ScopeId: tc.scopeId})
 			assert.Equal(tc.errCode, status.Code(gErr), "ListHostCatalogs() for scope %q got error %v, wanted %v", tc.scopeId, gErr, tc.errCode)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostCatalogs() for scope %q got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
@@ -210,9 +215,9 @@ func TestList(t *testing.T) {
 func TestDelete(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
-	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
+	hc, proj, repo, iamRepoFn := createDefaultHostCatalogAndRepo(t)
 
-	s, err := host_catalogs.NewService(repo)
+	s, err := host_catalogs.NewService(repo, iamRepoFn)
 	require.NoError(err, "Couldn't create a new host catalog service.")
 
 	cases := []struct {
@@ -239,32 +244,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostCatalogRequest{
 				Id: static.HostCatalogPrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteHostCatalogResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
-		},
-		{
-			name:    "Delete bad org id in HostCatalog",
-			scopeId: "o_doesntexis",
-			req: &pbs.DeleteHostCatalogRequest{
-				Id: hc.GetPublicId(),
-			},
-			res: &pbs.DeleteHostCatalogResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
-		},
-		{
-			name:    "Delete bad project id in HostCatalog",
-			scopeId: "p_doesntexis",
-			req: &pbs.DeleteHostCatalogRequest{
-				Id: hc.GetPublicId(),
-			},
-			res: &pbs.DeleteHostCatalogResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Bad HostCatalog Id formatting",
@@ -289,9 +269,9 @@ func TestDelete(t *testing.T) {
 func TestDelete_twice(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
+	hc, proj, repo, iamRepoFn := createDefaultHostCatalogAndRepo(t)
 
-	s, err := host_catalogs.NewService(repo)
+	s, err := host_catalogs.NewService(repo, iamRepoFn)
 	require.NoError(t, err, "Couldn't create a new host catalog service.")
 	req := &pbs.DeleteHostCatalogRequest{
 		Id: hc.GetPublicId(),
@@ -301,17 +281,15 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteHostCatalog(ctx, req)
-	assert.NoError(gErr, "Second attempt")
-	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+	assert.Error(gErr, "Second attempt")
+	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
 	t.Parallel()
-	require := require.New(t)
-	assert := assert.New(t)
-	defaultHc, proj, repo := createDefaultHostCatalogAndRepo(t)
+	defaultHc, proj, repo, iamRepoFn := createDefaultHostCatalogAndRepo(t)
 	defaultHcCreated, err := ptypes.Timestamp(defaultHc.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Error converting proto to timestamp.")
+	require.NoError(t, err, "Error converting proto to timestamp.")
 	toMerge := &pbs.CreateHostCatalogRequest{}
 
 	cases := []struct {
@@ -323,6 +301,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid HostCatalog",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
+				ScopeId:     proj.GetPublicId(),
 				Name:        &wrappers.StringValue{Value: "name"},
 				Description: &wrappers.StringValue{Value: "desc"},
 				Type:        "static",
@@ -383,10 +362,11 @@ func TestCreate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.CreateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_catalogs.NewService(repo)
+			s, err := host_catalogs.NewService(repo, iamRepoFn)
 			require.NoError(err, "Failed to create a new host catalog service.")
 
 			got, gErr := s.CreateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
@@ -417,25 +397,23 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	t.Parallel()
-	require := require.New(t)
-	assert := assert.New(t)
-	hc, proj, repoFn := createDefaultHostCatalogAndRepo(t)
-	tested, err := host_catalogs.NewService(repoFn)
-	require.NoError(err, "Failed to create a new host catalog service.")
+	hc, proj, repoFn, iamRepoFn := createDefaultHostCatalogAndRepo(t)
+	tested, err := host_catalogs.NewService(repoFn, iamRepoFn)
+	require.NoError(t, err, "Failed to create a new host catalog service.")
 
 	var version uint32 = 1
 
 	resetHostCatalog := func() {
 		version++
 		repo, err := repoFn()
-		require.NoError(err, "Couldn't create new static repo.")
+		require.NoError(t, err, "Couldn't create new static repo.")
 		hc, _, err = repo.UpdateCatalog(context.Background(), hc, version, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset host catalog.")
+		require.NoError(t, err, "Failed to reset host catalog.")
 		version++
 	}
 
 	hcCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Failed to convert proto to timestamp")
+	require.NoError(t, err, "Failed to convert proto to timestamp")
 	toMerge := &pbs.UpdateHostCatalogRequest{
 		Id: hc.GetPublicId(),
 	}
@@ -618,8 +596,6 @@ func TestUpdate(t *testing.T) {
 			},
 			errCode: codes.OK,
 		},
-		// TODO: Updating a non existing catalog should result in a NotFound exception but currently results in
-		// the repoFn returning an internal error.
 		{
 			name: "Update a Non Existing HostCatalog",
 			req: &pbs.UpdateHostCatalogRequest{
@@ -633,7 +609,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.Internal,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name: "Cant change Id",
@@ -693,6 +669,7 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			tc.req.Item.Version = version
 
 			req := proto.Clone(toMerge).(*pbs.UpdateHostCatalogRequest)

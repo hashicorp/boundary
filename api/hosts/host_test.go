@@ -137,8 +137,9 @@ func TestHost_Crud(t *testing.T) {
 	assert.True(existed, "Expected existing catalog when deleted, but it wasn't.")
 
 	existed, apiErr, err = hClient.Delete(tc.Context(), hc.Id, h.Id)
-	assert.NoError(err)
-	assert.False(existed, "Expected catalog to not exist when deleted, but it did.")
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusForbidden, apiErr.Status)
 }
 
 // TODO: Get better coverage for expected errors and error formats.
@@ -176,10 +177,10 @@ func TestHost_Errors(t *testing.T) {
 	_, apiErr, err = hClient.Read(tc.Context(), hc.Id, static.HostPrefix+"_doesntexis")
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(apiErr.Status, http.StatusNotFound)
+	assert.EqualValues(apiErr.Status, http.StatusForbidden)
 
 	_, apiErr, err = hClient.Read(tc.Context(), hc.Id, "invalid id")
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 }

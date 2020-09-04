@@ -535,9 +535,8 @@ func TestRepository_DeleteRole(t *testing.T) {
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundRole, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
-			assert.Error(err)
+			assert.NoError(err)
 			assert.Nil(foundRole)
-			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
 			err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)

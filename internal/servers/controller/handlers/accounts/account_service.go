@@ -11,7 +11,10 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -30,11 +33,11 @@ func init() {
 
 // Service handles request as described by the pbs.AccountServiceServer interface.
 type Service struct {
-	repoFn func() (*password.Repository, error)
+	repoFn common.PasswordAuthRepoFactory
 }
 
 // NewService returns a user service which handles user related requests to boundary.
-func NewService(repo func() (*password.Repository, error)) (Service, error) {
+func NewService(repo common.PasswordAuthRepoFactory) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil password repository provided")
 	}
@@ -43,16 +46,14 @@ func NewService(repo func() (*password.Repository, error)) (Service, error) {
 
 var _ pbs.AccountServiceServer = Service{}
 
-// TODO(ICU-407): Validate that the provided auth method and account are in the provided scope.
-
 // ListAccounts implements the interface pbs.AccountServiceServer.
 func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest) (*pbs.ListAccountsResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	ul, err := s.listFromRepo(ctx, req.GetAuthMethodId())
 	if err != nil {
@@ -66,12 +67,12 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 
 // GetAccount implements the interface pbs.AccountServiceServer.
 func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*pbs.GetAccountResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -83,14 +84,14 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 
 // CreateAccount implements the interface pbs.AccountServiceServer.
 func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountRequest) (*pbs.CreateAccountResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, req.GetItem().GetAuthMethodId(), authResults.Scope.GetId(), req.GetItem())
+	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetAuthMethodId(), action.Create)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	u, err := s.createInRepo(ctx, authMeth.GetPublicId(), authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -100,14 +101,14 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 
 // UpdateAccount implements the interface pbs.AccountServiceServer.
 func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountRequest) (*pbs.UpdateAccountResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), authMeth.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -117,12 +118,12 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 
 // DeleteAccount implements the interface pbs.AccountServiceServer.
 func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountRequest) (*pbs.DeleteAccountResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
@@ -133,12 +134,12 @@ func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountReques
 
 // ChangePassword implements the interface pbs.AccountServiceServer.
 func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequest) (*pbs.ChangePasswordResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateChangePasswordRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.ChangePassword)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.changePasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetOldPassword(), req.GetNewPassword())
 	if err != nil {
@@ -150,12 +151,12 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 
 // SetPassword implements the interface pbs.AccountServiceServer.
 func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (*pbs.SetPasswordResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateSetPasswordRequest(req); err != nil {
 		return nil, err
+	}
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetPassword)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.setPasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetPassword())
 	if err != nil {
@@ -218,7 +219,7 @@ func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string,
 	return toProto(out)
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Account) (*pb.Account, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id string, mask []string, item *pb.Account) (*pb.Account, error) {
 	var opts []password.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, password.WithDescription(desc.GetValue()))
@@ -226,7 +227,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if name := item.GetName(); name != nil {
 		opts = append(opts, password.WithName(name.GetValue()))
 	}
-	u, err := password.NewAccount("ignored", opts...)
+	u, err := password.NewAccount(authMethId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build auth method for update: %v.", err)
 	}
@@ -269,7 +270,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
 		}
-		return false, status.Errorf(codes.Internal, "Unable to delete user: %v.", err)
+		return false, status.Errorf(codes.Internal, "Unable to delete account: %v.", err)
 	}
 	return rows > 0, nil
 }
@@ -319,6 +320,47 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 		return nil, status.Errorf(codes.Internal, "Unable to set password: %v.", err)
 	}
 	return toProto(out)
+}
+
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*password.AuthMethod, auth.VerifyResults) {
+	res := auth.VerifyResults{}
+	repo, err := s.repoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+
+	var parentId string
+	var authMeth *password.AuthMethod
+	opts := []auth.Option{auth.WithType(resource.Account), auth.WithAction(a)}
+	switch a {
+	case action.List, action.Create:
+		parentId = id
+	default:
+		acct, err := repo.LookupAccount(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if acct == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		parentId = acct.GetAuthMethodId()
+		opts = append(opts, auth.WithId(id))
+	}
+
+	authMeth, err = repo.LookupAuthMethod(ctx, parentId)
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	if authMeth == nil {
+		res.Error = handlers.ForbiddenError()
+		return nil, res
+	}
+	opts = append(opts, auth.WithScopeId(authMeth.GetScopeId()), auth.WithPin(parentId))
+	return authMeth, auth.Verify(ctx, opts...)
 }
 
 func toProto(in *password.Account) (*pb.Account, error) {

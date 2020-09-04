@@ -1425,7 +1425,7 @@
         ]
       }
     },
-    "/v1/roles/{role_id}:add-grants": {
+    "/v1/roles/{id}:add-grants": {
       "post": {
         "summary": "Adds grants to a role",
         "operationId": "RoleService_AddRoleGrants",
@@ -1439,7 +1439,7 @@
         },
         "parameters": [
           {
-            "name": "role_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1458,7 +1458,7 @@
         ]
       }
     },
-    "/v1/roles/{role_id}:add-principals": {
+    "/v1/roles/{id}:add-principals": {
       "post": {
         "summary": "Adds Users and/or Groups to a Role",
         "operationId": "RoleService_AddRolePrincipals",
@@ -1472,7 +1472,7 @@
         },
         "parameters": [
           {
-            "name": "role_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1491,7 +1491,7 @@
         ]
       }
     },
-    "/v1/roles/{role_id}:remove-grants": {
+    "/v1/roles/{id}:remove-grants": {
       "post": {
         "summary": "Removes grants from a role.",
         "operationId": "RoleService_RemoveRoleGrants",
@@ -1505,7 +1505,7 @@
         },
         "parameters": [
           {
-            "name": "role_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1524,7 +1524,7 @@
         ]
       }
     },
-    "/v1/roles/{role_id}:remove-principals": {
+    "/v1/roles/{id}:remove-principals": {
       "post": {
         "summary": "Removes the specified Users and/or Groups from a Role.",
         "operationId": "RoleService_RemoveRolePrincipals",
@@ -1538,7 +1538,7 @@
         },
         "parameters": [
           {
-            "name": "role_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1557,7 +1557,7 @@
         ]
       }
     },
-    "/v1/roles/{role_id}:set-grants": {
+    "/v1/roles/{id}:set-grants": {
       "post": {
         "summary": "Set grants for a role, removing any grants that are not specified in the request.",
         "operationId": "RoleService_SetRoleGrants",
@@ -1571,7 +1571,7 @@
         },
         "parameters": [
           {
-            "name": "role_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1590,7 +1590,7 @@
         ]
       }
     },
-    "/v1/roles/{role_id}:set-principals": {
+    "/v1/roles/{id}:set-principals": {
       "post": {
         "summary": "Set Users and/or Groups to a Role, removing any principals that are not specified in the request.",
         "operationId": "RoleService_SetRolePrincipals",
@@ -1604,7 +1604,7 @@
         },
         "parameters": [
           {
-            "name": "role_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2900,7 +2900,7 @@
         ]
       }
     },
-    "/v1/scopes/*/roles/{role_id}:add-grants": {
+    "/v1/scopes/*/roles/{id}:add-grants": {
       "post": {
         "summary": "Adds grants to a role",
         "operationId": "RoleService_AddRoleGrants2",
@@ -2914,7 +2914,7 @@
         },
         "parameters": [
           {
-            "name": "role_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2933,7 +2933,7 @@
         ]
       }
     },
-    "/v1/scopes/*/roles/{role_id}:add-principals": {
+    "/v1/scopes/*/roles/{id}:add-principals": {
       "post": {
         "summary": "Adds Users and/or Groups to a Role",
         "operationId": "RoleService_AddRolePrincipals2",
@@ -2947,7 +2947,7 @@
         },
         "parameters": [
           {
-            "name": "role_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2966,7 +2966,7 @@
         ]
       }
     },
-    "/v1/scopes/*/roles/{role_id}:remove-grants": {
+    "/v1/scopes/*/roles/{id}:remove-grants": {
       "post": {
         "summary": "Removes grants from a role.",
         "operationId": "RoleService_RemoveRoleGrants2",
@@ -2980,7 +2980,7 @@
         },
         "parameters": [
           {
-            "name": "role_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2999,7 +2999,7 @@
         ]
       }
     },
-    "/v1/scopes/*/roles/{role_id}:remove-principals": {
+    "/v1/scopes/*/roles/{id}:remove-principals": {
       "post": {
         "summary": "Removes the specified Users and/or Groups from a Role.",
         "operationId": "RoleService_RemoveRolePrincipals2",
@@ -3013,7 +3013,7 @@
         },
         "parameters": [
           {
-            "name": "role_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3032,7 +3032,7 @@
         ]
       }
     },
-    "/v1/scopes/*/roles/{role_id}:set-grants": {
+    "/v1/scopes/*/roles/{id}:set-grants": {
       "post": {
         "summary": "Set grants for a role, removing any grants that are not specified in the request.",
         "operationId": "RoleService_SetRoleGrants2",
@@ -3046,7 +3046,7 @@
         },
         "parameters": [
           {
-            "name": "role_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3065,7 +3065,7 @@
         ]
       }
     },
-    "/v1/scopes/*/roles/{role_id}:set-principals": {
+    "/v1/scopes/*/roles/{id}:set-principals": {
       "post": {
         "summary": "Set Users and/or Groups to a Role, removing any principals that are not specified in the request.",
         "operationId": "RoleService_SetRolePrincipals2",
@@ -3079,7 +3079,7 @@
         },
         "parameters": [
           {
-            "name": "role_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -4867,7 +4867,7 @@
     "controller.api.services.v1.AddRoleGrantsRequest": {
       "type": "object",
       "properties": {
-        "role_id": {
+        "id": {
           "type": "string"
         },
         "version": {
@@ -4894,7 +4894,7 @@
     "controller.api.services.v1.AddRolePrincipalsRequest": {
       "type": "object",
       "properties": {
-        "role_id": {
+        "id": {
           "type": "string"
         },
         "version": {
@@ -5476,7 +5476,7 @@
     "controller.api.services.v1.RemoveRoleGrantsRequest": {
       "type": "object",
       "properties": {
-        "role_id": {
+        "id": {
           "type": "string"
         },
         "version": {
@@ -5503,7 +5503,7 @@
     "controller.api.services.v1.RemoveRolePrincipalsRequest": {
       "type": "object",
       "properties": {
-        "role_id": {
+        "id": {
           "type": "string"
         },
         "version": {
@@ -5635,7 +5635,7 @@
     "controller.api.services.v1.SetRoleGrantsRequest": {
       "type": "object",
       "properties": {
-        "role_id": {
+        "id": {
           "type": "string"
         },
         "version": {
@@ -5662,7 +5662,7 @@
     "controller.api.services.v1.SetRolePrincipalsRequest": {
       "type": "object",
       "properties": {
-        "role_id": {
+        "id": {
           "type": "string"
         },
         "version": {

@@ -27,11 +27,14 @@ func TestGet(t *testing.T) {
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrap), nil
+	}
 	repoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
 
-	s, err := authtokens.NewService(repoFn)
+	s, err := authtokens.NewService(repoFn, iamRepoFn)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -65,7 +68,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existing auth token",
 			req:     &pbs.GetAuthTokenRequest{Id: authtoken.AuthTokenPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.NotFound,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -95,6 +98,9 @@ func TestList(t *testing.T) {
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrap), nil
+	}
 	repoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
@@ -164,13 +170,12 @@ func TestList(t *testing.T) {
 		{
 			name:    "Unfound Org",
 			scope:   scope.Org.Prefix() + "_DoesntExis",
-			res:     &pbs.ListAuthTokensResponse{},
-			errCode: codes.OK,
+			errCode: codes.PermissionDenied,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := authtokens.NewService(repoFn)
+			s, err := authtokens.NewService(repoFn, iamRepoFn)
 			require.NoError(t, err, "Couldn't create new user service.")
 
 			got, gErr := s.ListAuthTokens(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scope)), &pbs.ListAuthTokensRequest{ScopeId: tc.scope})
@@ -185,17 +190,18 @@ func TestDelete(t *testing.T) {
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrap), nil
+	}
 	repoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
-	wrongOrg, _ := iam.TestScopes(t, iamRepo)
 	org, _ := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
-	atForWrongOrg := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 
-	s, err := authtokens.NewService(repoFn)
+	s, err := authtokens.NewService(repoFn, iamRepoFn)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -217,28 +223,12 @@ func TestDelete(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name:  "Delete token from wrong scope",
-			scope: wrongOrg.GetPublicId(),
-			req: &pbs.DeleteAuthTokenRequest{
-				Id: atForWrongOrg.GetPublicId(),
-			},
-			// TODO(toddknight): This should return Existed:false. Figure out if this test is testing something valid
-			// and if so make it pass.
-			res: &pbs.DeleteAuthTokenResponse{
-				Existed: true,
-			},
-			errCode: codes.OK,
-		},
-		{
 			name:  "Delete bad token id",
 			scope: org.GetPublicId(),
 			req: &pbs.DeleteAuthTokenRequest{
 				Id: authtoken.AuthTokenPrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteAuthTokenResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:  "Bad token id formatting",
@@ -266,6 +256,9 @@ func TestDelete_twice(t *testing.T) {
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrap), nil
+	}
 	repoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
@@ -274,7 +267,7 @@ func TestDelete_twice(t *testing.T) {
 	org, _ := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 
-	s, err := authtokens.NewService(repoFn)
+	s, err := authtokens.NewService(repoFn, iamRepoFn)
 	require.NoError(t, err, "Error when getting new user service")
 	req := &pbs.DeleteAuthTokenRequest{
 		Id: at.GetPublicId(),
@@ -283,6 +276,6 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(at.GetScopeId())), req)
-	assert.NoError(gErr, "Second attempt")
-	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+	assert.Error(gErr, "Second attempt")
+	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
 }

@@ -113,11 +113,11 @@ service RoleService {
   // non-existing resources, an error is returned.
   rpc AddRolePrincipals(AddRolePrincipalsRequest) returns (AddRolePrincipalsResponse) {
     option (google.api.http) = {
-      post: "/v1/roles/{role_id}:add-principals"
+      post: "/v1/roles/{id}:add-principals"
       body: "*"
       response_body: "item"
       additional_bindings {
-        post: "/v1/scopes/*/roles/{role_id}:add-principals"
+        post: "/v1/scopes/*/roles/{id}:add-principals"
         body: "*"
         response_body: "item"
       }
@@ -135,11 +135,11 @@ service RoleService {
   // returned.
   rpc SetRolePrincipals(SetRolePrincipalsRequest) returns (SetRolePrincipalsResponse) {
     option (google.api.http) = {
-      post: "/v1/roles/{role_id}:set-principals"
+      post: "/v1/roles/{id}:set-principals"
       body: "*"
       response_body: "item"
       additional_bindings {
-        post: "/v1/scopes/*/roles/{role_id}:set-principals"
+        post: "/v1/scopes/*/roles/{id}:set-principals"
         body: "*"
         response_body: "item"
       }
@@ -156,11 +156,11 @@ service RoleService {
   // is not an error to have duplicate user/group ids.
   rpc RemoveRolePrincipals(RemoveRolePrincipalsRequest) returns (RemoveRolePrincipalsResponse) {
     option (google.api.http) = {
-      post: "/v1/roles/{role_id}:remove-principals"
+      post: "/v1/roles/{id}:remove-principals"
       body: "*"
       response_body: "item"
       additional_bindings {
-        post: "/v1/scopes/*/roles/{role_id}:remove-principals"
+        post: "/v1/scopes/*/roles/{id}:remove-principals"
         body: "*"
         response_body: "item"
       }
@@ -176,11 +176,11 @@ service RoleService {
   // an error is returned.  It is not an error to have duplicate grants.
   rpc AddRoleGrants(AddRoleGrantsRequest) returns (AddRoleGrantsResponse) {
     option (google.api.http) = {
-      post: "/v1/roles/{role_id}:add-grants"
+      post: "/v1/roles/{id}:add-grants"
       body: "*"
       response_body: "item"
       additional_bindings {
-        post: "/v1/scopes/*/roles/{role_id}:add-grants"
+        post: "/v1/scopes/*/roles/{id}:add-grants"
         body: "*"
         response_body: "item"
       }
@@ -197,11 +197,11 @@ service RoleService {
   // error is returned. It is not an error to have duplicate grants.
   rpc SetRoleGrants(SetRoleGrantsRequest) returns (SetRoleGrantsResponse) {
     option (google.api.http) = {
-      post: "/v1/roles/{role_id}:set-grants"
+      post: "/v1/roles/{id}:set-grants"
       body: "*"
       response_body: "item"
       additional_bindings {
-        post: "/v1/scopes/*/roles/{role_id}:set-grants"
+        post: "/v1/scopes/*/roles/{id}:set-grants"
         body: "*"
         response_body: "item"
       }
@@ -218,11 +218,11 @@ service RoleService {
   // have duplicate grants.
   rpc RemoveRoleGrants(RemoveRoleGrantsRequest) returns (RemoveRoleGrantsResponse) {
     option (google.api.http) = {
-      post: "/v1/roles/{role_id}:remove-grants"
+      post: "/v1/roles/{id}:remove-grants"
       body: "*"
       response_body: "item"
       additional_bindings {
-        post: "/v1/scopes/*/roles/{role_id}:remove-grants"
+        post: "/v1/scopes/*/roles/{id}:remove-grants"
         body: "*"
         response_body: "item"
       }
@@ -281,7 +281,7 @@ message DeleteRoleResponse {
 }
 
 message AddRolePrincipalsRequest {
-  string role_id = 1;
+  string id = 1;
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
@@ -293,7 +293,7 @@ message AddRolePrincipalsResponse {
 }
 
 message SetRolePrincipalsRequest {
-  string role_id = 1;
+  string id = 1;
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
@@ -305,7 +305,7 @@ message SetRolePrincipalsResponse {
 }
 
 message RemoveRolePrincipalsRequest {
-  string role_id = 1;
+  string id = 1;
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
@@ -317,7 +317,7 @@ message RemoveRolePrincipalsResponse {
 }
 
 message AddRoleGrantsRequest {
-  string role_id = 1;
+  string id = 1;
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
@@ -329,7 +329,7 @@ message AddRoleGrantsResponse {
 }
 
 message SetRoleGrantsRequest {
-  string role_id = 1;
+  string id = 1;
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
@@ -341,7 +341,7 @@ message SetRoleGrantsResponse {
 }
 
 message RemoveRoleGrantsRequest {
-  string role_id = 1;
+  string id = 1;
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;

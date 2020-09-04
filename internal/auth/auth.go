@@ -156,6 +156,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			ScopeId: opts.withScopeId,
 			Id:      opts.withId,
 			Pin:     opts.withPin,
+			Type:    opts.withType,
 		}
 	} else {
 		// This remains for legacy
