@@ -19,6 +19,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *State {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	s, err := NewState(sessionId, state)
+	require.NoError(err)
+	err = rw.Create(context.Background(), s)
+	require.NoError(err)
+	return s
+}
+
 func TestSession(
 	t *testing.T,
 	conn *gorm.DB,
@@ -148,7 +159,7 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 		tcpTarget.PublicId,
 		sets[0].PublicId,
 		at.PublicId,
-		user.ScopeId, // for now, we pick the user scope as the session scope
+		tcpTarget.ScopeId,
 		"127.0.0.1",
 		"22"
 }
