@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -44,7 +43,7 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetScopeId(), action.List)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -63,7 +62,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -80,7 +79,7 @@ func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRe
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -141,7 +140,7 @@ func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.AuthToke
 	return outUl, nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	var parentId string
@@ -149,41 +148,40 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	switch a {
 	case action.List, action.Create:
 		parentId = id
+		iamRepo, err := s.iamRepoFn()
+		if err != nil {
+			res.Error = err
+			return res
+		}
+		scp, err := iamRepo.LookupScope(ctx, parentId)
+		if err != nil {
+			res.Error = err
+			return res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return res
+		}
 	default:
 		repo, err := s.repoFn()
 		if err != nil {
 			res.Error = err
-			return nil, res
+			return res
 		}
 		authTok, err := repo.LookupAuthToken(ctx, id)
 		if err != nil {
 			res.Error = err
-			return nil, res
+			return res
 		}
 		if authTok == nil {
 			res.Error = handlers.ForbiddenError()
-			return nil, res
+			return res
 		}
 		parentId = authTok.GetScopeId()
 		opts = append(opts, auth.WithId(id))
 	}
-
-	iamRepo, err := s.iamRepoFn()
-	if err != nil {
-		res.Error = err
-		return nil, res
-	}
-	scp, err := iamRepo.LookupScope(ctx, parentId)
-	if err != nil {
-		res.Error = err
-		return nil, res
-	}
-	if scp == nil {
-		res.Error = handlers.ForbiddenError()
-		return nil, res
-	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return scp, auth.Verify(ctx, opts...)
+	return auth.Verify(ctx, opts...)
 }
 
 func toProto(in *authtoken.AuthToken) *pb.AuthToken {
