@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	DefaultSessionStateTableName = "session"
+	DefaultStateTableName = "session_state"
 )
 
 type Status string
@@ -36,11 +36,11 @@ var _ db.VetForWriter = (*State)(nil)
 
 // NewState creates a new in memory session state.  No options
 // are currently supported.
-func NewState(session_id, state string, opt ...Option) (*State, error) {
+func NewState(session_id string, state Status, opt ...Option) (*State, error) {
 	s := State{
 		State: &store.State{
 			SessionId: session_id,
-			State:     state,
+			Status:    state.String(),
 		},
 	}
 
@@ -50,14 +50,14 @@ func NewState(session_id, state string, opt ...Option) (*State, error) {
 	return &s, nil
 }
 
-// allocSessionState will allocate a SessionState
+// allocState will allocate a State
 func allocState() State {
 	return State{
 		State: &store.State{},
 	}
 }
 
-// Clone creates a clone of the SessionState
+// Clone creates a clone of the State
 func (s *State) Clone() interface{} {
 	cp := proto.Clone(s.State)
 	return &State{
@@ -79,7 +79,7 @@ func (s *State) TableName() string {
 	if s.tableName != "" {
 		return s.tableName
 	}
-	return DefaultSessionStateTableName
+	return DefaultStateTableName
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage
@@ -89,13 +89,16 @@ func (s *State) SetTableName(n string) {
 	s.tableName = n
 }
 
-// validateSessionState checks the session state
+// validate checks the session state
 func (s *State) validate(errorPrefix string) error {
-	if s.SessionId == "" {
-		return fmt.Errorf("%s missing session id: %w", errorPrefix, db.ErrInvalidParameter)
-	}
 	if s.State == nil {
 		return fmt.Errorf("%s missing state: %w", errorPrefix, db.ErrInvalidParameter)
+	}
+	if s.Status == "" {
+		return fmt.Errorf("%s missing status: %w", errorPrefix, db.ErrInvalidParameter)
+	}
+	if s.SessionId == "" {
+		return fmt.Errorf("%s missing session id: %w", errorPrefix, db.ErrInvalidParameter)
 	}
 	if s.StartTime != nil {
 		return fmt.Errorf("%s start time is not settable: %w", errorPrefix, db.ErrInvalidParameter)
