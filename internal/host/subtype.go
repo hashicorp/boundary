@@ -32,11 +32,9 @@ func SubtypeFromType(t string) SubType {
 
 func SubtypeFromId(id string) SubType {
 	switch {
-	case strings.HasPrefix(strings.TrimSpace(id), static.HostPrefix):
-		fallthrough
-	case strings.HasPrefix(strings.TrimSpace(id), static.HostSetPrefix):
-		fallthrough
-	case strings.HasPrefix(strings.TrimSpace(id), static.HostCatalogPrefix):
+	case strings.HasPrefix(strings.TrimSpace(id), static.HostPrefix),
+		strings.HasPrefix(strings.TrimSpace(id), static.HostSetPrefix),
+		strings.HasPrefix(strings.TrimSpace(id), static.HostCatalogPrefix):
 		return StaticSubtype
 	}
 	return UnknownSubtype

@@ -57,7 +57,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetScopeId(), action.List)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -76,7 +76,7 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Read)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -93,7 +93,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetScopeId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -110,7 +110,7 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Update)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -127,7 +127,7 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Delete)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -143,7 +143,7 @@ func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSe
 	if err := validateAddRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.AddHostSets)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.AddHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -160,7 +160,7 @@ func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSe
 	if err := validateSetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.SetHostSets)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -177,7 +177,7 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 	if err := validateRemoveRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.RemoveHostSets)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.RemoveHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -350,39 +350,20 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	return toProto(out, m), nil
 }
 
-func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
 	res := auth.VerifyResults{}
-	iamRepo, err := s.iamRepoFn()
-	if err != nil {
-		res.Error = err
-		return nil, res
-	}
 
-	var scp *iam.Scope
+	var parentId string
 	opts := []auth.Option{auth.WithType(resource.Target), auth.WithAction(a)}
 	switch a {
-	case action.List:
-		fallthrough
-	case action.Create:
-		scp, err = iamRepo.LookupScope(ctx, id)
-		if err != nil {
-			res.Error = err
-			return nil, res
-		}
-		if scp == nil {
-			res.Error = handlers.ForbiddenError()
-			return nil, res
-		}
-		opts = append(opts, auth.WithScopeId(id))
+	case action.List, action.Create:
+		parentId = id
 	default:
-		// If the action isn't one of the above ones, than it is an action on an individual resource and the
-		// id provided is for the resource itself.
 		repo, err := s.repoFn()
 		if err != nil {
 			res.Error = err
 			return nil, res
 		}
-
 		t, _, err := repo.LookupTarget(ctx, id)
 		if err != nil {
 			res.Error = err
@@ -392,20 +373,26 @@ func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type)
 			res.Error = handlers.ForbiddenError()
 			return nil, res
 		}
-
-		scp, err = iamRepo.LookupScope(ctx, t.GetScopeId())
-		if err != nil {
-			res.Error = err
-			return nil, res
-		}
-		if scp == nil {
-			res.Error = handlers.ForbiddenError()
-			return nil, res
-		}
-		opts = append(opts, auth.WithId(id), auth.WithScopeId(scp.GetPublicId()))
+		parentId = t.GetScopeId()
+		opts = append(opts, auth.WithId(id))
 	}
-	authResults := auth.Verify(ctx, opts...)
-	return scp, authResults
+
+	iamRepo, err := s.iamRepoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	scp, err := iamRepo.LookupScope(ctx, parentId)
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	if scp == nil {
+		res.Error = handlers.ForbiddenError()
+		return nil, res
+	}
+	opts = append(opts, auth.WithScopeId(parentId))
+	return scp, auth.Verify(ctx, opts...)
 }
 
 func toProto(in target.Target, m []*target.TargetSet) *pb.Target {

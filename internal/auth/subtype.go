@@ -36,9 +36,8 @@ func SubtypeFromType(t string) SubType {
 // Returns UnknownSubtype if no SubType with this id's prefix is found.
 func SubtypeFromId(id string) SubType {
 	switch {
-	case strings.HasPrefix(strings.TrimSpace(id), password.AuthMethodPrefix):
-		fallthrough
-	case strings.HasPrefix(strings.TrimSpace(id), password.AccountPrefix):
+	case strings.HasPrefix(strings.TrimSpace(id), password.AuthMethodPrefix),
+		strings.HasPrefix(strings.TrimSpace(id), password.AccountPrefix):
 		return PasswordSubtype
 	}
 	return UnknownSubtype

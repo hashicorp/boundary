@@ -51,7 +51,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetAuthMethodId(), action.List)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -70,7 +70,7 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Read)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -87,7 +87,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authMeth, authResults := s.pinAndAuthResult(ctx, req.GetItem().GetAuthMethodId(), action.Create)
+	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetAuthMethodId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -104,7 +104,7 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authMeth, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Update)
+	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -121,7 +121,7 @@ func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountReques
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Delete)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -137,7 +137,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 	if err := validateChangePasswordRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.ChangePassword)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.ChangePassword)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -154,7 +154,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 	if err := validateSetPasswordRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.SetPassword)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetPassword)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -322,7 +322,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 	return toProto(out)
 }
 
-func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type) (*password.AuthMethod, auth.VerifyResults) {
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*password.AuthMethod, auth.VerifyResults) {
 	res := auth.VerifyResults{}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -330,25 +330,13 @@ func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type)
 		return nil, res
 	}
 
+	var parentId string
 	var authMeth *password.AuthMethod
 	opts := []auth.Option{auth.WithType(resource.Account), auth.WithAction(a)}
 	switch a {
-	case action.List:
-		fallthrough
-	case action.Create:
-		authMeth, err = repo.LookupAuthMethod(ctx, id)
-		if err != nil {
-			res.Error = err
-			return nil, res
-		}
-		if authMeth == nil {
-			res.Error = handlers.ForbiddenError()
-			return nil, res
-		}
-		opts = append(opts, auth.WithScopeId(authMeth.GetScopeId()), auth.WithPin(id))
+	case action.List, action.Create:
+		parentId = id
 	default:
-		// If the action isn't one of the above ones, than it is an action on an individual resource and the
-		// id provided is for the resource itself.
 		acct, err := repo.LookupAccount(ctx, id)
 		if err != nil {
 			res.Error = err
@@ -358,20 +346,21 @@ func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type)
 			res.Error = handlers.ForbiddenError()
 			return nil, res
 		}
-
-		authMeth, err = repo.LookupAuthMethod(ctx, acct.GetAuthMethodId())
-		if err != nil {
-			res.Error = err
-			return nil, res
-		}
-		if authMeth == nil {
-			res.Error = handlers.ForbiddenError()
-			return nil, res
-		}
-		opts = append(opts, auth.WithId(id), auth.WithScopeId(authMeth.GetScopeId()), auth.WithPin(authMeth.GetPublicId()))
+		parentId = acct.GetAuthMethodId()
+		opts = append(opts, auth.WithId(id))
 	}
-	authResults := auth.Verify(ctx, opts...)
-	return authMeth, authResults
+
+	authMeth, err = repo.LookupAuthMethod(ctx, parentId)
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	if authMeth == nil {
+		res.Error = handlers.ForbiddenError()
+		return nil, res
+	}
+	opts = append(opts, auth.WithScopeId(authMeth.GetScopeId()), auth.WithPin(parentId))
+	return authMeth, auth.Verify(ctx, opts...)
 }
 
 func toProto(in *password.Account) (*pb.Account, error) {

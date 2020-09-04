@@ -49,7 +49,7 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetHostCatalogId(), action.List)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetHostCatalogId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -68,7 +68,7 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Read)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -85,7 +85,7 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -105,7 +105,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	cat, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Update)
+	cat, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -122,7 +122,7 @@ func (s Service) DeleteHost(ctx context.Context, req *pbs.DeleteHostRequest) (*p
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Delete)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -252,7 +252,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 	return outHl, nil
 }
 
-func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type) (*static.HostCatalog, auth.VerifyResults) {
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*static.HostCatalog, auth.VerifyResults) {
 	res := auth.VerifyResults{}
 	repo, err := s.staticRepoFn()
 	if err != nil {
@@ -260,25 +260,12 @@ func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type)
 		return nil, res
 	}
 
-	var cat *static.HostCatalog
+	var parentId string
 	opts := []auth.Option{auth.WithType(resource.Host), auth.WithAction(a)}
 	switch a {
-	case action.List:
-		fallthrough
-	case action.Create:
-		cat, err = repo.LookupCatalog(ctx, id)
-		if err != nil {
-			res.Error = err
-			return nil, res
-		}
-		if cat == nil {
-			res.Error = handlers.ForbiddenError()
-			return nil, res
-		}
-		opts = append(opts, auth.WithScopeId(cat.GetScopeId()), auth.WithPin(id))
+	case action.List, action.Create:
+		parentId = id
 	default:
-		// If the action isn't one of the above ones, than it is an action on an individual resource and the
-		// id provided is for the resource itself.
 		h, err := repo.LookupHost(ctx, id)
 		if err != nil {
 			res.Error = err
@@ -288,20 +275,21 @@ func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type)
 			res.Error = handlers.ForbiddenError()
 			return nil, res
 		}
-
-		cat, err = repo.LookupCatalog(ctx, h.GetCatalogId())
-		if err != nil {
-			res.Error = err
-			return nil, res
-		}
-		if cat == nil {
-			res.Error = handlers.ForbiddenError()
-			return nil, res
-		}
-		opts = append(opts, auth.WithId(id), auth.WithScopeId(cat.GetScopeId()), auth.WithPin(cat.GetPublicId()))
+		parentId = h.GetCatalogId()
+		opts = append(opts, auth.WithId(id))
 	}
-	authResults := auth.Verify(ctx, opts...)
-	return cat, authResults
+
+	cat, err := repo.LookupCatalog(ctx, parentId)
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	if cat == nil {
+		res.Error = handlers.ForbiddenError()
+		return nil, res
+	}
+	opts = append(opts, auth.WithScopeId(cat.GetScopeId()), auth.WithPin(parentId))
+	return cat, auth.Verify(ctx, opts...)
 }
 
 func toProto(in *static.Host, members []*static.HostSet) (*pb.Host, error) {

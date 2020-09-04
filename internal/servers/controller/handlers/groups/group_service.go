@@ -52,7 +52,7 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetScopeId(), action.List)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -71,7 +71,7 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Read)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -88,7 +88,7 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetScopeId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -105,7 +105,7 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Update)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -122,7 +122,7 @@ func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.Delete)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -138,7 +138,7 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 	if err := validateAddGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.AddMembers)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.AddMembers)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -154,7 +154,7 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 	if err := validateSetGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.SetMembers)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetMembers)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -170,7 +170,7 @@ func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMem
 	if err := validateRemoveGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.pinAndAuthResult(ctx, req.GetId(), action.RemoveMembers)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.RemoveMembers)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -345,7 +345,7 @@ func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userId
 	return toProto(out, m), nil
 }
 
-func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
 	res := auth.VerifyResults{}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -353,25 +353,12 @@ func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type)
 		return nil, res
 	}
 
-	var scp *iam.Scope
+	var parentId string
 	opts := []auth.Option{auth.WithType(resource.Group), auth.WithAction(a)}
 	switch a {
-	case action.List:
-		fallthrough
-	case action.Create:
-		scp, err = repo.LookupScope(ctx, id)
-		if err != nil {
-			res.Error = err
-			return nil, res
-		}
-		if scp == nil {
-			res.Error = handlers.ForbiddenError()
-			return nil, res
-		}
-		opts = append(opts, auth.WithScopeId(scp.GetPublicId()))
+	case action.List, action.Create:
+		parentId = id
 	default:
-		// If the action isn't one of the above ones, than it is an action on an individual resource and the
-		// id provided is for the resource itself.
 		grp, _, err := repo.LookupGroup(ctx, id)
 		if err != nil {
 			res.Error = err
@@ -381,20 +368,21 @@ func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type)
 			res.Error = handlers.ForbiddenError()
 			return nil, res
 		}
-
-		scp, err = repo.LookupScope(ctx, grp.GetScopeId())
-		if err != nil {
-			res.Error = err
-			return nil, res
-		}
-		if scp == nil {
-			res.Error = handlers.ForbiddenError()
-			return nil, res
-		}
-		opts = append(opts, auth.WithId(id), auth.WithScopeId(scp.GetPublicId()))
+		parentId = grp.GetScopeId()
+		opts = append(opts, auth.WithId(id))
 	}
-	authResults := auth.Verify(ctx, opts...)
-	return scp, authResults
+
+	scp, err := repo.LookupScope(ctx, parentId)
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	if scp == nil {
+		res.Error = handlers.ForbiddenError()
+		return nil, res
+	}
+	opts = append(opts, auth.WithScopeId(parentId))
+	return scp, auth.Verify(ctx, opts...)
 }
 
 func toProto(in *iam.Group, members []*iam.GroupMember) *pb.Group {
