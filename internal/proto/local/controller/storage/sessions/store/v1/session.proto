@@ -75,7 +75,7 @@ message Session {
   uint32 version = 170;
 }
 
-message SessionState {
+message State {
   // session_id references the session public id
   // @inject_tag: gorm:"primary_key"
   string session_id = 10;

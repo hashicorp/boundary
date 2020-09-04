@@ -245,7 +245,7 @@ func TestSession_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewSession(
+			got, err := New(
 				tt.args.userId,
 				tt.args.hostId,
 				tt.args.serverId,

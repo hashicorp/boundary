@@ -36,7 +36,7 @@ func TestSession(
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	s, err := NewSession(
+	s, err := New(
 		userId,
 		hostId,
 		serverId,

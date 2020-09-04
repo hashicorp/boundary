@@ -21,9 +21,9 @@ type Session struct {
 var _ Cloneable = (*Session)(nil)
 var _ db.VetForWriter = (*Session)(nil)
 
-// NewSession creates a new in memory session.  No options
+// New creates a new in memory session.  No options
 // are currently supported.
-func NewSession(
+func New(
 	userId,
 	hostId,
 	serverId,
@@ -50,7 +50,7 @@ func NewSession(
 		},
 	}
 
-	if err := validateNewSession(&s, "new session:"); err != nil {
+	if err := s.validate("new session:"); err != nil {
 		return nil, err
 	}
 	return &s, nil
@@ -79,7 +79,7 @@ func (s *Session) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 	}
 	switch opType {
 	case db.CreateOp:
-		if err := validateNewSession(s, "session vet for write:"); err != nil {
+		if err := s.validate("session vet for write:"); err != nil {
 			return err
 		}
 	case db.UpdateOp:
@@ -103,8 +103,8 @@ func (s *Session) SetTableName(n string) {
 	s.tableName = n
 }
 
-// validateNewSession checks everything but the session's PublicId
-func validateNewSession(s *Session, errorPrefix string) error {
+// validate checks everything but the session's PublicId
+func (s *Session) validate(errorPrefix string) error {
 	if s.UserId == "" {
 		return fmt.Errorf("%s missing user id: %w", errorPrefix, db.ErrInvalidParameter)
 	}
