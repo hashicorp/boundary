@@ -186,6 +186,38 @@ begin;
   before
   insert on session
     for each row execute procedure default_create_time();
+
+  create or replace function
+    insert_session()
+    returns trigger
+  as $$
+  begin
+    case 
+      when new.user_id is null then
+        raise exception 'user_id is null';
+      when new.host_id is null then
+        raise exception 'host_id is null';
+      when new.server_id is null then
+        raise exception 'server_id is null';
+      when new.target_id is null then
+        raise exception 'target_id is null';
+      when new.set_id is null then
+        raise exception 'set_id is null';
+      when new.auth_token_id is null then
+        raise exception 'auth_token_id is null';
+      when new.scope_id is null then
+        raise exception 'scope_id is null';
+    else
+    end case;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger 
+    insert_session
+  before insert on session
+    for each row execute procedure insert_session();
+
     
   create table session_state_enm (
     name text primary key
