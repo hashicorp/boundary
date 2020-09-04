@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -330,7 +331,7 @@ func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type)
 	}
 
 	var authMeth *password.AuthMethod
-	opts := []auth.Option{auth.WithAction(a)}
+	opts := []auth.Option{auth.WithType(resource.Account), auth.WithAction(a)}
 	switch a {
 	case action.List:
 		fallthrough

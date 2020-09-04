@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -358,7 +359,7 @@ func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type)
 	}
 
 	var scp *iam.Scope
-	opts := []auth.Option{auth.WithAction(a)}
+	opts := []auth.Option{auth.WithType(resource.Target), auth.WithAction(a)}
 	switch a {
 	case action.List:
 		fallthrough

@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -168,11 +169,11 @@ func (s Service) pinAndAuthResult(ctx context.Context, id string, a action.Type)
 		return nil, res
 	}
 
-	authResults := auth.Verify(ctx)
-	// auth.WithAction(a),
-	// auth.WithType(resource.AuthMethod),
-	// auth.WithScopeId(scp.GetPublicId()),
-	// auth.WithId(id))
+	authResults := auth.Verify(ctx,
+		auth.WithAction(a),
+		auth.WithType(resource.AuthMethod),
+		auth.WithScopeId(scp.GetPublicId()),
+		auth.WithId(id))
 	return scp, authResults
 }
 
