@@ -3417,10 +3417,17 @@ begin;
         or
         bytes_down >= 0
       ),
+    version wt_version,
     create_time wt_timestamp,
     update_time wt_timestamp
   );
 
+
+  create trigger 
+    update_version_column 
+  after update on session
+    for each row execute procedure update_version_column();
+    
   create trigger 
     update_time_column 
   before update on session 
