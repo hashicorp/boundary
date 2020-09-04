@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGroup_List(t *testing.T) {
+func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
@@ -66,22 +66,7 @@ func TestGroup_List(t *testing.T) {
 	}
 }
 
-func comparableSlice(in []*groups.Group) []groups.Group {
-	var filtered []groups.Group
-	for _, i := range in {
-		p := groups.Group{
-			Id:          i.Id,
-			Name:        i.Name,
-			Description: i.Description,
-			CreatedTime: i.CreatedTime,
-			UpdatedTime: i.UpdatedTime,
-		}
-		filtered = append(filtered, p)
-	}
-	return filtered
-}
-
-func TestGroup_Crud(t *testing.T) {
+func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
@@ -171,7 +156,7 @@ func TestGroup_Crud(t *testing.T) {
 	}
 }
 
-func TestGroup_Errors(t *testing.T) {
+func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{

@@ -26,7 +26,7 @@ func (c *Client) ChangePassword(ctx context.Context, authMethodId, accountId, ol
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, authMethodId, accountId, opt...)
+		existingTarget, existingApiErr, existingErr := c.Read2(ctx, accountId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}

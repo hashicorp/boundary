@@ -1,0 +1,123 @@
+package authtokens_test
+
+import (
+	"net/http"
+	"testing"
+
+	"github.com/hashicorp/boundary/api/accounts"
+	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers/controller"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestList(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		DisableAuthorizationFailures: true,
+	})
+	defer tc.Shutdown()
+	client := tc.Client()
+	org := iam.TestOrg(t, tc.IamRepo())
+	amClient := authmethods.NewClient(client)
+	am, apiErr, err := amClient.Create2(tc.Context(), "password", org.GetPublicId())
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(am)
+	amId := am.Id
+
+	acctClient := accounts.NewClient(client)
+	acct, apiErr, err := acctClient.Create2(tc.Context(), amId, accounts.WithPasswordAccountLoginName("user"), accounts.WithPasswordAccountPassword("passpass"))
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(acct)
+
+	tokens := authtokens.NewClient(client)
+	methods := authmethods.NewClient(client)
+
+	atl, apiErr, err := tokens.List2(tc.Context(), org.GetPublicId())
+	require.NoError(err)
+	assert.Nil(apiErr)
+	assert.Empty(atl)
+
+	var expected []*authtokens.AuthToken
+
+	at, apiErr, err := methods.Authenticate(tc.Context(), amId, "user", "passpass")
+	require.NoError(err)
+	assert.Nil(apiErr)
+	expected = append(expected, at)
+
+	atl, apiErr, err = tokens.List2(tc.Context(), org.GetPublicId())
+	require.NoError(err)
+	assert.Nil(apiErr)
+	assert.ElementsMatch(comparableSlice(expected), comparableSlice(atl))
+
+	for i := 1; i < 10; i++ {
+		at, apiErr, err = methods.Authenticate(tc.Context(), amId, "user", "passpass")
+		require.NoError(err)
+		assert.Nil(apiErr)
+		expected = append(expected, at)
+	}
+	atl, apiErr, err = tokens.List2(tc.Context(), org.GetPublicId())
+	require.NoError(err)
+	assert.Nil(apiErr)
+	assert.ElementsMatch(comparableSlice(expected), comparableSlice(atl))
+}
+
+func TestCrud(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	amId := "ampw_1234567890"
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		DisableAuthorizationFailures: true,
+		DefaultAuthMethodId:          amId,
+		DefaultLoginName:             "user",
+		DefaultPassword:              "passpass",
+	})
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	tokens := authtokens.NewClient(client)
+	methods := authmethods.NewClient(client)
+
+	want, apiErr, err := methods.Authenticate(tc.Context(), amId, "user", "passpass")
+	require.NoError(err)
+	assert.Empty(apiErr)
+
+	at, apiErr, err := tokens.Read2(tc.Context(), want.Id)
+	require.NoError(err)
+	assert.Nil(apiErr)
+	assert.EqualValues(comparableResource(want), comparableResource(at))
+
+	existed, _, err := tokens.Delete2(tc.Context(), at.Id)
+	require.NoError(err)
+	assert.Nil(apiErr)
+	assert.True(existed, "Expected existing token when deleted, but it wasn't.")
+}
+
+func TestErrors(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	amId := "ampw_1234567890"
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		DisableAuthorizationFailures: true,
+		DefaultAuthMethodId:          amId,
+		DefaultLoginName:             "user",
+		DefaultPassword:              "passpass",
+	})
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	tokens := authtokens.NewClient(client)
+
+	_, apiErr, err := tokens.Read2(tc.Context(), authtoken.AuthTokenPrefix+"_doesntexis")
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+
+	_, apiErr, err = tokens.Read2(tc.Context(), "invalid id")
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
+}

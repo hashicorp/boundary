@@ -24,9 +24,8 @@ func TestCustom(t *testing.T) {
 	token := tc.Token()
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	client := tc.Client().Clone()
-	client.SetScopeId(proj.GetPublicId())
 
-	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create2(tc.Context(), "static", proj.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 
@@ -74,7 +73,6 @@ func TestList(t *testing.T) {
 	client := tc.Client()
 	token := tc.Token()
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
-	client.SetScopeId(proj.GetPublicId())
 
 	tarClient := targets.NewClient(client)
 	ul, apiErr, err := tarClient.List(tc.Context(), proj.GetPublicId())
