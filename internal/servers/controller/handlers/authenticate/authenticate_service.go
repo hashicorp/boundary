@@ -63,7 +63,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	if err := validateAuthenticateRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.Authenticate)
+	authResults := s.authResult(ctx, req.GetAuthMethodId(), action.Authenticate)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -135,45 +135,30 @@ func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId
 	return prot, nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	repo, err := s.pwRepo()
 	if err != nil {
 		res.Error = err
-		return nil, res
+		return res
 	}
 	authMeth, err := repo.LookupAuthMethod(ctx, id)
 	if err != nil {
 		res.Error = err
-		return nil, res
+		return res
 	}
 	if authMeth == nil {
 		res.Error = handlers.ForbiddenError()
-		return nil, res
-	}
-
-	iamRepo, err := s.iamRepo()
-	if err != nil {
-		res.Error = err
-		return nil, res
-	}
-	scp, err := iamRepo.LookupScope(ctx, authMeth.GetScopeId())
-	if err != nil {
-		res.Error = err
-		return nil, res
-	}
-	if scp == nil {
-		res.Error = handlers.ForbiddenError()
-		return nil, res
+		return res
 	}
 
 	authResults := auth.Verify(ctx,
 		auth.WithAction(a),
 		auth.WithType(resource.AuthMethod),
-		auth.WithScopeId(scp.GetPublicId()),
+		auth.WithScopeId(authMeth.GetScopeId()),
 		auth.WithId(id))
-	return scp, authResults
+	return authResults
 }
 
 func toProto(t *authtoken.AuthToken) *pba.AuthToken {

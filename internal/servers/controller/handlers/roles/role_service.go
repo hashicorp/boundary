@@ -53,7 +53,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetScopeId(), action.List)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -72,7 +72,7 @@ func (s Service) GetRole(ctx context.Context, req *pbs.GetRoleRequest) (*pbs.Get
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -89,7 +89,7 @@ func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*p
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -106,7 +106,7 @@ func (s Service) UpdateRole(ctx context.Context, req *pbs.UpdateRoleRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -123,7 +123,7 @@ func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*p
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -139,7 +139,7 @@ func (s Service) AddRolePrincipals(ctx context.Context, req *pbs.AddRolePrincipa
 	if err := validateAddRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.AddPrincipals)
+	authResults := s.authResult(ctx, req.GetId(), action.AddPrincipals)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -156,7 +156,7 @@ func (s Service) SetRolePrincipals(ctx context.Context, req *pbs.SetRolePrincipa
 	if err := validateSetRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetPrincipals)
+	authResults := s.authResult(ctx, req.GetId(), action.SetPrincipals)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -173,7 +173,7 @@ func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePr
 	if err := validateRemoveRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.RemovePrincipals)
+	authResults := s.authResult(ctx, req.GetId(), action.RemovePrincipals)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -190,7 +190,7 @@ func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsReques
 	if err := validateAddRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.AddGrants)
+	authResults := s.authResult(ctx, req.GetId(), action.AddGrants)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -207,7 +207,7 @@ func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsReques
 	if err := validateSetRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetGrants)
+	authResults := s.authResult(ctx, req.GetId(), action.SetGrants)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -224,7 +224,7 @@ func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrants
 	if err := validateRemoveRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.RemoveGrants)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveGrants)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -470,12 +470,12 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 	return toProto(out, pr, roleGrants), nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	repo, err := s.repoFn()
 	if err != nil {
 		res.Error = err
-		return nil, res
+		return res
 	}
 
 	var parentId string
@@ -483,31 +483,30 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	switch a {
 	case action.List, action.Create:
 		parentId = id
+		scp, err := repo.LookupScope(ctx, parentId)
+		if err != nil {
+			res.Error = err
+			return res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return res
+		}
 	default:
 		r, _, _, err := repo.LookupRole(ctx, id)
 		if err != nil {
 			res.Error = err
-			return nil, res
+			return res
 		}
 		if r == nil {
 			res.Error = handlers.ForbiddenError()
-			return nil, res
+			return res
 		}
 		parentId = r.GetScopeId()
 		opts = append(opts, auth.WithId(id))
 	}
-
-	scp, err := repo.LookupScope(ctx, parentId)
-	if err != nil {
-		res.Error = err
-		return nil, res
-	}
-	if scp == nil {
-		res.Error = handlers.ForbiddenError()
-		return nil, res
-	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return scp, auth.Verify(ctx, opts...)
+	return auth.Verify(ctx, opts...)
 }
 
 func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGrant) *pb.Role {

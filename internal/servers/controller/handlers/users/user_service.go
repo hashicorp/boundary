@@ -52,7 +52,7 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetScopeId(), action.List)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -71,7 +71,7 @@ func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.Get
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -88,7 +88,7 @@ func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*p
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -105,7 +105,7 @@ func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -122,7 +122,7 @@ func (s Service) DeleteUser(ctx context.Context, req *pbs.DeleteUserRequest) (*p
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -240,12 +240,12 @@ func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.User, er
 	return outUl, nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*iam.Scope, auth.VerifyResults) {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	repo, err := s.repoFn()
 	if err != nil {
 		res.Error = err
-		return nil, res
+		return res
 	}
 
 	var parentId string
@@ -253,31 +253,30 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	switch a {
 	case action.List, action.Create:
 		parentId = id
+		scp, err := repo.LookupScope(ctx, parentId)
+		if err != nil {
+			res.Error = err
+			return res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return res
+		}
 	default:
 		u, err := repo.LookupUser(ctx, id)
 		if err != nil {
 			res.Error = err
-			return nil, res
+			return res
 		}
 		if u == nil {
 			res.Error = handlers.ForbiddenError()
-			return nil, res
+			return res
 		}
 		parentId = u.GetScopeId()
 		opts = append(opts, auth.WithId(id))
 	}
-
-	scp, err := repo.LookupScope(ctx, parentId)
-	if err != nil {
-		res.Error = err
-		return nil, res
-	}
-	if scp == nil {
-		res.Error = handlers.ForbiddenError()
-		return nil, res
-	}
-	opts = append(opts, auth.WithScopeId(scp.GetPublicId()))
-	return scp, auth.Verify(ctx, opts...)
+	opts = append(opts, auth.WithScopeId(parentId))
+	return auth.Verify(ctx, opts...)
 }
 
 func toProto(in *iam.User) *pb.User {
