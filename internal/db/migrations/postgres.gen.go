@@ -3416,9 +3416,22 @@ begin;
         bytes_down is null
         or
         bytes_down >= 0
-      )
+      ),
+    create_time wt_timestamp,
+    update_time wt_timestamp
   );
 
+  create trigger 
+    update_time_column 
+  before update on session 
+    for each row execute procedure update_time_column();
+    
+  create trigger 
+    default_create_time_column
+  before
+  insert on session
+    for each row execute procedure default_create_time();
+    
   create table session_state_enm (
     name text primary key
       check (
