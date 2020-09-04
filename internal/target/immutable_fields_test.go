@@ -2,7 +2,6 @@ package target
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -71,7 +70,6 @@ func TestTarget_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			tt.update.SetTableName("target")
-			fmt.Println(tt.update.TableName(), tt.update)
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
@@ -173,7 +171,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 	updateTarget := TestTcpTarget(t, conn, proj.PublicId, testId(t))
 	updateHset := hsets[1]
 
-	_, gotHostSets, err := repo.AddTargeHostSets(context.Background(), projTarget.PublicId, 1, []string{hsets[0].PublicId})
+	_, gotHostSets, err := repo.AddTargetHostSets(context.Background(), projTarget.PublicId, 1, []string{hsets[0].PublicId})
 	require.NoError(t, err)
 	require.Equal(t, 1, len(gotHostSets))
 	new, err := NewTargetHostSet(projTarget.PublicId, gotHostSets[0].PublicId)

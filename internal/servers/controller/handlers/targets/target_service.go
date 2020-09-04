@@ -299,7 +299,7 @@ func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []str
 	if err != nil {
 		return nil, err
 	}
-	out, m, err := repo.AddTargeHostSets(ctx, targetId, version, hostSetId)
+	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, hostSetId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to add host sets to target: %v.", err)
 	}
