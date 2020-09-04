@@ -30,9 +30,9 @@ message Session {
   // @inject_tag: `gorm:"default:null"`
   string target_id = 60;
 
-  // host_set_id for the session
+  // set_id for the session
   // @inject_tag: `gorm:"default:null"`
-  string host_set_id = 70;
+  string set_id = 70;
 
   // auth_token_id for the session
   // @inject_tag: `gorm:"default:null"`
