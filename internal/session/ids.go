@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	SessionPrefix      = "s"
-	SessionStatePrefix = "ss"
+	SessionPrefix = "s"
+	StatePrefix   = "ss"
 )
 
-func newSessionId() (string, error) {
+func newId() (string, error) {
 	id, err := db.NewPublicId(SessionPrefix)
 	if err != nil {
 		return "", fmt.Errorf("new session id: %w", err)
@@ -19,8 +19,8 @@ func newSessionId() (string, error) {
 	return id, nil
 }
 
-func newSessionStateId() (string, error) {
-	id, err := db.NewPublicId(SessionStatePrefix)
+func newStateId() (string, error) {
+	id, err := db.NewPublicId(StatePrefix)
 	if err != nil {
 		return "", fmt.Errorf("new session state id: %w", err)
 	}

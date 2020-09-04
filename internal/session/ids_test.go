@@ -11,13 +11,13 @@ import (
 func Test_Ids(t *testing.T) {
 	t.Parallel()
 	t.Run("s", func(t *testing.T) {
-		id, err := newSessionId()
+		id, err := newId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, SessionPrefix+"_"))
 	})
 	t.Run("ss", func(t *testing.T) {
-		id, err := newSessionStateId()
+		id, err := newStateId()
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, SessionStatePrefix+"_"))
+		assert.True(t, strings.HasPrefix(id, StatePrefix+"_"))
 	})
 }

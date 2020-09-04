@@ -61,7 +61,7 @@ func TestSession(
 		opt...,
 	)
 	require.NoError(err)
-	id, err := newSessionId()
+	id, err := newId()
 	require.NoError(err)
 	s.PublicId = id
 	err = rw.Create(context.Background(), s)

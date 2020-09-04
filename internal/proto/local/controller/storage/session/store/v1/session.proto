@@ -80,9 +80,9 @@ message State {
   // @inject_tag: gorm:"primary_key"
   string session_id = 10;
 
-  // state of the session
-  // @inject_tag: gorm:"primary_key"
-  string state = 20;
+  // status of the session
+  // @inject_tag: gorm:"column:state;primary_key"
+  string status = 20;
 
   // previous_end_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
