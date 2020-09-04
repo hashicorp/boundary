@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package controller.storage.sessions.store.v1;
+option go_package = "github.com/hashicorp/boundary/internal/sessions/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+import "controller/custom_options/v1/options.proto";
+
+message Session {
+  // public is used to access the session via an API
+  // @inject_tag: gorm:"primary_key"
+  string public_id = 10;
+
+  // user_id for the session
+  // @inject_tag: `gorm:"default:null"`
+  string user_id = 20;
+
+  // host_id of the session
+  // @inject_tag: `gorm:"default:null"`
+  string host_id = 30;
+
+  // server_id that proxied the session
+  // @inject_tag: `gorm:"default:null"`
+  string server_id = 40;
+
+  // server_type that proxied the session
+  // @inject_tag: `gorm:"default:null"`
+  string server_type = 50;
+
+  // @inject_tag: `gorm:"default:null"`
+  string target_id = 60;
+
+  // host_set_id for the session
+  // @inject_tag: `gorm:"default:null"`
+  string host_set_id = 70;
+
+  // auth_token_id for the session
+  // @inject_tag: `gorm:"default:null"`
+  string auth_token_id = 80;
+
+  // scope id for the sessopm
+  // @inject_tag: `gorm:"default:null"`
+  string scope_id = 90;
+
+  // termination_reason for the session
+  // @inject_tag: `gorm:"default:null"`
+  string termination_reason = 100;
+
+  // address of the session host
+  // @inject_tag: `gorm:"default:null"`
+  string address = 110;
+
+  // port used by the session
+  // @inject_tag: `gorm:"default:null"`
+  string port = 120;
+
+  // bytes_up total for the session
+  // @inject_tag: `gorm:"default:null"`
+  uint64 bytes_up = 130;
+
+  // bytes_down total for the session
+  // @inject_tag: `gorm:"default:null"`
+  uint64 bytes_down = 140;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 150;
+
+  // update_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 160;
+
+  // version for the session
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 170;
+}
+
+message SessionState {
+  // session_id references the session public id
+  // @inject_tag: gorm:"primary_key"
+  string session_id = 10;
+
+  // state of the session
+  // @inject_tag: gorm:"primary_key"
+  string state = 20;
+
+  // previous_end_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp previous_end_time = 30;
+
+  // start_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp start_time = 40;
+
+  // end_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp end_time = 50;
+}
