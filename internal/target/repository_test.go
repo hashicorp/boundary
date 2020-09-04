@@ -371,7 +371,7 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 				hostSetIds = createHostSetsFn([]string{staticOrg.PublicId}, []string{staticProj.PublicId})
 			}
 
-			gotTarget, gotHostSets, err := repo.AddTargeHostSets(context.Background(), projTarget.PublicId, tt.args.targetVersion, hostSetIds, tt.args.opt...)
+			gotTarget, gotHostSets, err := repo.AddTargetHostSets(context.Background(), projTarget.PublicId, tt.args.targetVersion, hostSetIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
@@ -539,7 +539,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 					hsIds = append(hsIds, hsets[0].PublicId)
 				}
 			}
-			_, addedHostSets, err := repo.AddTargeHostSets(context.Background(), tt.args.target.GetPublicId(), 1, hsIds, tt.args.opt...)
+			_, addedHostSets, err := repo.AddTargetHostSets(context.Background(), tt.args.target.GetPublicId(), 1, hsIds, tt.args.opt...)
 			require.NoError(err)
 			assert.Equal(tt.args.createCnt, len(addedHostSets))
 
@@ -572,7 +572,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 				// test to make sure that the oplog entry for a target update
 				// doesn't exist because the db.TestVerifyOplog doesn't really
 				// support that level of testing and the previous call to
-				// repo.AddTargeHostSets() would create an oplog entry for the
+				// repo.AddTargetHostSets() would create an oplog entry for the
 				// update to the target.   Once TestVerifyOplog supports the
 				// appropriate granularity, we should add an appropriate assert.
 
@@ -588,7 +588,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			// test to make sure that the oplog entry for a target update
 			// doesn't exist because the db.TestVerifyOplog doesn't really
 			// support that level of testing and the previous call to
-			// repo.AddTargeHostSets() would create an oplog entry for the
+			// repo.AddTargetHostSets() would create an oplog entry for the
 			// update to the target.   Once TestVerifyOplog supports the
 			// appropriate granularity,, we should add an appropriate assert.
 
@@ -630,7 +630,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 
 	setupFn := func(target Target) []*TargetSet {
 		hs := createHostSetsFn()
-		_, created, err := repo.AddTargeHostSets(context.Background(), target.GetPublicId(), 1, hs)
+		_, created, err := repo.AddTargetHostSets(context.Background(), target.GetPublicId(), 1, hs)
 		require.NoError(t, err)
 		require.Equal(t, 10, len(created))
 		return created
