@@ -85,7 +85,8 @@ func TestDefaultSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, i
 		port)
 }
 
-func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) (userId,
+func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) (
+	userId,
 	hostId,
 	serverId,
 	serverType,
