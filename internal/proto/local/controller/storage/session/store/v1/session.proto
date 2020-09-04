@@ -38,7 +38,7 @@ message Session {
   // @inject_tag: `gorm:"default:null"`
   string auth_token_id = 80;
 
-  // scope id for the sessopm
+  // scope id for the session
   // @inject_tag: `gorm:"default:null"`
   string scope_id = 90;
 

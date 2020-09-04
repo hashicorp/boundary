@@ -55,7 +55,7 @@ type Session struct {
 	// auth_token_id for the session
 	// @inject_tag: `gorm:"default:null"`
 	AuthTokenId string `protobuf:"bytes,80,opt,name=auth_token_id,json=authTokenId,proto3" json:"auth_token_id,omitempty" gorm:"default:null"`
-	// scope id for the sessopm
+	// scope id for the session
 	// @inject_tag: `gorm:"default:null"`
 	ScopeId string `protobuf:"bytes,90,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"default:null"`
 	// termination_reason for the session
