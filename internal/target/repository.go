@@ -267,12 +267,12 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 	return returnedTarget.(Target), hostSets, rowsUpdated, err
 }
 
-// AddTargeHostSets provides the ability to add host sets (hostSetIds) to a
+// AddTargetHostSets provides the ability to add host sets (hostSetIds) to a
 // target (targetId).  The target's current db version must match the
 // targetVersion or an error will be returned.   The target and a list of
 // current host set ids will be returned on success. Zero is not a valid value
 // for the WithVersion option and will return an error.
-func (r *Repository) AddTargeHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, opt ...Option) (Target, []*TargetSet, error) {
+func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, opt ...Option) (Target, []*TargetSet, error) {
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("add target host sets: missing target id: %w", db.ErrInvalidParameter)
 	}
