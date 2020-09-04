@@ -1,4 +1,4 @@
-package sessions
+package session
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/sessions/store"
+	"github.com/hashicorp/boundary/internal/session/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"

@@ -1,11 +1,11 @@
-package sessions
+package session
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/sessions/store"
+	"github.com/hashicorp/boundary/internal/session/store"
 	"google.golang.org/protobuf/proto"
 )
 

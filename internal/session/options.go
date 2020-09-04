@@ -1,4 +1,4 @@
-package sessions
+package session
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {

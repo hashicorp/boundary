@@ -1,4 +1,4 @@
-package sessions
+package session
 
 import (
 	"crypto/ed25519"
@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-// DeriveED25519Key generates a key based on the scope's sessions DEK, the
+// DeriveED25519Key generates a key based on the scope's session DEK, the
 // requesting user, and the generated job ID.
 func DeriveED25519Key(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PublicKey, ed25519.PrivateKey, error) {
 	var aeadWrapper *aead.Wrapper

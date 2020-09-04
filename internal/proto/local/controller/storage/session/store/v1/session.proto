@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-package controller.storage.sessions.store.v1;
-option go_package = "github.com/hashicorp/boundary/internal/sessions/store;store";
+package controller.storage.session.store.v1;
+option go_package = "github.com/hashicorp/boundary/internal/session/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/custom_options/v1/options.proto";
