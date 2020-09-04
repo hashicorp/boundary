@@ -22,7 +22,7 @@ const (
 	// KeyPurposeTokens is used for token encryption
 	KeyPurposeTokens
 
-	// KeyPurposeSessions is used for session encryption
+	// KeyPurposeSessions is used as a base key to derive session-specific encryption keys
 	KeyPurposeSessions
 )
 

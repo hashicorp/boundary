@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -355,6 +356,10 @@ func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		if !handlers.ValidId(scope.Org.Prefix(), req.GetItem().GetScopeId()) &&
+			scope.Global.String() != req.GetItem().GetScopeId() {
+			badFields["scope_id"] = "This field is missing or improperly formatted."
+		}
 		switch auth.SubtypeFromType(req.GetItem().GetType()) {
 		case auth.PasswordSubtype:
 			pwAttrs := &pb.PasswordAuthMethodAttributes{}

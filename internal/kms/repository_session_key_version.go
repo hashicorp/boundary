@@ -139,7 +139,7 @@ func (r *Repository) LatestSessionKeyVersion(ctx context.Context, rkvWrapper wra
 }
 
 // ListSessionKeyVersions will lists versions of a key.  Supports the WithLimit option.
-func (r *Repository) ListSessionKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, opt ...Option) ([]*SessionKeyVersion, error) {
+func (r *Repository) ListSessionKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, opt ...Option) ([]DekVersion, error) {
 	if sessionKeyId == "" {
 		return nil, fmt.Errorf("list session key versions: missing session key id %w", db.ErrInvalidParameter)
 	}
@@ -156,5 +156,9 @@ func (r *Repository) ListSessionKeyVersions(ctx context.Context, rkvWrapper wrap
 			return nil, fmt.Errorf("list session key versions: error decrypting key num %d: %w", i, err)
 		}
 	}
-	return versions, nil
+	dekVersions := make([]DekVersion, 0, len(versions))
+	for _, version := range versions {
+		dekVersions = append(dekVersions, version)
+	}
+	return dekVersions, nil
 }

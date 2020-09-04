@@ -65,7 +65,7 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 			switch l.Purpose[0] {
 			case "cluster":
 				l.Address = "127.0.0.1:9201"
-			case "worker-alpn-tls":
+			case "proxy":
 				l.Address = "127.0.0.1:9202"
 			default:
 				l.Address = "127.0.0.1:9200"

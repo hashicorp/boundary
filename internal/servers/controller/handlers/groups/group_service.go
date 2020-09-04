@@ -433,8 +433,10 @@ func validateGetRequest(req *pbs.GetGroupRequest) error {
 func validateCreateRequest(req *pbs.CreateGroupRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(scope.Org.Prefix(), req.GetItem().GetScopeId()) && !handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) {
-			badFields["scope_id"] = "Incorrectly formatted identifier."
+		if !handlers.ValidId(scope.Org.Prefix(), req.GetItem().GetScopeId()) &&
+			!handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) &&
+			scope.Global.String() != req.GetItem().GetScopeId() {
+			badFields["scope_id"] = "This field is missing or improperly formatted."
 		}
 		return badFields
 	})

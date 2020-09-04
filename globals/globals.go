@@ -10,6 +10,7 @@ import "time"
 // only ever be set at startup, but simply available to reference from anywhere.
 
 const (
+	TcpProxyV1             = "boundary-tcp-proxy-v1"
 	TokenEncryptionVersion = "1"
 )
 

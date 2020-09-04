@@ -73,14 +73,14 @@ func TestKms(t *testing.T) {
 	keyIds := map[string]bool{}
 	scopePurposeMap := map[string]interface{}{}
 	for i := 1; i < 3; i++ {
-		// This iterates through wrappers for all three scopes and two purposes,
+		// This iterates through wrappers for all three scopes and four purposes,
 		// ensuring that the key bytes and IDs are different for each of them,
 		// simulating calling the KMS object from different scopes for different
 		// purposes and ensuring the keys are different when that happens.
 		t.Run(fmt.Sprintf("verify wrappers different x %d", i), func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			for _, scopeId := range []string{scope.Global.String(), org.GetPublicId(), proj.GetPublicId()} {
-				for _, purpose := range []kms.KeyPurpose{kms.KeyPurposeUnknown, kms.KeyPurposeOplog, kms.KeyPurposeDatabase} {
+				for _, purpose := range []kms.KeyPurpose{kms.KeyPurposeUnknown, kms.KeyPurposeOplog, kms.KeyPurposeDatabase, kms.KeyPurposeSessions, kms.KeyPurposeTokens} {
 					wrapper, err := kmsCache.GetWrapper(ctx, scopeId, purpose)
 					if purpose == kms.KeyPurposeUnknown {
 						require.Error(err)
@@ -120,8 +120,8 @@ func TestKms(t *testing.T) {
 				}
 				return true
 			})
-			// two purposes x 3 scopes
-			assert.Equal(t, 6, count)
+			// four purposes x 3 scopes
+			assert.Equal(t, 12, count)
 		})
 	}
 }

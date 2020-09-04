@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hosts"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsets"
+	"github.com/hashicorp/boundary/internal/cmd/commands/proxy"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/commands/users"
@@ -57,6 +58,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				}),
 				SighupCh:  MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
+			}, nil
+		},
+		"proxy": func() (cli.Command, error) {
+			return &proxy.Command{
+				Command: base.NewCommand(ui),
 			}, nil
 		},
 

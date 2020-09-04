@@ -351,6 +351,34 @@ func TestCreate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
+			name: "Create a global AuthMethod",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:     scope.Global.String(),
+				Name:        &wrapperspb.StringValue{Value: "name"},
+				Description: &wrapperspb.StringValue{Value: "desc"},
+				Type:        "password",
+			}},
+			res: &pbs.CreateAuthMethodResponse{
+				Uri: fmt.Sprintf("auth-methods/%s_", password.AuthMethodPrefix),
+				Item: &pb.AuthMethod{
+					Id:          defaultAm.GetPublicId(),
+					ScopeId:     scope.Global.String(),
+					CreatedTime: defaultAm.GetCreateTime().GetTimestamp(),
+					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Scope:       &scopepb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Version:     1,
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
 			name: "Can't specify Id",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
@@ -422,7 +450,7 @@ func TestCreate(t *testing.T) {
 			s, err := authmethods.NewService(repoFn, iamRepoFn)
 			require.NoError(err, "Error when getting new auth_method service.")
 
-			got, gErr := s.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			got, gErr := s.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetItem().GetScopeId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			if tc.res == nil {
 				require.Nil(got)

@@ -115,7 +115,7 @@ func TestDevWorker(t *testing.T) {
 				{
 					Type:                  "tcp",
 					TLSDisable:            true,
-					Purpose:               []string{"worker-alpn-tls"},
+					Purpose:               []string{"proxy"},
 					ProxyProtocolBehavior: "allow_authorized",
 					ProxyProtocolAuthorizedAddrs: []*sockaddr.SockAddrMarshaler{
 						{SockAddr: addr},

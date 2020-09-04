@@ -416,6 +416,25 @@ func TestCreate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
+			name: "Create a global Group",
+			req: &pbs.CreateGroupRequest{Item: &pb.Group{
+				ScopeId:     scope.Global.String(),
+				Name:        &wrapperspb.StringValue{Value: "name"},
+				Description: &wrapperspb.StringValue{Value: "desc"},
+			}},
+			res: &pbs.CreateGroupResponse{
+				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
+				Item: &pb.Group{
+					ScopeId:     scope.Global.String(),
+					Scope:       &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
 			name: "Create a valid Project Scoped Group",
 			req: &pbs.CreateGroupRequest{
 				Item: &pb.Group{

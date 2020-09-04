@@ -49,15 +49,10 @@ func (tw *TestWorker) Name() string {
 
 func (tw *TestWorker) ControllerAddrs() []string {
 	var addrs []string
-	tw.w.controllerConns.Range(func(_, v interface{}) bool {
-		// If something is removed from the map while ranging, ignore it
-		if v == nil {
-			return true
-		}
-		c := v.(*controllerConnection)
-		addrs = append(addrs, c.controllerAddr)
-		return true
-	})
+	lastStatus := tw.w.LastStatusSuccess()
+	for _, v := range lastStatus.GetControllers() {
+		addrs = append(addrs, v.Address)
+	}
 
 	return addrs
 }
@@ -68,7 +63,7 @@ func (tw *TestWorker) ProxyAddrs() []string {
 	}
 
 	for _, listener := range tw.b.Listeners {
-		if listener.Config.Purpose[0] == "worker-alpn-tls" {
+		if listener.Config.Purpose[0] == "proxy" {
 			tcpAddr, ok := listener.Mux.Addr().(*net.TCPAddr)
 			if !ok {
 				tw.t.Fatal("could not parse address as a TCP addr")
@@ -190,7 +185,7 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 	for _, listener := range opts.Config.Listeners {
 		listener.RandomPort = true
 	}
-	if err := tw.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"worker-alpn-tls"}); err != nil {
+	if err := tw.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"proxy"}); err != nil {
 		t.Fatal(err)
 	}
 

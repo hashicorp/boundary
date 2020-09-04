@@ -266,6 +266,25 @@ func TestCreate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
+			name: "Create a valid Global User",
+			req: &pbs.CreateUserRequest{Item: &pb.User{
+				ScopeId:     scope.Global.String(),
+				Name:        &wrapperspb.StringValue{Value: "name"},
+				Description: &wrapperspb.StringValue{Value: "desc"},
+			}},
+			res: &pbs.CreateUserResponse{
+				Uri: fmt.Sprintf("users/%s_", iam.UserPrefix),
+				Item: &pb.User{
+					ScopeId:     scope.Global.String(),
+					Scope:       &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
 			name: "Can't specify Id",
 			req: &pbs.CreateUserRequest{Item: &pb.User{
 				ScopeId: defaultUser.GetScopeId(),
@@ -299,7 +318,7 @@ func TestCreate(t *testing.T) {
 			s, err := users.NewService(repo)
 			require.NoError(err, "Error when getting new user service.")
 
-			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(auth.WithScopeId(defaultUser.GetScopeId())), tc.req)
+			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetItem().GetScopeId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)

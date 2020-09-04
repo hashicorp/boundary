@@ -137,11 +137,15 @@ func (r *Repository) DeleteTokenKey(ctx context.Context, privateId string, opt .
 }
 
 // ListTokenKeys will list the keys.  Supports the WithLimit option.
-func (r *Repository) ListTokenKeys(ctx context.Context, opt ...Option) ([]*TokenKey, error) {
+func (r *Repository) ListTokenKeys(ctx context.Context, opt ...Option) ([]Dek, error) {
 	var keys []*TokenKey
 	err := r.list(ctx, &keys, "1=1", nil, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("list token keys: %w", err)
 	}
-	return keys, nil
+	deks := make([]Dek, 0, len(keys))
+	for _, key := range keys {
+		deks = append(deks, key)
+	}
+	return deks, nil
 }

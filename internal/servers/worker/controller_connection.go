@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -25,20 +26,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type controllerConnection struct {
-	controllerAddr string
-	client         services.WorkerServiceClient
-}
-
-func newControllerConnection(controllerAddr string, client services.WorkerServiceClient) *controllerConnection {
-	ret := &controllerConnection{
-		controllerAddr: controllerAddr,
-		client:         client,
-	}
-
-	return ret
-}
-
 func (w *Worker) startControllerConnections() error {
 	initialAddrs := make([]resolver.Address, 0, len(w.conf.RawConfig.Worker.Controllers))
 	for _, addr := range w.conf.RawConfig.Worker.Controllers {
@@ -52,13 +39,15 @@ func (w *Worker) startControllerConnections() error {
 		initialAddrs = append(initialAddrs, resolver.Address{Addr: fmt.Sprintf("%s:%s", host, port)})
 	}
 
+	if len(initialAddrs) == 0 {
+		return errors.New("no initial controller addresses found")
+	}
+
 	w.Resolver().InitialState(resolver.State{
 		Addresses: initialAddrs,
 	})
-	for _, addr := range initialAddrs {
-		if err := w.createClientConn(addr.Addr); err != nil {
-			return fmt.Errorf("error making client connection to controller: %w", err)
-		}
+	if err := w.createClientConn(initialAddrs[0].Addr); err != nil {
+		return fmt.Errorf("error making client connection to controller: %w", err)
 	}
 
 	return nil
@@ -123,7 +112,7 @@ func (w *Worker) createClientConn(addr string) error {
 	}
 
 	client := services.NewWorkerServiceClient(cc)
-	w.controllerConns.Store(addr, newControllerConnection(addr, client))
+	w.controllerConn.Store(client)
 
 	w.logger.Info("connected to controller", "address", addr)
 	return nil
@@ -257,7 +246,6 @@ func (w Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error)
 		NextProtos:   nextProtos,
 		MinVersion:   tls.VersionTLS13,
 	}
-	tlsConfig.BuildNameToCertificate()
 
 	return tlsConfig, info, nil
 }

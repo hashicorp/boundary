@@ -5812,6 +5812,63 @@
         }
       }
     },
+    "controller.api.services.v1.ValidateSessionResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ID of the session job"
+        },
+        "scope_id": {
+          "type": "string",
+          "title": "The scope the job was created in"
+        },
+        "user_id": {
+          "type": "string",
+          "title": "The ID of the user that requested the session"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type of the session (e.g. tcp, ssh, etc.)"
+        },
+        "endpoint": {
+          "type": "string",
+          "title": "The endpoint to connect to, in a manner that makes sense for the type"
+        },
+        "certificate": {
+          "type": "string",
+          "format": "byte",
+          "description": "The certificate to use when connecting (or if using custom certs, to\nserve as the \"login\"). Raw DER bytes."
+        },
+        "private_key": {
+          "type": "string",
+          "format": "byte",
+          "description": "The private key to use when connecting (or if using custom certs, to pass\nas the \"password\")."
+        },
+        "expiration_time": {
+          "type": "string",
+          "format": "date-time",
+          "title": "After this time the connection will be expired, e.g. forcefully terminated"
+        },
+        "worker_info": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.services.v1.WorkerInfo"
+          },
+          "description": "Worker information. The first worker in the slice should be prioritized."
+        }
+      },
+      "title": "SessionResponse contains information necessary for a client to establish a session"
+    },
+    "controller.api.services.v1.WorkerInfo": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "title": "The address of the worker"
+        }
+      }
+    },
     "controller.servers.v1.Server": {
       "type": "object",
       "properties": {

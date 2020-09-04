@@ -139,7 +139,7 @@ func (r *Repository) LatestOplogKeyVersion(ctx context.Context, rkvWrapper wrapp
 }
 
 // ListOplogKeyVersions will lists versions of a key.  Supports the WithLimit option.
-func (r *Repository) ListOplogKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, oplogKeyId string, opt ...Option) ([]*OplogKeyVersion, error) {
+func (r *Repository) ListOplogKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, oplogKeyId string, opt ...Option) ([]DekVersion, error) {
 	if oplogKeyId == "" {
 		return nil, fmt.Errorf("list oplog key versions: missing oplog key id %w", db.ErrInvalidParameter)
 	}
@@ -156,5 +156,9 @@ func (r *Repository) ListOplogKeyVersions(ctx context.Context, rkvWrapper wrappi
 			return nil, fmt.Errorf("list oplog key versions: error decrypting key num %d: %w", i, err)
 		}
 	}
-	return versions, nil
+	dekVersions := make([]DekVersion, 0, len(versions))
+	for _, version := range versions {
+		dekVersions = append(dekVersions, version)
+	}
+	return dekVersions, nil
 }
