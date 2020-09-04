@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestList(t *testing.T) {
+func TestProjects_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
@@ -47,7 +47,7 @@ func TestList(t *testing.T) {
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
 }
 
-func TestCrud(t *testing.T) {
+func TestProjects_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
@@ -100,7 +100,7 @@ func TestCrud(t *testing.T) {
 }
 
 // TODO: Get better coverage for expected errors and error formats.
-func TestErrors(t *testing.T) {
+func TestProject_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
