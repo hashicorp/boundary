@@ -3423,7 +3423,12 @@ begin;
     update_time wt_timestamp
   );
 
-
+  create trigger 
+    immutable_columns
+  before
+  update on session
+    for each row execute procedure immutable_columns('public_id', 'server_type', 'address', 'port', 'create_time');
+  
   create trigger 
     update_version_column 
   after update on session
@@ -3539,6 +3544,12 @@ begin;
   );
 
 
+  create trigger 
+    immutable_columns
+  before
+  update on session_state
+    for each row execute procedure immutable_columns('session_id', 'start_time', 'previous_end_time');
+    
   create or replace function
     insert_session_state()
     returns trigger
