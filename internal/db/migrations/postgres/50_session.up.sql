@@ -121,9 +121,9 @@ begin;
       references auth_token (public_id)
       on delete set null
       on update cascade,
-    -- the organization which owns this session
+    -- the project which owns this session
     scope_id wt_scope_id -- fk7
-      references iam_scope_org (scope_id)
+      references iam_scope_project (scope_id)
       on delete set null
       on update cascade,
     -- the reason this session ended (null until terminated)
