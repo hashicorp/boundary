@@ -19,28 +19,10 @@ func TestSession_Create(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
-	userId,
-		hostId,
-		serverId,
-		serverType,
-		targetId,
-		hostSetId,
-		authTokenId,
-		scopeId,
-		address,
-		port := TestSessionParams(t, conn, wrapper, iamRepo)
+	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 
 	type args struct {
-		userId      string
-		hostId      string
-		serverId    string
-		serverType  string
-		targetId    string
-		hostSetId   string
-		authTokenId string
-		scopeId     string
-		address     string
-		port        string
+		composedOf ComposedOf
 	}
 	tests := []struct {
 		name          string
@@ -54,29 +36,20 @@ func TestSession_Create(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				userId:      userId,
-				hostId:      hostId,
-				serverId:    serverId,
-				serverType:  serverType,
-				targetId:    targetId,
-				hostSetId:   hostSetId,
-				authTokenId: authTokenId,
-				scopeId:     scopeId,
-				address:     address,
-				port:        port,
+				composedOf: composedOf,
 			},
 			want: &Session{
 				Session: &store.Session{
-					UserId:      userId,
-					HostId:      hostId,
-					ServerId:    serverId,
-					ServerType:  serverType,
-					TargetId:    targetId,
-					SetId:       hostSetId,
-					AuthTokenId: authTokenId,
-					ScopeId:     scopeId,
-					Address:     address,
-					Port:        port,
+					UserId:      composedOf.UserId,
+					HostId:      composedOf.HostId,
+					ServerId:    composedOf.ServerId,
+					ServerType:  composedOf.ServerType,
+					TargetId:    composedOf.TargetId,
+					SetId:       composedOf.HostSetId,
+					AuthTokenId: composedOf.AuthTokenId,
+					ScopeId:     composedOf.ScopeId,
+					Address:     composedOf.Address,
+					Port:        composedOf.Port,
 				},
 			},
 			create: true,
@@ -84,15 +57,11 @@ func TestSession_Create(t *testing.T) {
 		{
 			name: "empty-userId",
 			args: args{
-				hostId:      hostId,
-				serverId:    serverId,
-				serverType:  serverType,
-				targetId:    targetId,
-				hostSetId:   hostSetId,
-				authTokenId: authTokenId,
-				scopeId:     scopeId,
-				address:     address,
-				port:        port,
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.UserId = ""
+					return c
+				}(),
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -100,15 +69,11 @@ func TestSession_Create(t *testing.T) {
 		{
 			name: "empty-hostId",
 			args: args{
-				userId:      userId,
-				serverId:    serverId,
-				serverType:  serverType,
-				targetId:    targetId,
-				hostSetId:   hostSetId,
-				authTokenId: authTokenId,
-				scopeId:     scopeId,
-				address:     address,
-				port:        port,
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.HostId = ""
+					return c
+				}(),
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -116,15 +81,11 @@ func TestSession_Create(t *testing.T) {
 		{
 			name: "empty-serverId",
 			args: args{
-				userId:      userId,
-				hostId:      hostId,
-				serverType:  serverType,
-				targetId:    targetId,
-				hostSetId:   hostSetId,
-				authTokenId: authTokenId,
-				scopeId:     scopeId,
-				address:     address,
-				port:        port,
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.ServerId = ""
+					return c
+				}(),
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -132,15 +93,11 @@ func TestSession_Create(t *testing.T) {
 		{
 			name: "empty-serverType",
 			args: args{
-				userId:      userId,
-				hostId:      hostId,
-				serverId:    serverId,
-				targetId:    targetId,
-				hostSetId:   hostSetId,
-				authTokenId: authTokenId,
-				scopeId:     scopeId,
-				address:     address,
-				port:        port,
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.ServerType = ""
+					return c
+				}(),
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -148,15 +105,11 @@ func TestSession_Create(t *testing.T) {
 		{
 			name: "empty-targetId",
 			args: args{
-				userId:      userId,
-				hostId:      hostId,
-				serverId:    serverId,
-				serverType:  serverType,
-				hostSetId:   hostSetId,
-				authTokenId: authTokenId,
-				scopeId:     scopeId,
-				address:     address,
-				port:        port,
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.TargetId = ""
+					return c
+				}(),
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -164,15 +117,11 @@ func TestSession_Create(t *testing.T) {
 		{
 			name: "empty-hostSetId",
 			args: args{
-				userId:      userId,
-				hostId:      hostId,
-				serverId:    serverId,
-				serverType:  serverType,
-				targetId:    targetId,
-				authTokenId: authTokenId,
-				scopeId:     scopeId,
-				address:     address,
-				port:        port,
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.HostSetId = ""
+					return c
+				}(),
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -180,15 +129,11 @@ func TestSession_Create(t *testing.T) {
 		{
 			name: "empty-authTokenId",
 			args: args{
-				userId:     userId,
-				hostId:     hostId,
-				serverId:   serverId,
-				serverType: serverType,
-				targetId:   targetId,
-				hostSetId:  hostSetId,
-				scopeId:    scopeId,
-				address:    address,
-				port:       port,
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.AuthTokenId = ""
+					return c
+				}(),
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -196,15 +141,11 @@ func TestSession_Create(t *testing.T) {
 		{
 			name: "empty-scopeId",
 			args: args{
-				userId:      userId,
-				hostId:      hostId,
-				serverId:    serverId,
-				serverType:  serverType,
-				targetId:    targetId,
-				hostSetId:   hostSetId,
-				authTokenId: authTokenId,
-				address:     address,
-				port:        port,
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.ScopeId = ""
+					return c
+				}(),
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -212,15 +153,11 @@ func TestSession_Create(t *testing.T) {
 		{
 			name: "empty-address",
 			args: args{
-				userId:      userId,
-				hostId:      hostId,
-				serverId:    serverId,
-				serverType:  serverType,
-				targetId:    targetId,
-				hostSetId:   hostSetId,
-				authTokenId: authTokenId,
-				scopeId:     scopeId,
-				port:        port,
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.Address = ""
+					return c
+				}(),
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -228,15 +165,11 @@ func TestSession_Create(t *testing.T) {
 		{
 			name: "empty-port",
 			args: args{
-				userId:      userId,
-				hostId:      hostId,
-				serverId:    serverId,
-				serverType:  serverType,
-				targetId:    targetId,
-				hostSetId:   hostSetId,
-				authTokenId: authTokenId,
-				scopeId:     scopeId,
-				address:     address,
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.Port = ""
+					return c
+				}(),
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -245,18 +178,7 @@ func TestSession_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := New(
-				tt.args.userId,
-				tt.args.hostId,
-				tt.args.serverId,
-				tt.args.serverType,
-				tt.args.targetId,
-				tt.args.hostSetId,
-				tt.args.authTokenId,
-				tt.args.scopeId,
-				tt.args.address,
-				tt.args.port,
-			)
+			got, err := New(tt.args.composedOf)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Is(err, tt.wantIsErr))

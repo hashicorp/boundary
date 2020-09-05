@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -14,6 +15,18 @@ const (
 	DefaultSessionTableName = "session"
 )
 
+type ComposedOf struct {
+	UserId      string
+	HostId      string
+	ServerId    string
+	ServerType  string
+	TargetId    string
+	HostSetId   string
+	AuthTokenId string
+	ScopeId     string
+	Address     string
+	Port        string
+}
 type Session struct {
 	*store.Session
 	tableName string `gorm:"-"`
@@ -24,30 +37,19 @@ var _ db.VetForWriter = (*Session)(nil)
 
 // New creates a new in memory session.  No options
 // are currently supported.
-func New(
-	userId,
-	hostId,
-	serverId,
-	serverType,
-	targetId,
-	hostSetId,
-	authTokenId,
-	scopeId,
-	address,
-	port string,
-	opt ...Option) (*Session, error) {
+func New(c ComposedOf, opt ...Option) (*Session, error) {
 	s := Session{
 		Session: &store.Session{
-			UserId:      userId,
-			HostId:      hostId,
-			ServerId:    serverId,
-			ServerType:  serverType,
-			TargetId:    targetId,
-			SetId:       hostSetId,
-			AuthTokenId: authTokenId,
-			ScopeId:     scopeId,
-			Address:     address,
-			Port:        port,
+			UserId:      c.UserId,
+			HostId:      c.HostId,
+			ServerId:    c.ServerId,
+			ServerType:  c.ServerType,
+			TargetId:    c.TargetId,
+			SetId:       c.HostSetId,
+			AuthTokenId: c.AuthTokenId,
+			ScopeId:     c.ScopeId,
+			Address:     c.Address,
+			Port:        c.Port,
 		},
 	}
 
@@ -171,6 +173,9 @@ func (s *Session) validateNewSession(errorPrefix string) error {
 		if _, err := convertToReason(s.TerminationReason); err != nil {
 			return fmt.Errorf("session vet for write: %w", db.ErrInvalidParameter)
 		}
+	}
+	if _, err := strconv.ParseUint(s.Port, 10, 16); err != nil {
+		return fmt.Errorf("%s invalid port %s: %w", errorPrefix, s.Port, db.ErrInvalidParameter)
 	}
 	return nil
 }

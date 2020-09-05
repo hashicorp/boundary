@@ -30,36 +30,11 @@ func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *Sta
 	return s
 }
 
-func TestSession(
-	t *testing.T,
-	conn *gorm.DB,
-	userId,
-	hostId,
-	serverId,
-	serverType,
-	targetId,
-	hostSetId,
-	authTokenId,
-	scopeId,
-	address,
-	port string,
-	opt ...Option) *Session {
+func TestSession(t *testing.T, conn *gorm.DB, c ComposedOf, opt ...Option) *Session {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	s, err := New(
-		userId,
-		hostId,
-		serverId,
-		serverType,
-		targetId,
-		hostSetId,
-		authTokenId,
-		scopeId,
-		address,
-		port,
-		opt...,
-	)
+	s, err := New(c, opt...)
 	require.NoError(err)
 	id, err := newId()
 	require.NoError(err)
@@ -71,42 +46,11 @@ func TestSession(
 
 func TestDefaultSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository, opt ...Option) *Session {
 	t.Helper()
-	userId,
-		hostId,
-		serverId,
-		serverType,
-		targetId,
-		hostSetId,
-		authTokenId,
-		scopeId,
-		address,
-		port := TestSessionParams(t, conn, wrapper, iamRepo)
-	return TestSession(
-		t,
-		conn,
-		userId,
-		hostId,
-		serverId,
-		serverType,
-		targetId,
-		hostSetId,
-		authTokenId,
-		scopeId,
-		address,
-		port)
+	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+	return TestSession(t, conn, composedOf)
 }
 
-func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) (
-	userId,
-	hostId,
-	serverId,
-	serverType,
-	targetId,
-	hostSetId,
-	authTokenId,
-	scopeId,
-	address,
-	port string) {
+func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
 	t.Helper()
 	ctx := context.Background()
 
@@ -152,16 +96,18 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	_, _, err = serversRepo.UpsertServer(ctx, worker)
 	require.NoError(err)
 
-	return user.PublicId,
-		hosts[0].PublicId,
-		worker.PrivateId,
-		worker.Type,
-		tcpTarget.PublicId,
-		sets[0].PublicId,
-		at.PublicId,
-		tcpTarget.ScopeId,
-		"127.0.0.1",
-		"22"
+	return ComposedOf{
+		UserId:      user.PublicId,
+		HostId:      hosts[0].PublicId,
+		ServerId:    worker.PrivateId,
+		ServerType:  worker.Type,
+		TargetId:    tcpTarget.PublicId,
+		HostSetId:   sets[0].PublicId,
+		AuthTokenId: at.PublicId,
+		ScopeId:     tcpTarget.ScopeId,
+		Address:     "127.0.0.1",
+		Port:        "22",
+	}
 }
 
 func testId(t *testing.T) string {
