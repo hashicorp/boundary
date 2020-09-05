@@ -244,14 +244,14 @@ type State struct {
 	// @inject_tag: gorm:"primary_key"
 	SessionId string `protobuf:"bytes,10,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" gorm:"primary_key"`
 	// status of the session
-	// @inject_tag: gorm:"column:state;primary_key"
-	Status string `protobuf:"bytes,20,opt,name=status,proto3" json:"status,omitempty" gorm:"column:state;primary_key"`
+	// @inject_tag: gorm:"column:state"
+	Status string `protobuf:"bytes,20,opt,name=status,proto3" json:"status,omitempty" gorm:"column:state"`
 	// previous_end_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	PreviousEndTime *timestamp.Timestamp `protobuf:"bytes,30,opt,name=previous_end_time,json=previousEndTime,proto3" json:"previous_end_time,omitempty" gorm:"default:current_timestamp"`
 	// start_time from the RDBMS
-	// @inject_tag: `gorm:"default:current_timestamp"`
-	StartTime *timestamp.Timestamp `protobuf:"bytes,40,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty" gorm:"default:current_timestamp"`
+	// @inject_tag: `gorm:"default:current_timestamp;primary_key"`
+	StartTime *timestamp.Timestamp `protobuf:"bytes,40,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty" gorm:"default:current_timestamp;primary_key"`
 	// end_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	EndTime *timestamp.Timestamp `protobuf:"bytes,50,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty" gorm:"default:current_timestamp"`
