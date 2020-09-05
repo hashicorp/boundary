@@ -96,10 +96,12 @@ func TestState_Delete(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
+	session2 := TestDefaultSession(t, conn, wrapper, iamRepo)
 
 	tests := []struct {
 		name            string
 		state           *State
+		deleteSessionId string
 		wantRowsDeleted int
 		wantErr         bool
 		wantErrMsg      string
@@ -111,14 +113,12 @@ func TestState_Delete(t *testing.T) {
 			wantRowsDeleted: 1,
 		},
 		{
-			name: "bad-id",
-			state: func() *State {
-				s := allocState()
-				id, err := db.NewPublicId(StatePrefix)
+			name:  "bad-id",
+			state: TestState(t, conn, session2.PublicId, Closed),
+			deleteSessionId: func() string {
+				id, err := db.NewPublicId(SessionPrefix)
 				require.NoError(t, err)
-				s.SessionId = id
-				s.Status = Pending.String()
-				return &s
+				return id
 			}(),
 			wantErr:         false,
 			wantRowsDeleted: 0,
@@ -133,7 +133,11 @@ func TestState_Delete(t *testing.T) {
 			require.NoError(err)
 
 			deleteState := allocState()
-			deleteState.SessionId = tt.state.SessionId
+			if tt.deleteSessionId != "" {
+				deleteState.SessionId = tt.deleteSessionId
+			} else {
+				deleteState.SessionId = tt.state.SessionId
+			}
 			deleteState.StartTime = initialState.StartTime
 			deletedRows, err := rw.Delete(context.Background(), &deleteState)
 			if tt.wantErr {
@@ -147,7 +151,7 @@ func TestState_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundState := allocState()
-			err = rw.LookupWhere(context.Background(), &foundState, "session_id = ? and state = ?", tt.state.SessionId, tt.state.Status)
+			err = rw.LookupWhere(context.Background(), &foundState, "session_id = ? and start_time = ?", tt.state.SessionId, initialState.StartTime)
 			fmt.Println(foundState)
 			require.Error(err)
 			assert.True(errors.Is(db.ErrRecordNotFound, err))
