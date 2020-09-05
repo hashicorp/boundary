@@ -109,7 +109,11 @@ func TestState_ImmutableFields(t *testing.T) {
 
 	_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
-	new := TestState(t, conn, session.PublicId, Pending)
+	state := TestState(t, conn, session.PublicId, Pending)
+
+	var new State
+	err := rw.LookupWhere(context.Background(), &new, "session_id = ? and state = ?", state.SessionId, state.Status)
+	require.NoError(t, err)
 
 	var tests = []struct {
 		name      string
@@ -149,7 +153,7 @@ func TestState_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
-			err := rw.LookupWhere(context.Background(), orig, "session_id = ? and state = ?", new.SessionId, new.Status)
+			err := rw.LookupWhere(context.Background(), orig, "session_id = ? and start_time = ?", new.SessionId, new.StartTime)
 			require.NoError(err)
 
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
@@ -157,10 +161,9 @@ func TestState_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			err = rw.LookupWhere(context.Background(), after, "session_id = ? and state = ?", new.SessionId, new.Status)
+			err = rw.LookupWhere(context.Background(), after, "session_id = ? and start_time = ?", new.SessionId, new.StartTime)
 			require.NoError(err)
 			assert.True(proto.Equal(orig.(*State), after.(*State)))
 		})
 	}
-
 }
