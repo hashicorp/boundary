@@ -126,7 +126,7 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	kms := kms.TestKms(t, conn, wrapper)
 	targetRepo, err := target.NewRepository(rw, rw, kms)
 	require.NoError(err)
-	_, _, err = targetRepo.AddTargeHostSets(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
+	_, _, err = targetRepo.AddTargetHostSets(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
 	require.NoError(err)
 
 	authMethod := password.TestAuthMethods(t, conn, org.PublicId, 1)[0]
