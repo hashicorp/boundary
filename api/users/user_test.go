@@ -123,8 +123,8 @@ func TestUser_Crud(t *testing.T) {
 
 	existed, apiErr, err = userClient.Delete(tc.Context(), u.Id)
 	require.NoError(err)
-	assert.Nil(apiErr)
-	assert.False(existed, "Expected user to not exist when deleted, but it did.")
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusForbidden, apiErr.Status)
 }
 
 func TestUser_Errors(t *testing.T) {
@@ -156,12 +156,12 @@ func TestUser_Errors(t *testing.T) {
 	_, apiErr, err = userClient.Read(tc.Context(), iam.UserPrefix+"_doesntexis")
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.EqualValues(http.StatusForbidden, apiErr.Status)
 
 	_, apiErr, err = userClient.Read(tc.Context(), "invalid id")
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
 	_, apiErr, err = userClient.Update(tc.Context(), u.Id, u.Version)
 	require.NoError(err)

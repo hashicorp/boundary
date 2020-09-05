@@ -117,7 +117,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existant Role",
 			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.NotFound,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -143,7 +143,7 @@ func TestGet(t *testing.T) {
 			scopeId: pr.GetScopeId(),
 			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.NotFound,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Project Scoped Wrong id prefix",
@@ -284,10 +284,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: iam.RolePrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteRoleResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name:    "Bad Role Id formatting",
@@ -315,10 +312,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: iam.RolePrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteRoleResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
+			errCode: codes.PermissionDenied,
 		},
 	}
 	for _, tc := range cases {
@@ -346,8 +340,8 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteRole(ctx, req)
-	assert.NoError(gErr, "Second attempt")
-	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+	assert.Error(gErr, "Second attempt")
+	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
 
 	projReq := &pbs.DeleteRoleRequest{
 		Id: pr.GetPublicId(),
@@ -357,8 +351,8 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteRole(ctx, projReq)
-	assert.NoError(gErr, "Second attempt")
-	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+	assert.Error(gErr, "Second attempt")
+	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
 
 }
 
@@ -823,8 +817,6 @@ func TestUpdate(t *testing.T) {
 			},
 			errCode: codes.OK,
 		},
-		// TODO: Updating a non existant role should result in a NotFound exception but currently results in
-		// the repoFn returning an internal error.
 		{
 			name: "Update a Non Existing Role",
 			req: &pbs.UpdateRoleRequest{
@@ -837,7 +829,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.Internal,
+			errCode: codes.PermissionDenied,
 		},
 		{
 			name: "Cant change Id",
@@ -1033,7 +1025,7 @@ func TestAddPrincipal(t *testing.T) {
 				role := iam.TestRole(t, conn, scope.GetPublicId())
 				tc.setup(role)
 				req := &pbs.AddRolePrincipalsRequest{
-					RoleId:       role.GetPublicId(),
+					Id:           role.GetPublicId(),
 					Version:      role.GetVersion(),
 					PrincipalIds: append(tc.addUsers, tc.addGroups...),
 				}
@@ -1062,7 +1054,7 @@ func TestAddPrincipal(t *testing.T) {
 		{
 			name: "Bad Role Id",
 			req: &pbs.AddRolePrincipalsRequest{
-				RoleId:  "bad id",
+				Id:      "bad id",
 				Version: role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
@@ -1159,7 +1151,7 @@ func TestSetPrincipal(t *testing.T) {
 				role := iam.TestRole(t, conn, scope.GetPublicId())
 				tc.setup(role)
 				req := &pbs.SetRolePrincipalsRequest{
-					RoleId:       role.GetPublicId(),
+					Id:           role.GetPublicId(),
 					Version:      role.GetVersion(),
 					PrincipalIds: append(tc.setUsers, tc.setGroups...),
 				}
@@ -1188,7 +1180,7 @@ func TestSetPrincipal(t *testing.T) {
 		{
 			name: "Bad Role Id",
 			req: &pbs.SetRolePrincipalsRequest{
-				RoleId:  "bad id",
+				Id:      "bad id",
 				Version: role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
@@ -1297,7 +1289,7 @@ func TestRemovePrincipal(t *testing.T) {
 				role := iam.TestRole(t, conn, scope.GetPublicId())
 				tc.setup(role)
 				req := &pbs.RemoveRolePrincipalsRequest{
-					RoleId:       role.GetPublicId(),
+					Id:           role.GetPublicId(),
 					Version:      role.GetVersion(),
 					PrincipalIds: append(tc.removeUsers, tc.removeGroups...),
 				}
@@ -1326,7 +1318,7 @@ func TestRemovePrincipal(t *testing.T) {
 		{
 			name: "Bad Role Id",
 			req: &pbs.AddRolePrincipalsRequest{
-				RoleId:  "bad id",
+				Id:      "bad id",
 				Version: role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
@@ -1406,7 +1398,7 @@ func TestAddGrants(t *testing.T) {
 					_ = iam.TestRoleGrant(t, conn, role.GetPublicId(), e)
 				}
 				req := &pbs.AddRoleGrantsRequest{
-					RoleId:  role.GetPublicId(),
+					Id:      role.GetPublicId(),
 					Version: role.GetVersion(),
 				}
 				scopeId := o.GetPublicId()
@@ -1435,7 +1427,7 @@ func TestAddGrants(t *testing.T) {
 		{
 			name: "Bad Role Id",
 			req: &pbs.AddRoleGrantsRequest{
-				RoleId:       "bad id",
+				Id:           "bad id",
 				GrantStrings: []string{"id=*;actions=create"},
 				Version:      role.GetVersion(),
 			},
@@ -1504,7 +1496,7 @@ func TestSetGrants(t *testing.T) {
 					_ = iam.TestRoleGrant(t, conn, role.GetPublicId(), e)
 				}
 				req := &pbs.SetRoleGrantsRequest{
-					RoleId:  role.GetPublicId(),
+					Id:      role.GetPublicId(),
 					Version: role.GetVersion(),
 				}
 				scopeId := o.GetPublicId()
@@ -1535,7 +1527,7 @@ func TestSetGrants(t *testing.T) {
 		{
 			name: "Bad Role Id",
 			req: &pbs.SetRoleGrantsRequest{
-				RoleId:       "bad id",
+				Id:           "bad id",
 				GrantStrings: []string{"id=*;actions=create"},
 				Version:      role.GetVersion(),
 			},
@@ -1603,7 +1595,7 @@ func TestRemoveGrants(t *testing.T) {
 					_ = iam.TestRoleGrant(t, conn, role.GetPublicId(), e)
 				}
 				req := &pbs.RemoveRoleGrantsRequest{
-					RoleId:  role.GetPublicId(),
+					Id:      role.GetPublicId(),
 					Version: role.GetVersion(),
 				}
 				scopeId := o.GetPublicId()
@@ -1635,7 +1627,7 @@ func TestRemoveGrants(t *testing.T) {
 		{
 			name: "Bad Role Id",
 			req: &pbs.RemoveRoleGrantsRequest{
-				RoleId:       "bad id",
+				Id:           "bad id",
 				GrantStrings: []string{"id=*;actions=create"},
 				Version:      role.GetVersion(),
 			},

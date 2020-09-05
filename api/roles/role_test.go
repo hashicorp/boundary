@@ -274,11 +274,6 @@ func TestRole_Crud(t *testing.T) {
 			require.NoError(err)
 			assert.Nil(apiErr)
 			assert.True(existed, "Expected existing user when deleted, but it wasn't.")
-
-			existed, apiErr, err = roleClient.Delete(tc.Context(), g.Id)
-			require.NoError(err)
-			assert.Nil(apiErr)
-			assert.False(existed, "Expected user to not exist when deleted, but it did.")
 		})
 	}
 }
@@ -330,12 +325,12 @@ func TestRole_Errors(t *testing.T) {
 			_, apiErr, err = roleClient.Read(tc.Context(), iam.RolePrefix+"_doesntexis")
 			require.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusNotFound, apiErr.Status)
+			assert.EqualValues(http.StatusForbidden, apiErr.Status)
 
 			_, apiErr, err = roleClient.Read(tc.Context(), "invalid id")
 			require.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusForbidden, apiErr.Status)
+			assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
 			_, apiErr, err = roleClient.Update(tc.Context(), u.Id, u.Version)
 			require.NoError(err)

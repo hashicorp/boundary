@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -293,7 +292,7 @@ func Test_UserDelete(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundUser, err := repo.LookupUser(context.Background(), tt.user.GetPublicId())
-			assert.True(errors.Is(err, db.ErrRecordNotFound))
+			assert.NoError(err)
 			assert.Nil(foundUser)
 		})
 	}

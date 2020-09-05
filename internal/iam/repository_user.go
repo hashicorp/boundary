@@ -2,6 +2,7 @@ package iam
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -89,6 +90,9 @@ func (r *Repository) LookupUser(ctx context.Context, withPublicId string, opt ..
 	user := allocUser()
 	user.PublicId = withPublicId
 	if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("lookup user: failed %w for %s", err, withPublicId)
 	}
 	return &user, nil

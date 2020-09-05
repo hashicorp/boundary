@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -44,51 +45,14 @@ func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 	return Service{staticRepoFn: repoFn}, nil
 }
 
-func (s Service) getHostStructs(ctx context.Context, id string, isHostSetId bool) (*static.HostCatalog, *static.HostSet, error) {
-	repo, err := s.staticRepoFn()
-	if err != nil {
-		return nil, nil, err
-	}
-	hostCatalogId := id
-	var hostSet *static.HostSet
-	if isHostSetId {
-		hostSet, _, err = repo.LookupSet(ctx, id)
-		if err != nil {
-			return nil, nil, err
-		}
-		if hostSet == nil {
-			return nil, nil, handlers.ForbiddenError()
-		}
-		hostCatalogId = hostSet.GetCatalogId()
-	}
-	hostCatalog, err := repo.LookupCatalog(ctx, hostCatalogId)
-	if err != nil {
-		return nil, nil, err
-	}
-	if hostCatalog == nil {
-		return nil, nil, handlers.ForbiddenError()
-	}
-	return hostCatalog, hostSet, nil
-}
-
 func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest) (*pbs.ListHostSetsResponse, error) {
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-
-	hostCatalog, _, err := s.getHostStructs(ctx, req.GetHostCatalogId(), false)
-	if err != nil {
-		return nil, err
-	}
-	authResults := auth.Verify(ctx,
-		auth.WithScopeId(hostCatalog.GetScopeId()),
-		auth.WithPin(hostCatalog.GetPublicId()),
-		auth.WithAction(action.List),
-	)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetHostCatalogId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-
 	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId())
 	if err != nil {
 		return nil, err
@@ -104,21 +68,10 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-
-	hostCatalog, hostSet, err := s.getHostStructs(ctx, req.GetId(), true)
-	if err != nil {
-		return nil, err
-	}
-	authResults := auth.Verify(ctx,
-		auth.WithScopeId(hostCatalog.GetScopeId()),
-		auth.WithId(hostSet.GetPublicId()),
-		auth.WithPin(hostCatalog.GetPublicId()),
-		auth.WithAction(action.Read),
-	)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-
 	hc, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
@@ -132,21 +85,11 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-
-	hostCatalog, _, err := s.getHostStructs(ctx, req.GetItem().GetHostCatalogId(), false)
-	if err != nil {
-		return nil, err
-	}
-	authResults := auth.Verify(ctx,
-		auth.WithScopeId(hostCatalog.GetScopeId()),
-		auth.WithPin(hostCatalog.GetPublicId()),
-		auth.WithAction(action.Create),
-	)
+	cat, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-
-	h, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem().GetHostCatalogId(), req.GetItem())
+	h, err := s.createInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -162,22 +105,11 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-
-	hostCatalog, hostSet, err := s.getHostStructs(ctx, req.GetId(), true)
-	if err != nil {
-		return nil, err
-	}
-	authResults := auth.Verify(ctx,
-		auth.WithScopeId(hostCatalog.GetScopeId()),
-		auth.WithId(hostSet.GetPublicId()),
-		auth.WithPin(hostCatalog.GetPublicId()),
-		auth.WithAction(action.Update),
-	)
+	cat, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-
-	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), hostCatalog.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -190,20 +122,10 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	hostCatalog, hostSet, err := s.getHostStructs(ctx, req.GetId(), true)
-	if err != nil {
-		return nil, err
-	}
-	authResults := auth.Verify(ctx,
-		auth.WithScopeId(hostCatalog.GetScopeId()),
-		auth.WithId(hostSet.GetPublicId()),
-		auth.WithPin(hostCatalog.GetPublicId()),
-		auth.WithAction(action.Delete),
-	)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-
 	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
@@ -216,20 +138,10 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 	if err := validateAddRequest(req); err != nil {
 		return nil, err
 	}
-	hostCatalog, hostSet, err := s.getHostStructs(ctx, req.GetId(), true)
-	if err != nil {
-		return nil, err
-	}
-	authResults := auth.Verify(ctx,
-		auth.WithScopeId(hostCatalog.GetScopeId()),
-		auth.WithId(hostSet.GetPublicId()),
-		auth.WithPin(hostCatalog.GetPublicId()),
-		auth.WithAction(action.AddHosts),
-	)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.AddHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-
 	g, err := s.addInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
@@ -242,20 +154,10 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 	if err := validateSetRequest(req); err != nil {
 		return nil, err
 	}
-	hostCatalog, hostSet, err := s.getHostStructs(ctx, req.GetId(), true)
-	if err != nil {
-		return nil, err
-	}
-	authResults := auth.Verify(ctx,
-		auth.WithScopeId(hostCatalog.GetScopeId()),
-		auth.WithId(hostSet.GetPublicId()),
-		auth.WithPin(hostCatalog.GetPublicId()),
-		auth.WithAction(action.SetHosts),
-	)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-
 	g, err := s.setInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
@@ -268,20 +170,10 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 	if err := validateRemoveRequest(req); err != nil {
 		return nil, err
 	}
-	hostCatalog, hostSet, err := s.getHostStructs(ctx, req.GetId(), true)
-	if err != nil {
-		return nil, err
-	}
-	authResults := auth.Verify(ctx,
-		auth.WithScopeId(hostCatalog.GetScopeId()),
-		auth.WithId(hostSet.GetPublicId()),
-		auth.WithPin(hostCatalog.GetPublicId()),
-		auth.WithAction(action.RemoveHosts),
-	)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.RemoveHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-
 	g, err := s.removeInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
@@ -445,6 +337,46 @@ func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostId
 		return nil, status.Error(codes.Internal, "Unable to lookup host set after removing hosts from it.")
 	}
 	return toProto(out, m), nil
+}
+
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*static.HostCatalog, auth.VerifyResults) {
+	res := auth.VerifyResults{}
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+
+	var parentId string
+	opts := []auth.Option{auth.WithType(resource.HostSet), auth.WithAction(a)}
+	switch a {
+	case action.List, action.Create:
+		parentId = id
+	default:
+		set, _, err := repo.LookupSet(ctx, id)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if set == nil {
+			res.Error = handlers.ForbiddenError()
+			return nil, res
+		}
+		parentId = set.GetCatalogId()
+		opts = append(opts, auth.WithId(id))
+	}
+
+	cat, err := repo.LookupCatalog(ctx, parentId)
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	if cat == nil {
+		res.Error = handlers.ForbiddenError()
+		return nil, res
+	}
+	opts = append(opts, auth.WithScopeId(cat.GetScopeId()), auth.WithPin(parentId))
+	return cat, auth.Verify(ctx, opts...)
 }
 
 func toProto(in *static.HostSet, hs []*static.Host) *pb.HostSet {

@@ -170,8 +170,9 @@ func TestGroup_Crud(t *testing.T) {
 			assert.True(existed, "Expected existing user when deleted, but it wasn't.")
 
 			existed, apiErr, err = groupsClient.Delete(tc.Context(), g.Id)
-			assert.NoError(err)
-			assert.False(existed, "Expected user to not exist when deleted, but it did.")
+			require.NoError(err)
+			assert.NotNil(apiErr)
+			assert.EqualValues(http.StatusForbidden, apiErr.Status)
 		})
 	}
 }
@@ -224,12 +225,12 @@ func TestGroup_Errors(t *testing.T) {
 			_, apiErr, err = groupClient.Read(tc.Context(), iam.GroupPrefix+"_doesntexis")
 			require.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusNotFound, apiErr.Status)
+			assert.EqualValues(http.StatusForbidden, apiErr.Status)
 
 			_, apiErr, err = groupClient.Read(tc.Context(), "invalid id")
 			require.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusForbidden, apiErr.Status)
+			assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
 			_, apiErr, err = groupClient.Update(tc.Context(), g.Id, g.Version)
 			require.NoError(err)

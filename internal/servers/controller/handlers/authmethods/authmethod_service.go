@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -12,7 +11,10 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,7 +23,6 @@ import (
 
 var (
 	maskManager handlers.MaskManager
-	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 )
 
 func init() {
@@ -33,27 +34,31 @@ func init() {
 
 // Service handles request as described by the pbs.AuthMethodServiceServer interface.
 type Service struct {
-	repoFn func() (*password.Repository, error)
+	repoFn    common.PasswordAuthRepoFactory
+	iamRepoFn common.IamRepoFactory
 }
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
-func NewService(repo func() (*password.Repository, error)) (Service, error) {
+func NewService(repo common.PasswordAuthRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	if repo == nil {
+		return Service{}, fmt.Errorf("nil password repository provided")
+	}
+	if iamRepoFn == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
-	return Service{repoFn: repo}, nil
+	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
 }
 
 var _ pbs.AuthMethodServiceServer = Service{}
 
 // ListAuthMethods implements the interface pbs.AuthMethodServiceServer.
 func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRequest) (*pbs.ListAuthMethodsResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
 	if err != nil {
@@ -67,12 +72,12 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 
 // GetAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodRequest) (*pbs.GetAuthMethodResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
@@ -84,14 +89,14 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 
 // CreateAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethodRequest) (*pbs.CreateAuthMethodResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, req.GetItem().GetScopeId(), req.GetItem())
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	u, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -101,12 +106,12 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 
 // UpdateAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethodRequest) (*pbs.UpdateAuthMethodResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
@@ -118,12 +123,12 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 
 // DeleteAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethodRequest) (*pbs.DeleteAuthMethodResponse, error) {
-	authResults := auth.Verify(ctx)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
@@ -253,6 +258,50 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		return false, status.Errorf(codes.Internal, "Unable to delete auth method: %v.", err)
 	}
 	return rows > 0, nil
+}
+
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+	res := auth.VerifyResults{}
+
+	var parentId string
+	opts := []auth.Option{auth.WithType(resource.AuthMethod), auth.WithAction(a)}
+	switch a {
+	case action.List, action.Create:
+		parentId = id
+		iamRepo, err := s.iamRepoFn()
+		if err != nil {
+			res.Error = err
+			return res
+		}
+		scp, err := iamRepo.LookupScope(ctx, parentId)
+		if err != nil {
+			res.Error = err
+			return res
+		}
+		if scp == nil {
+			res.Error = handlers.ForbiddenError()
+			return res
+		}
+	default:
+		repo, err := s.repoFn()
+		if err != nil {
+			res.Error = err
+			return res
+		}
+		authMeth, err := repo.LookupAuthMethod(ctx, id)
+		if err != nil {
+			res.Error = err
+			return res
+		}
+		if authMeth == nil {
+			res.Error = handlers.ForbiddenError()
+			return res
+		}
+		parentId = authMeth.GetScopeId()
+		opts = append(opts, auth.WithId(id))
+	}
+	opts = append(opts, auth.WithScopeId(parentId))
+	return auth.Verify(ctx, opts...)
 }
 
 func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
