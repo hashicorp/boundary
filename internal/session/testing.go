@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/target"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 	"github.com/jinzhu/gorm"
@@ -89,7 +88,7 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	worker := &servers.Server{
 		PrivateId:   "test-session-worker-" + id,
 		Name:        "test-session-worker-" + id,
-		Type:        resource.Worker.String(),
+		Type:        servers.ServerTypeWorker.String(),
 		Description: "Test Session Worker",
 		Address:     "127.0.0.1",
 	}
@@ -100,7 +99,7 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 		UserId:      user.PublicId,
 		HostId:      hosts[0].PublicId,
 		ServerId:    worker.PrivateId,
-		ServerType:  worker.Type,
+		ServerType:  servers.ServerTypeWorker,
 		TargetId:    tcpTarget.PublicId,
 		HostSetId:   sets[0].PublicId,
 		AuthTokenId: at.PublicId,

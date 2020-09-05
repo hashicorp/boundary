@@ -43,7 +43,7 @@ func TestSession_Create(t *testing.T) {
 					UserId:      composedOf.UserId,
 					HostId:      composedOf.HostId,
 					ServerId:    composedOf.ServerId,
-					ServerType:  composedOf.ServerType,
+					ServerType:  composedOf.ServerType.String(),
 					TargetId:    composedOf.TargetId,
 					SetId:       composedOf.HostSetId,
 					AuthTokenId: composedOf.AuthTokenId,

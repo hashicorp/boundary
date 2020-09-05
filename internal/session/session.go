@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/session/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -19,7 +20,7 @@ type ComposedOf struct {
 	UserId      string
 	HostId      string
 	ServerId    string
-	ServerType  string
+	ServerType  servers.ServerType
 	TargetId    string
 	HostSetId   string
 	AuthTokenId string
@@ -43,7 +44,7 @@ func New(c ComposedOf, opt ...Option) (*Session, error) {
 			UserId:      c.UserId,
 			HostId:      c.HostId,
 			ServerId:    c.ServerId,
-			ServerType:  c.ServerType,
+			ServerType:  c.ServerType.String(),
 			TargetId:    c.TargetId,
 			SetId:       c.HostSetId,
 			AuthTokenId: c.AuthTokenId,
