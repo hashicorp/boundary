@@ -106,7 +106,7 @@ func TestState_Delete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			state:           TestState(t, conn, session.PublicId, Pending),
+			state:           TestState(t, conn, session.PublicId, Closed),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
@@ -127,9 +127,14 @@ func TestState_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+
+			var initialState State
+			err := rw.LookupWhere(context.Background(), &initialState, "session_id = ? and state = ?", tt.state.SessionId, tt.state.Status)
+			require.NoError(err)
+
 			deleteState := allocState()
 			deleteState.SessionId = tt.state.SessionId
-			deleteState.Status = tt.state.Status
+			deleteState.StartTime = initialState.StartTime
 			deletedRows, err := rw.Delete(context.Background(), &deleteState)
 			if tt.wantErr {
 				require.Error(err)
