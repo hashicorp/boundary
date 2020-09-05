@@ -223,7 +223,23 @@ begin;
   before insert on session
     for each row execute procedure insert_session();
 
-    
+  create or replace function 
+    insert_new_session_state()
+    returns trigger
+  as $$
+  begin
+    insert into session_state (session_id, state)
+    values
+      (new.public_id, 'pending');
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger 
+    insert_new_session_state
+  after insert on session
+    for each row execute procedure insert_new_session_state();
+
   create table session_state_enm (
     name text primary key
       check (
