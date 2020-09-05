@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"errors"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -45,4 +46,28 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 		kms:          kms,
 		defaultLimit: opts.withLimit,
 	}, nil
+}
+
+func (r *Repository) CreateSession(ctx context.Context, s *Session, opt ...Option) (*Session, error) {
+	panic("not implemented")
+}
+
+func (r *Repository) LookupSession(ctx context.Context, publicId string, opt ...Option) (*Session, []*State, error) {
+	panic("not implemented")
+}
+
+func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
+	panic("not implemented")
+}
+
+func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...Option) (int, error) {
+	panic("not implemented")
+}
+
+func (r *Repository) UpdateSession(ctx context.Context, s *Session, version uint32, fieldMaskPaths []string, opt ...Option) (*Session, []*State, int, error) {
+	panic("not implemented")
+}
+
+func (r *Repository) UpdateState(ctx context.Context, sessionId string, sessionVersion uint32, s Status, opt ...Option) (*Session, []*State, int, error) {
+	panic("not implemented")
 }
