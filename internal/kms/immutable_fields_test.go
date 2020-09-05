@@ -96,7 +96,7 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 
 			err = tt.update.Encrypt(context.Background(), wrapper)
 			require.NoError(err)
-			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
@@ -163,7 +163,7 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 			err := rw.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
@@ -232,7 +232,7 @@ func TestDatabaseKey_ImmutableFields(t *testing.T) {
 			err := rw.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
@@ -331,7 +331,7 @@ func TestDatabaseKeyVersion_ImmutableFields(t *testing.T) {
 
 			err = tt.update.Encrypt(context.Background(), wrapper)
 			require.NoError(err)
-			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
