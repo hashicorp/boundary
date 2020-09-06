@@ -152,7 +152,6 @@ func TestErrors(t *testing.T) {
 
 	client := tc.Client()
 	_, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(proj.GetPublicId())
 
 	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
 	require.NoError(err)

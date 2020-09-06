@@ -26,7 +26,6 @@ func TestList(t *testing.T) {
 
 	client := tc.Client()
 	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
 
 	scps := scopes.NewClient(client)
 
@@ -76,7 +75,6 @@ func TestCrud(t *testing.T) {
 
 	client := tc.Client()
 	org, _ := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
 
 	scps := scopes.NewClient(client)
 
@@ -129,7 +127,6 @@ func TestErrors(t *testing.T) {
 
 	client := tc.Client()
 	org, _ := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
 
 	scps := scopes.NewClient(client)
 

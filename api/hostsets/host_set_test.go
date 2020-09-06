@@ -72,7 +72,6 @@ func TestList(t *testing.T) {
 	client := tc.Client()
 	token := tc.Token()
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
-	client.SetScopeId(proj.GetPublicId())
 
 	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
 	require.NoError(err)

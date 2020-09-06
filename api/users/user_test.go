@@ -86,7 +86,6 @@ func TestCrud(t *testing.T) {
 
 	client := tc.Client()
 	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
 	userClient := users.NewClient(client)
 
 	checkUser := func(step string, u *users.User, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
@@ -139,7 +138,6 @@ func TestErrors(t *testing.T) {
 
 	client := tc.Client()
 	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
 	userClient := users.NewClient(client)
 
 	u, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
