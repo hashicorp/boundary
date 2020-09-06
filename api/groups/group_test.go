@@ -16,17 +16,13 @@ import (
 
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
 		name    string
@@ -83,17 +79,13 @@ func comparableSlice(in []*groups.Group) []groups.Group {
 
 func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	checkGroup := func(step string, g *groups.Group, apiErr *api.Error, err error, wantedName string, wantedVersion uint32, expectedUserIds []string) {
 		require.NoError(err, step)
@@ -173,17 +165,13 @@ func TestCrud(t *testing.T) {
 
 func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
 		name    string
