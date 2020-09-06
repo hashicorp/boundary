@@ -18,17 +18,13 @@ import (
 
 func TestCustom(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
 		name    string
@@ -128,17 +124,13 @@ func TestCustom(t *testing.T) {
 
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
 		name    string
@@ -156,27 +148,29 @@ func TestList(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			var expected []*roles.Role
+
 			roleClient := roles.NewClient(client)
 			p1, apiErr, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
 			assert.Nil(apiErr)
-			require.Len(p1, 0)
+			require.Len(p1, 1)
+			expected = append(expected, p1[0])
 
-			var expected []*roles.Role
-			for i := 0; i < 10; i++ {
+			for i := 1; i < 11; i++ {
 				expected = append(expected, &roles.Role{Name: fmt.Sprint(i)})
 			}
 
-			expected[0], apiErr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[0].Name))
+			expected[1], apiErr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[1].Name))
 			require.NoError(err)
 			assert.Nil(apiErr)
 
 			p2, apiErr, err := roleClient.List(tc.Context(), tt.scopeId)
 			assert.NoError(err)
 			assert.Nil(apiErr)
-			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(p2))
+			assert.ElementsMatch(comparableSlice(expected[0:2]), comparableSlice(p2))
 
-			for i := 1; i < 10; i++ {
+			for i := 2; i < 11; i++ {
 				expected[i], apiErr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[i].Name))
 				assert.NoError(err)
 				assert.Nil(apiErr)
@@ -206,17 +200,13 @@ func comparableSlice(in []*roles.Role) []roles.Role {
 
 func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
 		name    string
@@ -271,17 +261,13 @@ func TestCrud(t *testing.T) {
 
 func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
 		name    string

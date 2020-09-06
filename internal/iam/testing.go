@@ -46,16 +46,16 @@ func TestScopes(t *testing.T, repo *Repository, opt ...Option) (org *Scope, prj 
 
 	opts := getOpts(opt...)
 
-	org, err := NewOrg()
+	org, err := NewOrg(opt...)
 	require.NoError(err)
-	org, err = repo.CreateScope(context.Background(), org, opts.withUserId)
+	org, err = repo.CreateScope(context.Background(), org, opts.withUserId, opt...)
 	require.NoError(err)
 	require.NotNil(org)
 	require.NotEmpty(org.GetPublicId())
 
-	prj, err = NewProject(org.GetPublicId())
+	prj, err = NewProject(org.GetPublicId(), opt...)
 	require.NoError(err)
-	prj, err = repo.CreateScope(context.Background(), prj, opts.withUserId)
+	prj, err = repo.CreateScope(context.Background(), prj, opts.withUserId, opt...)
 	require.NoError(err)
 	require.NotNil(prj)
 	require.NotEmpty(prj.GetPublicId())

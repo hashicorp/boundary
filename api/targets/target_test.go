@@ -24,6 +24,7 @@ func TestCustom(t *testing.T) {
 	token := tc.Token()
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	client := tc.Client().Clone()
+	client.SetToken(token.Token)
 
 	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
 	require.NoError(err)
@@ -72,6 +73,7 @@ func TestList(t *testing.T) {
 
 	client := tc.Client()
 	token := tc.Token()
+	client.SetToken(token.Token)
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	tarClient := targets.NewClient(client)
@@ -127,6 +129,7 @@ func TestCrud(t *testing.T) {
 
 	client := tc.Client()
 	token := tc.Token()
+	client.SetToken(token.Token)
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	checkResource := func(t *testing.T, step string, h *targets.Target, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
@@ -173,6 +176,7 @@ func TestSet_Errors(t *testing.T) {
 
 	client := tc.Client()
 	token := tc.Token()
+	client.SetToken(token.Token)
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	tarClient := targets.NewClient(client)
