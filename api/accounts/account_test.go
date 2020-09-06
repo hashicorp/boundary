@@ -79,16 +79,12 @@ func comparableSlice(in []*accounts.Account) []accounts.Account {
 
 func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
+	token := tc.Token()
+	amId := token.AuthMethodId
 
 	accountClient := accounts.NewClient(client)
 
@@ -126,16 +122,12 @@ func TestCrud(t *testing.T) {
 
 func TestCustomMethods(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
+	token := tc.Token()
 	client := tc.Client()
+	amId := token.AuthMethodId
 
 	accountClient := accounts.NewClient(client)
 
@@ -146,13 +138,13 @@ func TestCustomMethods(t *testing.T) {
 
 	acct := al[0]
 
-	setAcct, apiErr, err := accountClient.SetPassword(tc.Context(), amId, acct.Id, "setpassword", acct.Version)
+	setAcct, apiErr, err := accountClient.SetPassword(tc.Context(), acct.Id, "setpassword", acct.Version)
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(setAcct)
 	assert.Equal(acct.Version+1, setAcct.Version)
 
-	changeAcct, apiErr, err := accountClient.ChangePassword(tc.Context(), amId, acct.Id, "setpassword", "changepassword", setAcct.Version)
+	changeAcct, apiErr, err := accountClient.ChangePassword(tc.Context(), acct.Id, "setpassword", "changepassword", setAcct.Version)
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(changeAcct)
@@ -161,16 +153,12 @@ func TestCustomMethods(t *testing.T) {
 
 func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
+	token := tc.Token()
+	amId := token.AuthMethodId
 	accountClient := accounts.NewClient(client)
 
 	u, apiErr, err := accountClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName("first"))

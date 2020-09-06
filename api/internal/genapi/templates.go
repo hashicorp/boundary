@@ -39,13 +39,17 @@ func toPath(segments []string, action string) string {
 	return fmt.Sprintf("fmt.Sprintf(\"%s%s\", %s)", strings.Join(printfString, "/"), action, strings.Join(printfArg, ", "))
 }
 
-func getArgsAndPaths(in []string, action string) (colArg, resArg string, colPath, resPath string) {
+func getArgsAndPaths(in []string, parentTypeName, action string) (colArg, resArg string, colPath, resPath string) {
 	resArg = fmt.Sprintf("%sId", strcase.ToLowerCamel(strings.ReplaceAll(in[len(in)-1], "-", "_")))
+	strToReplace := "scope"
 	if len(in) == 1 {
-		colArg = "scopeId"
+		if parentTypeName != "" {
+			strToReplace = parentTypeName
+		}
 	} else {
-		colArg = fmt.Sprintf("%sId", strcase.ToLowerCamel(strings.ReplaceAll(in[len(in)-2], "-", "_")))
+		strToReplace = in[len(in)-2]
 	}
+	colArg = fmt.Sprintf("%sId", strcase.ToLowerCamel(strings.ReplaceAll(strToReplace, "-", "_")))
 	colPath = fmt.Sprintf("%ss", in[len(in)-1])
 
 	if action != "" {
@@ -64,6 +68,7 @@ type templateInput struct {
 	ResourceFunctionArg   string
 	CollectionPath        string
 	ResourcePath          string
+	ParentTypeName        string
 	SliceSubTypes         map[string]string
 	ExtraOptions          []fieldInfo
 	VersionEnabled        bool
@@ -79,13 +84,14 @@ func fillTemplates() {
 			Package:        in.generatedStructure.pkg,
 			Fields:         in.generatedStructure.fields,
 			PathArgs:       in.pathArgs,
+			ParentTypeName: in.parentTypeName,
 			ExtraOptions:   in.extraOptions,
 			VersionEnabled: in.versionEnabled,
 			TypeOnCreate:   in.typeOnCreate,
 		}
 
 		if len(in.pathArgs) > 0 {
-			input.CollectionFunctionArg, input.ResourceFunctionArg, input.CollectionPath, input.ResourcePath = getArgsAndPaths(in.pathArgs, "")
+			input.CollectionFunctionArg, input.ResourceFunctionArg, input.CollectionPath, input.ResourcePath = getArgsAndPaths(in.pathArgs, in.parentTypeName, "")
 		}
 
 		if err := structTemplate.Execute(outBuf, input); err != nil {
@@ -460,7 +466,7 @@ var sliceSubTypeTemplate = template.Must(template.New("").Funcs(
 {{ range $key, $value := $input.SliceSubTypes }}
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
-{{ $resPath := getPathWithAction $input.PathArgs $actionName }}
+{{ $resPath := getPathWithAction $input.PathArgs $input.ParentTypeName $actionName }}
 func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunctionArg }} string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}, *api.Error, error) { 
 	if {{ $input.ResourceFunctionArg }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ $input.ResourceFunctionArg }} value passed into {{ $fullName }} request")
@@ -657,7 +663,7 @@ func kebabCase(in string) string {
 	return strcase.ToKebab(in)
 }
 
-func getPathWithAction(resArgs []string, action string) string {
-	_, _, _, resPath := getArgsAndPaths(resArgs, action)
+func getPathWithAction(resArgs []string, parentTypeName, action string) string {
+	_, _, _, resPath := getArgsAndPaths(resArgs, parentTypeName, action)
 	return resPath
 }

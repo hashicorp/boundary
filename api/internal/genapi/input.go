@@ -47,6 +47,10 @@ type structInfo struct {
 	// the attributes map.
 	subtypeName string
 
+	// For non-top-level collections, this can be used to indicate the name of
+	// the argument that should be used
+	parentTypeName string
+
 	// mappings of names of resources and param names for sub slice types, e.g.
 	// role principals and group members
 	sliceSubTypes map[string]string
@@ -227,7 +231,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"auth-method", "account"},
+		pathArgs:       []string{"account"},
+		parentTypeName: "auth-method",
 		versionEnabled: true,
 	},
 	{
@@ -274,7 +279,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"host-catalog", "host"},
+		pathArgs:       []string{"host"},
+		parentTypeName: "host-catalog",
 		versionEnabled: true,
 	},
 	{
@@ -293,7 +299,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"host-catalog", "host-set"},
+		pathArgs:       []string{"host-set"},
+		parentTypeName: "host-catalog",
 		sliceSubTypes: map[string]string{
 			"Hosts": "hostIds",
 		},

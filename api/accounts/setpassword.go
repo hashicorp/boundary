@@ -9,10 +9,7 @@ import (
 	"github.com/kr/pretty"
 )
 
-func (c *Client) SetPassword(ctx context.Context, authMethodId, accountId, password string, version uint32, opt ...Option) (*Account, *api.Error, error) {
-	if authMethodId == "" {
-		return nil, nil, fmt.Errorf("empty authMethodId value passed into SetPassword request")
-	}
+func (c *Client) SetPassword(ctx context.Context, accountId, password string, version uint32, opt ...Option) (*Account, *api.Error, error) {
 	if accountId == "" {
 		return nil, nil, fmt.Errorf("empty accountId value passed into SetPassword request")
 	}
@@ -44,7 +41,7 @@ func (c *Client) SetPassword(ctx context.Context, authMethodId, accountId, passw
 		"password": password,
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s/accounts/%s:set-password", authMethodId, accountId), reqBody, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("accounts/%s:set-password", accountId), reqBody, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating SetPassword request: %w", err)
 	}
