@@ -41,8 +41,9 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
+
 	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
+
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -92,7 +93,6 @@ func (c *Client) Read(ctx context.Context, targetId string, opt ...Option) (*Tar
 	}
 
 	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
 
 	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("targets/%s", targetId), nil, apiOpts...)
 	if err != nil {
@@ -132,7 +132,6 @@ func (c *Client) Update(ctx context.Context, targetId string, version uint32, op
 	}
 
 	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
 
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
@@ -191,7 +190,6 @@ func (c *Client) Delete(ctx context.Context, targetId string, opt ...Option) (bo
 	}
 
 	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
 
 	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("targets/%s", targetId), nil, apiOpts...)
 	if err != nil {
@@ -234,7 +232,6 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) ([]*Ta
 	}
 
 	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
 	opts.queryMap["scope_id"] = scopeId
 
 	req, err := c.client.NewRequest(ctx, "GET", "targets", nil, apiOpts...)
@@ -278,7 +275,6 @@ func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint3
 	}
 
 	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
 
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
@@ -341,7 +337,6 @@ func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint3
 	}
 
 	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
 
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
@@ -407,7 +402,6 @@ func (c *Client) RemoveHostSets(ctx context.Context, targetId string, version ui
 	}
 
 	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
 
 	if version == 0 {
 		if !opts.withAutomaticVersioning {

@@ -53,7 +53,6 @@ type Command struct {
 	flagsOnce sync.Once
 
 	flagAddr    string
-	flagScope   string
 	flagVerbose bool
 
 	flagTLSCACert     string
@@ -69,6 +68,7 @@ type Command struct {
 	FlagRecoveryConfig   string
 	flagOutputCurlString bool
 
+	FlagScopeId     string
 	FlagId          string
 	FlagName        string
 	FlagDescription string
@@ -233,36 +233,9 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 						c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
 					} else {
 						c.client.SetToken(authToken.Token)
-						if !opts.withNoTokenScope {
-							c.client.SetScopeId(authToken.Scope.Id)
-						}
 					}
 				}
 			}
-		}
-	}
-
-	// We do this here so we override the stored token info if it's set above
-	if c.flagScope != NotSetValue {
-		c.client.SetScopeId(c.flagScope)
-		if c.flagFormat == "table" && c.flagVerbose {
-			if c.flagScope == os.Getenv("BOUNDARY_TOKEN") {
-				c.UI.Info(fmt.Sprintf("Scope of %q set from BOUNDARY_TOKEN env var", c.flagScope))
-			} else {
-				c.UI.Info(fmt.Sprintf("Scope of %q set from -scope command flag", c.flagScope))
-			}
-		}
-	} else if c.client.ScopeId() != "" && !opts.withNoTokenScope {
-		// If it didn't come from env or a flag but isn't empty, it must have come from the token
-		if c.flagFormat == "table" && c.flagVerbose {
-			c.UI.Info(fmt.Sprintf("Scope of %q set from saved token with name %q", c.client.ScopeId(), tokenName))
-		}
-	}
-	// At this point if we haven't figured out the scope, default to "global"
-	if c.client.ScopeId() == "" {
-		c.client.SetScopeId("global")
-		if c.flagFormat == "table" && c.flagVerbose {
-			c.UI.Info(`Scope of "global" set by default`)
 		}
 	}
 
@@ -298,15 +271,6 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				EnvVar:     api.EnvBoundaryAddr,
 				Completion: complete.PredictAnything,
 				Usage:      "Addr of the Boundary controller, as a complete URL (e.g. https://boundary.example.com:9200).",
-			})
-
-			f.StringVar(&StringVar{
-				Name:       FlagNameScope,
-				Target:     &c.flagScope,
-				Default:    NotSetValue,
-				EnvVar:     api.EnvBoundaryScopeId,
-				Completion: complete.PredictAnything,
-				Usage:      `Scope in which to make the request. If not specified, will default to the scope of a saved token (if found), otherwise will default to "global".`,
 			})
 
 			f.StringVar(&StringVar{

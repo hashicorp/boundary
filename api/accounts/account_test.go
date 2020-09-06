@@ -25,36 +25,36 @@ func TestList(t *testing.T) {
 	client := tc.Client()
 	org := iam.TestOrg(t, tc.IamRepo())
 	amClient := authmethods.NewClient(client)
-	am, apiErr, err := amClient.Create2(tc.Context(), "password", org.GetPublicId())
+	am, apiErr, err := amClient.Create(tc.Context(), "password", org.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(am)
 
 	accountClient := accounts.NewClient(client)
 
-	expected, apiErr, err := accountClient.List2(tc.Context(), am.Id)
+	expected, apiErr, err := accountClient.List(tc.Context(), am.Id)
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.Len(expected, 0)
 
 	expected = append(expected, &accounts.Account{Attributes: map[string]interface{}{"login_name": "loginname0"}})
 
-	expected[0], apiErr, err = accountClient.Create2(tc.Context(), am.Id, accounts.WithPasswordAccountLoginName(expected[0].Attributes["login_name"].(string)))
+	expected[0], apiErr, err = accountClient.Create(tc.Context(), am.Id, accounts.WithPasswordAccountLoginName(expected[0].Attributes["login_name"].(string)))
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
-	ul, apiErr, err := accountClient.List2(tc.Context(), am.Id)
+	ul, apiErr, err := accountClient.List(tc.Context(), am.Id)
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul))
 
 	for i := 1; i < 10; i++ {
-		newAcct, apiErr, err := accountClient.Create2(tc.Context(), am.Id, accounts.WithPasswordAccountLoginName(fmt.Sprintf("loginname%d", i)))
+		newAcct, apiErr, err := accountClient.Create(tc.Context(), am.Id, accounts.WithPasswordAccountLoginName(fmt.Sprintf("loginname%d", i)))
 		expected = append(expected, newAcct)
 		assert.NoError(err)
 		assert.Nil(apiErr)
 	}
-	ul, apiErr, err = accountClient.List2(tc.Context(), am.Id)
+	ul, apiErr, err = accountClient.List(tc.Context(), am.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))
@@ -105,19 +105,19 @@ func TestCrud(t *testing.T) {
 		assert.EqualValues(wantedVersion, u.Version)
 	}
 
-	u, apiErr, err := accountClient.Create2(tc.Context(), amId, accounts.WithName("foo"), accounts.WithPasswordAccountLoginName("loginname"))
+	u, apiErr, err := accountClient.Create(tc.Context(), amId, accounts.WithName("foo"), accounts.WithPasswordAccountLoginName("loginname"))
 	checkAccount("create", u, apiErr, err, "foo", 1)
 
-	u, apiErr, err = accountClient.Read2(tc.Context(), u.Id)
+	u, apiErr, err = accountClient.Read(tc.Context(), u.Id)
 	checkAccount("read", u, apiErr, err, "foo", 1)
 
-	u, apiErr, err = accountClient.Update2(tc.Context(), u.Id, u.Version, accounts.WithName("bar"))
+	u, apiErr, err = accountClient.Update(tc.Context(), u.Id, u.Version, accounts.WithName("bar"))
 	checkAccount("update", u, apiErr, err, "bar", 2)
 
-	u, apiErr, err = accountClient.Update2(tc.Context(), u.Id, u.Version, accounts.DefaultName())
+	u, apiErr, err = accountClient.Update(tc.Context(), u.Id, u.Version, accounts.DefaultName())
 	checkAccount("update", u, apiErr, err, "", 3)
 
-	existed, _, err := accountClient.Delete2(tc.Context(), u.Id)
+	existed, _, err := accountClient.Delete(tc.Context(), u.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.True(existed, "Expected existing account when deleted, but it wasn't.")
@@ -138,7 +138,7 @@ func TestCustomMethods(t *testing.T) {
 
 	accountClient := accounts.NewClient(client)
 
-	al, apiErr, err := accountClient.List2(tc.Context(), amId)
+	al, apiErr, err := accountClient.List(tc.Context(), amId)
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.Len(al, 1)
@@ -172,27 +172,27 @@ func TestErrors(t *testing.T) {
 	client := tc.Client()
 	accountClient := accounts.NewClient(client)
 
-	u, apiErr, err := accountClient.Create2(tc.Context(), amId, accounts.WithPasswordAccountLoginName("first"))
+	u, apiErr, err := accountClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName("first"))
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.NotNil(u)
 
 	// Create another resource with the same name.
-	_, apiErr, err = accountClient.Create2(tc.Context(), amId, accounts.WithPasswordAccountLoginName("first"))
+	_, apiErr, err = accountClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName("first"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 
-	_, apiErr, err = accountClient.Read2(tc.Context(), password.AccountPrefix+"_doesntexis")
+	_, apiErr, err = accountClient.Read(tc.Context(), password.AccountPrefix+"_doesntexis")
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusForbidden, apiErr.Status)
 
-	_, apiErr, err = accountClient.Read2(tc.Context(), "invalid id")
+	_, apiErr, err = accountClient.Read(tc.Context(), "invalid id")
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
-	_, apiErr, err = accountClient.Update2(tc.Context(), u.Id, u.Version)
+	_, apiErr, err = accountClient.Update(tc.Context(), u.Id, u.Version)
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)

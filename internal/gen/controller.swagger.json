@@ -2193,7 +2193,7 @@
     "/v1/scopes/*/groups/{id}:add-members": {
       "post": {
         "summary": "Adds Users as members to a Group",
-        "operationId": "GroupService_AddGroupMembers2",
+        "operationId": "GroupService_AddGroupMembers",
         "responses": {
           "200": {
             "description": "",
@@ -2226,7 +2226,7 @@
     "/v1/scopes/*/groups/{id}:remove-members": {
       "post": {
         "summary": "Removes the specified members from a Group.",
-        "operationId": "GroupService_RemoveGroupMembers2",
+        "operationId": "GroupService_RemoveGroupMembers",
         "responses": {
           "200": {
             "description": "",
@@ -2259,7 +2259,7 @@
     "/v1/scopes/*/groups/{id}:set-members": {
       "post": {
         "summary": "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified.",
-        "operationId": "GroupService_SetGroupMembers2",
+        "operationId": "GroupService_SetGroupMembers",
         "responses": {
           "200": {
             "description": "",
@@ -2387,7 +2387,7 @@
     "/v1/scopes/*/host-catalogs/*/host-sets/{id}:add-hosts": {
       "post": {
         "summary": "Adds existing Hosts to a Host Set.",
-        "operationId": "HostSetService_AddHostSetHosts2",
+        "operationId": "HostSetService_AddHostSetHosts",
         "responses": {
           "200": {
             "description": "",
@@ -2420,7 +2420,7 @@
     "/v1/scopes/*/host-catalogs/*/host-sets/{id}:remove-hosts": {
       "post": {
         "summary": "Removes Hosts from the Host Set.",
-        "operationId": "HostSetService_RemoveHostSetHosts2",
+        "operationId": "HostSetService_RemoveHostSetHosts",
         "responses": {
           "200": {
             "description": "",
@@ -2454,7 +2454,7 @@
     "/v1/scopes/*/host-catalogs/*/host-sets/{id}:set-hosts": {
       "post": {
         "summary": "Sets the Hosts on the Host Set.",
-        "operationId": "HostSetService_SetHostSetHosts2",
+        "operationId": "HostSetService_SetHostSetHosts",
         "responses": {
           "200": {
             "description": "",
@@ -2613,7 +2613,7 @@
     "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts": {
       "get": {
         "summary": "List all Hosts for the specified catalog",
-        "operationId": "HostService_ListHosts2",
+        "operationId": "HostService_ListHosts",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -2903,7 +2903,7 @@
     "/v1/scopes/*/roles/{id}:add-grants": {
       "post": {
         "summary": "Adds grants to a role",
-        "operationId": "RoleService_AddRoleGrants2",
+        "operationId": "RoleService_AddRoleGrants",
         "responses": {
           "200": {
             "description": "",
@@ -2936,7 +2936,7 @@
     "/v1/scopes/*/roles/{id}:add-principals": {
       "post": {
         "summary": "Adds Users and/or Groups to a Role",
-        "operationId": "RoleService_AddRolePrincipals2",
+        "operationId": "RoleService_AddRolePrincipals",
         "responses": {
           "200": {
             "description": "",
@@ -2969,7 +2969,7 @@
     "/v1/scopes/*/roles/{id}:remove-grants": {
       "post": {
         "summary": "Removes grants from a role.",
-        "operationId": "RoleService_RemoveRoleGrants2",
+        "operationId": "RoleService_RemoveRoleGrants",
         "responses": {
           "200": {
             "description": "",
@@ -3002,7 +3002,7 @@
     "/v1/scopes/*/roles/{id}:remove-principals": {
       "post": {
         "summary": "Removes the specified Users and/or Groups from a Role.",
-        "operationId": "RoleService_RemoveRolePrincipals2",
+        "operationId": "RoleService_RemoveRolePrincipals",
         "responses": {
           "200": {
             "description": "",
@@ -3035,7 +3035,7 @@
     "/v1/scopes/*/roles/{id}:set-grants": {
       "post": {
         "summary": "Set grants for a role, removing any grants that are not specified in the request.",
-        "operationId": "RoleService_SetRoleGrants2",
+        "operationId": "RoleService_SetRoleGrants",
         "responses": {
           "200": {
             "description": "",
@@ -3068,7 +3068,7 @@
     "/v1/scopes/*/roles/{id}:set-principals": {
       "post": {
         "summary": "Set Users and/or Groups to a Role, removing any principals that are not specified in the request.",
-        "operationId": "RoleService_SetRolePrincipals2",
+        "operationId": "RoleService_SetRolePrincipals",
         "responses": {
           "200": {
             "description": "",

@@ -16,7 +16,6 @@ type Option func(*options)
 type options struct {
 	postMap                 map[string]interface{}
 	queryMap                map[string]string
-	withScopeId             string
 	withAutomaticVersioning bool
 }
 
@@ -33,16 +32,7 @@ func getOpts(opt ...Option) (options, []api.Option) {
 		o(&opts)
 	}
 	var apiOpts []api.Option
-	if opts.withScopeId != "" {
-		apiOpts = append(apiOpts, api.WithScopeId(opts.withScopeId))
-	}
 	return opts, apiOpts
-}
-
-func WithScopeId(id string) Option {
-	return func(o *options) {
-		o.withScopeId = id
-	}
 }
 
 // If set, and if the version is zero during an update, the API will perform a

@@ -34,9 +34,8 @@ func NewClient(c *api.Client) *Client {
 
 func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*AuthToken, *api.Error, error) {
 	if authTokenId == "" {
-		return nil, nil, fmt.Errorf("empty authTokenId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty  authTokenId value passed into Read request")
 	}
-
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -76,7 +75,6 @@ func (c *Client) Delete(ctx context.Context, authTokenId string, opt ...Option) 
 	if authTokenId == "" {
 		return false, nil, fmt.Errorf("empty authTokenId value passed into Delete request")
 	}
-
 	if c.client == nil {
 		return false, nil, fmt.Errorf("nil client")
 	}
@@ -115,129 +113,7 @@ func (c *Client) Delete(ctx context.Context, authTokenId string, opt ...Option) 
 	return target.Existed, apiErr, nil
 }
 
-func (c *Client) List(ctx context.Context, opt ...Option) ([]*AuthToken, *api.Error, error) {
-	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-
-	req, err := c.client.NewRequest(ctx, "GET", "auth-tokens", nil, apiOpts...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating List request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
-	}
-
-	type listResponse struct {
-		Items []*AuthToken
-	}
-	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr, nil
-	}
-	return target.Items, apiErr, nil
-}
-
-func (c *Client) Read2(ctx context.Context, authTokenId string, opt ...Option) (*AuthToken, *api.Error, error) {
-	if authTokenId == "" {
-		return nil, nil, fmt.Errorf("empty  authTokenId value passed into Read request")
-	}
-	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
-
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-tokens/%s", authTokenId), nil, apiOpts...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
-	}
-
-	target := new(AuthToken)
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr, nil
-	}
-	return target, apiErr, nil
-}
-
-func (c *Client) Delete2(ctx context.Context, authTokenId string, opt ...Option) (bool, *api.Error, error) {
-	if authTokenId == "" {
-		return false, nil, fmt.Errorf("empty authTokenId value passed into Delete request")
-	}
-	if c.client == nil {
-		return false, nil, fmt.Errorf("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
-
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("auth-tokens/%s", authTokenId), nil, apiOpts...)
-	if err != nil {
-		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
-	}
-
-	type deleteResponse struct {
-		Existed bool
-	}
-	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
-	}
-	if apiErr != nil {
-		return false, apiErr, nil
-	}
-	return target.Existed, apiErr, nil
-}
-
-func (c *Client) List2(ctx context.Context, scopeId string, opt ...Option) ([]*AuthToken, *api.Error, error) {
+func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) ([]*AuthToken, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
 	}
@@ -246,7 +122,6 @@ func (c *Client) List2(ctx context.Context, scopeId string, opt ...Option) ([]*A
 	}
 
 	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
 	opts.queryMap["scope_id"] = scopeId
 
 	req, err := c.client.NewRequest(ctx, "GET", "auth-tokens", nil, apiOpts...)

@@ -22,6 +22,7 @@ type Command struct {
 
 	Func string
 
+	flagScope        string
 	flagGrantScopeId string
 	flagPrincipals   []string
 	flagGrants       []string
@@ -51,10 +52,11 @@ var helpMap = func() map[string]func() string {
 }
 
 var flagsMap = map[string][]string{
-	"create":            {"name", "description", "grantscopeid"},
+	"create":            {"scope", "name", "description", "grantscopeid"},
 	"update":            {"id", "name", "description", "grantscopeid", "version"},
 	"read":              {"id"},
 	"delete":            {"id"},
+	"list":              {"scope"},
 	"add-principals":    {"id", "principal", "version"},
 	"set-principals":    {"id", "principal", "version"},
 	"remove-principals": {"id", "principal", "version"},
@@ -211,7 +213,7 @@ func (c *Command) Run(args []string) int {
 
 	switch c.Func {
 	case "create":
-		role, apiErr, err = roleClient.Create(c.Context, opts...)
+		role, apiErr, err = roleClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
 		role, apiErr, err = roleClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
@@ -219,7 +221,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		existed, apiErr, err = roleClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedRoles, apiErr, err = roleClient.List(c.Context, opts...)
+		listedRoles, apiErr, err = roleClient.List(c.Context, c.FlagScopeId, opts...)
 	case "add-principals":
 		role, apiErr, err = roleClient.AddPrincipals(c.Context, c.FlagId, version, principals, opts...)
 	case "set-principals":
