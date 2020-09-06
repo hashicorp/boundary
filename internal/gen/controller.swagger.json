@@ -289,6 +289,40 @@
         ]
       }
     },
+    "/v1/auth-methods/{auth_method_id}:authenticate": {
+      "post": {
+        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
+        "operationId": "AuthenticationService_Authenticate",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the scope\nbeing logged in to.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AuthenticateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthenticationService"
+        ]
+      }
+    },
     "/v1/auth-methods/{id}": {
       "get": {
         "summary": "Gets a single AuthMethod",
@@ -1881,7 +1915,7 @@
     "/v1/scopes/*/auth-methods/{auth_method_id}:authenticate": {
       "post": {
         "summary": "Authenticate a user to an scope and retrieve an authentication token.",
-        "operationId": "AuthenticationService_Authenticate",
+        "operationId": "AuthenticationService_Authenticate2",
         "responses": {
           "200": {
             "description": "",
@@ -2193,7 +2227,7 @@
     "/v1/scopes/*/groups/{id}:add-members": {
       "post": {
         "summary": "Adds Users as members to a Group",
-        "operationId": "GroupService_AddGroupMembers",
+        "operationId": "GroupService_AddGroupMembers2",
         "responses": {
           "200": {
             "description": "",
@@ -2226,7 +2260,7 @@
     "/v1/scopes/*/groups/{id}:remove-members": {
       "post": {
         "summary": "Removes the specified members from a Group.",
-        "operationId": "GroupService_RemoveGroupMembers",
+        "operationId": "GroupService_RemoveGroupMembers2",
         "responses": {
           "200": {
             "description": "",
@@ -2259,7 +2293,7 @@
     "/v1/scopes/*/groups/{id}:set-members": {
       "post": {
         "summary": "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified.",
-        "operationId": "GroupService_SetGroupMembers",
+        "operationId": "GroupService_SetGroupMembers2",
         "responses": {
           "200": {
             "description": "",
@@ -2387,7 +2421,7 @@
     "/v1/scopes/*/host-catalogs/*/host-sets/{id}:add-hosts": {
       "post": {
         "summary": "Adds existing Hosts to a Host Set.",
-        "operationId": "HostSetService_AddHostSetHosts",
+        "operationId": "HostSetService_AddHostSetHosts2",
         "responses": {
           "200": {
             "description": "",
@@ -2420,7 +2454,7 @@
     "/v1/scopes/*/host-catalogs/*/host-sets/{id}:remove-hosts": {
       "post": {
         "summary": "Removes Hosts from the Host Set.",
-        "operationId": "HostSetService_RemoveHostSetHosts",
+        "operationId": "HostSetService_RemoveHostSetHosts2",
         "responses": {
           "200": {
             "description": "",
@@ -2454,7 +2488,7 @@
     "/v1/scopes/*/host-catalogs/*/host-sets/{id}:set-hosts": {
       "post": {
         "summary": "Sets the Hosts on the Host Set.",
-        "operationId": "HostSetService_SetHostSetHosts",
+        "operationId": "HostSetService_SetHostSetHosts2",
         "responses": {
           "200": {
             "description": "",
@@ -2613,7 +2647,7 @@
     "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts": {
       "get": {
         "summary": "List all Hosts for the specified catalog",
-        "operationId": "HostService_ListHosts",
+        "operationId": "HostService_ListHosts2",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -2903,7 +2937,7 @@
     "/v1/scopes/*/roles/{id}:add-grants": {
       "post": {
         "summary": "Adds grants to a role",
-        "operationId": "RoleService_AddRoleGrants",
+        "operationId": "RoleService_AddRoleGrants2",
         "responses": {
           "200": {
             "description": "",
@@ -2936,7 +2970,7 @@
     "/v1/scopes/*/roles/{id}:add-principals": {
       "post": {
         "summary": "Adds Users and/or Groups to a Role",
-        "operationId": "RoleService_AddRolePrincipals",
+        "operationId": "RoleService_AddRolePrincipals2",
         "responses": {
           "200": {
             "description": "",
@@ -2969,7 +3003,7 @@
     "/v1/scopes/*/roles/{id}:remove-grants": {
       "post": {
         "summary": "Removes grants from a role.",
-        "operationId": "RoleService_RemoveRoleGrants",
+        "operationId": "RoleService_RemoveRoleGrants2",
         "responses": {
           "200": {
             "description": "",
@@ -3002,7 +3036,7 @@
     "/v1/scopes/*/roles/{id}:remove-principals": {
       "post": {
         "summary": "Removes the specified Users and/or Groups from a Role.",
-        "operationId": "RoleService_RemoveRolePrincipals",
+        "operationId": "RoleService_RemoveRolePrincipals2",
         "responses": {
           "200": {
             "description": "",
@@ -3035,7 +3069,7 @@
     "/v1/scopes/*/roles/{id}:set-grants": {
       "post": {
         "summary": "Set grants for a role, removing any grants that are not specified in the request.",
-        "operationId": "RoleService_SetRoleGrants",
+        "operationId": "RoleService_SetRoleGrants2",
         "responses": {
           "200": {
             "description": "",
@@ -3068,7 +3102,7 @@
     "/v1/scopes/*/roles/{id}:set-principals": {
       "post": {
         "summary": "Set Users and/or Groups to a Role, removing any principals that are not specified in the request.",
-        "operationId": "RoleService_SetRolePrincipals",
+        "operationId": "RoleService_SetRolePrincipals2",
         "responses": {
           "200": {
             "description": "",

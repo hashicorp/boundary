@@ -17,13 +17,14 @@ import (
 
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
+	require.NotNil(client)
+	token := tc.Token()
+	require.NotNil(token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	amClient := authmethods.NewClient(client)
 	am, apiErr, err := amClient.Create(tc.Context(), "password", org.GetPublicId())
 	require.NoError(err)
