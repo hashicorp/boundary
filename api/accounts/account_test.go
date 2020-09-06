@@ -3,6 +3,7 @@ package accounts_test
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -16,6 +17,8 @@ import (
 )
 
 func TestList(t *testing.T) {
+	os.Setenv("BOUNDARY_LOG_URLS", "1")
+	os.Setenv("BOUNDARY_DEV_SKIP_AUTHZ", "1")
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
@@ -24,6 +27,7 @@ func TestList(t *testing.T) {
 	require.NotNil(client)
 	token := tc.Token()
 	require.NotNil(token)
+	client.SetToken(token.Token)
 	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	amClient := authmethods.NewClient(client)
 	am, apiErr, err := amClient.Create(tc.Context(), "password", org.GetPublicId())
@@ -84,8 +88,8 @@ func TestCrud(t *testing.T) {
 
 	client := tc.Client()
 	token := tc.Token()
+	client.SetToken(token.Token)
 	amId := token.AuthMethodId
-
 	accountClient := accounts.NewClient(client)
 
 	checkAccount := func(step string, u *accounts.Account, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
@@ -125,8 +129,9 @@ func TestCustomMethods(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
-	token := tc.Token()
 	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
 	amId := token.AuthMethodId
 
 	accountClient := accounts.NewClient(client)
@@ -158,6 +163,7 @@ func TestErrors(t *testing.T) {
 
 	client := tc.Client()
 	token := tc.Token()
+	client.SetToken(token.Token)
 	amId := token.AuthMethodId
 	accountClient := accounts.NewClient(client)
 

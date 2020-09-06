@@ -29,7 +29,7 @@ type Client struct {
 }
 
 func NewClient(c *api.Client) *Client {
-	return &Client{client: c}
+	return &Client{client: c.Clone()}
 }
 
 func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*AuthToken, *api.Error, error) {

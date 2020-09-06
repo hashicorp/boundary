@@ -30,7 +30,7 @@ type Client struct {
 }
 
 func NewClient(c *api.Client) *Client {
-	return &Client{client: c}
+	return &Client{client: c.Clone()}
 }
 
 func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*User, *api.Error, error) {
