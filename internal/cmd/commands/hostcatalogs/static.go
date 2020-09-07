@@ -28,7 +28,7 @@ func (c *StaticCommand) Synopsis() string {
 }
 
 var staticFlagsMap = map[string][]string{
-	"create": {"name", "description"},
+	"create": {"scope-id", "name", "description"},
 	"update": {"id", "name", "description", "version"},
 }
 
@@ -141,7 +141,7 @@ func (c *StaticCommand) Run(args []string) int {
 
 	switch c.Func {
 	case "create":
-		catalog, apiErr, err = hostcatalogClient.Create(c.Context, "static", opts...)
+		catalog, apiErr, err = hostcatalogClient.Create(c.Context, "static", c.FlagScopeId, opts...)
 	case "update":
 		catalog, apiErr, err = hostcatalogClient.Update(c.Context, c.FlagId, version, opts...)
 	}

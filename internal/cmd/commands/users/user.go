@@ -28,10 +28,11 @@ func (c *Command) Synopsis() string {
 }
 
 var flagsMap = map[string][]string{
-	"create": {"name", "description"},
+	"create": {"scope-id", "name", "description"},
 	"update": {"id", "name", "description", "version"},
 	"read":   {"id"},
 	"delete": {"id"},
+	"list":   {"scope-id"},
 }
 
 func (c *Command) Help() string {
@@ -125,7 +126,7 @@ func (c *Command) Run(args []string) int {
 
 	switch c.Func {
 	case "create":
-		user, apiErr, err = userClient.Create(c.Context, opts...)
+		user, apiErr, err = userClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
 		user, apiErr, err = userClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
@@ -133,7 +134,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		existed, apiErr, err = userClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedUsers, apiErr, err = userClient.List(c.Context, opts...)
+		listedUsers, apiErr, err = userClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "user"

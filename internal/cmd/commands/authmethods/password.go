@@ -32,7 +32,7 @@ func (c *PasswordCommand) Synopsis() string {
 }
 
 var passwordFlagsMap = map[string][]string{
-	"create": {"name", "description"},
+	"create": {"scope-id", "name", "description"},
 	"update": {"id", "name", "description", "version"},
 }
 
@@ -185,7 +185,7 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	switch c.Func {
 	case "create":
-		method, apiErr, err = authmethodClient.Create(c.Context, "password", opts...)
+		method, apiErr, err = authmethodClient.Create(c.Context, "password", c.FlagScopeId, opts...)
 	case "update":
 		method, apiErr, err = authmethodClient.Update(c.Context, c.FlagId, version, opts...)
 	}

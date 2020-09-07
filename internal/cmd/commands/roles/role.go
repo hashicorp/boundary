@@ -52,11 +52,11 @@ var helpMap = func() map[string]func() string {
 }
 
 var flagsMap = map[string][]string{
-	"create":            {"scope", "name", "description", "grantscopeid"},
+	"create":            {"scope-id", "name", "description", "grantscopeid"},
 	"update":            {"id", "name", "description", "grantscopeid", "version"},
 	"read":              {"id"},
 	"delete":            {"id"},
-	"list":              {"scope"},
+	"list":              {"scope-id"},
 	"add-principals":    {"id", "principal", "version"},
 	"set-principals":    {"id", "principal", "version"},
 	"remove-principals": {"id", "principal", "version"},

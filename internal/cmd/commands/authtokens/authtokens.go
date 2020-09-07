@@ -31,6 +31,7 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"delete": {"id"},
+	"list":   {"scope-id"},
 }
 
 func (c *Command) Help() string {
@@ -96,7 +97,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		existed, apiErr, err = authtokenClient.Delete(c.Context, c.FlagId)
 	case "list":
-		listedTokens, apiErr, err = authtokenClient.List(c.Context)
+		listedTokens, apiErr, err = authtokenClient.List(c.Context, c.FlagScopeId)
 	}
 
 	plural := "auth token"

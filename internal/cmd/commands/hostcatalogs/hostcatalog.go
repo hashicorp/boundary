@@ -37,6 +37,7 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"delete": {"id"},
+	"list":   {"scope-id"},
 }
 
 func (c *Command) Help() string {
@@ -157,7 +158,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		existed, apiErr, err = hostcatalogClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedCatalogs, apiErr, err = hostcatalogClient.List(c.Context, opts...)
+		listedCatalogs, apiErr, err = hostcatalogClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "host catalog"

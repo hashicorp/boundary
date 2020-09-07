@@ -46,6 +46,7 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":         {"id"},
 	"delete":       {"id"},
+	"list":         {"host-catalog-id"},
 	"add-hosts":    {"id", "host", "version"},
 	"set-hosts":    {"id", "host", "version"},
 	"remove-hosts": {"id", "host", "version"},
@@ -250,17 +251,17 @@ func (c *Command) Run(args []string) int {
 
 	switch c.Func {
 	case "read":
-		set, apiErr, err = hostsetClient.Read(c.Context, c.flagHostCatalogId, c.FlagId, opts...)
+		set, apiErr, err = hostsetClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = hostsetClient.Delete(c.Context, c.flagHostCatalogId, c.FlagId, opts...)
+		existed, apiErr, err = hostsetClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
 		listedSets, apiErr, err = hostsetClient.List(c.Context, c.flagHostCatalogId, opts...)
 	case "add-hosts":
-		set, apiErr, err = hostsetClient.AddHosts(c.Context, c.flagHostCatalogId, c.FlagId, version, c.flagHosts, opts...)
+		set, apiErr, err = hostsetClient.AddHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
 	case "remove-hosts":
-		set, apiErr, err = hostsetClient.RemoveHosts(c.Context, c.flagHostCatalogId, c.FlagId, version, c.flagHosts, opts...)
+		set, apiErr, err = hostsetClient.RemoveHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
 	case "set-hosts":
-		set, apiErr, err = hostsetClient.SetHosts(c.Context, c.flagHostCatalogId, c.FlagId, version, c.flagHosts, opts...)
+		set, apiErr, err = hostsetClient.SetHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
 	}
 
 	plural := "host set"

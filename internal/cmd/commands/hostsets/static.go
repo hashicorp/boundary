@@ -157,7 +157,7 @@ func (c *StaticCommand) Run(args []string) int {
 	case "create":
 		set, apiErr, err = hostsetClient.Create(c.Context, c.flagHostCatalogId, opts...)
 	case "update":
-		set, apiErr, err = hostsetClient.Update(c.Context, c.flagHostCatalogId, c.FlagId, version, opts...)
+		set, apiErr, err = hostsetClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
 	plural := "static-type host-set"

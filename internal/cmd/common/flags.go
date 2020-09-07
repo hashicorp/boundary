@@ -10,7 +10,7 @@ import (
 func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, flagNames []string) {
 	for _, name := range flagNames {
 		switch name {
-		case "scope":
+		case "scope-id":
 			f.StringVar(&base.StringVar{
 				Name:       "scope-id",
 				Target:     &c.FlagScopeId,

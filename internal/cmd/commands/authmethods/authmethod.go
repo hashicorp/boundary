@@ -37,6 +37,7 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"delete": {"id"},
+	"list":   {"scope-id"},
 }
 
 func (c *Command) Help() string {
@@ -157,7 +158,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		existed, apiErr, err = authmethodClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedMethods, apiErr, err = authmethodClient.List(c.Context, opts...)
+		listedMethods, apiErr, err = authmethodClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "auth method"
