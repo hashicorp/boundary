@@ -24,12 +24,22 @@ type AuthToken struct {
 	ExpirationTime          time.Time         `json:"expiration_time,omitempty"`
 }
 
+// Client is a client for this collection
 type Client struct {
 	client *api.Client
 }
 
+// Creates a new client for this collection. The submitted API client is cloned;
+// modifications to it after generating this client will not have effect. If you
+// need to make changes to the underlying API client, use ApiClient() to access
+// it.
 func NewClient(c *api.Client) *Client {
 	return &Client{client: c.Clone()}
+}
+
+// ApiClient returns the underlying API client
+func (c *Client) ApiClient() *api.Client {
+	return c.client
 }
 
 func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*AuthToken, *api.Error, error) {
