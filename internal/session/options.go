@@ -14,7 +14,10 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit int
+	withLimit   int
+	withOrder   string
+	withScopeId string
+	withUserId  string
 }
 
 func getDefaultOptions() options {
@@ -27,5 +30,26 @@ func getDefaultOptions() options {
 func WithLimit(limit int) Option {
 	return func(o *options) {
 		o.withLimit = limit
+	}
+}
+
+// WithOrder allows specifying an order for returned values
+func WithOrder(order string) Option {
+	return func(o *options) {
+		o.withOrder = order
+	}
+}
+
+// WithScopeId allows specifying a scope ID criteria for the function.
+func WithScopeId(scopeId string) Option {
+	return func(o *options) {
+		o.withScopeId = scopeId
+	}
+}
+
+// WithUserId allows specifying a user ID criteria for the function.
+func WithUserId(userId string) Option {
+	return func(o *options) {
+		o.withUserId = userId
 	}
 }

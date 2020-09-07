@@ -27,4 +27,25 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withLimit = 1
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithScopeId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithScopeId("o_1234"))
+		testOpts := getDefaultOptions()
+		testOpts.withScopeId = "o_1234"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithOrder", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithOrder("create_time asc"))
+		testOpts := getDefaultOptions()
+		testOpts.withOrder = "create_time asc"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithUserId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithUserId("u_1234"))
+		testOpts := getDefaultOptions()
+		testOpts.withUserId = "u_1234"
+		assert.Equal(opts, testOpts)
+	})
 }
