@@ -64,7 +64,7 @@ func TestHostCatalog_ImmutableFields(t *testing.T) {
 			err := w.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
@@ -132,7 +132,7 @@ func TestStaticHost_ImmutableFields(t *testing.T) {
 			err := w.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
@@ -207,7 +207,7 @@ func TestStaticHostSet_ImmutableFields(t *testing.T) {
 			err := w.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
@@ -276,7 +276,7 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 			err = w.LookupWhere(context.Background(), orig, "host_id = ? and set_id = ?", orig.HostId, orig.SetId)
 			require.NoError(err)
 
-			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
