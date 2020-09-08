@@ -16,12 +16,21 @@ import (
 )
 
 // NotFoundError returns an ApiError indicating a resource couldn't be found.
+func NotFoundError() error {
+	return status.Error(codes.NotFound, "Resource not found.")
+}
+
+// NotFoundErrorf returns an ApiError indicating a resource couldn't be found.
 func NotFoundErrorf(msg string, a ...interface{}) error {
 	return status.Errorf(codes.NotFound, msg, a...)
 }
 
 func ForbiddenError() error {
 	return status.Error(codes.PermissionDenied, "Forbidden.")
+}
+
+func UnauthenticatedError() error {
+	return status.Error(codes.Unauthenticated, "Unauthenticated, or invalid token.")
 }
 
 func InvalidArgumentErrorf(msg string, fields map[string]string) error {

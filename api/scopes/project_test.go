@@ -102,7 +102,7 @@ func TestCrud(t *testing.T) {
 	_, apiErr, err = scps.Delete(tc.Context(), s.Id)
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status, "Expected project to not exist when deleted, but it did.")
+	assert.EqualValues(http.StatusNotFound, apiErr.Status, "Expected project to not exist when deleted, but it did.")
 }
 
 // TODO: Get better coverage for expected errors and error formats.
@@ -127,7 +127,7 @@ func TestErrors(t *testing.T) {
 	require.NoError(err)
 	// TODO: Should this be nil instead of just a Project that has no values set
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 	_, apiErr, err = scps.Read(tc.Context(), "invalid id")
 	assert.NoError(err)

@@ -149,7 +149,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		return res
 	}
 	if authMeth == nil {
-		res.Error = handlers.ForbiddenError()
+		res.Error = handlers.NotFoundError()
 		return res
 	}
 

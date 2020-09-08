@@ -297,7 +297,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if s == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 	default:
@@ -307,7 +307,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if s == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 		parentId = s.GetParentId()

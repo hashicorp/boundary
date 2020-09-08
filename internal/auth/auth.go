@@ -27,6 +27,9 @@ import (
 type TokenFormat int
 
 const (
+	// We weren't given one or couldn't parse it. This is different from when a
+	// token is cryptographically invalid, which will be Invalid and always
+	// return a 403.
 	AuthTokenTypeUnknown TokenFormat = iota
 
 	// Came in via the Authentication: Bearer header
@@ -144,6 +147,9 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 
 	// table stakes
 	if v.requestInfo.TokenFormat == AuthTokenTypeInvalid {
+		// TODO: Consider moving this forward to the HTTP handler, and just
+		// manually marshal the error type. That should allow avoiding some DB
+		// lookups, although this would not be a common case.
 		v.logger.Trace("got invalid token type in auth function, which should not have occurred")
 		return
 	}
@@ -169,6 +175,12 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			// TODO: Decide whether to remove this
 			v.logger.Info("failed authz info for request", "resource", pretty.Sprint(v.res), "user_id", ret.UserId, "action", v.act.String())
 		} else {
+			// If the anon user was used (either no token, or invalid (perhaps
+			// expired) token), return a 401. That way if it's an authn'd user
+			// that is not authz'd we'll return 403 to be explicit.
+			if ret.UserId == "u_anon" {
+				ret.Error = handlers.UnauthenticatedError()
+			}
 			return
 		}
 	}
@@ -199,8 +211,10 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		}
 		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
 		if err != nil {
-			retErr = fmt.Errorf("perform auth check: failed to validate token: %w", err)
-			return
+			// Continue as the anonymous user as maybe this token is expired but
+			// we can still perform the action
+			v.logger.Error("perform auth check: error validating token; continuing as anonymous user", "error", err)
+			break
 		}
 		if at != nil {
 			userId = at.GetIamUserId()
@@ -396,7 +410,7 @@ func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Reque
 
 	if receivedTokenType == AuthTokenTypeUnknown || token == "" || publicId == "" {
 		logger.Trace("get token from request: after parsing, could not find valid token")
-		return "", "", AuthTokenTypeUnknown
+		return "", "", AuthTokenTypeInvalid
 	}
 
 	return publicId, token, receivedTokenType

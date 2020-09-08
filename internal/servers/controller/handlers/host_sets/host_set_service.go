@@ -359,7 +359,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			return nil, res
 		}
 		if set == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return nil, res
 		}
 		parentId = set.GetCatalogId()
@@ -372,7 +372,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		return nil, res
 	}
 	if cat == nil {
-		res.Error = handlers.ForbiddenError()
+		res.Error = handlers.NotFoundError()
 		return nil, res
 	}
 	opts = append(opts, auth.WithScopeId(cat.GetScopeId()), auth.WithPin(parentId))

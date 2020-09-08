@@ -343,7 +343,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			return nil, res
 		}
 		if acct == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return nil, res
 		}
 		parentId = acct.GetAuthMethodId()
@@ -356,7 +356,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		return nil, res
 	}
 	if authMeth == nil {
-		res.Error = handlers.ForbiddenError()
+		res.Error = handlers.NotFoundError()
 		return nil, res
 	}
 	opts = append(opts, auth.WithScopeId(authMeth.GetScopeId()), auth.WithPin(parentId))

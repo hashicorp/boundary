@@ -176,7 +176,7 @@ func TestCrud(t *testing.T) {
 	existed, apiErr, err = hClient.Delete(tc.Context(), h.Id)
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
 
 // TODO: Get better coverage for expected errors and error formats.
@@ -211,7 +211,7 @@ func TestErrors(t *testing.T) {
 	_, apiErr, err = hClient.Read(tc.Context(), static.HostSetPrefix+"_doesntexis")
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 	_, apiErr, err = hClient.Read(tc.Context(), "invalid id")
 	require.NoError(err)
