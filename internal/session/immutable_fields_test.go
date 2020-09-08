@@ -40,33 +40,6 @@ func TestSession_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"PublicId"},
 		},
 		{
-			name: "server_type",
-			update: func() *Session {
-				s := new.Clone().(*Session)
-				s.ServerType = Closed.String()
-				return s
-			}(),
-			fieldMask: []string{"ServerType"},
-		},
-		{
-			name: "address",
-			update: func() *Session {
-				s := new.Clone().(*Session)
-				s.Address = "0.0.0.0"
-				return s
-			}(),
-			fieldMask: []string{"Address"},
-		},
-		{
-			name: "port",
-			update: func() *Session {
-				s := new.Clone().(*Session)
-				s.Port = "639"
-				return s
-			}(),
-			fieldMask: []string{"PublicId"},
-		},
-		{
 			name: "create time",
 			update: func() *Session {
 				s := new.Clone().(*Session)
