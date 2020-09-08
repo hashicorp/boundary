@@ -37,10 +37,12 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"delete": {"id"},
+	"list":   {"scope-id"},
 }
 
 func (c *Command) Help() string {
 	helpMap := common.HelpMap("auth-method")
+	var helpStr string
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
@@ -55,7 +57,7 @@ func (c *Command) Help() string {
 			"  Please see the auth-methods subcommand help for detailed usage information.",
 		})
 	case "create":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary auth-methods create [type] [sub command] [options] [args]",
 			"",
 			"  This command allows create operations on Boundary auth-method resources. Example:",
@@ -67,7 +69,7 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "update":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary auth-methods update [type] [sub command] [options] [args]",
 			"",
 			"  This command allows update operations on Boundary auth-method resources. Example:",
@@ -79,8 +81,9 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	default:
-		return helpMap[c.Func]() + c.Flags().Help()
+		helpStr = helpMap[c.Func]()
 	}
+	return helpStr + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -117,6 +120,10 @@ func (c *Command) Run(args []string) int {
 
 	if strutil.StrListContains(flagsMap[c.Func], "id") && c.FlagId == "" {
 		c.UI.Error("ID is required but not passed in via -id")
+		return 1
+	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
 		return 1
 	}
 
@@ -157,7 +164,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		existed, apiErr, err = authmethodClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedMethods, apiErr, err = authmethodClient.List(c.Context, opts...)
+		listedMethods, apiErr, err = authmethodClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "auth method"

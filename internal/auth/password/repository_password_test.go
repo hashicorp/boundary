@@ -288,7 +288,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "invalid-no-old-password",
+			name: "invalid-no-current-password",
 			args: args{
 				acctId: acct.PublicId,
 				old:    "",
@@ -325,7 +325,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 			wantIsErr:   db.ErrRecordNotFound,
 		},
 		{
-			name: "auth-failure-wrong-old-password",
+			name: "auth-failure-wrong-current-password",
 			args: args{
 				acctId: acct.PublicId,
 				old:    "wrong-password",
@@ -455,13 +455,13 @@ func TestRepository_SetPassword(t *testing.T) {
 		createAcct func(string) *Account
 	}{
 		{
-			name:       "valid-new-password-no-old-password",
+			name:       "valid-new-password-no-current-password",
 			createAcct: createAccount("validnewpwnoold"),
 			oldPw:      "",
 			newPw:      "abcdefghijk",
 		},
 		{
-			name:       "valid-new-password-delete-old-password",
+			name:       "valid-new-password-delete-current-password",
 			createAcct: createAccount("validnewpwyesold"),
 			oldPw:      origPasswd,
 			newPw:      "abcdefghijk",

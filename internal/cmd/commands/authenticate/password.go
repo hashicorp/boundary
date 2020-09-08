@@ -56,14 +56,14 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 		Name:   "login-name",
 		Target: &c.flagLoginName,
 		EnvVar: envLoginName,
-		Usage:  "Login name",
+		Usage:  "The login name corresponding to an account within the given auth method",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:   "password",
 		Target: &c.flagPassword,
 		EnvVar: envPassword,
-		Usage:  "Password",
+		Usage:  "The password associated with the login name",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -121,7 +121,11 @@ func (c *PasswordCommand) Run(args []string) int {
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
-	result, apiErr, err := authmethods.NewClient(client).Authenticate(c.Context, c.flagAuthMethodId, c.flagLoginName, c.flagPassword)
+	result, apiErr, err := authmethods.NewClient(client).Authenticate(c.Context, c.flagAuthMethodId,
+		map[string]interface{}{
+			"login_name": c.flagLoginName,
+			"password":   c.flagPassword,
+		})
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))
 		return 2

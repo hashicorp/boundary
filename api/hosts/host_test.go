@@ -17,26 +17,22 @@ import (
 
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	_, proj := iam.TestScopes(t, tc.IamRepo())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
-	hc, apiErr, err := hostcatalogs.NewClient(client).Create2(tc.Context(), "static", proj.GetPublicId())
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(hc)
 
 	hClient := hosts.NewClient(client)
 
-	ul, apiErr, err := hClient.List2(tc.Context(), hc.Id)
+	ul, apiErr, err := hClient.List(tc.Context(), hc.Id)
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.Empty(ul)
@@ -46,21 +42,21 @@ func TestList(t *testing.T) {
 		expected = append(expected, &hosts.Host{Name: fmt.Sprint(i)})
 	}
 
-	expected[0], apiErr, err = hClient.Create2(tc.Context(), hc.Id, hosts.WithName(expected[0].Name), hosts.WithStaticHostAddress("someaddress"))
+	expected[0], apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName(expected[0].Name), hosts.WithStaticHostAddress("someaddress"))
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
-	ul, apiErr, err = hClient.List2(tc.Context(), hc.Id)
+	ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableHostSlice(expected[:1]), comparableHostSlice(ul))
 
 	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = hClient.Create2(tc.Context(), hc.Id, hosts.WithName(expected[i].Name), hosts.WithStaticHostAddress("someaddress"))
+		expected[i], apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName(expected[i].Name), hosts.WithStaticHostAddress("someaddress"))
 		assert.NoError(err)
 		assert.Nil(apiErr)
 	}
-	ul, apiErr, err = hClient.List2(tc.Context(), hc.Id)
+	ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableHostSlice(expected), comparableHostSlice(ul))
@@ -83,19 +79,15 @@ func comparableHostSlice(in []*hosts.Host) []hosts.Host {
 
 func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	_, proj := iam.TestScopes(t, tc.IamRepo())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
-	hc, apiErr, err := hostcatalogs.NewClient(client).Create2(tc.Context(), "static", proj.GetPublicId())
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(hc)
@@ -116,23 +108,23 @@ func TestCrud(t *testing.T) {
 
 	hClient := hosts.NewClient(client)
 
-	h, apiErr, err := hClient.Create2(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
+	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
 	checkHost("create", h, apiErr, err, "foo", 1)
 
-	h, apiErr, err = hClient.Read2(tc.Context(), h.Id)
+	h, apiErr, err = hClient.Read(tc.Context(), h.Id)
 	checkHost("read", h, apiErr, err, "foo", 1)
 
-	h, apiErr, err = hClient.Update2(tc.Context(), h.Id, h.Version, hosts.WithName("bar"))
+	h, apiErr, err = hClient.Update(tc.Context(), h.Id, h.Version, hosts.WithName("bar"))
 	checkHost("update", h, apiErr, err, "bar", 2)
 
-	h, apiErr, err = hClient.Update2(tc.Context(), h.Id, h.Version, hosts.DefaultName())
+	h, apiErr, err = hClient.Update(tc.Context(), h.Id, h.Version, hosts.DefaultName())
 	checkHost("update", h, apiErr, err, "", 3)
 
-	existed, apiErr, err := hClient.Delete2(tc.Context(), h.Id)
+	existed, apiErr, err := hClient.Delete(tc.Context(), h.Id)
 	assert.NoError(err)
 	assert.True(existed, "Expected existing catalog when deleted, but it wasn't.")
 
-	existed, apiErr, err = hClient.Delete2(tc.Context(), h.Id)
+	existed, apiErr, err = hClient.Delete(tc.Context(), h.Id)
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusForbidden, apiErr.Status)
@@ -141,41 +133,36 @@ func TestCrud(t *testing.T) {
 // TODO: Get better coverage for expected errors and error formats.
 func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	_, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
-	hc, apiErr, err := hostcatalogs.NewClient(client).Create2(tc.Context(), "static", proj.GetPublicId())
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(hc)
 
 	hClient := hosts.NewClient(client)
 
-	h, apiErr, err := hClient.Create2(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
+	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
 	require.NoError(err)
 	require.Nil(apiErr)
 	assert.NotNil(h)
 
-	_, apiErr, err = hClient.Create2(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
+	_, apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 
-	_, apiErr, err = hClient.Read2(tc.Context(), static.HostPrefix+"_doesntexis")
+	_, apiErr, err = hClient.Read(tc.Context(), static.HostPrefix+"_doesntexis")
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(apiErr.Status, http.StatusForbidden)
 
-	_, apiErr, err = hClient.Read2(tc.Context(), "invalid id")
+	_, apiErr, err = hClient.Read(tc.Context(), "invalid id")
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)

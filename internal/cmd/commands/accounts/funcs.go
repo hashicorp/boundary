@@ -1,24 +1,24 @@
-package hostsets
+package accounts
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/boundary/api/hostsets"
+	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
-func generateHostSetTableOutput(in *hostsets.HostSet) string {
+func generateAccountTableOutput(in *accounts.Account) string {
 	var ret []string
 
 	nonAttributeMap := map[string]interface{}{
-		"ID":              in.Id,
-		"Scope ID":        in.Scope.Id,
-		"Version":         in.Version,
-		"Type":            in.Type,
-		"Created Time":    in.CreatedTime.Local().Format(time.RFC3339),
-		"Updated Time":    in.UpdatedTime.Local().Format(time.RFC3339),
-		"Host Catalog ID": in.HostCatalogId,
+		"ID":             in.Id,
+		"Scope ID":       in.Scope.Id,
+		"Version":        in.Version,
+		"Type":           in.Type,
+		"Created Time":   in.CreatedTime.Local().Format(time.RFC3339),
+		"Updated Time":   in.UpdatedTime.Local().Format(time.RFC3339),
+		"Auth Method ID": in.AuthMethodId,
 	}
 
 	if in.Name != "" {
@@ -48,23 +48,20 @@ func generateHostSetTableOutput(in *hostsets.HostSet) string {
 		}
 	}
 
-	ret = append(ret, "", "Host set information:")
+	ret = append(ret, "", "Account information:")
 
 	ret = append(ret,
 		// We do +2 because there is another +2 offset for attributes below
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
 	)
 
-	if len(in.HostIds) > 0 {
-		ret = append(ret,
-			"  Host IDs:",
-			base.WrapSlice(4, in.HostIds),
-		)
-	}
-
 	if len(in.Attributes) > 0 {
+		if true {
+			ret = append(ret,
+				fmt.Sprintf("  Attributes:   %s", ""),
+			)
+		}
 		ret = append(ret,
-			fmt.Sprintf("  Attributes:   %s", ""),
 			base.WrapMap(4, maxLength, in.Attributes),
 		)
 	}
@@ -72,4 +69,6 @@ func generateHostSetTableOutput(in *hostsets.HostSet) string {
 	return base.WrapForHelpText(ret)
 }
 
-var attributeMap = map[string]string{}
+var attributeMap = map[string]string{
+	"login_name": "Login Name",
+}

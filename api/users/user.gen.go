@@ -25,24 +25,42 @@ type User struct {
 	Version     uint32            `json:"version,omitempty"`
 }
 
+// Client is a client for this collection
 type Client struct {
 	client *api.Client
 }
 
+// Creates a new client for this collection. The submitted API client is cloned;
+// modifications to it after generating this client will not have effect. If you
+// need to make changes to the underlying API client, use ApiClient() to access
+// it.
 func NewClient(c *api.Client) *Client {
-	return &Client{client: c}
+	return &Client{client: c.Clone()}
 }
 
-func (c *Client) Create(ctx context.Context, opt ...Option) (*User, *api.Error, error) {
+// ApiClient returns the underlying API client
+func (c *Client) ApiClient() *api.Client {
+	return c.client
+}
+
+func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*User, *api.Error, error) {
+	if scopeId == "" {
+		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
+	}
+
 	opts, apiOpts := getOpts(opt...)
+
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
+
+	opts.postMap["scope_id"] = scopeId
 
 	req, err := c.client.NewRequest(ctx, "POST", "users", opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
+
 	if len(opts.queryMap) > 0 {
 		q := url.Values{}
 		for k, v := range opts.queryMap {
@@ -69,9 +87,8 @@ func (c *Client) Create(ctx context.Context, opt ...Option) (*User, *api.Error, 
 
 func (c *Client) Read(ctx context.Context, userId string, opt ...Option) (*User, *api.Error, error) {
 	if userId == "" {
-		return nil, nil, fmt.Errorf("empty userId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty  userId value passed into Read request")
 	}
-
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -169,7 +186,6 @@ func (c *Client) Delete(ctx context.Context, userId string, opt ...Option) (bool
 	if userId == "" {
 		return false, nil, fmt.Errorf("empty userId value passed into Delete request")
 	}
-
 	if c.client == nil {
 		return false, nil, fmt.Errorf("nil client")
 	}
@@ -208,229 +224,7 @@ func (c *Client) Delete(ctx context.Context, userId string, opt ...Option) (bool
 	return target.Existed, apiErr, nil
 }
 
-func (c *Client) List(ctx context.Context, opt ...Option) ([]*User, *api.Error, error) {
-	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-
-	req, err := c.client.NewRequest(ctx, "GET", "users", nil, apiOpts...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating List request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
-	}
-
-	type listResponse struct {
-		Items []*User
-	}
-	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr, nil
-	}
-	return target.Items, apiErr, nil
-}
-
-func (c *Client) Create2(ctx context.Context, scopeId string, opt ...Option) (*User, *api.Error, error) {
-	if scopeId == "" {
-		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
-	}
-	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
-	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
-	}
-
-	opts.postMap["scope_id"] = scopeId
-
-	req, err := c.client.NewRequest(ctx, "POST", "users", opts.postMap, apiOpts...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
-	}
-
-	target := new(User)
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr, nil
-	}
-	return target, apiErr, nil
-}
-
-func (c *Client) Read2(ctx context.Context, userId string, opt ...Option) (*User, *api.Error, error) {
-	if userId == "" {
-		return nil, nil, fmt.Errorf("empty  userId value passed into Read request")
-	}
-	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
-
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("users/%s", userId), nil, apiOpts...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
-	}
-
-	target := new(User)
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr, nil
-	}
-	return target, apiErr, nil
-}
-
-func (c *Client) Update2(ctx context.Context, userId string, version uint32, opt ...Option) (*User, *api.Error, error) {
-	if userId == "" {
-		return nil, nil, fmt.Errorf("empty userId value passed into Update request")
-	}
-	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
-
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
-		}
-		existingTarget, existingApiErr, existingErr := c.Read2(ctx, userId, opt...)
-		if existingErr != nil {
-			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
-		}
-		if existingTarget == nil {
-			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Version
-	}
-
-	opts.postMap["version"] = version
-
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("users/%s", userId), opts.postMap, apiOpts...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
-	}
-
-	target := new(User)
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr, nil
-	}
-	return target, apiErr, nil
-}
-
-func (c *Client) Delete2(ctx context.Context, userId string, opt ...Option) (bool, *api.Error, error) {
-	if userId == "" {
-		return false, nil, fmt.Errorf("empty userId value passed into Delete request")
-	}
-	if c.client == nil {
-		return false, nil, fmt.Errorf("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
-
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("users/%s", userId), nil, apiOpts...)
-	if err != nil {
-		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
-	}
-
-	type deleteResponse struct {
-		Existed bool
-	}
-	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
-	}
-	if apiErr != nil {
-		return false, apiErr, nil
-	}
-	return target.Existed, apiErr, nil
-}
-
-func (c *Client) List2(ctx context.Context, scopeId string, opt ...Option) ([]*User, *api.Error, error) {
+func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) ([]*User, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
 	}
@@ -439,7 +233,6 @@ func (c *Client) List2(ctx context.Context, scopeId string, opt ...Option) ([]*U
 	}
 
 	opts, apiOpts := getOpts(opt...)
-	apiOpts = append(apiOpts, api.WithNewStyle())
 	opts.queryMap["scope_id"] = scopeId
 
 	req, err := c.client.NewRequest(ctx, "GET", "users", nil, apiOpts...)

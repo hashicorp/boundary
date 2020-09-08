@@ -43,10 +43,11 @@ var helpMap = func() map[string]func() string {
 }
 
 var flagsMap = map[string][]string{
-	"create":         {"name", "description"},
+	"create":         {"scope-id", "name", "description"},
 	"update":         {"id", "name", "description", "version"},
 	"read":           {"id"},
 	"delete":         {"id"},
+	"list":           {"scope-id"},
 	"add-members":    {"id", "member", "version"},
 	"set-members":    {"id", "member", "version"},
 	"remove-members": {"id", "member", "version"},
@@ -93,6 +94,10 @@ func (c *Command) Run(args []string) int {
 
 	if strutil.StrListContains(flagsMap[c.Func], "id") && c.FlagId == "" {
 		c.UI.Error("ID is required but not passed in via -id")
+		return 1
+	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
 		return 1
 	}
 
@@ -151,7 +156,7 @@ func (c *Command) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, groups.WithAutomaticVersioning())
+			opts = append(opts, groups.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
@@ -164,7 +169,7 @@ func (c *Command) Run(args []string) int {
 
 	switch c.Func {
 	case "create":
-		group, apiErr, err = groupClient.Create(c.Context, opts...)
+		group, apiErr, err = groupClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
 		group, apiErr, err = groupClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
@@ -172,7 +177,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		existed, apiErr, err = groupClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedGroups, apiErr, err = groupClient.List(c.Context, opts...)
+		listedGroups, apiErr, err = groupClient.List(c.Context, c.FlagScopeId, opts...)
 	case "add-members":
 		group, apiErr, err = groupClient.AddMembers(c.Context, c.FlagId, version, members, opts...)
 	case "set-members":

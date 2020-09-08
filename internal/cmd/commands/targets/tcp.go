@@ -1,11 +1,11 @@
-package hostcatalogs
+package targets
 
 import (
 	"fmt"
 	"net/textproto"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/hostcatalogs"
+	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
@@ -14,45 +14,45 @@ import (
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*StaticCommand)(nil)
-var _ cli.CommandAutocomplete = (*StaticCommand)(nil)
+var _ cli.Command = (*TcpCommand)(nil)
+var _ cli.CommandAutocomplete = (*TcpCommand)(nil)
 
-type StaticCommand struct {
+type TcpCommand struct {
 	*base.Command
 
 	Func string
 }
 
-func (c *StaticCommand) Synopsis() string {
-	return fmt.Sprintf("%s a static-type host-catalog within Boundary", textproto.CanonicalMIMEHeaderKey(c.Func))
+func (c *TcpCommand) Synopsis() string {
+	return fmt.Sprintf("%s a tcp-type target within Boundary", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
-var staticFlagsMap = map[string][]string{
+var tcpFlagsMap = map[string][]string{
 	"create": {"scope-id", "name", "description"},
 	"update": {"id", "name", "description", "version"},
 }
 
-func (c *StaticCommand) Help() string {
+func (c *TcpCommand) Help() string {
 	var info string
 	switch c.Func {
 	case "create":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary host-catalogs static create [options] [args]",
+			"Usage: boundary targets tcp create [options] [args]",
 			"",
-			"  Create a static-type host-catalog. Example:",
+			"  Create a tcp-type target. Example:",
 			"",
-			`    $ boundary host-catalogs static create -name prodops -description "Static host-catalog for ProdOps"`,
+			`    $ boundary targets tcp create -name prodops -description "Tcp target for ProdOps"`,
 			"",
 			"",
 		})
 
 	case "update":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary host-catalogs static update [options] [args]",
+			"Usage: boundary targets tcp update [options] [args]",
 			"",
-			"  Update a static-type host-catalog given its ID. Example:",
+			"  Update a tcp-type target given its ID. Example:",
 			"",
-			`    $ boundary host-catalogs static update -id hcst_1234567890 -name "devops" -description "Static host-catalog for DevOps"`,
+			`    $ boundary targets tcp update -id ttcp_1234567890 -name "devops" -description "Tcp target for DevOps"`,
 			"",
 			"",
 		})
@@ -60,26 +60,26 @@ func (c *StaticCommand) Help() string {
 	return info + c.Flags().Help()
 }
 
-func (c *StaticCommand) Flags() *base.FlagSets {
+func (c *TcpCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
-	if len(staticFlagsMap[c.Func]) > 0 {
+	if len(tcpFlagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, "static-type host-catalog", staticFlagsMap[c.Func])
+		common.PopulateCommonFlags(c.Command, f, "tcp-type target", tcpFlagsMap[c.Func])
 	}
 
 	return set
 }
 
-func (c *StaticCommand) AutocompleteArgs() complete.Predictor {
+func (c *TcpCommand) AutocompleteArgs() complete.Predictor {
 	return complete.PredictAnything
 }
 
-func (c *StaticCommand) AutocompleteFlags() complete.Flags {
+func (c *TcpCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *StaticCommand) Run(args []string) int {
+func (c *TcpCommand) Run(args []string) int {
 	if c.Func == "" {
 		return cli.RunResultHelp
 	}
@@ -91,11 +91,11 @@ func (c *StaticCommand) Run(args []string) int {
 		return 1
 	}
 
-	if strutil.StrListContains(staticFlagsMap[c.Func], "id") && c.FlagId == "" {
+	if strutil.StrListContains(tcpFlagsMap[c.Func], "id") && c.FlagId == "" {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
-	if strutil.StrListContains(staticFlagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+	if strutil.StrListContains(tcpFlagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
 		c.UI.Error("Scope ID must be passed in via -scope-id")
 		return 1
 	}
@@ -106,25 +106,25 @@ func (c *StaticCommand) Run(args []string) int {
 		return 2
 	}
 
-	var opts []hostcatalogs.Option
+	var opts []targets.Option
 
 	switch c.FlagName {
 	case "":
 	case "null":
-		opts = append(opts, hostcatalogs.DefaultName())
+		opts = append(opts, targets.DefaultName())
 	default:
-		opts = append(opts, hostcatalogs.WithName(c.FlagName))
+		opts = append(opts, targets.WithName(c.FlagName))
 	}
 
 	switch c.FlagDescription {
 	case "":
 	case "null":
-		opts = append(opts, hostcatalogs.DefaultDescription())
+		opts = append(opts, targets.DefaultDescription())
 	default:
-		opts = append(opts, hostcatalogs.WithDescription(c.FlagDescription))
+		opts = append(opts, targets.WithDescription(c.FlagDescription))
 	}
 
-	hostcatalogClient := hostcatalogs.NewClient(client)
+	targetClient := targets.NewClient(client)
 
 	// Perform check-and-set when needed
 	var version uint32
@@ -134,23 +134,23 @@ func (c *StaticCommand) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, hostcatalogs.WithAutomaticVersioning(true))
+			opts = append(opts, targets.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
 	}
 
-	var catalog *hostcatalogs.HostCatalog
+	var catalog *targets.Target
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		catalog, apiErr, err = hostcatalogClient.Create(c.Context, "static", c.FlagScopeId, opts...)
+		catalog, apiErr, err = targetClient.Create(c.Context, "tcp", c.FlagScopeId, opts...)
 	case "update":
-		catalog, apiErr, err = hostcatalogClient.Update(c.Context, c.FlagId, version, opts...)
+		catalog, apiErr, err = targetClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
-	plural := "static-type host-catalog"
+	plural := "tcp-type target"
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
 		return 2
@@ -162,7 +162,7 @@ func (c *StaticCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateHostCatalogTableOutput(catalog))
+		c.UI.Output(generateTargetTableOutput(catalog))
 	case "json":
 		b, err := base.JsonFormatter{}.Format(catalog)
 		if err != nil {

@@ -32,7 +32,7 @@ func (c *PasswordCommand) Synopsis() string {
 }
 
 var passwordFlagsMap = map[string][]string{
-	"create": {"name", "description"},
+	"create": {"scope-id", "name", "description"},
 	"update": {"id", "name", "description", "version"},
 }
 
@@ -100,6 +100,10 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	if strutil.StrListContains(passwordFlagsMap[c.Func], "id") && c.FlagId == "" {
 		c.UI.Error("ID is required but not passed in via -id")
+		return 1
+	}
+	if strutil.StrListContains(passwordFlagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
 		return 1
 	}
 
@@ -174,7 +178,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, authmethods.WithAutomaticVersioning())
+			opts = append(opts, authmethods.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
@@ -185,7 +189,7 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	switch c.Func {
 	case "create":
-		method, apiErr, err = authmethodClient.Create(c.Context, "password", opts...)
+		method, apiErr, err = authmethodClient.Create(c.Context, "password", c.FlagScopeId, opts...)
 	case "update":
 		method, apiErr, err = authmethodClient.Update(c.Context, c.FlagId, version, opts...)
 	}

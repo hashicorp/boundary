@@ -22,6 +22,7 @@ type Command struct {
 
 	Func string
 
+	flagScope        string
 	flagGrantScopeId string
 	flagPrincipals   []string
 	flagGrants       []string
@@ -51,10 +52,11 @@ var helpMap = func() map[string]func() string {
 }
 
 var flagsMap = map[string][]string{
-	"create":            {"name", "description", "grantscopeid"},
+	"create":            {"scope-id", "name", "description", "grantscopeid"},
 	"update":            {"id", "name", "description", "grantscopeid", "version"},
 	"read":              {"id"},
 	"delete":            {"id"},
+	"list":              {"scope-id"},
 	"add-principals":    {"id", "principal", "version"},
 	"set-principals":    {"id", "principal", "version"},
 	"remove-principals": {"id", "principal", "version"},
@@ -103,6 +105,10 @@ func (c *Command) Run(args []string) int {
 
 	if strutil.StrListContains(flagsMap[c.Func], "id") && c.FlagId == "" {
 		c.UI.Error("ID is required but not passed in via -id")
+		return 1
+	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
 		return 1
 	}
 
@@ -198,7 +204,7 @@ func (c *Command) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, roles.WithAutomaticVersioning())
+			opts = append(opts, roles.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
@@ -211,7 +217,7 @@ func (c *Command) Run(args []string) int {
 
 	switch c.Func {
 	case "create":
-		role, apiErr, err = roleClient.Create(c.Context, opts...)
+		role, apiErr, err = roleClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
 		role, apiErr, err = roleClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
@@ -219,7 +225,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		existed, apiErr, err = roleClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedRoles, apiErr, err = roleClient.List(c.Context, opts...)
+		listedRoles, apiErr, err = roleClient.List(c.Context, c.FlagScopeId, opts...)
 	case "add-principals":
 		role, apiErr, err = roleClient.AddPrincipals(c.Context, c.FlagId, version, principals, opts...)
 	case "set-principals":

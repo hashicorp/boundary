@@ -1,11 +1,11 @@
-package hostcatalogs
+package hosts
 
 import (
 	"fmt"
 	"net/textproto"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/hostcatalogs"
+	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
@@ -21,15 +21,18 @@ type StaticCommand struct {
 	*base.Command
 
 	Func string
+
+	flagHostCatalogId string
+	flagAddress       string
 }
 
 func (c *StaticCommand) Synopsis() string {
-	return fmt.Sprintf("%s a static-type host-catalog within Boundary", textproto.CanonicalMIMEHeaderKey(c.Func))
+	return fmt.Sprintf("%s a static-type host within Boundary", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
 var staticFlagsMap = map[string][]string{
-	"create": {"scope-id", "name", "description"},
-	"update": {"id", "name", "description", "version"},
+	"create": {"host-catalog-id", "name", "description", "address"},
+	"update": {"id", "name", "description", "version", "address"},
 }
 
 func (c *StaticCommand) Help() string {
@@ -37,22 +40,22 @@ func (c *StaticCommand) Help() string {
 	switch c.Func {
 	case "create":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary host-catalogs static create [options] [args]",
+			"Usage: boundary hosts static create [options] [args]",
 			"",
-			"  Create a static-type host-catalog. Example:",
+			"  Create a static-type host. Example:",
 			"",
-			`    $ boundary host-catalogs static create -name prodops -description "Static host-catalog for ProdOps"`,
+			`    $ boundary hosts static create -name prodops -description "Static host for ProdOps" -address "127.0.0.1"`,
 			"",
 			"",
 		})
 
 	case "update":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary host-catalogs static update [options] [args]",
+			"Usage: boundary hosts static update [options] [args]",
 			"",
-			"  Update a static-type host-catalog given its ID. Example:",
+			"  Update a static-type host given its ID. Example:",
 			"",
-			`    $ boundary host-catalogs static update -id hcst_1234567890 -name "devops" -description "Static host-catalog for DevOps"`,
+			`    $ boundary hosts static update -id hst_1234567890 -name "devops" -description "Static host for DevOps" -address "10.20.30.40"`,
 			"",
 			"",
 		})
@@ -63,9 +66,34 @@ func (c *StaticCommand) Help() string {
 func (c *StaticCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
+	f := set.NewFlagSet("Command Options")
+
 	if len(staticFlagsMap[c.Func]) > 0 {
-		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, "static-type host-catalog", staticFlagsMap[c.Func])
+		common.PopulateCommonFlags(c.Command, f, "static-type host", staticFlagsMap[c.Func])
+	}
+
+	for _, name := range staticFlagsMap[c.Func] {
+		switch name {
+		case "host-catalog-id":
+			f.StringVar(&base.StringVar{
+				Name:   "host-catalog-id",
+				Target: &c.flagHostCatalogId,
+				Usage:  "The host-catalog resource in which to create or update the host resource",
+			})
+		}
+	}
+
+	f = set.NewFlagSet("Static Host Options")
+
+	for _, name := range staticFlagsMap[c.Func] {
+		switch name {
+		case "address":
+			f.StringVar(&base.StringVar{
+				Name:   "address",
+				Target: &c.flagAddress,
+				Usage:  "The address of the host",
+			})
+		}
 	}
 
 	return set
@@ -95,8 +123,12 @@ func (c *StaticCommand) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
-	if strutil.StrListContains(staticFlagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
-		c.UI.Error("Scope ID must be passed in via -scope-id")
+	if strutil.StrListContains(staticFlagsMap[c.Func], "host-catalog-id") && c.flagHostCatalogId == "" {
+		c.UI.Error("Host Catalog ID must be passed in via -host-catalog-id")
+		return 1
+	}
+	if c.Func == "create" && c.flagAddress == "" {
+		c.UI.Error("Address must be passed in via -address")
 		return 1
 	}
 
@@ -106,25 +138,33 @@ func (c *StaticCommand) Run(args []string) int {
 		return 2
 	}
 
-	var opts []hostcatalogs.Option
+	var opts []hosts.Option
 
 	switch c.FlagName {
 	case "":
 	case "null":
-		opts = append(opts, hostcatalogs.DefaultName())
+		opts = append(opts, hosts.DefaultName())
 	default:
-		opts = append(opts, hostcatalogs.WithName(c.FlagName))
+		opts = append(opts, hosts.WithName(c.FlagName))
 	}
 
 	switch c.FlagDescription {
 	case "":
 	case "null":
-		opts = append(opts, hostcatalogs.DefaultDescription())
+		opts = append(opts, hosts.DefaultDescription())
 	default:
-		opts = append(opts, hostcatalogs.WithDescription(c.FlagDescription))
+		opts = append(opts, hosts.WithDescription(c.FlagDescription))
 	}
 
-	hostcatalogClient := hostcatalogs.NewClient(client)
+	switch c.flagAddress {
+	case "":
+	case "null":
+		opts = append(opts, hosts.DefaultStaticHostAddress())
+	default:
+		opts = append(opts, hosts.WithStaticHostAddress(c.flagAddress))
+	}
+
+	hostClient := hosts.NewClient(client)
 
 	// Perform check-and-set when needed
 	var version uint32
@@ -134,23 +174,23 @@ func (c *StaticCommand) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, hostcatalogs.WithAutomaticVersioning(true))
+			opts = append(opts, hosts.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
 	}
 
-	var catalog *hostcatalogs.HostCatalog
+	var host *hosts.Host
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		catalog, apiErr, err = hostcatalogClient.Create(c.Context, "static", c.FlagScopeId, opts...)
+		host, apiErr, err = hostClient.Create(c.Context, c.flagHostCatalogId, opts...)
 	case "update":
-		catalog, apiErr, err = hostcatalogClient.Update(c.Context, c.FlagId, version, opts...)
+		host, apiErr, err = hostClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
-	plural := "static-type host-catalog"
+	plural := "static-type host"
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
 		return 2
@@ -162,9 +202,9 @@ func (c *StaticCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateHostCatalogTableOutput(catalog))
+		c.UI.Output(generateHostTableOutput(host))
 	case "json":
-		b, err := base.JsonFormatter{}.Format(catalog)
+		b, err := base.JsonFormatter{}.Format(host)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1

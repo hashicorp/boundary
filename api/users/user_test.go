@@ -15,20 +15,16 @@ import (
 
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	userClient := users.NewClient(client)
 
-	ul, apiErr, err := userClient.List2(tc.Context(), org.GetPublicId())
+	ul, apiErr, err := userClient.List(tc.Context(), org.GetPublicId())
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.Empty(ul)
@@ -38,21 +34,21 @@ func TestList(t *testing.T) {
 		expected = append(expected, &users.User{Name: fmt.Sprint(i)})
 	}
 
-	expected[0], apiErr, err = userClient.Create2(tc.Context(), org.GetPublicId(), users.WithName(expected[0].Name))
+	expected[0], apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[0].Name))
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
-	ul, apiErr, err = userClient.List2(tc.Context(), org.GetPublicId())
+	ul, apiErr, err = userClient.List(tc.Context(), org.GetPublicId())
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul))
 
 	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = userClient.Create2(tc.Context(), org.GetPublicId(), users.WithName(expected[i].Name))
+		expected[i], apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[i].Name))
 		assert.NoError(err)
 		assert.Nil(apiErr)
 	}
-	ul, apiErr, err = userClient.List2(tc.Context(), org.GetPublicId())
+	ul, apiErr, err = userClient.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))
@@ -75,18 +71,13 @@ func comparableSlice(in []*users.User) []users.User {
 
 func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	userClient := users.NewClient(client)
 
 	checkUser := func(step string, u *users.User, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
@@ -103,24 +94,24 @@ func TestCrud(t *testing.T) {
 		assert.EqualValues(wantedVersion, u.Version)
 	}
 
-	u, apiErr, err := userClient.Create2(tc.Context(), org.GetPublicId(), users.WithName("foo"))
+	u, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("foo"))
 	checkUser("create", u, apiErr, err, "foo", 1)
 
-	u, apiErr, err = userClient.Read2(tc.Context(), u.Id)
+	u, apiErr, err = userClient.Read(tc.Context(), u.Id)
 	checkUser("read", u, apiErr, err, "foo", 1)
 
-	u, apiErr, err = userClient.Update2(tc.Context(), u.Id, u.Version, users.WithName("bar"))
+	u, apiErr, err = userClient.Update(tc.Context(), u.Id, u.Version, users.WithName("bar"))
 	checkUser("update", u, apiErr, err, "bar", 2)
 
-	u, apiErr, err = userClient.Update2(tc.Context(), u.Id, u.Version, users.DefaultName())
+	u, apiErr, err = userClient.Update(tc.Context(), u.Id, u.Version, users.DefaultName())
 	checkUser("update", u, apiErr, err, "", 3)
 
-	existed, _, err := userClient.Delete2(tc.Context(), u.Id)
+	existed, _, err := userClient.Delete(tc.Context(), u.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.True(existed, "Expected existing user when deleted, but it wasn't.")
 
-	existed, apiErr, err = userClient.Delete2(tc.Context(), u.Id)
+	existed, apiErr, err = userClient.Delete(tc.Context(), u.Id)
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusForbidden, apiErr.Status)
@@ -128,41 +119,36 @@ func TestCrud(t *testing.T) {
 
 func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	userClient := users.NewClient(client)
 
-	u, apiErr, err := userClient.Create2(tc.Context(), org.GetPublicId(), users.WithName("first"))
+	u, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.NotNil(u)
 
 	// Create another resource with the same name.
-	_, apiErr, err = userClient.Create2(tc.Context(), org.GetPublicId(), users.WithName("first"))
+	_, apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 
-	_, apiErr, err = userClient.Read2(tc.Context(), iam.UserPrefix+"_doesntexis")
+	_, apiErr, err = userClient.Read(tc.Context(), iam.UserPrefix+"_doesntexis")
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusForbidden, apiErr.Status)
 
-	_, apiErr, err = userClient.Read2(tc.Context(), "invalid id")
+	_, apiErr, err = userClient.Read(tc.Context(), "invalid id")
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
-	_, apiErr, err = userClient.Update2(tc.Context(), u.Id, u.Version)
+	_, apiErr, err = userClient.Update(tc.Context(), u.Id, u.Version)
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
