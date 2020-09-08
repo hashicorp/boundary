@@ -390,3 +390,119 @@ func TestRepository_CreateSession(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_UpdateState(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name                   string
+		session                *Session
+		newStatus              Status
+		overrideSessionId      *string
+		overrideSessionVersion *uint32
+		wantStateCnt           int
+		wantErr                bool
+		wantIsError            error
+	}{
+		{
+			name:         "connected",
+			session:      TestDefaultSession(t, conn, wrapper, iamRepo),
+			newStatus:    Connected,
+			wantStateCnt: 2,
+			wantErr:      false,
+		},
+		{
+			name: "closed",
+			session: func() *Session {
+				s := TestDefaultSession(t, conn, wrapper, iamRepo)
+				_ = TestState(t, conn, s.PublicId, Connected)
+				return s
+			}(),
+			newStatus:    Closed,
+			wantStateCnt: 3,
+			wantErr:      false,
+		},
+		{
+			name:      "bad-version",
+			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
+			newStatus: Connected,
+			overrideSessionVersion: func() *uint32 {
+				v := uint32(22)
+				return &v
+			}(),
+			wantErr: true,
+		},
+		{
+			name:      "empty-version",
+			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
+			newStatus: Connected,
+			overrideSessionVersion: func() *uint32 {
+				v := uint32(0)
+				return &v
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name:      "bad-sessionId",
+			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
+			newStatus: Connected,
+			overrideSessionId: func() *string {
+				s := "s_thisIsNotValid"
+				return &s
+			}(),
+			wantErr: true,
+		},
+		{
+			name:      "empty-session",
+			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
+			newStatus: Connected,
+			overrideSessionId: func() *string {
+				s := ""
+				return &s
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			var id string
+			var version uint32
+			switch {
+			case tt.overrideSessionId != nil:
+				id = *tt.overrideSessionId
+			default:
+				id = tt.session.PublicId
+			}
+			switch {
+			case tt.overrideSessionVersion != nil:
+				version = *tt.overrideSessionVersion
+			default:
+				version = tt.session.Version
+			}
+
+			s, ss, err := repo.UpdateState(context.Background(), id, version, tt.newStatus)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantIsError != nil {
+					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(s)
+			require.NotNil(ss)
+			assert.Equal(tt.wantStateCnt, len(ss))
+			assert.Equal(tt.newStatus.String(), ss[0].Status)
+		})
+	}
+}
