@@ -2,14 +2,19 @@ package session
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/session/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNewRepository(t *testing.T) {
@@ -193,4 +198,195 @@ func TestRepository_ListSession(t *testing.T) {
 		assert.Equal(1, len(got))
 		assert.Equal(got[0].UserId, s.UserId)
 	})
+}
+
+func TestRepository_CreateSession(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	type args struct {
+		composedOf ComposedOf
+	}
+	tests := []struct {
+		name        string
+		args        args
+		wantErr     bool
+		wantIsError error
+	}{
+		{
+			name: "valid",
+			args: args{
+				composedOf: TestSessionParams(t, conn, wrapper, iamRepo),
+			},
+			wantErr: false,
+		},
+		{
+			name: "empty-userId",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.UserId = ""
+					return c
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-hostId",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.HostId = ""
+					return c
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-serverId",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.ServerId = ""
+					return c
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-serverType",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.ServerType = ""
+					return c
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-targetId",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.TargetId = ""
+					return c
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-hostSetId",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.HostSetId = ""
+					return c
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-authTokenId",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.AuthTokenId = ""
+					return c
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-scopeId",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.ScopeId = ""
+					return c
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-address",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.Address = ""
+					return c
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-port",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.Port = ""
+					return c
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s := &Session{
+				Session: &store.Session{
+					UserId:      tt.args.composedOf.UserId,
+					HostId:      tt.args.composedOf.HostId,
+					ServerId:    tt.args.composedOf.ServerId,
+					ServerType:  tt.args.composedOf.ServerType.String(),
+					TargetId:    tt.args.composedOf.TargetId,
+					SetId:       tt.args.composedOf.HostSetId,
+					AuthTokenId: tt.args.composedOf.AuthTokenId,
+					ScopeId:     tt.args.composedOf.ScopeId,
+					Address:     tt.args.composedOf.Address,
+					Port:        tt.args.composedOf.Port,
+				},
+			}
+			ses, st, err := repo.CreateSession(context.Background(), s)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Nil(ses)
+				assert.Nil(st)
+				if tt.wantIsError != nil {
+					assert.True(errors.Is(err, tt.wantIsError))
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(ses.CreateTime)
+			assert.NotNil(st.StartTime)
+			assert.Equal(st.GetStatus(), Pending.String())
+			foundSession, foundStates, err := repo.LookupSession(context.Background(), ses.PublicId)
+			assert.NoError(err)
+			assert.True(proto.Equal(foundSession, ses))
+
+			err = db.TestVerifyOplog(t, rw, ses.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+
+			require.Equal(1, len(foundStates))
+			assert.Equal(foundStates[0].GetStatus(), Pending.String())
+		})
+	}
 }

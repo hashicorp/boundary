@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 )
 
 // Clonable provides a cloning interface
@@ -50,12 +51,125 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 	}, nil
 }
 
-func (r *Repository) CreateSession(ctx context.Context, s *Session, opt ...Option) (*Session, error) {
-	panic("not implemented")
+// CreateSession inserts into the repository and returns the new Session with
+// its State of "Pending".  No options are currently supported.
+func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt ...Option) (*Session, *State, error) {
+	if newSession == nil {
+		return nil, nil, fmt.Errorf("create session: missing session: %w", db.ErrInvalidParameter)
+	}
+	if newSession.Session == nil {
+		return nil, nil, fmt.Errorf("create session: missing session store: %w", db.ErrInvalidParameter)
+	}
+	if newSession.PublicId != "" {
+		return nil, nil, fmt.Errorf("create session: public id is not empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.ServerId == "" {
+		return nil, nil, fmt.Errorf("create session: server id is empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.ServerType == "" {
+		return nil, nil, fmt.Errorf("create session: server type is empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.TargetId == "" {
+		return nil, nil, fmt.Errorf("create session: target id is empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.HostId == "" {
+		return nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.UserId == "" {
+		return nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.SetId == "" {
+		return nil, nil, fmt.Errorf("create session: set id is empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.AuthTokenId == "" {
+		return nil, nil, fmt.Errorf("create session: auth token id is empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.ScopeId == "" {
+		return nil, nil, fmt.Errorf("create session: scope id is empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.Address == "" {
+		return nil, nil, fmt.Errorf("create session: address is empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.Port == "" {
+		return nil, nil, fmt.Errorf("create session: port id is empty: %w", db.ErrInvalidParameter)
+	}
+
+	id, err := newId()
+	if err != nil {
+		return nil, nil, fmt.Errorf("create session: %w", err)
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, newSession.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create session: unable to get oplog wrapper: %w", err)
+	}
+
+	var returnedSession *Session
+	var returnedState *State
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, w db.Writer) error {
+			returnedSession = newSession.Clone().(*Session)
+			returnedSession.PublicId = id
+			metadata := returnedSession.oplog(oplog.OpType_OP_TYPE_CREATE)
+			if err = w.Create(ctx, returnedSession, db.WithOplog(oplogWrapper, metadata)); err != nil {
+				return err
+			}
+			var foundStates []*State
+			// trigger will create new "Pending" state
+			if foundStates, err = fetchStates(ctx, read, returnedSession.PublicId); err != nil {
+				return err
+			}
+			if len(foundStates) != 1 {
+				return fmt.Errorf("%d states found for new session %s", len(foundStates), returnedSession.PublicId)
+			}
+			returnedState = foundStates[0]
+			if returnedState.Status != Pending.String() {
+				return fmt.Errorf("new session %s state is not valid: %s", returnedSession.PublicId, returnedState.Status)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create session: %w", err)
+	}
+	return returnedSession, returnedState, err
 }
 
-func (r *Repository) LookupSession(ctx context.Context, publicId string, opt ...Option) (*Session, []*State, error) {
-	panic("not implemented")
+// LookupSession will look up a session in the repository and return the session
+// with its states.  If the session is not found, it will return nil, nil, nil.
+// No options are currently supported.
+func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ...Option) (*Session, []*State, error) {
+	if sessionId == "" {
+		return nil, nil, fmt.Errorf("lookup session: missing sessionId id: %w", db.ErrInvalidParameter)
+	}
+	session := allocSession()
+	session.PublicId = sessionId
+	var states []*State
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, w db.Writer) error {
+			if err := read.LookupById(ctx, &session); err != nil {
+				return fmt.Errorf("lookup session: failed %w for %s", err, sessionId)
+			}
+			var err error
+			if states, err = fetchStates(ctx, read, sessionId); err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, nil, nil
+		}
+		return nil, nil, fmt.Errorf("lookup session: %w", err)
+	}
+	return &session, states, nil
 }
 
 // ListSessions will sessions.  Supports the WithLimit, WithScopeId and WithOrder options.
