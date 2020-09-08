@@ -42,6 +42,7 @@ var flagsMap = map[string][]string{
 
 func (c *Command) Help() string {
 	helpMap := common.HelpMap("auth-method")
+	var helpStr string
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
@@ -56,7 +57,7 @@ func (c *Command) Help() string {
 			"  Please see the auth-methods subcommand help for detailed usage information.",
 		})
 	case "create":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary auth-methods create [type] [sub command] [options] [args]",
 			"",
 			"  This command allows create operations on Boundary auth-method resources. Example:",
@@ -68,7 +69,7 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "update":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary auth-methods update [type] [sub command] [options] [args]",
 			"",
 			"  This command allows update operations on Boundary auth-method resources. Example:",
@@ -80,8 +81,9 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	default:
-		return helpMap[c.Func]() + c.Flags().Help()
+		helpStr = helpMap[c.Func]()
 	}
+	return helpStr + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {

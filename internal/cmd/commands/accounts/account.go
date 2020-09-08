@@ -52,6 +52,7 @@ var flagsMap = map[string][]string{
 
 func (c *Command) Help() string {
 	helpMap := common.HelpMap("account")
+	var helpStr string
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
@@ -66,7 +67,7 @@ func (c *Command) Help() string {
 			"  Please see the accounts subcommand help for detailed usage information.",
 		})
 	case "create":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary accounts create [type] [sub command] [options] [args]",
 			"",
 			"  This command allows create operations on Boundary account resources. Example:",
@@ -78,7 +79,7 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "update":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary accounts update [type] [sub command] [options] [args]",
 			"",
 			"  This command allows update operations on Boundary account resources. Example:",
@@ -90,7 +91,7 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "set-password":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary accounts set-password [sub command] [options] [args]",
 			"",
 			"  This command allows setting the password on account-type resources, if the types match and the operation is allowed by the given account type. Example:",
@@ -100,7 +101,7 @@ func (c *Command) Help() string {
 			`      $ boundary accounts set-password -id apw_1234567890 -password <empty, to be read by stdin>`,
 		})
 	case "change-password":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary accounts change-password [sub command] [options] [args]",
 			"",
 			"  This command allows changing the password (with verification of the current password) on account-type resources, if the types match and the operation is allowed by the given account type. Example:",
@@ -110,8 +111,9 @@ func (c *Command) Help() string {
 			`      $ boundary accounts change-password -id apw_1234567890 -current-password <empty, to be read by stdin> -new-password <empty, to be read by stdin>`,
 		})
 	default:
-		return helpMap[c.Func]() + c.Flags().Help()
+		helpStr = helpMap[c.Func]()
 	}
+	return helpStr + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {

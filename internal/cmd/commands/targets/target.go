@@ -48,6 +48,7 @@ var flagsMap = map[string][]string{
 
 func (c *Command) Help() string {
 	helpMap := common.HelpMap("target")
+	var helpStr string
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
@@ -62,7 +63,7 @@ func (c *Command) Help() string {
 			"  Please see the targets subcommand help for detailed usage information.",
 		})
 	case "create":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary targets create [type] [sub command] [options] [args]",
 			"",
 			"  This command allows create operations on Boundary target resources. Example:",
@@ -74,7 +75,7 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "update":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary targets update [type] [sub command] [options] [args]",
 			"",
 			"  This command allows update operations on Boundary target resources. Example:",
@@ -86,7 +87,7 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "add-host-sets":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary target add-host-sets [sub command] [options] [args]",
 			"",
 			"  This command allows adding host-set resources to target resources. Example:",
@@ -96,7 +97,7 @@ func (c *Command) Help() string {
 			`      $ boundary targets add-host-sets -id ttcp_1234567890 -host-set hsst_1234567890 -host-set hsst_0987654321`,
 		})
 	case "remove-host-sets":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary target remove-host-sets [sub command] [options] [args]",
 			"",
 			"  This command allows removing host-set resources from target resources. Example:",
@@ -106,7 +107,7 @@ func (c *Command) Help() string {
 			`      $ boundary targets add-host-sets -id ttcp_1234567890 -host hsst_1234567890 -host-set hsst_0987654321`,
 		})
 	case "set-host-sets":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary target set-host-sets [sub command] [options] [args]",
 			"",
 			"  This command allows setting the complete set of host-set resources on a target resource. Example:",
@@ -116,8 +117,9 @@ func (c *Command) Help() string {
 			`      $ boundary targets set-host-sets -id ttcp_1234567890 -host-set hsst_1234567890`,
 		})
 	default:
-		return helpMap[c.Func]() + c.Flags().Help()
+		helpStr = helpMap[c.Func]()
 	}
+	return helpStr + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
