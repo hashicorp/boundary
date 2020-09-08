@@ -3,6 +3,7 @@ package accounts_test
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -15,18 +16,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAccounts_List(t *testing.T) {
+func TestList(t *testing.T) {
+	os.Setenv("BOUNDARY_LOG_URLS", "1")
+	os.Setenv("BOUNDARY_DEV_SKIP_AUTHZ", "1")
 	assert, require := assert.New(t), require.New(t)
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	require.NotNil(client)
+	token := tc.Token()
+	require.NotNil(token)
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	amClient := authmethods.NewClient(client)
-	am, apiErr, err := amClient.Create(tc.Context(), "password")
+	am, apiErr, err := amClient.Create(tc.Context(), "password", org.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(am)
@@ -77,21 +81,15 @@ func comparableSlice(in []*accounts.Account) []accounts.Account {
 	return filtered
 }
 
-func TestAccount_Crud(t *testing.T) {
+func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-
+	token := tc.Token()
+	client.SetToken(token.Token)
+	amId := token.AuthMethodId
 	accountClient := accounts.NewClient(client)
 
 	checkAccount := func(step string, u *accounts.Account, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
@@ -111,35 +109,30 @@ func TestAccount_Crud(t *testing.T) {
 	u, apiErr, err := accountClient.Create(tc.Context(), amId, accounts.WithName("foo"), accounts.WithPasswordAccountLoginName("loginname"))
 	checkAccount("create", u, apiErr, err, "foo", 1)
 
-	u, apiErr, err = accountClient.Read(tc.Context(), amId, u.Id)
+	u, apiErr, err = accountClient.Read(tc.Context(), u.Id)
 	checkAccount("read", u, apiErr, err, "foo", 1)
 
-	u, apiErr, err = accountClient.Update(tc.Context(), amId, u.Id, u.Version, accounts.WithName("bar"))
+	u, apiErr, err = accountClient.Update(tc.Context(), u.Id, u.Version, accounts.WithName("bar"))
 	checkAccount("update", u, apiErr, err, "bar", 2)
 
-	u, apiErr, err = accountClient.Update(tc.Context(), amId, u.Id, u.Version, accounts.DefaultName())
+	u, apiErr, err = accountClient.Update(tc.Context(), u.Id, u.Version, accounts.DefaultName())
 	checkAccount("update", u, apiErr, err, "", 3)
 
-	existed, _, err := accountClient.Delete(tc.Context(), amId, u.Id)
+	existed, _, err := accountClient.Delete(tc.Context(), u.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.True(existed, "Expected existing account when deleted, but it wasn't.")
 }
 
-func TestAccount_CustomMethods(t *testing.T) {
+func TestCustomMethods(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	amId := token.AuthMethodId
 
 	accountClient := accounts.NewClient(client)
 
@@ -150,34 +143,28 @@ func TestAccount_CustomMethods(t *testing.T) {
 
 	acct := al[0]
 
-	setAcct, apiErr, err := accountClient.SetPassword(tc.Context(), amId, acct.Id, "setpassword", acct.Version)
+	setAcct, apiErr, err := accountClient.SetPassword(tc.Context(), acct.Id, "setpassword", acct.Version)
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(setAcct)
 	assert.Equal(acct.Version+1, setAcct.Version)
 
-	changeAcct, apiErr, err := accountClient.ChangePassword(tc.Context(), amId, acct.Id, "setpassword", "changepassword", setAcct.Version)
+	changeAcct, apiErr, err := accountClient.ChangePassword(tc.Context(), acct.Id, "setpassword", "changepassword", setAcct.Version)
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(changeAcct)
 	assert.Equal(setAcct.Version+1, changeAcct.Version)
 }
 
-func TestAccount_Errors(t *testing.T) {
+func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-
+	token := tc.Token()
+	client.SetToken(token.Token)
+	amId := token.AuthMethodId
 	accountClient := accounts.NewClient(client)
 
 	u, apiErr, err := accountClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName("first"))
@@ -190,17 +177,17 @@ func TestAccount_Errors(t *testing.T) {
 	require.NoError(err)
 	assert.NotNil(apiErr)
 
-	_, apiErr, err = accountClient.Read(tc.Context(), amId, password.AccountPrefix+"_doesntexis")
+	_, apiErr, err = accountClient.Read(tc.Context(), password.AccountPrefix+"_doesntexis")
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusForbidden, apiErr.Status)
 
-	_, apiErr, err = accountClient.Read(tc.Context(), amId, "invalid id")
+	_, apiErr, err = accountClient.Read(tc.Context(), "invalid id")
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
-	_, apiErr, err = accountClient.Update(tc.Context(), amId, u.Id, u.Version)
+	_, apiErr, err = accountClient.Update(tc.Context(), u.Id, u.Version)
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)

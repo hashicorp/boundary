@@ -199,7 +199,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	}
 	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
 	if tType != "" && tType != "token" && tType != "cookie" {
-		badFields["token_type"] = "The only accepted type is 'token'."
+		badFields["token_type"] = `The only accepted types are "token" and "cookie".`
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)

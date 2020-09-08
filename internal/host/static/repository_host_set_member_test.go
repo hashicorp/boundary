@@ -178,16 +178,16 @@ func TestRepository_AddSetMembers_Combinations(t *testing.T) {
 
 	// second call - add new set of hosts - should succeed
 	set.Version = set.Version + 1
-	hosts2 := TestHosts(t, conn, c.PublicId, 5)
+	Hosts := TestHosts(t, conn, c.PublicId, 5)
 	var hostIds2 []string
-	for _, h := range hosts2 {
+	for _, h := range Hosts {
 		hostIds2 = append(hostIds2, h.PublicId)
 	}
 	got2, err2 := repo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds2)
 	require.NoError(err2)
 	require.NotNil(got2)
 
-	hosts = append(hosts, hosts2...)
+	hosts = append(hosts, Hosts...)
 	assert.Len(got2, len(hosts))
 	assert.Empty(cmp.Diff(hosts, got2, opts...))
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
@@ -391,9 +391,9 @@ func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 
 	// verify no members remain
-	members2, err := getHosts(context.Background(), repo.reader, set.PublicId, unlimited)
+	Members, err := getHosts(context.Background(), repo.reader, set.PublicId, unlimited)
 	require.NoError(err)
-	require.Empty(members2)
+	require.Empty(Members)
 }
 
 func TestRepository_SetSetMembers_Parameters(t *testing.T) {

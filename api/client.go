@@ -38,7 +38,6 @@ const EnvBoundaryMaxRetries = "BOUNDARY_MAX_RETRIES"
 const EnvBoundaryToken = "BOUNDARY_TOKEN"
 const EnvBoundaryRateLimit = "BOUNDARY_RATE_LIMIT"
 const EnvBoundarySRVLookup = "BOUNDARY_SRV_LOOKUP"
-const EnvBoundaryScopeId = "BOUNDARY_SCOPE_ID"
 
 // Config is used to configure the creation of the client
 type Config struct {
@@ -97,9 +96,6 @@ type Config struct {
 
 	// SRVLookup enables the client to lookup the host through DNS SRV lookup
 	SRVLookup bool
-
-	// ScopeId is the ID of the scope to use if not overridden per-call
-	ScopeId string
 }
 
 // TLSConfig contains the parameters needed to configure TLS on the HTTP client
@@ -140,7 +136,6 @@ func DefaultConfig() (*Config, error) {
 		HttpClient: cleanhttp.DefaultPooledClient(),
 		Timeout:    time.Second * 60,
 		TLSConfig:  &TLSConfig{},
-		ScopeId:    "global",
 	}
 
 	// We read the environment now; after DefaultClient returns we can override
@@ -215,10 +210,9 @@ func (c *Config) ConfigureTLS() error {
 	return nil
 }
 
-// setAddr parses a given string and looks for scope info, setting the
-// actual address to the base. Note that if a very malformed URL is passed in,
-// this may not return what one expects. For now this is on purpose to avoid
-// requiring error handling.
+// setAddr parses a given string, setting the actual address to the base. Note
+// that if a very malformed URL is passed in, this may not return what one
+// expects. For now this is on purpose to avoid requiring error handling.
 //
 // This also removes any trailing "/v1"; we'll use that in our commands so we
 // don't require it from users.
@@ -229,11 +223,12 @@ func (c *Config) setAddr(addr string) error {
 	}
 	c.Addr = fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 
-	// If there is a scopes segment, elide everything after it. Do this only for
-	// the last "scopes" segment in case it's part of the base path.
-	if lastIndex := strings.LastIndex(u.Path, "scopes"); lastIndex != -1 {
+	// If there is a v1 segment, elide everything after it. Do this only for
+	// the last v1 segment in case it's part of the base path.
+	if lastIndex := strings.LastIndex(u.Path, "v1"); lastIndex != -1 {
 		u.Path = u.Path[:lastIndex]
 	}
+
 	// Remove trailing or leading slashes
 	path := strings.Trim(u.Path, "/")
 	// Remove v1 in front or back (e.g. they could have
@@ -268,10 +263,6 @@ func (c *Config) ReadEnvironment() error {
 
 	if v := os.Getenv(EnvBoundaryToken); v != "" {
 		c.Token = v
-	}
-
-	if v := os.Getenv(EnvBoundaryScopeId); v != "" {
-		c.ScopeId = v
 	}
 
 	if v := os.Getenv(EnvBoundaryMaxRetries); v != "" {
@@ -439,23 +430,6 @@ func (c *Client) SetAddr(addr string) error {
 	return c.config.setAddr(addr)
 }
 
-// ScopeId fetches the scope ID the client will use by default
-func (c *Client) ScopeId() string {
-	c.modifyLock.RLock()
-	defer c.modifyLock.RUnlock()
-
-	return c.config.ScopeId
-}
-
-// Sets the scope ID to use when making calls. This will apply to all calls with
-// this client unless overridden per request via WithScopeId.
-func (c *Client) SetScopeId(scopeId string) {
-	c.modifyLock.Lock()
-	defer c.modifyLock.Unlock()
-
-	c.config.ScopeId = scopeId
-}
-
 // SetTLSConfig sets the TLS parameters to use and calls ConfigureTLS
 func (c *Client) SetTLSConfig(conf *TLSConfig) error {
 	c.modifyLock.Lock()
@@ -564,7 +538,6 @@ func (c *Client) Clone() *Client {
 		CheckRetry: config.CheckRetry,
 		Limiter:    config.Limiter,
 		SRVLookup:  config.SRVLookup,
-		ScopeId:    config.ScopeId,
 	}
 	if config.TLSConfig != nil {
 		newConfig.TLSConfig = new(TLSConfig)
@@ -632,7 +605,6 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 
 	c.modifyLock.RLock()
 	addr := c.config.Addr
-	scopeId := c.config.ScopeId
 	srvLookup := c.config.SRVLookup
 	token := c.config.Token
 	httpClient := c.config.HttpClient
@@ -677,46 +649,13 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 	}
 
-	opts := getOpts(opt...)
-	if opts.withScopeId != "" {
-		scopeId = opts.withScopeId
-	}
-	if scopeId == "" {
-		scopeId = "global"
-	}
-
-	var finalPath string
-	switch opts.withNewStyle {
-	case true:
-		// Do nothing. Eventually, remove the notion of a scoped client; calls
-		// to specific resources won't need it, and calls to collections can
-		// take care of it in the functions themselves as part of the api
-		// parameters.
-		finalPath = path.Join(u.Path, "/v1/", requestPath)
-	default:
-		scopedPath := strings.TrimPrefix(requestPath, "/")
-		switch requestPath {
-		case "scopes":
-			// This is a special case for creating or listing scopes; don't do
-			// anything
-
-		default:
-			// If their path already has 'scopes/' in it, use the given request path
-			// instead of building it from the client's scope information
-			if !strings.HasPrefix(scopedPath, "scopes/") {
-				scopedPath = path.Join("scopes", scopeId, scopedPath)
-			}
-		}
-		finalPath = path.Join(u.Path, "/v1", scopedPath)
-	}
-
 	req := &http.Request{
 		Method: method,
 		URL: &url.URL{
 			User:   u.User,
 			Scheme: u.Scheme,
 			Host:   host,
-			Path:   finalPath,
+			Path:   path.Join(u.Path, "/v1/", requestPath),
 		},
 		Host: u.Host,
 	}

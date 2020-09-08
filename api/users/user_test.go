@@ -13,23 +13,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUsers_List(t *testing.T) {
+func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	userClient := users.NewClient(client)
 
-	ul, apiErr, err := userClient.List(tc.Context())
+	ul, apiErr, err := userClient.List(tc.Context(), org.GetPublicId())
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.Empty(ul)
@@ -39,21 +34,21 @@ func TestUsers_List(t *testing.T) {
 		expected = append(expected, &users.User{Name: fmt.Sprint(i)})
 	}
 
-	expected[0], apiErr, err = userClient.Create(tc.Context(), users.WithName(expected[0].Name))
+	expected[0], apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[0].Name))
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
-	ul, apiErr, err = userClient.List(tc.Context())
+	ul, apiErr, err = userClient.List(tc.Context(), org.GetPublicId())
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul))
 
 	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = userClient.Create(tc.Context(), users.WithName(expected[i].Name))
+		expected[i], apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[i].Name))
 		assert.NoError(err)
 		assert.Nil(apiErr)
 	}
-	ul, apiErr, err = userClient.List(tc.Context())
+	ul, apiErr, err = userClient.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))
@@ -74,20 +69,15 @@ func comparableSlice(in []*users.User) []users.User {
 	return filtered
 }
 
-func TestUser_Crud(t *testing.T) {
+func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	userClient := users.NewClient(client)
 
 	checkUser := func(step string, u *users.User, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
@@ -104,7 +94,7 @@ func TestUser_Crud(t *testing.T) {
 		assert.EqualValues(wantedVersion, u.Version)
 	}
 
-	u, apiErr, err := userClient.Create(tc.Context(), users.WithName("foo"))
+	u, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("foo"))
 	checkUser("create", u, apiErr, err, "foo", 1)
 
 	u, apiErr, err = userClient.Read(tc.Context(), u.Id)
@@ -127,29 +117,24 @@ func TestUser_Crud(t *testing.T) {
 	assert.EqualValues(http.StatusForbidden, apiErr.Status)
 }
 
-func TestUser_Errors(t *testing.T) {
+func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	userClient := users.NewClient(client)
 
-	u, apiErr, err := userClient.Create(tc.Context(), users.WithName("first"))
+	u, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.NotNil(u)
 
 	// Create another resource with the same name.
-	_, apiErr, err = userClient.Create(tc.Context(), users.WithName("first"))
+	_, apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 

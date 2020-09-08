@@ -13,20 +13,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestProjects_List(t *testing.T) {
+func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	scps := scopes.NewClient(client)
 
@@ -63,20 +58,15 @@ func comparableSlice(in []*scopes.Scope) []scopes.Scope {
 	return filtered
 }
 
-func TestProjects_Crud(t *testing.T) {
+func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, _ := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, _ := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	scps := scopes.NewClient(client)
 
@@ -116,20 +106,15 @@ func TestProjects_Crud(t *testing.T) {
 }
 
 // TODO: Get better coverage for expected errors and error formats.
-func TestProject_Errors(t *testing.T) {
+func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, _ := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, _ := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	scps := scopes.NewClient(client)
 

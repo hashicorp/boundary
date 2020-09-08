@@ -28,27 +28,42 @@ type Host struct {
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 }
 
+// Client is a client for this collection
 type Client struct {
 	client *api.Client
 }
 
+// Creates a new client for this collection. The submitted API client is cloned;
+// modifications to it after generating this client will not have effect. If you
+// need to make changes to the underlying API client, use ApiClient() to access
+// it.
 func NewClient(c *api.Client) *Client {
-	return &Client{client: c}
+	return &Client{client: c.Clone()}
+}
+
+// ApiClient returns the underlying API client
+func (c *Client) ApiClient() *api.Client {
+	return c.client
 }
 
 func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option) (*Host, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Create request")
 	}
+
 	opts, apiOpts := getOpts(opt...)
+
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/hosts", hostCatalogId), opts.postMap, apiOpts...)
+	opts.postMap["host_catalog_id"] = hostCatalogId
+
+	req, err := c.client.NewRequest(ctx, "POST", "hosts", opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
+
 	if len(opts.queryMap) > 0 {
 		q := url.Values{}
 		for k, v := range opts.queryMap {
@@ -73,22 +88,17 @@ func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option
 	return target, apiErr, nil
 }
 
-func (c *Client) Read(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (*Host, *api.Error, error) {
-	if hostCatalogId == "" {
-		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
-	}
-
+func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*Host, *api.Error, error) {
 	if hostId == "" {
-		return nil, nil, fmt.Errorf("empty hostId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty  hostId value passed into Read request")
 	}
-
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s/hosts/%s", hostCatalogId, hostId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("hosts/%s", hostId), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -117,10 +127,7 @@ func (c *Client) Read(ctx context.Context, hostCatalogId string, hostId string, 
 	return target, apiErr, nil
 }
 
-func (c *Client) Update(ctx context.Context, hostCatalogId string, hostId string, version uint32, opt ...Option) (*Host, *api.Error, error) {
-	if hostCatalogId == "" {
-		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
-	}
+func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt ...Option) (*Host, *api.Error, error) {
 	if hostId == "" {
 		return nil, nil, fmt.Errorf("empty hostId value passed into Update request")
 	}
@@ -134,7 +141,7 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, hostId string
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, hostCatalogId, hostId, opt...)
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, hostId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
@@ -149,7 +156,7 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, hostId string
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s/hosts/%s", hostCatalogId, hostId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("hosts/%s", hostId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -178,22 +185,17 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, hostId string
 	return target, apiErr, nil
 }
 
-func (c *Client) Delete(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (bool, *api.Error, error) {
-	if hostCatalogId == "" {
-		return false, nil, fmt.Errorf("empty hostCatalogId value passed into Delete request")
-	}
-
+func (c *Client) Delete(ctx context.Context, hostId string, opt ...Option) (bool, *api.Error, error) {
 	if hostId == "" {
 		return false, nil, fmt.Errorf("empty hostId value passed into Delete request")
 	}
-
 	if c.client == nil {
 		return false, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-catalogs/%s/hosts/%s", hostCatalogId, hostId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("hosts/%s", hostId), nil, apiOpts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
@@ -229,14 +231,14 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into List request")
 	}
-
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
+	opts.queryMap["host_catalog_id"] = hostCatalogId
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s/hosts", hostCatalogId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "hosts", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}

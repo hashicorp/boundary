@@ -4,9 +4,6 @@ const (
 	// FlagNameAddr is the flag used in the base command to read in the
 	// address of the Boundary server.
 	FlagNameAddr = "addr"
-	// FlagNameScope is the flag used in the base command to read in the scope
-	// in which to make a request.
-	FlagNameScope = "scope"
 	// FlagnameCACert is the flag used in the base command to read in the CA
 	// cert.
 	FlagNameCACert = "ca-cert"

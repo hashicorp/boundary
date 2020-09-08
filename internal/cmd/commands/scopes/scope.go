@@ -30,10 +30,11 @@ func (c *Command) Synopsis() string {
 }
 
 var flagsMap = map[string][]string{
-	"create": {"name", "description", "skip-role-creation"},
+	"create": {"scope-id", "name", "description", "skip-role-creation"},
 	"update": {"id", "name", "description", "version"},
 	"read":   {"id"},
 	"delete": {"id"},
+	"list":   {"scope-id"},
 }
 
 func (c *Command) Help() string {
@@ -86,6 +87,10 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
+		return 1
+	}
 
 	client, err := c.Client()
 	if err != nil {
@@ -123,7 +128,7 @@ func (c *Command) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, scopes.WithAutomaticVersioning())
+			opts = append(opts, scopes.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
@@ -136,7 +141,7 @@ func (c *Command) Run(args []string) int {
 
 	switch c.Func {
 	case "create":
-		scope, apiErr, err = scopeClient.Create(c.Context, client.ScopeId(), opts...)
+		scope, apiErr, err = scopeClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
 		scope, apiErr, err = scopeClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
@@ -144,7 +149,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		existed, apiErr, err = scopeClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedScopes, apiErr, err = scopeClient.List(c.Context, client.ScopeId(), opts...)
+		listedScopes, apiErr, err = scopeClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "scope"

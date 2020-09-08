@@ -30,24 +30,42 @@ type Role struct {
 	Grants       []*Grant          `json:"grants,omitempty"`
 }
 
+// Client is a client for this collection
 type Client struct {
 	client *api.Client
 }
 
+// Creates a new client for this collection. The submitted API client is cloned;
+// modifications to it after generating this client will not have effect. If you
+// need to make changes to the underlying API client, use ApiClient() to access
+// it.
 func NewClient(c *api.Client) *Client {
-	return &Client{client: c}
+	return &Client{client: c.Clone()}
 }
 
-func (c *Client) Create(ctx context.Context, opt ...Option) (*Role, *api.Error, error) {
+// ApiClient returns the underlying API client
+func (c *Client) ApiClient() *api.Client {
+	return c.client
+}
+
+func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Role, *api.Error, error) {
+	if scopeId == "" {
+		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
+	}
+
 	opts, apiOpts := getOpts(opt...)
+
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
+
+	opts.postMap["scope_id"] = scopeId
 
 	req, err := c.client.NewRequest(ctx, "POST", "roles", opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
+
 	if len(opts.queryMap) > 0 {
 		q := url.Values{}
 		for k, v := range opts.queryMap {
@@ -74,9 +92,8 @@ func (c *Client) Create(ctx context.Context, opt ...Option) (*Role, *api.Error, 
 
 func (c *Client) Read(ctx context.Context, roleId string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
-		return nil, nil, fmt.Errorf("empty roleId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty  roleId value passed into Read request")
 	}
-
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -174,7 +191,6 @@ func (c *Client) Delete(ctx context.Context, roleId string, opt ...Option) (bool
 	if roleId == "" {
 		return false, nil, fmt.Errorf("empty roleId value passed into Delete request")
 	}
-
 	if c.client == nil {
 		return false, nil, fmt.Errorf("nil client")
 	}
@@ -213,12 +229,16 @@ func (c *Client) Delete(ctx context.Context, roleId string, opt ...Option) (bool
 	return target.Existed, apiErr, nil
 }
 
-func (c *Client) List(ctx context.Context, opt ...Option) ([]*Role, *api.Error, error) {
+func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) ([]*Role, *api.Error, error) {
+	if scopeId == "" {
+		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
+	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
+	opts.queryMap["scope_id"] = scopeId
 
 	req, err := c.client.NewRequest(ctx, "GET", "roles", nil, apiOpts...)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/commands/accounts"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authtokens"
@@ -19,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/proxy"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
+	"github.com/hashicorp/boundary/internal/cmd/commands/targets"
 	"github.com/hashicorp/boundary/internal/cmd/commands/users"
 	"github.com/hashicorp/boundary/internal/cmd/commands/worker"
 
@@ -74,6 +76,66 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"authenticate password": func() (cli.Command, error) {
 			return &authenticate.PasswordCommand{
 				Command: base.NewCommand(ui),
+			}, nil
+		},
+
+		"accounts": func() (cli.Command, error) {
+			return &accounts.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"accounts read": func() (cli.Command, error) {
+			return &accounts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"accounts delete": func() (cli.Command, error) {
+			return &accounts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"accounts list": func() (cli.Command, error) {
+			return &accounts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"accounts set-password": func() (cli.Command, error) {
+			return &accounts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-password",
+			}, nil
+		},
+		"accounts change-password": func() (cli.Command, error) {
+			return &accounts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "change-password",
+			}, nil
+		},
+		"accounts create": func() (cli.Command, error) {
+			return &accounts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"accounts create password": func() (cli.Command, error) {
+			return &accounts.PasswordCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"accounts update": func() (cli.Command, error) {
+			return &accounts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"accounts update password": func() (cli.Command, error) {
+			return &accounts.PasswordCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
 			}, nil
 		},
 
@@ -335,9 +397,51 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
-		"hosts create": func() (cli.Command, error) {
-			return &hosts.CreateCommand{
+		"hosts": func() (cli.Command, error) {
+			return &hosts.Command{
 				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"hosts read": func() (cli.Command, error) {
+			return &hosts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"hosts delete": func() (cli.Command, error) {
+			return &hosts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"hosts list": func() (cli.Command, error) {
+			return &hosts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"hosts create": func() (cli.Command, error) {
+			return &hosts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"hosts create static": func() (cli.Command, error) {
+			return &hosts.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"hosts update": func() (cli.Command, error) {
+			return &hosts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"hosts update static": func() (cli.Command, error) {
+			return &hosts.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
 			}, nil
 		},
 
@@ -446,6 +550,72 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &scopes.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
+			}, nil
+		},
+
+		"targets": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"targets read": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"targets delete": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"targets list": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"targets create": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"targets create tcp": func() (cli.Command, error) {
+			return &targets.TcpCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"targets update": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"targets update tcp": func() (cli.Command, error) {
+			return &targets.TcpCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"targets add-host-sets": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-host-sets",
+			}, nil
+		},
+		"targets remove-host-sets": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-host-sets",
+			}, nil
+		},
+		"targets set-host-sets": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-host-sets",
 			}, nil
 		},
 
