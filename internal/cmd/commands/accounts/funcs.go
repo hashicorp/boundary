@@ -69,4 +69,6 @@ func generateAccountTableOutput(in *accounts.Account) string {
 	return base.WrapForHelpText(ret)
 }
 
-var attributeMap = map[string]string{}
+var attributeMap = map[string]string{
+	"login_name": "Login Name",
+}

@@ -26,7 +26,7 @@ type Command struct {
 func (c *Command) Synopsis() string {
 	switch c.Func {
 	case "create":
-		return "Create host-catalolg resources within Boundary"
+		return "Create host-catalog resources within Boundary"
 	case "update":
 		return "Update host-catalog resources within Boundary"
 	default:
@@ -105,7 +105,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 
 func (c *Command) Run(args []string) int {
 	switch c.Func {
-	case "", "static":
+	case "", "create", "update":
 		return cli.RunResultHelp
 	}
 
