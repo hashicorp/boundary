@@ -335,9 +335,51 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
-		"hosts create": func() (cli.Command, error) {
-			return &hosts.CreateCommand{
+		"hosts": func() (cli.Command, error) {
+			return &hosts.Command{
 				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"hosts read": func() (cli.Command, error) {
+			return &hosts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"hosts delete": func() (cli.Command, error) {
+			return &hosts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"hosts list": func() (cli.Command, error) {
+			return &hosts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"hosts create": func() (cli.Command, error) {
+			return &hosts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"hosts create static": func() (cli.Command, error) {
+			return &hosts.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"hosts update": func() (cli.Command, error) {
+			return &hosts.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"hosts update static": func() (cli.Command, error) {
+			return &hosts.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
 			}, nil
 		},
 

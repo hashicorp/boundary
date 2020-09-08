@@ -1,10 +1,10 @@
-package hostcatalogs
+package hosts
 
 import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/hostcatalogs"
+	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -21,61 +21,63 @@ type Command struct {
 	*base.Command
 
 	Func string
+
+	flagHostCatalogId string
 }
 
 func (c *Command) Synopsis() string {
 	switch c.Func {
 	case "create":
-		return "Create host-catalolg resources within Boundary"
+		return "Create host resources within Boundary"
 	case "update":
-		return "Update host-catalog resources within Boundary"
+		return "Update host resources within Boundary"
 	default:
-		return common.SynopsisFunc(c.Func, "host-catalog")
+		return common.SynopsisFunc(c.Func, "host")
 	}
 }
 
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"delete": {"id"},
-	"list":   {"scope-id"},
+	"list":   {"host-catalog-id"},
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("host-catalog")
+	helpMap := common.HelpMap("host")
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
-			"Usage: boundary host-catalogs [sub command] [options] [args]",
+			"Usage: boundary hosts [sub command] [options] [args]",
 			"",
-			"  This command allows operations on Boundary host-catalog resources. Example:",
+			"  This command allows operations on Boundary host resources. Example:",
 			"",
-			"    Read a host-catalog:",
+			"    Read a host:",
 			"",
-			`      $ boundary host-catalogs read -id hcst_1234567890`,
+			`      $ boundary hosts read -id hst_1234567890`,
 			"",
-			"  Please see the host-catalogs subcommand help for detailed usage information.",
+			"  Please see the hosts subcommand help for detailed usage information.",
 		})
 	case "create":
 		return base.WrapForHelpText([]string{
-			"Usage: boundary host-catalogs create [type] [sub command] [options] [args]",
+			"Usage: boundary hosts create [type] [sub command] [options] [args]",
 			"",
-			"  This command allows create operations on Boundary host-catalog resources. Example:",
+			"  This command allows create operations on Boundary host resources. Example:",
 			"",
-			"    Create a static-type host-catalog:",
+			"    Create a static-type host:",
 			"",
-			`      $ boundary host-catalogs create static -name prodops -description "For ProdOps usage"`,
+			`      $ boundary hosts create static -name prodops -description "For ProdOps usage"`,
 			"",
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "update":
 		return base.WrapForHelpText([]string{
-			"Usage: boundary host-catalogs update [type] [sub command] [options] [args]",
+			"Usage: boundary hosts update [type] [sub command] [options] [args]",
 			"",
-			"  This command allows update operations on Boundary host-catalog resources. Example:",
+			"  This command allows update operations on Boundary host resources. Example:",
 			"",
-			"    Update a static-type host-catalog:",
+			"    Update a static-type host:",
 			"",
-			`      $ boundary host-catalogs update static -id hcst_1234567890 -name devops -description "For DevOps usage"`,
+			`      $ boundary hosts update static -id hst_1234567890 -name devops -description "For DevOps usage"`,
 			"",
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
@@ -87,10 +89,17 @@ func (c *Command) Help() string {
 func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
+	f := set.NewFlagSet("Command Options")
+
 	if len(flagsMap[c.Func]) > 0 {
-		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.HostCatalog.String(), flagsMap[c.Func])
+		common.PopulateCommonFlags(c.Command, f, resource.Host.String(), flagsMap[c.Func])
 	}
+
+	f.StringVar(&base.StringVar{
+		Name:   "host-catalog-id",
+		Target: &c.flagHostCatalogId,
+		Usage:  "The host-catalog resource in which to create or update the host resource",
+	})
 
 	return set
 }
@@ -105,7 +114,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 
 func (c *Command) Run(args []string) int {
 	switch c.Func {
-	case "", "static":
+	case "", "create", "update":
 		return cli.RunResultHelp
 	}
 
@@ -127,43 +136,43 @@ func (c *Command) Run(args []string) int {
 		return 2
 	}
 
-	var opts []hostcatalogs.Option
+	var opts []hosts.Option
 
 	switch c.FlagName {
 	case "":
 	case "null":
-		opts = append(opts, hostcatalogs.DefaultName())
+		opts = append(opts, hosts.DefaultName())
 	default:
-		opts = append(opts, hostcatalogs.WithName(c.FlagName))
+		opts = append(opts, hosts.WithName(c.FlagName))
 	}
 
 	switch c.FlagDescription {
 	case "":
 	case "null":
-		opts = append(opts, hostcatalogs.DefaultDescription())
+		opts = append(opts, hosts.DefaultDescription())
 	default:
-		opts = append(opts, hostcatalogs.WithDescription(c.FlagDescription))
+		opts = append(opts, hosts.WithDescription(c.FlagDescription))
 	}
 
-	hostcatalogClient := hostcatalogs.NewClient(client)
+	hostClient := hosts.NewClient(client)
 
 	var existed bool
-	var catalog *hostcatalogs.HostCatalog
-	var listedCatalogs []*hostcatalogs.HostCatalog
+	var host *hosts.Host
+	var listedHosts []*hosts.Host
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		catalog, apiErr, err = hostcatalogClient.Read(c.Context, c.FlagId, opts...)
+		host, apiErr, err = hostClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = hostcatalogClient.Delete(c.Context, c.FlagId, opts...)
+		existed, apiErr, err = hostClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedCatalogs, apiErr, err = hostcatalogClient.List(c.Context, c.FlagScopeId, opts...)
+		listedHosts, apiErr, err = hostClient.List(c.Context, c.flagHostCatalogId, opts...)
 	}
 
-	plural := "host catalog"
+	plural := "host"
 	if c.Func == "list" {
-		plural = "host catalogs"
+		plural = "hosts"
 	}
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
@@ -194,11 +203,11 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
-			if len(listedCatalogs) == 0 {
+			if len(listedHosts) == 0 {
 				c.UI.Output("null")
 				return 0
 			}
-			b, err := base.JsonFormatter{}.Format(listedCatalogs)
+			b, err := base.JsonFormatter{}.Format(listedHosts)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 				return 1
@@ -206,16 +215,16 @@ func (c *Command) Run(args []string) int {
 			c.UI.Output(string(b))
 
 		case "table":
-			if len(listedCatalogs) == 0 {
-				c.UI.Output("No host catalogs found")
+			if len(listedHosts) == 0 {
+				c.UI.Output("No hosts found")
 				return 0
 			}
 			var output []string
 			output = []string{
 				"",
-				"Host Catalog information:",
+				"Host information:",
 			}
-			for i, m := range listedCatalogs {
+			for i, m := range listedHosts {
 				if i > 0 {
 					output = append(output, "")
 				}
@@ -244,9 +253,9 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateHostCatalogTableOutput(catalog))
+		c.UI.Output(generateHostTableOutput(host))
 	case "json":
-		b, err := base.JsonFormatter{}.Format(catalog)
+		b, err := base.JsonFormatter{}.Format(host)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1
