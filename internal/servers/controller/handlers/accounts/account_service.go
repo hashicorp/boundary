@@ -419,7 +419,20 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
-	return handlers.ValidateUpdateRequest(password.AccountPrefix, req, req.GetItem(), handlers.NoopValidatorFn)
+	return handlers.ValidateUpdateRequest(password.AccountPrefix, req, req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		switch auth.SubtypeFromId(req.GetId()) {
+		case auth.PasswordSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.PasswordSubtype.String() {
+				badFields["type"] = "Cannot modify resource type."
+			}
+			pwAttrs := &pb.PasswordAccountAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {
+				badFields["attributes"] = "Attribute fields do not match the expected format."
+			}
+		}
+		return badFields
+	})
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {

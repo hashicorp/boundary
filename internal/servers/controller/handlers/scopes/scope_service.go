@@ -324,6 +324,7 @@ func ToProto(in *iam.Scope) *pb.Scope {
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
+		Type:        in.GetType(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -365,7 +366,19 @@ func validateCreateRequest(req *pbs.CreateScopeRequest) error {
 	badFields := map[string]string{}
 	item := req.GetItem()
 	if item.GetScopeId() == "" {
-		badFields["scope_id"] = "Missing value for scope_id"
+		badFields["scope_id"] = "Missing value for scope_id."
+	}
+	switch item.GetType() {
+	case scope.Global.String():
+		badFields["type"] = "Cannot create a global scope."
+	case scope.Org.String():
+		if !strings.EqualFold(scope.Global.String(), item.GetScopeId()) {
+			badFields["type"] = "Org scopes can only be created under the global scope."
+		}
+	case scope.Project.String():
+		if !handlers.ValidId(scope.Org.Prefix(), item.GetScopeId()) {
+			badFields["type"] = "Project scopes can only be created under an org scope."
+		}
 	}
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field."
@@ -394,9 +407,15 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 		if !handlers.ValidId(scope.Org.Prefix(), id) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
+		if req.GetItem().GetType() != "" && !strings.EqualFold(scope.Org.String(), req.GetItem().GetType()) {
+			badFields["type"] = "Cannot modify the resource type."
+		}
 	case strings.HasPrefix(id, scope.Project.Prefix()):
 		if !handlers.ValidId(scope.Project.Prefix(), id) {
 			badFields["id"] = "Invalidly formatted scope id."
+		}
+		if req.GetItem().GetType() != "" && !strings.EqualFold(scope.Project.String(), req.GetItem().GetType()) {
+			badFields["type"] = "Cannot modify the resource type."
 		}
 	default:
 		badFields["id"] = "Invalidly formatted scope id."

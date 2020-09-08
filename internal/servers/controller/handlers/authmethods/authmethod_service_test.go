@@ -529,6 +529,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -550,11 +551,12 @@ func TestUpdate(t *testing.T) {
 			name: "Multiple Paths in single string",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name,description"},
+					Paths: []string{"name,description,type"},
 				},
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -600,6 +602,17 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant change type",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"name", "type"}},
+				Item: &pb.AuthMethod{
+					Name: &wrapperspb.StringValue{Value: "updated name"},
+					Type: "oidc",
 				},
 			},
 			errCode: codes.InvalidArgument,

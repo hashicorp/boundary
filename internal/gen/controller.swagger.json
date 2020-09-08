@@ -4686,6 +4686,10 @@
           "format": "int64",
           "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has.\nOutput only.",
           "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "title": "The type of the resource"
         }
       },
       "title": "Scope contains all fields related to a Scope resource"
