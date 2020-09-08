@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -385,11 +384,8 @@ func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
 
 func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	badFields := map[string]string{}
-	if req.GetScopeId() == "" {
-		badFields["scope_id"] = "Field required and not provided."
-	}
-	if !strings.HasPrefix(req.GetScopeId(), "global") && !strings.HasPrefix(req.GetScopeId(), "o_") {
-		badFields["scope_id"] = "Invalid scope ID for operation."
+	if !handlers.ValidId(scope.Global.Prefix(), req.GetScopeId()) && !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) {
+		badFields["scope_id"] = "This field must be a valid project scope id."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
