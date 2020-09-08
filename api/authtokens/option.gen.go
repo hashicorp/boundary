@@ -39,8 +39,8 @@ func getOpts(opt ...Option) (options, []api.Option) {
 // fetch to get the current version of the resource and populate it during the
 // update call. This is convenient but opens up the possibility for subtle
 // order-of-modification issues, so use carefully.
-func WithAutomaticVersioning() Option {
+func WithAutomaticVersioning(enable bool) Option {
 	return func(o *options) {
-		o.withAutomaticVersioning = true
+		o.withAutomaticVersioning = enable
 	}
 }

@@ -130,7 +130,7 @@ func (c *StaticCommand) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, hostcatalogs.WithAutomaticVersioning())
+			opts = append(opts, hostcatalogs.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}

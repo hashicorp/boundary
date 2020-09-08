@@ -152,7 +152,7 @@ func (c *Command) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, groups.WithAutomaticVersioning())
+			opts = append(opts, groups.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}

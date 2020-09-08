@@ -174,7 +174,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, authmethods.WithAutomaticVersioning())
+			opts = append(opts, authmethods.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}

@@ -233,7 +233,7 @@ func (c *Command) Run(args []string) int {
 	case "add-hosts", "remove-hosts", "set-hosts":
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, hostsets.WithAutomaticVersioning())
+			opts = append(opts, hostsets.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
