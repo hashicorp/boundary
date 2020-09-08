@@ -413,6 +413,8 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 			if pwAttrs.GetLoginName() == "" {
 				badFields["login_name"] = "This is a required field for this type."
 			}
+		default:
+			badFields["auth_method_id"] = "Unknown auth method type from ID."
 		}
 		return badFields
 	})

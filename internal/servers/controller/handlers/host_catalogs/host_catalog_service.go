@@ -3,6 +3,7 @@ package host_catalogs
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
@@ -339,6 +340,12 @@ func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
 
 func validateListRequest(req *pbs.ListHostCatalogsRequest) error {
 	badFields := map[string]string{}
+	if req.GetScopeId() == "" {
+		badFields["scope_id"] = "Field required and not provided."
+	}
+	if !strings.HasPrefix(req.GetScopeId(), "p_") {
+		badFields["scope_id"] = "Invalid scope ID for operation."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
