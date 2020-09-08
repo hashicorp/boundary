@@ -61,4 +61,7 @@ message Scope {
 	// resource has not changed and to fail the write if it has.
 	// Output only.
 	uint32 version = 80;
+
+	// The type of the resource
+	string type = 90;
 }

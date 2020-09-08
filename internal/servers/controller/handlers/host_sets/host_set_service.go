@@ -430,8 +430,11 @@ func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostSetRequest) error {
 	return handlers.ValidateUpdateRequest(static.HostSetPrefix, req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.GetItem().GetType() != "" {
-			badFields["type"] = "This is a read only field and cannot be specified in an update request."
+		switch host.SubtypeFromId(req.GetId()) {
+		case host.StaticSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
+				badFields["type"] = "Cannot modify the resource type."
+			}
 		}
 		return badFields
 	})

@@ -363,8 +363,17 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 	return handlers.ValidateUpdateRequest(password.AuthMethodPrefix, req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.GetItem().GetType() != "" {
-			badFields["type"] = "This is a read only field and cannot be specified in an update request."
+		switch auth.SubtypeFromId(req.GetId()) {
+		case auth.PasswordSubtype:
+			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != auth.PasswordSubtype {
+				badFields["type"] = "Cannot modify resource type."
+			}
+			pwAttrs := &pb.PasswordAuthMethodAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {
+				badFields["attributes"] = "Attribute fields do not match the expected format."
+			}
+		default:
+			badFields["id"] = "Incorrectly formatted identifier."
 		}
 		return badFields
 	})

@@ -3,7 +3,6 @@ package host_catalogs
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
@@ -15,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -315,6 +315,9 @@ func validateGetRequest(req *pbs.GetHostCatalogRequest) error {
 func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		if !handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) {
+			badFields["scope_id"] = "This field must be a valid project scope id."
+		}
 		switch host.SubtypeFromType(req.GetItem().GetType()) {
 		case host.StaticSubtype:
 		default:
@@ -327,8 +330,11 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 	return handlers.ValidateUpdateRequest(static.HostCatalogPrefix, req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.GetItem().GetType() != "" {
-			badFields["type"] = "This is a read only field and cannot be specified in an update request."
+		switch host.SubtypeFromId(req.GetId()) {
+		case host.StaticSubtype:
+			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != host.StaticSubtype {
+				badFields["type"] = "Cannot modify resource type."
+			}
 		}
 		return badFields
 	})
@@ -340,11 +346,8 @@ func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
 
 func validateListRequest(req *pbs.ListHostCatalogsRequest) error {
 	badFields := map[string]string{}
-	if req.GetScopeId() == "" {
-		badFields["scope_id"] = "Field required and not provided."
-	}
-	if !strings.HasPrefix(req.GetScopeId(), "p_") {
-		badFields["scope_id"] = "Invalid scope ID for operation."
+	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
+		badFields["scope_id"] = "This field must be a valid project scope id."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

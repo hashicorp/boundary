@@ -462,11 +462,12 @@ func TestUpdate(t *testing.T) {
 			name: "Update an Existing Host",
 			req: &pbs.UpdateHostSetRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description"},
+					Paths: []string{"name", "description", "type"},
 				},
 				Item: &pb.HostSet{
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
+					Type:        "static",
 				},
 			},
 			res: &pbs.UpdateHostSetResponse{
@@ -487,11 +488,12 @@ func TestUpdate(t *testing.T) {
 			name: "Multiple Paths in single string",
 			req: &pbs.UpdateHostSetRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name,description"},
+					Paths: []string{"name,description,type"},
 				},
 				Item: &pb.HostSet{
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
+					Type:        "static",
 				},
 			},
 			res: &pbs.UpdateHostSetResponse{
@@ -507,6 +509,20 @@ func TestUpdate(t *testing.T) {
 				},
 			},
 			errCode: codes.OK,
+		},
+		{
+			name: "Cant modify type",
+			req: &pbs.UpdateHostSetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,type"},
+				},
+				Item: &pb.HostSet{
+					Name:        &wrappers.StringValue{Value: "updated name"},
+					Description: &wrappers.StringValue{Value: "updated desc"},
+					Type:        "ec2",
+				},
+			},
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "No Update Mask",

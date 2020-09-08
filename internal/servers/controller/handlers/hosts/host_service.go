@@ -362,12 +362,13 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 	return handlers.ValidateUpdateRequest(static.HostPrefix, req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		ct := host.SubtypeFromId(req.GetId())
-		if ct == host.UnknownSubtype {
+		switch host.SubtypeFromId(req.GetId()) {
+		case host.StaticSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
+				badFields["type"] = "Cannot modify the resource type."
+			}
+		default:
 			badFields["id"] = "Improperly formatted identifier used."
-		}
-		if req.GetItem().GetType() != "" {
-			badFields["type"] = "This is a read only field and cannot be specified in an update request."
 		}
 		return badFields
 	})

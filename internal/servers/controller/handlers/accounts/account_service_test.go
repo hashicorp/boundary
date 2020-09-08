@@ -517,6 +517,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -540,6 +541,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -561,6 +563,19 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 					Attributes:  modifiedAttributes,
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant change type",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Account{
+					Name: &wrapperspb.StringValue{Value: ""},
+					Type: "oidc",
 				},
 			},
 			errCode: codes.InvalidArgument,
