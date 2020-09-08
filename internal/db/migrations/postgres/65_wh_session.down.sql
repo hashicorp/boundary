@@ -1,0 +1,7 @@
+begin;
+
+  drop table wh_session_accumulating_fact;
+  drop table wh_user_dimension;
+  drop table wh_host_dimension;
+
+commit;

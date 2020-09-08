@@ -1,0 +1,73 @@
+begin;
+
+  create table wh_date_dimension (
+    id                            integer  primary key,
+    date                          date     not null,
+    calendar_quarter              text     not null,
+    calendar_month                text     not null,
+    calendar_year                 smallint not null,
+    day_of_week                   text     not null,
+    day_of_week_number            smallint not null,
+    day_of_week_number_iso        smallint not null,
+    day_of_week_number_zero_based smallint not null,
+    day_number_in_calendar_month  smallint not null,
+    day_number_in_calendar_year   smallint not null,
+    weekday_indicator             text     not null
+  );
+
+  insert
+    into wh_date_dimension
+  select to_char(t.day, 'YYYYMMDD')::integer as id,
+         t.day::date                         as date,
+         'Q' || to_char(t.day, 'Q')          as calendar_quarter,
+         to_char(t.day, 'Month')             as calendar_month,
+         extract(year from t.day)            as calendar_year,
+         to_char(t.day, 'Day')               as day_of_week,
+         to_char(t.day, 'D')::int            as day_of_week_number,
+         extract(isodow from t.day)          as day_of_week_number_iso,
+         extract(dow from t.day)             as day_of_week_number_zero_based,
+         extract(day from t.day)             as day_number_in_calendar_month,
+         extract(doy from t.day)             as day_number_in_calendar_year,
+         case extract(isodow from t.day)
+           when 6 then 'Weekend'
+           when 7 then 'Weekend'
+           else 'Weekday'
+         end                                 as weekday_indicator
+    from generate_series(
+           current_timestamp,
+           current_timestamp + interval '50 years',
+           interval '1 day'
+         ) as t(day);
+
+  create table wh_time_of_day_dimension (
+    id                 integer  primary key,
+    time_no_zone       time     not null,
+    time_at_utc        timetz   not null,
+    hour_of_day        smallint not null,
+    minute_of_hour     smallint not null,
+    second_of_minute   smallint not null,
+    display_time_24    text     not null,
+    display_time_12    text     not null,
+    meridiem_indicator text     not null
+  );
+
+  set timezone = 'UTC';
+
+  insert
+    into wh_time_of_day_dimension
+  select to_char(t.second, 'SSSS')::integer as id,
+         t.second::time                     as time_no_zone,
+         t.second::time                     as time_at_utc,
+         extract(hour from t.second)        as hour_of_day,
+         extract(minute from t.second)      as minute_of_hour,
+         extract(second from t.second)      as second_of_minute,
+         to_char(t.second, 'HH24:MI:SS')    as display_time_24,
+         to_char(t.second, 'HH12:MI:SS AM') as display_time_12,
+         to_char(t.second, 'PM')            as meridiem_indicator
+    from generate_series(
+           date_trunc('day', current_timestamp),
+           date_trunc('day', current_timestamp) + interval '24 hours' - interval '1 second',
+           interval '1 second'
+         ) as t(second);
+
+commit;
