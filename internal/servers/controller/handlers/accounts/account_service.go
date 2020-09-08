@@ -141,7 +141,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.changePasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetOldPassword(), req.GetNewPassword())
+	u, err := s.changePasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetCurrentPassword(), req.GetNewPassword())
 	if err != nil {
 		return nil, err
 	}
@@ -295,12 +295,12 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.A
 	return outUl, nil
 }
 
-func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, oldPassword, newPassword string) (*pb.Account, error) {
+func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, currentPassword, newPassword string) (*pb.Account, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.ChangePassword(ctx, scopeId, id, oldPassword, newPassword, version)
+	out, err := repo.ChangePassword(ctx, scopeId, id, currentPassword, newPassword, version)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to change password: %v.", err)
 	}
@@ -461,8 +461,8 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 	if req.GetNewPassword() == "" {
 		badFields["new_password"] = "This is a required field."
 	}
-	if req.GetOldPassword() == "" {
-		badFields["old_password"] = "This is a required field."
+	if req.GetCurrentPassword() == "" {
+		badFields["current_password"] = "This is a required field."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

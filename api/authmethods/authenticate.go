@@ -8,9 +8,7 @@ import (
 	"github.com/hashicorp/boundary/api/authtokens"
 )
 
-// TODO: This will need to be changed when we add Auth Method API to boundary.  We'll also need a better
-// way to handle different auth method types.
-func (c *Client) Authenticate(ctx context.Context, authMethodId, loginName, password string, opt ...Option) (*authtokens.AuthToken, *api.Error, error) {
+func (c *Client) Authenticate(ctx context.Context, authMethodId string, credentials map[string]interface{}, opt ...Option) (*authtokens.AuthToken, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client in Authenticate request")
 	}
@@ -18,10 +16,7 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId, loginName, pass
 	_, apiOpts := getOpts(opt...)
 
 	reqBody := map[string]interface{}{
-		"credentials": map[string]string{
-			"login_name": loginName,
-			"password":   password,
-		},
+		"credentials": credentials,
 	}
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:authenticate", authMethodId), reqBody, apiOpts...)

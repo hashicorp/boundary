@@ -14,52 +14,45 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGroup_List(t *testing.T) {
+func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
-		name        string
-		scopeClient *api.Client
+		name    string
+		scopeId string
 	}{
 		{
-			name:        "org",
-			scopeClient: client,
+			name:    "org",
+			scopeId: org.GetPublicId(),
 		},
 		{
-			name:        "proj",
-			scopeClient: projClient,
+			name:    "proj",
+			scopeId: proj.GetPublicId(),
 		},
 	}
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			grps := groups.NewClient(tt.scopeClient)
-			pl, apiErr, err := grps.List(tc.Context())
+			grps := groups.NewClient(client)
+			pl, apiErr, err := grps.List(tc.Context(), tt.scopeId)
 			assert.NoError(err)
 			assert.Nil(apiErr)
 			assert.Empty(pl)
 
 			expected := make([]*groups.Group, 10)
 			for i := 0; i < 10; i++ {
-				expected[i], apiErr, err = grps.Create(tc.Context(), groups.WithName(fmt.Sprint(i)))
+				expected[i], apiErr, err = grps.Create(tc.Context(), tt.scopeId, groups.WithName(fmt.Sprint(i)))
 				require.NoError(err)
 				assert.Nil(apiErr)
 			}
-			pl, apiErr, err = grps.List(tc.Context())
+			pl, apiErr, err = grps.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
 			assert.Nil(apiErr)
 			require.NotNil(pl)
@@ -84,22 +77,15 @@ func comparableSlice(in []*groups.Group) []groups.Group {
 	return filtered
 }
 
-func TestGroup_Crud(t *testing.T) {
+func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	checkGroup := func(step string, g *groups.Group, apiErr *api.Error, err error, wantedName string, wantedVersion uint32, expectedUserIds []string) {
 		require.NoError(err, step)
@@ -120,31 +106,31 @@ func TestGroup_Crud(t *testing.T) {
 	}
 
 	cases := []struct {
-		name        string
-		scopeClient *api.Client
+		name    string
+		scopeId string
 	}{
 		{
-			name:        "org",
-			scopeClient: client,
+			name:    "org",
+			scopeId: org.GetPublicId(),
 		},
 		{
-			name:        "proj",
-			scopeClient: projClient,
+			name:    "proj",
+			scopeId: proj.GetPublicId(),
 		},
 	}
 
-	user1, apiErr, err := users.NewClient(client).Create(tc.Context())
+	user1, apiErr, err := users.NewClient(client).Create(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 
-	user2, apiErr, err := users.NewClient(client).Create(tc.Context())
+	user2, apiErr, err := users.NewClient(client).Create(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			groupsClient := groups.NewClient(tt.scopeClient)
-			g, apiErr, err := groupsClient.Create(tc.Context(), groups.WithName("foo"))
+			groupsClient := groups.NewClient(client)
+			g, apiErr, err := groupsClient.Create(tc.Context(), tt.scopeId, groups.WithName("foo"))
 			checkGroup("create", g, apiErr, err, "foo", 1, nil)
 
 			g, apiErr, err = groupsClient.Read(tc.Context(), g.Id)
@@ -177,48 +163,41 @@ func TestGroup_Crud(t *testing.T) {
 	}
 }
 
-func TestGroup_Errors(t *testing.T) {
+func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
-		name        string
-		scopeClient *api.Client
+		name    string
+		scopeId string
 	}{
 		{
-			name:        "org",
-			scopeClient: client,
+			name:    "org",
+			scopeId: org.GetPublicId(),
 		},
 		{
-			name:        "proj",
-			scopeClient: projClient,
+			name:    "proj",
+			scopeId: proj.GetPublicId(),
 		},
 	}
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			groupClient := groups.NewClient(tt.scopeClient)
+			groupClient := groups.NewClient(client)
 
-			g, apiErr, err := groupClient.Create(tc.Context(), groups.WithName("first"))
+			g, apiErr, err := groupClient.Create(tc.Context(), tt.scopeId, groups.WithName("first"))
 			require.NoError(err)
 			assert.Nil(apiErr)
 			assert.NotNil(g)
 
 			// Create another resource with the same name.
-			_, apiErr, err = groupClient.Create(tc.Context(), groups.WithName("first"))
+			_, apiErr, err = groupClient.Create(tc.Context(), tt.scopeId, groups.WithName("first"))
 			require.NoError(err)
 			assert.NotNil(apiErr)
 

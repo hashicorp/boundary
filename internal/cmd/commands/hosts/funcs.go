@@ -1,14 +1,14 @@
-package hostsets
+package hosts
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/boundary/api/hostsets"
+	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
-func generateHostSetTableOutput(in *hostsets.HostSet) string {
+func generateHostTableOutput(in *hosts.Host) string {
 	var ret []string
 
 	nonAttributeMap := map[string]interface{}{
@@ -48,17 +48,17 @@ func generateHostSetTableOutput(in *hostsets.HostSet) string {
 		}
 	}
 
-	ret = append(ret, "", "Host set information:")
+	ret = append(ret, "", "Host information:")
 
 	ret = append(ret,
 		// We do +2 because there is another +2 offset for attributes below
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
 	)
 
-	if len(in.HostIds) > 0 {
+	if len(in.HostSetIds) > 0 {
 		ret = append(ret,
-			"  Host IDs:",
-			base.WrapSlice(4, in.HostIds),
+			"  Host Set IDs:",
+			base.WrapSlice(4, in.HostSetIds),
 		)
 	}
 

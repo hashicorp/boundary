@@ -73,7 +73,7 @@ func TestScope_ImmutableFields(t *testing.T) {
 			err := w.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
@@ -196,7 +196,7 @@ func TestUser_ImmutableFields(t *testing.T) {
 			err := w.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
@@ -263,7 +263,7 @@ func TestRole_ImmutableFields(t *testing.T) {
 			err := w.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
@@ -330,7 +330,7 @@ func TestGroup_ImmutableFields(t *testing.T) {
 			err := w.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 

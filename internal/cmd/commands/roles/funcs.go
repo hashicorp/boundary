@@ -91,6 +91,7 @@ func generateRoleTableOutput(in *roles.Role) string {
 
 	nonAttributeMap := map[string]interface{}{
 		"ID":           in.Id,
+		"Scope ID":     in.Scope.Id,
 		"Version":      in.Version,
 		"Created Time": in.CreatedTime.Local().Format(time.RFC3339),
 		"Updated Time": in.UpdatedTime.Local().Format(time.RFC3339),

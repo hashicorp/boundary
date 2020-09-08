@@ -51,7 +51,7 @@ func WrapSlice(prefixSpaces int, input []string) string {
 	for _, v := range input {
 		ret = append(ret, fmt.Sprintf("%s%s",
 			strings.Repeat(" ", prefixSpaces),
-			fmt.Sprintf("%s: ", v),
+			v,
 		))
 	}
 

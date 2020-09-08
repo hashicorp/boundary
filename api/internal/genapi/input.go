@@ -47,6 +47,10 @@ type structInfo struct {
 	// the attributes map.
 	subtypeName string
 
+	// For non-top-level collections, this can be used to indicate the name of
+	// the argument that should be used
+	parentTypeName string
+
 	// mappings of names of resources and param names for sub slice types, e.g.
 	// role principals and group members
 	sliceSubTypes map[string]string
@@ -76,10 +80,6 @@ type structInfo struct {
 	// given type, e.g. arguments only valid for one call or purpose and not
 	// conveyed within the item itself
 	extraOptions []fieldInfo
-
-	useNewStyle bool
-
-	disableOldStyle bool
 }
 
 var inputStructs = []*structInfo{
@@ -231,7 +231,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"auth-method", "account"},
+		pathArgs:       []string{"account"},
+		parentTypeName: "auth-method",
 		versionEnabled: true,
 	},
 	{
@@ -278,7 +279,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"host-catalog", "host"},
+		pathArgs:       []string{"host"},
+		parentTypeName: "host-catalog",
 		versionEnabled: true,
 	},
 	{
@@ -296,18 +298,13 @@ var inputStructs = []*structInfo{
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
-			createTemplate2,
-			readTemplate2,
-			updateTemplate2,
-			deleteTemplate2,
-			listTemplate2,
 		},
-		pathArgs: []string{"host-catalog", "host-set"},
+		pathArgs:       []string{"host-set"},
+		parentTypeName: "host-catalog",
 		sliceSubTypes: map[string]string{
 			"Hosts": "hostIds",
 		},
 		versionEnabled: true,
-		useNewStyle:    true,
 	},
 	{
 		inProto: &targets.HostSet{},
@@ -318,19 +315,17 @@ var inputStructs = []*structInfo{
 		outFile: "targets/target.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate2,
-			readTemplate2,
-			updateTemplate2,
-			deleteTemplate2,
-			listTemplate2,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
 		},
 		pathArgs: []string{"target"},
 		sliceSubTypes: map[string]string{
 			"HostSets": "hostSetIds",
 		},
-		versionEnabled:  true,
-		typeOnCreate:    true,
-		useNewStyle:     true,
-		disableOldStyle: true,
+		versionEnabled: true,
+		typeOnCreate:   true,
 	},
 }

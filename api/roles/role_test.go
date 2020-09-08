@@ -18,36 +18,29 @@ import (
 
 func TestCustom(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
-		name        string
-		scopeClient *api.Client
+		name    string
+		scopeId string
 	}{
 		{
-			name:        "org",
-			scopeClient: client,
+			name:    "org",
+			scopeId: org.GetPublicId(),
 		},
 		{
-			name:        "proj",
-			scopeClient: projClient,
+			name:    "proj",
+			scopeId: proj.GetPublicId(),
 		},
 	}
 
-	user, apiErr, err := users.NewClient(client).Create(tc.Context())
+	user, apiErr, err := users.NewClient(client).Create(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 
@@ -69,15 +62,15 @@ func TestCustom(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			g, apiErr, err := groups.NewClient(tt.scopeClient).Create(tc.Context())
+			g, apiErr, err := groups.NewClient(client).Create(tc.Context(), tt.scopeId)
 			require.NoError(err)
 			require.Nil(apiErr)
 			require.NotNil(g)
 
-			rc := roles.NewClient(tt.scopeClient)
+			rc := roles.NewClient(client)
 			var version uint32 = 1
 
-			r, apiErr, err := rc.Create(tc.Context(), roles.WithName("foo"))
+			r, apiErr, err := rc.Create(tc.Context(), tt.scopeId, roles.WithName("foo"))
 			require.NoError(err)
 			require.Nil(apiErr)
 			require.NotNil(r)
@@ -129,65 +122,60 @@ func TestCustom(t *testing.T) {
 	}
 }
 
-func TestRole_List(t *testing.T) {
+func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
-		name        string
-		scopeClient *api.Client
+		name    string
+		scopeId string
 	}{
 		{
-			name:        "org",
-			scopeClient: client,
+			name:    "org",
+			scopeId: org.GetPublicId(),
 		},
 		{
-			name:        "proj",
-			scopeClient: projClient,
+			name:    "proj",
+			scopeId: proj.GetPublicId(),
 		},
 	}
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			roleClient := roles.NewClient(tt.scopeClient)
-			p1, apiErr, err := roleClient.List(tc.Context())
+			var expected []*roles.Role
+
+			roleClient := roles.NewClient(client)
+			p1, apiErr, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
 			assert.Nil(apiErr)
-			require.Len(p1, 0)
+			require.Len(p1, 1)
+			expected = append(expected, p1[0])
 
-			var expected []*roles.Role
-			for i := 0; i < 10; i++ {
+			for i := 1; i < 11; i++ {
 				expected = append(expected, &roles.Role{Name: fmt.Sprint(i)})
 			}
 
-			expected[0], apiErr, err = roleClient.Create(tc.Context(), roles.WithName(expected[0].Name))
+			expected[1], apiErr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[1].Name))
 			require.NoError(err)
 			assert.Nil(apiErr)
 
-			p2, apiErr, err := roleClient.List(tc.Context())
+			p2, apiErr, err := roleClient.List(tc.Context(), tt.scopeId)
 			assert.NoError(err)
 			assert.Nil(apiErr)
-			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(p2))
+			assert.ElementsMatch(comparableSlice(expected[0:2]), comparableSlice(p2))
 
-			for i := 1; i < 10; i++ {
-				expected[i], apiErr, err = roleClient.Create(tc.Context(), roles.WithName(expected[i].Name))
+			for i := 2; i < 11; i++ {
+				expected[i], apiErr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[i].Name))
 				assert.NoError(err)
 				assert.Nil(apiErr)
 			}
-			p3, apiErr, err := roleClient.List(tc.Context())
+			p3, apiErr, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
 			assert.Nil(apiErr)
 			assert.ElementsMatch(comparableSlice(expected), comparableSlice(p3))
@@ -210,34 +198,27 @@ func comparableSlice(in []*roles.Role) []roles.Role {
 	return filtered
 }
 
-func TestRole_Crud(t *testing.T) {
+func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
-		name        string
-		scopeClient *api.Client
+		name    string
+		scopeId string
 	}{
 		{
-			name:        "org",
-			scopeClient: client,
+			name:    "org",
+			scopeId: org.GetPublicId(),
 		},
 		{
-			name:        "proj",
-			scopeClient: projClient,
+			name:    "proj",
+			scopeId: proj.GetPublicId(),
 		},
 	}
 
@@ -257,8 +238,8 @@ func TestRole_Crud(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			roleClient := roles.NewClient(tt.scopeClient)
-			g, apiErr, err := roleClient.Create(tc.Context(), roles.WithName("foo"))
+			roleClient := roles.NewClient(client)
+			g, apiErr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("foo"))
 			checkRole("create", g, apiErr, err, "foo", 1)
 
 			g, apiErr, err = roleClient.Read(tc.Context(), g.Id)
@@ -278,47 +259,40 @@ func TestRole_Crud(t *testing.T) {
 	}
 }
 
-func TestRole_Errors(t *testing.T) {
+func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
-		name        string
-		scopeClient *api.Client
+		name    string
+		scopeId string
 	}{
 		{
-			name:        "org",
-			scopeClient: client,
+			name:    "org",
+			scopeId: org.GetPublicId(),
 		},
 		{
-			name:        "proj",
-			scopeClient: projClient,
+			name:    "proj",
+			scopeId: proj.GetPublicId(),
 		},
 	}
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			roleClient := roles.NewClient(tt.scopeClient)
-			u, apiErr, err := roleClient.Create(tc.Context(), roles.WithName("first"))
+			roleClient := roles.NewClient(client)
+			u, apiErr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("first"))
 			require.NoError(err)
 			assert.Nil(apiErr)
 			assert.NotNil(u)
 
 			// Create another resource with the same name.
-			_, apiErr, err = roleClient.Create(tc.Context(), roles.WithName("first"))
+			_, apiErr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("first"))
 			require.NoError(err)
 			assert.NotNil(apiErr)
 

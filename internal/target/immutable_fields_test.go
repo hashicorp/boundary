@@ -70,7 +70,7 @@ func TestTarget_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			tt.update.SetTableName("target")
-			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
@@ -137,7 +137,7 @@ func TestTcpTarget_ImmutableFields(t *testing.T) {
 			err := rw.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
@@ -218,7 +218,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 			err := rw.LookupWhere(context.Background(), orig, "target_id = ? and host_set_id = ?", new.TargetId, new.HostSetId)
 			require.NoError(err)
 
-			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 

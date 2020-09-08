@@ -27,27 +27,42 @@ type Account struct {
 	Attributes   map[string]interface{} `json:"attributes,omitempty"`
 }
 
+// Client is a client for this collection
 type Client struct {
 	client *api.Client
 }
 
+// Creates a new client for this collection. The submitted API client is cloned;
+// modifications to it after generating this client will not have effect. If you
+// need to make changes to the underlying API client, use ApiClient() to access
+// it.
 func NewClient(c *api.Client) *Client {
-	return &Client{client: c}
+	return &Client{client: c.Clone()}
+}
+
+// ApiClient returns the underlying API client
+func (c *Client) ApiClient() *api.Client {
+	return c.client
 }
 
 func (c *Client) Create(ctx context.Context, authMethodId string, opt ...Option) (*Account, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Create request")
 	}
+
 	opts, apiOpts := getOpts(opt...)
+
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s/accounts", authMethodId), opts.postMap, apiOpts...)
+	opts.postMap["auth_method_id"] = authMethodId
+
+	req, err := c.client.NewRequest(ctx, "POST", "accounts", opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
+
 	if len(opts.queryMap) > 0 {
 		q := url.Values{}
 		for k, v := range opts.queryMap {
@@ -72,22 +87,17 @@ func (c *Client) Create(ctx context.Context, authMethodId string, opt ...Option)
 	return target, apiErr, nil
 }
 
-func (c *Client) Read(ctx context.Context, authMethodId string, accountId string, opt ...Option) (*Account, *api.Error, error) {
-	if authMethodId == "" {
-		return nil, nil, fmt.Errorf("empty authMethodId value passed into Read request")
-	}
-
+func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*Account, *api.Error, error) {
 	if accountId == "" {
-		return nil, nil, fmt.Errorf("empty accountId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty  accountId value passed into Read request")
 	}
-
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-methods/%s/accounts/%s", authMethodId, accountId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("accounts/%s", accountId), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -116,10 +126,7 @@ func (c *Client) Read(ctx context.Context, authMethodId string, accountId string
 	return target, apiErr, nil
 }
 
-func (c *Client) Update(ctx context.Context, authMethodId string, accountId string, version uint32, opt ...Option) (*Account, *api.Error, error) {
-	if authMethodId == "" {
-		return nil, nil, fmt.Errorf("empty authMethodId value passed into Update request")
-	}
+func (c *Client) Update(ctx context.Context, accountId string, version uint32, opt ...Option) (*Account, *api.Error, error) {
 	if accountId == "" {
 		return nil, nil, fmt.Errorf("empty accountId value passed into Update request")
 	}
@@ -133,7 +140,7 @@ func (c *Client) Update(ctx context.Context, authMethodId string, accountId stri
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, authMethodId, accountId, opt...)
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, accountId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
@@ -148,7 +155,7 @@ func (c *Client) Update(ctx context.Context, authMethodId string, accountId stri
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("auth-methods/%s/accounts/%s", authMethodId, accountId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("accounts/%s", accountId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -177,22 +184,17 @@ func (c *Client) Update(ctx context.Context, authMethodId string, accountId stri
 	return target, apiErr, nil
 }
 
-func (c *Client) Delete(ctx context.Context, authMethodId string, accountId string, opt ...Option) (bool, *api.Error, error) {
-	if authMethodId == "" {
-		return false, nil, fmt.Errorf("empty authMethodId value passed into Delete request")
-	}
-
+func (c *Client) Delete(ctx context.Context, accountId string, opt ...Option) (bool, *api.Error, error) {
 	if accountId == "" {
 		return false, nil, fmt.Errorf("empty accountId value passed into Delete request")
 	}
-
 	if c.client == nil {
 		return false, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("auth-methods/%s/accounts/%s", authMethodId, accountId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("accounts/%s", accountId), nil, apiOpts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
@@ -228,14 +230,14 @@ func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) (
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into List request")
 	}
-
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
+	opts.queryMap["auth_method_id"] = authMethodId
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-methods/%s/accounts", authMethodId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "accounts", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}

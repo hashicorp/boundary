@@ -31,6 +31,7 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"delete": {"id"},
+	"list":   {"scope-id"},
 }
 
 func (c *Command) Help() string {
@@ -76,6 +77,10 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
+		return 1
+	}
 
 	client, err := c.Client()
 	if err != nil {
@@ -96,7 +101,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		existed, apiErr, err = authtokenClient.Delete(c.Context, c.FlagId)
 	case "list":
-		listedTokens, apiErr, err = authtokenClient.List(c.Context)
+		listedTokens, apiErr, err = authtokenClient.List(c.Context, c.FlagScopeId)
 	}
 
 	plural := "auth token"
