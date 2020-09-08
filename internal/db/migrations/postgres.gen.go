@@ -3436,7 +3436,7 @@ begin;
     immutable_columns
   before
   update on session
-    for each row execute procedure immutable_columns('public_id', 'server_type', 'address', 'port', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'create_time');
   
   create trigger 
     update_version_column 
@@ -3505,14 +3505,14 @@ begin;
   create table session_state_enm (
     name text primary key
       check (
-        name in ('pending', 'connected', 'canceling', 'closed')
+        name in ('pending', 'active', 'canceling', 'closed')
       )
   );
 
   insert into session_state_enm (name)
   values
     ('pending'),
-    ('connected'),
+    ('active'),
     ('canceling'),
     ('closed');
 
