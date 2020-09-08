@@ -54,6 +54,7 @@ var flagsMap = map[string][]string{
 
 func (c *Command) Help() string {
 	helpMap := common.HelpMap("host-set")
+	var helpStr string
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
@@ -68,7 +69,7 @@ func (c *Command) Help() string {
 			"  Please see the host-sets subcommand help for detailed usage information.",
 		})
 	case "create":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets create [type] [sub command] [options] [args]",
 			"",
 			"  This command allows create operations on Boundary host-set resources. Example:",
@@ -80,7 +81,7 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "update":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets update [type] [sub command] [options] [args]",
 			"",
 			"  This command allows update operations on Boundary host-set resources. Example:",
@@ -92,7 +93,7 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "add-hosts":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets add-hosts [sub command] [options] [args]",
 			"",
 			"  This command allows adding hosts to host-set resources, if the types match and the operation is allowed by the given host-set type. Example:",
@@ -102,7 +103,7 @@ func (c *Command) Help() string {
 			`      $ boundary host-sets add-hosts -id hsst_1234567890 -host hst_1234567890 -host hst_0987654321`,
 		})
 	case "remove-hosts":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets remove-hosts [sub command] [options] [args]",
 			"",
 			"  This command allows removing hosts from host-set resources, if the types match and the operation is allowed by the given host-set type. Example:",
@@ -112,7 +113,7 @@ func (c *Command) Help() string {
 			`      $ boundary host-sets remove-hosts -id hsst_1234567890 -host hst_0987654321`,
 		})
 	case "set-hosts":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets set-hosts [sub command] [options] [args]",
 			"",
 			"  This command allows setting the complete set of hosts on host-set resources, if the types match and the operation is allowed by the given host-set type. Example:",
@@ -122,8 +123,9 @@ func (c *Command) Help() string {
 			`      $ boundary host-sets remove-hosts -id hsst_1234567890 -host hst_1234567890`,
 		})
 	default:
-		return helpMap[c.Func]() + c.Flags().Help()
+		helpStr = helpMap[c.Func]()
 	}
+	return helpStr + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -135,14 +137,14 @@ func (c *Command) Flags() *base.FlagSets {
 		common.PopulateCommonFlags(c.Command, f, resource.HostSet.String(), flagsMap[c.Func])
 	}
 
-	f.StringVar(&base.StringVar{
-		Name:   "host-catalog-id",
-		Target: &c.flagHostCatalogId,
-		Usage:  "The host-catalog resource in which to create or update the host-set resource",
-	})
-
 	for _, name := range flagsMap[c.Func] {
 		switch name {
+		case "host-catalog-id":
+			f.StringVar(&base.StringVar{
+				Name:   "host-catalog-id",
+				Target: &c.flagHostCatalogId,
+				Usage:  "The host-catalog resource in which to create or update the host-set resource",
+			})
 		case "host":
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   "host",
@@ -175,9 +177,12 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return 1
 	}
-
 	if strutil.StrListContains(flagsMap[c.Func], "id") && c.FlagId == "" {
 		c.UI.Error("ID is required but not passed in via -id")
+		return 1
+	}
+	if strutil.StrListContains(flagsMap[c.Func], "host-catalog-id") && c.flagHostCatalogId == "" {
+		c.UI.Error("Host Catalog ID must be passed in via -host-catalog-id")
 		return 1
 	}
 

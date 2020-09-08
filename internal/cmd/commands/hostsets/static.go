@@ -30,7 +30,7 @@ func (c *StaticCommand) Synopsis() string {
 }
 
 var staticFlagsMap = map[string][]string{
-	"create": {"name", "description"},
+	"create": {"host-catalog-id", "name", "description"},
 	"update": {"id", "name", "description", "version"},
 }
 
@@ -71,11 +71,16 @@ func (c *StaticCommand) Flags() *base.FlagSets {
 		common.PopulateCommonFlags(c.Command, f, "static-type host-set", staticFlagsMap[c.Func])
 	}
 
-	f.StringVar(&base.StringVar{
-		Name:   "host-catalog-id",
-		Target: &c.flagHostCatalogId,
-		Usage:  "The host-catalog resource in which to create or update the host-set resource",
-	})
+	for _, name := range staticFlagsMap[c.Func] {
+		switch name {
+		case "host-catalog-id":
+			f.StringVar(&base.StringVar{
+				Name:   "host-catalog-id",
+				Target: &c.flagHostCatalogId,
+				Usage:  "The host-catalog resource in which to create or update the host-set resource",
+			})
+		}
+	}
 
 	return set
 }
@@ -104,8 +109,7 @@ func (c *StaticCommand) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
-
-	if c.flagHostCatalogId == "" {
+	if strutil.StrListContains(staticFlagsMap[c.Func], "host-catalog-id") && c.flagHostCatalogId == "" {
 		c.UI.Error("Host Catalog ID must be passed in via -host-catalog-id")
 		return 1
 	}

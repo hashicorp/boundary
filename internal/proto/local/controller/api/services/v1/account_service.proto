@@ -205,7 +205,7 @@ message SetPasswordResponse {
 message ChangePasswordRequest {
   string id = 1;
   uint32 version = 2;
-  string old_password = 3 [json_name="old_password"];
+  string current_password = 3 [json_name="current_password"];
   string new_password = 4 [json_name="new_password"];
 }
 
