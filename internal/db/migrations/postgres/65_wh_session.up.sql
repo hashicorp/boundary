@@ -79,6 +79,7 @@ begin;
   create table wh_session_accumulating_fact (
     -- TODO(mgaffney) 09/2020: partion table
 
+    session_id wt_public_id primary key,
     -- auth token id is a degenerate dimension
     auth_token_id wt_public_id not null,
     -- foreign keys to the dimension tables
