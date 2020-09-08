@@ -104,12 +104,6 @@ func (s *Session) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 			return fmt.Errorf("session vet for write: set id is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "AuthTokenId"):
 			return fmt.Errorf("session vet for write: auth token id is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "ServerType"):
-			return fmt.Errorf("session vet for write: server type is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "Address"):
-			return fmt.Errorf("session vet for write: address is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "Port"):
-			return fmt.Errorf("session vet for write: port is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "CreateTime"):
 		case contains(opts.WithFieldMaskPaths, "Port"):
 			return fmt.Errorf("session vet for write: port is immutable: %w", db.ErrInvalidParameter)
