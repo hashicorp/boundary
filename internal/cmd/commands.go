@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/proxy"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
+	"github.com/hashicorp/boundary/internal/cmd/commands/targets"
 	"github.com/hashicorp/boundary/internal/cmd/commands/users"
 	"github.com/hashicorp/boundary/internal/cmd/commands/worker"
 
@@ -549,6 +550,72 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &scopes.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
+			}, nil
+		},
+
+		"targets": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"targets read": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"targets delete": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"targets list": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"targets create": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"targets create tcp": func() (cli.Command, error) {
+			return &targets.TcpCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"targets update": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"targets update tcp": func() (cli.Command, error) {
+			return &targets.TcpCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"targets add-host-sets": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-host-sets",
+			}, nil
+		},
+		"targets remove-host-sets": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-host-sets",
+			}, nil
+		},
+		"targets set-host-sets": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-host-sets",
 			}, nil
 		},
 

@@ -2,6 +2,7 @@ package targets
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
@@ -151,6 +152,11 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
+	if os.Getenv("BOUNDARY_EXAMPLE_CLI_OUTPUT") != "" {
+		c.UI.Output(exampleOutput())
+		return 0
+	}
+
 	switch c.Func {
 	case "", "create", "update":
 		return cli.RunResultHelp

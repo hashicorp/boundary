@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
@@ -18,6 +19,7 @@ func generateTargetTableOutput(in *targets.Target) string {
 		"Type":         in.Type,
 		"Created Time": in.CreatedTime.Local().Format(time.RFC3339),
 		"Updated Time": in.UpdatedTime.Local().Format(time.RFC3339),
+		"Default Port": in.DefaultPort,
 	}
 
 	if in.Name != "" {
@@ -61,6 +63,7 @@ func generateTargetTableOutput(in *targets.Target) string {
 		for _, m := range hostSetMaps {
 			ret = append(ret,
 				base.WrapMap(4, maxLength, m),
+				"",
 			)
 		}
 	}
@@ -68,4 +71,31 @@ func generateTargetTableOutput(in *targets.Target) string {
 	return base.WrapForHelpText(ret)
 }
 
-var attributeMap = map[string]string{}
+func exampleOutput() string {
+	in := &targets.Target{
+		Id:      "ttcp_1234567890",
+		ScopeId: "global",
+		Scope: &scopes.ScopeInfo{
+			Id: "global",
+		},
+		Name:        "foo",
+		Description: "The bar of foos",
+		CreatedTime: time.Now().Add(-5 * time.Minute),
+		UpdatedTime: time.Now(),
+		Version:     3,
+		Type:        "tcp",
+		HostSetIds:  []string{"hsst_1234567890", "hsst_0987654321"},
+		HostSets: []*targets.HostSet{
+			{
+				Id:            "hsst_1234567890",
+				HostCatalogId: "hcst_1234567890",
+			},
+			{
+				Id:            "hsst_0987654321",
+				HostCatalogId: "hcst_1234567890",
+			},
+		},
+		DefaultPort: 22,
+	}
+	return generateTargetTableOutput(in)
+}
