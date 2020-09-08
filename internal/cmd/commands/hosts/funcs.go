@@ -21,6 +21,7 @@ func generateHostTableOutput(in *hosts.Host) string {
 
 	nonAttributeMap := map[string]interface{}{
 		"ID":              in.Id,
+		"Scope ID":        in.Scope.Id,
 		"Version":         in.Version,
 		"Type":            in.Type,
 		"Created Time":    in.CreatedTime.Local().Format(time.RFC3339),

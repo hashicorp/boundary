@@ -13,6 +13,7 @@ func generateHostSetTableOutput(in *hostsets.HostSet) string {
 
 	nonAttributeMap := map[string]interface{}{
 		"ID":              in.Id,
+		"Scope ID":        in.Scope.Id,
 		"Version":         in.Version,
 		"Type":            in.Type,
 		"Created Time":    in.CreatedTime.Local().Format(time.RFC3339),
@@ -55,23 +56,15 @@ func generateHostSetTableOutput(in *hostsets.HostSet) string {
 	)
 
 	if len(in.HostIds) > 0 {
-		if true {
-			ret = append(ret,
-				fmt.Sprintf("  Host IDs:"),
-			)
-		}
 		ret = append(ret,
+			"  Host IDs:",
 			base.WrapSlice(4, in.HostIds),
 		)
 	}
 
 	if len(in.Attributes) > 0 {
-		if true {
-			ret = append(ret,
-				fmt.Sprintf("  Attributes:   %s", ""),
-			)
-		}
 		ret = append(ret,
+			fmt.Sprintf("  Attributes:   %s", ""),
 			base.WrapMap(4, maxLength, in.Attributes),
 		)
 	}

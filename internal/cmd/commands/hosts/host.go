@@ -129,6 +129,10 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
+	if strutil.StrListContains(flagsMap[c.Func], "host-catalog-id") && c.flagHostCatalogId == "" {
+		c.UI.Error("Host Catalog ID must be passed in via -host-catalog-id")
+		return 1
+	}
 
 	client, err := c.Client()
 	if err != nil {
