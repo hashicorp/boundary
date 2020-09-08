@@ -343,4 +343,10 @@ begin;
   create trigger insert_session_state before insert on session_state
     for each row execute procedure insert_session_state();
 
+
+  insert into oplog_ticket
+    (name, version)
+  values
+    ('session', 1);
+
 commit;

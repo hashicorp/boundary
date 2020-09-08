@@ -8,4 +8,11 @@ begin;
   drop function insert_new_session_state;
   drop function insert_session;
 
+
+  delete
+  from oplog_ticket
+  where name in (
+          'session'
+      );
+
 commit;

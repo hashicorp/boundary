@@ -3246,6 +3246,13 @@ begin;
   drop function insert_new_session_state;
   drop function insert_session;
 
+
+  delete
+  from oplog_ticket
+  where name in (
+          'session'
+      );
+
 commit;
 
 `),
@@ -3597,6 +3604,12 @@ begin;
 
   create trigger insert_session_state before insert on session_state
     for each row execute procedure insert_session_state();
+
+
+  insert into oplog_ticket
+    (name, version)
+  values
+    ('session', 1);
 
 commit;
 
