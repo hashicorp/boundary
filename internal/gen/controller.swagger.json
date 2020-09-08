@@ -5018,7 +5018,7 @@
           "type": "integer",
           "format": "int64"
         },
-        "old_password": {
+        "current_password": {
           "type": "string"
         },
         "new_password": {

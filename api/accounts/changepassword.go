@@ -9,7 +9,7 @@ import (
 	"github.com/kr/pretty"
 )
 
-func (c *Client) ChangePassword(ctx context.Context, accountId, oldPassword, newPassword string, version uint32, opt ...Option) (*Account, *api.Error, error) {
+func (c *Client) ChangePassword(ctx context.Context, accountId, currentPassword, newPassword string, version uint32, opt ...Option) (*Account, *api.Error, error) {
 	if accountId == "" {
 		return nil, nil, fmt.Errorf("empty accountId value passed into ChangePassword request")
 	}
@@ -37,9 +37,9 @@ func (c *Client) ChangePassword(ctx context.Context, accountId, oldPassword, new
 	}
 
 	reqBody := map[string]interface{}{
-		"version":      version,
-		"old_password": oldPassword,
-		"new_password": newPassword,
+		"version":          version,
+		"current_password": currentPassword,
+		"new_password":     newPassword,
 	}
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("accounts/%s:change-password", accountId), reqBody, apiOpts...)

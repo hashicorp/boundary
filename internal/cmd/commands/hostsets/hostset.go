@@ -135,14 +135,14 @@ func (c *Command) Flags() *base.FlagSets {
 		common.PopulateCommonFlags(c.Command, f, resource.HostSet.String(), flagsMap[c.Func])
 	}
 
-	f.StringVar(&base.StringVar{
-		Name:   "host-catalog-id",
-		Target: &c.flagHostCatalogId,
-		Usage:  "The host-catalog resource in which to create or update the host-set resource",
-	})
-
 	for _, name := range flagsMap[c.Func] {
 		switch name {
+		case "host-catalog-id":
+			f.StringVar(&base.StringVar{
+				Name:   "host-catalog-id",
+				Target: &c.flagHostCatalogId,
+				Usage:  "The host-catalog resource in which to create or update the host-set resource",
+			})
 		case "host":
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   "host",

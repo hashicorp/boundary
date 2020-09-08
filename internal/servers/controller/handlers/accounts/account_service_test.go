@@ -950,10 +950,10 @@ func TestChangePassword(t *testing.T) {
 		acct := createAccount(t, "originalpassword")
 
 		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
-			Id:          acct.GetId(),
-			Version:     acct.GetVersion(),
-			OldPassword: "originalpassword",
-			NewPassword: "a different password",
+			Id:              acct.GetId(),
+			Version:         acct.GetVersion(),
+			CurrentPassword: "originalpassword",
+			NewPassword:     "a different password",
 		})
 		require.NoError(err)
 		assert.Equal(acct.GetVersion()+1, changeResp.GetItem().GetVersion())
@@ -969,10 +969,10 @@ func TestChangePassword(t *testing.T) {
 		acct := createAccount(t, "originalpassword")
 
 		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
-			Id:          acct.GetId(),
-			Version:     acct.GetVersion(),
-			OldPassword: "thewrongpassword",
-			NewPassword: "a different password",
+			Id:              acct.GetId(),
+			Version:         acct.GetVersion(),
+			CurrentPassword: "thewrongpassword",
+			NewPassword:     "a different password",
 		})
 		assert.Error(err)
 		assert.Nil(changeResp)
@@ -1042,10 +1042,10 @@ func TestChangePassword(t *testing.T) {
 			assert := assert.New(t)
 
 			changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
-				Id:          tt.accountId,
-				Version:     tt.version,
-				OldPassword: tt.oldPW,
-				NewPassword: tt.newPW,
+				Id:              tt.accountId,
+				Version:         tt.version,
+				CurrentPassword: tt.oldPW,
+				NewPassword:     tt.newPW,
 			})
 			assert.Error(err)
 			assert.Nil(changeResp)

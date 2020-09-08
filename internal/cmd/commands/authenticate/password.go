@@ -56,14 +56,14 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 		Name:   "login-name",
 		Target: &c.flagLoginName,
 		EnvVar: envLoginName,
-		Usage:  "Login name",
+		Usage:  "The login name corresponding to an account within the given auth method",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:   "password",
 		Target: &c.flagPassword,
 		EnvVar: envPassword,
-		Usage:  "Password",
+		Usage:  "The password associated with the login name",
 	})
 
 	f.StringVar(&base.StringVar{

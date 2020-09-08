@@ -31,8 +31,8 @@ func (c *StaticCommand) Synopsis() string {
 }
 
 var staticFlagsMap = map[string][]string{
-	"create": {"host-catalog-id", "name", "description"},
-	"update": {"id", "name", "description", "version"},
+	"create": {"host-catalog-id", "name", "description", "address"},
+	"update": {"id", "name", "description", "version", "address"},
 }
 
 func (c *StaticCommand) Help() string {
@@ -72,14 +72,29 @@ func (c *StaticCommand) Flags() *base.FlagSets {
 		common.PopulateCommonFlags(c.Command, f, "static-type host", staticFlagsMap[c.Func])
 	}
 
-	f.StringVar(&base.StringVar{
-		Name:   "host-catalog-id",
-		Target: &c.flagHostCatalogId,
-		Usage:  "The host-catalog resource in which to create or update the host resource",
-	})
+	for _, name := range staticFlagsMap[c.Func] {
+		switch name {
+		case "host-catalog-id":
+			f.StringVar(&base.StringVar{
+				Name:   "host-catalog-id",
+				Target: &c.flagHostCatalogId,
+				Usage:  "The host-catalog resource in which to create or update the host resource",
+			})
+		}
+	}
 
 	f = set.NewFlagSet("Static Host Options")
-	addStaticFlags(c, f)
+
+	for _, name := range staticFlagsMap[c.Func] {
+		switch name {
+		case "address":
+			f.StringVar(&base.StringVar{
+				Name:   "address",
+				Target: &c.flagAddress,
+				Usage:  "The address of the host",
+			})
+		}
+	}
 
 	return set
 }
