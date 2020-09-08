@@ -198,6 +198,11 @@ func TestList(t *testing.T) {
 			scopeId: scope.Project.Prefix() + "_DoesntExis",
 			errCode: codes.PermissionDenied,
 		},
+		{
+			name:    "Bad scope level",
+			scopeId: scope.Global.String(),
+			errCode: codes.InvalidArgument,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -319,6 +324,26 @@ func TestCreate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
+			name: "Cant create in org",
+			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
+				ScopeId:     proj.GetParentId(),
+				Name:        &wrappers.StringValue{Value: "name"},
+				Description: &wrappers.StringValue{Value: "desc"},
+				Type:        "static",
+			}},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant create in global",
+			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
+				ScopeId:     scope.Global.String(),
+				Name:        &wrappers.StringValue{Value: "name"},
+				Description: &wrappers.StringValue{Value: "desc"},
+				Type:        "static",
+			}},
+			errCode: codes.InvalidArgument,
+		},
+		{
 			name: "Create with unknown type",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				Name:        &wrappers.StringValue{Value: "name"},
@@ -433,6 +458,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostCatalog{
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
+					Type:        "static",
 				},
 			},
 			res: &pbs.UpdateHostCatalogResponse{
@@ -457,6 +483,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostCatalog{
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
+					Type:        "static",
 				},
 			},
 			res: &pbs.UpdateHostCatalogResponse{
@@ -595,6 +622,19 @@ func TestUpdate(t *testing.T) {
 				},
 			},
 			errCode: codes.OK,
+		},
+		{
+			name: "Cant change type",
+			req: &pbs.UpdateHostCatalogRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.HostCatalog{
+					Name: &wrappers.StringValue{Value: "updated"},
+					Type: "ec2",
+				},
+			},
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Update a Non Existing HostCatalog",

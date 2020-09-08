@@ -22,6 +22,7 @@ type Scope struct {
 	CreatedTime time.Time  `json:"created_time,omitempty"`
 	UpdatedTime time.Time  `json:"updated_time,omitempty"`
 	Version     uint32     `json:"version,omitempty"`
+	Type        string     `json:"type,omitempty"`
 }
 
 type Client struct {
