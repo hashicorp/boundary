@@ -414,7 +414,7 @@ func TestRepository_UpdateState(t *testing.T) {
 		{
 			name:         "connected",
 			session:      TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus:    Connected,
+			newStatus:    Active,
 			wantStateCnt: 2,
 			wantErr:      false,
 		},
@@ -422,7 +422,7 @@ func TestRepository_UpdateState(t *testing.T) {
 			name: "closed",
 			session: func() *Session {
 				s := TestDefaultSession(t, conn, wrapper, iamRepo)
-				_ = TestState(t, conn, s.PublicId, Connected)
+				_ = TestState(t, conn, s.PublicId, Active)
 				return s
 			}(),
 			newStatus:    Closed,
@@ -432,7 +432,7 @@ func TestRepository_UpdateState(t *testing.T) {
 		{
 			name:      "bad-version",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: Connected,
+			newStatus: Active,
 			overrideSessionVersion: func() *uint32 {
 				v := uint32(22)
 				return &v
@@ -442,7 +442,7 @@ func TestRepository_UpdateState(t *testing.T) {
 		{
 			name:      "empty-version",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: Connected,
+			newStatus: Active,
 			overrideSessionVersion: func() *uint32 {
 				v := uint32(0)
 				return &v
@@ -453,7 +453,7 @@ func TestRepository_UpdateState(t *testing.T) {
 		{
 			name:      "bad-sessionId",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: Connected,
+			newStatus: Active,
 			overrideSessionId: func() *string {
 				s := "s_thisIsNotValid"
 				return &s
@@ -463,7 +463,7 @@ func TestRepository_UpdateState(t *testing.T) {
 		{
 			name:      "empty-session",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: Connected,
+			newStatus: Active,
 			overrideSessionId: func() *string {
 				s := ""
 				return &s
