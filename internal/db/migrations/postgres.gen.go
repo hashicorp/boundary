@@ -3464,8 +3464,6 @@ begin;
         raise exception 'user_id is null';
       when new.host_id is null then
         raise exception 'host_id is null';
-      when new.server_id is null then
-        raise exception 'server_id is null';
       when new.target_id is null then
         raise exception 'target_id is null';
       when new.set_id is null then

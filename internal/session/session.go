@@ -8,7 +8,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/session/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -20,8 +19,6 @@ const (
 type ComposedOf struct {
 	UserId      string
 	HostId      string
-	ServerId    string
-	ServerType  servers.ServerType
 	TargetId    string
 	HostSetId   string
 	AuthTokenId string
@@ -44,8 +41,6 @@ func New(c ComposedOf, opt ...Option) (*Session, error) {
 		Session: &store.Session{
 			UserId:      c.UserId,
 			HostId:      c.HostId,
-			ServerId:    c.ServerId,
-			ServerType:  c.ServerType.String(),
 			TargetId:    c.TargetId,
 			SetId:       c.HostSetId,
 			AuthTokenId: c.AuthTokenId,
@@ -140,12 +135,6 @@ func (s *Session) validateNewSession(errorPrefix string) error {
 	}
 	if s.HostId == "" {
 		return fmt.Errorf("%s missing host id: %w", errorPrefix, db.ErrInvalidParameter)
-	}
-	if s.ServerId == "" {
-		return fmt.Errorf("%s missing server id: %w", errorPrefix, db.ErrInvalidParameter)
-	}
-	if s.ServerType == "" {
-		return fmt.Errorf("%s missing server type: %w", errorPrefix, db.ErrInvalidParameter)
 	}
 	if s.TargetId == "" {
 		return fmt.Errorf("%s missing target id: %w", errorPrefix, db.ErrInvalidParameter)

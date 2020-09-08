@@ -10,10 +10,8 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/target"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-uuid"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
@@ -82,24 +80,9 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 	require.NoError(err)
 
-	serversRepo, err := servers.NewRepository(rw, rw, kms)
-	require.NoError(err)
-	id := testId(t)
-	worker := &servers.Server{
-		PrivateId:   "test-session-worker-" + id,
-		Name:        "test-session-worker-" + id,
-		Type:        servers.ServerTypeWorker.String(),
-		Description: "Test Session Worker",
-		Address:     "127.0.0.1",
-	}
-	_, _, err = serversRepo.UpsertServer(ctx, worker)
-	require.NoError(err)
-
 	return ComposedOf{
 		UserId:      user.PublicId,
 		HostId:      hosts[0].PublicId,
-		ServerId:    worker.PrivateId,
-		ServerType:  servers.ServerTypeWorker,
 		TargetId:    tcpTarget.PublicId,
 		HostSetId:   sets[0].PublicId,
 		AuthTokenId: at.PublicId,
@@ -107,11 +90,4 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 		Address:     "127.0.0.1",
 		Port:        "22",
 	}
-}
-
-func testId(t *testing.T) string {
-	t.Helper()
-	id, err := uuid.GenerateUUID()
-	require.NoError(t, err)
-	return id
 }

@@ -42,8 +42,6 @@ func TestSession_Create(t *testing.T) {
 				Session: &store.Session{
 					UserId:      composedOf.UserId,
 					HostId:      composedOf.HostId,
-					ServerId:    composedOf.ServerId,
-					ServerType:  composedOf.ServerType.String(),
 					TargetId:    composedOf.TargetId,
 					SetId:       composedOf.HostSetId,
 					AuthTokenId: composedOf.AuthTokenId,
@@ -72,30 +70,6 @@ func TestSession_Create(t *testing.T) {
 				composedOf: func() ComposedOf {
 					c := composedOf
 					c.HostId = ""
-					return c
-				}(),
-			},
-			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
-		},
-		{
-			name: "empty-serverId",
-			args: args{
-				composedOf: func() ComposedOf {
-					c := composedOf
-					c.ServerId = ""
-					return c
-				}(),
-			},
-			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
-		},
-		{
-			name: "empty-serverType",
-			args: args{
-				composedOf: func() ComposedOf {
-					c := composedOf
-					c.ServerType = ""
 					return c
 				}(),
 			},
