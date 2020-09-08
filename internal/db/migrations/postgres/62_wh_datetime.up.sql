@@ -15,6 +15,20 @@ begin;
     weekday_indicator             text     not null
   );
 
+  insert into wh_date_dimension (
+    id, date,
+    calendar_quarter, calendar_month, calendar_year,
+    day_of_week, day_of_week_number, day_of_week_number_iso, day_of_week_number_zero_based,
+    day_number_in_calendar_month, day_number_in_calendar_year,
+    weekday_indicator
+  ) values (
+    -1, 'infinity',
+    'None', 'None', -1,
+    'None', -1, -1, -1,
+    -1, -1,
+    'None'
+  );
+
   insert
     into wh_date_dimension
   select to_char(t.day, 'YYYYMMDD')::integer as id,
@@ -52,6 +66,16 @@ begin;
   );
 
   set timezone = 'UTC';
+
+  insert into wh_time_of_day_dimension (
+    id, time_no_zone, time_at_utc,
+    hour_of_day, minute_of_hour, second_of_minute,
+    display_time_24, display_time_12, meridiem_indicator
+  ) values (
+    -1, 'allballs', 'allballs',
+    -1, -1, -1,
+    'None', 'None', 'None'
+  );
 
   insert
     into wh_time_of_day_dimension
