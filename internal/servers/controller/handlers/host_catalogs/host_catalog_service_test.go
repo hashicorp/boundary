@@ -627,10 +627,10 @@ func TestUpdate(t *testing.T) {
 			name: "Cant change type",
 			req: &pbs.UpdateHostCatalogRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name"},
+					Paths: []string{"name", "type"},
 				},
 				Item: &pb.HostCatalog{
-					Name: &wrappers.StringValue{Value: "updated"},
+					Name: &wrappers.StringValue{Value: "updated name"},
 					Type: "ec2",
 				},
 			},
