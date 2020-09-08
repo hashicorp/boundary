@@ -3,7 +3,6 @@ package session
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -23,8 +22,6 @@ type ComposedOf struct {
 	HostSetId   string
 	AuthTokenId string
 	ScopeId     string
-	Address     string
-	Port        string
 }
 type Session struct {
 	*store.Session
@@ -45,8 +42,6 @@ func New(c ComposedOf, opt ...Option) (*Session, error) {
 			SetId:       c.HostSetId,
 			AuthTokenId: c.AuthTokenId,
 			ScopeId:     c.ScopeId,
-			Address:     c.Address,
-			Port:        c.Port,
 		},
 	}
 
@@ -100,8 +95,7 @@ func (s *Session) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 		case contains(opts.WithFieldMaskPaths, "AuthTokenId"):
 			return fmt.Errorf("session vet for write: auth token id is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "CreateTime"):
-		case contains(opts.WithFieldMaskPaths, "Port"):
-			return fmt.Errorf("session vet for write: port is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: create time is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
 			return fmt.Errorf("session vet for write: update time is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
@@ -148,19 +142,20 @@ func (s *Session) validateNewSession(errorPrefix string) error {
 	if s.ScopeId == "" {
 		return fmt.Errorf("%s missing scope id: %w", errorPrefix, db.ErrInvalidParameter)
 	}
-	if s.Address == "" {
-		return fmt.Errorf("%s missing address: %w", errorPrefix, db.ErrInvalidParameter)
-	}
-	if s.Port == "" {
-		return fmt.Errorf("%s missing port: %w", errorPrefix, db.ErrInvalidParameter)
-	}
 	if s.TerminationReason != "" {
-		if _, err := convertToReason(s.TerminationReason); err != nil {
-			return fmt.Errorf("session vet for write: %w", db.ErrInvalidParameter)
-		}
+		return fmt.Errorf("%s termination reason must be empty: %w", errorPrefix, db.ErrInvalidParameter)
 	}
-	if _, err := strconv.ParseUint(s.Port, 10, 16); err != nil {
-		return fmt.Errorf("%s invalid port %s: %w", errorPrefix, s.Port, db.ErrInvalidParameter)
+	if s.Address != "" {
+		return fmt.Errorf("%s address must be empty: %w", errorPrefix, db.ErrInvalidParameter)
+	}
+	if s.Port != "" {
+		return fmt.Errorf("%s port must be empty: %w", errorPrefix, db.ErrInvalidParameter)
+	}
+	if s.ServerId != "" {
+		return fmt.Errorf("%s server id must be empty: %w", errorPrefix, db.ErrInvalidParameter)
+	}
+	if s.ServerType != "" {
+		return fmt.Errorf("%s server type must be empty: %w", errorPrefix, db.ErrInvalidParameter)
 	}
 	return nil
 }

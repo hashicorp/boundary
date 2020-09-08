@@ -87,7 +87,5 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 		HostSetId:   sets[0].PublicId,
 		AuthTokenId: at.PublicId,
 		ScopeId:     tcpTarget.ScopeId,
-		Address:     "127.0.0.1",
-		Port:        "22",
 	}
 }

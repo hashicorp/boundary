@@ -3395,8 +3395,7 @@ begin;
       on update cascade,
     -- the network address of the host the worker proxied a connection to for
     -- the user
-    address text
-      not null
+    address text -- can be null
       check(
         length(trim(address)) > 7
         and
@@ -3404,8 +3403,7 @@ begin;
       ),
     -- the network port at the address of the host the worker proxied a
     -- connection to for the user
-    port integer
-      not null
+    port integer -- can be null
       check(
         port > 0
         and

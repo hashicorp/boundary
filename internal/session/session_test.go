@@ -46,8 +46,6 @@ func TestSession_Create(t *testing.T) {
 					SetId:       composedOf.HostSetId,
 					AuthTokenId: composedOf.AuthTokenId,
 					ScopeId:     composedOf.ScopeId,
-					Address:     composedOf.Address,
-					Port:        composedOf.Port,
 				},
 			},
 			create: true,
@@ -118,30 +116,6 @@ func TestSession_Create(t *testing.T) {
 				composedOf: func() ComposedOf {
 					c := composedOf
 					c.ScopeId = ""
-					return c
-				}(),
-			},
-			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
-		},
-		{
-			name: "empty-address",
-			args: args{
-				composedOf: func() ComposedOf {
-					c := composedOf
-					c.Address = ""
-					return c
-				}(),
-			},
-			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
-		},
-		{
-			name: "empty-port",
-			args: args{
-				composedOf: func() ComposedOf {
-					c := composedOf
-					c.Port = ""
 					return c
 				}(),
 			},
