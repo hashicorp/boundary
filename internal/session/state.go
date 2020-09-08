@@ -17,7 +17,7 @@ type Status string
 
 const (
 	Pending   Status = "pending"
-	Connected Status = "connected"
+	Active    Status = "active"
 	Canceling Status = "canceling"
 	Closed    Status = "closed"
 )
