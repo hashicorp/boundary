@@ -18,6 +18,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/sdk/recovery"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
@@ -199,7 +200,11 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			}
 		}()
 
-		c.client.SetRecoveryKmsWrapper(wrapper)
+		token, err := recovery.GenerateRecoveryToken(c.Context, wrapper)
+		if err != nil {
+			return nil, fmt.Errorf("Error generating recovery config: %w", err)
+		}
+		c.client.SetToken(token)
 
 	case c.FlagToken != "":
 		c.client.SetToken(c.FlagToken)
