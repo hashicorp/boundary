@@ -103,7 +103,7 @@ func TestGet(t *testing.T) {
 			scopeId: "global",
 			req:     &pbs.GetScopeRequest{Id: "o_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Get an existing project",
@@ -117,7 +117,7 @@ func TestGet(t *testing.T) {
 			scopeId: org.GetPublicId(),
 			req:     &pbs.GetScopeRequest{Id: "p_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -315,7 +315,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: "p_doesntexis",
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Bad Project Id formatting",
@@ -343,7 +343,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: "p_doesntexis",
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Bad Org Id formatting",
@@ -381,7 +381,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteScope(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected not found for the second delete.")
 
 	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(scope.Global.String()))
 	req = &pbs.DeleteScopeRequest{
@@ -392,7 +392,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteScope(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected not found for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -913,7 +913,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Cant change Id",

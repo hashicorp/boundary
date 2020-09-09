@@ -117,7 +117,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existant Role",
 			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -143,7 +143,7 @@ func TestGet(t *testing.T) {
 			scopeId: pr.GetScopeId(),
 			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Project Scoped Wrong id prefix",
@@ -284,7 +284,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: iam.RolePrefix + "_doesntexis",
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Bad Role Id formatting",
@@ -312,7 +312,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: iam.RolePrefix + "_doesntexis",
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 	}
 	for _, tc := range cases {
@@ -341,7 +341,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteRole(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 
 	projReq := &pbs.DeleteRoleRequest{
 		Id: pr.GetPublicId(),
@@ -352,7 +352,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteRole(ctx, projReq)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 
 }
 
@@ -829,7 +829,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Cant change Id",
