@@ -146,6 +146,7 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 	if err != nil {
 		return nil, err
 	}
+	g.Scope = authResults.Scope
 	return &pbs.AddGroupMembersResponse{Item: g}, nil
 }
 
@@ -162,6 +163,7 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 	if err != nil {
 		return nil, err
 	}
+	g.Scope = authResults.Scope
 	return &pbs.SetGroupMembersResponse{Item: g}, nil
 }
 
@@ -178,6 +180,7 @@ func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMem
 	if err != nil {
 		return nil, err
 	}
+	g.Scope = authResults.Scope
 	return &pbs.RemoveGroupMembersResponse{Item: g}, nil
 }
 
