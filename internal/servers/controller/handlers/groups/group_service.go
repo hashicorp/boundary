@@ -439,7 +439,9 @@ func validateDeleteRequest(req *pbs.DeleteGroupRequest) error {
 
 func validateListRequest(req *pbs.ListGroupsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) && !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+		!handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Incorrectly formatted identifier."
 	}
 	if len(badFields) > 0 {

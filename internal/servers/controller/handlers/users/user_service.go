@@ -326,7 +326,8 @@ func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
 
 func validateListRequest(req *pbs.ListUsersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) {
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Invalidly formatted required identifer."
 	}
 	if len(badFields) > 0 {

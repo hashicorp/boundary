@@ -213,7 +213,8 @@ func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
 
 func validateListRequest(req *pbs.ListAuthTokensRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) {
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Incorrectly formatted identifier."
 	}
 	if len(badFields) > 0 {

@@ -625,7 +625,9 @@ func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
 
 func validateListRequest(req *pbs.ListRolesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) && !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+		!handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Improperly formatted field."
 	}
 	if len(badFields) > 0 {

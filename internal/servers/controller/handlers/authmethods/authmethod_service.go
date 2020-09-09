@@ -384,7 +384,8 @@ func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
 
 func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Global.Prefix(), req.GetScopeId()) && !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) {
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "This field must be a valid project scope id."
 	}
 	if len(badFields) > 0 {

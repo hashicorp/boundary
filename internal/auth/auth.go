@@ -27,9 +27,7 @@ import (
 type TokenFormat int
 
 const (
-	// We weren't given one or couldn't parse it. This is different from when a
-	// token is cryptographically invalid, which will be Invalid and always
-	// return a 403.
+	// We weren't given one or couldn't parse it
 	AuthTokenTypeUnknown TokenFormat = iota
 
 	// Came in via the Authentication: Bearer header
@@ -40,10 +38,6 @@ const (
 
 	// It's of recovery type
 	AuthTokenTypeRecoveryKms
-
-	// It's _known_ to be invalid, that is, a token was provided that is simply
-	// not valid and may be part of a DDoS or other attack
-	AuthTokenTypeInvalid
 )
 
 type key int
@@ -142,15 +136,6 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		}
 		ret.UserId = v.requestInfo.userIdOverride
 		ret.Error = nil
-		return
-	}
-
-	// table stakes
-	if v.requestInfo.TokenFormat == AuthTokenTypeInvalid {
-		// TODO: Consider moving this forward to the HTTP handler, and just
-		// manually marshal the error type. That should allow avoiding some DB
-		// lookups, although this would not be a common case.
-		v.logger.Trace("got invalid token type in auth function, which should not have occurred")
 		return
 	}
 
@@ -371,8 +356,8 @@ func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Reque
 
 	splitFullToken := strings.Split(fullToken, "_")
 	if len(splitFullToken) != 3 {
-		logger.Trace("get token from request: unexpected number of segments in token", "expected", 3, "found", len(splitFullToken))
-		return "", "", AuthTokenTypeInvalid
+		logger.Trace("get token from request: unexpected number of segments in token; continuing as anonymous user", "expected", 3, "found", len(splitFullToken))
+		return "", "", AuthTokenTypeUnknown
 	}
 
 	publicId := strings.Join(splitFullToken[0:2], "_")
@@ -382,35 +367,35 @@ func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Reque
 	// an anti-DDoSing-the-backing-database feature.
 	tokenWrapper, err := kmsCache.GetWrapper(req.Context(), scope.Global.String(), kms.KeyPurposeTokens)
 	if err != nil {
-		logger.Warn("get token from request: unable to get wrapper for tokens", "error", err)
-		return "", "", AuthTokenTypeInvalid
+		logger.Warn("get token from request: unable to get wrapper for tokens; continuing as anonymous user", "error", err)
+		return "", "", AuthTokenTypeUnknown
 	}
 
-	version := string(splitFullToken[2][0])
+	version := splitFullToken[2][0:len(globals.ServiceTokenV1)]
 	switch version {
-	case globals.TokenEncryptionVersion:
+	case globals.ServiceTokenV1:
 	default:
-		logger.Trace("unknown token encryption version", "version", version)
-		return "", "", AuthTokenTypeInvalid
+		logger.Trace("get token from request: unknown token encryption version; continuing as anonymous user", "version", version)
+		return "", "", AuthTokenTypeUnknown
 	}
-	marshaledToken := base58.Decode(splitFullToken[2][1:])
+	marshaledToken := base58.Decode(splitFullToken[2][len(globals.ServiceTokenV1):])
 
 	blobInfo := new(wrapping.EncryptedBlobInfo)
 	if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
-		logger.Trace("error decoding encrypted token", "error", err)
-		return "", "", AuthTokenTypeInvalid
+		logger.Trace("get token from request: error decoding encrypted token; continuing as anonymous user", "error", err)
+		return "", "", AuthTokenTypeUnknown
 	}
 
 	tokenBytes, err := tokenWrapper.Decrypt(req.Context(), blobInfo, []byte(publicId))
 	if err != nil {
-		logger.Trace("error decrypting encrypted token", "error", err)
-		return "", "", AuthTokenTypeInvalid
+		logger.Trace("get token from request: error decrypting encrypted token; continuing as anonymous user", "error", err)
+		return "", "", AuthTokenTypeUnknown
 	}
 	token := string(tokenBytes)
 
 	if receivedTokenType == AuthTokenTypeUnknown || token == "" || publicId == "" {
-		logger.Trace("get token from request: after parsing, could not find valid token")
-		return "", "", AuthTokenTypeInvalid
+		logger.Trace("get token from request: after parsing, could not find valid token; continuing as anonymous user")
+		return "", "", AuthTokenTypeUnknown
 	}
 
 	return publicId, token, receivedTokenType
