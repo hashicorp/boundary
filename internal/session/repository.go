@@ -17,7 +17,7 @@ type Cloneable interface {
 	Clone() interface{}
 }
 
-// Repository is the target database repository
+// Repository is the session database repository
 type Repository struct {
 	reader db.Reader
 	writer db.Writer

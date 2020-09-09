@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestState creates a test state for the sessionId in the repository.
 func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *State {
 	t.Helper()
 	require := require.New(t)
@@ -27,6 +28,7 @@ func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *Sta
 	return s
 }
 
+// TestSession creates a test session composed of c in the repository.
 func TestSession(t *testing.T, conn *gorm.DB, c ComposedOf, opt ...Option) *Session {
 	t.Helper()
 	require := require.New(t)
@@ -41,12 +43,15 @@ func TestSession(t *testing.T, conn *gorm.DB, c ComposedOf, opt ...Option) *Sess
 	return s
 }
 
+// TestDefaultSession creates a test session in the repository using defaults.
 func TestDefaultSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository, opt ...Option) *Session {
 	t.Helper()
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 	return TestSession(t, conn, composedOf)
 }
 
+// TestSessionParams returns an initialized ComposedOf which can be used to
+// create a session in the repository.
 func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
 	t.Helper()
 	ctx := context.Background()

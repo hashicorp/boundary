@@ -185,7 +185,7 @@ func TestState_Clone(t *testing.T) {
 
 func TestState_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := DefaultStateTableName
+	defaultTableName := defaultStateTableName
 	tests := []struct {
 		name      string
 		setNameTo string

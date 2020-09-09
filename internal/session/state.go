@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	DefaultStateTableName = "session_state"
+	defaultStateTableName = "session_state"
 )
 
+// Status of the session's state
 type Status string
 
 const (
@@ -22,10 +23,12 @@ const (
 	StatusClosed    Status = "closed"
 )
 
+// String representation of the state's status
 func (s Status) String() string {
 	return string(s)
 }
 
+// State of the session
 type State struct {
 	*store.State
 	tableName string `gorm:"-"`
@@ -79,7 +82,7 @@ func (s *State) TableName() string {
 	if s.tableName != "" {
 		return s.tableName
 	}
-	return DefaultStateTableName
+	return defaultStateTableName
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage

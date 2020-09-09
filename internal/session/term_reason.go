@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 )
 
+// TerminationReason of the session
 type TerminationReason string
 
 const (
@@ -17,6 +18,7 @@ const (
 	SystemError        TerminationReason = "system error"
 )
 
+// String representation of the termination reason
 func (r TerminationReason) String() string {
 	return string(r)
 }

@@ -7,8 +7,11 @@ import (
 )
 
 const (
+	// SessionPrefix for session PK ids
 	SessionPrefix = "s"
-	StatePrefix   = "ss"
+
+	// StatePrefix for state PK ids
+	StatePrefix = "ss"
 )
 
 func newId() (string, error) {

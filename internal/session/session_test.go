@@ -231,7 +231,7 @@ func TestSession_Clone(t *testing.T) {
 
 func TestSession_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := DefaultSessionTableName
+	defaultTableName := defaultSessionTableName
 	tests := []struct {
 		name      string
 		setNameTo string

@@ -12,17 +12,26 @@ import (
 )
 
 const (
-	DefaultSessionTableName = "session"
+	defaultSessionTableName = "session"
 )
 
+// ComposedOf defines the boundary data that is referenced to compose a session.
 type ComposedOf struct {
-	UserId      string
-	HostId      string
-	TargetId    string
-	HostSetId   string
+	// UserId of the session
+	UserId string
+	// HostId of the session
+	HostId string
+	// TargetId of the session
+	TargetId string
+	// HostSetId of the session
+	HostSetId string
+	// AuthTokenId of the session
 	AuthTokenId string
-	ScopeId     string
+	// ScopeId of the session
+	ScopeId string
 }
+
+// Session contains information about a user's session with a target
 type Session struct {
 	*store.Session
 	tableName string `gorm:"-"`
@@ -110,7 +119,7 @@ func (s *Session) TableName() string {
 	if s.tableName != "" {
 		return s.tableName
 	}
-	return DefaultSessionTableName
+	return defaultSessionTableName
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage
