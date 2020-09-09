@@ -142,7 +142,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existant Group",
 			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -168,7 +168,7 @@ func TestGet(t *testing.T) {
 			scopeId: pg.GetScopeId(),
 			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Project Scoped Wrong id prefix",
@@ -309,7 +309,7 @@ func TestDelete(t *testing.T) {
 				Id: iam.GroupPrefix + "_doesntexis",
 			},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Bad Group Id formatting",
@@ -338,7 +338,7 @@ func TestDelete(t *testing.T) {
 				Id: iam.GroupPrefix + "_doesntexis",
 			},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 	}
 	for _, tc := range cases {
@@ -368,7 +368,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteGroup(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 
 	scopeId = pg.GetScopeId()
 	projReq := &pbs.DeleteGroupRequest{
@@ -380,7 +380,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	got, gErr = s.DeleteGroup(ctx, projReq)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -826,7 +826,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Cant change Id",
