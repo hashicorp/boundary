@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -52,7 +53,9 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 }
 
 // CreateSession inserts into the repository and returns the new Session with
-// its State of "Pending".  No options are currently supported.
+// its State of "Pending".  The following fields must be empty when creating a
+// session: Address, Port, ServerId, ServerType, and PublicId.  No options are
+// currently supported.
 func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt ...Option) (*Session, *State, error) {
 	if newSession == nil {
 		return nil, nil, fmt.Errorf("create session: missing session: %w", db.ErrInvalidParameter)
@@ -62,12 +65,6 @@ func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt
 	}
 	if newSession.PublicId != "" {
 		return nil, nil, fmt.Errorf("create session: public id is not empty: %w", db.ErrInvalidParameter)
-	}
-	if newSession.ServerId == "" {
-		return nil, nil, fmt.Errorf("create session: server id is empty: %w", db.ErrInvalidParameter)
-	}
-	if newSession.ServerType == "" {
-		return nil, nil, fmt.Errorf("create session: server type is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.TargetId == "" {
 		return nil, nil, fmt.Errorf("create session: target id is empty: %w", db.ErrInvalidParameter)
@@ -87,11 +84,17 @@ func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt
 	if newSession.ScopeId == "" {
 		return nil, nil, fmt.Errorf("create session: scope id is empty: %w", db.ErrInvalidParameter)
 	}
-	if newSession.Address == "" {
-		return nil, nil, fmt.Errorf("create session: address is empty: %w", db.ErrInvalidParameter)
+	if newSession.Address != "" {
+		return nil, nil, fmt.Errorf("create session: address must empty: %w", db.ErrInvalidParameter)
 	}
-	if newSession.Port == "" {
-		return nil, nil, fmt.Errorf("create session: port id is empty: %w", db.ErrInvalidParameter)
+	if newSession.Port != "" {
+		return nil, nil, fmt.Errorf("create session: port id must empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.ServerId != "" {
+		return nil, nil, fmt.Errorf("create session: server id must empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.ServerType != "" {
+		return nil, nil, fmt.Errorf("create session: server type must empty: %w", db.ErrInvalidParameter)
 	}
 
 	id, err := newId()
@@ -126,7 +129,7 @@ func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt
 				return fmt.Errorf("%d states found for new session %s", len(foundStates), returnedSession.PublicId)
 			}
 			returnedState = foundStates[0]
-			if returnedState.Status != Pending.String() {
+			if returnedState.Status != StatusPending.String() {
 				return fmt.Errorf("new session %s state is not valid: %s", returnedSession.PublicId, returnedState.Status)
 			}
 			return nil
@@ -196,8 +199,104 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...
 	panic("not implemented")
 }
 
-func (r *Repository) UpdateSession(ctx context.Context, s *Session, version uint32, fieldMaskPaths []string, opt ...Option) (*Session, []*State, int, error) {
-	panic("not implemented")
+// UpdateSession updates the repository entry for the session, using the
+// fieldMaskPaths.  Only BytesUp, BytesDown, TerminationReason, ServerId and
+// ServerType a muttable and will be set to NULL if set to a zero value and
+// included in the fieldMaskPaths.
+func (r *Repository) UpdateSession(ctx context.Context, session *Session, version uint32, fieldMaskPaths []string, opt ...Option) (*Session, []*State, int, error) {
+	if session == nil {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: missing session %w", db.ErrInvalidParameter)
+	}
+	if session.Session == nil {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: missing session store %w", db.ErrInvalidParameter)
+	}
+	if session.PublicId == "" {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: missing session public id %w", db.ErrInvalidParameter)
+	}
+	for _, f := range fieldMaskPaths {
+		switch {
+		case strings.EqualFold("BytesUp", f):
+		case strings.EqualFold("BytesDown", f):
+		case strings.EqualFold("TerminationReason", f):
+		case strings.EqualFold("ServerId", f):
+		case strings.EqualFold("ServerType", f):
+		case strings.EqualFold("Address", f):
+		case strings.EqualFold("Port", f):
+		default:
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: field: %s: %w", f, db.ErrInvalidFieldMask)
+		}
+	}
+	var dbMask, nullFields []string
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+		map[string]interface{}{
+			"BytesUp":           session.BytesUp,
+			"BytesDown":         session.BytesDown,
+			"TerminationReason": session.TerminationReason,
+			"ServerId":          session.ServerId,
+			"ServerType":        session.ServerType,
+			"Address":           session.Address,
+			"Port":              session.Port,
+		},
+		fieldMaskPaths,
+	)
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: %w", db.ErrEmptyFieldMask)
+	}
+
+	var sessionScopeId string
+	switch {
+	case session.ScopeId != "":
+		sessionScopeId = session.ScopeId
+	default:
+		ses, _, err := r.LookupSession(ctx, session.PublicId)
+		if err != nil {
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: %w", err)
+		}
+		if ses == nil {
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: unable to look up session for %s: %w", session.PublicId, err)
+		}
+		sessionScopeId = ses.ScopeId
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, sessionScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
+	}
+
+	var s *Session
+	var states []*State
+	var rowsUpdated int
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			var err error
+			s = session.Clone().(*Session)
+			metadata := s.oplog(oplog.OpType_OP_TYPE_UPDATE)
+			metadata["scope-id"] = []string{sessionScopeId}
+			rowsUpdated, err = w.Update(
+				ctx,
+				s,
+				dbMask,
+				nullFields,
+				db.WithOplog(oplogWrapper, metadata),
+			)
+			if err == nil && rowsUpdated > 1 {
+				// return err, which will result in a rollback of the update
+				return errors.New("error more than 1 session would have been updated ")
+			}
+			states, err = fetchStates(ctx, reader, s.PublicId, db.WithOrder("start_time desc"))
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: %w for %s", err, session.PublicId)
+	}
+	return s, states, rowsUpdated, err
 }
 
 // UpdateState will update the session's state using the session id and its
