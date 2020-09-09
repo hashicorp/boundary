@@ -35,9 +35,5 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId string, credenti
 		return nil, nil, fmt.Errorf("error decoding Authenticate response: %w", err)
 	}
 
-	if target.Token != "" {
-		c.client.SetToken(target.Token)
-	}
-
 	return target, apiErr, nil
 }
