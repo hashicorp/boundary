@@ -20,7 +20,9 @@ import (
 	"unicode"
 
 	"github.com/hashicorp/boundary/api/internal/parseutil"
+	"github.com/hashicorp/boundary/recovery"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"golang.org/x/time/rate"
@@ -50,6 +52,11 @@ type Config struct {
 	// Token is the client token that reuslts from authentication and can be
 	// used to make calls into Boundary
 	Token string
+
+	// RecoveryKmsWrapper is a wrapper used in the recovery KMS authentication
+	// flow. If set, this will always be used to generate a new token value
+	// per-call, regardless of any value set in Token.
+	RecoveryKmsWrapper wrapping.Wrapper
 
 	// HttpClient is the HTTP client to use. Boundary sets sane defaults for
 	// the http.Client and its associated http.Transport created in
@@ -501,6 +508,22 @@ func (c *Client) SetToken(token string) {
 	c.config.Token = token
 }
 
+// RecoveryKmsWrapper gets the configured recovery KMS wrapper.
+func (c *Client) RecoveryKmsWrapper() wrapping.Wrapper {
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
+
+	return c.config.RecoveryKmsWrapper
+}
+
+// SetRecoveryKmsWrapper sets the wrapper used for the recovery workflow
+func (c *Client) SetRecoveryKmsWrapper(wrapper wrapping.Wrapper) {
+	c.modifyLock.Lock()
+	defer c.modifyLock.Unlock()
+
+	c.config.RecoveryKmsWrapper = wrapper
+}
+
 // SetHeaders clears all previous headers and uses only the given
 // ones going forward.
 func (c *Client) SetHeaders(headers http.Header) {
@@ -528,16 +551,17 @@ func (c *Client) Clone() *Client {
 	config := c.config
 
 	newConfig := &Config{
-		Addr:       config.Addr,
-		Token:      config.Token,
-		HttpClient: config.HttpClient,
-		Headers:    make(http.Header),
-		MaxRetries: config.MaxRetries,
-		Timeout:    config.Timeout,
-		Backoff:    config.Backoff,
-		CheckRetry: config.CheckRetry,
-		Limiter:    config.Limiter,
-		SRVLookup:  config.SRVLookup,
+		Addr:               config.Addr,
+		Token:              config.Token,
+		RecoveryKmsWrapper: config.RecoveryKmsWrapper,
+		HttpClient:         config.HttpClient,
+		Headers:            make(http.Header),
+		MaxRetries:         config.MaxRetries,
+		Timeout:            config.Timeout,
+		Backoff:            config.Backoff,
+		CheckRetry:         config.CheckRetry,
+		Limiter:            config.Limiter,
+		SRVLookup:          config.SRVLookup,
 	}
 	if config.TLSConfig != nil {
 		newConfig.TLSConfig = new(TLSConfig)
@@ -545,9 +569,7 @@ func (c *Client) Clone() *Client {
 	}
 	for k, v := range config.Headers {
 		vSlice := make([]string, 0, len(v))
-		for _, i := range v {
-			vSlice = append(vSlice, i)
-		}
+		vSlice = append(vSlice, v...)
 		newConfig.Headers[k] = vSlice
 	}
 
@@ -557,23 +579,10 @@ func (c *Client) Clone() *Client {
 func copyHeaders(in http.Header) http.Header {
 	ret := make(http.Header)
 	for k, v := range in {
-		for _, val := range v {
-			ret[k] = append(ret[k], val)
-		}
+		ret[k] = append(ret[k], v...)
 	}
 
 	return ret
-}
-
-// GetReaderFuncForJSON returns a func compatible with retryablehttp.ReaderFunc
-// after marshaling JSON
-func getBufferForJSON(val interface{}) (*bytes.Buffer, error) {
-	b, err := json.Marshal(val)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes.NewBuffer(b), nil
 }
 
 // NewRequest creates a new raw request object to query the Boundary controller
@@ -607,6 +616,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	addr := c.config.Addr
 	srvLookup := c.config.SRVLookup
 	token := c.config.Token
+	recoveryKmsWrapper := c.config.RecoveryKmsWrapper
 	httpClient := c.config.HttpClient
 	headers := copyHeaders(c.config.Headers)
 	c.modifyLock.RUnlock()
@@ -646,6 +656,13 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 		if len(addrs) > 0 {
 			host = fmt.Sprintf("%s:%d", addrs[0].Target, addrs[0].Port)
+		}
+	}
+
+	if recoveryKmsWrapper != nil {
+		token, err = recovery.GenerateRecoveryToken(ctx, recoveryKmsWrapper)
+		if err != nil {
+			return nil, fmt.Errorf("error generating recovery KMS workflow token: %w", err)
 		}
 	}
 
