@@ -149,6 +149,4 @@ message DeleteHostRequest {
   string id = 1;
 }
 
-message DeleteHostResponse {
-  bool existed = 1;
-}
+message DeleteHostResponse {}

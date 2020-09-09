@@ -114,8 +114,8 @@ func TestCrud(t *testing.T) {
 
 	existed, apiErr, err = hcClient.Delete(tc.Context(), hc.Id)
 	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.Nil(apiErr)
+	assert.False(existed)
 }
 
 // TODO: Get better coverage for expected errors and error formats.

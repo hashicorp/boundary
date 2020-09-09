@@ -113,8 +113,8 @@ func TestCrud(t *testing.T) {
 
 	existed, apiErr, err = userClient.Delete(tc.Context(), u.Id)
 	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.Nil(apiErr)
+	assert.False(existed)
 }
 
 func TestErrors(t *testing.T) {

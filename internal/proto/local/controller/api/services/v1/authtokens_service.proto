@@ -84,6 +84,4 @@ message DeleteAuthTokenRequest {
   string id = 1;
 }
 
-message DeleteAuthTokenResponse {
-  bool existed = 1;
-}
+message DeleteAuthTokenResponse {}

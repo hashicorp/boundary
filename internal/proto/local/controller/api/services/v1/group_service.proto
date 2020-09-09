@@ -212,9 +212,7 @@ message DeleteGroupRequest {
   string id = 1;
 }
 
-message DeleteGroupResponse {
-  bool existed = 1;
-}
+message DeleteGroupResponse {}
 
 message AddGroupMembersRequest {
   string id = 1;

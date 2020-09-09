@@ -41,10 +41,6 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 		}, nil
 	}
 
-	if inStruct == nil {
-		return nil, fmt.Errorf("nil value given to decode into and not a 204 response")
-	}
-
 	apiErr := &Error{
 		Status: int32(r.resp.StatusCode),
 	}
@@ -59,8 +55,10 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 			if r.resp.StatusCode >= 400 {
 				inStruct = apiErr
 			}
-			if err := dec.Decode(inStruct); err != nil {
-				return nil, fmt.Errorf("error decoding response: %w; response was %s", err, r.Body.String())
+			if inStruct != nil {
+				if err := dec.Decode(inStruct); err != nil {
+					return nil, fmt.Errorf("error decoding response: %w; response was %s", err, r.Body.String())
+				}
 			}
 		}
 	}

@@ -99,10 +99,10 @@ func TestCrud(t *testing.T) {
 	assert.Nil(apiErr)
 	assert.True(existed, "Expected existing project when deleted, but it wasn't.")
 
-	_, apiErr, err = scps.Delete(tc.Context(), s.Id)
+	existed, apiErr, err = scps.Delete(tc.Context(), s.Id)
 	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status, "Expected project to not exist when deleted, but it did.")
+	assert.Nil(apiErr)
+	assert.False(existed)
 }
 
 // TODO: Get better coverage for expected errors and error formats.

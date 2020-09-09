@@ -226,9 +226,7 @@ message DeleteHostSetRequest {
   string id = 1;
 }
 
-message DeleteHostSetResponse {
-  bool existed = 1;
-}
+message DeleteHostSetResponse {}
 
 message AddHostSetHostsRequest {
   string id = 1;

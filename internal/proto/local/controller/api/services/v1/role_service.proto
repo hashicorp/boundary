@@ -276,9 +276,7 @@ message DeleteRoleRequest {
   string id = 1;
 }
 
-message DeleteRoleResponse {
-  bool existed = 1;
-}
+message DeleteRoleResponse {}
 
 message AddRolePrincipalsRequest {
   string id = 1;
