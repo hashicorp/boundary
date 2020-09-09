@@ -188,9 +188,7 @@ message DeleteAccountRequest {
   string id = 1;
 }
 
-message DeleteAccountResponse {
-  bool existed = 1;
-}
+message DeleteAccountResponse {}
 
 message SetPasswordRequest {
   string id = 1;

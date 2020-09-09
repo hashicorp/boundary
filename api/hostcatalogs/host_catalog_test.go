@@ -114,8 +114,8 @@ func TestCrud(t *testing.T) {
 
 	existed, apiErr, err = hcClient.Delete(tc.Context(), hc.Id)
 	require.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.Nil(apiErr)
+	assert.False(existed)
 }
 
 // TODO: Get better coverage for expected errors and error formats.
@@ -143,7 +143,7 @@ func TestErrors(t *testing.T) {
 	require.NoError(err)
 	// TODO: Should this be nil instead of just a catalog that has no values set
 	assert.NotNil(apiErr)
-	assert.EqualValues(apiErr.Status, http.StatusForbidden)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 	_, apiErr, err = pc.Read(tc.Context(), "invalid id")
 	require.NoError(err)

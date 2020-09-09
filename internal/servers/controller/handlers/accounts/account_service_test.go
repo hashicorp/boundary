@@ -72,7 +72,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existing account",
 			req:     &pbs.GetAccountRequest{Id: password.AccountPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -165,7 +165,7 @@ func TestList(t *testing.T) {
 		{
 			name:       "Unfound Auth Method",
 			authMethod: password.AuthMethodPrefix + "_DoesntExis",
-			errCode:    codes.PermissionDenied,
+			errCode:    codes.NotFound,
 		},
 	}
 	for _, tc := range cases {
@@ -208,9 +208,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAccountRequest{
 				Id: ac.GetPublicId(),
 			},
-			res: &pbs.DeleteAccountResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -218,7 +215,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAccountRequest{
 				Id: password.AccountPrefix + "_doesntexis",
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Bad account id formatting",
@@ -257,12 +254,11 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteAccountRequest{
 		Id: ac.GetPublicId(),
 	}
-	got, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+	_, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+	_, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -710,7 +706,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Cant change Id",

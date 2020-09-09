@@ -83,11 +83,11 @@ func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	_, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteAuthTokenResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthToken, error) {
@@ -159,7 +159,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if scp == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 	default:
@@ -174,7 +174,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if authTok == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 		parentId = authTok.GetScopeId()
@@ -213,7 +213,8 @@ func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
 
 func validateListRequest(req *pbs.ListAuthTokensRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) {
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Incorrectly formatted identifier."
 	}
 	if len(badFields) > 0 {

@@ -180,7 +180,7 @@ func TestErrors(t *testing.T) {
 	_, apiErr, err = accountClient.Read(tc.Context(), password.AccountPrefix+"_doesntexis")
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 	_, apiErr, err = accountClient.Read(tc.Context(), "invalid id")
 	require.NoError(err)

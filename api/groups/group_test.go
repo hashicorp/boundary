@@ -157,8 +157,8 @@ func TestCrud(t *testing.T) {
 
 			existed, apiErr, err = groupsClient.Delete(tc.Context(), g.Id)
 			require.NoError(err)
-			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusForbidden, apiErr.Status)
+			assert.Nil(apiErr)
+			assert.False(existed)
 		})
 	}
 }
@@ -204,7 +204,7 @@ func TestErrors(t *testing.T) {
 			_, apiErr, err = groupClient.Read(tc.Context(), iam.GroupPrefix+"_doesntexis")
 			require.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusForbidden, apiErr.Status)
+			assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 			_, apiErr, err = groupClient.Read(tc.Context(), "invalid id")
 			require.NoError(err)

@@ -142,7 +142,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existant Group",
 			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -168,7 +168,7 @@ func TestGet(t *testing.T) {
 			scopeId: pg.GetScopeId(),
 			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Project Scoped Wrong id prefix",
@@ -297,9 +297,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: og.GetPublicId(),
 			},
-			res: &pbs.DeleteGroupResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -308,8 +305,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: iam.GroupPrefix + "_doesntexis",
 			},
-			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Bad Group Id formatting",
@@ -317,7 +313,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: "bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
@@ -325,9 +320,6 @@ func TestDelete(t *testing.T) {
 			scopeId: pg.GetScopeId(),
 			req: &pbs.DeleteGroupRequest{
 				Id: pg.GetPublicId(),
-			},
-			res: &pbs.DeleteGroupResponse{
-				Existed: true,
 			},
 			errCode: codes.OK,
 		},
@@ -337,8 +329,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: iam.GroupPrefix + "_doesntexis",
 			},
-			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 	}
 	for _, tc := range cases {
@@ -363,24 +354,22 @@ func TestDelete_twice(t *testing.T) {
 		Id: og.GetPublicId(),
 	}
 	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(scopeId))
-	got, gErr := s.DeleteGroup(ctx, req)
+	_, gErr := s.DeleteGroup(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteGroup(ctx, req)
+	_, gErr = s.DeleteGroup(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 
 	scopeId = pg.GetScopeId()
 	projReq := &pbs.DeleteGroupRequest{
 		Id: pg.GetPublicId(),
 	}
 	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(scopeId))
-	got, gErr = s.DeleteGroup(ctx, projReq)
+	_, gErr = s.DeleteGroup(ctx, projReq)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteGroup(ctx, projReq)
+	_, gErr = s.DeleteGroup(ctx, projReq)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -826,7 +815,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Cant change Id",

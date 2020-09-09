@@ -130,11 +130,11 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	_, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteTargetResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 // AddTargetHostSets implements the interface pbs.TargetServiceServer.
@@ -368,7 +368,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if scp == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 	default:
@@ -383,7 +383,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if t == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 		parentId = t.GetScopeId()

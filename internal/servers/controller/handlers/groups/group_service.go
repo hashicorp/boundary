@@ -126,11 +126,11 @@ func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	_, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteGroupResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 // AddGroupMembers implements the interface pbs.GroupServiceServer.
@@ -364,7 +364,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if scp == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 	default:
@@ -374,7 +374,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if grp == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 		parentId = grp.GetScopeId()
@@ -439,7 +439,9 @@ func validateDeleteRequest(req *pbs.DeleteGroupRequest) error {
 
 func validateListRequest(req *pbs.ListGroupsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) && !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+		!handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Incorrectly formatted identifier."
 	}
 	if len(badFields) > 0 {

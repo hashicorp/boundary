@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"time"
 
@@ -213,18 +214,19 @@ func (c *Client) Delete(ctx context.Context, hostId string, opt ...Option) (bool
 		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
 	}
 
-	type deleteResponse struct {
-		Existed bool
-	}
-	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err := resp.Decode(nil)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
 	if apiErr != nil {
+		// We don't treat a 404 in this case as failure, in order for deletes to
+		// be idempotent
+		if apiErr.Status == http.StatusNotFound {
+			return false, nil, nil
+		}
 		return false, apiErr, nil
 	}
-	return target.Existed, apiErr, nil
+	return true, nil, nil
 }
 
 func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) ([]*Host, *api.Error, error) {

@@ -76,7 +76,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existing Host Set",
 			req:     &pbs.GetHostSetRequest{Id: static.HostSetPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -201,9 +201,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: h.GetPublicId(),
 			},
-			res: &pbs.DeleteHostSetResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -212,8 +209,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: static.HostSetPrefix + "_doesntexis",
 			},
-			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Delete bad host catalog id in Host",
@@ -221,8 +217,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: h.GetPublicId(),
 			},
-			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Bad Host Id formatting",
@@ -230,7 +225,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: static.HostSetPrefix + "_bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -266,12 +260,11 @@ func TestDelete_twice(t *testing.T) {
 		Id: h.GetPublicId(),
 	}
 	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
-	got, gErr := s.DeleteHostSet(ctx, req)
+	_, gErr := s.DeleteHostSet(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	_, gErr = s.DeleteHostSet(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -665,7 +658,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Cant change Id",

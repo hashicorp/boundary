@@ -153,6 +153,4 @@ message DeleteHostCatalogRequest {
   string id = 1;
 }
 
-message DeleteHostCatalogResponse {
-  bool existed = 1;
-}
+message DeleteHostCatalogResponse {}

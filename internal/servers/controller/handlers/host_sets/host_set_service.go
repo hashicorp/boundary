@@ -126,11 +126,11 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
+	_, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteHostSetResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 // AddHostSetHosts implements the interface pbs.HostSetServiceServer.
@@ -359,7 +359,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			return nil, res
 		}
 		if set == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return nil, res
 		}
 		parentId = set.GetCatalogId()
@@ -372,7 +372,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		return nil, res
 	}
 	if cat == nil {
-		res.Error = handlers.ForbiddenError()
+		res.Error = handlers.NotFoundError()
 		return nil, res
 	}
 	opts = append(opts, auth.WithScopeId(cat.GetScopeId()), auth.WithPin(parentId))

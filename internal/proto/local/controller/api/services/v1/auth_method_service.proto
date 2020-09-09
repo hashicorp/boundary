@@ -148,6 +148,4 @@ message DeleteAuthMethodRequest {
   string id = 1;
 }
 
-message DeleteAuthMethodResponse {
-  bool existed = 1;
-}
+message DeleteAuthMethodResponse {}
