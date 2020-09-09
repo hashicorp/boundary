@@ -157,8 +157,8 @@ func TestCrud(t *testing.T) {
 
 			existed, apiErr, err = groupsClient.Delete(tc.Context(), g.Id)
 			require.NoError(err)
-			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusNotFound, apiErr.Status)
+			assert.Nil(apiErr)
+			assert.False(existed)
 		})
 	}
 }

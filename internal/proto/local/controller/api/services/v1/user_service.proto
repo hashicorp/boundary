@@ -149,6 +149,4 @@ message DeleteUserRequest {
   string id = 1;
 }
 
-message DeleteUserResponse {
-  bool existed = 1;
-}
+message DeleteUserResponse {}

@@ -126,11 +126,11 @@ func (s Service) DeleteUser(ctx context.Context, req *pbs.DeleteUserRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	_, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteUserResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.User, error) {

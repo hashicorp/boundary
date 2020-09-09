@@ -208,9 +208,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAccountRequest{
 				Id: ac.GetPublicId(),
 			},
-			res: &pbs.DeleteAccountResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -257,10 +254,9 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteAccountRequest{
 		Id: ac.GetPublicId(),
 	}
-	got, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+	_, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+	_, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.Error(gErr, "Second attempt")
 	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }

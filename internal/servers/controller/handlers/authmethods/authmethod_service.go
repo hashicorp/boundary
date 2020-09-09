@@ -130,11 +130,11 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
+	_, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteAuthMethodResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, error) {

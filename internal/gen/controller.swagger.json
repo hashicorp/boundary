@@ -5149,103 +5149,37 @@
       }
     },
     "controller.api.services.v1.DeleteAccountResponse": {
-      "type": "object",
-      "properties": {
-        "existed": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
+      "type": "object"
     },
     "controller.api.services.v1.DeleteAuthMethodResponse": {
-      "type": "object",
-      "properties": {
-        "existed": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
+      "type": "object"
     },
     "controller.api.services.v1.DeleteAuthTokenResponse": {
-      "type": "object",
-      "properties": {
-        "existed": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
+      "type": "object"
     },
     "controller.api.services.v1.DeleteGroupResponse": {
-      "type": "object",
-      "properties": {
-        "existed": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
+      "type": "object"
     },
     "controller.api.services.v1.DeleteHostCatalogResponse": {
-      "type": "object",
-      "properties": {
-        "existed": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
+      "type": "object"
     },
     "controller.api.services.v1.DeleteHostResponse": {
-      "type": "object",
-      "properties": {
-        "existed": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
+      "type": "object"
     },
     "controller.api.services.v1.DeleteHostSetResponse": {
-      "type": "object",
-      "properties": {
-        "existed": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
+      "type": "object"
     },
     "controller.api.services.v1.DeleteRoleResponse": {
-      "type": "object",
-      "properties": {
-        "existed": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
+      "type": "object"
     },
     "controller.api.services.v1.DeleteScopeResponse": {
-      "type": "object",
-      "properties": {
-        "existed": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
+      "type": "object"
     },
     "controller.api.services.v1.DeleteTargetResponse": {
-      "type": "object",
-      "properties": {
-        "existed": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
+      "type": "object"
     },
     "controller.api.services.v1.DeleteUserResponse": {
-      "type": "object",
-      "properties": {
-        "existed": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
+      "type": "object"
     },
     "controller.api.services.v1.GetAccountResponse": {
       "type": "object",

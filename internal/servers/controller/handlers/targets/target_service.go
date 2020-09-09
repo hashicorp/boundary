@@ -130,11 +130,11 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	_, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteTargetResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 // AddTargetHostSets implements the interface pbs.TargetServiceServer.

@@ -273,9 +273,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: or.GetPublicId(),
 			},
-			res: &pbs.DeleteRoleResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -292,7 +289,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: "bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
@@ -300,9 +296,6 @@ func TestDelete(t *testing.T) {
 			scopeId: pr.GetPublicId(),
 			req: &pbs.DeleteRoleRequest{
 				Id: pr.GetPublicId(),
-			},
-			res: &pbs.DeleteRoleResponse{
-				Existed: true,
 			},
 			errCode: codes.OK,
 		},
@@ -336,10 +329,9 @@ func TestDelete_twice(t *testing.T) {
 		Id: or.GetPublicId(),
 	}
 	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(or.GetPublicId()))
-	got, gErr := s.DeleteRole(ctx, req)
+	_, gErr := s.DeleteRole(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteRole(ctx, req)
+	_, gErr = s.DeleteRole(ctx, req)
 	assert.Error(gErr, "Second attempt")
 	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 
@@ -347,10 +339,9 @@ func TestDelete_twice(t *testing.T) {
 		Id: pr.GetPublicId(),
 	}
 	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(pr.GetPublicId()))
-	got, gErr = s.DeleteRole(ctx, projReq)
+	_, gErr = s.DeleteRole(ctx, projReq)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteRole(ctx, projReq)
+	_, gErr = s.DeleteRole(ctx, projReq)
 	assert.Error(gErr, "Second attempt")
 	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 

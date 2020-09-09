@@ -238,9 +238,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostCatalogRequest{
 				Id: hc.GetPublicId(),
 			},
-			res: &pbs.DeleteHostCatalogResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -257,7 +254,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostCatalogRequest{
 				Id: static.HostCatalogPrefix + "_bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -282,10 +278,9 @@ func TestDelete_twice(t *testing.T) {
 		Id: hc.GetPublicId(),
 	}
 	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
-	got, gErr := s.DeleteHostCatalog(ctx, req)
+	_, gErr := s.DeleteHostCatalog(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteHostCatalog(ctx, req)
+	_, gErr = s.DeleteHostCatalog(ctx, req)
 	assert.Error(gErr, "Second attempt")
 	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }

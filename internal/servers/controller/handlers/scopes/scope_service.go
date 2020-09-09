@@ -132,11 +132,11 @@ func (s Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	_, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteScopeResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Scope, error) {

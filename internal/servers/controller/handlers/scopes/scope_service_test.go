@@ -304,9 +304,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: proj.GetPublicId(),
 			},
-			res: &pbs.DeleteScopeResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -323,7 +320,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: "bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
@@ -331,9 +327,6 @@ func TestDelete(t *testing.T) {
 			scopeId: scope.Global.String(),
 			req: &pbs.DeleteScopeRequest{
 				Id: org.GetPublicId(),
-			},
-			res: &pbs.DeleteScopeResponse{
-				Existed: true,
 			},
 			errCode: codes.OK,
 		},
@@ -351,7 +344,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: "bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -376,10 +368,9 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteScopeRequest{
 		Id: proj.GetPublicId(),
 	}
-	got, gErr := s.DeleteScope(ctx, req)
+	_, gErr := s.DeleteScope(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteScope(ctx, req)
+	_, gErr = s.DeleteScope(ctx, req)
 	assert.Error(gErr, "Second attempt")
 	assert.Equal(codes.NotFound, status.Code(gErr), "Expected not found for the second delete.")
 
@@ -387,10 +378,9 @@ func TestDelete_twice(t *testing.T) {
 	req = &pbs.DeleteScopeRequest{
 		Id: org.GetPublicId(),
 	}
-	got, gErr = s.DeleteScope(ctx, req)
+	_, gErr = s.DeleteScope(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteScope(ctx, req)
+	_, gErr = s.DeleteScope(ctx, req)
 	assert.Error(gErr, "Second attempt")
 	assert.Equal(codes.NotFound, status.Code(gErr), "Expected not found for the second delete.")
 }

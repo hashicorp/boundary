@@ -126,11 +126,11 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
+	_, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteHostSetResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 // AddHostSetHosts implements the interface pbs.HostSetServiceServer.
