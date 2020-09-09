@@ -195,8 +195,44 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	return sessions, nil
 }
 
+// DeleteSession will delete a session from the repository.
 func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...Option) (int, error) {
-	panic("not implemented")
+	if publicId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete session: missing public id %w", db.ErrInvalidParameter)
+	}
+	session := allocSession()
+	session.PublicId = publicId
+	if err := r.reader.LookupByPublicId(ctx, &session); err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete session: failed %w for %s", err, publicId)
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, session.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
+	}
+	metadata := session.oplog(oplog.OpType_OP_TYPE_DELETE)
+	var rowsDeleted int
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			deleteSession := session.Clone()
+			rowsDeleted, err = w.Delete(
+				ctx,
+				deleteSession,
+				db.WithOplog(oplogWrapper, metadata),
+			)
+			if err == nil && rowsDeleted > 1 {
+				// return err, which will result in a rollback of the delete
+				return errors.New("error more than 1 session would have been deleted")
+			}
+			return err
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete session: failed %w for %s", err, publicId)
+	}
+	return rowsDeleted, nil
 }
 
 // UpdateSession updates the repository entry for the session, using the

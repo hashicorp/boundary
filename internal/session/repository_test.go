@@ -708,3 +708,85 @@ func TestRepository_UpdateSession(t *testing.T) {
 	}
 
 }
+
+func TestRepository_DeleteSession(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	type args struct {
+		session *Session
+		opt     []Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name: "valid",
+			args: args{
+				session: TestDefaultSession(t, conn, wrapper, iamRepo),
+			},
+			wantRowsDeleted: 1,
+			wantErr:         false,
+		},
+		{
+			name: "no-public-id",
+			args: args{
+				session: func() *Session {
+					s := allocSession()
+					return &s
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantErrMsg:      "delete session: missing public id invalid parameter",
+		},
+		{
+			name: "not-found",
+			args: args{
+				session: func() *Session {
+					s := TestDefaultSession(t, conn, wrapper, iamRepo)
+					id, err := newId()
+					require.NoError(t, err)
+					s.PublicId = id
+					return s
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantErrMsg:      "delete session: failed record not found for ",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			deletedRows, err := repo.DeleteSession(context.Background(), tt.args.session.PublicId, tt.args.opt...)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, deletedRows)
+				assert.Contains(err.Error(), tt.wantErrMsg)
+				err = db.TestVerifyOplog(t, rw, tt.args.session.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+				assert.Error(err)
+				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+			foundSession, _, err := repo.LookupSession(context.Background(), tt.args.session.PublicId)
+			assert.NoError(err)
+			assert.Nil(foundSession)
+
+			err = db.TestVerifyOplog(t, rw, tt.args.session.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+		})
+	}
+}
