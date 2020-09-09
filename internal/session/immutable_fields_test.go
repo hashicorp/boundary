@@ -82,7 +82,7 @@ func TestState_ImmutableFields(t *testing.T) {
 
 	_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
-	state := TestState(t, conn, session.PublicId, Pending)
+	state := TestState(t, conn, session.PublicId, StatusPending)
 
 	var new State
 	err := rw.LookupWhere(context.Background(), &new, "session_id = ? and state = ?", state.SessionId, state.Status)

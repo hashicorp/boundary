@@ -16,10 +16,10 @@ const (
 type Status string
 
 const (
-	Pending   Status = "pending"
-	Active    Status = "active"
-	Canceling Status = "canceling"
-	Closed    Status = "closed"
+	StatusPending   Status = "pending"
+	StatusActive    Status = "active"
+	StatusCanceling Status = "canceling"
+	StatusClosed    Status = "closed"
 )
 
 func (s Status) String() string {

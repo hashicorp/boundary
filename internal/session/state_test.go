@@ -38,12 +38,12 @@ func TestState_Create(t *testing.T) {
 			name: "valid",
 			args: args{
 				sessionId: session.PublicId,
-				status:    Pending,
+				status:    StatusPending,
 			},
 			want: &State{
 				State: &store.State{
 					SessionId: session.PublicId,
-					Status:    Pending.String(),
+					Status:    StatusPending.String(),
 				},
 			},
 			create: true,
@@ -51,7 +51,7 @@ func TestState_Create(t *testing.T) {
 		{
 			name: "empty-sessionId",
 			args: args{
-				status: Pending,
+				status: StatusPending,
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -108,13 +108,13 @@ func TestState_Delete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			state:           TestState(t, conn, session.PublicId, Closed),
+			state:           TestState(t, conn, session.PublicId, StatusClosed),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
 		{
 			name:  "bad-id",
-			state: TestState(t, conn, session2.PublicId, Closed),
+			state: TestState(t, conn, session2.PublicId, StatusClosed),
 			deleteSessionId: func() string {
 				id, err := db.NewPublicId(SessionPrefix)
 				require.NoError(t, err)
@@ -167,7 +167,7 @@ func TestState_Clone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		state := TestState(t, conn, s.PublicId, Pending)
+		state := TestState(t, conn, s.PublicId, StatusPending)
 		cp := state.Clone()
 		assert.True(proto.Equal(cp.(*State).State, state.State))
 	})
@@ -175,8 +175,8 @@ func TestState_Clone(t *testing.T) {
 		assert := assert.New(t)
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
 		s2 := TestDefaultSession(t, conn, wrapper, iamRepo)
-		state := TestState(t, conn, s.PublicId, Pending)
-		state2 := TestState(t, conn, s2.PublicId, Pending)
+		state := TestState(t, conn, s.PublicId, StatusPending)
+		state2 := TestState(t, conn, s2.PublicId, StatusPending)
 
 		cp := state.Clone()
 		assert.True(!proto.Equal(cp.(*State).State, state2.State))

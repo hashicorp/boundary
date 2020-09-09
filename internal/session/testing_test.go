@@ -30,6 +30,6 @@ func Test_TestState(t *testing.T) {
 	require.NotNil(s)
 	assert.NotEmpty(s.PublicId)
 
-	state := TestState(t, conn, s.PublicId, Pending)
+	state := TestState(t, conn, s.PublicId, StatusPending)
 	require.NotNil(state)
 }
