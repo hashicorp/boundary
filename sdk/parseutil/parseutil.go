@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/boundary/api/internal/strutil"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/errwrap"
 	sockaddr "github.com/hashicorp/go-sockaddr"
 	"github.com/mitchellh/mapstructure"
