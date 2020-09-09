@@ -143,7 +143,7 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		kmsDefFile = strings.TrimSpace(c.flagConfigKms)
 	}
 
-	wrapper, err := wrapper.GetWrapper(kmsDefFile, "config")
+	wrapper, err := wrapper.GetWrapperFromPath(kmsDefFile, "config")
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1

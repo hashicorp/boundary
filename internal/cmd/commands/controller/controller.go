@@ -341,7 +341,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	if c.flagConfigKms != "" {
 		wrapperPath = c.flagConfigKms
 	}
-	wrapper, err := wrapper.GetWrapper(wrapperPath, "config")
+	wrapper, err := wrapper.GetWrapperFromPath(wrapperPath, "config")
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1

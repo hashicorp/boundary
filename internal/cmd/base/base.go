@@ -19,7 +19,6 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/wrapper"
-	"github.com/hashicorp/boundary/recovery"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
@@ -184,7 +183,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	tokenName := "default"
 	switch {
 	case c.FlagRecoveryConfig != "":
-		wrapper, err := wrapper.GetWrapper(c.FlagRecoveryConfig, "recovery")
+		wrapper, err := wrapper.GetWrapperFromPath(c.FlagRecoveryConfig, "recovery")
 		if err != nil {
 			return nil, err
 		}
@@ -200,11 +199,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			}
 		}()
 
-		token, err := recovery.GenerateRecoveryToken(c.Context, wrapper)
-		if err != nil {
-			return nil, fmt.Errorf("Error generating recovery config: %w", err)
-		}
-		c.client.SetToken(token)
+		c.client.SetRecoveryKmsWrapper(wrapper)
 
 	case c.FlagToken != "":
 		c.client.SetToken(c.FlagToken)
