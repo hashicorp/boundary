@@ -201,9 +201,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: h.GetPublicId(),
 			},
-			res: &pbs.DeleteHostSetResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -212,7 +209,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: static.HostSetPrefix + "_doesntexis",
 			},
-			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
@@ -221,7 +217,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: h.GetPublicId(),
 			},
-			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
@@ -230,7 +225,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: static.HostSetPrefix + "_bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -266,9 +260,8 @@ func TestDelete_twice(t *testing.T) {
 		Id: h.GetPublicId(),
 	}
 	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
-	got, gErr := s.DeleteHostSet(ctx, req)
+	_, gErr := s.DeleteHostSet(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	_, gErr = s.DeleteHostSet(ctx, req)
 	assert.Error(gErr, "Second attempt")
 	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")

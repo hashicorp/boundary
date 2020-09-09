@@ -210,9 +210,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteTargetRequest{
 				Id: tar.GetPublicId(),
 			},
-			res: &pbs.DeleteTargetResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -221,7 +218,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteTargetRequest{
 				Id: target.TcpTargetPrefix + "_doesntexis",
 			},
-			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
@@ -230,7 +226,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteTargetRequest{
 				Id: target.TcpTargetPrefix + "_bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -268,9 +263,8 @@ func TestDelete_twice(t *testing.T) {
 		Id: tar.GetPublicId(),
 	}
 	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
-	got, gErr := s.DeleteTarget(ctx, req)
+	_, gErr := s.DeleteTarget(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	_, gErr = s.DeleteTarget(ctx, req)
 	assert.Error(gErr, "Second attempt")
 	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")

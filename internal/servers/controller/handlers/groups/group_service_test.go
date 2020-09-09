@@ -297,9 +297,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: og.GetPublicId(),
 			},
-			res: &pbs.DeleteGroupResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -308,7 +305,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: iam.GroupPrefix + "_doesntexis",
 			},
-			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
@@ -317,7 +313,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: "bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
@@ -325,9 +320,6 @@ func TestDelete(t *testing.T) {
 			scopeId: pg.GetScopeId(),
 			req: &pbs.DeleteGroupRequest{
 				Id: pg.GetPublicId(),
-			},
-			res: &pbs.DeleteGroupResponse{
-				Existed: true,
 			},
 			errCode: codes.OK,
 		},
@@ -337,7 +329,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: iam.GroupPrefix + "_doesntexis",
 			},
-			res:     nil,
 			errCode: codes.NotFound,
 		},
 	}
@@ -363,10 +354,9 @@ func TestDelete_twice(t *testing.T) {
 		Id: og.GetPublicId(),
 	}
 	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(scopeId))
-	got, gErr := s.DeleteGroup(ctx, req)
+	_, gErr := s.DeleteGroup(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteGroup(ctx, req)
+	_, gErr = s.DeleteGroup(ctx, req)
 	assert.Error(gErr, "Second attempt")
 	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 
@@ -375,10 +365,9 @@ func TestDelete_twice(t *testing.T) {
 		Id: pg.GetPublicId(),
 	}
 	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(scopeId))
-	got, gErr = s.DeleteGroup(ctx, projReq)
+	_, gErr = s.DeleteGroup(ctx, projReq)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteGroup(ctx, projReq)
+	_, gErr = s.DeleteGroup(ctx, projReq)
 	assert.Error(gErr, "Second attempt")
 	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }
