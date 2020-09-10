@@ -2,8 +2,9 @@ package authtoken
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
+	mathrand "math/rand"
+	"time"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/globals"
@@ -107,18 +108,13 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 	s1Info := &tokens.S1TokenInfo{
 		Token: token,
 	}
-	var confLen int
-	rlen := make([]byte, 1)
-	_, err := rand.Read(rlen)
+	var err error
+
+	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
+	confLen := r.Intn(30)
+	s1Info.Confounder, err = base62.RandomWithReader(confLen, r)
 	if err != nil {
-		// Whatevs, default to 15
-		confLen = 15
-	} else {
-		confLen = int(rlen[0]) % 30
-	}
-	s1Info.Confounder, err = base62.Random(confLen)
-	if err != nil {
-		// Again, whatevs
+		// Whatevs
 		if confLen%2 == 0 {
 			s1Info.Confounder = "Clue (1985)"
 		} else {
