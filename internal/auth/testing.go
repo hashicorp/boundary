@@ -6,8 +6,7 @@ import "context"
 func DisabledAuthTestContext(opt ...Option) context.Context {
 	reqInfo := RequestInfo{DisableAuthEntirely: true}
 	opts := getOpts(opt...)
-	reqInfo.scopeId = opts.withScopeId
-	reqInfo.pin = opts.withPin
+	reqInfo.scopeIdOverride = opts.withScopeId
 	reqInfo.userIdOverride = opts.withUserId
 	return NewVerifierContext(context.Background(), nil, nil, nil, nil, opts.withKms, reqInfo)
 }

@@ -46,20 +46,16 @@ var verifierKey key
 
 // RequestInfo contains request parameters necessary for checking authn/authz
 type RequestInfo struct {
-	Path        string
-	Method      string
-	PublicId    string
-	Token       string
-	TokenFormat TokenFormat
-
-	// These are set by the service handlers via options
-	scopeId string
-	pin     string
-
-	// This is used by the scopes collection
-	userIdOverride string
+	Path           string
+	Method         string
+	PublicId       string
+	EncryptedToken string
+	Token          string
+	TokenFormat    TokenFormat
 
 	// The following are useful for tests
+	scopeIdOverride      string
+	userIdOverride       string
 	DisableAuthzFailures bool
 	DisableAuthEntirely  bool
 }
@@ -122,7 +118,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 
 	ret.Scope = new(scopes.ScopeInfo)
 	if v.requestInfo.DisableAuthEntirely {
-		ret.Scope.Id = v.requestInfo.scopeId
+		ret.Scope.Id = v.requestInfo.scopeIdOverride
 		if ret.Scope.Id == "" {
 			ret.Scope.Id = opts.withScopeId
 		}
@@ -145,6 +141,10 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		Id:      opts.withId,
 		Pin:     opts.withPin,
 		Type:    opts.withType,
+	}
+
+	if v.requestInfo.EncryptedToken != "" {
+		v.decryptToken()
 	}
 
 	var authResults *perms.ACLResults
@@ -315,7 +315,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 // GetTokenFromRequest pulls the token from either the Authorization header or
 // split cookies and parses it. If it cannot be parsed successfully, the issue
 // is logged and we return blank, so logic will continue as the anonymous user.
-// The public ID and token are returned along with the token format.
+// The public ID and _encrypted_ token are returned along with the token format.
 func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Request) (string, string, TokenFormat) {
 	// First, get the token, either from the authorization header or from split
 	// cookies
@@ -361,42 +361,68 @@ func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Reque
 	}
 
 	publicId := strings.Join(splitFullToken[0:2], "_")
+	encryptedToken := splitFullToken[2]
 
-	// This is hardcoded to global because at this point we don't know the
-	// scope. But that's okay; this is not really a security feature so much as
-	// an anti-DDoSing-the-backing-database feature.
-	tokenWrapper, err := kmsCache.GetWrapper(req.Context(), scope.Global.String(), kms.KeyPurposeTokens)
+	return publicId, encryptedToken, receivedTokenType
+}
+
+func (v *verifier) decryptToken() {
+	tokenRepo, err := v.authTokenRepoFn()
 	if err != nil {
-		logger.Warn("get token from request: unable to get wrapper for tokens; continuing as anonymous user", "error", err)
-		return "", "", AuthTokenTypeUnknown
+		v.logger.Warn("get token from request: failed to get authtoken repo", "error", err)
+		v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+		return
 	}
 
-	version := splitFullToken[2][0:len(globals.ServiceTokenV1)]
+	at, err := tokenRepo.LookupAuthToken(v.ctx, v.requestInfo.PublicId)
+	if err != nil {
+		v.logger.Trace("get token from request: failed to look up auth token by public ID", "error", err)
+		v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+		return
+	}
+	if at == nil {
+		v.logger.Trace("get token from request: nil result from looking up auth token by public ID")
+		v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+		return
+	}
+
+	tokenWrapper, err := v.kms.GetWrapper(v.ctx, at.GetScopeId(), kms.KeyPurposeTokens)
+	if err != nil {
+		v.logger.Warn("get token from request: unable to get wrapper for tokens; continuing as anonymous user", "error", err)
+		v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+		return
+	}
+
+	version := v.requestInfo.EncryptedToken[0:len(globals.ServiceTokenV1)]
 	switch version {
 	case globals.ServiceTokenV1:
 	default:
-		logger.Trace("get token from request: unknown token encryption version; continuing as anonymous user", "version", version)
-		return "", "", AuthTokenTypeUnknown
+		v.logger.Trace("get token from request: unknown token encryption version; continuing as anonymous user", "version", version)
+		v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+		return
 	}
-	marshaledToken := base58.Decode(splitFullToken[2][len(globals.ServiceTokenV1):])
+	marshaledToken := base58.Decode(v.requestInfo.EncryptedToken[len(globals.ServiceTokenV1):])
 
 	blobInfo := new(wrapping.EncryptedBlobInfo)
 	if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
-		logger.Trace("get token from request: error decoding encrypted token; continuing as anonymous user", "error", err)
-		return "", "", AuthTokenTypeUnknown
+		v.logger.Trace("get token from request: error decoding encrypted token; continuing as anonymous user", "error", err)
+		v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+		return
 	}
 
-	tokenBytes, err := tokenWrapper.Decrypt(req.Context(), blobInfo, []byte(publicId))
+	tokenBytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, []byte(v.requestInfo.PublicId))
 	if err != nil {
-		logger.Trace("get token from request: error decrypting encrypted token; continuing as anonymous user", "error", err)
-		return "", "", AuthTokenTypeUnknown
+		v.logger.Trace("get token from request: error decrypting encrypted token; continuing as anonymous user", "error", err)
+		v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+		return
 	}
 	token := string(tokenBytes)
 
-	if receivedTokenType == AuthTokenTypeUnknown || token == "" || publicId == "" {
-		logger.Trace("get token from request: after parsing, could not find valid token; continuing as anonymous user")
-		return "", "", AuthTokenTypeUnknown
+	if v.requestInfo.TokenFormat == AuthTokenTypeUnknown || token == "" || v.requestInfo.PublicId == "" {
+		v.logger.Trace("get token from request: after parsing, could not find valid token; continuing as anonymous user")
+		v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+		return
 	}
 
-	return publicId, token, receivedTokenType
+	v.requestInfo.Token = token
 }

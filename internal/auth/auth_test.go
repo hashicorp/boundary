@@ -39,7 +39,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
-	encToken, err := authtoken.EncryptToken(context.Background(), kms, at.GetPublicId(), at.GetToken())
+	encToken, err := authtoken.EncryptToken(context.Background(), kms, o.GetPublicId(), at.GetPublicId(), at.GetToken())
 	require.NoError(t, err)
 
 	tokValue := at.GetPublicId() + "_" + encToken

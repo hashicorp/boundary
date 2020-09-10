@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -101,12 +100,9 @@ func newAuthToken() (string, error) {
 }
 
 // EncryptToken is a shared function for encrypting a token value for return to
-// the user. We always use the global scope because on authenticate we don't
-// have scope info at this point and the idea is to remove a DB lookup if the
-// token is made up/invalid so as to prevent DDoS against a third party service
-// by just randomly guessing tokens.
-func EncryptToken(ctx context.Context, kmsCache *kms.Kms, publicId, token string) (string, error) {
-	tokenWrapper, err := kmsCache.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeTokens)
+// the user.
+func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, token string) (string, error) {
+	tokenWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeTokens)
 	if err != nil {
 		return "", fmt.Errorf("unable to get wrapper: %w", err)
 	}

@@ -198,7 +198,7 @@ func (c *Command) Run(args []string) int {
 
 		case "table":
 			if len(listedScopes) == 0 {
-				c.UI.Output("No scopes found")
+				c.UI.Output("No child scopes found")
 				return 0
 			}
 			var output []string

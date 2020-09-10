@@ -111,7 +111,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId
 		return nil, err
 	}
 
-	token, err := authtoken.EncryptToken(ctx, s.kms, tok.GetPublicId(), tok.GetToken())
+	token, err := authtoken.EncryptToken(ctx, s.kms, scopeId, tok.GetPublicId(), tok.GetToken())
 	if err != nil {
 		return nil, err
 	}
