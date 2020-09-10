@@ -111,16 +111,7 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 		Token:      token,
 		Confounder: make([]byte, r.Intn(30)),
 	}
-	_, err := r.Read(s1Info.Confounder)
-	if err != nil {
-		// Whatevs
-		switch r.Intn(2) {
-		case 0:
-			s1Info.Confounder = []byte("Clue (1985)")
-		default:
-			s1Info.Confounder = []byte("DS9 >> TNG")
-		}
-	}
+	r.Read(s1Info.Confounder)
 
 	marshaledS1Info, err := proto.Marshal(s1Info)
 	if err != nil {
