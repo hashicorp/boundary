@@ -2,12 +2,14 @@ package authtoken
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
@@ -102,12 +104,39 @@ func newAuthToken() (string, error) {
 // EncryptToken is a shared function for encrypting a token value for return to
 // the user.
 func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, token string) (string, error) {
+	s1Info := &tokens.S1TokenInfo{
+		Token: token,
+	}
+	var confLen int
+	rlen := make([]byte, 1)
+	_, err := rand.Read(rlen)
+	if err != nil {
+		// Whatevs, default to 10
+		confLen = 10
+	} else {
+		confLen = int(rlen[0]) % 20
+	}
+	s1Info.Confounder, err = base62.Random(confLen)
+	if err != nil {
+		// Again, whatevs
+		if confLen%2 == 0 {
+			s1Info.Confounder = "Clue (1985)"
+		} else {
+			s1Info.Confounder = "DS9 >> TNG"
+		}
+	}
+
+	marshaledS1Info, err := proto.Marshal(s1Info)
+	if err != nil {
+		return "", fmt.Errorf("error marshaling token info: %w", err)
+	}
+
 	tokenWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeTokens)
 	if err != nil {
 		return "", fmt.Errorf("unable to get wrapper: %w", err)
 	}
 
-	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(token), []byte(publicId))
+	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(marshaledS1Info), []byte(publicId))
 	if err != nil {
 		return "", fmt.Errorf("error encrypting token: %w", err)
 	}

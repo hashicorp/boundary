@@ -11,6 +11,7 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -396,21 +397,27 @@ func (v *verifier) decryptToken() {
 			return
 		}
 
-		tokenBytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, []byte(v.requestInfo.PublicId))
+		s1Bytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, []byte(v.requestInfo.PublicId))
 		if err != nil {
 			v.logger.Trace("decrypt bearer token: error decrypting encrypted token; continuing as anonymous user", "error", err)
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
-		token := string(tokenBytes)
 
-		if v.requestInfo.TokenFormat == AuthTokenTypeUnknown || token == "" || v.requestInfo.PublicId == "" {
+		var s1Info tokens.S1TokenInfo
+		if err := proto.Unmarshal(s1Bytes, &s1Info); err != nil {
+			v.logger.Trace("decrypt bearer token: error unmarshaling token info; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		if v.requestInfo.TokenFormat == AuthTokenTypeUnknown || s1Info.Token == "" || v.requestInfo.PublicId == "" {
 			v.logger.Trace("decrypt bearer token: after parsing, could not find valid token; continuing as anonymous user")
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
 
-		v.requestInfo.Token = token
+		v.requestInfo.Token = s1Info.Token
 		return
 
 	case AuthTokenTypeRecoveryKms:
