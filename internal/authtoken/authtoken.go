@@ -105,20 +105,20 @@ func newAuthToken() (string, error) {
 // EncryptToken is a shared function for encrypting a token value for return to
 // the user.
 func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, token string) (string, error) {
-	s1Info := &tokens.S1TokenInfo{
-		Token: token,
-	}
-	var err error
-
 	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
-	confLen := r.Intn(30)
-	s1Info.Confounder, err = base62.RandomWithReader(confLen, r)
+
+	s1Info := &tokens.S1TokenInfo{
+		Token:      token,
+		Confounder: make([]byte, r.Intn(30)),
+	}
+	_, err := r.Read(s1Info.Confounder)
 	if err != nil {
 		// Whatevs
-		if confLen%2 == 0 {
-			s1Info.Confounder = "Clue (1985)"
-		} else {
-			s1Info.Confounder = "DS9 >> TNG"
+		switch r.Intn(2) {
+		case 0:
+			s1Info.Confounder = []byte("Clue (1985)")
+		default:
+			s1Info.Confounder = []byte("DS9 >> TNG")
 		}
 	}
 

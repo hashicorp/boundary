@@ -6,5 +6,5 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/token
 
 message S1TokenInfo {
 	string token = 10;
-	string confounder = 20;
+	bytes confounder = 20;
 }
