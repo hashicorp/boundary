@@ -113,7 +113,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 				Path:   req.URL.Path,
 				Method: req.Method,
 			}
-			requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = GetTokenFromRequest(logger, kms, req)
+			requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = GetTokenFromRequest(logger, kms, req)
 			assert.Equal(t, tc.tokenFormat, requestInfo.TokenFormat)
 
 			if tc.userId == "" {
@@ -124,6 +124,8 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 			v, ok := ctx.Value(verifierKey).(*verifier)
 			require.True(t, ok)
 			require.NotNil(t, v)
+
+			v.decryptToken()
 
 			at, err := tokenRepo.ValidateToken(ctx, v.requestInfo.PublicId, v.requestInfo.Token)
 			require.NoError(t, err)
