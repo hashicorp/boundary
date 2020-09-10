@@ -361,7 +361,6 @@ func TestRepository_ValidateToken(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			// time.Sleep(1 * time.Second)
 			got, err := repo.ValidateToken(context.Background(), tt.id, tt.token)
 
 			if tt.wantErr != nil {
@@ -473,7 +472,6 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 			at, err := repo.CreateAuthToken(ctx, iamUser, baseAT.GetAuthAccountId())
 			require.NoError(err)
 
-			// time.Sleep(10 * time.Millisecond)
 			got, err := repo.ValidateToken(ctx, at.GetPublicId(), at.GetToken())
 			require.NoError(err)
 
