@@ -111,10 +111,10 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 	rlen := make([]byte, 1)
 	_, err := rand.Read(rlen)
 	if err != nil {
-		// Whatevs, default to 10
-		confLen = 10
+		// Whatevs, default to 15
+		confLen = 15
 	} else {
-		confLen = int(rlen[0]) % 20
+		confLen = int(rlen[0]) % 30
 	}
 	s1Info.Confounder, err = base62.Random(confLen)
 	if err != nil {
