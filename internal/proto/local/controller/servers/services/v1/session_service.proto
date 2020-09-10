@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package controller.servers.services.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/servers/services;services";
+
+import "google/protobuf/timestamp.proto";
+import "controller/servers/v1/servers.proto";
+
+service SessionService {
+	// Validate session allows a worker to retrieve session information from the controller.
+	// This endpoint validates the session
+	rpc ValidateSession(ValidateSessionRequest) returns (ValidateSessionResponse) {}
+}
+
+message ValidateSessionRequest {
+	// The session ID from the client
+	string id = 10;
+}
+
+// SessionResponse contains information necessary for a client to establish a session
+message ValidateSessionResponse {
+	// ID of the session job
+	string id = 10;
+
+	// The scope the job was created in
+	string scope_id = 20;
+
+	// The ID of the user that requested the session
+	string user_id = 30;
+
+	// Type of the session (e.g. tcp, ssh, etc.)
+	string type = 40;
+
+	// The endpoint to connect to, in a manner that makes sense for the type
+	string endpoint = 50;
+
+	// The certificate to use when connecting (or if using custom certs, to
+	// serve as the "login"). Raw DER bytes.
+	bytes certificate = 60;
+
+	// The private key to use when connecting (or if using custom certs, to pass
+	// as the "password").
+	bytes private_key = 70;
+
+	// After this time the connection will be expired, e.g. forcefully terminated
+	google.protobuf.Timestamp expiration_time = 80;
+
+	// Worker information. The first worker in the slice should be prioritized.
+	repeated WorkerInfo worker_info = 90;
+}
+
+message WorkerInfo {
+	// The address of the worker
+	string address = 10;
+}
