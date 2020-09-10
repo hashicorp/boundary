@@ -32,9 +32,9 @@ jobs:
     - name: Login
       uses: atlassian/gajira-login@v2.0.0
       env:
-        JIRA_BASE_URL: ${{ secrets.JIRA_SYNC_BASE_URL }}
-        JIRA_USER_EMAIL: ${{ secrets.JIRA_SYNC_USER_EMAIL }}
-        JIRA_API_TOKEN: ${{ secrets.JIRA_SYNC_API_TOKEN }}
+        JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
 
     - name: Set ticket type
       if: github.event.action == 'opened' && !steps.boundary-team-role.outputs.role
