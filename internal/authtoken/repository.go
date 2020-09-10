@@ -209,7 +209,9 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 
 	now := time.Now()
 	sinceLastAccessed := now.Sub(lastAccessed) + timeSkew
-	if now.After(exp.Add(-timeSkew)) || sinceLastAccessed >= maxStaleness {
+	fmt.Println(now)
+	fmt.Println(exp)
+	if now.After(exp) || now.Equal(exp) || sinceLastAccessed >= maxStaleness {
 		// If the token has expired or has become too stale, delete it from the DB.
 		_, err = r.writer.DoTx(
 			ctx,
@@ -225,7 +227,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 				return nil
 			})
 		if err != nil {
-			return nil, fmt.Errorf("validate token: %w", err)
+			return nil, err
 		}
 		return nil, nil
 	}
