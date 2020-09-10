@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/oplog"
 )
 
 // TODO (ICU-406): Make these fields configurable.
@@ -20,6 +19,7 @@ var (
 	lastAccessedUpdateDuration = 10 * time.Minute
 	maxStaleness               = 24 * time.Hour
 	maxTokenDuration           = 7 * 24 * time.Hour
+	timeSkew                   = time.Duration(0)
 )
 
 // A Repository stores and retrieves the persistent types in the authtoken
@@ -86,10 +86,6 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 	}
 	at.Token = token
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, fmt.Errorf("create: unable to get oplog wrapper: %w", err)
-	}
 	databaseWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, fmt.Errorf("create: unable to get database wrapper: %w", err)
@@ -122,12 +118,12 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 			at.AuthMethodId = acct.GetAuthMethodId()
 			at.IamUserId = acct.GetIamUserId()
 
-			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_CREATE)
 			newAuthToken = at.toWritableAuthToken()
 			if err := newAuthToken.encrypt(ctx, databaseWrapper); err != nil {
 				return err
 			}
-			if err := w.Create(ctx, newAuthToken, db.WithOplog(oplogWrapper, metadata)); err != nil {
+			// tokens are not replicated, so they don't need oplog entries.
+			if err := w.Create(ctx, newAuthToken); err != nil {
 				return err
 			}
 			newAuthToken.CtToken = nil
@@ -211,28 +207,28 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 		return nil, fmt.Errorf("validate token: last accessed time : %w", err)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, retAT.GetScopeId(), kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, fmt.Errorf("validate token: unable to get oplog wrapper: %w", err)
-	}
-
 	now := time.Now()
-	sinceLastAccessed := now.Sub(lastAccessed)
-	if now.After(exp) || sinceLastAccessed > maxStaleness {
+	sinceLastAccessed := now.Sub(lastAccessed) + timeSkew
+	// TODO (jimlambrt 9/2020) - investigate the need for the timeSkew and see
+	// if it can be eliminated.
+	if now.After(exp.Add(-timeSkew)) || sinceLastAccessed >= maxStaleness {
 		// If the token has expired or has become too stale, delete it from the DB.
 		_, err = r.writer.DoTx(
 			ctx,
 			db.StdRetryCnt,
 			db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
-				metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_DELETE)
 				delAt := retAT.toWritableAuthToken()
-				if _, err := w.Delete(ctx, delAt, db.WithOplog(oplogWrapper, metadata)); err != nil {
+				// tokens are not replicated, so they don't need oplog entries.
+				if _, err := w.Delete(ctx, delAt); err != nil {
 					return fmt.Errorf("validate token: delete auth token: %w", err)
 				}
 				retAT = nil
 				return nil
 			})
+		if err != nil {
+			return nil, err
+		}
 		return nil, nil
 	}
 
@@ -251,16 +247,15 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			db.StdRetryCnt,
 			db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
-				metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_UPDATE)
 				at := retAT.toWritableAuthToken()
 				// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
-				// trigger to set ApproximateLastAccessTime to the commit timestamp.
+				// trigger to set ApproximateLastAccessTime to the commit
+				// timestamp. Tokens are not replicated, so they don't need oplog entries.
 				rowsUpdated, err := w.Update(
 					ctx,
 					at,
 					nil,
 					[]string{"ApproximateLastAccessTime"},
-					db.WithOplog(oplogWrapper, metadata),
 				)
 				if err == nil && rowsUpdated > 1 {
 					return db.ErrMultipleRecords
@@ -317,20 +312,15 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		return db.NoRowsAffected, nil
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeOplog)
-	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete: unable to get oplog wrapper: %w", err)
-	}
-
 	var rowsDeleted int
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_DELETE)
 			deleteAT := at.toWritableAuthToken()
-			rowsDeleted, err = w.Delete(ctx, deleteAT, db.WithOplog(oplogWrapper, metadata))
+			// tokens are not replicated, so they don't need oplog entries.
+			rowsDeleted, err = w.Delete(ctx, deleteAT)
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
 			}
@@ -350,14 +340,4 @@ func allocAuthToken() *AuthToken {
 		AuthToken: &store.AuthToken{},
 	}
 	return fresh
-}
-
-func newAuthTokenMetadata(at *AuthToken, op oplog.OpType) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"scope-id":           []string{at.GetScopeId()},
-		"resource-public-id": []string{at.GetPublicId()},
-		"resource-type":      []string{"auth token"},
-		"op-type":            []string{op.String()},
-	}
-	return metadata
 }
