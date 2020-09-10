@@ -19,7 +19,7 @@ var (
 	lastAccessedUpdateDuration = 10 * time.Minute
 	maxStaleness               = 24 * time.Hour
 	maxTokenDuration           = 7 * 24 * time.Hour
-	timeSkew                   = 20 * time.Millisecond
+	timeSkew                   = time.Duration(0)
 )
 
 // A Repository stores and retrieves the persistent types in the authtoken

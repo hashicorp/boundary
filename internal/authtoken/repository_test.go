@@ -295,6 +295,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 func TestRepository_ValidateToken(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	lastAccessedUpdateDuration = 0
+	timeSkew = 20 * time.Millisecond
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -466,6 +467,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 
 			maxStaleness = tt.staleDuration
 			maxTokenDuration = tt.expirationDuration
+			timeSkew = 20 * time.Millisecond
 
 			ctx := context.Background()
 			at, err := repo.CreateAuthToken(ctx, iamUser, baseAT.GetAuthAccountId())
