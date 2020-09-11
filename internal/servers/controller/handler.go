@@ -20,7 +20,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	wservices "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	wspbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
@@ -343,7 +343,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			}
 		}
 
-		var workers []*wservices.WorkerInfo
+		var workers []*wspbs.WorkerInfo
 		repo, err := c.ServersRepoFn()
 		if err != nil {
 			errorResp(err)
@@ -355,7 +355,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 		for _, v := range servers {
-			workers = append(workers, &wservices.WorkerInfo{Address: v.Address})
+			workers = append(workers, &wspbs.WorkerInfo{Address: v.Address})
 		}
 
 		wrapper, err := c.kms.GetWrapper(r.Context(), scope.Global.String(), kms.KeyPurposeSessions)
@@ -391,7 +391,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 
-		ret := &wservices.ValidateSessionResponse{
+		ret := &wspbs.ValidateSessionResponse{
 			Id:             jobId,
 			ScopeId:        scope.Global.String(),
 			UserId:         "u_1234567890",
