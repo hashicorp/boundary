@@ -51,15 +51,29 @@ func TestHost_New(t *testing.T) {
 			wantWriteErr: true,
 		},
 		{
-			name: "minimum-address",
+			name: "address-to-short",
 			args: args{
 				catalogId: cat.GetPublicId(),
-				opts:      []Option{WithAddress("1")},
+				opts:      []Option{WithAddress("1234567")},
 			},
 			want: &Host{
 				Host: &store.Host{
 					CatalogId: cat.GetPublicId(),
-					Address:   "1",
+					Address:   "1234567",
+				},
+			},
+			wantWriteErr: true,
+		},
+		{
+			name: "minimum-address",
+			args: args{
+				catalogId: cat.GetPublicId(),
+				opts:      []Option{WithAddress("12345678")},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId: cat.GetPublicId(),
+					Address:   "12345678",
 				},
 			},
 		},

@@ -37,8 +37,8 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 	if scopeId == "" {
 		return nil, fmt.Errorf("create: static host: no scopeId: %w", db.ErrInvalidParameter)
 	}
-	if h.Address == "" {
-		return nil, fmt.Errorf("create: static host: no address: %w", ErrInvalidAddress)
+	if len(h.Address) <= MinHostAddressLength || len(h.Address) >= MaxHostAddressLength {
+		return nil, fmt.Errorf("create: static host: bad address: %w", ErrInvalidAddress)
 	}
 	h = h.clone()
 

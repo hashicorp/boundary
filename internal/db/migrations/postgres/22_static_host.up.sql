@@ -84,7 +84,7 @@ begin;
     description text,
     address text not null
       check(
-        length(trim(address)) > 0
+        length(trim(address)) > 7
         and
         length(trim(address)) < 256
       ),
