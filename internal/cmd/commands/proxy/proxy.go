@@ -17,7 +17,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
+	wpbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -147,11 +147,12 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	sessionInfo := new(pb.Session)
-	if err := proto.Unmarshal(marshaled, sessionInfo); err != nil {
+	sessionResponseInfo := new(wpbs.GetSessionResponse)
+	if err := proto.Unmarshal(marshaled, sessionResponseInfo); err != nil {
 		c.UI.Error(fmt.Errorf("Unable to proto-decode authorization string: %w", err).Error())
 		return 1
 	}
+	sessionInfo := sessionResponseInfo.GetSession()
 
 	if len(sessionInfo.GetWorkerInfo()) == 0 {
 		c.UI.Error("No workers found in authorization string")
