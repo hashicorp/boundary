@@ -131,38 +131,6 @@ begin;
       references session_termination_reason_enm (name)
       on delete restrict
       on update cascade,
-    -- the network address of the host the worker proxied a connection to for
-    -- the user
-    address text -- can be null
-      check(
-        length(trim(address)) > 7
-        and
-        length(trim(address)) < 256
-      ),
-    -- the network port at the address of the host the worker proxied a
-    -- connection to for the user
-    port integer -- can be null
-      check(
-        port > 0
-        and
-        port <= 65535
-      ),
-    -- the total number of bytes received by the worker from the user and sent
-    -- to the host for this session
-    bytes_up bigint -- can be null
-      check (
-        bytes_up is null
-        or
-        bytes_up >= 0
-      ),
-    -- the total number of bytes received by the worker from the host and sent
-    -- to the user for this session
-    bytes_down bigint -- can be null
-      check (
-        bytes_down is null
-        or
-        bytes_down >= 0
-      ),
     version wt_version,
     create_time wt_timestamp,
     update_time wt_timestamp
@@ -239,7 +207,7 @@ begin;
   create table session_state_enm (
     name text primary key
       check (
-        name in ('pending', 'active', 'canceling', 'closed')
+        name in ('pending', 'active', 'canceling', 'terminated')
       )
   );
 
@@ -248,9 +216,10 @@ begin;
     ('pending'),
     ('active'),
     ('canceling'),
-    ('closed');
+    ('terminated');
 
 /*
+
 
                                               ┌────────────────┐
          start                                │                │
@@ -262,7 +231,7 @@ begin;
            ▼                            │                            ▼
   ┌────────────────┐           ┌────────────────┐           ┌────────────────┐
   │                │           │                │           │                │
-  │    Pending     │           │   Connected    │           │     Closed     │
+  │    Pending     │           │     Active     │           │   Terminated   │
   │                │──────────▶│                │──────────▶│                │
   │                │           │                │           │                │
   └────────────────┘           └────────────────┘           └────────────────┘
