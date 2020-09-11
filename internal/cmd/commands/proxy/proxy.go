@@ -18,10 +18,13 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wspb"
 )
 
 var _ cli.Command = (*Command)(nil)
@@ -106,6 +109,13 @@ func (c *Command) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
+		return 1
+	}
+
+	var handshake proxy.Handshake
+	var err error
+	if handshake.TofuToken, err = base62.Random(20); err != nil {
+		c.UI.Error(fmt.Errorf("Could not derive random bytes for tofu token: %w", err).Error())
 		return 1
 	}
 
@@ -224,6 +234,11 @@ func (c *Command) Run(args []string) int {
 	negProto := resp.Header.Get("Sec-WebSocket-Protocol")
 	if negProto != globals.TcpProxyV1 {
 		c.UI.Error(fmt.Sprintf("Unexpected negotiated protocol: %s", negProto))
+		return 1
+	}
+
+	if err := wspb.Write(c.Context, conn, &handshake); err != nil {
+		c.UI.Error(fmt.Errorf("error sending tofu token to worker: %w", err).Error())
 		return 1
 	}
 
