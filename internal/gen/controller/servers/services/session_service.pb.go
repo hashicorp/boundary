@@ -9,7 +9,8 @@ package services
 import (
 	context "context"
 	proto "github.com/golang/protobuf/proto"
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	_ "github.com/golang/protobuf/ptypes/timestamp"
+	sessions "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	_ "github.com/hashicorp/boundary/internal/servers"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -31,7 +32,7 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-type ValidateSessionRequest struct {
+type GetSessionRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -40,8 +41,8 @@ type ValidateSessionRequest struct {
 	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
 }
 
-func (x *ValidateSessionRequest) Reset() {
-	*x = ValidateSessionRequest{}
+func (x *GetSessionRequest) Reset() {
+	*x = GetSessionRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -49,13 +50,13 @@ func (x *ValidateSessionRequest) Reset() {
 	}
 }
 
-func (x *ValidateSessionRequest) String() string {
+func (x *GetSessionRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ValidateSessionRequest) ProtoMessage() {}
+func (*GetSessionRequest) ProtoMessage() {}
 
-func (x *ValidateSessionRequest) ProtoReflect() protoreflect.Message {
+func (x *GetSessionRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -67,12 +68,12 @@ func (x *ValidateSessionRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ValidateSessionRequest.ProtoReflect.Descriptor instead.
-func (*ValidateSessionRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetSessionRequest.ProtoReflect.Descriptor instead.
+func (*GetSessionRequest) Descriptor() ([]byte, []int) {
 	return file_controller_servers_services_v1_session_service_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ValidateSessionRequest) GetId() string {
+func (x *GetSessionRequest) GetId() string {
 	if x != nil {
 		return x.Id
 	}
@@ -80,35 +81,16 @@ func (x *ValidateSessionRequest) GetId() string {
 }
 
 // SessionResponse contains information necessary for a client to establish a session
-type ValidateSessionResponse struct {
+type GetSessionResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// ID of the session job
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
-	// The scope the job was created in
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`
-	// The ID of the user that requested the session
-	UserId string `protobuf:"bytes,30,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	// Type of the session (e.g. tcp, ssh, etc.)
-	Type string `protobuf:"bytes,40,opt,name=type,proto3" json:"type,omitempty"`
-	// The endpoint to connect to, in a manner that makes sense for the type
-	Endpoint string `protobuf:"bytes,50,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	// The certificate to use when connecting (or if using custom certs, to
-	// serve as the "login"). Raw DER bytes.
-	Certificate []byte `protobuf:"bytes,60,opt,name=certificate,proto3" json:"certificate,omitempty"`
-	// The private key to use when connecting (or if using custom certs, to pass
-	// as the "password").
-	PrivateKey []byte `protobuf:"bytes,70,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
-	// After this time the connection will be expired, e.g. forcefully terminated
-	ExpirationTime *timestamp.Timestamp `protobuf:"bytes,80,opt,name=expiration_time,json=expirationTime,proto3" json:"expiration_time,omitempty"`
-	// Worker information. The first worker in the slice should be prioritized.
-	WorkerInfo []*WorkerInfo `protobuf:"bytes,90,rep,name=worker_info,json=workerInfo,proto3" json:"worker_info,omitempty"`
+	Session *sessions.Session `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
 }
 
-func (x *ValidateSessionResponse) Reset() {
-	*x = ValidateSessionResponse{}
+func (x *GetSessionResponse) Reset() {
+	*x = GetSessionResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -116,13 +98,13 @@ func (x *ValidateSessionResponse) Reset() {
 	}
 }
 
-func (x *ValidateSessionResponse) String() string {
+func (x *GetSessionResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ValidateSessionResponse) ProtoMessage() {}
+func (*GetSessionResponse) ProtoMessage() {}
 
-func (x *ValidateSessionResponse) ProtoReflect() protoreflect.Message {
+func (x *GetSessionResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -134,120 +116,16 @@ func (x *ValidateSessionResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ValidateSessionResponse.ProtoReflect.Descriptor instead.
-func (*ValidateSessionResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetSessionResponse.ProtoReflect.Descriptor instead.
+func (*GetSessionResponse) Descriptor() ([]byte, []int) {
 	return file_controller_servers_services_v1_session_service_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ValidateSessionResponse) GetId() string {
+func (x *GetSessionResponse) GetSession() *sessions.Session {
 	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *ValidateSessionResponse) GetScopeId() string {
-	if x != nil {
-		return x.ScopeId
-	}
-	return ""
-}
-
-func (x *ValidateSessionResponse) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-func (x *ValidateSessionResponse) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
-}
-
-func (x *ValidateSessionResponse) GetEndpoint() string {
-	if x != nil {
-		return x.Endpoint
-	}
-	return ""
-}
-
-func (x *ValidateSessionResponse) GetCertificate() []byte {
-	if x != nil {
-		return x.Certificate
+		return x.Session
 	}
 	return nil
-}
-
-func (x *ValidateSessionResponse) GetPrivateKey() []byte {
-	if x != nil {
-		return x.PrivateKey
-	}
-	return nil
-}
-
-func (x *ValidateSessionResponse) GetExpirationTime() *timestamp.Timestamp {
-	if x != nil {
-		return x.ExpirationTime
-	}
-	return nil
-}
-
-func (x *ValidateSessionResponse) GetWorkerInfo() []*WorkerInfo {
-	if x != nil {
-		return x.WorkerInfo
-	}
-	return nil
-}
-
-type WorkerInfo struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// The address of the worker
-	Address string `protobuf:"bytes,10,opt,name=address,proto3" json:"address,omitempty"`
-}
-
-func (x *WorkerInfo) Reset() {
-	*x = WorkerInfo{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[2]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *WorkerInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WorkerInfo) ProtoMessage() {}
-
-func (x *WorkerInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[2]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WorkerInfo.ProtoReflect.Descriptor instead.
-func (*WorkerInfo) Descriptor() ([]byte, []int) {
-	return file_controller_servers_services_v1_session_service_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *WorkerInfo) GetAddress() string {
-	if x != nil {
-		return x.Address
-	}
-	return ""
 }
 
 var File_controller_servers_services_v1_session_service_proto protoreflect.FileDescriptor
@@ -262,50 +140,33 @@ var file_controller_servers_services_v1_session_service_proto_rawDesc = []byte{
 	0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d,
 	0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x23, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c,
 	0x6c, 0x65, 0x72, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2f, 0x76, 0x31, 0x2f, 0x73,
-	0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x28, 0x0a, 0x16,
-	0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x22, 0xe2, 0x02, 0x0a, 0x17, 0x56, 0x61, 0x6c, 0x69, 0x64,
-	0x61, 0x74, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02,
-	0x69, 0x64, 0x12, 0x19, 0x0a, 0x08, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x14,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x49, 0x64, 0x12, 0x17, 0x0a,
-	0x07, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
-	0x75, 0x73, 0x65, 0x72, 0x49, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x28,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x65, 0x6e,
-	0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x18, 0x32, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x65, 0x6e,
-	0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x12, 0x20, 0x0a, 0x0b, 0x63, 0x65, 0x72, 0x74, 0x69, 0x66,
-	0x69, 0x63, 0x61, 0x74, 0x65, 0x18, 0x3c, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0b, 0x63, 0x65, 0x72,
-	0x74, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x65, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x72, 0x69, 0x76,
-	0x61, 0x74, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x46, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0a, 0x70,
-	0x72, 0x69, 0x76, 0x61, 0x74, 0x65, 0x4b, 0x65, 0x79, 0x12, 0x43, 0x0a, 0x0f, 0x65, 0x78, 0x70,
-	0x69, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x50, 0x20, 0x01,
-	0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x62, 0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x0e,
-	0x65, 0x78, 0x70, 0x69, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x4b,
-	0x0a, 0x0b, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x5f, 0x69, 0x6e, 0x66, 0x6f, 0x18, 0x5a, 0x20,
-	0x03, 0x28, 0x0b, 0x32, 0x2a, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72,
-	0x2e, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
-	0x73, 0x2e, 0x76, 0x31, 0x2e, 0x57, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x52,
-	0x0a, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x22, 0x26, 0x0a, 0x0a, 0x57,
-	0x6f, 0x72, 0x6b, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x18, 0x0a, 0x07, 0x61, 0x64, 0x64,
-	0x72, 0x65, 0x73, 0x73, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x64, 0x64, 0x72,
-	0x65, 0x73, 0x73, 0x32, 0x97, 0x01, 0x0a, 0x0e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x53,
-	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x84, 0x01, 0x0a, 0x0f, 0x56, 0x61, 0x6c, 0x69, 0x64,
-	0x61, 0x74, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x36, 0x2e, 0x63, 0x6f, 0x6e,
-	0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2e,
-	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x56, 0x61, 0x6c, 0x69,
-	0x64, 0x61, 0x74, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x1a, 0x37, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e,
-	0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73,
-	0x2e, 0x76, 0x31, 0x2e, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x65, 0x53, 0x65, 0x73, 0x73,
-	0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x51, 0x5a,
-	0x4f, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68,
-	0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69,
-	0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74,
-	0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2f, 0x73,
-	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x32, 0x63, 0x6f,
+	0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65, 0x73,
+	0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2f, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x2f,
+	0x76, 0x31, 0x2f, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x22, 0x23, 0x0a, 0x11, 0x47, 0x65, 0x74, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x02, 0x69, 0x64, 0x22, 0x5d, 0x0a, 0x12, 0x47, 0x65, 0x74, 0x53, 0x65, 0x73, 0x73,
+	0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x47, 0x0a, 0x07, 0x73,
+	0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2d, 0x2e, 0x63,
+	0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x72, 0x65,
+	0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2e, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73,
+	0x2e, 0x76, 0x31, 0x2e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x07, 0x73, 0x65, 0x73,
+	0x73, 0x69, 0x6f, 0x6e, 0x32, 0x87, 0x01, 0x0a, 0x0e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e,
+	0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x75, 0x0a, 0x0a, 0x47, 0x65, 0x74, 0x53, 0x65,
+	0x73, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x31, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c,
+	0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69,
+	0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f,
+	0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x32, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72,
+	0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2e, 0x73, 0x65,
+	0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x65, 0x73,
+	0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x51,
+	0x5a, 0x4f, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73,
+	0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f,
+	0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e,
+	0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2f,
+	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
+	0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -320,23 +181,21 @@ func file_controller_servers_services_v1_session_service_proto_rawDescGZIP() []b
 	return file_controller_servers_services_v1_session_service_proto_rawDescData
 }
 
-var file_controller_servers_services_v1_session_service_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_controller_servers_services_v1_session_service_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_controller_servers_services_v1_session_service_proto_goTypes = []interface{}{
-	(*ValidateSessionRequest)(nil),  // 0: controller.servers.services.v1.ValidateSessionRequest
-	(*ValidateSessionResponse)(nil), // 1: controller.servers.services.v1.ValidateSessionResponse
-	(*WorkerInfo)(nil),              // 2: controller.servers.services.v1.WorkerInfo
-	(*timestamp.Timestamp)(nil),     // 3: google.protobuf.Timestamp
+	(*GetSessionRequest)(nil),  // 0: controller.servers.services.v1.GetSessionRequest
+	(*GetSessionResponse)(nil), // 1: controller.servers.services.v1.GetSessionResponse
+	(*sessions.Session)(nil),   // 2: controller.api.resources.sessions.v1.Session
 }
 var file_controller_servers_services_v1_session_service_proto_depIdxs = []int32{
-	3, // 0: controller.servers.services.v1.ValidateSessionResponse.expiration_time:type_name -> google.protobuf.Timestamp
-	2, // 1: controller.servers.services.v1.ValidateSessionResponse.worker_info:type_name -> controller.servers.services.v1.WorkerInfo
-	0, // 2: controller.servers.services.v1.SessionService.ValidateSession:input_type -> controller.servers.services.v1.ValidateSessionRequest
-	1, // 3: controller.servers.services.v1.SessionService.ValidateSession:output_type -> controller.servers.services.v1.ValidateSessionResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 0: controller.servers.services.v1.GetSessionResponse.session:type_name -> controller.api.resources.sessions.v1.Session
+	0, // 1: controller.servers.services.v1.SessionService.GetSession:input_type -> controller.servers.services.v1.GetSessionRequest
+	1, // 2: controller.servers.services.v1.SessionService.GetSession:output_type -> controller.servers.services.v1.GetSessionResponse
+	2, // [2:3] is the sub-list for method output_type
+	1, // [1:2] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_controller_servers_services_v1_session_service_proto_init() }
@@ -346,7 +205,7 @@ func file_controller_servers_services_v1_session_service_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_controller_servers_services_v1_session_service_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ValidateSessionRequest); i {
+			switch v := v.(*GetSessionRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -358,19 +217,7 @@ func file_controller_servers_services_v1_session_service_proto_init() {
 			}
 		}
 		file_controller_servers_services_v1_session_service_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ValidateSessionResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_controller_servers_services_v1_session_service_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WorkerInfo); i {
+			switch v := v.(*GetSessionResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -388,7 +235,7 @@ func file_controller_servers_services_v1_session_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_servers_services_v1_session_service_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
@@ -416,7 +263,7 @@ const _ = grpc.SupportPackageIsVersion6
 type SessionServiceClient interface {
 	// Validate session allows a worker to retrieve session information from the controller.
 	// This endpoint validates the session
-	ValidateSession(ctx context.Context, in *ValidateSessionRequest, opts ...grpc.CallOption) (*ValidateSessionResponse, error)
+	GetSession(ctx context.Context, in *GetSessionRequest, opts ...grpc.CallOption) (*GetSessionResponse, error)
 }
 
 type sessionServiceClient struct {
@@ -427,9 +274,9 @@ func NewSessionServiceClient(cc grpc.ClientConnInterface) SessionServiceClient {
 	return &sessionServiceClient{cc}
 }
 
-func (c *sessionServiceClient) ValidateSession(ctx context.Context, in *ValidateSessionRequest, opts ...grpc.CallOption) (*ValidateSessionResponse, error) {
-	out := new(ValidateSessionResponse)
-	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.SessionService/ValidateSession", in, out, opts...)
+func (c *sessionServiceClient) GetSession(ctx context.Context, in *GetSessionRequest, opts ...grpc.CallOption) (*GetSessionResponse, error) {
+	out := new(GetSessionResponse)
+	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.SessionService/GetSession", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -440,35 +287,35 @@ func (c *sessionServiceClient) ValidateSession(ctx context.Context, in *Validate
 type SessionServiceServer interface {
 	// Validate session allows a worker to retrieve session information from the controller.
 	// This endpoint validates the session
-	ValidateSession(context.Context, *ValidateSessionRequest) (*ValidateSessionResponse, error)
+	GetSession(context.Context, *GetSessionRequest) (*GetSessionResponse, error)
 }
 
 // UnimplementedSessionServiceServer can be embedded to have forward compatible implementations.
 type UnimplementedSessionServiceServer struct {
 }
 
-func (*UnimplementedSessionServiceServer) ValidateSession(context.Context, *ValidateSessionRequest) (*ValidateSessionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ValidateSession not implemented")
+func (*UnimplementedSessionServiceServer) GetSession(context.Context, *GetSessionRequest) (*GetSessionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSession not implemented")
 }
 
 func RegisterSessionServiceServer(s *grpc.Server, srv SessionServiceServer) {
 	s.RegisterService(&_SessionService_serviceDesc, srv)
 }
 
-func _SessionService_ValidateSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ValidateSessionRequest)
+func _SessionService_GetSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSessionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SessionServiceServer).ValidateSession(ctx, in)
+		return srv.(SessionServiceServer).GetSession(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/controller.servers.services.v1.SessionService/ValidateSession",
+		FullMethod: "/controller.servers.services.v1.SessionService/GetSession",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SessionServiceServer).ValidateSession(ctx, req.(*ValidateSessionRequest))
+		return srv.(SessionServiceServer).GetSession(ctx, req.(*GetSessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -478,8 +325,8 @@ var _SessionService_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*SessionServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ValidateSession",
-			Handler:    _SessionService_ValidateSession_Handler,
+			MethodName: "GetSession",
+			Handler:    _SessionService_GetSession_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

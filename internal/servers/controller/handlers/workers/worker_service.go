@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -71,32 +72,32 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	return ret, nil
 }
 
-func (ws *workerServiceServer) ValidateSession(ctx context.Context, req *pbs.ValidateSessionRequest) (*pbs.ValidateSessionResponse, error) {
+func (ws *workerServiceServer) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*pbs.GetSessionResponse, error) {
 	ws.logger.Trace("got validate session request from worker", "job_id", req.GetId())
 
 	// Look up the job info
 	storedSessionInfo, loaded := ws.jobMap.LoadAndDelete(req.GetId())
 	if !loaded {
-		return &pbs.ValidateSessionResponse{}, status.Errorf(codes.PermissionDenied, "Unknown job ID: %v", req.GetId())
+		return nil, status.Errorf(codes.PermissionDenied, "Unknown job ID: %v", req.GetId())
 	}
-	sessionInfo := storedSessionInfo.(*pbs.ValidateSessionResponse)
+	sessionInfo := storedSessionInfo.(*pb.Session)
 
 	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ScopeId, kms.KeyPurposeSessions)
 	if err != nil {
-		return &pbs.ValidateSessionResponse{}, status.Errorf(codes.Internal, "Error getting sessions wrapper: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error getting sessions wrapper: %v", err)
 	}
 
 	// Derive the private key, which should match. Deriving on both ends allows
 	// us to not store it in the DB.
 	_, privKey, err := sessions.DeriveED25519Key(wrapper, sessionInfo.GetUserId(), req.GetId())
 	if err != nil {
-		return &pbs.ValidateSessionResponse{}, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
 	}
 
 	if sessionInfo.ExpirationTime.GetSeconds() > 0 {
 		timeDiff := time.Until(sessionInfo.GetExpirationTime().AsTime())
 		if timeDiff < 0 {
-			return &pbs.ValidateSessionResponse{}, status.Errorf(codes.OutOfRange, "Session has already expired")
+			return nil, status.Errorf(codes.OutOfRange, "Session has already expired")
 		}
 		defer func() {
 			time.AfterFunc(timeDiff, func() {
@@ -106,5 +107,5 @@ func (ws *workerServiceServer) ValidateSession(ctx context.Context, req *pbs.Val
 	}
 
 	sessionInfo.PrivateKey = privKey
-	return sessionInfo, nil
+	return &pbs.GetSessionResponse{Session: sessionInfo}, nil
 }

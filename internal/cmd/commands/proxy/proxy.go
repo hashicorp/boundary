@@ -17,7 +17,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -147,7 +147,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	sessionInfo := new(pbs.ValidateSessionResponse)
+	sessionInfo := new(pb.Session)
 	if err := proto.Unmarshal(marshaled, sessionInfo); err != nil {
 		c.UI.Error(fmt.Errorf("Unable to proto-decode authorization string: %w", err).Error())
 		return 1
