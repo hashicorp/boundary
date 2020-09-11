@@ -83,7 +83,7 @@ If you have the following requirements met locally:
 
 You can get up and running with Boundary quickly. Simply run:
 
-  ```make dev```
+  ```make tools && make dev```
 
 This will build Boundary. Once complete, run Boundary in `dev` mode:
 
