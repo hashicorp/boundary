@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	MinHostAddressLength = 7
+	MinHostAddressLength = 3
 	MaxHostAddressLength = 256
 )
 

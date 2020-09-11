@@ -3,6 +3,7 @@ package hosts
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
@@ -373,7 +374,7 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 				}
 
 				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.address") {
-					if attrs.GetAddress() == nil || len(attrs.GetAddress().GetValue()) <= static.MinHostAddressLength || len(attrs.GetAddress().GetValue()) >= static.MaxHostAddressLength {
+					if attrs.GetAddress() == nil || len(strings.TrimSpace(attrs.GetAddress().GetValue())) <= static.MinHostAddressLength || len(strings.TrimSpace(attrs.GetAddress().GetValue())) >= static.MaxHostAddressLength {
 						badFields["attributes.address"] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
 					}
 				}
