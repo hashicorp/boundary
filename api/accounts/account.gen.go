@@ -2,6 +2,7 @@
 package accounts
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -26,6 +27,17 @@ type Account struct {
 	Type         string                 `json:"type,omitempty"`
 	AuthMethodId string                 `json:"auth_method_id,omitempty"`
 	Attributes   map[string]interface{} `json:"attributes,omitempty"`
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n Account) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n Account) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 
 // Client is a client for this collection

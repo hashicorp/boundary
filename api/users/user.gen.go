@@ -2,6 +2,7 @@
 package users
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -24,6 +25,17 @@ type User struct {
 	CreatedTime time.Time         `json:"created_time,omitempty"`
 	UpdatedTime time.Time         `json:"updated_time,omitempty"`
 	Version     uint32            `json:"version,omitempty"`
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n User) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n User) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 
 // Client is a client for this collection

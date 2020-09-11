@@ -32,9 +32,9 @@ jobs:
     - name: Login
       uses: atlassian/gajira-login@v2.0.0
       env:
-        JIRA_BASE_URL: ${{ secrets.JIRA_SYNC_BASE_URL }}
-        JIRA_USER_EMAIL: ${{ secrets.JIRA_SYNC_USER_EMAIL }}
-        JIRA_API_TOKEN: ${{ secrets.JIRA_SYNC_API_TOKEN }}
+        JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
 
     - name: Set ticket type
       if: github.event.action == 'opened' && !steps.boundary-team-role.outputs.role
@@ -56,7 +56,7 @@ jobs:
         description: "${{ github.event.issue.body || github.event.pull_request.body }}\n\n_Created from GitHub Action for ${{ github.event.issue.html_url || github.event.pull_request.html_url }}, from ${{ github.actor }}_"
         # customfield_10089 is Issue Link custom field
         # customfield_10091 is team custom field
-        extraFields: '{"fixVersions": [{"name": "TBD"}], "customfield_10091": ["product"], "customfield_10089": "${{ github.event.issue.html_url || github.event.pull_request.html_url }}"}'
+        extraFields: '{"customfield_10089": "${{ github.event.issue.html_url || github.event.pull_request.html_url }}"}'
 
     - name: Search
       if: github.event.action != 'opened'

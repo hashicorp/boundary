@@ -2,6 +2,7 @@
 package hosts
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -27,6 +28,17 @@ type Host struct {
 	Type          string                 `json:"type,omitempty"`
 	HostSetIds    []string               `json:"host_set_ids,omitempty"`
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n Host) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n Host) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 
 // Client is a client for this collection

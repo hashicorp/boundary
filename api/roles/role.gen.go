@@ -2,6 +2,7 @@
 package roles
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -29,6 +30,17 @@ type Role struct {
 	Principals   []*Principal      `json:"principals,omitempty"`
 	GrantStrings []string          `json:"grant_strings,omitempty"`
 	Grants       []*Grant          `json:"grants,omitempty"`
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n Role) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n Role) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 
 // Client is a client for this collection
