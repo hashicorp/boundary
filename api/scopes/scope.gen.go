@@ -2,6 +2,7 @@
 package scopes
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -24,6 +25,17 @@ type Scope struct {
 	UpdatedTime time.Time  `json:"updated_time,omitempty"`
 	Version     uint32     `json:"version,omitempty"`
 	Type        string     `json:"type,omitempty"`
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n Scope) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n Scope) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 
 // Client is a client for this collection

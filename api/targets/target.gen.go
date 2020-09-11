@@ -2,6 +2,7 @@
 package targets
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -28,6 +29,17 @@ type Target struct {
 	HostSetIds  []string          `json:"host_set_ids,omitempty"`
 	HostSets    []*HostSet        `json:"host_sets,omitempty"`
 	DefaultPort uint32            `json:"default_port,omitempty"`
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n Target) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n Target) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 
 // Client is a client for this collection

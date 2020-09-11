@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/servers/controller"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {
@@ -46,6 +47,7 @@ type option struct {
 	setDefaultAuthMethodId       bool
 	setDefaultLoginName          bool
 	setDefaultPassword           bool
+	setRecoveryKms               bool
 }
 
 type Option func(*option) error
@@ -123,6 +125,14 @@ func WithDefaultPassword(pw string) Option {
 	return func(c *option) error {
 		c.setDefaultPassword = true
 		c.tcOptions.DefaultPassword = pw
+		return nil
+	}
+}
+
+func WithRecoveryKms(wrapper wrapping.Wrapper) Option {
+	return func(c *option) error {
+		c.setRecoveryKms = true
+		c.tcOptions.RecoveryKms = wrapper
 		return nil
 	}
 }
