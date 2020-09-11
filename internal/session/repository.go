@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/oplog"
 )
 
 // Clonable provides a cloning interface
@@ -96,11 +95,6 @@ func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt
 		return nil, nil, fmt.Errorf("create session: %w", err)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, newSession.ScopeId, kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, nil, fmt.Errorf("create session: unable to get oplog wrapper: %w", err)
-	}
-
 	var returnedSession *Session
 	var returnedState *State
 	_, err = r.writer.DoTx(
@@ -110,8 +104,7 @@ func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt
 		func(read db.Reader, w db.Writer) error {
 			returnedSession = newSession.Clone().(*Session)
 			returnedSession.PublicId = id
-			metadata := returnedSession.oplog(oplog.OpType_OP_TYPE_CREATE)
-			if err = w.Create(ctx, returnedSession, db.WithOplog(oplogWrapper, metadata)); err != nil {
+			if err = w.Create(ctx, returnedSession); err != nil {
 				return err
 			}
 			var foundStates []*State
@@ -199,22 +192,18 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...
 	if err := r.reader.LookupByPublicId(ctx, &session); err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete session: failed %w for %s", err, publicId)
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, session.ScopeId, kms.KeyPurposeOplog)
-	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
-	}
-	metadata := session.oplog(oplog.OpType_OP_TYPE_DELETE)
+
 	var rowsDeleted int
-	_, err = r.writer.DoTx(
+	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			deleteSession := session.Clone()
+			var err error
 			rowsDeleted, err = w.Delete(
 				ctx,
 				deleteSession,
-				db.WithOplog(oplogWrapper, metadata),
 			)
 			if err == nil && rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
@@ -267,44 +256,21 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: %w", db.ErrEmptyFieldMask)
 	}
 
-	var sessionScopeId string
-	switch {
-	case session.ScopeId != "":
-		sessionScopeId = session.ScopeId
-	default:
-		ses, _, err := r.LookupSession(ctx, session.PublicId)
-		if err != nil {
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: %w", err)
-		}
-		if ses == nil {
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: unable to look up session for %s: %w", session.PublicId, err)
-		}
-		sessionScopeId = ses.ScopeId
-	}
-
-	oplogWrapper, err := r.kms.GetWrapper(ctx, sessionScopeId, kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
-	}
-
 	var s *Session
 	var states []*State
 	var rowsUpdated int
-	_, err = r.writer.DoTx(
+	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
 			s = session.Clone().(*Session)
-			metadata := s.oplog(oplog.OpType_OP_TYPE_UPDATE)
-			metadata["scope-id"] = []string{sessionScopeId}
 			rowsUpdated, err = w.Update(
 				ctx,
 				s,
 				dbMask,
 				nullFields,
-				db.WithOplog(oplogWrapper, metadata),
 			)
 			if err == nil && rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
@@ -348,11 +314,6 @@ func (r *Repository) UpdateState(ctx context.Context, sessionId string, sessionV
 		return nil, nil, fmt.Errorf("update session state: unable to look up session for %s: %w", sessionId, err)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, ses.ScopeId, kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, nil, fmt.Errorf("update session state: unable to get oplog wrapper: %w", err)
-	}
-
 	updatedSession := AllocSession()
 	var returnedStates []*State
 	_, err = r.writer.DoTx(
@@ -360,39 +321,20 @@ func (r *Repository) UpdateState(ctx context.Context, sessionId string, sessionV
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 2)
-			sessionTicket, err := w.GetTicket(ses)
-			if err != nil {
-				return fmt.Errorf("unable to get ticket: %w", err)
-			}
-
 			// We need to update the session version as that's the aggregate
 			updatedSession.PublicId = sessionId
 			updatedSession.Version = uint32(sessionVersion) + 1
-			var sessionOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"Version"}, nil, db.NewOplogMsg(&sessionOplogMsg), db.WithVersion(&sessionVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"Version"}, nil, db.WithVersion(&sessionVersion))
 			if err != nil {
 				return fmt.Errorf("unable to update session version: %w", err)
 			}
 			if rowsUpdated != 1 {
 				return fmt.Errorf("updated session and %d rows updated", rowsUpdated)
 			}
-			msgs = append(msgs, &sessionOplogMsg)
-			var stateOplogMsg oplog.Message
-			if err := w.Create(ctx, newState, db.NewOplogMsg(&stateOplogMsg)); err != nil {
+			if err := w.Create(ctx, newState); err != nil {
 				return fmt.Errorf("unable to add new state: %w", err)
 			}
-			msgs = append(msgs, &stateOplogMsg)
 
-			metadata := oplog.Metadata{
-				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{ses.ScopeId},
-				"scope-type":         []string{"project"},
-				"resource-public-id": []string{sessionId},
-			}
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, sessionTicket, metadata, msgs); err != nil {
-				return fmt.Errorf("unable to write oplog: %w", err)
-			}
 			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
 			if err != nil {
 				return err
