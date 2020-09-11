@@ -23,10 +23,6 @@ service HostCatalogService {
     option (google.api.http) = {
       get: "/v1/host-catalogs/{id}"
       response_body: "item"
-      additional_bindings: {
-        get: "/v1/scopes/*/host-catalogs/{id}"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single HostCatalog"
@@ -42,9 +38,6 @@ service HostCatalogService {
   rpc ListHostCatalogs(ListHostCatalogsRequest) returns (ListHostCatalogsResponse) {
     option (google.api.http) = {
       get: "/v1/host-catalogs"
-      additional_bindings: {
-        get: "/v1/scopes/{scope_id}/host-catalogs"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a list of HostCatalogs"
@@ -61,11 +54,6 @@ service HostCatalogService {
       post: "/v1/host-catalogs"
       body: "item"
       response_body: "item"
-      additional_bindings: {
-        post: "/v1/scopes/{item.scope_id}/host-catalogs"
-        body: "item"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Creates a HostCatalog"
@@ -83,11 +71,6 @@ service HostCatalogService {
       patch: "/v1/host-catalogs/{id}"
       body: "item"
       response_body: "item"
-      additional_bindings: {
-        patch: "/v1/scopes/*/host-catalogs/{id}"
-        body: "item"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Updates a HostCatalog"
@@ -102,9 +85,6 @@ service HostCatalogService {
   rpc DeleteHostCatalog(DeleteHostCatalogRequest) returns (DeleteHostCatalogResponse) {
     option (google.api.http) = {
       delete: "/v1/host-catalogs/{id}"
-      additional_bindings: {
-        delete: "/v1/scopes/*/host-catalogs/{id}"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes a HostCatalog"

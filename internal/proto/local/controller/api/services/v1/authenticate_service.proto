@@ -16,11 +16,6 @@ service AuthenticationService {
       post: "/v1/auth-methods/{auth_method_id}:authenticate"
       body: "*"
       response_body: "item"
-      additional_bindings: {
-        post: "/v1/scopes/*/auth-methods/{auth_method_id}:authenticate"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Authenticate a user to an scope and retrieve an authentication token."
