@@ -131,6 +131,24 @@ begin;
     update_time wt_timestamp
   );
 
+  create or replace function 
+    insert_new_connection_state()
+    returns trigger
+  as $$
+  begin
+    insert into session_connection (session_id, state)
+    values
+      (new.public_id, 'connected');
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger 
+    insert_new_connection_state
+  after insert on session_connection
+    for each row execute procedure insert_new_session_state();
+
+
   create table session_connection_state_enm (
     name text primary key
       check (
