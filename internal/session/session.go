@@ -60,8 +60,8 @@ func New(c ComposedOf, opt ...Option) (*Session, error) {
 	return &s, nil
 }
 
-// allocSession will allocate a Session
-func allocSession() Session {
+// AllocSession will allocate a Session
+func AllocSession() Session {
 	return Session{
 		Session: &store.Session{},
 	}

@@ -148,7 +148,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 	if sessionId == "" {
 		return nil, nil, fmt.Errorf("lookup session: missing sessionId id: %w", db.ErrInvalidParameter)
 	}
-	session := allocSession()
+	session := AllocSession()
 	session.PublicId = sessionId
 	var states []*State
 	_, err := r.writer.DoTx(
@@ -200,7 +200,7 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...
 	if publicId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete session: missing public id %w", db.ErrInvalidParameter)
 	}
-	session := allocSession()
+	session := AllocSession()
 	session.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, &session); err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete session: failed %w for %s", err, publicId)
@@ -365,7 +365,7 @@ func (r *Repository) UpdateState(ctx context.Context, sessionId string, sessionV
 		return nil, nil, fmt.Errorf("update session state: unable to get oplog wrapper: %w", err)
 	}
 
-	updatedSession := allocSession()
+	updatedSession := AllocSession()
 	var returnedStates []*State
 	_, err = r.writer.DoTx(
 		ctx,

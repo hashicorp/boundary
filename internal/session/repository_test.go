@@ -157,7 +157,7 @@ func TestRepository_ListSession(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocSession()).Error)
+			require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
 			testSessions := []*Session{}
 			for i := 0; i < tt.createCnt; i++ {
 				s := TestSession(t, conn, composedOf)
@@ -175,7 +175,7 @@ func TestRepository_ListSession(t *testing.T) {
 	}
 	t.Run("withOrder", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NoError(conn.Where("1=1").Delete(allocSession()).Error)
+		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			_ = TestSession(t, conn, composedOf)
@@ -194,7 +194,7 @@ func TestRepository_ListSession(t *testing.T) {
 	})
 	t.Run("withUserId", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NoError(conn.Where("1=1").Delete(allocSession()).Error)
+		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			_ = TestSession(t, conn, composedOf)
@@ -640,7 +640,7 @@ func TestRepository_UpdateSession(t *testing.T) {
 			composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 			s := TestSession(t, conn, composedOf)
 
-			updateSession := allocSession()
+			updateSession := AllocSession()
 			updateSession.PublicId = s.PublicId
 			if tt.args.publicId != nil {
 				updateSession.PublicId = *tt.args.publicId
@@ -742,7 +742,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 			name: "no-public-id",
 			args: args{
 				session: func() *Session {
-					s := allocSession()
+					s := AllocSession()
 					return &s
 				}(),
 			},

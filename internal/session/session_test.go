@@ -173,7 +173,7 @@ func TestSession_Delete(t *testing.T) {
 		{
 			name: "bad-id",
 			session: func() *Session {
-				s := allocSession()
+				s := AllocSession()
 				id, err := db.NewPublicId(SessionPrefix)
 				require.NoError(t, err)
 				s.PublicId = id
@@ -186,7 +186,7 @@ func TestSession_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deleteSession := allocSession()
+			deleteSession := AllocSession()
 			deleteSession.PublicId = tt.session.PublicId
 			deletedRows, err := rw.Delete(context.Background(), &deleteSession)
 			if tt.wantErr {
@@ -199,7 +199,7 @@ func TestSession_Delete(t *testing.T) {
 				return
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundSession := allocSession()
+			foundSession := AllocSession()
 			foundSession.PublicId = tt.session.PublicId
 			err = rw.LookupById(context.Background(), &foundSession)
 			require.Error(err)
@@ -251,9 +251,9 @@ func TestSession_SetTableName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			def := allocSession()
+			def := AllocSession()
 			require.Equal(defaultTableName, def.TableName())
-			s := allocSession()
+			s := AllocSession()
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, s.TableName())
 		})
