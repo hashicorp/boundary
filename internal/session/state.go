@@ -47,7 +47,7 @@ func NewState(session_id string, state Status, opt ...Option) (*State, error) {
 		},
 	}
 
-	if err := s.validate("new session:"); err != nil {
+	if err := s.validate("new session state:"); err != nil {
 		return nil, err
 	}
 	return &s, nil
@@ -68,7 +68,7 @@ func (s *State) Clone() interface{} {
 	}
 }
 
-// VetForWrite implements db.VetForWrite() interface and validates the session
+// VetForWrite implements db.VetForWrite() interface and validates the state
 // before it's written.
 func (s *State) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if err := s.validate("session state vet for write:"); err != nil {
