@@ -2,6 +2,7 @@
 package groups
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -26,6 +27,17 @@ type Group struct {
 	Version     uint32            `json:"version,omitempty"`
 	MemberIds   []string          `json:"member_ids,omitempty"`
 	Members     []*Member         `json:"members,omitempty"`
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n Group) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n Group) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 
 // Client is a client for this collection

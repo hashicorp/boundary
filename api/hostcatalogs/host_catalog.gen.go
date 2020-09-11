@@ -2,6 +2,7 @@
 package hostcatalogs
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -26,6 +27,17 @@ type HostCatalog struct {
 	Version     uint32                 `json:"version,omitempty"`
 	Type        string                 `json:"type,omitempty"`
 	Attributes  map[string]interface{} `json:"attributes,omitempty"`
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n HostCatalog) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n HostCatalog) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 
 // Client is a client for this collection
