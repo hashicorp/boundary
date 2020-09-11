@@ -59,9 +59,6 @@ func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt
 	if newSession == nil {
 		return nil, nil, fmt.Errorf("create session: missing session: %w", db.ErrInvalidParameter)
 	}
-	if newSession.Session == nil {
-		return nil, nil, fmt.Errorf("create session: missing session store: %w", db.ErrInvalidParameter)
-	}
 	if newSession.PublicId != "" {
 		return nil, nil, fmt.Errorf("create session: public id is not empty: %w", db.ErrInvalidParameter)
 	}
@@ -225,9 +222,6 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...
 func (r *Repository) UpdateSession(ctx context.Context, session *Session, version uint32, fieldMaskPaths []string, opt ...Option) (*Session, []*State, int, error) {
 	if session == nil {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: missing session %w", db.ErrInvalidParameter)
-	}
-	if session.Session == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: missing session store %w", db.ErrInvalidParameter)
 	}
 	if session.PublicId == "" {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: missing session public id %w", db.ErrInvalidParameter)

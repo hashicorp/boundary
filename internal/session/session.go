@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/session/store"
-	"google.golang.org/protobuf/proto"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -32,8 +32,38 @@ type ComposedOf struct {
 
 // Session contains information about a user's session with a target
 type Session struct {
-	*store.Session
+	// PublicId is used to access the session via an API
+	PublicId string `json:"public_id,omitempty" gorm:"primary_key"`
+	// UserId for the session
+	UserId string `json:"user_id,omitempty" gorm:"default:null"`
+	// HostId of the session
+	HostId string `json:"host_id,omitempty" gorm:"default:null"`
+	// ServerId that proxied the session
+	ServerId string `json:"server_id,omitempty" gorm:"default:null"`
+	// ServerType that proxied the session
+	ServerType string `json:"server_type,omitempty" gorm:"default:null"`
+	// TargetId for the session
+	TargetId string `json:"target_id,omitempty" gorm:"default:null"`
+	// SetId for the session
+	SetId string `json:"set_id,omitempty" gorm:"default:null"`
+	// AuthTokenId for the session
+	AuthTokenId string `json:"auth_token_id,omitempty" gorm:"default:null"`
+	// ScopeId for the session
+	ScopeId string `json:"scope_id,omitempty" gorm:"default:null"`
+	// termination_reason for the session
+	TerminationReason string `json:"termination_reason,omitempty" gorm:"default:null"`
+	// CreateTime from the RDBMS
+	CreateTime *timestamp.Timestamp `json:"create_time,omitempty" gorm:"default:current_timestamp"`
+	// UpdateTime from the RDBMS
+	UpdateTime *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
+	// Version for the session
+	Version uint32 `json:"version,omitempty" gorm:"default:null"`
+
 	tableName string `gorm:"-"`
+}
+
+func (s *Session) GetPublicId() string {
+	return s.PublicId
 }
 
 var _ Cloneable = (*Session)(nil)
@@ -43,14 +73,12 @@ var _ db.VetForWriter = (*Session)(nil)
 // are currently supported.
 func New(c ComposedOf, opt ...Option) (*Session, error) {
 	s := Session{
-		Session: &store.Session{
-			UserId:      c.UserId,
-			HostId:      c.HostId,
-			TargetId:    c.TargetId,
-			SetId:       c.HostSetId,
-			AuthTokenId: c.AuthTokenId,
-			ScopeId:     c.ScopeId,
-		},
+		UserId:      c.UserId,
+		HostId:      c.HostId,
+		TargetId:    c.TargetId,
+		SetId:       c.HostSetId,
+		AuthTokenId: c.AuthTokenId,
+		ScopeId:     c.ScopeId,
 	}
 
 	if err := s.validateNewSession("new session:"); err != nil {
@@ -61,17 +89,41 @@ func New(c ComposedOf, opt ...Option) (*Session, error) {
 
 // AllocSession will allocate a Session
 func AllocSession() Session {
-	return Session{
-		Session: &store.Session{},
-	}
+	return Session{}
 }
 
 // Clone creates a clone of the Session
 func (s *Session) Clone() interface{} {
-	cp := proto.Clone(s.Session)
-	return &Session{
-		Session: cp.(*store.Session),
+	clone := &Session{
+		PublicId:          s.PublicId,
+		UserId:            s.UserId,
+		HostId:            s.HostId,
+		ServerId:          s.ServerId,
+		ServerType:        s.ServerType,
+		TargetId:          s.TargetId,
+		SetId:             s.SetId,
+		AuthTokenId:       s.AuthTokenId,
+		ScopeId:           s.ScopeId,
+		TerminationReason: s.TerminationReason,
+		Version:           s.Version,
 	}
+	if s.CreateTime != nil {
+		clone.CreateTime = &timestamp.Timestamp{
+			Timestamp: &timestamppb.Timestamp{
+				Seconds: s.CreateTime.Timestamp.Seconds,
+				Nanos:   s.CreateTime.Timestamp.Nanos,
+			},
+		}
+	}
+	if s.UpdateTime != nil {
+		clone.UpdateTime = &timestamp.Timestamp{
+			Timestamp: &timestamppb.Timestamp{
+				Seconds: s.UpdateTime.Timestamp.Seconds,
+				Nanos:   s.UpdateTime.Timestamp.Nanos,
+			},
+		}
+	}
+	return clone
 }
 
 // VetForWrite implements db.VetForWrite() interface and validates the session

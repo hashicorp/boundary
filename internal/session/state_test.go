@@ -3,15 +3,12 @@ package session
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/session/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestState_Create(t *testing.T) {
@@ -41,10 +38,8 @@ func TestState_Create(t *testing.T) {
 				status:    StatusPending,
 			},
 			want: &State{
-				State: &store.State{
-					SessionId: session.PublicId,
-					Status:    StatusPending.String(),
-				},
+				SessionId: session.PublicId,
+				Status:    StatusPending.String(),
 			},
 			create: true,
 		},
@@ -152,7 +147,6 @@ func TestState_Delete(t *testing.T) {
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundState := allocState()
 			err = rw.LookupWhere(context.Background(), &foundState, "session_id = ? and start_time = ?", tt.state.SessionId, initialState.StartTime)
-			fmt.Println(foundState)
 			require.Error(err)
 			assert.True(errors.Is(db.ErrRecordNotFound, err))
 		})
@@ -169,7 +163,7 @@ func TestState_Clone(t *testing.T) {
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
 		state := TestState(t, conn, s.PublicId, StatusPending)
 		cp := state.Clone()
-		assert.True(proto.Equal(cp.(*State).State, state.State))
+		assert.Equal(cp.(*State), state)
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
@@ -179,7 +173,7 @@ func TestState_Clone(t *testing.T) {
 		state2 := TestState(t, conn, s2.PublicId, StatusPending)
 
 		cp := state.Clone()
-		assert.True(!proto.Equal(cp.(*State).State, state2.State))
+		assert.NotEqual(cp.(*State), state2)
 	})
 }
 

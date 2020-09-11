@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/session/store"
-	"google.golang.org/protobuf/proto"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -30,7 +30,17 @@ func (s Status) String() string {
 
 // State of the session
 type State struct {
-	*store.State
+	// SessionId references the session public id
+	SessionId string `json:"session_id,omitempty" gorm:"primary_key"`
+	// status of the session
+	Status string `json:"status,omitempty" gorm:"column:state"`
+	// PreviousEndTime from the RDBMS
+	PreviousEndTime *timestamp.Timestamp `json:"previous_end_time,omitempty" gorm:"default:current_timestamp"`
+	// StartTime from the RDBMS
+	StartTime *timestamp.Timestamp `json:"start_time,omitempty" gorm:"default:current_timestamp;primary_key"`
+	// EndTime from the RDBMS
+	EndTime *timestamp.Timestamp `json:"end_time,omitempty" gorm:"default:current_timestamp"`
+
 	tableName string `gorm:"-"`
 }
 
@@ -41,10 +51,8 @@ var _ db.VetForWriter = (*State)(nil)
 // are currently supported.
 func NewState(session_id string, state Status, opt ...Option) (*State, error) {
 	s := State{
-		State: &store.State{
-			SessionId: session_id,
-			Status:    state.String(),
-		},
+		SessionId: session_id,
+		Status:    state.String(),
 	}
 
 	if err := s.validate("new session state:"); err != nil {
@@ -55,17 +63,41 @@ func NewState(session_id string, state Status, opt ...Option) (*State, error) {
 
 // allocState will allocate a State
 func allocState() State {
-	return State{
-		State: &store.State{},
-	}
+	return State{}
 }
 
 // Clone creates a clone of the State
 func (s *State) Clone() interface{} {
-	cp := proto.Clone(s.State)
-	return &State{
-		State: cp.(*store.State),
+	clone := &State{
+		SessionId: s.SessionId,
+		Status:    s.Status,
 	}
+	if s.PreviousEndTime != nil {
+		clone.PreviousEndTime = &timestamp.Timestamp{
+			Timestamp: &timestamppb.Timestamp{
+				Seconds: s.PreviousEndTime.Timestamp.Seconds,
+				Nanos:   s.PreviousEndTime.Timestamp.Nanos,
+			},
+		}
+	}
+
+	if s.StartTime != nil {
+		clone.StartTime = &timestamp.Timestamp{
+			Timestamp: &timestamppb.Timestamp{
+				Seconds: s.StartTime.Timestamp.Seconds,
+				Nanos:   s.StartTime.Timestamp.Nanos,
+			},
+		}
+	}
+	if s.EndTime != nil {
+		clone.EndTime = &timestamp.Timestamp{
+			Timestamp: &timestamppb.Timestamp{
+				Seconds: s.EndTime.Timestamp.Seconds,
+				Nanos:   s.EndTime.Timestamp.Nanos,
+			},
+		}
+	}
+	return clone
 }
 
 // VetForWrite implements db.VetForWrite() interface and validates the state
@@ -94,9 +126,6 @@ func (s *State) SetTableName(n string) {
 
 // validate checks the session state
 func (s *State) validate(errorPrefix string) error {
-	if s.State == nil {
-		return fmt.Errorf("%s missing state: %w", errorPrefix, db.ErrInvalidParameter)
-	}
 	if s.Status == "" {
 		return fmt.Errorf("%s missing status: %w", errorPrefix, db.ErrInvalidParameter)
 	}

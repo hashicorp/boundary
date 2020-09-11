@@ -7,10 +7,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/session/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestSession_Create(t *testing.T) {
@@ -39,14 +37,12 @@ func TestSession_Create(t *testing.T) {
 				composedOf: composedOf,
 			},
 			want: &Session{
-				Session: &store.Session{
-					UserId:      composedOf.UserId,
-					HostId:      composedOf.HostId,
-					TargetId:    composedOf.TargetId,
-					SetId:       composedOf.HostSetId,
-					AuthTokenId: composedOf.AuthTokenId,
-					ScopeId:     composedOf.ScopeId,
-				},
+				UserId:      composedOf.UserId,
+				HostId:      composedOf.HostId,
+				TargetId:    composedOf.TargetId,
+				SetId:       composedOf.HostSetId,
+				AuthTokenId: composedOf.AuthTokenId,
+				ScopeId:     composedOf.ScopeId,
 			},
 			create: true,
 		},
@@ -217,7 +213,7 @@ func TestSession_Clone(t *testing.T) {
 		assert := assert.New(t)
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
 		cp := s.Clone()
-		assert.True(proto.Equal(cp.(*Session).Session, s.Session))
+		assert.Equal(cp.(*Session), s)
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
@@ -225,7 +221,7 @@ func TestSession_Clone(t *testing.T) {
 		s2 := TestDefaultSession(t, conn, wrapper, iamRepo)
 
 		cp := s.Clone()
-		assert.True(!proto.Equal(cp.(*Session).Session, s2.Session))
+		assert.NotEqual(cp.(*Session), s2)
 	})
 }
 

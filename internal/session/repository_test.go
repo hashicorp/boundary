@@ -16,12 +16,10 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/session/store"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestNewRepository(t *testing.T) {
@@ -185,9 +183,9 @@ func TestRepository_ListSession(t *testing.T) {
 		assert.Equal(wantCnt, len(got))
 
 		for i := 0; i < len(got)-1; i++ {
-			first, err := ptypes.Timestamp(got[i].GetCreateTime().Timestamp)
+			first, err := ptypes.Timestamp(got[i].CreateTime.Timestamp)
 			require.NoError(err)
-			second, err := ptypes.Timestamp(got[i+1].GetCreateTime().Timestamp)
+			second, err := ptypes.Timestamp(got[i+1].CreateTime.Timestamp)
 			require.NoError(err)
 			assert.True(first.Before(second))
 		}
@@ -310,14 +308,12 @@ func TestRepository_CreateSession(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			s := &Session{
-				Session: &store.Session{
-					UserId:      tt.args.composedOf.UserId,
-					HostId:      tt.args.composedOf.HostId,
-					TargetId:    tt.args.composedOf.TargetId,
-					SetId:       tt.args.composedOf.HostSetId,
-					AuthTokenId: tt.args.composedOf.AuthTokenId,
-					ScopeId:     tt.args.composedOf.ScopeId,
-				},
+				UserId:      tt.args.composedOf.UserId,
+				HostId:      tt.args.composedOf.HostId,
+				TargetId:    tt.args.composedOf.TargetId,
+				SetId:       tt.args.composedOf.HostSetId,
+				AuthTokenId: tt.args.composedOf.AuthTokenId,
+				ScopeId:     tt.args.composedOf.ScopeId,
 			}
 			ses, st, err := repo.CreateSession(context.Background(), s)
 			if tt.wantErr {
@@ -332,16 +328,16 @@ func TestRepository_CreateSession(t *testing.T) {
 			require.NoError(err)
 			assert.NotNil(ses.CreateTime)
 			assert.NotNil(st.StartTime)
-			assert.Equal(st.GetStatus(), StatusPending.String())
+			assert.Equal(st.Status, StatusPending.String())
 			foundSession, foundStates, err := repo.LookupSession(context.Background(), ses.PublicId)
 			assert.NoError(err)
-			assert.True(proto.Equal(foundSession, ses))
+			assert.Equal(foundSession, ses)
 
 			err = db.TestVerifyOplog(t, rw, ses.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 
 			require.Equal(1, len(foundStates))
-			assert.Equal(foundStates[0].GetStatus(), StatusPending.String())
+			assert.Equal(foundStates[0].Status, StatusPending.String())
 		})
 	}
 }
@@ -672,7 +668,7 @@ func TestRepository_UpdateSession(t *testing.T) {
 			}
 			foundSession, foundStates, err := repo.LookupSession(context.Background(), s.PublicId)
 			require.NoError(err)
-			assert.True(proto.Equal(afterUpdateSession, foundSession))
+			assert.Equal(afterUpdateSession, foundSession)
 			dbassrt := dbassert.New(t, rw)
 			if tt.args.serverId == "" {
 				dbassrt.IsNull(foundSession, "ServerId")

@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -65,7 +64,7 @@ func TestSession_ImmutableFields(t *testing.T) {
 			err = rw.LookupById(context.Background(), after)
 			require.NoError(err)
 
-			assert.True(proto.Equal(orig.(*Session), after.(*Session)))
+			assert.Equal(orig.(*Session), after)
 
 		})
 	}
@@ -136,7 +135,7 @@ func TestState_ImmutableFields(t *testing.T) {
 			after := new.Clone()
 			err = rw.LookupWhere(context.Background(), after, "session_id = ? and start_time = ?", new.SessionId, new.StartTime)
 			require.NoError(err)
-			assert.True(proto.Equal(orig.(*State), after.(*State)))
+			assert.Equal(orig.(*State), after)
 		})
 	}
 }
