@@ -131,6 +131,12 @@ begin;
     update_time wt_timestamp
   );
 
+  create trigger 
+    immutable_columns
+  before
+  update on session_connection
+    for each row execute procedure immutable_columns('wt_public_id', 'session_id', 'client_address', 'client_port', 'backend_address', 'backend_port', 'create_time');
+
   create or replace function 
     insert_new_connection_state()
     returns trigger
@@ -186,6 +192,12 @@ begin;
     foreign key (connection_id, previous_end_time) -- self-reference
       references session_connection_state (connection_id, end_time)
   );
+
+  create trigger 
+    immutable_columns
+  before
+  update on session_connection_state
+    for each row execute procedure immutable_columns('connection_id', 'state', 'start_time');
 
 
   create or replace function
