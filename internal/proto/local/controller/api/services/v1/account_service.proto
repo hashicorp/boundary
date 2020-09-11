@@ -20,10 +20,6 @@ service AccountService {
     option (google.api.http) = {
         get: "/v1/accounts/{id}"
         response_body: "item"
-        additional_bindings: {
-          get: "/v1/scopes/*/auth-methods/*/accounts/{id}"
-          response_body: "item"
-        }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single Account"
@@ -37,10 +33,7 @@ service AccountService {
   rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse) {
     option (google.api.http) = {
       get: "/v1/accounts"
-      additional_bindings: {
-        get: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts"
-      }
-    };
+     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all accounts in a specific auth method."
     };
@@ -56,11 +49,6 @@ service AccountService {
       post: "/v1/accounts"
       body: "item"
       response_body: "item"
-      additional_bindings: {
-        post: "/v1/scopes/*/auth-methods/{item.auth_method_id}/accounts"
-        body: "item"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Creates a single account in the provided auth method."
@@ -80,11 +68,6 @@ service AccountService {
       patch: "/v1/accounts/{id}"
       body: "item"
       response_body: "item"
-      additional_bindings: {
-        patch: "/v1/scopes/*/auth-methods/*/accounts/{id}"
-        body: "item"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Updates an account."
@@ -99,9 +82,6 @@ service AccountService {
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse) {
     option (google.api.http) = {
       delete: "/v1/accounts/{id}"
-      additional_bindings: {
-        delete: "/v1/scopes/*/auth-methods/*/accounts/{id}"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes an account."
@@ -116,11 +96,6 @@ service AccountService {
       post: "/v1/accounts/{id}:set-password"
       body: "*"
       response_body: "item"
-      additional_bindings: {
-        post: "/v1/scopes/*/auth-methods/*/accounts/{id}:set-password"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Sets the password for the provided account."
@@ -135,11 +110,6 @@ service AccountService {
       post: "/v1/accounts/{id}:change-password"
       body: "*"
       response_body: "item"
-      additional_bindings: {
-        post: "/v1/scopes/*/auth-methods/*/accounts/{id}:change-password"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Sets the password for the provided account."
