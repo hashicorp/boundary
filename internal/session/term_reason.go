@@ -36,9 +36,7 @@ func convertToReason(s string) (TerminationReason, error) {
 		return NetworkError, nil
 	case SystemError.String():
 		return SystemError, nil
-	case UnknownTermination.String():
-		return UnknownTermination, nil
 	default:
-		return "", fmt.Errorf("new termination reason: %s is not a valid reason: %w", s, db.ErrInvalidParameter)
+		return "", fmt.Errorf("termination reason: %s is not a valid reason: %w", s, db.ErrInvalidParameter)
 	}
 }
