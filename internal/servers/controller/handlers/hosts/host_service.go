@@ -353,6 +353,8 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 			}
 			if attrs.GetAddress() == nil {
 				badFields["attributes.address"] = "This is a required field for this type."
+			} else if len(attrs.GetAddress().GetValue()) == 0 {
+				badFields["attributes.address"] = "Must be non empty."
 			}
 		}
 		return badFields
@@ -366,6 +368,17 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 		case host.StaticSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
 				badFields["type"] = "Cannot modify the resource type."
+
+				attrs := &pb.StaticHostAttributes{}
+				if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+					badFields["attributes"] = "Attribute fields do not match the expected format."
+				}
+
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.address") {
+					if attrs.GetAddress() == nil || len(attrs.GetAddress().GetValue()) == 0 {
+						badFields["attributes.address"] = "Cannot unset the address of a host."
+					}
+				}
 			}
 		default:
 			badFields["id"] = "Improperly formatted identifier used."
