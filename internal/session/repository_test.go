@@ -338,7 +338,7 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.True(proto.Equal(foundSession, ses))
 
 			err = db.TestVerifyOplog(t, rw, ses.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
-			assert.NoError(err)
+			assert.Error(err)
 
 			require.Equal(1, len(foundStates))
 			assert.Equal(foundStates[0].GetStatus(), StatusPending.String())
@@ -685,7 +685,7 @@ func TestRepository_UpdateSession(t *testing.T) {
 			assert.Equal(tt.args.serverType, foundSession.ServerType)
 
 			err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-			assert.NoError(err)
+			assert.Error(err)
 
 			require.Equal(1, len(foundStates))
 			assert.Equal(StatusPending.String(), foundStates[0].Status)
@@ -771,7 +771,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 			assert.Nil(foundSession)
 
 			err = db.TestVerifyOplog(t, rw, tt.args.session.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
-			assert.NoError(err)
+			assert.Error(err)
 		})
 	}
 }
