@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
 const (
@@ -30,7 +30,7 @@ func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	if rawConn == nil {
 		return nil, errors.New("could not get a controller client")
 	}
-	conn, ok := rawConn.(services.WorkerServiceClient)
+	conn, ok := rawConn.(pbs.SessionServiceClient)
 	if !ok {
 		return nil, errors.New("could not cast atomic controller client to the real thing")
 	}
@@ -41,7 +41,7 @@ func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	timeoutContext, cancel := context.WithTimeout(w.baseContext, validateSessionTimeout)
 	defer cancel()
 
-	resp, err := conn.ValidateSession(timeoutContext, &services.ValidateSessionRequest{
+	resp, err := conn.ValidateSession(timeoutContext, &pbs.ValidateSessionRequest{
 		Id: jobId,
 	})
 	if err != nil {

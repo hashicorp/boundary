@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"nhooyr.io/websocket"
 )

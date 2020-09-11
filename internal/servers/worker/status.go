@@ -5,8 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/resolver"
@@ -46,14 +45,17 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 				return
 
 			case <-timer.C:
-				var activeJobs []string
+				var activeJobs []*pbs.JobStatus
 				w.cancellationMap.Range(func(key, value interface{}) bool {
-					activeJobs = append(activeJobs, key.(string))
+					activeJobs = append(activeJobs, &pbs.JobStatus{
+						Job:    &pbs.Job{JobId: key.(string)},
+						Status: pbs.JobStatus_STATUS_ACTIVE,
+					})
 					return true
 				})
-				client := w.controllerConn.Load().(services.WorkerServiceClient)
+				client := w.controllerConn.Load().(pbs.ServerCoordinationServiceClient)
 				result, err := client.Status(cancelCtx, &pbs.StatusRequest{
-					ActiveJobIds: activeJobs,
+					Jobs: activeJobs,
 					Worker: &servers.Server{
 						PrivateId:   w.conf.RawConfig.Worker.Name,
 						Name:        w.conf.RawConfig.Worker.Name,
@@ -76,7 +78,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 					w.logger.Trace("found controllers", "addresses", strAddrs)
 					w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
 
-					for _, id := range result.GetCancelJobIds() {
+					for _, id := range result.GetJobsRequests() {
 						if cancel, ok := w.cancellationMap.LoadAndDelete(id); ok {
 							cancel.(context.CancelFunc)()
 							w.logger.Info("canceled job", "job_id", id)
