@@ -121,16 +121,6 @@ func TestRepository_CreateHost(t *testing.T) {
 			wantIsErr: ErrInvalidAddress,
 		},
 		{
-			name: "invalid-address-to-short",
-			in: &Host{
-				Host: &store.Host{
-					CatalogId: catalog.PublicId,
-					Address:   "127",
-				},
-			},
-			wantIsErr: ErrInvalidAddress,
-		},
-		{
 			name: "invalid-empty-address",
 			in: &Host{
 				Host: &store.Host{
@@ -540,17 +530,6 @@ func TestRepository_UpdateHost(t *testing.T) {
 				},
 			},
 			wantCount: 1,
-		},
-		{
-			name: "change-short-address",
-			orig: &Host{
-				Host: &store.Host{
-					Address: "127.0.0.1",
-				},
-			},
-			chgFn:     changeAddress("11"),
-			masks:     []string{"Address"},
-			wantIsErr: ErrInvalidAddress,
 		},
 		{
 			name: "delete-address",

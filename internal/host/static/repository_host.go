@@ -34,11 +34,11 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 	if h.PublicId != "" {
 		return nil, fmt.Errorf("create: static host: public id not empty: %w", db.ErrInvalidParameter)
 	}
-	if h.Address != "" {
-		return nil, fmt.Errorf("create: static host: address not empty: %w", db.ErrInvalidParameter)
-	}
 	if scopeId == "" {
 		return nil, fmt.Errorf("create: static host: no scopeId: %w", db.ErrInvalidParameter)
+	}
+	if h.Address == "" {
+		return nil, fmt.Errorf("create: static host: no address: %w", ErrInvalidAddress)
 	}
 	h = h.clone()
 
