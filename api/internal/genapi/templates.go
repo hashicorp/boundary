@@ -472,8 +472,11 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 	if {{ $input.ResourceFunctionArg }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ $input.ResourceFunctionArg }} value passed into {{ $fullName }} request")
 	}
+	{{ if ( not ( eq $op "Set" ) ) }}if len({{ $value }}) == 0 {
+		return nil, nil, errors.New("empty {{ $value }} passed into {{ $fullName }} request")
+	}{{ end }}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -497,14 +500,7 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 	}
 	{{ end }}
 	opts.postMap["version"] = version
-
-	if len({{ $value }}) > 0 {
-		opts.postMap["{{ snakeCase $value }}"] = {{ $value }}
-	}{{ if ( eq $op "Set" ) }} else if {{ $value }} != nil {
-			// In this function, a non-nil but empty list means clear out
-			opts.postMap["{{ snakeCase $value }}"] = nil
-		}
-	{{ end }}
+	opts.postMap["{{ snakeCase $value }}"] = {{ $value }}
 
 	req, err := c.client.NewRequest(ctx, "POST", {{ $resPath }}, opts.postMap, apiOpts...)
 	if err != nil {

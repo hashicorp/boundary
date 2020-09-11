@@ -287,8 +287,11 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into AddMembers request")
 	}
+	if len(memberIds) == 0 {
+		return nil, nil, errors.New("empty memberIds passed into AddMembers request")
+	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -311,10 +314,7 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 	}
 
 	opts.postMap["version"] = version
-
-	if len(memberIds) > 0 {
-		opts.postMap["member_ids"] = memberIds
-	}
+	opts.postMap["member_ids"] = memberIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:add-members", groupId), opts.postMap, apiOpts...)
 	if err != nil {
@@ -349,8 +349,9 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into SetMembers request")
 	}
+
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -373,13 +374,7 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 	}
 
 	opts.postMap["version"] = version
-
-	if len(memberIds) > 0 {
-		opts.postMap["member_ids"] = memberIds
-	} else if memberIds != nil {
-		// In this function, a non-nil but empty list means clear out
-		opts.postMap["member_ids"] = nil
-	}
+	opts.postMap["member_ids"] = memberIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:set-members", groupId), opts.postMap, apiOpts...)
 	if err != nil {
@@ -414,8 +409,11 @@ func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into RemoveMembers request")
 	}
+	if len(memberIds) == 0 {
+		return nil, nil, errors.New("empty memberIds passed into RemoveMembers request")
+	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -438,10 +436,7 @@ func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint
 	}
 
 	opts.postMap["version"] = version
-
-	if len(memberIds) > 0 {
-		opts.postMap["member_ids"] = memberIds
-	}
+	opts.postMap["member_ids"] = memberIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:remove-members", groupId), opts.postMap, apiOpts...)
 	if err != nil {
