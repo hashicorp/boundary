@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/session/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -168,14 +167,4 @@ func contains(ss []string, t string) bool {
 		}
 	}
 	return false
-}
-
-func (s *Session) oplog(op oplog.OpType) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-public-id": []string{s.PublicId},
-		"resource-type":      []string{"session"},
-		"op-type":            []string{op.String()},
-		"scope-id":           []string{s.ScopeId},
-	}
-	return metadata
 }
