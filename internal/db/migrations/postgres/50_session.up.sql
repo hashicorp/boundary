@@ -309,9 +309,4 @@ begin;
     for each row execute procedure insert_session_state();
 
 
-  insert into oplog_ticket
-    (name, version)
-  values
-    ('session', 1);
-
 commit;
