@@ -90,7 +90,6 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go	
 	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go	
 	@protoc-go-inject-tag -input=./internal/target/store/target.pb.go
-	@protoc-go-inject-tag -input=./internal/session/store/session.pb.go
 
 	@rm -R ${TMP_DIR}
 
