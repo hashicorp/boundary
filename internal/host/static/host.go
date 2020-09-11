@@ -11,7 +11,7 @@ import (
 
 const (
 	MinHostAddressLength = 3
-	MaxHostAddressLength = 256
+	MaxHostAddressLength = 255
 )
 
 // A Host contains a static address.

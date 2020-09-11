@@ -352,7 +352,9 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields["attributes"] = "Attribute fields do not match the expected format."
 			}
-			if attrs.GetAddress() == nil || len(attrs.GetAddress().GetValue()) <= static.MinHostAddressLength || len(attrs.GetAddress().GetValue()) >= static.MaxHostAddressLength {
+			if attrs.GetAddress() == nil ||
+				len(attrs.GetAddress().GetValue()) < static.MinHostAddressLength ||
+				len(attrs.GetAddress().GetValue()) > static.MaxHostAddressLength {
 				badFields["attributes.address"] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
 			}
 		}
@@ -374,7 +376,9 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 				}
 
 				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.address") {
-					if attrs.GetAddress() == nil || len(strings.TrimSpace(attrs.GetAddress().GetValue())) <= static.MinHostAddressLength || len(strings.TrimSpace(attrs.GetAddress().GetValue())) >= static.MaxHostAddressLength {
+					if attrs.GetAddress() == nil ||
+						len(strings.TrimSpace(attrs.GetAddress().GetValue())) < static.MinHostAddressLength ||
+						len(strings.TrimSpace(attrs.GetAddress().GetValue())) > static.MaxHostAddressLength {
 						badFields["attributes.address"] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
 					}
 				}

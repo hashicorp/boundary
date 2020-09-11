@@ -125,7 +125,7 @@ func TestRepository_CreateHost(t *testing.T) {
 			in: &Host{
 				Host: &store.Host{
 					CatalogId: catalog.PublicId,
-					Address:   "127",
+					Address:   "12",
 				},
 			},
 			wantIsErr: ErrInvalidAddress,
