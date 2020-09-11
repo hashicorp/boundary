@@ -108,13 +108,13 @@ func TestState_Delete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			state:           TestState(t, conn, session.PublicId, StatusClosed),
+			state:           TestState(t, conn, session.PublicId, StatusTerminated),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
 		{
 			name:  "bad-id",
-			state: TestState(t, conn, session2.PublicId, StatusClosed),
+			state: TestState(t, conn, session2.PublicId, StatusTerminated),
 			deleteSessionId: func() string {
 				id, err := db.NewPublicId(SessionPrefix)
 				require.NoError(t, err)

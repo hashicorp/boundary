@@ -152,12 +152,6 @@ func (s *Session) validateNewSession(errorPrefix string) error {
 	if s.TerminationReason != "" {
 		return fmt.Errorf("%s termination reason must be empty: %w", errorPrefix, db.ErrInvalidParameter)
 	}
-	if s.Address != "" {
-		return fmt.Errorf("%s address must be empty: %w", errorPrefix, db.ErrInvalidParameter)
-	}
-	if s.Port != "" {
-		return fmt.Errorf("%s port must be empty: %w", errorPrefix, db.ErrInvalidParameter)
-	}
 	if s.ServerId != "" {
 		return fmt.Errorf("%s server id must be empty: %w", errorPrefix, db.ErrInvalidParameter)
 	}

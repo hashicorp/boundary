@@ -54,7 +54,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 
 // CreateSession inserts into the repository and returns the new Session with
 // its State of "Pending".  The following fields must be empty when creating a
-// session: Address, Port, ServerId, ServerType, and PublicId.  No options are
+// session: ServerId, ServerType, and PublicId.  No options are
 // currently supported.
 func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt ...Option) (*Session, *State, error) {
 	if newSession == nil {
@@ -83,12 +83,6 @@ func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt
 	}
 	if newSession.ScopeId == "" {
 		return nil, nil, fmt.Errorf("create session: scope id is empty: %w", db.ErrInvalidParameter)
-	}
-	if newSession.Address != "" {
-		return nil, nil, fmt.Errorf("create session: address must empty: %w", db.ErrInvalidParameter)
-	}
-	if newSession.Port != "" {
-		return nil, nil, fmt.Errorf("create session: port id must empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ServerId != "" {
 		return nil, nil, fmt.Errorf("create session: server id must empty: %w", db.ErrInvalidParameter)
@@ -256,8 +250,6 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 		case strings.EqualFold("TerminationReason", f):
 		case strings.EqualFold("ServerId", f):
 		case strings.EqualFold("ServerType", f):
-		case strings.EqualFold("Address", f):
-		case strings.EqualFold("Port", f):
 		default:
 			return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
@@ -265,13 +257,9 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"BytesUp":           session.BytesUp,
-			"BytesDown":         session.BytesDown,
 			"TerminationReason": session.TerminationReason,
 			"ServerId":          session.ServerId,
 			"ServerType":        session.ServerType,
-			"Address":           session.Address,
-			"Port":              session.Port,
 		},
 		fieldMaskPaths,
 	)

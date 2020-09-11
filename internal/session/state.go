@@ -17,10 +17,10 @@ const (
 type Status string
 
 const (
-	StatusPending   Status = "pending"
-	StatusActive    Status = "active"
-	StatusCanceling Status = "canceling"
-	StatusClosed    Status = "closed"
+	StatusPending    Status = "pending"
+	StatusActive     Status = "active"
+	StatusCanceling  Status = "canceling"
+	StatusTerminated Status = "terminated"
 )
 
 // String representation of the state's status

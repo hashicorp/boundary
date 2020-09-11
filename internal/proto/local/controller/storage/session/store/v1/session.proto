@@ -46,22 +46,6 @@ message Session {
   // @inject_tag: `gorm:"default:null"`
   string termination_reason = 100;
 
-  // address of the session host
-  // @inject_tag: `gorm:"default:null"`
-  string address = 110;
-
-  // port used by the session
-  // @inject_tag: `gorm:"default:null"`
-  string port = 120;
-
-  // bytes_up total for the session
-  // @inject_tag: `gorm:"default:null"`
-  uint64 bytes_up = 130;
-
-  // bytes_down total for the session
-  // @inject_tag: `gorm:"default:null"`
-  uint64 bytes_down = 140;
-
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 150;

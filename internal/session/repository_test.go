@@ -380,7 +380,7 @@ func TestRepository_UpdateState(t *testing.T) {
 				_ = TestState(t, conn, s.PublicId, StatusActive)
 				return s
 			}(),
-			newStatus:    StatusClosed,
+			newStatus:    StatusTerminated,
 			wantStateCnt: 3,
 			wantErr:      false,
 		},
@@ -489,8 +489,6 @@ func TestRepository_UpdateSession(t *testing.T) {
 	}
 
 	type args struct {
-		bytesUp           uint64
-		bytesDown         uint64
 		terminationReason TerminationReason
 		serverId          string
 		serverType        string
@@ -514,8 +512,6 @@ func TestRepository_UpdateSession(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				bytesUp:           100,
-				bytesDown:         110,
 				terminationReason: Terminated,
 				serverId:          newServerFunc(),
 				serverType:        servers.ServerTypeWorker.String(),
@@ -645,8 +641,6 @@ func TestRepository_UpdateSession(t *testing.T) {
 			if tt.args.publicId != nil {
 				updateSession.PublicId = *tt.args.publicId
 			}
-			updateSession.BytesUp = tt.args.bytesUp
-			updateSession.BytesDown = tt.args.bytesDown
 			updateSession.ServerId = tt.args.serverId
 			updateSession.ServerType = tt.args.serverType
 			updateSession.TerminationReason = tt.args.terminationReason.String()
@@ -680,21 +674,12 @@ func TestRepository_UpdateSession(t *testing.T) {
 			require.NoError(err)
 			assert.True(proto.Equal(afterUpdateSession, foundSession))
 			dbassrt := dbassert.New(t, rw)
-			if tt.args.bytesUp == 0 {
-				dbassrt.IsNull(foundSession, "BytesUp")
-			}
-			dbassrt = dbassert.New(t, rw)
-			if tt.args.bytesDown == 0 {
-				dbassrt.IsNull(foundSession, "BytesDown")
-			}
 			if tt.args.serverId == "" {
 				dbassrt.IsNull(foundSession, "ServerId")
 			}
 			if tt.args.serverType == "" {
 				dbassrt.IsNull(foundSession, "ServerType")
 			}
-			assert.Equal(tt.args.bytesUp, foundSession.BytesUp)
-			assert.Equal(tt.args.bytesDown, foundSession.BytesDown)
 			assert.Equal(tt.args.terminationReason.String(), foundSession.TerminationReason)
 			assert.Equal(tt.args.serverId, foundSession.ServerId)
 			assert.Equal(tt.args.serverType, foundSession.ServerType)
