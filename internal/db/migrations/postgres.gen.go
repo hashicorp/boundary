@@ -3740,7 +3740,7 @@ begin;
 
   create trigger 
     insert_new_connection_state
-  after insert on session
+  after insert on session_connection
     for each row execute procedure insert_new_session_state();
 
 
