@@ -2,6 +2,7 @@
 package authmethods
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -26,6 +27,17 @@ type AuthMethod struct {
 	Version     uint32                 `json:"version,omitempty"`
 	Type        string                 `json:"type,omitempty"`
 	Attributes  map[string]interface{} `json:"attributes,omitempty"`
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n AuthMethod) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n AuthMethod) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 
 // Client is a client for this collection

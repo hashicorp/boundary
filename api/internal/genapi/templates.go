@@ -555,6 +555,17 @@ import (
 
 type {{ .Name }} struct { {{ range .Fields }}
 {{ .Name }}  {{ .FieldType }} `, "`json:\"{{ .ProtoName }},omitempty\"`", `{{ end }}
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap map[string]interface{}
+}
+
+func (n {{ .Name }}) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n {{ .Name }}) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 `)))
 
