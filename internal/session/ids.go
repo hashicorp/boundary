@@ -12,6 +12,9 @@ const (
 
 	// StatePrefix for state PK ids
 	StatePrefix = "ss"
+
+	// ConnectionPrefix for connection PK ids
+	ConnectionPrefix = "sc"
 )
 
 func newId() (string, error) {
@@ -26,6 +29,14 @@ func newStateId() (string, error) {
 	id, err := db.NewPublicId(StatePrefix)
 	if err != nil {
 		return "", fmt.Errorf("new session state id: %w", err)
+	}
+	return id, nil
+}
+
+func newConnectionId() (string, error) {
+	id, err := db.NewPublicId(ConnectionPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new session connection id: %w", err)
 	}
 	return id, nil
 }

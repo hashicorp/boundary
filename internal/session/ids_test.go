@@ -20,4 +20,9 @@ func Test_Ids(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, StatePrefix+"_"))
 	})
+	t.Run("sc", func(t *testing.T) {
+		id, err := newConnectionId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, ConnectionPrefix+"_"))
+	})
 }
