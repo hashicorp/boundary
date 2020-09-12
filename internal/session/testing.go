@@ -16,6 +16,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientAddr string, clientPort uint32, backendAddr string, backendPort uint32) *Connection {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	c, err := NewConnection(sessionId, clientAddr, clientPort, backendAddr, backendPort)
+	require.NoError(err)
+	id, err := newConnectionId()
+	require.NoError(err)
+	c.PublicId = id
+	err = rw.Create(context.Background(), c)
+	require.NoError(err)
+	return c
+}
+
 // TestState creates a test state for the sessionId in the repository.
 func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *State {
 	t.Helper()

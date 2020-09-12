@@ -33,3 +33,17 @@ func Test_TestState(t *testing.T) {
 	state := TestState(t, conn, s.PublicId, StatusPending)
 	require.NotNil(state)
 }
+
+func Test_TestConnection(t *testing.T) {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	s := TestDefaultSession(t, conn, wrapper, iamRepo)
+	require.NotNil(s)
+	assert.NotEmpty(s.PublicId)
+
+	c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 6500, "127.0.0.1", 22)
+	require.NotNil(c)
+}
