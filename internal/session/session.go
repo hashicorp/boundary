@@ -80,7 +80,6 @@ func New(c ComposedOf, opt ...Option) (*Session, error) {
 		AuthTokenId: c.AuthTokenId,
 		ScopeId:     c.ScopeId,
 	}
-
 	if err := s.validateNewSession("new session:"); err != nil {
 		return nil, err
 	}
