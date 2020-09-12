@@ -142,7 +142,7 @@ begin;
     returns trigger
   as $$
   begin
-    insert into session_connection (session_id, state)
+    insert into session_connection_state (connection_id, state)
     values
       (new.public_id, 'connected');
     return new;
@@ -152,7 +152,7 @@ begin;
   create trigger 
     insert_new_connection_state
   after insert on session_connection
-    for each row execute procedure insert_new_session_state();
+    for each row execute procedure insert_new_connection_state();
 
 
   create table session_connection_state_enm (
