@@ -66,10 +66,7 @@ func (c *StaticCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
-
-	if len(staticFlagsMap[c.Func]) > 0 {
-		common.PopulateCommonFlags(c.Command, f, "static-type host-set", staticFlagsMap[c.Func])
-	}
+	common.PopulateCommonFlags(c.Command, f, "static-type host-set", staticFlagsMap[c.Func])
 
 	for _, name := range staticFlagsMap[c.Func] {
 		switch name {
