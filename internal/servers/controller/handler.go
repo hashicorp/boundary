@@ -19,7 +19,9 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	wpbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
@@ -342,7 +344,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			}
 		}
 
-		var workers []*services.WorkerInfo
+		var workers []*pb.WorkerInfo
 		repo, err := c.ServersRepoFn()
 		if err != nil {
 			errorResp(err)
@@ -354,7 +356,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 		for _, v := range servers {
-			workers = append(workers, &services.WorkerInfo{Address: v.Address})
+			workers = append(workers, &pb.WorkerInfo{Address: v.Address})
 		}
 
 		wrapper, err := c.kms.GetWrapper(r.Context(), scope.Global.String(), kms.KeyPurposeSessions)
@@ -390,16 +392,18 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 
-		ret := &services.ValidateSessionResponse{
-			Id:             jobId,
-			ScopeId:        scope.Global.String(),
-			UserId:         "u_1234567890",
-			Type:           "tcp",
-			Endpoint:       endpoint,
-			Certificate:    certBytes,
-			PrivateKey:     privKey,
-			WorkerInfo:     workers,
-			ExpirationTime: &timestamppb.Timestamp{Seconds: time.Now().Add(timeout).Unix()},
+		ret := &wpbs.GetSessionResponse{
+			Session: &pb.Session{
+				Id:             jobId,
+				ScopeId:        scope.Global.String(),
+				UserId:         "u_1234567890",
+				Type:           "tcp",
+				Endpoint:       endpoint,
+				Certificate:    certBytes,
+				PrivateKey:     privKey,
+				WorkerInfo:     workers,
+				ExpirationTime: &timestamppb.Timestamp{Seconds: time.Now().Add(timeout).Unix()},
+			},
 		}
 
 		marshaled, err := proto.Marshal(ret)
@@ -413,8 +417,8 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 
-		ret.PrivateKey = nil
-		c.jobMap.Store(jobId, ret)
+		ret.Session.PrivateKey = nil
+		c.jobMap.Store(jobId, ret.GetSession())
 	})
 }
 

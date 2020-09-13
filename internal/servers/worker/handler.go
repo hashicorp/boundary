@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"nhooyr.io/websocket"
@@ -45,7 +45,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		jobInfo := jobInfoRaw.(*services.ValidateSessionResponse)
+		jobInfo := jobInfoRaw.(*pb.Session)
 
 		opts := &websocket.AcceptOptions{
 			Subprotocols: []string{globals.TcpProxyV1},
