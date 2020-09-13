@@ -30,6 +30,18 @@ func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientAddr string, c
 	return c
 }
 
+// TestConnectionState creates a test connection state for the connectionId in the repository.
+func TestConnectionState(t *testing.T, conn *gorm.DB, connectionId string, state ConnectionStatus) *ConnectionState {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	s, err := NewConnectionState(connectionId, state)
+	require.NoError(err)
+	err = rw.Create(context.Background(), s)
+	require.NoError(err)
+	return s
+}
+
 // TestState creates a test state for the sessionId in the repository.
 func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *State {
 	t.Helper()
