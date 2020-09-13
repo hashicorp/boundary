@@ -3,6 +3,7 @@ package hosts
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
@@ -351,8 +352,10 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields["attributes"] = "Attribute fields do not match the expected format."
 			}
-			if attrs.GetAddress() == nil {
-				badFields["attributes.address"] = "This is a required field for this type."
+			if attrs.GetAddress() == nil ||
+				len(attrs.GetAddress().GetValue()) < static.MinHostAddressLength ||
+				len(attrs.GetAddress().GetValue()) > static.MaxHostAddressLength {
+				badFields["attributes.address"] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
 			}
 		}
 		return badFields
@@ -366,6 +369,19 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 		case host.StaticSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
 				badFields["type"] = "Cannot modify the resource type."
+
+				attrs := &pb.StaticHostAttributes{}
+				if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+					badFields["attributes"] = "Attribute fields do not match the expected format."
+				}
+
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.address") {
+					if attrs.GetAddress() == nil ||
+						len(strings.TrimSpace(attrs.GetAddress().GetValue())) < static.MinHostAddressLength ||
+						len(strings.TrimSpace(attrs.GetAddress().GetValue())) > static.MaxHostAddressLength {
+						badFields["attributes.address"] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+					}
+				}
 			}
 		default:
 			badFields["id"] = "Improperly formatted identifier used."
