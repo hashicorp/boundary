@@ -139,3 +139,178 @@ func TestState_ImmutableFields(t *testing.T) {
 		})
 	}
 }
+
+func TestConnection_ImmutableFields(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+
+	_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	session := TestDefaultSession(t, conn, wrapper, iamRepo)
+	new := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+
+	var tests = []struct {
+		name      string
+		update    *Connection
+		fieldMask []string
+	}{
+		{
+			name: "public_id",
+			update: func() *Connection {
+				c := new.Clone().(*Connection)
+				c.PublicId = "sc_thisIsNotAValidId"
+				return c
+			}(),
+			fieldMask: []string{"PublicId"},
+		},
+		{
+			name: "session_id",
+			update: func() *Connection {
+				c := new.Clone().(*Connection)
+				c.SessionId = "s_thisIsNotAValidId"
+				return c
+			}(),
+			fieldMask: []string{"SessionId"},
+		},
+		{
+			name: "client_address",
+			update: func() *Connection {
+				c := new.Clone().(*Connection)
+				c.ClientAddress = "0.0.0.0"
+				return c
+			}(),
+			fieldMask: []string{"ClientAddress"},
+		},
+		{
+			name: "client_port",
+			update: func() *Connection {
+				c := new.Clone().(*Connection)
+				c.ClientPort = 443
+				return c
+			}(),
+			fieldMask: []string{"ClientPort"},
+		},
+		{
+			name: "backend_address",
+			update: func() *Connection {
+				c := new.Clone().(*Connection)
+				c.BackendAddress = "0.0.0.0"
+				return c
+			}(),
+			fieldMask: []string{"BackendAddress"},
+		},
+		{
+			name: "backend_port",
+			update: func() *Connection {
+				c := new.Clone().(*Connection)
+				c.BackendPort = 443
+				return c
+			}(),
+			fieldMask: []string{"BackendPort"},
+		},
+		{
+			name: "create time",
+			update: func() *Connection {
+				s := new.Clone().(*Connection)
+				s.CreateTime = &ts
+				return s
+			}(),
+			fieldMask: []string{"CreateTime"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			orig := new.Clone()
+			err := rw.LookupById(context.Background(), orig)
+			require.NoError(err)
+
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+			require.Error(err)
+			assert.Equal(0, rowsUpdated)
+
+			after := new.Clone()
+			err = rw.LookupById(context.Background(), after)
+			require.NoError(err)
+
+			assert.Equal(orig.(*Connection), after)
+
+		})
+	}
+}
+
+func TestConnectionState_ImmutableFields(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+
+	_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	session := TestDefaultSession(t, conn, wrapper, iamRepo)
+	connection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+	state := TestConnectionState(t, conn, connection.PublicId, StatusClosed)
+
+	var new ConnectionState
+	err := rw.LookupWhere(context.Background(), &new, "connection_id = ? and state = ?", state.ConnectionId, state.Status)
+	require.NoError(t, err)
+
+	var tests = []struct {
+		name      string
+		update    *ConnectionState
+		fieldMask []string
+	}{
+		{
+			name: "session_id",
+			update: func() *ConnectionState {
+				s := new.Clone().(*ConnectionState)
+				s.ConnectionId = "sc_thisIsNotAValidId"
+				return s
+			}(),
+			fieldMask: []string{"PublicId"},
+		},
+		{
+			name: "start time",
+			update: func() *ConnectionState {
+				s := new.Clone().(*ConnectionState)
+				s.StartTime = &ts
+				return s
+			}(),
+			fieldMask: []string{"StartTime"},
+		},
+		{
+			name: "previous_end_time",
+			update: func() *ConnectionState {
+				s := new.Clone().(*ConnectionState)
+				s.PreviousEndTime = &ts
+				return s
+			}(),
+			fieldMask: []string{"PreviousEndTime"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			orig := new.Clone()
+			err := rw.LookupWhere(context.Background(), orig, "connection_id = ? and start_time = ?", new.ConnectionId, new.StartTime)
+			require.NoError(err)
+
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+			require.Error(err)
+			assert.Equal(0, rowsUpdated)
+
+			after := new.Clone()
+			err = rw.LookupWhere(context.Background(), after, "connection_id = ? and start_time = ?", new.ConnectionId, new.StartTime)
+			require.NoError(err)
+			assert.Equal(orig.(*ConnectionState), after)
+		})
+	}
+}
