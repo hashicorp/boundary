@@ -3388,6 +3388,11 @@ begin;
       references iam_scope_project (scope_id)
       on delete set null
       on update cascade,
+    -- Certificate to use when connecting (or if using custom certs, to
+	  -- serve as the "login"). Raw DER bytes.  
+    certificate bytea not null,
+    -- after this time the connection will be expired, e.g. forcefully terminated
+    expiration_time wt_timestamp, -- maybe null
     -- the reason this session ended (null until terminated)
     termination_reason text -- fk8
       references session_termination_reason_enm (name)
@@ -3402,7 +3407,7 @@ begin;
     immutable_columns
   before
   update on session
-    for each row execute procedure immutable_columns('public_id', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'create_time');
   
   create trigger 
     update_version_column 
