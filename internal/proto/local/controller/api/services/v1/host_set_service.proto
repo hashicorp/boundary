@@ -28,10 +28,6 @@ service HostSetService {
     option (google.api.http) = {
       get: "/v1/host-sets/{id}"
       response_body: "item"
-      additional_bindings {
-        get: "/v1/scopes/*/host-catalogs/*/host-sets/{id}"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Get a single HostSet"
@@ -46,9 +42,6 @@ service HostSetService {
   rpc ListHostSets(ListHostSetsRequest) returns (ListHostSetsResponse) {
     option (google.api.http) = {
       get: "/v1/host-sets"
-      additional_bindings {
-        get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "List all HostSets under the specific catalog"
@@ -66,11 +59,6 @@ service HostSetService {
       post: "/v1/host-sets"
       body: "item"
       response_body: "item"
-      additional_bindings {
-        post: "/v1/scopes/*/host-catalogs/{item.host_catalog_id}/host-sets"
-        body: "item"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Create a HostSet"
@@ -90,11 +78,6 @@ service HostSetService {
       patch: "/v1/host-sets/{id}"
       body: "item"
       response_body: "item"
-      additional_bindings: {
-        patch: "/v1/scopes/*/host-catalogs/*/host-sets/{id}"
-        body: "item"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Update a HostSet"
@@ -109,9 +92,6 @@ service HostSetService {
   rpc DeleteHostSet(DeleteHostSetRequest) returns (DeleteHostSetResponse) {
     option (google.api.http) = {
       delete: "/v1/host-sets/{id}"
-      additional_bindings: {
-        delete: "/v1/scopes/*/host-catalogs/*/host-sets/{id}"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Delete a HostSet"
@@ -129,11 +109,6 @@ service HostSetService {
       post: "/v1/host-sets/{id}:add-hosts"
       body: "*"
       response_body: "item"
-      additional_bindings: {
-        post: "/v1/scopes/*/host-catalogs/*/host-sets/{id}:add-hosts"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Adds existing Hosts to a Host Set."
@@ -152,11 +127,6 @@ service HostSetService {
       post: "/v1/host-sets/{id}:set-hosts"
       body: "*"
       response_body: "item"
-      additional_bindings: {
-        post: "/v1/scopes/*/host-catalogs/*/host-sets/{id}:set-hosts"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Sets the Hosts on the Host Set."
@@ -173,11 +143,6 @@ service HostSetService {
       post: "/v1/host-sets/{id}:remove-hosts"
       body: "*"
       response_body: "item"
-      additional_bindings: {
-        post: "/v1/scopes/*/host-catalogs/*/host-sets/{id}:remove-hosts"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Removes Hosts from the Host Set."

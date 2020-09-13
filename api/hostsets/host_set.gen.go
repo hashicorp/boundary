@@ -288,8 +288,11 @@ func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32,
 	if hostSetId == "" {
 		return nil, nil, fmt.Errorf("empty hostSetId value passed into AddHosts request")
 	}
+	if len(hostIds) == 0 {
+		return nil, nil, errors.New("empty hostIds passed into AddHosts request")
+	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -312,10 +315,7 @@ func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32,
 	}
 
 	opts.postMap["version"] = version
-
-	if len(hostIds) > 0 {
-		opts.postMap["host_ids"] = hostIds
-	}
+	opts.postMap["host_ids"] = hostIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:add-hosts", hostSetId), opts.postMap, apiOpts...)
 	if err != nil {
@@ -350,8 +350,9 @@ func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32,
 	if hostSetId == "" {
 		return nil, nil, fmt.Errorf("empty hostSetId value passed into SetHosts request")
 	}
+
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -374,13 +375,7 @@ func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32,
 	}
 
 	opts.postMap["version"] = version
-
-	if len(hostIds) > 0 {
-		opts.postMap["host_ids"] = hostIds
-	} else if hostIds != nil {
-		// In this function, a non-nil but empty list means clear out
-		opts.postMap["host_ids"] = nil
-	}
+	opts.postMap["host_ids"] = hostIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:set-hosts", hostSetId), opts.postMap, apiOpts...)
 	if err != nil {
@@ -415,8 +410,11 @@ func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint
 	if hostSetId == "" {
 		return nil, nil, fmt.Errorf("empty hostSetId value passed into RemoveHosts request")
 	}
+	if len(hostIds) == 0 {
+		return nil, nil, errors.New("empty hostIds passed into RemoveHosts request")
+	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -439,10 +437,7 @@ func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint
 	}
 
 	opts.postMap["version"] = version
-
-	if len(hostIds) > 0 {
-		opts.postMap["host_ids"] = hostIds
-	}
+	opts.postMap["host_ids"] = hostIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:remove-hosts", hostSetId), opts.postMap, apiOpts...)
 	if err != nil {

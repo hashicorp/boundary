@@ -4,7 +4,6 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -141,9 +141,9 @@ func (c *Command) Run(args []string) int {
 		c.flagAuth = string(authBytes)
 	}
 
-	marshaled, err := base64.RawStdEncoding.DecodeString(c.flagAuth)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Unable to decode authorization string: %w", err).Error())
+	marshaled := base58.Decode(c.flagAuth)
+	if len(marshaled) == 0 {
+		c.UI.Error("Zero length authorization information after decoding")
 		return 1
 	}
 

@@ -1,13 +1,13 @@
 package authenticate
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/vault/sdk/helper/password"
@@ -156,7 +156,7 @@ func (c *PasswordCommand) Run(args []string) int {
 			c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to system credential store: %s", err))
 			return 1
 		}
-		if err := keyring.Set("HashiCorp Boundary Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
+		if err := keyring.Set("HashiCorp Boundary Auth Token", tokenName, base58.Encode(marshaled)); err != nil {
 			c.UI.Error(fmt.Sprintf("Error saving auth token to system credential store: %s", err))
 			return 1
 		}

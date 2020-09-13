@@ -100,76 +100,6 @@ func local_request_HostCatalogService_GetHostCatalog_0(ctx context.Context, mars
 }
 
 var (
-	filter_HostCatalogService_GetHostCatalog_1 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
-)
-
-func request_HostCatalogService_GetHostCatalog_1(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetHostCatalogRequest
-	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_HostCatalogService_GetHostCatalog_1); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	msg, err := client.GetHostCatalog(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-
-}
-
-func local_request_HostCatalogService_GetHostCatalog_1(ctx context.Context, marshaler runtime.Marshaler, server HostCatalogServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetHostCatalogRequest
-	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_HostCatalogService_GetHostCatalog_1); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	msg, err := server.GetHostCatalog(ctx, &protoReq)
-	return msg, metadata, err
-
-}
-
-var (
 	filter_HostCatalogService_ListHostCatalogs_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
@@ -205,76 +135,6 @@ func local_request_HostCatalogService_ListHostCatalogs_0(ctx context.Context, ma
 
 }
 
-var (
-	filter_HostCatalogService_ListHostCatalogs_1 = &utilities.DoubleArray{Encoding: map[string]int{"scope_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
-)
-
-func request_HostCatalogService_ListHostCatalogs_1(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListHostCatalogsRequest
-	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_HostCatalogService_ListHostCatalogs_1); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	msg, err := client.ListHostCatalogs(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-
-}
-
-func local_request_HostCatalogService_ListHostCatalogs_1(ctx context.Context, marshaler runtime.Marshaler, server HostCatalogServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListHostCatalogsRequest
-	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_HostCatalogService_ListHostCatalogs_1); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	msg, err := server.ListHostCatalogs(ctx, &protoReq)
-	return msg, metadata, err
-
-}
-
 func request_HostCatalogService_CreateHostCatalog_0(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq CreateHostCatalogRequest
 	var metadata runtime.ServerMetadata
@@ -302,74 +162,6 @@ func local_request_HostCatalogService_CreateHostCatalog_0(ctx context.Context, m
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	msg, err := server.CreateHostCatalog(ctx, &protoReq)
-	return msg, metadata, err
-
-}
-
-func request_HostCatalogService_CreateHostCatalog_1(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateHostCatalogRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["item.scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "item.scope_id")
-	}
-
-	err = runtime.PopulateFieldFromPath(&protoReq, "item.scope_id", val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "item.scope_id", err)
-	}
-
-	msg, err := client.CreateHostCatalog(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-
-}
-
-func local_request_HostCatalogService_CreateHostCatalog_1(ctx context.Context, marshaler runtime.Marshaler, server HostCatalogServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateHostCatalogRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["item.scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "item.scope_id")
-	}
-
-	err = runtime.PopulateFieldFromPath(&protoReq, "item.scope_id", val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "item.scope_id", err)
 	}
 
 	msg, err := server.CreateHostCatalog(ctx, &protoReq)
@@ -477,106 +269,6 @@ func local_request_HostCatalogService_UpdateHostCatalog_0(ctx context.Context, m
 
 }
 
-var (
-	filter_HostCatalogService_UpdateHostCatalog_1 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
-)
-
-func request_HostCatalogService_UpdateHostCatalog_1(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateHostCatalogRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
-		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
-			return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-		} else {
-			protoReq.UpdateMask = fieldMask
-		}
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_HostCatalogService_UpdateHostCatalog_1); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	msg, err := client.UpdateHostCatalog(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-
-}
-
-func local_request_HostCatalogService_UpdateHostCatalog_1(ctx context.Context, marshaler runtime.Marshaler, server HostCatalogServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateHostCatalogRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
-		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
-			return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-		} else {
-			protoReq.UpdateMask = fieldMask
-		}
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_HostCatalogService_UpdateHostCatalog_1); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	msg, err := server.UpdateHostCatalog(ctx, &protoReq)
-	return msg, metadata, err
-
-}
-
 func request_HostCatalogService_DeleteHostCatalog_0(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteHostCatalogRequest
 	var metadata runtime.ServerMetadata
@@ -629,58 +321,6 @@ func local_request_HostCatalogService_DeleteHostCatalog_0(ctx context.Context, m
 
 }
 
-func request_HostCatalogService_DeleteHostCatalog_1(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteHostCatalogRequest
-	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	msg, err := client.DeleteHostCatalog(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-
-}
-
-func local_request_HostCatalogService_DeleteHostCatalog_1(ctx context.Context, marshaler runtime.Marshaler, server HostCatalogServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteHostCatalogRequest
-	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	msg, err := server.DeleteHostCatalog(ctx, &protoReq)
-	return msg, metadata, err
-
-}
-
 // RegisterHostCatalogServiceHandlerServer registers the http handlers for service HostCatalogService to "mux".
 // UnaryRPC     :call HostCatalogServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
@@ -707,26 +347,6 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 
 	})
 
-	mux.Handle("GET", pattern_HostCatalogService_GetHostCatalog_1, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/GetHostCatalog")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := local_request_HostCatalogService_GetHostCatalog_1(rctx, inboundMarshaler, server, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_HostCatalogService_GetHostCatalog_1(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_GetHostCatalog_1{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
 	mux.Handle("GET", pattern_HostCatalogService_ListHostCatalogs_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -744,26 +364,6 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_ListHostCatalogs_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
-	})
-
-	mux.Handle("GET", pattern_HostCatalogService_ListHostCatalogs_1, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/ListHostCatalogs")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := local_request_HostCatalogService_ListHostCatalogs_1(rctx, inboundMarshaler, server, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_HostCatalogService_ListHostCatalogs_1(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -787,26 +387,6 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 
 	})
 
-	mux.Handle("POST", pattern_HostCatalogService_CreateHostCatalog_1, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/CreateHostCatalog")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := local_request_HostCatalogService_CreateHostCatalog_1(rctx, inboundMarshaler, server, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_HostCatalogService_CreateHostCatalog_1(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_CreateHostCatalog_1{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
 	mux.Handle("PATCH", pattern_HostCatalogService_UpdateHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -827,26 +407,6 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 
 	})
 
-	mux.Handle("PATCH", pattern_HostCatalogService_UpdateHostCatalog_1, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/UpdateHostCatalog")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := local_request_HostCatalogService_UpdateHostCatalog_1(rctx, inboundMarshaler, server, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_HostCatalogService_UpdateHostCatalog_1(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_UpdateHostCatalog_1{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
 	mux.Handle("DELETE", pattern_HostCatalogService_DeleteHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -864,26 +424,6 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_DeleteHostCatalog_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
-	})
-
-	mux.Handle("DELETE", pattern_HostCatalogService_DeleteHostCatalog_1, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/DeleteHostCatalog")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := local_request_HostCatalogService_DeleteHostCatalog_1(rctx, inboundMarshaler, server, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_HostCatalogService_DeleteHostCatalog_1(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -948,26 +488,6 @@ func RegisterHostCatalogServiceHandlerClient(ctx context.Context, mux *runtime.S
 
 	})
 
-	mux.Handle("GET", pattern_HostCatalogService_GetHostCatalog_1, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/GetHostCatalog")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_HostCatalogService_GetHostCatalog_1(rctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_HostCatalogService_GetHostCatalog_1(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_GetHostCatalog_1{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
 	mux.Handle("GET", pattern_HostCatalogService_ListHostCatalogs_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -985,26 +505,6 @@ func RegisterHostCatalogServiceHandlerClient(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_ListHostCatalogs_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
-	})
-
-	mux.Handle("GET", pattern_HostCatalogService_ListHostCatalogs_1, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/ListHostCatalogs")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_HostCatalogService_ListHostCatalogs_1(rctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_HostCatalogService_ListHostCatalogs_1(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1028,26 +528,6 @@ func RegisterHostCatalogServiceHandlerClient(ctx context.Context, mux *runtime.S
 
 	})
 
-	mux.Handle("POST", pattern_HostCatalogService_CreateHostCatalog_1, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/CreateHostCatalog")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_HostCatalogService_CreateHostCatalog_1(rctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_HostCatalogService_CreateHostCatalog_1(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_CreateHostCatalog_1{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
 	mux.Handle("PATCH", pattern_HostCatalogService_UpdateHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -1065,26 +545,6 @@ func RegisterHostCatalogServiceHandlerClient(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_UpdateHostCatalog_0(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_UpdateHostCatalog_0{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
-	mux.Handle("PATCH", pattern_HostCatalogService_UpdateHostCatalog_1, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/UpdateHostCatalog")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_HostCatalogService_UpdateHostCatalog_1(rctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_HostCatalogService_UpdateHostCatalog_1(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_UpdateHostCatalog_1{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1108,26 +568,6 @@ func RegisterHostCatalogServiceHandlerClient(ctx context.Context, mux *runtime.S
 
 	})
 
-	mux.Handle("DELETE", pattern_HostCatalogService_DeleteHostCatalog_1, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/DeleteHostCatalog")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_HostCatalogService_DeleteHostCatalog_1(rctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_HostCatalogService_DeleteHostCatalog_1(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
-	})
-
 	return nil
 }
 
@@ -1136,15 +576,6 @@ type response_HostCatalogService_GetHostCatalog_0 struct {
 }
 
 func (m response_HostCatalogService_GetHostCatalog_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*GetHostCatalogResponse)
-	return response.Item
-}
-
-type response_HostCatalogService_GetHostCatalog_1 struct {
-	proto.Message
-}
-
-func (m response_HostCatalogService_GetHostCatalog_1) XXX_ResponseBody() interface{} {
 	response := m.Message.(*GetHostCatalogResponse)
 	return response.Item
 }
@@ -1158,15 +589,6 @@ func (m response_HostCatalogService_CreateHostCatalog_0) XXX_ResponseBody() inte
 	return response.Item
 }
 
-type response_HostCatalogService_CreateHostCatalog_1 struct {
-	proto.Message
-}
-
-func (m response_HostCatalogService_CreateHostCatalog_1) XXX_ResponseBody() interface{} {
-	response := m.Message.(*CreateHostCatalogResponse)
-	return response.Item
-}
-
 type response_HostCatalogService_UpdateHostCatalog_0 struct {
 	proto.Message
 }
@@ -1176,55 +598,26 @@ func (m response_HostCatalogService_UpdateHostCatalog_0) XXX_ResponseBody() inte
 	return response.Item
 }
 
-type response_HostCatalogService_UpdateHostCatalog_1 struct {
-	proto.Message
-}
-
-func (m response_HostCatalogService_UpdateHostCatalog_1) XXX_ResponseBody() interface{} {
-	response := m.Message.(*UpdateHostCatalogResponse)
-	return response.Item
-}
-
 var (
 	pattern_HostCatalogService_GetHostCatalog_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-catalogs", "id"}, ""))
 
-	pattern_HostCatalogService_GetHostCatalog_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "host-catalogs", "id"}, ""))
-
 	pattern_HostCatalogService_ListHostCatalogs_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "host-catalogs"}, ""))
-
-	pattern_HostCatalogService_ListHostCatalogs_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "scopes", "scope_id", "host-catalogs"}, ""))
 
 	pattern_HostCatalogService_CreateHostCatalog_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "host-catalogs"}, ""))
 
-	pattern_HostCatalogService_CreateHostCatalog_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "scopes", "item.scope_id", "host-catalogs"}, ""))
-
 	pattern_HostCatalogService_UpdateHostCatalog_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-catalogs", "id"}, ""))
 
-	pattern_HostCatalogService_UpdateHostCatalog_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "host-catalogs", "id"}, ""))
-
 	pattern_HostCatalogService_DeleteHostCatalog_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "host-catalogs", "id"}, ""))
-
-	pattern_HostCatalogService_DeleteHostCatalog_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "host-catalogs", "id"}, ""))
 )
 
 var (
 	forward_HostCatalogService_GetHostCatalog_0 = runtime.ForwardResponseMessage
 
-	forward_HostCatalogService_GetHostCatalog_1 = runtime.ForwardResponseMessage
-
 	forward_HostCatalogService_ListHostCatalogs_0 = runtime.ForwardResponseMessage
-
-	forward_HostCatalogService_ListHostCatalogs_1 = runtime.ForwardResponseMessage
 
 	forward_HostCatalogService_CreateHostCatalog_0 = runtime.ForwardResponseMessage
 
-	forward_HostCatalogService_CreateHostCatalog_1 = runtime.ForwardResponseMessage
-
 	forward_HostCatalogService_UpdateHostCatalog_0 = runtime.ForwardResponseMessage
 
-	forward_HostCatalogService_UpdateHostCatalog_1 = runtime.ForwardResponseMessage
-
 	forward_HostCatalogService_DeleteHostCatalog_0 = runtime.ForwardResponseMessage
-
-	forward_HostCatalogService_DeleteHostCatalog_1 = runtime.ForwardResponseMessage
 )

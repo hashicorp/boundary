@@ -92,10 +92,7 @@ func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
-
-	if len(flagsMap[c.Func]) > 0 {
-		common.PopulateCommonFlags(c.Command, f, resource.Host.String(), flagsMap[c.Func])
-	}
+	common.PopulateCommonFlags(c.Command, f, resource.Host.String(), flagsMap[c.Func])
 
 	for _, name := range flagsMap[c.Func] {
 		switch name {
@@ -103,7 +100,7 @@ func (c *Command) Flags() *base.FlagSets {
 			f.StringVar(&base.StringVar{
 				Name:   "host-catalog-id",
 				Target: &c.flagHostCatalogId,
-				Usage:  "The host-catalog resource in which to create or update the host resource",
+				Usage:  "The host-catalog resource in which to list host resources",
 			})
 		}
 	}

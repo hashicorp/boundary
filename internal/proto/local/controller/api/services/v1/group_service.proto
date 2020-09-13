@@ -21,10 +21,6 @@ service GroupService {
     option (google.api.http) = {
       get: "/v1/groups/{id}"
       response_body: "item"
-      additional_bindings: {
-        get: "/v1/scopes/*/groups/{id}"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single Group"
@@ -38,9 +34,6 @@ service GroupService {
   rpc ListGroups(ListGroupsRequest) returns (ListGroupsResponse) {
     option (google.api.http) = {
       get: "/v1/groups"
-      additional_bindings: {
-        get: "/v1/scopes/{scope_id}/groups"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all Groups"
@@ -57,11 +50,6 @@ service GroupService {
       post: "/v1/groups"
       body: "item"
       response_body: "item"
-      additional_bindings: {
-        post: "/v1/scopes/{item.scope_id}/groups"
-        body: "item"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Creates a single Group"
@@ -81,11 +69,6 @@ service GroupService {
       patch: "/v1/groups/{id}"
       body: "item"
       response_body: "item"
-      additional_bindings: {
-        patch: "/v1/scopes/*/groups/{id}"
-        body: "item"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Updates a Group"
@@ -100,9 +83,6 @@ service GroupService {
   rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse) {
     option (google.api.http) = {
       delete: "/v1/groups/{id}"
-      additional_bindings: {
-        delete: "/v1/scopes/*/groups/{id}"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes a Group"
@@ -118,11 +98,6 @@ service GroupService {
       post: "/v1/groups/{id}:add-members"
       body: "*"
       response_body: "item"
-      additional_bindings: {
-        post: "/v1/scopes/*/groups/{id}:add-members"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Adds Users as members to a Group"
@@ -139,11 +114,6 @@ service GroupService {
       post: "/v1/groups/{id}:set-members"
       body: "*"
       response_body: "item"
-      additional_bindings: {
-        post: "/v1/scopes/*/groups/{id}:set-members"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified."
@@ -159,11 +129,6 @@ service GroupService {
       post: "/v1/groups/{id}:remove-members"
       body: "*"
       response_body: "item"
-      additional_bindings: {
-        post: "/v1/scopes/*/groups/{id}:remove-members"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Removes the specified members from a Group."

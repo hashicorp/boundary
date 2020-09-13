@@ -19,10 +19,6 @@ service RoleService {
     option (google.api.http) = {
       get: "/v1/roles/{id}"
       response_body: "item"
-      additional_bindings {
-        get: "/v1/scopes/*/roles/{id}"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single Role"
@@ -36,9 +32,6 @@ service RoleService {
   rpc ListRoles(ListRolesRequest) returns (ListRolesResponse) {
     option (google.api.http) = {
       get: "/v1/roles"
-      additional_bindings {
-        get: "/v1/scopes/{scope_id}/roles"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all Roles"
@@ -55,11 +48,6 @@ service RoleService {
       post: "/v1/roles"
       body: "item"
       response_body: "item"
-      additional_bindings {
-        post: "/v1/scopes/{item.scope_id}/roles"
-        body: "item"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Creates a single Role"
@@ -79,11 +67,6 @@ service RoleService {
       patch: "/v1/roles/{id}"
       body: "item"
       response_body: "item"
-      additional_bindings {
-        patch: "/v1/scopes/*/roles/{id}"
-        body: "item"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Updates a Role"
@@ -98,9 +81,6 @@ service RoleService {
   rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse) {
     option (google.api.http) = {
       delete: "/v1/roles/{id}"
-      additional_bindings {
-        delete: "/v1/scopes/*/roles/{id}"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes a Role"
@@ -116,11 +96,6 @@ service RoleService {
       post: "/v1/roles/{id}:add-principals"
       body: "*"
       response_body: "item"
-      additional_bindings {
-        post: "/v1/scopes/*/roles/{id}:add-principals"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Adds Users and/or Groups to a Role"
@@ -138,11 +113,6 @@ service RoleService {
       post: "/v1/roles/{id}:set-principals"
       body: "*"
       response_body: "item"
-      additional_bindings {
-        post: "/v1/scopes/*/roles/{id}:set-principals"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Set Users and/or Groups to a Role, removing any principals that are not specified in the request."
@@ -159,11 +129,6 @@ service RoleService {
       post: "/v1/roles/{id}:remove-principals"
       body: "*"
       response_body: "item"
-      additional_bindings {
-        post: "/v1/scopes/*/roles/{id}:remove-principals"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Removes the specified Users and/or Groups from a Role."
@@ -179,11 +144,6 @@ service RoleService {
       post: "/v1/roles/{id}:add-grants"
       body: "*"
       response_body: "item"
-      additional_bindings {
-        post: "/v1/scopes/*/roles/{id}:add-grants"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Adds grants to a role"
@@ -200,11 +160,6 @@ service RoleService {
       post: "/v1/roles/{id}:set-grants"
       body: "*"
       response_body: "item"
-      additional_bindings {
-        post: "/v1/scopes/*/roles/{id}:set-grants"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Set grants for a role, removing any grants that are not specified in the request."
@@ -221,11 +176,6 @@ service RoleService {
       post: "/v1/roles/{id}:remove-grants"
       body: "*"
       response_body: "item"
-      additional_bindings {
-        post: "/v1/scopes/*/roles/{id}:remove-grants"
-        body: "*"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Removes grants from a role."
