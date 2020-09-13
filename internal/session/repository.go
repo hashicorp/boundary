@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/kms"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 // Clonable provides a cloning interface
@@ -55,12 +56,15 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 // its State of "Pending".  The following fields must be empty when creating a
 // session: ServerId, ServerType, and PublicId.  No options are
 // currently supported.
-func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt ...Option) (*Session, *State, error) {
+func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, opt ...Option) (*Session, *State, error) {
 	if newSession == nil {
 		return nil, nil, fmt.Errorf("create session: missing session: %w", db.ErrInvalidParameter)
 	}
 	if newSession.PublicId != "" {
 		return nil, nil, fmt.Errorf("create session: public id is not empty: %w", db.ErrInvalidParameter)
+	}
+	if len(newSession.Certificate) != 0 {
+		return nil, nil, fmt.Errorf("create session: certificate is not empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.TargetId == "" {
 		return nil, nil, fmt.Errorf("create session: target id is empty: %w", db.ErrInvalidParameter)
@@ -92,6 +96,13 @@ func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt
 		return nil, nil, fmt.Errorf("create session: %w", err)
 	}
 
+	_, certBytes, err := newCert(sessionWrapper, newSession.UserId, id)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create session: %w", err)
+	}
+	newSession.Certificate = certBytes
+	newSession.PublicId = id
+
 	var returnedSession *Session
 	var returnedState *State
 	_, err = r.writer.DoTx(
@@ -100,7 +111,6 @@ func (r *Repository) CreateSession(ctx context.Context, newSession *Session, opt
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			returnedSession = newSession.Clone().(*Session)
-			returnedSession.PublicId = id
 			if err = w.Create(ctx, returnedSession); err != nil {
 				return err
 			}

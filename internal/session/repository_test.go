@@ -158,7 +158,7 @@ func TestRepository_ListSession(t *testing.T) {
 			require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
 			testSessions := []*Session{}
 			for i := 0; i < tt.createCnt; i++ {
-				s := TestSession(t, conn, composedOf)
+				s := TestSession(t, conn, wrapper, composedOf)
 				testSessions = append(testSessions, s)
 			}
 			assert.Equal(tt.createCnt, len(testSessions))
@@ -176,7 +176,7 @@ func TestRepository_ListSession(t *testing.T) {
 		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
-			_ = TestSession(t, conn, composedOf)
+			_ = TestSession(t, conn, wrapper, composedOf)
 		}
 		got, err := repo.ListSessions(context.Background(), WithOrder("create_time asc"))
 		require.NoError(err)
@@ -195,7 +195,7 @@ func TestRepository_ListSession(t *testing.T) {
 		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
-			_ = TestSession(t, conn, composedOf)
+			_ = TestSession(t, conn, wrapper, composedOf)
 		}
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
 		got, err := repo.ListSessions(context.Background(), WithUserId(s.UserId))
@@ -315,7 +315,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				AuthTokenId: tt.args.composedOf.AuthTokenId,
 				ScopeId:     tt.args.composedOf.ScopeId,
 			}
-			ses, st, err := repo.CreateSession(context.Background(), s)
+			ses, st, err := repo.CreateSession(context.Background(), wrapper, s)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(ses)
@@ -630,7 +630,7 @@ func TestRepository_UpdateSession(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
-			s := TestSession(t, conn, composedOf)
+			s := TestSession(t, conn, wrapper, composedOf)
 
 			updateSession := AllocSession()
 			updateSession.PublicId = s.PublicId
