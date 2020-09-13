@@ -1,5 +1,9 @@
 package session
 
+import (
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+)
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -14,10 +18,11 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit   int
-	withOrder   string
-	withScopeId string
-	withUserId  string
+	withLimit          int
+	withOrder          string
+	withScopeId        string
+	withUserId         string
+	withExpirationTime *timestamp.Timestamp
 }
 
 func getDefaultOptions() options {
@@ -51,5 +56,12 @@ func WithScopeId(scopeId string) Option {
 func WithUserId(userId string) Option {
 	return func(o *options) {
 		o.withUserId = userId
+	}
+}
+
+// WithExpirationTime allows specifying an expiration time for the session
+func WithExpirationTime(exp *timestamp.Timestamp) Option {
+	return func(o *options) {
+		o.withExpirationTime = exp
 	}
 }

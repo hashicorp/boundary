@@ -2,8 +2,12 @@ package session
 
 import (
 	"testing"
+	"time"
 
+	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Test_GetOpts provides unit tests for GetOpts and all the options
@@ -46,6 +50,15 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithUserId("u_1234"))
 		testOpts := getDefaultOptions()
 		testOpts.withUserId = "u_1234"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithExpirationTime", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		now, err := ptypes.TimestampProto(time.Now())
+		require.NoError(err)
+		opts := getOpts(WithExpirationTime(&timestamp.Timestamp{Timestamp: now}))
+		testOpts := getDefaultOptions()
+		testOpts.withExpirationTime = &timestamp.Timestamp{Timestamp: now}
 		assert.Equal(opts, testOpts)
 	})
 }
