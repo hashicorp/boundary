@@ -2,11 +2,15 @@ package session
 
 import (
 	"context"
+	"crypto/ed25519"
 	"testing"
+	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -55,7 +59,7 @@ func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *Sta
 }
 
 // TestSession creates a test session composed of c in the repository.
-func TestSession(t *testing.T, conn *gorm.DB, c ComposedOf, opt ...Option) *Session {
+func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c ComposedOf, opt ...Option) *Session {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -64,6 +68,9 @@ func TestSession(t *testing.T, conn *gorm.DB, c ComposedOf, opt ...Option) *Sess
 	id, err := newId()
 	require.NoError(err)
 	s.PublicId = id
+	_, certBytes, err := newCert(wrapper, c.UserId, id)
+	require.NoError(err)
+	s.Certificate = certBytes
 	err = rw.Create(context.Background(), s)
 	require.NoError(err)
 	return s
@@ -72,8 +79,12 @@ func TestSession(t *testing.T, conn *gorm.DB, c ComposedOf, opt ...Option) *Sess
 // TestDefaultSession creates a test session in the repository using defaults.
 func TestDefaultSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository, opt ...Option) *Session {
 	t.Helper()
+	require := require.New(t)
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
-	return TestSession(t, conn, composedOf)
+	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
+	require.NoError(err)
+	exp := &timestamp.Timestamp{Timestamp: future}
+	return TestSession(t, conn, wrapper, composedOf, WithExpirationTime(exp))
 }
 
 // TestSessionParams returns an initialized ComposedOf which can be used to
@@ -119,4 +130,11 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 		AuthTokenId: at.PublicId,
 		ScopeId:     tcpTarget.ScopeId,
 	}
+}
+
+// TestCert is a temporary test func that intentionally doesn't take testing.T
+// as a parameter.  It's currently used in controller.jobTestingHandler() and
+// should be deprecated once that function is refactored to use sessions properly.
+func TestCert(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PrivateKey, []byte, error) {
+	return newCert(wrapper, userId, jobId)
 }

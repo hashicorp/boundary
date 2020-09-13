@@ -72,3 +72,17 @@ func Test_TestConnectionState(t *testing.T) {
 	require.NoError(err)
 	assert.NotEmpty(initialState.StartTime)
 }
+
+func Test_TestCert(t *testing.T) {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	wrapper := db.TestWrapper(t)
+	userId, err := db.NewPublicId(iam.UserPrefix)
+	require.NoError(err)
+	sessionId, err := newId()
+	require.NoError(err)
+	key, cert, err := TestCert(wrapper, userId, sessionId)
+	require.NoError(err)
+	assert.NotNil(key)
+	assert.NotNil(cert)
+}
