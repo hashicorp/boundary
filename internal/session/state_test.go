@@ -96,7 +96,7 @@ func TestState_Delete(t *testing.T) {
 	tests := []struct {
 		name            string
 		state           *State
-		deleteSessionId string
+		deleteStateId   string
 		wantRowsDeleted int
 		wantErr         bool
 		wantErrMsg      string
@@ -110,8 +110,8 @@ func TestState_Delete(t *testing.T) {
 		{
 			name:  "bad-id",
 			state: TestState(t, conn, session2.PublicId, StatusTerminated),
-			deleteSessionId: func() string {
-				id, err := db.NewPublicId(SessionPrefix)
+			deleteStateId: func() string {
+				id, err := db.NewPublicId(StatePrefix)
 				require.NoError(t, err)
 				return id
 			}(),
@@ -128,8 +128,8 @@ func TestState_Delete(t *testing.T) {
 			require.NoError(err)
 
 			deleteState := allocState()
-			if tt.deleteSessionId != "" {
-				deleteState.SessionId = tt.deleteSessionId
+			if tt.deleteStateId != "" {
+				deleteState.SessionId = tt.deleteStateId
 			} else {
 				deleteState.SessionId = tt.state.SessionId
 			}
