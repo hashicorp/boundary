@@ -63,7 +63,6 @@ func Test_TestConnectionState(t *testing.T) {
 	require.NotNil(c)
 	assert.NotEmpty(c.PublicId)
 
-	conn.LogMode(true)
 	cs := TestConnectionState(t, conn, c.PublicId, StatusClosed)
 	require.NotNil(cs)
 
