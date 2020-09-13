@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,9 +21,13 @@ func TestSession_Create(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
+	require.NoError(t, err)
+	exp := &timestamp.Timestamp{Timestamp: future}
 
 	type args struct {
 		composedOf ComposedOf
+		opt        []Option
 	}
 	tests := []struct {
 		name          string
@@ -35,6 +42,7 @@ func TestSession_Create(t *testing.T) {
 			name: "valid",
 			args: args{
 				composedOf: composedOf,
+				opt:        []Option{WithExpirationTime(exp)},
 			},
 			want: &Session{
 				UserId:      composedOf.UserId,
@@ -134,6 +142,9 @@ func TestSession_Create(t *testing.T) {
 				id, err := db.NewPublicId(SessionPrefix)
 				require.NoError(err)
 				got.PublicId = id
+				_, certBytes, err := newCert(wrapper, got.UserId, id)
+				require.NoError(err)
+				got.Certificate = certBytes
 				err = db.New(conn).Create(context.Background(), got)
 				if tt.wantCreateErr {
 					assert.Error(err)

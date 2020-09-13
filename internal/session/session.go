@@ -2,11 +2,18 @@ package session
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
 	"fmt"
+	"math/big"
+	mathrand "math/rand"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -50,6 +57,12 @@ type Session struct {
 	AuthTokenId string `json:"auth_token_id,omitempty" gorm:"default:null"`
 	// ScopeId for the session
 	ScopeId string `json:"scope_id,omitempty" gorm:"default:null"`
+	// Certificate to use when connecting (or if using custom certs, to
+	// serve as the "login"). Raw DER bytes.  Private key is not, and should not be
+	// stored in the database.
+	Certificate []byte `json:"certificate,omitempty" gorm:"default:null"`
+	// ExpirationTime - after this time the connection will be expired, e.g. forcefully terminated
+	ExpirationTime *timestamp.Timestamp `json:"expiration_time,omitempty" gorm:"default:null"`
 	// termination_reason for the session
 	TerminationReason string `json:"termination_reason,omitempty" gorm:"default:null"`
 	// CreateTime from the RDBMS
@@ -69,16 +82,19 @@ func (s *Session) GetPublicId() string {
 var _ Cloneable = (*Session)(nil)
 var _ db.VetForWriter = (*Session)(nil)
 
-// New creates a new in memory session.  No options
-// are currently supported.
+// New creates a new in memory session.  WithExpirationTime option is support to
+// set the session's expiration time.
 func New(c ComposedOf, opt ...Option) (*Session, error) {
+	opts := getOpts(opt...)
+
 	s := Session{
-		UserId:      c.UserId,
-		HostId:      c.HostId,
-		TargetId:    c.TargetId,
-		SetId:       c.HostSetId,
-		AuthTokenId: c.AuthTokenId,
-		ScopeId:     c.ScopeId,
+		UserId:         c.UserId,
+		HostId:         c.HostId,
+		TargetId:       c.TargetId,
+		SetId:          c.HostSetId,
+		AuthTokenId:    c.AuthTokenId,
+		ScopeId:        c.ScopeId,
+		ExpirationTime: opts.withExpirationTime,
 	}
 	if err := s.validateNewSession("new session:"); err != nil {
 		return nil, err
@@ -105,6 +121,18 @@ func (s *Session) Clone() interface{} {
 		ScopeId:           s.ScopeId,
 		TerminationReason: s.TerminationReason,
 		Version:           s.Version,
+	}
+	if s.Certificate != nil {
+		clone.Certificate = make([]byte, len(s.Certificate))
+		copy(clone.Certificate, s.Certificate)
+	}
+	if s.ExpirationTime != nil {
+		clone.ExpirationTime = &timestamp.Timestamp{
+			Timestamp: &timestamppb.Timestamp{
+				Seconds: s.ExpirationTime.Timestamp.Seconds,
+				Nanos:   s.ExpirationTime.Timestamp.Nanos,
+			},
+		}
 	}
 	if s.CreateTime != nil {
 		clone.CreateTime = &timestamp.Timestamp{
@@ -137,6 +165,9 @@ func (s *Session) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 		if err := s.validateNewSession("session vet for write:"); err != nil {
 			return err
 		}
+		if len(s.Certificate) == 0 {
+			return fmt.Errorf("session vet for write: certificate is missing: %w", db.ErrInvalidParameter)
+		}
 	case db.UpdateOp:
 		switch {
 		case contains(opts.WithFieldMaskPaths, "PublicId"):
@@ -151,6 +182,8 @@ func (s *Session) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 			return fmt.Errorf("session vet for write: set id is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "AuthTokenId"):
 			return fmt.Errorf("session vet for write: auth token id is immutable: %w", db.ErrInvalidParameter)
+		case contains(opts.WithFieldMaskPaths, "Certificate"):
+			return fmt.Errorf("session vet for write: certificate is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "CreateTime"):
 			return fmt.Errorf("session vet for write: create time is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
@@ -218,4 +251,39 @@ func contains(ss []string, t string) bool {
 		}
 	}
 	return false
+}
+
+func newCert(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PrivateKey, []byte, error) {
+	if wrapper == nil {
+		return nil, nil, fmt.Errorf("new session cert: missing wrapper: %w", db.ErrInvalidParameter)
+	}
+	if userId == "" {
+		return nil, nil, fmt.Errorf("new session cert: missing user id: %w", db.ErrInvalidParameter)
+	}
+	if jobId == "" {
+		return nil, nil, fmt.Errorf("new session cert: missing job id: %w", db.ErrInvalidParameter)
+	}
+	pubKey, privKey, err := DeriveED25519Key(wrapper, userId, jobId)
+	if err != nil {
+		return nil, nil, fmt.Errorf("new session cert: ")
+	}
+	template := &x509.Certificate{
+		ExtKeyUsage: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageServerAuth,
+			x509.ExtKeyUsageClientAuth,
+		},
+		DNSNames:              []string{jobId},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
+		SerialNumber:          big.NewInt(mathrand.Int63()),
+		NotBefore:             time.Now().Add(-1 * time.Minute),
+		NotAfter:              time.Now().Add(5 * time.Minute),
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+
+	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pubKey, privKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("new session cert: %w", err)
+	}
+	return privKey, certBytes, nil
 }
