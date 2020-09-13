@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package controller.servers.services.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/servers/services;services";
+
+import "google/protobuf/timestamp.proto";
+import "controller/servers/v1/servers.proto";
+
+service ServerCoordinationService {
+  // Status gets worker status requests which include the ongoing jobs the worker is handling and
+  // returns the status response which includes the changes the controller would like to make to
+  // jobs as well as provide a list of the controllers in the system.
+  rpc Status(StatusRequest) returns (StatusResponse) {}
+}
+
+message Connection {
+  // TODO: Populate the connection specific info.
+  // byte up/down
+  // duration
+  // etc...
+}
+
+message SessionJobInfo {
+  repeated Connection connections = 1;
+}
+
+message Job {
+  string job_id = 1;
+  enum JOBTYPE {
+    JOBTYPE_UNSPECIFIED = 0;
+    JOBTYPE_SESSION = 1;
+  }
+  JOBTYPE type = 2;
+  oneof job_info {
+    // This value is specified when type is JOBTYPE_SESSION.
+    SessionJobInfo session_info = 3;
+  }
+}
+
+message JobStatus {
+  enum STATUS {
+    // TODO: Get a better picture of what states general jobs can be in.
+    STATUS_UNSPECIFIED = 0;
+    // Specifies that the job is actively being handled by the worker.
+    STATUS_ACTIVE = 1;
+    STATUS_CANCELLED = 2;
+    STATUS_COMPLETED = 3;
+  }
+  Job job = 1;
+  STATUS status = 3;
+}
+
+message StatusRequest {
+  // The worker info. We could use information from the TLS connection but this
+  // is easier and going the other route doesn't provide much benefit -- if you
+  // get access to the key and spoof the connection, you're already compromised.
+  servers.v1.Server worker = 10;
+
+  // Jobs which this worker wants to report the status.
+  repeated JobStatus jobs = 20;
+}
+
+message JobChangeRequest {
+  enum CHANGETYPE {
+    CHANGETYPE_UNSPECIFIED = 0;
+    // Indicates that the job should be cancelled on the worker.
+    CHANGETYPE_CANCEL = 1;
+  }
+  Job job = 1;
+  CHANGETYPE request_type = 2;
+}
+
+message StatusResponse {
+  // Active controllers. This can be used (eventually) for connection
+  // management.
+  repeated servers.v1.Server controllers = 10;
+
+  // List of jobs and the expected state changes.  For example, this will include jobs witch
+  // change type of cancelled for jobs which are active on a worker but should be cancelled.
+  // This could also contain a request to start a job such as a worker -> worker proxy for
+  // establishing a session through an enclave.
+  repeated JobChangeRequest jobs_requests = 20;
+}
