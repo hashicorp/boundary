@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/globals"
@@ -408,7 +408,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 
-		if _, err := w.Write([]byte(base64.RawStdEncoding.EncodeToString(marshaled))); err != nil {
+		if _, err := w.Write([]byte(base58.Encode(marshaled))); err != nil {
 			errorResp(err)
 			return
 		}

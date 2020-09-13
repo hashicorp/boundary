@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcutil/base58"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 	"google.golang.org/protobuf/proto"
@@ -57,7 +58,7 @@ func formatToken(ctx context.Context, wrapper wrapping.Wrapper, info *Info) (str
 		return "", fmt.Errorf("error marshaling encrypted blob: %w", err)
 	}
 
-	return fmt.Sprintf("r_%s", base64.RawStdEncoding.EncodeToString(marshaledBlob)), nil
+	return fmt.Sprintf("r_%s", base58.Encode(marshaledBlob)), nil
 }
 
 func ParseRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper, token string) (*Info, error) {
@@ -70,9 +71,9 @@ func ParseRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper, token str
 	}
 	token = strings.TrimPrefix(token, "r_")
 
-	marshaledBlob, err := base64.RawStdEncoding.DecodeString(token)
-	if err != nil {
-		return nil, fmt.Errorf("error base64-decoding token: %w", err)
+	marshaledBlob := base58.Decode(token)
+	if len(marshaledBlob) == 0 {
+		return nil, fmt.Errorf("length zero after base58-decoding token")
 	}
 
 	blobInfo := new(wrapping.EncryptedBlobInfo)
