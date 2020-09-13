@@ -2,14 +2,10 @@ package controller
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
-	mathrand "math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -375,24 +371,9 @@ func jobTestingHandler(c *Controller) http.Handler {
 			errorResp(err)
 			return
 		}
-		jobId = "s_" + jobId
-		pubKey, privKey, err := session.DeriveED25519Key(wrapper, "u_1234567890", jobId)
-
-		template := &x509.Certificate{
-			ExtKeyUsage: []x509.ExtKeyUsage{
-				x509.ExtKeyUsageServerAuth,
-				x509.ExtKeyUsageClientAuth,
-			},
-			DNSNames:              []string{jobId},
-			KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
-			SerialNumber:          big.NewInt(mathrand.Int63()),
-			NotBefore:             time.Now().Add(-1 * time.Minute),
-			NotAfter:              time.Now().Add(5 * time.Minute),
-			BasicConstraintsValid: true,
-			IsCA:                  true,
-		}
-
-		certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pubKey, privKey)
+		// TODO (jimlambrt 8/2020): this is quite correct.  We need to create a
+		// new session here (in the session repo) which would have a cert.
+		privKey, certBytes, err := session.TestCert(wrapper, "u_1234567890", jobId)
 		if err != nil {
 			errorResp(err)
 			return
