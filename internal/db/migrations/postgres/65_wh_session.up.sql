@@ -30,6 +30,7 @@ begin;
     host_catalog_description      text not null,
 
     target_id                     wt_public_id not null,
+    target_type                   text not null,
     target_name                   text not null,
     target_description            text not null,
 
@@ -45,6 +46,12 @@ begin;
     row_effective_time            wt_timestamp,
     row_expiration_time           wt_timestamp
   );
+
+-- https://www.postgresql.org/docs/current/indexes-partial.html
+  create unique index wh_host_dim_current_constraint
+    on wh_host_dimension (target_id, host_set_id, host_id)
+    where current_row_indicator = 'Current';
+
   -- TODO(mgaffney) 09/2020: insert 0 row
 
   create table wh_user_dimension (
@@ -131,6 +138,13 @@ begin;
 
     -- The client address is a degenerate dimension
     client_address inet not null,
+    client_port integer
+      not null
+      check(
+        target_port > 0
+        and
+        target_port <= 65535
+      ),
     -- The target address and port are degenerate dimensions
     target_address inet not null,
     target_port integer
