@@ -39,6 +39,24 @@ func TestSession_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"PublicId"},
 		},
 		{
+			name: "certificate",
+			update: func() *Session {
+				s := new.Clone().(*Session)
+				s.Certificate = []byte("fake cert for test")
+				return s
+			}(),
+			fieldMask: []string{"Certificate"},
+		},
+		{
+			name: "expiration time",
+			update: func() *Session {
+				s := new.Clone().(*Session)
+				s.ExpirationTime = &ts
+				return s
+			}(),
+			fieldMask: []string{"ExpirationTime"},
+		},
+		{
 			name: "create time",
 			update: func() *Session {
 				s := new.Clone().(*Session)
