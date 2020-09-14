@@ -82,7 +82,7 @@ func TestHandler_CORS(t *testing.T) {
 	require.NoError(t, err)
 	org := iam.TestOrg(t, repo)
 
-	encToken, err := authtoken.EncryptToken(context.Background(), tc.c.kms, "fo_o", "bar")
+	encToken, err := authtoken.EncryptToken(context.Background(), tc.c.kms, org.GetPublicId(), "fo_o", "bar")
 	require.NoError(t, err)
 	token := "fo_o_" + encToken
 

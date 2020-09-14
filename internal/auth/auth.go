@@ -11,6 +11,7 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -46,20 +47,16 @@ var verifierKey key
 
 // RequestInfo contains request parameters necessary for checking authn/authz
 type RequestInfo struct {
-	Path        string
-	Method      string
-	PublicId    string
-	Token       string
-	TokenFormat TokenFormat
-
-	// These are set by the service handlers via options
-	scopeId string
-	pin     string
-
-	// This is used by the scopes collection
-	userIdOverride string
+	Path           string
+	Method         string
+	PublicId       string
+	EncryptedToken string
+	Token          string
+	TokenFormat    TokenFormat
 
 	// The following are useful for tests
+	scopeIdOverride      string
+	userIdOverride       string
 	DisableAuthzFailures bool
 	DisableAuthEntirely  bool
 }
@@ -122,7 +119,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 
 	ret.Scope = new(scopes.ScopeInfo)
 	if v.requestInfo.DisableAuthEntirely {
-		ret.Scope.Id = v.requestInfo.scopeId
+		ret.Scope.Id = v.requestInfo.scopeIdOverride
 		if ret.Scope.Id == "" {
 			ret.Scope.Id = opts.withScopeId
 		}
@@ -145,6 +142,10 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		Id:      opts.withId,
 		Pin:     opts.withPin,
 		Type:    opts.withType,
+	}
+
+	if v.requestInfo.EncryptedToken != "" {
+		v.decryptToken()
 	}
 
 	var authResults *perms.ACLResults
@@ -184,6 +185,14 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 
 	// Validate the token and fetch the corresponding user ID
 	switch v.requestInfo.TokenFormat {
+	case AuthTokenTypeUnknown:
+		// Nothing; remain as the anonymous user
+
+	case AuthTokenTypeRecoveryKms:
+		// We validated the encrypted token in decryptToken and handled the
+		// nonces there, so just set the user
+		userId = "u_recovery"
+
 	case AuthTokenTypeBearer, AuthTokenTypeSplitCookie:
 		if v.requestInfo.Token == "" {
 			// This will end up staying as the anonymous user
@@ -204,40 +213,6 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		if at != nil {
 			userId = at.GetIamUserId()
 		}
-
-	case AuthTokenTypeRecoveryKms:
-		userId = "u_recovery"
-		if v.kms == nil {
-			retErr = errors.New("perform auth check: no KMS object available to authz system")
-			return
-		}
-		wrapper := v.kms.GetExternalWrappers().Recovery()
-		if wrapper == nil {
-			retErr = errors.New("perform auth check: no recovery KMS is available")
-			return
-		}
-		info, err := recovery.ParseRecoveryToken(v.ctx, wrapper, v.requestInfo.Token)
-		if err != nil {
-			retErr = fmt.Errorf("perform auth check: error validating recovery token: %w", err)
-			return
-		}
-		// If we add the validity period to the creation time (which we've
-		// verified is before the current time, with a minute of fudging), and
-		// it's before now, it's expired and might be a replay.
-		if info.CreationTime.Add(globals.RecoveryTokenValidityPeriod).Before(time.Now()) {
-			retErr = errors.New("WARNING: perform auth check: recovery token has expired (possible replay attack)")
-			return
-		}
-		repo, err := v.serversRepoFn()
-		if err != nil {
-			retErr = fmt.Errorf("perform auth check: error fetching servers repo: %w", err)
-			return
-		}
-		if err := repo.AddRecoveryNonce(v.ctx, info.Nonce); err != nil {
-			retErr = fmt.Errorf("WARNING: perform auth check: error adding nonce to database (possible replay attack): %w", err)
-			return
-		}
-		v.logger.Warn("NOTE: recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
 	}
 
 	iamRepo, err := v.iamRepoFn()
@@ -315,7 +290,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 // GetTokenFromRequest pulls the token from either the Authorization header or
 // split cookies and parses it. If it cannot be parsed successfully, the issue
 // is logged and we return blank, so logic will continue as the anonymous user.
-// The public ID and token are returned along with the token format.
+// The public ID and _encrypted_ token are returned along with the token format.
 func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Request) (string, string, TokenFormat) {
 	// First, get the token, either from the authorization header or from split
 	// cookies
@@ -361,42 +336,127 @@ func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Reque
 	}
 
 	publicId := strings.Join(splitFullToken[0:2], "_")
+	encryptedToken := splitFullToken[2]
 
-	// This is hardcoded to global because at this point we don't know the
-	// scope. But that's okay; this is not really a security feature so much as
-	// an anti-DDoSing-the-backing-database feature.
-	tokenWrapper, err := kmsCache.GetWrapper(req.Context(), scope.Global.String(), kms.KeyPurposeTokens)
-	if err != nil {
-		logger.Warn("get token from request: unable to get wrapper for tokens; continuing as anonymous user", "error", err)
-		return "", "", AuthTokenTypeUnknown
+	return publicId, encryptedToken, receivedTokenType
+}
+
+func (v *verifier) decryptToken() {
+	switch v.requestInfo.TokenFormat {
+	case AuthTokenTypeUnknown:
+		// Nothing to decrypt
+		return
+
+	case AuthTokenTypeBearer, AuthTokenTypeSplitCookie:
+		if v.kms == nil {
+			v.logger.Trace("decrypt token: no KMS object available to authz system")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		tokenRepo, err := v.authTokenRepoFn()
+		if err != nil {
+			v.logger.Warn("decrypt bearer token: failed to get authtoken repo", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		at, err := tokenRepo.LookupAuthToken(v.ctx, v.requestInfo.PublicId)
+		if err != nil {
+			v.logger.Trace("decrypt bearer token: failed to look up auth token by public ID", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		if at == nil {
+			v.logger.Trace("decrypt bearer token: nil result from looking up auth token by public ID")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		tokenWrapper, err := v.kms.GetWrapper(v.ctx, at.GetScopeId(), kms.KeyPurposeTokens)
+		if err != nil {
+			v.logger.Warn("decrypt bearer token: unable to get wrapper for tokens; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		version := v.requestInfo.EncryptedToken[0:len(globals.ServiceTokenV1)]
+		switch version {
+		case globals.ServiceTokenV1:
+		default:
+			v.logger.Trace("decrypt bearer token: unknown token encryption version; continuing as anonymous user", "version", version)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		marshaledToken := base58.Decode(v.requestInfo.EncryptedToken[len(globals.ServiceTokenV1):])
+
+		blobInfo := new(wrapping.EncryptedBlobInfo)
+		if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
+			v.logger.Trace("decrypt bearer token: error decoding encrypted token; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		s1Bytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, []byte(v.requestInfo.PublicId))
+		if err != nil {
+			v.logger.Trace("decrypt bearer token: error decrypting encrypted token; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		var s1Info tokens.S1TokenInfo
+		if err := proto.Unmarshal(s1Bytes, &s1Info); err != nil {
+			v.logger.Trace("decrypt bearer token: error unmarshaling token info; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		if v.requestInfo.TokenFormat == AuthTokenTypeUnknown || s1Info.Token == "" || v.requestInfo.PublicId == "" {
+			v.logger.Trace("decrypt bearer token: after parsing, could not find valid token; continuing as anonymous user")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		v.requestInfo.Token = s1Info.Token
+		return
+
+	case AuthTokenTypeRecoveryKms:
+		if v.kms == nil {
+			v.logger.Trace("decrypt recovery token: no KMS object available to authz system")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		wrapper := v.kms.GetExternalWrappers().Recovery()
+		if wrapper == nil {
+			v.logger.Trace("decrypt recovery token: no recovery KMS is available")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		info, err := recovery.ParseRecoveryToken(v.ctx, wrapper, v.requestInfo.EncryptedToken)
+		if err != nil {
+			v.logger.Trace("decrypt recovery token: error parsing and validating recovery token", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		// If we add the validity period to the creation time (which we've
+		// verified is before the current time, with a minute of fudging), and
+		// it's before now, it's expired and might be a replay.
+		if info.CreationTime.Add(globals.RecoveryTokenValidityPeriod).Before(time.Now()) {
+			v.logger.Warn("WARNING: decrypt recovery token: recovery token has expired (possible replay attack)")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		repo, err := v.serversRepoFn()
+		if err != nil {
+			v.logger.Trace("decrypt recovery token: error fetching servers repo", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		if err := repo.AddRecoveryNonce(v.ctx, info.Nonce); err != nil {
+			v.logger.Warn("WARNING: decrypt recovery token: error adding nonce to database (possible replay attack)", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		v.logger.Info("NOTE: recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
 	}
-
-	version := splitFullToken[2][0:len(globals.ServiceTokenV1)]
-	switch version {
-	case globals.ServiceTokenV1:
-	default:
-		logger.Trace("get token from request: unknown token encryption version; continuing as anonymous user", "version", version)
-		return "", "", AuthTokenTypeUnknown
-	}
-	marshaledToken := base58.Decode(splitFullToken[2][len(globals.ServiceTokenV1):])
-
-	blobInfo := new(wrapping.EncryptedBlobInfo)
-	if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
-		logger.Trace("get token from request: error decoding encrypted token; continuing as anonymous user", "error", err)
-		return "", "", AuthTokenTypeUnknown
-	}
-
-	tokenBytes, err := tokenWrapper.Decrypt(req.Context(), blobInfo, []byte(publicId))
-	if err != nil {
-		logger.Trace("get token from request: error decrypting encrypted token; continuing as anonymous user", "error", err)
-		return "", "", AuthTokenTypeUnknown
-	}
-	token := string(tokenBytes)
-
-	if receivedTokenType == AuthTokenTypeUnknown || token == "" || publicId == "" {
-		logger.Trace("get token from request: after parsing, could not find valid token; continuing as anonymous user")
-		return "", "", AuthTokenTypeUnknown
-	}
-
-	return publicId, token, receivedTokenType
 }
