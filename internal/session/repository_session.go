@@ -233,6 +233,9 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 				dbMask,
 				nullFields,
 			)
+			if err != nil {
+				return err
+			}
 			if err == nil && rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
 				return errors.New("error more than 1 session would have been updated ")
