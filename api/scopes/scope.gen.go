@@ -53,7 +53,6 @@ func (n ScopeListResult) LastResponseMap() map[string]interface{} {
 }
 
 type ScopeDeleteResult struct {
-	Existed          bool
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }
@@ -158,7 +157,6 @@ func (c *Client) Read(ctx context.Context, scopeId string, opt ...Option) (*Scop
 
 	target := new(Scope)
 	apiErr, err := resp.Decode(target)
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}

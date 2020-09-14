@@ -36,7 +36,6 @@ func (n ErrorListResult) LastResponseMap() map[string]interface{} {
 }
 
 type ErrorDeleteResult struct {
-	Existed          bool
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }

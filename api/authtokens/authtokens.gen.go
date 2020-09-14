@@ -52,7 +52,6 @@ func (n AuthTokenListResult) LastResponseMap() map[string]interface{} {
 }
 
 type AuthTokenDeleteResult struct {
-	Existed          bool
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }
@@ -113,7 +112,6 @@ func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*
 
 	target := new(AuthToken)
 	apiErr, err := resp.Decode(target)
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}

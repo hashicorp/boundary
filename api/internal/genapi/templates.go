@@ -73,6 +73,7 @@ type templateInput struct {
 	ExtraOptions          []fieldInfo
 	VersionEnabled        bool
 	TypeOnCreate          bool
+	CreateResponseTypes   bool
 }
 
 func fillTemplates() {
@@ -80,14 +81,15 @@ func fillTemplates() {
 	for _, in := range inputStructs {
 		outBuf := new(bytes.Buffer)
 		input := templateInput{
-			Name:           in.generatedStructure.name,
-			Package:        in.generatedStructure.pkg,
-			Fields:         in.generatedStructure.fields,
-			PathArgs:       in.pathArgs,
-			ParentTypeName: in.parentTypeName,
-			ExtraOptions:   in.extraOptions,
-			VersionEnabled: in.versionEnabled,
-			TypeOnCreate:   in.typeOnCreate,
+			Name:                in.generatedStructure.name,
+			Package:             in.generatedStructure.pkg,
+			Fields:              in.generatedStructure.fields,
+			PathArgs:            in.pathArgs,
+			ParentTypeName:      in.parentTypeName,
+			ExtraOptions:        in.extraOptions,
+			VersionEnabled:      in.versionEnabled,
+			TypeOnCreate:        in.typeOnCreate,
+			CreateResponseTypes: in.createResponseTypes,
 		}
 
 		if len(in.pathArgs) > 0 {
@@ -567,10 +569,13 @@ import (
 type {{ .Name }} struct { {{ range .Fields }}
 {{ .Name }}  {{ .FieldType }} `, "`json:\"{{ .ProtoName }},omitempty\"`", `{{ end }}
 
+{{ if .CreateResponseTypes }}
 	lastResponseBody *bytes.Buffer
 	lastResponseMap map[string]interface{}
+{{ end }}
 }
 
+{{ if ( or .CreateResponseTypes ( eq .Name "Error" ) ) }}
 func (n {{ .Name }}) LastResponseBody() *bytes.Buffer {
 	return n.lastResponseBody
 }
@@ -578,7 +583,9 @@ func (n {{ .Name }}) LastResponseBody() *bytes.Buffer {
 func (n {{ .Name }}) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+{{ end }}
 
+{{ if .CreateResponseTypes }}
 type {{ .Name }}ListResult struct {
 	Items []*{{ .Name }}
 	lastResponseBody *bytes.Buffer
@@ -594,7 +601,6 @@ func (n {{ .Name }}ListResult) LastResponseMap() map[string]interface{} {
 }
 
 type {{ .Name }}DeleteResult struct {
-	Existed bool
 	lastResponseBody *bytes.Buffer
 	lastResponseMap map[string]interface{}
 }
@@ -606,6 +612,7 @@ func (n {{ .Name }}DeleteResult) LastResponseBody() *bytes.Buffer {
 func (n {{ .Name }}DeleteResult) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+{{ end }}
 `)))
 
 var clientTemplate = template.Must(template.New("").Parse(`

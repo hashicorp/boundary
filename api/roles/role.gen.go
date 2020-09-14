@@ -58,7 +58,6 @@ func (n RoleListResult) LastResponseMap() map[string]interface{} {
 }
 
 type RoleDeleteResult struct {
-	Existed          bool
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }
@@ -163,7 +162,6 @@ func (c *Client) Read(ctx context.Context, roleId string, opt ...Option) (*Role,
 
 	target := new(Role)
 	apiErr, err := resp.Decode(target)
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}

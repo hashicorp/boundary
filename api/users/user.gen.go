@@ -53,7 +53,6 @@ func (n UserListResult) LastResponseMap() map[string]interface{} {
 }
 
 type UserDeleteResult struct {
-	Existed          bool
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }
@@ -158,7 +157,6 @@ func (c *Client) Read(ctx context.Context, userId string, opt ...Option) (*User,
 
 	target := new(User)
 	apiErr, err := resp.Decode(target)
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}

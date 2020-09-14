@@ -55,7 +55,6 @@ func (n AccountListResult) LastResponseMap() map[string]interface{} {
 }
 
 type AccountDeleteResult struct {
-	Existed          bool
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }
@@ -160,7 +159,6 @@ func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*Ac
 
 	target := new(Account)
 	apiErr, err := resp.Decode(target)
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}

@@ -56,7 +56,6 @@ func (n HostSetListResult) LastResponseMap() map[string]interface{} {
 }
 
 type HostSetDeleteResult struct {
-	Existed          bool
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }
@@ -161,7 +160,6 @@ func (c *Client) Read(ctx context.Context, hostSetId string, opt ...Option) (*Ho
 
 	target := new(HostSet)
 	apiErr, err := resp.Decode(target)
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}

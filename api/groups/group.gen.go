@@ -55,7 +55,6 @@ func (n GroupListResult) LastResponseMap() map[string]interface{} {
 }
 
 type GroupDeleteResult struct {
-	Existed          bool
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }
@@ -160,7 +159,6 @@ func (c *Client) Read(ctx context.Context, groupId string, opt ...Option) (*Grou
 
 	target := new(Group)
 	apiErr, err := resp.Decode(target)
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}

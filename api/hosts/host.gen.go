@@ -56,7 +56,6 @@ func (n HostListResult) LastResponseMap() map[string]interface{} {
 }
 
 type HostDeleteResult struct {
-	Existed          bool
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }
@@ -161,7 +160,6 @@ func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*Host,
 
 	target := new(Host)
 	apiErr, err := resp.Decode(target)
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}

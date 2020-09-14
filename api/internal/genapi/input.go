@@ -80,13 +80,17 @@ type structInfo struct {
 	// given type, e.g. arguments only valid for one call or purpose and not
 	// conveyed within the item itself
 	extraOptions []fieldInfo
+
+	// createResponseTypes controls for which structs response types are created
+	createResponseTypes bool
 }
 
 var inputStructs = []*structInfo{
 	{
-		inProto:    &api.Error{},
-		outFile:    "error.gen.go",
-		outputOnly: true,
+		inProto:             &api.Error{},
+		outFile:             "error.gen.go",
+		outputOnly:          true,
+		createResponseTypes: true,
 	},
 	{
 		inProto:    &api.ErrorDetails{},
@@ -124,7 +128,8 @@ var inputStructs = []*structInfo{
 				Query:     true,
 			},
 		},
-		versionEnabled: true,
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	// User related resources
 	{
@@ -138,8 +143,9 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"user"},
-		versionEnabled: true,
+		pathArgs:            []string{"user"},
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	// Group related resources
 	{
@@ -161,8 +167,9 @@ var inputStructs = []*structInfo{
 		sliceSubTypes: map[string]string{
 			"Members": "memberIds",
 		},
-		pathArgs:       []string{"group"},
-		versionEnabled: true,
+		pathArgs:            []string{"group"},
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	// Role related resources
 	{
@@ -195,8 +202,9 @@ var inputStructs = []*structInfo{
 			"Principals": "principalIds",
 			"Grants":     "grantStrings",
 		},
-		pathArgs:       []string{"role"},
-		versionEnabled: true,
+		pathArgs:            []string{"role"},
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	// Auth Methods related resources
 	{
@@ -210,9 +218,10 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"auth-method"},
-		typeOnCreate:   true,
-		versionEnabled: true,
+		pathArgs:            []string{"auth-method"},
+		typeOnCreate:        true,
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	{
 		inProto:     &authmethods.PasswordAuthMethodAttributes{},
@@ -231,9 +240,10 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"account"},
-		parentTypeName: "auth-method",
-		versionEnabled: true,
+		pathArgs:            []string{"account"},
+		parentTypeName:      "auth-method",
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	{
 		inProto:     &accounts.PasswordAccountAttributes{},
@@ -250,7 +260,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"auth-token"},
+		pathArgs:            []string{"auth-token"},
+		createResponseTypes: true,
 	},
 	// Host related resources
 	{
@@ -264,9 +275,10 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"host-catalog"},
-		typeOnCreate:   true,
-		versionEnabled: true,
+		pathArgs:            []string{"host-catalog"},
+		typeOnCreate:        true,
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	{
 		inProto: &hosts.Host{},
@@ -279,9 +291,10 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"host"},
-		parentTypeName: "host-catalog",
-		versionEnabled: true,
+		pathArgs:            []string{"host"},
+		parentTypeName:      "host-catalog",
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	{
 		inProto:     &hosts.StaticHostAttributes{},
@@ -304,7 +317,8 @@ var inputStructs = []*structInfo{
 		sliceSubTypes: map[string]string{
 			"Hosts": "hostIds",
 		},
-		versionEnabled: true,
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	{
 		inProto: &targets.HostSet{},
@@ -325,7 +339,8 @@ var inputStructs = []*structInfo{
 		sliceSubTypes: map[string]string{
 			"HostSets": "hostSetIds",
 		},
-		versionEnabled: true,
-		typeOnCreate:   true,
+		versionEnabled:      true,
+		typeOnCreate:        true,
+		createResponseTypes: true,
 	},
 }
