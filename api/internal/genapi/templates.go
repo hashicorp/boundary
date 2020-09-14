@@ -481,7 +481,7 @@ var sliceSubTypeTemplate = template.Must(template.New("").Funcs(
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
 {{ $resPath := getPathWithAction $input.PathArgs $input.ParentTypeName $actionName }}
-func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunctionArg }} string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}ReadResponse, *api.Error, error) { 
+func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunctionArg }} string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}UpdateResult, *api.Error, error) { 
 	if {{ $input.ResourceFunctionArg }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ $input.ResourceFunctionArg }} value passed into {{ $fullName }} request")
 	}
@@ -502,6 +502,9 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 		existingTarget, existingApiErr, existingErr := c.Read(ctx, {{ $input.ResourceFunctionArg }}, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
@@ -533,7 +536,7 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 		return nil, nil, fmt.Errorf("error performing client request during {{ $fullName }} call: %w", err)
 	}
 
-	target := new({{ $input.Name }}ReadResponse)
+	target := new({{ $input.Name }}UpdateResult)
 	target.Item = new({{ $input.Name }})
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {

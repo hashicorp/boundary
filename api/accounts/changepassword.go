@@ -9,7 +9,7 @@ import (
 	"github.com/kr/pretty"
 )
 
-func (c *Client) ChangePassword(ctx context.Context, accountId, currentPassword, newPassword string, version uint32, opt ...Option) (*Account, *api.Error, error) {
+func (c *Client) ChangePassword(ctx context.Context, accountId, currentPassword, newPassword string, version uint32, opt ...Option) (*AccountUpdateResult, *api.Error, error) {
 	if accountId == "" {
 		return nil, nil, fmt.Errorf("empty accountId value passed into ChangePassword request")
 	}
@@ -33,7 +33,7 @@ func (c *Client) ChangePassword(ctx context.Context, accountId, currentPassword,
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	reqBody := map[string]interface{}{
@@ -52,8 +52,9 @@ func (c *Client) ChangePassword(ctx context.Context, accountId, currentPassword,
 		return nil, nil, fmt.Errorf("error performing client request during ChangePassword call: %w", err)
 	}
 
-	target := new(Account)
-	apiErr, err := resp.Decode(target)
+	target := new(AccountUpdateResult)
+	target.Item = new(Account)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding ChangePassword response: %w", err)
 	}

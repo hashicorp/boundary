@@ -337,7 +337,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Grou
 	return target, apiErr, nil
 }
 
-func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupReadResponse, *api.Error, error) {
+func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupUpdateResult, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into AddMembers request")
 	}
@@ -357,6 +357,9 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 		existingTarget, existingApiErr, existingErr := c.Read(ctx, groupId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
@@ -388,7 +391,7 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 		return nil, nil, fmt.Errorf("error performing client request during AddMembers call: %w", err)
 	}
 
-	target := new(GroupReadResponse)
+	target := new(GroupUpdateResult)
 	target.Item = new(Group)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
@@ -402,7 +405,7 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 	return target, apiErr, nil
 }
 
-func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupReadResponse, *api.Error, error) {
+func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupUpdateResult, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into SetMembers request")
 	}
@@ -420,6 +423,9 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 		existingTarget, existingApiErr, existingErr := c.Read(ctx, groupId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
@@ -451,7 +457,7 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 		return nil, nil, fmt.Errorf("error performing client request during SetMembers call: %w", err)
 	}
 
-	target := new(GroupReadResponse)
+	target := new(GroupUpdateResult)
 	target.Item = new(Group)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
@@ -465,7 +471,7 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 	return target, apiErr, nil
 }
 
-func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupReadResponse, *api.Error, error) {
+func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupUpdateResult, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into RemoveMembers request")
 	}
@@ -485,6 +491,9 @@ func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint
 		existingTarget, existingApiErr, existingErr := c.Read(ctx, groupId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
@@ -516,7 +525,7 @@ func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint
 		return nil, nil, fmt.Errorf("error performing client request during RemoveMembers call: %w", err)
 	}
 
-	target := new(GroupReadResponse)
+	target := new(GroupUpdateResult)
 	target.Item = new(Group)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {

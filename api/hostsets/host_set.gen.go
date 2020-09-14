@@ -338,7 +338,7 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 	return target, apiErr, nil
 }
 
-func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSetReadResponse, *api.Error, error) {
+func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSetUpdateResult, *api.Error, error) {
 	if hostSetId == "" {
 		return nil, nil, fmt.Errorf("empty hostSetId value passed into AddHosts request")
 	}
@@ -358,6 +358,9 @@ func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32,
 		existingTarget, existingApiErr, existingErr := c.Read(ctx, hostSetId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
@@ -389,7 +392,7 @@ func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32,
 		return nil, nil, fmt.Errorf("error performing client request during AddHosts call: %w", err)
 	}
 
-	target := new(HostSetReadResponse)
+	target := new(HostSetUpdateResult)
 	target.Item = new(HostSet)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
@@ -403,7 +406,7 @@ func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32,
 	return target, apiErr, nil
 }
 
-func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSetReadResponse, *api.Error, error) {
+func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSetUpdateResult, *api.Error, error) {
 	if hostSetId == "" {
 		return nil, nil, fmt.Errorf("empty hostSetId value passed into SetHosts request")
 	}
@@ -421,6 +424,9 @@ func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32,
 		existingTarget, existingApiErr, existingErr := c.Read(ctx, hostSetId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
@@ -452,7 +458,7 @@ func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32,
 		return nil, nil, fmt.Errorf("error performing client request during SetHosts call: %w", err)
 	}
 
-	target := new(HostSetReadResponse)
+	target := new(HostSetUpdateResult)
 	target.Item = new(HostSet)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
@@ -466,7 +472,7 @@ func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32,
 	return target, apiErr, nil
 }
 
-func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSetReadResponse, *api.Error, error) {
+func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSetUpdateResult, *api.Error, error) {
 	if hostSetId == "" {
 		return nil, nil, fmt.Errorf("empty hostSetId value passed into RemoveHosts request")
 	}
@@ -486,6 +492,9 @@ func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint
 		existingTarget, existingApiErr, existingErr := c.Read(ctx, hostSetId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
@@ -517,7 +526,7 @@ func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint
 		return nil, nil, fmt.Errorf("error performing client request during RemoveHosts call: %w", err)
 	}
 
-	target := new(HostSetReadResponse)
+	target := new(HostSetUpdateResult)
 	target.Item = new(HostSet)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
