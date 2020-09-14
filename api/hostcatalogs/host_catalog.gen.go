@@ -27,60 +27,60 @@ type HostCatalog struct {
 	Type        string                 `json:"type,omitempty"`
 	Attributes  map[string]interface{} `json:"attributes,omitempty"`
 
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n HostCatalog) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n HostCatalog) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n HostCatalog) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n HostCatalog) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type HostCatalogReadResult struct {
-	Item             *HostCatalog
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Item         *HostCatalog
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n HostCatalogReadResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n HostCatalogReadResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n HostCatalogReadResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n HostCatalogReadResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type HostCatalogCreateResult = HostCatalogReadResult
 type HostCatalogUpdateResult = HostCatalogReadResult
 
 type HostCatalogDeleteResult struct {
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n HostCatalogDeleteResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n HostCatalogDeleteResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n HostCatalogDeleteResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n HostCatalogDeleteResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type HostCatalogListResult struct {
-	Items            []*HostCatalog
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Items        []*HostCatalog
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n HostCatalogListResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n HostCatalogListResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n HostCatalogListResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n HostCatalogListResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 // Client is a client for this collection
@@ -146,8 +146,8 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -188,8 +188,8 @@ func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) 
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -252,8 +252,8 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint3
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -294,8 +294,8 @@ func (c *Client) Delete(ctx context.Context, hostCatalogId string, opt ...Option
 	}
 
 	target := &HostCatalogDeleteResult{
-		lastResponseBody: resp.Body,
-		lastResponseMap:  resp.Map,
+		responseBody: resp.Body,
+		responseMap:  resp.Map,
 	}
 	return target, nil, nil
 }
@@ -337,7 +337,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Host
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }

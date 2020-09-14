@@ -28,60 +28,60 @@ type Host struct {
 	HostSetIds    []string               `json:"host_set_ids,omitempty"`
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n Host) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n Host) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n Host) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n Host) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type HostReadResult struct {
-	Item             *Host
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Item         *Host
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n HostReadResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n HostReadResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n HostReadResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n HostReadResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type HostCreateResult = HostReadResult
 type HostUpdateResult = HostReadResult
 
 type HostDeleteResult struct {
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n HostDeleteResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n HostDeleteResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n HostDeleteResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n HostDeleteResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type HostListResult struct {
-	Items            []*Host
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Items        []*Host
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n HostListResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n HostListResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n HostListResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n HostListResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 // Client is a client for this collection
@@ -142,8 +142,8 @@ func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -184,8 +184,8 @@ func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*HostR
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -248,8 +248,8 @@ func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt 
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -290,8 +290,8 @@ func (c *Client) Delete(ctx context.Context, hostId string, opt ...Option) (*Hos
 	}
 
 	target := &HostDeleteResult{
-		lastResponseBody: resp.Body,
-		lastResponseMap:  resp.Map,
+		responseBody: resp.Body,
+		responseMap:  resp.Map,
 	}
 	return target, nil, nil
 }
@@ -333,7 +333,7 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }

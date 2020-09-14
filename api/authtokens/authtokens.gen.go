@@ -24,60 +24,60 @@ type AuthToken struct {
 	ApproximateLastUsedTime time.Time         `json:"approximate_last_used_time,omitempty"`
 	ExpirationTime          time.Time         `json:"expiration_time,omitempty"`
 
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n AuthToken) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n AuthToken) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n AuthToken) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n AuthToken) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type AuthTokenReadResult struct {
-	Item             *AuthToken
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Item         *AuthToken
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n AuthTokenReadResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n AuthTokenReadResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n AuthTokenReadResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n AuthTokenReadResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type AuthTokenCreateResult = AuthTokenReadResult
 type AuthTokenUpdateResult = AuthTokenReadResult
 
 type AuthTokenDeleteResult struct {
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n AuthTokenDeleteResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n AuthTokenDeleteResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n AuthTokenDeleteResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n AuthTokenDeleteResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type AuthTokenListResult struct {
-	Items            []*AuthToken
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Items        []*AuthToken
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n AuthTokenListResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n AuthTokenListResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n AuthTokenListResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n AuthTokenListResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 // Client is a client for this collection
@@ -135,8 +135,8 @@ func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -177,8 +177,8 @@ func (c *Client) Delete(ctx context.Context, authTokenId string, opt ...Option) 
 	}
 
 	target := &AuthTokenDeleteResult{
-		lastResponseBody: resp.Body,
-		lastResponseMap:  resp.Map,
+		responseBody: resp.Body,
+		responseMap:  resp.Map,
 	}
 	return target, nil, nil
 }
@@ -220,7 +220,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Auth
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }

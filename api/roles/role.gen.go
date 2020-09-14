@@ -30,60 +30,60 @@ type Role struct {
 	GrantStrings []string          `json:"grant_strings,omitempty"`
 	Grants       []*Grant          `json:"grants,omitempty"`
 
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n Role) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n Role) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n Role) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n Role) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type RoleReadResult struct {
-	Item             *Role
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Item         *Role
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n RoleReadResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n RoleReadResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n RoleReadResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n RoleReadResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type RoleCreateResult = RoleReadResult
 type RoleUpdateResult = RoleReadResult
 
 type RoleDeleteResult struct {
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n RoleDeleteResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n RoleDeleteResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n RoleDeleteResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n RoleDeleteResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type RoleListResult struct {
-	Items            []*Role
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Items        []*Role
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n RoleListResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n RoleListResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n RoleListResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n RoleListResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 // Client is a client for this collection
@@ -144,8 +144,8 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Ro
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -186,8 +186,8 @@ func (c *Client) Read(ctx context.Context, roleId string, opt ...Option) (*RoleR
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -250,8 +250,8 @@ func (c *Client) Update(ctx context.Context, roleId string, version uint32, opt 
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -292,8 +292,8 @@ func (c *Client) Delete(ctx context.Context, roleId string, opt ...Option) (*Rol
 	}
 
 	target := &RoleDeleteResult{
-		lastResponseBody: resp.Body,
-		lastResponseMap:  resp.Map,
+		responseBody: resp.Body,
+		responseMap:  resp.Map,
 	}
 	return target, nil, nil
 }
@@ -335,8 +335,8 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Role
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -403,8 +403,8 @@ func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, g
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -471,8 +471,8 @@ func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint3
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -537,8 +537,8 @@ func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, g
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -603,8 +603,8 @@ func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint3
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -671,8 +671,8 @@ func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -739,7 +739,7 @@ func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version ui
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }

@@ -28,60 +28,60 @@ type HostSet struct {
 	HostIds       []string               `json:"host_ids,omitempty"`
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n HostSet) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n HostSet) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n HostSet) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n HostSet) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type HostSetReadResult struct {
-	Item             *HostSet
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Item         *HostSet
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n HostSetReadResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n HostSetReadResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n HostSetReadResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n HostSetReadResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type HostSetCreateResult = HostSetReadResult
 type HostSetUpdateResult = HostSetReadResult
 
 type HostSetDeleteResult struct {
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n HostSetDeleteResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n HostSetDeleteResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n HostSetDeleteResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n HostSetDeleteResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type HostSetListResult struct {
-	Items            []*HostSet
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Items        []*HostSet
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n HostSetListResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n HostSetListResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n HostSetListResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n HostSetListResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 // Client is a client for this collection
@@ -142,8 +142,8 @@ func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -184,8 +184,8 @@ func (c *Client) Read(ctx context.Context, hostSetId string, opt ...Option) (*Ho
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -248,8 +248,8 @@ func (c *Client) Update(ctx context.Context, hostSetId string, version uint32, o
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -290,8 +290,8 @@ func (c *Client) Delete(ctx context.Context, hostSetId string, opt ...Option) (*
 	}
 
 	target := &HostSetDeleteResult{
-		lastResponseBody: resp.Body,
-		lastResponseMap:  resp.Map,
+		responseBody: resp.Body,
+		responseMap:  resp.Map,
 	}
 	return target, nil, nil
 }
@@ -333,8 +333,8 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -401,8 +401,8 @@ func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32,
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -467,8 +467,8 @@ func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32,
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -535,7 +535,7 @@ func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }

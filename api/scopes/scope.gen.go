@@ -25,60 +25,60 @@ type Scope struct {
 	Version     uint32     `json:"version,omitempty"`
 	Type        string     `json:"type,omitempty"`
 
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n Scope) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n Scope) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n Scope) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n Scope) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type ScopeReadResult struct {
-	Item             *Scope
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Item         *Scope
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n ScopeReadResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n ScopeReadResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n ScopeReadResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n ScopeReadResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type ScopeCreateResult = ScopeReadResult
 type ScopeUpdateResult = ScopeReadResult
 
 type ScopeDeleteResult struct {
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n ScopeDeleteResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n ScopeDeleteResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n ScopeDeleteResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n ScopeDeleteResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type ScopeListResult struct {
-	Items            []*Scope
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Items        []*Scope
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n ScopeListResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n ScopeListResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n ScopeListResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n ScopeListResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 // Client is a client for this collection
@@ -139,8 +139,8 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Sc
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -181,8 +181,8 @@ func (c *Client) Read(ctx context.Context, scopeId string, opt ...Option) (*Scop
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -245,8 +245,8 @@ func (c *Client) Update(ctx context.Context, scopeId string, version uint32, opt
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -287,8 +287,8 @@ func (c *Client) Delete(ctx context.Context, scopeId string, opt ...Option) (*Sc
 	}
 
 	target := &ScopeDeleteResult{
-		lastResponseBody: resp.Body,
-		lastResponseMap:  resp.Map,
+		responseBody: resp.Body,
+		responseMap:  resp.Map,
 	}
 	return target, nil, nil
 }
@@ -330,7 +330,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Scop
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }

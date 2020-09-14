@@ -27,60 +27,60 @@ type Group struct {
 	MemberIds   []string          `json:"member_ids,omitempty"`
 	Members     []*Member         `json:"members,omitempty"`
 
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n Group) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n Group) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n Group) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n Group) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type GroupReadResult struct {
-	Item             *Group
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Item         *Group
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n GroupReadResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n GroupReadResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n GroupReadResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n GroupReadResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type GroupCreateResult = GroupReadResult
 type GroupUpdateResult = GroupReadResult
 
 type GroupDeleteResult struct {
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n GroupDeleteResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n GroupDeleteResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n GroupDeleteResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n GroupDeleteResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type GroupListResult struct {
-	Items            []*Group
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Items        []*Group
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n GroupListResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n GroupListResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n GroupListResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n GroupListResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 // Client is a client for this collection
@@ -141,8 +141,8 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Gr
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -183,8 +183,8 @@ func (c *Client) Read(ctx context.Context, groupId string, opt ...Option) (*Grou
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -247,8 +247,8 @@ func (c *Client) Update(ctx context.Context, groupId string, version uint32, opt
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -289,8 +289,8 @@ func (c *Client) Delete(ctx context.Context, groupId string, opt ...Option) (*Gr
 	}
 
 	target := &GroupDeleteResult{
-		lastResponseBody: resp.Body,
-		lastResponseMap:  resp.Map,
+		responseBody: resp.Body,
+		responseMap:  resp.Map,
 	}
 	return target, nil, nil
 }
@@ -332,8 +332,8 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Grou
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -400,8 +400,8 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -466,8 +466,8 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -534,7 +534,7 @@ func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }

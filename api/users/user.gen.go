@@ -25,60 +25,60 @@ type User struct {
 	UpdatedTime time.Time         `json:"updated_time,omitempty"`
 	Version     uint32            `json:"version,omitempty"`
 
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n User) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n User) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n User) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n User) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type UserReadResult struct {
-	Item             *User
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Item         *User
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n UserReadResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n UserReadResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n UserReadResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n UserReadResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type UserCreateResult = UserReadResult
 type UserUpdateResult = UserReadResult
 
 type UserDeleteResult struct {
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n UserDeleteResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n UserDeleteResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n UserDeleteResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n UserDeleteResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type UserListResult struct {
-	Items            []*User
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Items        []*User
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n UserListResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n UserListResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n UserListResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n UserListResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 // Client is a client for this collection
@@ -139,8 +139,8 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Us
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -181,8 +181,8 @@ func (c *Client) Read(ctx context.Context, userId string, opt ...Option) (*UserR
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -245,8 +245,8 @@ func (c *Client) Update(ctx context.Context, userId string, version uint32, opt 
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -287,8 +287,8 @@ func (c *Client) Delete(ctx context.Context, userId string, opt ...Option) (*Use
 	}
 
 	target := &UserDeleteResult{
-		lastResponseBody: resp.Body,
-		lastResponseMap:  resp.Map,
+		responseBody: resp.Body,
+		responseMap:  resp.Map,
 	}
 	return target, nil, nil
 }
@@ -330,7 +330,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*User
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }

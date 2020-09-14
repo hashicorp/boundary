@@ -246,8 +246,8 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 `))
@@ -290,8 +290,8 @@ func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, op
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 `))
@@ -334,8 +334,8 @@ func (c *Client) Delete(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 	}
 
 	target := &{{ .Name }}DeleteResult{
-		lastResponseBody: resp.Body,
-		lastResponseMap: resp.Map,
+		responseBody: resp.Body,
+		responseMap: resp.Map,
 	}
 	return target, nil, nil
 }
@@ -393,8 +393,8 @@ func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceTyp
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 `))
@@ -461,8 +461,8 @@ func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 `))
@@ -545,8 +545,8 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 {{ end }}
@@ -571,64 +571,64 @@ import (
 type {{ .Name }} struct { {{ range .Fields }}
 {{ .Name }}  {{ .FieldType }} `, "`json:\"{{ .ProtoName }},omitempty\"`", `{{ end }}
 {{ if ( or .CreateResponseTypes ( eq .Name "Error" ) ) }}
-	lastResponseBody *bytes.Buffer
-	lastResponseMap map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap map[string]interface{}
 {{ end }}
 }
 
 {{ if ( or .CreateResponseTypes ( eq .Name "Error" ) ) }}
-func (n {{ .Name }}) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n {{ .Name }}) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n {{ .Name }}) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n {{ .Name }}) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 {{ end }}
 
 {{ if .CreateResponseTypes }}
 type {{ .Name }}ReadResult struct {
 	Item *{{ .Name }}
-	lastResponseBody *bytes.Buffer
-	lastResponseMap map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap map[string]interface{}
 }
 
-func (n {{ .Name }}ReadResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n {{ .Name }}ReadResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n {{ .Name }}ReadResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n {{ .Name }}ReadResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type {{ .Name }}CreateResult = {{ .Name }}ReadResult
 type {{ .Name }}UpdateResult = {{ .Name }}ReadResult
 
 type {{ .Name }}DeleteResult struct {
-	lastResponseBody *bytes.Buffer
-	lastResponseMap map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap map[string]interface{}
 }
 
-func (n {{ .Name }}DeleteResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n {{ .Name }}DeleteResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n {{ .Name }}DeleteResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n {{ .Name }}DeleteResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type {{ .Name }}ListResult struct {
 	Items []*{{ .Name }}
-	lastResponseBody *bytes.Buffer
-	lastResponseMap map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap map[string]interface{}
 }
 
-func (n {{ .Name }}ListResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n {{ .Name }}ListResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n {{ .Name }}ListResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n {{ .Name }}ListResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 {{ end }}
 `)))

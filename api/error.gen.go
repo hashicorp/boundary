@@ -9,14 +9,14 @@ type Error struct {
 	Message string        `json:"message,omitempty"`
 	Details *ErrorDetails `json:"details,omitempty"`
 
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n Error) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n Error) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n Error) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n Error) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }

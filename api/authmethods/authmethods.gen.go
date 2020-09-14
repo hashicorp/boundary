@@ -27,60 +27,60 @@ type AuthMethod struct {
 	Type        string                 `json:"type,omitempty"`
 	Attributes  map[string]interface{} `json:"attributes,omitempty"`
 
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n AuthMethod) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n AuthMethod) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n AuthMethod) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n AuthMethod) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type AuthMethodReadResult struct {
-	Item             *AuthMethod
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Item         *AuthMethod
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n AuthMethodReadResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n AuthMethodReadResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n AuthMethodReadResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n AuthMethodReadResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type AuthMethodCreateResult = AuthMethodReadResult
 type AuthMethodUpdateResult = AuthMethodReadResult
 
 type AuthMethodDeleteResult struct {
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n AuthMethodDeleteResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n AuthMethodDeleteResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n AuthMethodDeleteResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n AuthMethodDeleteResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 type AuthMethodListResult struct {
-	Items            []*AuthMethod
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	Items        []*AuthMethod
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n AuthMethodListResult) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n AuthMethodListResult) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n AuthMethodListResult) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n AuthMethodListResult) ResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 // Client is a client for this collection
@@ -146,8 +146,8 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -188,8 +188,8 @@ func (c *Client) Read(ctx context.Context, authMethodId string, opt ...Option) (
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -252,8 +252,8 @@ func (c *Client) Update(ctx context.Context, authMethodId string, version uint32
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -294,8 +294,8 @@ func (c *Client) Delete(ctx context.Context, authMethodId string, opt ...Option)
 	}
 
 	target := &AuthMethodDeleteResult{
-		lastResponseBody: resp.Body,
-		lastResponseMap:  resp.Map,
+		responseBody: resp.Body,
+		responseMap:  resp.Map,
 	}
 	return target, nil, nil
 }
@@ -337,7 +337,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Auth
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	target.lastResponseBody = resp.Body
-	target.lastResponseMap = resp.Map
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
