@@ -197,8 +197,6 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
-		case strings.EqualFold("BytesUp", f):
-		case strings.EqualFold("BytesDown", f):
 		case strings.EqualFold("TerminationReason", f):
 		case strings.EqualFold("ServerId", f):
 		case strings.EqualFold("ServerType", f):

@@ -447,7 +447,7 @@ func TestRepository_UpdateSession(t *testing.T) {
 				terminationReason: Terminated,
 				serverId:          newServerFunc(),
 				serverType:        servers.ServerTypeWorker.String(),
-				fieldMaskPaths:    []string{"BytesUp", "BytesDown", "TerminationReason", "ServerId", "ServerType"},
+				fieldMaskPaths:    []string{"TerminationReason", "ServerId", "ServerType"},
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
