@@ -160,27 +160,23 @@ func (c *Command) Run(args []string) int {
 	case "set-principals":
 		switch len(c.flagPrincipals) {
 		case 0:
-		case 1:
-			if c.flagPrincipals[0] == "null" {
-				principals = []string{}
-			}
-		}
-		if principals == nil {
 			c.UI.Error("No principals supplied via -principal")
 			return 1
+		case 1:
+			if c.flagPrincipals[0] == "null" {
+				principals = nil
+			}
 		}
 
 	case "set-grants":
 		switch len(c.flagGrants) {
 		case 0:
-		case 1:
-			if c.flagGrants[0] == "null" {
-				grants = []string{}
-			}
-		}
-		if grants == nil {
 			c.UI.Error("No grants supplied via -grant")
 			return 1
+		case 1:
+			if c.flagGrants[0] == "null" {
+				grants = nil
+			}
 		}
 	}
 

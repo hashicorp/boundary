@@ -212,14 +212,12 @@ func (c *Command) Run(args []string) int {
 	case "set-host-sets":
 		switch len(c.flagHostSets) {
 		case 0:
-		case 1:
-			if c.flagHostSets[0] == "null" {
-				hostSets = []string{}
-			}
-		}
-		if hostSets == nil {
 			c.UI.Error("No host-sets supplied via -host-set")
 			return 1
+		case 1:
+			if c.flagHostSets[0] == "null" {
+				hostSets = nil
+			}
 		}
 	}
 
@@ -253,11 +251,11 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		listedCatalogs, apiErr, err = targetClient.List(c.Context, c.FlagScopeId, opts...)
 	case "add-host-sets":
-		target, apiErr, err = targetClient.AddHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		target, apiErr, err = targetClient.AddHostSets(c.Context, c.FlagId, version, hostSets, opts...)
 	case "remove-host-sets":
-		target, apiErr, err = targetClient.RemoveHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		target, apiErr, err = targetClient.RemoveHostSets(c.Context, c.FlagId, version, hostSets, opts...)
 	case "set-host-sets":
-		target, apiErr, err = targetClient.SetHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		target, apiErr, err = targetClient.SetHostSets(c.Context, c.FlagId, version, hostSets, opts...)
 	}
 
 	plural := "target"

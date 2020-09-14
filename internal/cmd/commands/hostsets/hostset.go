@@ -218,14 +218,12 @@ func (c *Command) Run(args []string) int {
 	case "set-hosts":
 		switch len(c.flagHosts) {
 		case 0:
-		case 1:
-			if c.flagHosts[0] == "null" {
-				hosts = []string{}
-			}
-		}
-		if hosts == nil {
 			c.UI.Error("No hosts supplied via -host")
 			return 1
+		case 1:
+			if c.flagHosts[0] == "null" {
+				hosts = nil
+			}
 		}
 	}
 
@@ -259,11 +257,11 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		listedSets, apiErr, err = hostsetClient.List(c.Context, c.flagHostCatalogId, opts...)
 	case "add-hosts":
-		set, apiErr, err = hostsetClient.AddHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
+		set, apiErr, err = hostsetClient.AddHosts(c.Context, c.FlagId, version, hosts, opts...)
 	case "remove-hosts":
-		set, apiErr, err = hostsetClient.RemoveHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
+		set, apiErr, err = hostsetClient.RemoveHosts(c.Context, c.FlagId, version, hosts, opts...)
 	case "set-hosts":
-		set, apiErr, err = hostsetClient.SetHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
+		set, apiErr, err = hostsetClient.SetHosts(c.Context, c.FlagId, version, hosts, opts...)
 	}
 
 	plural := "host set"

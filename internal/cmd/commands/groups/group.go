@@ -135,15 +135,14 @@ func (c *Command) Run(args []string) int {
 	case "set-members":
 		switch len(c.flagMembers) {
 		case 0:
-		case 1:
-			if c.flagMembers[0] == "null" {
-				members = []string{}
-			}
-		}
-		if members == nil {
 			c.UI.Error("No members supplied via -member")
 			return 1
+		case 1:
+			if c.flagMembers[0] == "null" {
+				members = nil
+			}
 		}
+
 	}
 
 	groupClient := groups.NewClient(client)
