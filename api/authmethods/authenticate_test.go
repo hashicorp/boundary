@@ -32,5 +32,5 @@ func TestAuthenticate(t *testing.T) {
 	_, apiErr, err = methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "wrong"})
 	require.NoError(err)
 	require.NotNil(t, apiErr)
-	assert.EqualValuesf(http.StatusUnauthorized, apiErr.Status, "Expected unauthenticated, got %q", apiErr.Message)
+	assert.EqualValuesf(http.StatusUnauthorized, apiErr.Status, "Expected unauthorized, got %q", apiErr.Message)
 }
