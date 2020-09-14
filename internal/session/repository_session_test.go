@@ -619,8 +619,15 @@ func TestRepository_UpdateSession(t *testing.T) {
 			err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 
-			require.Equal(1, len(foundStates))
-			assert.Equal(StatusPending.String(), foundStates[0].Status)
+			switch {
+			case tt.args.terminationReason != "":
+				require.Equal(2, len(foundStates))
+				assert.Equal(StatusTerminated.String(), foundStates[0].Status)
+				assert.Equal(StatusPending.String(), foundStates[1].Status)
+			default:
+				require.Equal(1, len(foundStates))
+				assert.Equal(StatusPending.String(), foundStates[0].Status)
+			}
 		})
 	}
 

@@ -3471,6 +3471,41 @@ begin;
   after insert on session
     for each row execute procedure insert_new_session_state();
 
+  -- update_connection_state_on_closed_reason() is used in an update insert trigger on the
+  -- session_connection table.  it will valiadate that all the session's
+  -- connections are closed, and then insert a state of "closed" in
+  -- session_connection_state for the closed session connection. 
+  create or replace function 
+    update_session_state_on_termination_reason()
+    returns trigger
+  as $$
+  begin
+    if new.termination_reason is not null then
+      perform from
+        session_connection sc,
+        session_connection_state scs
+      where
+        sc.public_id = scs.connection_id and 
+        scs.state != 'closed' and
+        sc.session_id = new.public_id;
+      if found then 
+        raise 'session %s has existing open connections', new.public_id;
+      end if;
+      insert into session_state (session_id, state)
+      values
+        (new.public_id, 'terminated');
+      end if;
+      return new;
+  end;
+  $$ language plpgsql;
+
+
+  create trigger 
+    update_session_state_on_termination_reason
+  after update of termination_reason on session
+    for each row execute procedure update_session_state_on_termination_reason();
+ 
+
   create table session_state_enm (
     name text primary key
       check (
