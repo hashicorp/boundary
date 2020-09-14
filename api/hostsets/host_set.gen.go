@@ -338,7 +338,7 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 	return target, apiErr, nil
 }
 
-func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSet, *api.Error, error) {
+func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSetReadResponse, *api.Error, error) {
 	if hostSetId == "" {
 		return nil, nil, fmt.Errorf("empty hostSetId value passed into AddHosts request")
 	}
@@ -389,8 +389,9 @@ func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32,
 		return nil, nil, fmt.Errorf("error performing client request during AddHosts call: %w", err)
 	}
 
-	target := new(HostSet)
-	apiErr, err := resp.Decode(target)
+	target := new(HostSetReadResponse)
+	target.Item = new(HostSet)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddHosts response: %w", err)
 	}
@@ -402,7 +403,7 @@ func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32,
 	return target, apiErr, nil
 }
 
-func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSet, *api.Error, error) {
+func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSetReadResponse, *api.Error, error) {
 	if hostSetId == "" {
 		return nil, nil, fmt.Errorf("empty hostSetId value passed into SetHosts request")
 	}
@@ -451,8 +452,9 @@ func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32,
 		return nil, nil, fmt.Errorf("error performing client request during SetHosts call: %w", err)
 	}
 
-	target := new(HostSet)
-	apiErr, err := resp.Decode(target)
+	target := new(HostSetReadResponse)
+	target.Item = new(HostSet)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetHosts response: %w", err)
 	}
@@ -464,7 +466,7 @@ func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32,
 	return target, apiErr, nil
 }
 
-func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSet, *api.Error, error) {
+func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSetReadResponse, *api.Error, error) {
 	if hostSetId == "" {
 		return nil, nil, fmt.Errorf("empty hostSetId value passed into RemoveHosts request")
 	}
@@ -515,8 +517,9 @@ func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint
 		return nil, nil, fmt.Errorf("error performing client request during RemoveHosts call: %w", err)
 	}
 
-	target := new(HostSet)
-	apiErr, err := resp.Decode(target)
+	target := new(HostSetReadResponse)
+	target.Item = new(HostSet)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemoveHosts response: %w", err)
 	}

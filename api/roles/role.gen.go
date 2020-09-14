@@ -340,7 +340,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Role
 	return target, apiErr, nil
 }
 
-func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*RoleReadResponse, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddGrants request")
 	}
@@ -391,8 +391,9 @@ func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, g
 		return nil, nil, fmt.Errorf("error performing client request during AddGrants call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleReadResponse)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddGrants response: %w", err)
 	}
@@ -404,7 +405,7 @@ func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, g
 	return target, apiErr, nil
 }
 
-func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*RoleReadResponse, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddPrincipals request")
 	}
@@ -455,8 +456,9 @@ func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint3
 		return nil, nil, fmt.Errorf("error performing client request during AddPrincipals call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleReadResponse)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddPrincipals response: %w", err)
 	}
@@ -468,7 +470,7 @@ func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint3
 	return target, apiErr, nil
 }
 
-func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*RoleReadResponse, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetGrants request")
 	}
@@ -517,8 +519,9 @@ func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, g
 		return nil, nil, fmt.Errorf("error performing client request during SetGrants call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleReadResponse)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetGrants response: %w", err)
 	}
@@ -530,7 +533,7 @@ func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, g
 	return target, apiErr, nil
 }
 
-func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*RoleReadResponse, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetPrincipals request")
 	}
@@ -579,8 +582,9 @@ func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint3
 		return nil, nil, fmt.Errorf("error performing client request during SetPrincipals call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleReadResponse)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetPrincipals response: %w", err)
 	}
@@ -592,7 +596,7 @@ func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint3
 	return target, apiErr, nil
 }
 
-func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*RoleReadResponse, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemoveGrants request")
 	}
@@ -643,8 +647,9 @@ func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32
 		return nil, nil, fmt.Errorf("error performing client request during RemoveGrants call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleReadResponse)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemoveGrants response: %w", err)
 	}
@@ -656,7 +661,7 @@ func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32
 	return target, apiErr, nil
 }
 
-func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*RoleReadResponse, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemovePrincipals request")
 	}
@@ -707,8 +712,9 @@ func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version ui
 		return nil, nil, fmt.Errorf("error performing client request during RemovePrincipals call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleReadResponse)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemovePrincipals response: %w", err)
 	}

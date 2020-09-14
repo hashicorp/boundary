@@ -481,7 +481,7 @@ var sliceSubTypeTemplate = template.Must(template.New("").Funcs(
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
 {{ $resPath := getPathWithAction $input.PathArgs $input.ParentTypeName $actionName }}
-func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunctionArg }} string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}, *api.Error, error) { 
+func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunctionArg }} string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}ReadResponse, *api.Error, error) { 
 	if {{ $input.ResourceFunctionArg }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ $input.ResourceFunctionArg }} value passed into {{ $fullName }} request")
 	}
@@ -533,8 +533,9 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 		return nil, nil, fmt.Errorf("error performing client request during {{ $fullName }} call: %w", err)
 	}
 
-	target := new({{ $input.Name }})
-	apiErr, err := resp.Decode(target)
+	target := new({{ $input.Name }}ReadResponse)
+	target.Item = new({{ $input.Name }})
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding {{ $fullName }} response: %w", err)
 	}

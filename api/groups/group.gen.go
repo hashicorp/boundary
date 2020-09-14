@@ -337,7 +337,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Grou
 	return target, apiErr, nil
 }
 
-func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupReadResponse, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into AddMembers request")
 	}
@@ -388,8 +388,9 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 		return nil, nil, fmt.Errorf("error performing client request during AddMembers call: %w", err)
 	}
 
-	target := new(Group)
-	apiErr, err := resp.Decode(target)
+	target := new(GroupReadResponse)
+	target.Item = new(Group)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddMembers response: %w", err)
 	}
@@ -401,7 +402,7 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 	return target, apiErr, nil
 }
 
-func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupReadResponse, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into SetMembers request")
 	}
@@ -450,8 +451,9 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 		return nil, nil, fmt.Errorf("error performing client request during SetMembers call: %w", err)
 	}
 
-	target := new(Group)
-	apiErr, err := resp.Decode(target)
+	target := new(GroupReadResponse)
+	target.Item = new(Group)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetMembers response: %w", err)
 	}
@@ -463,7 +465,7 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 	return target, apiErr, nil
 }
 
-func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupReadResponse, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into RemoveMembers request")
 	}
@@ -514,8 +516,9 @@ func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint
 		return nil, nil, fmt.Errorf("error performing client request during RemoveMembers call: %w", err)
 	}
 
-	target := new(Group)
-	apiErr, err := resp.Decode(target)
+	target := new(GroupReadResponse)
+	target.Item = new(Group)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemoveMembers response: %w", err)
 	}
