@@ -18,3 +18,31 @@ func (n FieldError) LastResponseBody() *bytes.Buffer {
 func (n FieldError) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type FieldErrorListResult struct {
+	Items            []*FieldError
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n FieldErrorListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n FieldErrorListResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type FieldErrorDeleteResult struct {
+	Existed          bool
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n FieldErrorDeleteResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n FieldErrorDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}

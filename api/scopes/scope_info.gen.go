@@ -21,3 +21,31 @@ func (n ScopeInfo) LastResponseBody() *bytes.Buffer {
 func (n ScopeInfo) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type ScopeInfoListResult struct {
+	Items            []*ScopeInfo
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n ScopeInfoListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n ScopeInfoListResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type ScopeInfoDeleteResult struct {
+	Existed          bool
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n ScopeInfoDeleteResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n ScopeInfoDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}

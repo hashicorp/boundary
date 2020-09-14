@@ -18,3 +18,31 @@ func (n PasswordAuthMethodAttributes) LastResponseBody() *bytes.Buffer {
 func (n PasswordAuthMethodAttributes) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type PasswordAuthMethodAttributesListResult struct {
+	Items            []*PasswordAuthMethodAttributes
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n PasswordAuthMethodAttributesListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n PasswordAuthMethodAttributesListResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type PasswordAuthMethodAttributesDeleteResult struct {
+	Existed          bool
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n PasswordAuthMethodAttributesDeleteResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n PasswordAuthMethodAttributesDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}

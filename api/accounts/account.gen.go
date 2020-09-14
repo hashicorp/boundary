@@ -40,6 +40,34 @@ func (n Account) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
 
+type AccountListResult struct {
+	Items            []*Account
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n AccountListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n AccountListResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type AccountDeleteResult struct {
+	Existed          bool
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n AccountDeleteResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n AccountDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
 // Client is a client for this collection
 type Client struct {
 	client *api.Client
@@ -97,6 +125,8 @@ func (c *Client) Create(ctx context.Context, authMethodId string, opt ...Option)
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.lastResponseBody = resp.Body
+	target.lastResponseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -130,12 +160,15 @@ func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*Ac
 
 	target := new(Account)
 	apiErr, err := resp.Decode(target)
+
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.lastResponseBody = resp.Body
+	target.lastResponseMap = resp.Map
 	return target, apiErr, nil
 }
 
@@ -194,22 +227,24 @@ func (c *Client) Update(ctx context.Context, accountId string, version uint32, o
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.lastResponseBody = resp.Body
+	target.lastResponseMap = resp.Map
 	return target, apiErr, nil
 }
 
-func (c *Client) Delete(ctx context.Context, accountId string, opt ...Option) (bool, *api.Error, error) {
+func (c *Client) Delete(ctx context.Context, accountId string, opt ...Option) (*AccountDeleteResult, *api.Error, error) {
 	if accountId == "" {
-		return false, nil, fmt.Errorf("empty accountId value passed into Delete request")
+		return nil, nil, fmt.Errorf("empty accountId value passed into Delete request")
 	}
 	if c.client == nil {
-		return false, nil, fmt.Errorf("nil client")
+		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("accounts/%s", accountId), nil, apiOpts...)
 	if err != nil {
-		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+		return nil, nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -222,25 +257,33 @@ func (c *Client) Delete(ctx context.Context, accountId string, opt ...Option) (b
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
 	}
 
 	apiErr, err := resp.Decode(nil)
 	if err != nil {
-		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
+
+	target := &AccountDeleteResult{
+		lastResponseBody: resp.Body,
+		lastResponseMap:  resp.Map,
+	}
+
 	if apiErr != nil {
 		// We don't treat a 404 in this case as failure, in order for deletes to
 		// be idempotent
 		if apiErr.Status == http.StatusNotFound {
-			return false, nil, nil
+			return target, nil, nil
 		}
-		return false, apiErr, nil
+		return nil, apiErr, nil
 	}
-	return true, nil, nil
+
+	target.Existed = true
+	return target, nil, nil
 }
 
-func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) ([]*Account, *api.Error, error) {
+func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) (*AccountListResult, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into List request")
 	}
@@ -269,10 +312,7 @@ func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) (
 		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
 	}
 
-	type listResponse struct {
-		Items []*Account
-	}
-	target := &listResponse{}
+	target := new(AccountListResult)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
@@ -280,5 +320,7 @@ func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) (
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	return target.Items, apiErr, nil
+	target.lastResponseBody = resp.Body
+	target.lastResponseMap = resp.Map
+	return target, apiErr, nil
 }

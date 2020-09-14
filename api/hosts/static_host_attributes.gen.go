@@ -17,3 +17,31 @@ func (n StaticHostAttributes) LastResponseBody() *bytes.Buffer {
 func (n StaticHostAttributes) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type StaticHostAttributesListResult struct {
+	Items            []*StaticHostAttributes
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n StaticHostAttributesListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n StaticHostAttributesListResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type StaticHostAttributesDeleteResult struct {
+	Existed          bool
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n StaticHostAttributesDeleteResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n StaticHostAttributesDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}

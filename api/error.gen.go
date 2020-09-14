@@ -20,3 +20,31 @@ func (n Error) LastResponseBody() *bytes.Buffer {
 func (n Error) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type ErrorListResult struct {
+	Items            []*Error
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n ErrorListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n ErrorListResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type ErrorDeleteResult struct {
+	Existed          bool
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n ErrorDeleteResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n ErrorDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}

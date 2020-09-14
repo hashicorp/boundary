@@ -205,7 +205,7 @@ var listTemplate = template.Must(template.New("").Funcs(
 		"snakeCase": snakeCase,
 	},
 ).Parse(`
-func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, opt... Option) ([]*{{ .Name }}, *api.Error, error) {
+func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, opt... Option) (*{{ .Name }}ListResult, *api.Error, error) {
 	if {{ .CollectionFunctionArg }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ .CollectionFunctionArg }} value passed into List request")
 	}
@@ -236,10 +236,7 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
 	}
 
-	type listResponse struct {
-		Items []*{{ .Name }}
-	}
-	target := &listResponse{}
+	target := new({{ .Name }}ListResult)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
@@ -247,7 +244,9 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	return target.Items, apiErr, nil
+	target.lastResponseBody = resp.Body
+	target.lastResponseMap = resp.Map
+	return target, apiErr, nil
 }
 `))
 
@@ -288,24 +287,26 @@ func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, op
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.lastResponseBody = resp.Body
+	target.lastResponseMap = resp.Map
 	return target, apiErr, nil
 }
 `))
 
 var deleteTemplate = template.Must(template.New("").Parse(`
-func (c *Client) Delete(ctx context.Context, {{ .ResourceFunctionArg }} string, opt... Option) (bool, *api.Error, error) { 
+func (c *Client) Delete(ctx context.Context, {{ .ResourceFunctionArg }} string, opt... Option) (*{{ .Name }}DeleteResult, *api.Error, error) { 
 	if {{ .ResourceFunctionArg }} == "" {
-		return false, nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Delete request")
+		return nil, nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Delete request")
 	}
 	if c.client == nil {
-		return false, nil, fmt.Errorf("nil client")
+		return nil, nil, fmt.Errorf("nil client")
 	}
 	
 	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", {{ .ResourcePath }}, nil, apiOpts...)
 	if err != nil {
-		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+		return nil, nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -318,22 +319,30 @@ func (c *Client) Delete(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
 	}
 
 	apiErr, err := resp.Decode(nil)
 	if err != nil {
-		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
+
+	target := &{{ .Name }}DeleteResult{
+		lastResponseBody: resp.Body,
+		lastResponseMap: resp.Map,
+	}
+
 	if apiErr != nil {
 		// We don't treat a 404 in this case as failure, in order for deletes to
 		// be idempotent
 		if apiErr.Status == http.StatusNotFound {
-			return false, nil, nil
+				return target, nil, nil
 		}
-		return false, apiErr, nil
+		return nil, apiErr, nil
 	}
-	return true, nil, nil
+
+	target.Existed = true
+	return target, nil, nil
 }
 `))
 
@@ -388,6 +397,8 @@ func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceTyp
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.lastResponseBody = resp.Body
+	target.lastResponseMap = resp.Map
 	return target, apiErr, nil
 }
 `))
@@ -450,6 +461,8 @@ func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.lastResponseBody = resp.Body
+	target.lastResponseMap = resp.Map
 	return target, apiErr, nil
 }
 `))
@@ -528,6 +541,8 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.lastResponseBody = resp.Body
+	target.lastResponseMap = resp.Map
 	return target, apiErr, nil
 }
 {{ end }}
@@ -561,6 +576,34 @@ func (n {{ .Name }}) LastResponseBody() *bytes.Buffer {
 }
 
 func (n {{ .Name }}) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type {{ .Name }}ListResult struct {
+	Items []*{{ .Name }}
+	lastResponseBody *bytes.Buffer
+	lastResponseMap map[string]interface{}
+}
+
+func (n {{ .Name }}ListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n {{ .Name }}ListResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type {{ .Name }}DeleteResult struct {
+	Existed bool
+	lastResponseBody *bytes.Buffer
+	lastResponseMap map[string]interface{}
+}
+
+func (n {{ .Name }}DeleteResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n {{ .Name }}DeleteResult) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
 `)))

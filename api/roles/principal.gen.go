@@ -19,3 +19,31 @@ func (n Principal) LastResponseBody() *bytes.Buffer {
 func (n Principal) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type PrincipalListResult struct {
+	Items            []*Principal
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n PrincipalListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n PrincipalListResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type PrincipalDeleteResult struct {
+	Existed          bool
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n PrincipalDeleteResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n PrincipalDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}

@@ -18,3 +18,31 @@ func (n Member) LastResponseBody() *bytes.Buffer {
 func (n Member) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type MemberListResult struct {
+	Items            []*Member
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n MemberListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n MemberListResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type MemberDeleteResult struct {
+	Existed          bool
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n MemberDeleteResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n MemberDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}

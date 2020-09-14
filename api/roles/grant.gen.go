@@ -19,3 +19,31 @@ func (n Grant) LastResponseBody() *bytes.Buffer {
 func (n Grant) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type GrantListResult struct {
+	Items            []*Grant
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n GrantListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n GrantListResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type GrantDeleteResult struct {
+	Existed          bool
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n GrantDeleteResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n GrantDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}

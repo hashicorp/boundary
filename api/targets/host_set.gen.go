@@ -18,3 +18,31 @@ func (n HostSet) LastResponseBody() *bytes.Buffer {
 func (n HostSet) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type HostSetListResult struct {
+	Items            []*HostSet
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n HostSetListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n HostSetListResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type HostSetDeleteResult struct {
+	Existed          bool
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n HostSetDeleteResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n HostSetDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
