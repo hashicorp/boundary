@@ -253,7 +253,7 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 `))
 
 var readTemplate = template.Must(template.New("").Parse(`
-func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, opt... Option) (*{{ .Name }}, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, opt... Option) (*{{ .Name }}ReadResult, *api.Error, error) {
 	if {{ .ResourceFunctionArg }} == "" {
 		return nil, nil, fmt.Errorf("empty  {{ .ResourceFunctionArg }} value passed into Read request")
 	}
@@ -281,8 +281,9 @@ func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, op
 		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
 
-	target := new({{ .Name }})
-	apiErr, err := resp.Decode(target)
+	target := new({{ .Name }}ReadResult)
+	target.Item = new({{ .Name }})
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -328,22 +329,14 @@ func (c *Client) Delete(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 
 	target := &{{ .Name }}DeleteResult{
 		lastResponseBody: resp.Body,
 		lastResponseMap: resp.Map,
 	}
-
-	if apiErr != nil {
-		// We don't treat a 404 in this case as failure, in order for deletes to
-		// be idempotent
-		if apiErr.Status == http.StatusNotFound {
-				return target, nil, nil
-		}
-		return nil, apiErr, nil
-	}
-
-	target.Existed = true
 	return target, nil, nil
 }
 `))
@@ -353,7 +346,7 @@ var createTemplate = template.Must(template.New("").Funcs(
 		"snakeCase": snakeCase,
 	},
 ).Parse(`
-func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ .CollectionFunctionArg }} string, opt... Option) (*{{ .Name }}, *api.Error, error) {
+func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ .CollectionFunctionArg }} string, opt... Option) (*{{ .Name }}CreateResult, *api.Error, error) {
 	if {{ .CollectionFunctionArg }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ .CollectionFunctionArg }} value passed into Create request")
 	}
@@ -391,8 +384,9 @@ func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceTyp
 		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
 	}
 
-	target := new({{ .Name }})
-	apiErr, err := resp.Decode(target)
+	target := new({{ .Name }}CreateResult)
+	target.Item = new({{ .Name }})
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -406,7 +400,7 @@ func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceTyp
 `))
 
 var updateTemplate = template.Must(template.New("").Parse(`
-func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, version uint32, opt... Option) (*{{ .Name }}, *api.Error, error) {
+func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, version uint32, opt... Option) (*{{ .Name }}UpdateResult, *api.Error, error) {
 	if {{ .ResourceFunctionArg }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Update request")
 	}
@@ -429,9 +423,12 @@ func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 	{{ end }}
 
@@ -455,8 +452,9 @@ func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
 	}
 
-	target := new({{ .Name }})
-	apiErr, err := resp.Decode(target)
+	target := new({{ .Name }}UpdateResult)
+	target.Item = new({{ .Name }})
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -505,13 +503,13 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
-		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 	{{ end }}
 	opts.postMap["version"] = version
@@ -585,19 +583,22 @@ func (n {{ .Name }}) LastResponseMap() map[string]interface{} {
 {{ end }}
 
 {{ if .CreateResponseTypes }}
-type {{ .Name }}ListResult struct {
-	Items []*{{ .Name }}
+type {{ .Name }}ReadResult struct {
+	Item *{{ .Name }}
 	lastResponseBody *bytes.Buffer
 	lastResponseMap map[string]interface{}
 }
 
-func (n {{ .Name }}ListResult) LastResponseBody() *bytes.Buffer {
+func (n {{ .Name }}ReadResult) LastResponseBody() *bytes.Buffer {
 	return n.lastResponseBody
 }
 
-func (n {{ .Name }}ListResult) LastResponseMap() map[string]interface{} {
+func (n {{ .Name }}ReadResult) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type {{ .Name }}CreateResult = {{ .Name }}ReadResult
+type {{ .Name }}UpdateResult = {{ .Name }}ReadResult
 
 type {{ .Name }}DeleteResult struct {
 	lastResponseBody *bytes.Buffer
@@ -609,6 +610,20 @@ func (n {{ .Name }}DeleteResult) LastResponseBody() *bytes.Buffer {
 }
 
 func (n {{ .Name }}DeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type {{ .Name }}ListResult struct {
+	Items []*{{ .Name }}
+	lastResponseBody *bytes.Buffer
+	lastResponseMap map[string]interface{}
+}
+
+func (n {{ .Name }}ListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n {{ .Name }}ListResult) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
 {{ end }}

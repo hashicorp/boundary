@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"time"
 
@@ -42,19 +41,22 @@ func (n Target) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
 
-type TargetListResult struct {
-	Items            []*Target
+type TargetReadResult struct {
+	Item             *Target
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }
 
-func (n TargetListResult) LastResponseBody() *bytes.Buffer {
+func (n TargetReadResult) LastResponseBody() *bytes.Buffer {
 	return n.lastResponseBody
 }
 
-func (n TargetListResult) LastResponseMap() map[string]interface{} {
+func (n TargetReadResult) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type TargetCreateResult = TargetReadResult
+type TargetUpdateResult = TargetReadResult
 
 type TargetDeleteResult struct {
 	lastResponseBody *bytes.Buffer
@@ -66,6 +68,20 @@ func (n TargetDeleteResult) LastResponseBody() *bytes.Buffer {
 }
 
 func (n TargetDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type TargetListResult struct {
+	Items            []*Target
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n TargetListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n TargetListResult) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
 
@@ -87,7 +103,7 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Create(ctx context.Context, resourceType string, scopeId string, opt ...Option) (*Target, *api.Error, error) {
+func (c *Client) Create(ctx context.Context, resourceType string, scopeId string, opt ...Option) (*TargetCreateResult, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
@@ -123,8 +139,9 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
 	}
 
-	target := new(Target)
-	apiErr, err := resp.Decode(target)
+	target := new(TargetCreateResult)
+	target.Item = new(Target)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -136,7 +153,7 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	return target, apiErr, nil
 }
 
-func (c *Client) Read(ctx context.Context, targetId string, opt ...Option) (*Target, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, targetId string, opt ...Option) (*TargetReadResult, *api.Error, error) {
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("empty  targetId value passed into Read request")
 	}
@@ -164,8 +181,9 @@ func (c *Client) Read(ctx context.Context, targetId string, opt ...Option) (*Tar
 		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
 
-	target := new(Target)
-	apiErr, err := resp.Decode(target)
+	target := new(TargetReadResult)
+	target.Item = new(Target)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -177,7 +195,7 @@ func (c *Client) Read(ctx context.Context, targetId string, opt ...Option) (*Tar
 	return target, apiErr, nil
 }
 
-func (c *Client) Update(ctx context.Context, targetId string, version uint32, opt ...Option) (*Target, *api.Error, error) {
+func (c *Client) Update(ctx context.Context, targetId string, version uint32, opt ...Option) (*TargetUpdateResult, *api.Error, error) {
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("empty targetId value passed into Update request")
 	}
@@ -199,9 +217,12 @@ func (c *Client) Update(ctx context.Context, targetId string, version uint32, op
 			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
@@ -224,8 +245,9 @@ func (c *Client) Update(ctx context.Context, targetId string, version uint32, op
 		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
 	}
 
-	target := new(Target)
-	apiErr, err := resp.Decode(target)
+	target := new(TargetUpdateResult)
+	target.Item = new(Target)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -269,22 +291,14 @@ func (c *Client) Delete(ctx context.Context, targetId string, opt ...Option) (*T
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 
 	target := &TargetDeleteResult{
 		lastResponseBody: resp.Body,
 		lastResponseMap:  resp.Map,
 	}
-
-	if apiErr != nil {
-		// We don't treat a 404 in this case as failure, in order for deletes to
-		// be idempotent
-		if apiErr.Status == http.StatusNotFound {
-			return target, nil, nil
-		}
-		return nil, apiErr, nil
-	}
-
-	target.Existed = true
 	return target, nil, nil
 }
 
@@ -351,13 +365,13 @@ func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint3
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
-		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
@@ -413,13 +427,13 @@ func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint3
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
-		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
@@ -477,13 +491,13 @@ func (c *Client) RemoveHostSets(ctx context.Context, targetId string, version ui
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
-		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version

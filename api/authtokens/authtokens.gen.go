@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"time"
 
@@ -37,19 +36,22 @@ func (n AuthToken) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
 
-type AuthTokenListResult struct {
-	Items            []*AuthToken
+type AuthTokenReadResult struct {
+	Item             *AuthToken
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }
 
-func (n AuthTokenListResult) LastResponseBody() *bytes.Buffer {
+func (n AuthTokenReadResult) LastResponseBody() *bytes.Buffer {
 	return n.lastResponseBody
 }
 
-func (n AuthTokenListResult) LastResponseMap() map[string]interface{} {
+func (n AuthTokenReadResult) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type AuthTokenCreateResult = AuthTokenReadResult
+type AuthTokenUpdateResult = AuthTokenReadResult
 
 type AuthTokenDeleteResult struct {
 	lastResponseBody *bytes.Buffer
@@ -61,6 +63,20 @@ func (n AuthTokenDeleteResult) LastResponseBody() *bytes.Buffer {
 }
 
 func (n AuthTokenDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type AuthTokenListResult struct {
+	Items            []*AuthToken
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n AuthTokenListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n AuthTokenListResult) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
 
@@ -82,7 +98,7 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*AuthToken, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*AuthTokenReadResult, *api.Error, error) {
 	if authTokenId == "" {
 		return nil, nil, fmt.Errorf("empty  authTokenId value passed into Read request")
 	}
@@ -110,8 +126,9 @@ func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*
 		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
 
-	target := new(AuthToken)
-	apiErr, err := resp.Decode(target)
+	target := new(AuthTokenReadResult)
+	target.Item = new(AuthToken)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -155,22 +172,14 @@ func (c *Client) Delete(ctx context.Context, authTokenId string, opt ...Option) 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 
 	target := &AuthTokenDeleteResult{
 		lastResponseBody: resp.Body,
 		lastResponseMap:  resp.Map,
 	}
-
-	if apiErr != nil {
-		// We don't treat a 404 in this case as failure, in order for deletes to
-		// be idempotent
-		if apiErr.Status == http.StatusNotFound {
-			return target, nil, nil
-		}
-		return nil, apiErr, nil
-	}
-
-	target.Existed = true
 	return target, nil, nil
 }
 

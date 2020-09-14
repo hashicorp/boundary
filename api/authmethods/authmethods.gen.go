@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"time"
 
@@ -40,19 +39,22 @@ func (n AuthMethod) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
 
-type AuthMethodListResult struct {
-	Items            []*AuthMethod
+type AuthMethodReadResult struct {
+	Item             *AuthMethod
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }
 
-func (n AuthMethodListResult) LastResponseBody() *bytes.Buffer {
+func (n AuthMethodReadResult) LastResponseBody() *bytes.Buffer {
 	return n.lastResponseBody
 }
 
-func (n AuthMethodListResult) LastResponseMap() map[string]interface{} {
+func (n AuthMethodReadResult) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type AuthMethodCreateResult = AuthMethodReadResult
+type AuthMethodUpdateResult = AuthMethodReadResult
 
 type AuthMethodDeleteResult struct {
 	lastResponseBody *bytes.Buffer
@@ -64,6 +66,20 @@ func (n AuthMethodDeleteResult) LastResponseBody() *bytes.Buffer {
 }
 
 func (n AuthMethodDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type AuthMethodListResult struct {
+	Items            []*AuthMethod
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n AuthMethodListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n AuthMethodListResult) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
 
@@ -85,7 +101,7 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Create(ctx context.Context, resourceType string, scopeId string, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *Client) Create(ctx context.Context, resourceType string, scopeId string, opt ...Option) (*AuthMethodCreateResult, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
@@ -121,8 +137,9 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
 	}
 
-	target := new(AuthMethod)
-	apiErr, err := resp.Decode(target)
+	target := new(AuthMethodCreateResult)
+	target.Item = new(AuthMethod)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -134,7 +151,7 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	return target, apiErr, nil
 }
 
-func (c *Client) Read(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethodReadResult, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty  authMethodId value passed into Read request")
 	}
@@ -162,8 +179,9 @@ func (c *Client) Read(ctx context.Context, authMethodId string, opt ...Option) (
 		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
 
-	target := new(AuthMethod)
-	apiErr, err := resp.Decode(target)
+	target := new(AuthMethodReadResult)
+	target.Item = new(AuthMethod)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -175,7 +193,7 @@ func (c *Client) Read(ctx context.Context, authMethodId string, opt ...Option) (
 	return target, apiErr, nil
 }
 
-func (c *Client) Update(ctx context.Context, authMethodId string, version uint32, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *Client) Update(ctx context.Context, authMethodId string, version uint32, opt ...Option) (*AuthMethodUpdateResult, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Update request")
 	}
@@ -197,9 +215,12 @@ func (c *Client) Update(ctx context.Context, authMethodId string, version uint32
 			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
@@ -222,8 +243,9 @@ func (c *Client) Update(ctx context.Context, authMethodId string, version uint32
 		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
 	}
 
-	target := new(AuthMethod)
-	apiErr, err := resp.Decode(target)
+	target := new(AuthMethodUpdateResult)
+	target.Item = new(AuthMethod)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -267,22 +289,14 @@ func (c *Client) Delete(ctx context.Context, authMethodId string, opt ...Option)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 
 	target := &AuthMethodDeleteResult{
 		lastResponseBody: resp.Body,
 		lastResponseMap:  resp.Map,
 	}
-
-	if apiErr != nil {
-		// We don't treat a 404 in this case as failure, in order for deletes to
-		// be idempotent
-		if apiErr.Status == http.StatusNotFound {
-			return target, nil, nil
-		}
-		return nil, apiErr, nil
-	}
-
-	target.Existed = true
 	return target, nil, nil
 }
 

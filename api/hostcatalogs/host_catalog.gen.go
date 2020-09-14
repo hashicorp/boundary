@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"time"
 
@@ -40,19 +39,22 @@ func (n HostCatalog) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
 
-type HostCatalogListResult struct {
-	Items            []*HostCatalog
+type HostCatalogReadResult struct {
+	Item             *HostCatalog
 	lastResponseBody *bytes.Buffer
 	lastResponseMap  map[string]interface{}
 }
 
-func (n HostCatalogListResult) LastResponseBody() *bytes.Buffer {
+func (n HostCatalogReadResult) LastResponseBody() *bytes.Buffer {
 	return n.lastResponseBody
 }
 
-func (n HostCatalogListResult) LastResponseMap() map[string]interface{} {
+func (n HostCatalogReadResult) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
+
+type HostCatalogCreateResult = HostCatalogReadResult
+type HostCatalogUpdateResult = HostCatalogReadResult
 
 type HostCatalogDeleteResult struct {
 	lastResponseBody *bytes.Buffer
@@ -64,6 +66,20 @@ func (n HostCatalogDeleteResult) LastResponseBody() *bytes.Buffer {
 }
 
 func (n HostCatalogDeleteResult) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
+}
+
+type HostCatalogListResult struct {
+	Items            []*HostCatalog
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n HostCatalogListResult) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n HostCatalogListResult) LastResponseMap() map[string]interface{} {
 	return n.lastResponseMap
 }
 
@@ -85,7 +101,7 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Create(ctx context.Context, resourceType string, scopeId string, opt ...Option) (*HostCatalog, *api.Error, error) {
+func (c *Client) Create(ctx context.Context, resourceType string, scopeId string, opt ...Option) (*HostCatalogCreateResult, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
@@ -121,8 +137,9 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
 	}
 
-	target := new(HostCatalog)
-	apiErr, err := resp.Decode(target)
+	target := new(HostCatalogCreateResult)
+	target.Item = new(HostCatalog)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
@@ -134,7 +151,7 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	return target, apiErr, nil
 }
 
-func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) (*HostCatalog, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) (*HostCatalogReadResult, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty  hostCatalogId value passed into Read request")
 	}
@@ -162,8 +179,9 @@ func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) 
 		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
 
-	target := new(HostCatalog)
-	apiErr, err := resp.Decode(target)
+	target := new(HostCatalogReadResult)
+	target.Item = new(HostCatalog)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
@@ -175,7 +193,7 @@ func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) 
 	return target, apiErr, nil
 }
 
-func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint32, opt ...Option) (*HostCatalog, *api.Error, error) {
+func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint32, opt ...Option) (*HostCatalogUpdateResult, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
 	}
@@ -197,9 +215,12 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint3
 			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
@@ -222,8 +243,9 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint3
 		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
 	}
 
-	target := new(HostCatalog)
-	apiErr, err := resp.Decode(target)
+	target := new(HostCatalogUpdateResult)
+	target.Item = new(HostCatalog)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
@@ -267,22 +289,14 @@ func (c *Client) Delete(ctx context.Context, hostCatalogId string, opt ...Option
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
 
 	target := &HostCatalogDeleteResult{
 		lastResponseBody: resp.Body,
 		lastResponseMap:  resp.Map,
 	}
-
-	if apiErr != nil {
-		// We don't treat a 404 in this case as failure, in order for deletes to
-		// be idempotent
-		if apiErr.Status == http.StatusNotFound {
-			return target, nil, nil
-		}
-		return nil, apiErr, nil
-	}
-
-	target.Existed = true
 	return target, nil, nil
 }
 
