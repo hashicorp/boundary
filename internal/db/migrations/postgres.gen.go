@@ -3753,6 +3753,9 @@ begin;
   insert on session_connection
     for each row execute procedure default_create_time();
 
+  -- insert_new_connection_state() is used in an after insert trigger on the
+  -- session_connection table.  it will insert a state of "connected" in
+  -- session_connection_state for the new session connection. 
   create or replace function 
     insert_new_connection_state()
     returns trigger
@@ -3770,6 +3773,27 @@ begin;
   after insert on session_connection
     for each row execute procedure insert_new_connection_state();
 
+  -- update_connection_state_on_closed_reason() is used in an update insert trigger on the
+  -- session_connection table.  it will insert a state of "closed" in
+  -- session_connection_state for the closed session connection. 
+  create or replace function 
+    update_connection_state_on_closed_reason()
+    returns trigger
+  as $$
+  begin
+    if new.closed_reason is not null then
+      insert into session_connection_state (connection_id, state)
+      values
+        (new.public_id, 'closed');
+      end if;
+      return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger 
+    update_connection_state_on_closed_reason
+  after update of closed_reason on session_connection
+    for each row execute procedure update_connection_state_on_closed_reason();
 
   create table session_connection_state_enm (
     name text primary key
