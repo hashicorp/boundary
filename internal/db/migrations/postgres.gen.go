@@ -3735,7 +3735,23 @@ begin;
     immutable_columns
   before
   update on session_connection
-    for each row execute procedure immutable_columns('wt_public_id', 'session_id', 'client_address', 'client_port', 'backend_address', 'backend_port', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'session_id', 'client_address', 'client_port', 'backend_address', 'backend_port', 'create_time');
+
+  create trigger 
+    update_version_column 
+  after update on session_connection
+    for each row execute procedure update_version_column();
+    
+  create trigger 
+    update_time_column 
+  before update on session_connection 
+    for each row execute procedure update_time_column();
+    
+  create trigger 
+    default_create_time_column
+  before
+  insert on session_connection
+    for each row execute procedure default_create_time();
 
   create or replace function 
     insert_new_connection_state()
@@ -3798,7 +3814,6 @@ begin;
   before
   update on session_connection_state
     for each row execute procedure immutable_columns('connection_id', 'state', 'start_time');
-
 
   create or replace function
     insert_session_connection_state()
