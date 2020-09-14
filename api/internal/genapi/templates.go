@@ -568,8 +568,7 @@ import (
 
 type {{ .Name }} struct { {{ range .Fields }}
 {{ .Name }}  {{ .FieldType }} `, "`json:\"{{ .ProtoName }},omitempty\"`", `{{ end }}
-
-{{ if .CreateResponseTypes }}
+{{ if ( or .CreateResponseTypes ( eq .Name "Error" ) ) }}
 	lastResponseBody *bytes.Buffer
 	lastResponseMap map[string]interface{}
 {{ end }}

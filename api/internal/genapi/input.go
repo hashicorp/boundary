@@ -87,10 +87,9 @@ type structInfo struct {
 
 var inputStructs = []*structInfo{
 	{
-		inProto:             &api.Error{},
-		outFile:             "error.gen.go",
-		outputOnly:          true,
-		createResponseTypes: true,
+		inProto:    &api.Error{},
+		outFile:    "error.gen.go",
+		outputOnly: true,
 	},
 	{
 		inProto:    &api.ErrorDetails{},
