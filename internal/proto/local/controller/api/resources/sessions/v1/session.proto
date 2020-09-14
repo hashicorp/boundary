@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package controller.api.resources.sessions.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions;sessions";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/struct.proto";
+import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/options.proto";
+
+
+message WorkerInfo {
+	// The address of the worker
+	string address = 10;
+}
+
+// Session contains all fields related to a Session resource
+message Session {
+	// The ID of the resource
+	// Output only.
+	string id = 10;
+
+	// The id of the parent of this resource.  This must be defined for creation of this resource, but is otherwise
+	// read only.
+	string target_id = 20 [json_name="target_id"];
+
+	// Scope information for this resource
+	// Output only.
+	resources.scopes.v1.ScopeInfo scope = 30;
+
+	// The time this resource was created
+	// Output only.
+	google.protobuf.Timestamp created_time = 40 [json_name="created_time"];
+
+	// The time this resource was last updated.
+	// Output only.
+	google.protobuf.Timestamp updated_time = 50 [json_name="updated_time"];
+
+	// After this time the connection will be expired, e.g. forcefully terminated
+	google.protobuf.Timestamp expiration_time = 60 [json_name="expiration_time"];
+
+	// The version can be used in subsequent write requests to ensure this
+	// resource has not changed and to fail the write if it has.
+	uint32 version = 70;
+
+	// Type of the session (e.g. tcp, ssh, etc.)
+	string type = 80;
+
+	// The ID of the user that requested the session
+	string user_id = 90 [json_name="user_id"];
+
+	string host_id = 100 [json_name="host_id"];
+
+	string scope_id = 110 [json_name="scope_id"];
+
+	// The certificate to use when connecting (or if using custom certs, to
+	// serve as the "login"). Raw DER bytes.
+	bytes certificate = 120;
+
+	// The private key to use when connecting (or if using custom certs, to pass
+	// as the "password").
+	bytes private_key = 130 [json_name="private_key"];
+
+	string endpoint = 140;
+
+	// Worker information. The first worker in the slice should be prioritized.
+	repeated WorkerInfo worker_info = 150 [json_name="worker_info"];
+}

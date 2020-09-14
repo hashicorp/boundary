@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
@@ -111,7 +111,7 @@ func (w *Worker) createClientConn(addr string) error {
 		return fmt.Errorf("error dialing controller for worker auth: %w", err)
 	}
 
-	client := services.NewWorkerServiceClient(cc)
+	client := pbs.NewServerCoordinationServiceClient(cc)
 	w.controllerConn.Store(client)
 
 	w.logger.Info("connected to controller", "address", addr)

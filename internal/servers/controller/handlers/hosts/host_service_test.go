@@ -305,6 +305,19 @@ func TestCreate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
+			name: "Create with empty address",
+			req: &pbs.CreateHostRequest{Item: &pb.Host{
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "name"},
+				Description:   &wrappers.StringValue{Value: "desc"},
+				Type:          "static",
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"address": structpb.NewStringValue(""),
+				}},
+			}},
+			errCode: codes.InvalidArgument,
+		},
+		{
 			name: "Create without address",
 			req: &pbs.CreateHostRequest{Item: &pb.Host{
 				HostCatalogId: hc.GetPublicId(),
@@ -687,6 +700,36 @@ func TestUpdate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "new desc"},
+				}},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant unset address",
+			req: &pbs.UpdateHostRequest{
+				Id: hc.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.address"},
+				},
+				Item: &pb.Host{
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewNullValue(),
+					}},
+				}},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant set address to empty string",
+			req: &pbs.UpdateHostRequest{
+				Id: hc.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.address"},
+				},
+				Item: &pb.Host{
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewStringValue(""),
+					}},
 				}},
 			res:     nil,
 			errCode: codes.InvalidArgument,

@@ -37,6 +37,10 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 	if scopeId == "" {
 		return nil, fmt.Errorf("create: static host: no scopeId: %w", db.ErrInvalidParameter)
 	}
+	h.Address = strings.TrimSpace(h.Address)
+	if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
+		return nil, fmt.Errorf("create: static host: bad address: %w", ErrInvalidAddress)
+	}
 	h = h.clone()
 
 	id, err := newHostId()
@@ -106,6 +110,10 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 		case strings.EqualFold("Name", f):
 		case strings.EqualFold("Description", f):
 		case strings.EqualFold("Address", f):
+			h.Address = strings.TrimSpace(h.Address)
+			if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
+				return nil, db.NoRowsAffected, fmt.Errorf("update: static host: bad address: %w", ErrInvalidAddress)
+			}
 		default:
 			return nil, db.NoRowsAffected, fmt.Errorf("update: static host: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}

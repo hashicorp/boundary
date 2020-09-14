@@ -2,6 +2,7 @@
 package targets
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -28,6 +29,17 @@ type Target struct {
 	HostSetIds  []string          `json:"host_set_ids,omitempty"`
 	HostSets    []*HostSet        `json:"host_sets,omitempty"`
 	DefaultPort uint32            `json:"default_port,omitempty"`
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n Target) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n Target) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 
 // Client is a client for this collection
@@ -282,8 +294,11 @@ func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint3
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("empty targetId value passed into AddHostSets request")
 	}
+	if len(hostSetIds) == 0 {
+		return nil, nil, errors.New("empty hostSetIds passed into AddHostSets request")
+	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -306,10 +321,7 @@ func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint3
 	}
 
 	opts.postMap["version"] = version
-
-	if len(hostSetIds) > 0 {
-		opts.postMap["host_set_ids"] = hostSetIds
-	}
+	opts.postMap["host_set_ids"] = hostSetIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-host-sets", targetId), opts.postMap, apiOpts...)
 	if err != nil {
@@ -344,8 +356,9 @@ func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint3
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("empty targetId value passed into SetHostSets request")
 	}
+
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -368,13 +381,7 @@ func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint3
 	}
 
 	opts.postMap["version"] = version
-
-	if len(hostSetIds) > 0 {
-		opts.postMap["host_set_ids"] = hostSetIds
-	} else if hostSetIds != nil {
-		// In this function, a non-nil but empty list means clear out
-		opts.postMap["host_set_ids"] = nil
-	}
+	opts.postMap["host_set_ids"] = hostSetIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-host-sets", targetId), opts.postMap, apiOpts...)
 	if err != nil {
@@ -409,8 +416,11 @@ func (c *Client) RemoveHostSets(ctx context.Context, targetId string, version ui
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("empty targetId value passed into RemoveHostSets request")
 	}
+	if len(hostSetIds) == 0 {
+		return nil, nil, errors.New("empty hostSetIds passed into RemoveHostSets request")
+	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -433,10 +443,7 @@ func (c *Client) RemoveHostSets(ctx context.Context, targetId string, version ui
 	}
 
 	opts.postMap["version"] = version
-
-	if len(hostSetIds) > 0 {
-		opts.postMap["host_set_ids"] = hostSetIds
-	}
+	opts.postMap["host_set_ids"] = hostSetIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-host-sets", targetId), opts.postMap, apiOpts...)
 	if err != nil {

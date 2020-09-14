@@ -2,6 +2,7 @@
 package authtokens
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -23,6 +24,17 @@ type AuthToken struct {
 	UpdatedTime             time.Time         `json:"updated_time,omitempty"`
 	ApproximateLastUsedTime time.Time         `json:"approximate_last_used_time,omitempty"`
 	ExpirationTime          time.Time         `json:"expiration_time,omitempty"`
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n AuthToken) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n AuthToken) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 
 // Client is a client for this collection

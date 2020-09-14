@@ -2,6 +2,7 @@
 package roles
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -29,6 +30,17 @@ type Role struct {
 	Principals   []*Principal      `json:"principals,omitempty"`
 	GrantStrings []string          `json:"grant_strings,omitempty"`
 	Grants       []*Grant          `json:"grants,omitempty"`
+
+	lastResponseBody *bytes.Buffer
+	lastResponseMap  map[string]interface{}
+}
+
+func (n Role) LastResponseBody() *bytes.Buffer {
+	return n.lastResponseBody
+}
+
+func (n Role) LastResponseMap() map[string]interface{} {
+	return n.lastResponseMap
 }
 
 // Client is a client for this collection
@@ -278,8 +290,11 @@ func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, g
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddGrants request")
 	}
+	if len(grantStrings) == 0 {
+		return nil, nil, errors.New("empty grantStrings passed into AddGrants request")
+	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -302,10 +317,7 @@ func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, g
 	}
 
 	opts.postMap["version"] = version
-
-	if len(grantStrings) > 0 {
-		opts.postMap["grant_strings"] = grantStrings
-	}
+	opts.postMap["grant_strings"] = grantStrings
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", roleId), opts.postMap, apiOpts...)
 	if err != nil {
@@ -340,8 +352,11 @@ func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint3
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddPrincipals request")
 	}
+	if len(principalIds) == 0 {
+		return nil, nil, errors.New("empty principalIds passed into AddPrincipals request")
+	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -364,10 +379,7 @@ func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint3
 	}
 
 	opts.postMap["version"] = version
-
-	if len(principalIds) > 0 {
-		opts.postMap["principal_ids"] = principalIds
-	}
+	opts.postMap["principal_ids"] = principalIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", roleId), opts.postMap, apiOpts...)
 	if err != nil {
@@ -402,8 +414,9 @@ func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, g
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetGrants request")
 	}
+
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -426,13 +439,7 @@ func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, g
 	}
 
 	opts.postMap["version"] = version
-
-	if len(grantStrings) > 0 {
-		opts.postMap["grant_strings"] = grantStrings
-	} else if grantStrings != nil {
-		// In this function, a non-nil but empty list means clear out
-		opts.postMap["grant_strings"] = nil
-	}
+	opts.postMap["grant_strings"] = grantStrings
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", roleId), opts.postMap, apiOpts...)
 	if err != nil {
@@ -467,8 +474,9 @@ func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint3
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetPrincipals request")
 	}
+
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -491,13 +499,7 @@ func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint3
 	}
 
 	opts.postMap["version"] = version
-
-	if len(principalIds) > 0 {
-		opts.postMap["principal_ids"] = principalIds
-	} else if principalIds != nil {
-		// In this function, a non-nil but empty list means clear out
-		opts.postMap["principal_ids"] = nil
-	}
+	opts.postMap["principal_ids"] = principalIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", roleId), opts.postMap, apiOpts...)
 	if err != nil {
@@ -532,8 +534,11 @@ func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemoveGrants request")
 	}
+	if len(grantStrings) == 0 {
+		return nil, nil, errors.New("empty grantStrings passed into RemoveGrants request")
+	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -556,10 +561,7 @@ func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32
 	}
 
 	opts.postMap["version"] = version
-
-	if len(grantStrings) > 0 {
-		opts.postMap["grant_strings"] = grantStrings
-	}
+	opts.postMap["grant_strings"] = grantStrings
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", roleId), opts.postMap, apiOpts...)
 	if err != nil {
@@ -594,8 +596,11 @@ func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version ui
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemovePrincipals request")
 	}
+	if len(principalIds) == 0 {
+		return nil, nil, errors.New("empty principalIds passed into RemovePrincipals request")
+	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -618,10 +623,7 @@ func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version ui
 	}
 
 	opts.postMap["version"] = version
-
-	if len(principalIds) > 0 {
-		opts.postMap["principal_ids"] = principalIds
-	}
+	opts.postMap["principal_ids"] = principalIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", roleId), opts.postMap, apiOpts...)
 	if err != nil {

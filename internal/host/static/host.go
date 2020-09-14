@@ -9,6 +9,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	MinHostAddressLength = 3
+	MaxHostAddressLength = 255
+)
+
 // A Host contains a static address.
 type Host struct {
 	*store.Host
