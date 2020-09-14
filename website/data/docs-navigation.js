@@ -36,7 +36,7 @@ export default [
   },
   {
     category: 'installing',
-    content: ['installing'],
+    content: ['dev-mode'],
   },
   {
     category: 'admin-console',
