@@ -143,7 +143,7 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, opt 
 			var err error
 			rowsDeleted, err = w.Delete(
 				ctx,
-				deleteSession,
+				deleteConnection,
 			)
 			if err == nil && rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
