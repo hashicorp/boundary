@@ -140,12 +140,12 @@ func (c *TcpCommand) Run(args []string) int {
 	case "null":
 		opts = append(opts, targets.DefaultDefaultPort())
 	default:
-		length, err := strconv.ParseUint(c.flagDefaultPort, 10, 32)
+		port, err := strconv.ParseUint(c.flagDefaultPort, 10, 32)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagDefaultPort, err))
 			return 1
 		}
-		opts = append(opts, targets.WithDefaultPort(uint32(length)))
+		opts = append(opts, targets.WithDefaultPort(uint32(port)))
 	}
 
 	targetClient := targets.NewClient(client)

@@ -240,6 +240,9 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if name := item.GetName(); name != nil {
 		opts = append(opts, target.WithName(name.GetValue()))
 	}
+	if item.GetDefaultPort().GetValue() != 0 {
+		opts = append(opts, target.WithDefaultPort(item.GetDefaultPort().GetValue()))
+	}
 	version := item.GetVersion()
 	u, err := target.NewTcpTarget(scopeId, opts...)
 	if err != nil {
