@@ -139,7 +139,7 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, opt 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			deleteSession := connection.Clone()
+			deleteConnection := connection.Clone()
 			var err error
 			rowsDeleted, err = w.Delete(
 				ctx,
