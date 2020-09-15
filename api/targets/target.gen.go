@@ -16,18 +16,18 @@ import (
 )
 
 type Target struct {
-	Id          string            `json:"id,omitempty"`
-	ScopeId     string            `json:"scope_id,omitempty"`
-	Scope       *scopes.ScopeInfo `json:"scope,omitempty"`
-	Name        string            `json:"name,omitempty"`
-	Description string            `json:"description,omitempty"`
-	CreatedTime time.Time         `json:"created_time,omitempty"`
-	UpdatedTime time.Time         `json:"updated_time,omitempty"`
-	Version     uint32            `json:"version,omitempty"`
-	Type        string            `json:"type,omitempty"`
-	HostSetIds  []string          `json:"host_set_ids,omitempty"`
-	HostSets    []*HostSet        `json:"host_sets,omitempty"`
-	DefaultPort uint32            `json:"default_port,omitempty"`
+	Id          string                 `json:"id,omitempty"`
+	ScopeId     string                 `json:"scope_id,omitempty"`
+	Scope       *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Name        string                 `json:"name,omitempty"`
+	Description string                 `json:"description,omitempty"`
+	CreatedTime time.Time              `json:"created_time,omitempty"`
+	UpdatedTime time.Time              `json:"updated_time,omitempty"`
+	Version     uint32                 `json:"version,omitempty"`
+	Type        string                 `json:"type,omitempty"`
+	HostSetIds  []string               `json:"host_set_ids,omitempty"`
+	HostSets    []*HostSet             `json:"host_sets,omitempty"`
+	Attributes  map[string]interface{} `json:"attributes,omitempty"`
 
 	responseBody *bytes.Buffer
 	responseMap  map[string]interface{}

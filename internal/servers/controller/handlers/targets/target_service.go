@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
@@ -27,7 +28,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&store.TcpTarget{}, &pb.Target{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&store.TcpTarget{}, &pb.Target{}, &pb.TcpTargetAttributes{}); err != nil {
 		panic(err)
 	}
 }
@@ -203,7 +204,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error)
 	if u == nil {
 		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 	}
-	return toProto(u, m), nil
+	return toProto(u, m)
 }
 
 func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target, error) {
@@ -211,8 +212,12 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	if item.GetDescription() != nil {
 		opts = append(opts, target.WithDescription(item.GetDescription().GetValue()))
 	}
-	if item.GetDefaultPort().GetValue() != 0 {
-		opts = append(opts, target.WithDefaultPort(item.GetDefaultPort().GetValue()))
+	tcpAttrs := &pb.TcpTargetAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
+	}
+	if tcpAttrs.GetDefaultPort().GetValue() != 0 {
+		opts = append(opts, target.WithDefaultPort(tcpAttrs.GetDefaultPort().GetValue()))
 	}
 	u, err := target.NewTcpTarget(item.GetScopeId(), opts...)
 	if err != nil {
@@ -229,7 +234,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create target but no error returned from repository.")
 	}
-	return toProto(out, m), nil
+	return toProto(out, m)
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Target) (*pb.Target, error) {
@@ -240,8 +245,13 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if name := item.GetName(); name != nil {
 		opts = append(opts, target.WithName(name.GetValue()))
 	}
-	if item.GetDefaultPort().GetValue() != 0 {
-		opts = append(opts, target.WithDefaultPort(item.GetDefaultPort().GetValue()))
+
+	tcpAttrs := &pb.TcpTargetAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
+	}
+	if tcpAttrs.GetDefaultPort().GetValue() != 0 {
+		opts = append(opts, target.WithDefaultPort(tcpAttrs.GetDefaultPort().GetValue()))
 	}
 	version := item.GetVersion()
 	u, err := target.NewTcpTarget(scopeId, opts...)
@@ -264,7 +274,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 	}
-	return toProto(out, m), nil
+	return toProto(out, m)
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -293,7 +303,11 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Target
 	}
 	var outUl []*pb.Target
 	for _, u := range ul {
-		outUl = append(outUl, toProto(u, nil))
+		o, err := toProto(u, nil)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "Unable to convert value to proto: %v.", err)
+		}
+		outUl = append(outUl, o)
 	}
 	return outUl, nil
 }
@@ -310,7 +324,7 @@ func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []str
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to lookup target after adding host sets to it.")
 	}
-	return toProto(out, m), nil
+	return toProto(out, m)
 }
 
 func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (*pb.Target, error) {
@@ -330,7 +344,7 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to lookup target after setting host sets for it.")
 	}
-	return toProto(out, m), nil
+	return toProto(out, m)
 }
 
 func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (*pb.Target, error) {
@@ -349,7 +363,7 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to lookup target after removing host sets from it.")
 	}
-	return toProto(out, m), nil
+	return toProto(out, m)
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -396,7 +410,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in target.Target, m []*target.TargetSet) *pb.Target {
+func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 	out := pb.Target{
 		Id:          in.GetPublicId(),
 		ScopeId:     in.GetScopeId(),
@@ -411,9 +425,15 @@ func toProto(in target.Target, m []*target.TargetSet) *pb.Target {
 	if in.GetName() != "" {
 		out.Name = wrapperspb.String(in.GetName())
 	}
-	if in.GetDefaultPort() != 0 {
-		out.DefaultPort = wrapperspb.UInt32(in.GetDefaultPort())
+	attrs := &pb.TcpTargetAttributes{}
+	if in.GetDefaultPort() > 0 {
+		attrs.DefaultPort = &wrappers.UInt32Value{Value: in.GetDefaultPort()}
 	}
+	st, err := handlers.ProtoToStruct(attrs)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)
+	}
+	out.Attributes = st
 	for _, hs := range m {
 		out.HostSetIds = append(out.HostSetIds, hs.GetPublicId())
 		out.HostSets = append(out.HostSets, &pb.HostSet{
@@ -421,7 +441,7 @@ func toProto(in target.Target, m []*target.TargetSet) *pb.Target {
 			HostCatalogId: hs.GetCatalogId(),
 		})
 	}
-	return &out
+	return &out, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
@@ -442,8 +462,15 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 		if req.GetItem().GetName() == nil || req.GetItem().GetName().GetValue() == "" {
 			badFields["name"] = "This field is required."
 		}
-		if req.GetItem().GetDefaultPort() != nil && req.GetItem().GetDefaultPort().GetValue() == 0 {
-			badFields["default_port"] = "This optional field cannot be set to 0."
+		switch target.SubtypeFromType(req.GetItem().GetType()) {
+		case target.TcpSubType:
+			tcpAttrs := &pb.TcpTargetAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), tcpAttrs); err != nil {
+				badFields["attributes"] = "Attribute fields do not match the expected format."
+			}
+			if tcpAttrs.GetDefaultPort() != nil && tcpAttrs.GetDefaultPort().GetValue() == 0 {
+				badFields["attributes.default_port"] = "This optional field cannot be set to 0."
+			}
 		}
 		switch req.GetItem().GetType() {
 		case target.TcpTargetType.String():
@@ -462,8 +489,16 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "name") && req.GetItem().GetName().GetValue() == "" {
 			badFields["name"] = "This field cannot be set to empty."
 		}
-		if req.GetItem().GetDefaultPort() != nil && req.GetItem().GetDefaultPort().GetValue() == 0 {
-			badFields["default_port"] = "This optional field cannot be set to 0."
+		switch target.SubtypeFromType(req.GetItem().GetType()) {
+
+		case target.TcpSubType:
+			tcpAttrs := &pb.TcpTargetAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), tcpAttrs); err != nil {
+				badFields["attributes"] = "Attribute fields do not match the expected format."
+			}
+			if tcpAttrs.GetDefaultPort() != nil && tcpAttrs.GetDefaultPort().GetValue() == 0 {
+				badFields["attributes.default_port"] = "This optional field cannot be set to 0."
+			}
 		}
 		if req.GetItem().GetType() != "" {
 			badFields["type"] = "This field cannot be updated."

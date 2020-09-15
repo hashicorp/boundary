@@ -100,6 +100,6 @@ message TcpTarget {
   // @inject_tag: `gorm:"default:null"`
   uint32 default_port = 80 [(custom_options.v1.mask_mapping) = {
     this: "DefaultPort"
-    that: "default_port"
+    that: "attributes.default_port"
   }];
 }
