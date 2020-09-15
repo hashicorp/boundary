@@ -26,7 +26,7 @@ func (s ConnectionStatus) String() string {
 	return string(s)
 }
 
-// State of the session
+// State of the connection
 type ConnectionState struct {
 	// ConnectionId is used to access the state via an API
 	ConnectionId string `json:"public_id,omitempty" gorm:"primary_key"`
