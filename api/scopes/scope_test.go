@@ -28,18 +28,19 @@ func TestList(t *testing.T) {
 	pl, apiErr, err := scps.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.Empty(pl)
+	assert.Empty(pl.Items)
 
 	expected := make([]*scopes.Scope, 10)
 	for i := 0; i < 10; i++ {
-		expected[i], apiErr, err = scps.Create(tc.Context(), org.GetPublicId(), scopes.WithName(fmt.Sprintf("%d", i)))
+		scr, apiErr, err := scps.Create(tc.Context(), org.GetPublicId(), scopes.WithName(fmt.Sprintf("%d", i)))
 		require.NoError(err)
 		assert.Nil(apiErr)
+		expected[i] = scr.Item
 	}
 	pl, apiErr, err = scps.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
+	assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl.Items))
 }
 
 func comparableSlice(in []*scopes.Scope) []scopes.Scope {
@@ -83,26 +84,25 @@ func TestCrud(t *testing.T) {
 	}
 
 	s, apiErr, err := scps.Create(tc.Context(), org.GetPublicId(), scopes.WithName("foo"))
-	checkProject("create", s, apiErr, err, "foo", 1)
+	checkProject("create", s.Item, apiErr, err, "foo", 1)
 
-	s, apiErr, err = scps.Read(tc.Context(), s.Id)
-	checkProject("read", s, apiErr, err, "foo", 1)
+	s, apiErr, err = scps.Read(tc.Context(), s.Item.Id)
+	checkProject("read", s.Item, apiErr, err, "foo", 1)
 
-	s, apiErr, err = scps.Update(tc.Context(), s.Id, s.Version, scopes.WithName("bar"))
-	checkProject("update", s, apiErr, err, "bar", 2)
+	s, apiErr, err = scps.Update(tc.Context(), s.Item.Id, s.Item.Version, scopes.WithName("bar"))
+	checkProject("update", s.Item, apiErr, err, "bar", 2)
 
-	s, apiErr, err = scps.Update(tc.Context(), s.Id, s.Version, scopes.DefaultName())
-	checkProject("update, unset name", s, apiErr, err, "", 3)
+	s, apiErr, err = scps.Update(tc.Context(), s.Item.Id, s.Item.Version, scopes.DefaultName())
+	checkProject("update, unset name", s.Item, apiErr, err, "", 3)
 
-	existed, apiErr, err := scps.Delete(tc.Context(), s.Id)
+	_, apiErr, err = scps.Delete(tc.Context(), s.Item.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.True(existed, "Expected existing project when deleted, but it wasn't.")
 
-	existed, apiErr, err = scps.Delete(tc.Context(), s.Id)
+	_, apiErr, err = scps.Delete(tc.Context(), s.Item.Id)
 	require.NoError(err)
-	assert.Nil(apiErr)
-	assert.False(existed)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
 
 // TODO: Get better coverage for expected errors and error formats.
