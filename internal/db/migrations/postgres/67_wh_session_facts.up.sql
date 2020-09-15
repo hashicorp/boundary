@@ -1,9 +1,88 @@
 begin;
 
+  -- Column names for numeric fields that are not a measurement end in id or
+  -- number. This naming convention enables automatic field type detection in
+  -- certain data analysis tools.
+  -- https://help.tableau.com/current/pro/desktop/en-us/data_clean_adm.htm
+
+  -- The wh_session_connection_transaction_fact  table is a transaction fact table.
+  -- The grain of the fact table is one row per session connection.
+  create table wh_session_connection_transaction_fact  (
+    -- TODO(mgaffney) 09/2020: partition table
+
+    connection_id wt_public_id primary key,
+    -- session_id is a degenerate dimension
+    session_id wt_public_id not null,
+    -- auth_token_id is a degenerate dimension
+    auth_token_id wt_public_id not null,
+
+    -- foreign keys to the dimension tables
+    host_id bigint not null
+      references wh_host_dimension (id)
+      on delete restrict
+      on update cascade,
+    user_id bigint not null
+      references wh_user_dimension (id)
+      on delete restrict
+      on update cascade,
+    -- date and time foreign keys
+    connection_connected_date_id integer not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_connected_time_id integer not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_closed_date_id integer not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_closed_time_id integer not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_connected_time timestamp with time zone not null,
+    connection_closed_time timestamp with time zone not null,
+
+    -- NOTE(mgaffney) 09/2020: should a column be added for the duration of
+    -- connection? If so, what should the units of the duration be?
+
+    -- The client address and port are degenerate dimensions
+    client_address inet not null,
+    client_port_number wh_inet_port not null,
+    -- The backend address and port are degenerate dimensions
+    backend_address inet not null,
+    backend_port_number wh_inet_port not null,
+    -- The total number of bytes received by the worker from the client and sent
+    -- to the backend for this connection.
+    -- bytes_up is a fully additive measurement.
+    bytes_up wh_bytes_transmitted, -- can be null
+    -- The total number of bytes received by the worker from the backend and sent
+    -- to the client for this connection.
+    -- bytes_down is a fully additive measurement.
+    bytes_down wh_bytes_transmitted -- can be null
+  );
+  -- TODO(mgaffney) 09/2020: Research and test if the comment fields are used by
+  -- data analysis tools.
+  comment on table wh_session_connection_transaction_fact is
+    'The Wh Session Connection Transaction Fact table is a transaction fact table. '
+    'The grain of the fact table is one row per session connection.';
+  comment on column wh_session_connection_transaction_fact.bytes_up is
+    'Bytes Up is the total number of bytes received by the worker from the '
+    'client and sent to the backend for this connection. Bytes Up is a fully '
+    'additive measurement.';
+  comment on column wh_session_connection_transaction_fact.bytes_down is
+    'Bytes Down is the total number of bytes received by the worker from the '
+    'backend and sent to the client for this connection. Bytes Down is a fully '
+    'additive measurement.';
+
+    /*
   -- The wh_session_accumulating_fact table is an accumulating snapshot.
+  -- The table wh_session_transaction_fact is a transaction fact table.
   -- The grain of the fact table is one row per session.
-  create table wh_session_accumulating_fact (
-    -- TODO(mgaffney) 09/2020: partion table
+  create table wh_session_transaction_fact (
+    -- TODO(mgaffney) 09/2020: partition table
 
     session_id wt_public_id primary key,
     -- auth token id is a degenerate dimension
@@ -18,35 +97,35 @@ begin;
       on delete restrict
       on update cascade,
     -- date and time foreign keys
-    session_pending_date_key integer not null
+    session_pending_date_id integer not null
       references wh_date_dimension (id)
       on delete restrict
       on update cascade,
-    session_pending_time_key integer not null
+    session_pending_time_id integer not null
       references wh_time_of_day_dimension (id)
       on delete restrict
       on update cascade,
-    session_connected_date_key integer not null
+    session_connected_date_id integer not null
       references wh_date_dimension (id)
       on delete restrict
       on update cascade,
-    session_connected_time_key integer not null
+    session_connected_time_id integer not null
       references wh_time_of_day_dimension (id)
       on delete restrict
       on update cascade,
-    session_canceling_date_key integer not null
+    session_canceling_date_id integer not null
       references wh_date_dimension (id)
       on delete restrict
       on update cascade,
-    session_canceling_time_key integer not null
+    session_canceling_time_id integer not null
       references wh_time_of_day_dimension (id)
       on delete restrict
       on update cascade,
-    session_closed_date_key integer not null
+    session_closed_date_id integer not null
       references wh_date_dimension (id)
       on delete restrict
       on update cascade,
-    session_closed_time_key integer not null
+    session_closed_time_id integer not null
       references wh_time_of_day_dimension (id)
       on delete restrict
       on update cascade,
@@ -55,40 +134,16 @@ begin;
     session_canceling_time timestamp with time zone,
     session_closed_time timestamp with time zone,
 
-    -- The client address is a degenerate dimension
-    client_address inet not null,
-    client_port integer
-      not null
-      check(
-        target_port > 0
-        and
-        target_port <= 65535
-      ),
-    -- The target address and port are degenerate dimensions
-    target_address inet not null,
-    target_port integer
-      not null
-      check(
-        target_port > 0
-        and
-        target_port <= 65535
-      ),
-
-    -- the total number of bytes received by the worker from the user and sent
-    -- to the host for this session
-    bytes_up bigint -- can be null
-      check (
-        bytes_up is null
-        or
-        bytes_up >= 0
-      ),
+    -- The total number of bytes received by workers from the client and sent
+    -- to the backend for this session.
+    -- bytes_up is a fully additive measurement.
+    bytes_up wh_bytes_transmitted, -- can be null
     -- the total number of bytes received by the worker from the host and sent
     -- to the user for this session
-    bytes_down bigint -- can be null
-      check (
-        bytes_down is null
-        or
-        bytes_down >= 0
-      )
+    -- The total number of bytes received by workers from the backend and sent
+    -- to the client for this session.
+    -- bytes_down is a fully additive measurement.
+    bytes_down wh_bytes_transmitted -- can be null
   );
+*/
 commit;
