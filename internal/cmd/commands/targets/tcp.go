@@ -68,7 +68,7 @@ func (c *TcpCommand) Flags() *base.FlagSets {
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, "tcp-type target", tcpFlagsMap[c.Func])
 
-	for _, name := range flagsMap[c.Func] {
+	for _, name := range tcpFlagsMap[c.Func] {
 		switch name {
 		case "default-port":
 			f.StringVar(&base.StringVar{
