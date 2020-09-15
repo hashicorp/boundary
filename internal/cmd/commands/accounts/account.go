@@ -272,9 +272,8 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		_, apiErr, err = accountClient.Delete(c.Context, c.FlagId, opts...)
 		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
-				existed = false
-				apiErr = nil
-			}
+			existed = false
+			apiErr = nil
 		}
 	case "list":
 		listResult, apiErr, err = accountClient.List(c.Context, c.flagAuthMethodId, opts...)
