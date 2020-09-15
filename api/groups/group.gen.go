@@ -45,11 +45,15 @@ type GroupReadResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n GroupReadResult) ResponseBody() *bytes.Buffer {
+func (n GroupReadResult) GetItem() interface{} {
+	return n.Item
+}
+
+func (n GroupReadResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n GroupReadResult) ResponseMap() map[string]interface{} {
+func (n GroupReadResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -61,11 +65,11 @@ type GroupDeleteResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n GroupDeleteResult) ResponseBody() *bytes.Buffer {
+func (n GroupDeleteResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n GroupDeleteResult) ResponseMap() map[string]interface{} {
+func (n GroupDeleteResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -75,11 +79,15 @@ type GroupListResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n GroupListResult) ResponseBody() *bytes.Buffer {
+func (n GroupListResult) GetItems() interface{} {
+	return n.Items
+}
+
+func (n GroupListResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n GroupListResult) ResponseMap() map[string]interface{} {
+func (n GroupListResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 

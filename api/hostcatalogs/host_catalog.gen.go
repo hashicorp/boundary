@@ -45,11 +45,15 @@ type HostCatalogReadResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n HostCatalogReadResult) ResponseBody() *bytes.Buffer {
+func (n HostCatalogReadResult) GetItem() interface{} {
+	return n.Item
+}
+
+func (n HostCatalogReadResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n HostCatalogReadResult) ResponseMap() map[string]interface{} {
+func (n HostCatalogReadResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -61,11 +65,11 @@ type HostCatalogDeleteResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n HostCatalogDeleteResult) ResponseBody() *bytes.Buffer {
+func (n HostCatalogDeleteResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n HostCatalogDeleteResult) ResponseMap() map[string]interface{} {
+func (n HostCatalogDeleteResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -75,11 +79,15 @@ type HostCatalogListResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n HostCatalogListResult) ResponseBody() *bytes.Buffer {
+func (n HostCatalogListResult) GetItems() interface{} {
+	return n.Items
+}
+
+func (n HostCatalogListResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n HostCatalogListResult) ResponseMap() map[string]interface{} {
+func (n HostCatalogListResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 

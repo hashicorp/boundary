@@ -43,11 +43,15 @@ type UserReadResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n UserReadResult) ResponseBody() *bytes.Buffer {
+func (n UserReadResult) GetItem() interface{} {
+	return n.Item
+}
+
+func (n UserReadResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n UserReadResult) ResponseMap() map[string]interface{} {
+func (n UserReadResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -59,11 +63,11 @@ type UserDeleteResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n UserDeleteResult) ResponseBody() *bytes.Buffer {
+func (n UserDeleteResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n UserDeleteResult) ResponseMap() map[string]interface{} {
+func (n UserDeleteResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -73,11 +77,15 @@ type UserListResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n UserListResult) ResponseBody() *bytes.Buffer {
+func (n UserListResult) GetItems() interface{} {
+	return n.Items
+}
+
+func (n UserListResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n UserListResult) ResponseMap() map[string]interface{} {
+func (n UserListResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 

@@ -43,11 +43,15 @@ type ScopeReadResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n ScopeReadResult) ResponseBody() *bytes.Buffer {
+func (n ScopeReadResult) GetItem() interface{} {
+	return n.Item
+}
+
+func (n ScopeReadResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n ScopeReadResult) ResponseMap() map[string]interface{} {
+func (n ScopeReadResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -59,11 +63,11 @@ type ScopeDeleteResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n ScopeDeleteResult) ResponseBody() *bytes.Buffer {
+func (n ScopeDeleteResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n ScopeDeleteResult) ResponseMap() map[string]interface{} {
+func (n ScopeDeleteResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -73,11 +77,15 @@ type ScopeListResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n ScopeListResult) ResponseBody() *bytes.Buffer {
+func (n ScopeListResult) GetItems() interface{} {
+	return n.Items
+}
+
+func (n ScopeListResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n ScopeListResult) ResponseMap() map[string]interface{} {
+func (n ScopeListResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 

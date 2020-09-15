@@ -593,11 +593,15 @@ type {{ .Name }}ReadResult struct {
 	responseMap map[string]interface{}
 }
 
-func (n {{ .Name }}ReadResult) ResponseBody() *bytes.Buffer {
+func (n {{ .Name }}ReadResult) GetItem() interface{} {
+	return n.Item
+}
+
+func (n {{ .Name }}ReadResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n {{ .Name }}ReadResult) ResponseMap() map[string]interface{} {
+func (n {{ .Name }}ReadResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -609,11 +613,11 @@ type {{ .Name }}DeleteResult struct {
 	responseMap map[string]interface{}
 }
 
-func (n {{ .Name }}DeleteResult) ResponseBody() *bytes.Buffer {
+func (n {{ .Name }}DeleteResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n {{ .Name }}DeleteResult) ResponseMap() map[string]interface{} {
+func (n {{ .Name }}DeleteResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -623,11 +627,15 @@ type {{ .Name }}ListResult struct {
 	responseMap map[string]interface{}
 }
 
-func (n {{ .Name }}ListResult) ResponseBody() *bytes.Buffer {
+func (n {{ .Name }}ListResult) GetItems() interface{} {
+	return n.Items
+}
+
+func (n {{ .Name }}ListResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n {{ .Name }}ListResult) ResponseMap() map[string]interface{} {
+func (n {{ .Name }}ListResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 {{ end }}

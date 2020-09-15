@@ -2,6 +2,7 @@ package authmethods
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -153,18 +154,22 @@ func (c *Command) Run(args []string) int {
 
 	authmethodClient := authmethods.NewClient(client)
 
-	var existed bool
-	var method *authmethods.AuthMethod
-	var listedMethods []*authmethods.AuthMethod
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		method, apiErr, err = authmethodClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = authmethodClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = authmethodClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = authmethodClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedMethods, apiErr, err = authmethodClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, apiErr, err = authmethodClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "auth method"
@@ -198,6 +203,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedMethods := listResult.GetItems().([]*authmethods.AuthMethod)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedMethods) == 0 {
@@ -252,6 +258,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	method := result.GetItem().(*authmethods.AuthMethod)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateAuthMethodTableOutput(method))

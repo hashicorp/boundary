@@ -48,11 +48,15 @@ type RoleReadResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n RoleReadResult) ResponseBody() *bytes.Buffer {
+func (n RoleReadResult) GetItem() interface{} {
+	return n.Item
+}
+
+func (n RoleReadResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n RoleReadResult) ResponseMap() map[string]interface{} {
+func (n RoleReadResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -64,11 +68,11 @@ type RoleDeleteResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n RoleDeleteResult) ResponseBody() *bytes.Buffer {
+func (n RoleDeleteResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n RoleDeleteResult) ResponseMap() map[string]interface{} {
+func (n RoleDeleteResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -78,11 +82,15 @@ type RoleListResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n RoleListResult) ResponseBody() *bytes.Buffer {
+func (n RoleListResult) GetItems() interface{} {
+	return n.Items
+}
+
+func (n RoleListResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n RoleListResult) ResponseMap() map[string]interface{} {
+func (n RoleListResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 

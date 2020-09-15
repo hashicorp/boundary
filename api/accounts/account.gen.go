@@ -45,11 +45,15 @@ type AccountReadResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n AccountReadResult) ResponseBody() *bytes.Buffer {
+func (n AccountReadResult) GetItem() interface{} {
+	return n.Item
+}
+
+func (n AccountReadResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n AccountReadResult) ResponseMap() map[string]interface{} {
+func (n AccountReadResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -61,11 +65,11 @@ type AccountDeleteResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n AccountDeleteResult) ResponseBody() *bytes.Buffer {
+func (n AccountDeleteResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n AccountDeleteResult) ResponseMap() map[string]interface{} {
+func (n AccountDeleteResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -75,11 +79,15 @@ type AccountListResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n AccountListResult) ResponseBody() *bytes.Buffer {
+func (n AccountListResult) GetItems() interface{} {
+	return n.Items
+}
+
+func (n AccountListResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n AccountListResult) ResponseMap() map[string]interface{} {
+func (n AccountListResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 

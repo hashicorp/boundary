@@ -35,6 +35,7 @@ require (
 	github.com/iancoleman/strcase v0.1.0
 	github.com/jackc/pgx/v4 v4.8.1
 	github.com/jinzhu/gorm v1.9.16
+	github.com/joyent/triton-go v1.8.5
 	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.8.0

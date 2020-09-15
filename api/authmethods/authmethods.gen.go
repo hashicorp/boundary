@@ -45,11 +45,15 @@ type AuthMethodReadResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n AuthMethodReadResult) ResponseBody() *bytes.Buffer {
+func (n AuthMethodReadResult) GetItem() interface{} {
+	return n.Item
+}
+
+func (n AuthMethodReadResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n AuthMethodReadResult) ResponseMap() map[string]interface{} {
+func (n AuthMethodReadResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -61,11 +65,11 @@ type AuthMethodDeleteResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n AuthMethodDeleteResult) ResponseBody() *bytes.Buffer {
+func (n AuthMethodDeleteResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n AuthMethodDeleteResult) ResponseMap() map[string]interface{} {
+func (n AuthMethodDeleteResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -75,11 +79,15 @@ type AuthMethodListResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n AuthMethodListResult) ResponseBody() *bytes.Buffer {
+func (n AuthMethodListResult) GetItems() interface{} {
+	return n.Items
+}
+
+func (n AuthMethodListResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n AuthMethodListResult) ResponseMap() map[string]interface{} {
+func (n AuthMethodListResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 

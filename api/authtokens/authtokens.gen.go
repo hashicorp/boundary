@@ -42,11 +42,15 @@ type AuthTokenReadResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n AuthTokenReadResult) ResponseBody() *bytes.Buffer {
+func (n AuthTokenReadResult) GetItem() interface{} {
+	return n.Item
+}
+
+func (n AuthTokenReadResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n AuthTokenReadResult) ResponseMap() map[string]interface{} {
+func (n AuthTokenReadResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -58,11 +62,11 @@ type AuthTokenDeleteResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n AuthTokenDeleteResult) ResponseBody() *bytes.Buffer {
+func (n AuthTokenDeleteResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n AuthTokenDeleteResult) ResponseMap() map[string]interface{} {
+func (n AuthTokenDeleteResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 
@@ -72,11 +76,15 @@ type AuthTokenListResult struct {
 	responseMap  map[string]interface{}
 }
 
-func (n AuthTokenListResult) ResponseBody() *bytes.Buffer {
+func (n AuthTokenListResult) GetItems() interface{} {
+	return n.Items
+}
+
+func (n AuthTokenListResult) GetResponseBody() *bytes.Buffer {
 	return n.responseBody
 }
 
-func (n AuthTokenListResult) ResponseMap() map[string]interface{} {
+func (n AuthTokenListResult) GetResponseMap() map[string]interface{} {
 	return n.responseMap
 }
 

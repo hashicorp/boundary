@@ -184,14 +184,14 @@ func (c *PasswordCommand) Run(args []string) int {
 		}
 	}
 
-	var method *authmethods.AuthMethod
+	var result api.GenericResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		method, apiErr, err = authmethodClient.Create(c.Context, "password", c.FlagScopeId, opts...)
+		result, apiErr, err = authmethodClient.Create(c.Context, "password", c.FlagScopeId, opts...)
 	case "update":
-		method, apiErr, err = authmethodClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = authmethodClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
 	plural := "password-type auth-method"
@@ -204,6 +204,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		return 1
 	}
 
+	method := result.GetItem().(*authmethods.AuthMethod)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateAuthMethodTableOutput(method))
