@@ -59,6 +59,7 @@ func TestGet(t *testing.T) {
 		Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 		Type:        target.TcpTargetType.String(),
 		HostSetIds:  []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
+		Attributes:  new(structpb.Struct),
 	}
 	for _, ihs := range hs {
 		pTar.HostSets = append(pTar.HostSets, &pb.HostSet{Id: ihs.GetPublicId(), HostCatalogId: ihs.GetCatalogId()})
@@ -143,6 +144,7 @@ func TestList(t *testing.T) {
 			UpdatedTime: tar.GetUpdateTime().GetTimestamp(),
 			Version:     tar.GetVersion(),
 			Type:        target.TcpTargetType.String(),
+			Attributes:  new(structpb.Struct),
 		})
 	}
 

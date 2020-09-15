@@ -468,7 +468,7 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), tcpAttrs); err != nil {
 				badFields["attributes"] = "Attribute fields do not match the expected format."
 			}
-			if tcpAttrs.GetDefaultPort().GetValue() == 0 {
+			if tcpAttrs.GetDefaultPort() != nil && tcpAttrs.GetDefaultPort().GetValue() == 0 {
 				badFields["attributes.default_port"] = "This optional field cannot be set to 0."
 			}
 		}
@@ -496,7 +496,7 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), tcpAttrs); err != nil {
 				badFields["attributes"] = "Attribute fields do not match the expected format."
 			}
-			if tcpAttrs.GetDefaultPort().GetValue() == 0 {
+			if tcpAttrs.GetDefaultPort() != nil && tcpAttrs.GetDefaultPort().GetValue() == 0 {
 				badFields["attributes.default_port"] = "This optional field cannot be set to 0."
 			}
 		}
