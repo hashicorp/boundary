@@ -19,7 +19,6 @@ func generateTargetTableOutput(in *targets.Target) string {
 		"Type":         in.Type,
 		"Created Time": in.CreatedTime.Local().Format(time.RFC3339),
 		"Updated Time": in.UpdatedTime.Local().Format(time.RFC3339),
-		"Default Port": in.DefaultPort,
 	}
 
 	if in.Name != "" {
@@ -33,6 +32,19 @@ func generateTargetTableOutput(in *targets.Target) string {
 	for k := range nonAttributeMap {
 		if len(k) > maxLength {
 			maxLength = len(k)
+		}
+	}
+	if len(in.Attributes) > 0 {
+		for k, v := range in.Attributes {
+			if attributeMap[k] != "" {
+				in.Attributes[attributeMap[k]] = v
+				delete(in.Attributes, k)
+			}
+		}
+		for k := range in.Attributes {
+			if len(k) > maxLength {
+				maxLength = len(k)
+			}
 		}
 	}
 
@@ -68,7 +80,22 @@ func generateTargetTableOutput(in *targets.Target) string {
 		}
 	}
 
+	if len(in.Attributes) > 0 {
+		if true {
+			ret = append(ret,
+				fmt.Sprintf("  Attributes:   %s", ""),
+			)
+		}
+		ret = append(ret,
+			base.WrapMap(4, maxLength, in.Attributes),
+		)
+	}
+
 	return base.WrapForHelpText(ret)
+}
+
+var attributeMap = map[string]string{
+	"default_port": "Default Port",
 }
 
 func exampleOutput() string {
@@ -95,7 +122,9 @@ func exampleOutput() string {
 				HostCatalogId: "hcst_1234567890",
 			},
 		},
-		DefaultPort: 22,
+		Attributes: map[string]interface{}{
+			"default_port": 22,
+		},
 	}
 	return generateTargetTableOutput(in)
 }
