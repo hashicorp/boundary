@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"time"
 
@@ -31,16 +30,68 @@ type Role struct {
 	GrantStrings []string          `json:"grant_strings,omitempty"`
 	Grants       []*Grant          `json:"grants,omitempty"`
 
-	lastResponseBody *bytes.Buffer
-	lastResponseMap  map[string]interface{}
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
-func (n Role) LastResponseBody() *bytes.Buffer {
-	return n.lastResponseBody
+func (n Role) ResponseBody() *bytes.Buffer {
+	return n.responseBody
 }
 
-func (n Role) LastResponseMap() map[string]interface{} {
-	return n.lastResponseMap
+func (n Role) ResponseMap() map[string]interface{} {
+	return n.responseMap
+}
+
+type RoleReadResult struct {
+	Item         *Role
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
+}
+
+func (n RoleReadResult) GetItem() interface{} {
+	return n.Item
+}
+
+func (n RoleReadResult) GetResponseBody() *bytes.Buffer {
+	return n.responseBody
+}
+
+func (n RoleReadResult) GetResponseMap() map[string]interface{} {
+	return n.responseMap
+}
+
+type RoleCreateResult = RoleReadResult
+type RoleUpdateResult = RoleReadResult
+
+type RoleDeleteResult struct {
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
+}
+
+func (n RoleDeleteResult) GetResponseBody() *bytes.Buffer {
+	return n.responseBody
+}
+
+func (n RoleDeleteResult) GetResponseMap() map[string]interface{} {
+	return n.responseMap
+}
+
+type RoleListResult struct {
+	Items        []*Role
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
+}
+
+func (n RoleListResult) GetItems() interface{} {
+	return n.Items
+}
+
+func (n RoleListResult) GetResponseBody() *bytes.Buffer {
+	return n.responseBody
+}
+
+func (n RoleListResult) GetResponseMap() map[string]interface{} {
+	return n.responseMap
 }
 
 // Client is a client for this collection
@@ -61,7 +112,7 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*RoleCreateResult, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
@@ -92,18 +143,21 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Ro
 		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleCreateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
-func (c *Client) Read(ctx context.Context, roleId string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, roleId string, opt ...Option) (*RoleReadResult, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty  roleId value passed into Read request")
 	}
@@ -131,18 +185,21 @@ func (c *Client) Read(ctx context.Context, roleId string, opt ...Option) (*Role,
 		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleReadResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
-func (c *Client) Update(ctx context.Context, roleId string, version uint32, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) Update(ctx context.Context, roleId string, version uint32, opt ...Option) (*RoleUpdateResult, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into Update request")
 	}
@@ -164,9 +221,12 @@ func (c *Client) Update(ctx context.Context, roleId string, version uint32, opt 
 			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
@@ -189,30 +249,33 @@ func (c *Client) Update(ctx context.Context, roleId string, version uint32, opt 
 		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleUpdateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
-func (c *Client) Delete(ctx context.Context, roleId string, opt ...Option) (bool, *api.Error, error) {
+func (c *Client) Delete(ctx context.Context, roleId string, opt ...Option) (*RoleDeleteResult, *api.Error, error) {
 	if roleId == "" {
-		return false, nil, fmt.Errorf("empty roleId value passed into Delete request")
+		return nil, nil, fmt.Errorf("empty roleId value passed into Delete request")
 	}
 	if c.client == nil {
-		return false, nil, fmt.Errorf("nil client")
+		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("roles/%s", roleId), nil, apiOpts...)
 	if err != nil {
-		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+		return nil, nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -225,25 +288,25 @@ func (c *Client) Delete(ctx context.Context, roleId string, opt ...Option) (bool
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
 	}
 
 	apiErr, err := resp.Decode(nil)
 	if err != nil {
-		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
 	if apiErr != nil {
-		// We don't treat a 404 in this case as failure, in order for deletes to
-		// be idempotent
-		if apiErr.Status == http.StatusNotFound {
-			return false, nil, nil
-		}
-		return false, apiErr, nil
+		return nil, apiErr, nil
 	}
-	return true, nil, nil
+
+	target := &RoleDeleteResult{
+		responseBody: resp.Body,
+		responseMap:  resp.Map,
+	}
+	return target, nil, nil
 }
 
-func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) ([]*Role, *api.Error, error) {
+func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*RoleListResult, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
 	}
@@ -272,10 +335,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) ([]*Ro
 		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
 	}
 
-	type listResponse struct {
-		Items []*Role
-	}
-	target := &listResponse{}
+	target := new(RoleListResult)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
@@ -283,10 +343,12 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) ([]*Ro
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	return target.Items, apiErr, nil
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
+	return target, apiErr, nil
 }
 
-func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*RoleUpdateResult, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddGrants request")
 	}
@@ -311,9 +373,12 @@ func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, g
 			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
@@ -337,18 +402,21 @@ func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, g
 		return nil, nil, fmt.Errorf("error performing client request during AddGrants call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleUpdateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddGrants response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
-func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddPrincipals request")
 	}
@@ -373,9 +441,12 @@ func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint3
 			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
@@ -399,18 +470,21 @@ func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint3
 		return nil, nil, fmt.Errorf("error performing client request during AddPrincipals call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleUpdateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding AddPrincipals response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
-func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*RoleUpdateResult, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetGrants request")
 	}
@@ -433,9 +507,12 @@ func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, g
 			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
@@ -459,18 +536,21 @@ func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, g
 		return nil, nil, fmt.Errorf("error performing client request during SetGrants call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleUpdateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetGrants response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
-func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetPrincipals request")
 	}
@@ -493,9 +573,12 @@ func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint3
 			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
@@ -519,18 +602,21 @@ func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint3
 		return nil, nil, fmt.Errorf("error performing client request during SetPrincipals call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleUpdateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding SetPrincipals response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
-func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*RoleUpdateResult, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemoveGrants request")
 	}
@@ -555,9 +641,12 @@ func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32
 			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
@@ -581,18 +670,21 @@ func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32
 		return nil, nil, fmt.Errorf("error performing client request during RemoveGrants call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleUpdateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemoveGrants response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
-func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemovePrincipals request")
 	}
@@ -617,9 +709,12 @@ func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version ui
 			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
@@ -643,13 +738,16 @@ func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version ui
 		return nil, nil, fmt.Errorf("error performing client request during RemovePrincipals call: %w", err)
 	}
 
-	target := new(Role)
-	apiErr, err := resp.Decode(target)
+	target := new(RoleUpdateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding RemovePrincipals response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }

@@ -44,20 +44,21 @@ func TestList(t *testing.T) {
 			pl, apiErr, err := grps.List(tc.Context(), tt.scopeId)
 			assert.NoError(err)
 			assert.Nil(apiErr)
-			assert.Empty(pl)
+			assert.Empty(pl.Items)
 
 			expected := make([]*groups.Group, 10)
 			for i := 0; i < 10; i++ {
-				expected[i], apiErr, err = grps.Create(tc.Context(), tt.scopeId, groups.WithName(fmt.Sprint(i)))
+				createResult, apiErr, err := grps.Create(tc.Context(), tt.scopeId, groups.WithName(fmt.Sprint(i)))
 				require.NoError(err)
 				assert.Nil(apiErr)
+				expected[i] = createResult.Item
 			}
 			pl, apiErr, err = grps.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
 			assert.Nil(apiErr)
 			require.NotNil(pl)
-			require.Len(pl, 10)
-			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
+			require.Len(pl.Items, 10)
+			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl.Items))
 		})
 	}
 }
@@ -131,34 +132,34 @@ func TestCrud(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			groupsClient := groups.NewClient(client)
 			g, apiErr, err := groupsClient.Create(tc.Context(), tt.scopeId, groups.WithName("foo"))
-			checkGroup("create", g, apiErr, err, "foo", 1, nil)
+			checkGroup("create", g.Item, apiErr, err, "foo", 1, nil)
 
-			g, apiErr, err = groupsClient.Read(tc.Context(), g.Id)
-			checkGroup("read", g, apiErr, err, "foo", 1, nil)
+			g, apiErr, err = groupsClient.Read(tc.Context(), g.Item.Id)
+			checkGroup("read", g.Item, apiErr, err, "foo", 1, nil)
 
-			g, apiErr, err = groupsClient.Update(tc.Context(), g.Id, g.Version, groups.WithName("bar"))
-			checkGroup("update", g, apiErr, err, "bar", 2, nil)
+			g, apiErr, err = groupsClient.Update(tc.Context(), g.Item.Id, g.Item.Version, groups.WithName("bar"))
+			checkGroup("update", g.Item, apiErr, err, "bar", 2, nil)
 
-			g, apiErr, err = groupsClient.Update(tc.Context(), g.Id, g.Version, groups.DefaultName())
-			checkGroup("update", g, apiErr, err, "", 3, nil)
+			g, apiErr, err = groupsClient.Update(tc.Context(), g.Item.Id, g.Item.Version, groups.DefaultName())
+			checkGroup("update", g.Item, apiErr, err, "", 3, nil)
 
-			g, apiErr, err = groupsClient.AddMembers(tc.Context(), g.Id, g.Version, []string{user1.Id})
-			checkGroup("update", g, apiErr, err, "", 4, []string{user1.Id})
+			g, apiErr, err = groupsClient.AddMembers(tc.Context(), g.Item.Id, g.Item.Version, []string{user1.Item.Id})
+			checkGroup("update", g.Item, apiErr, err, "", 4, []string{user1.Item.Id})
 
-			g, apiErr, err = groupsClient.SetMembers(tc.Context(), g.Id, g.Version, []string{user2.Id})
-			checkGroup("update", g, apiErr, err, "", 5, []string{user2.Id})
+			g, apiErr, err = groupsClient.SetMembers(tc.Context(), g.Item.Id, g.Item.Version, []string{user2.Item.Id})
+			checkGroup("update", g.Item, apiErr, err, "", 5, []string{user2.Item.Id})
 
-			g, apiErr, err = groupsClient.RemoveMembers(tc.Context(), g.Id, g.Version, []string{user2.Id})
-			checkGroup("update", g, apiErr, err, "", 6, nil)
+			g, apiErr, err = groupsClient.RemoveMembers(tc.Context(), g.Item.Id, g.Item.Version, []string{user2.Item.Id})
+			checkGroup("update", g.Item, apiErr, err, "", 6, nil)
 
-			existed, apiErr, err := groupsClient.Delete(tc.Context(), g.Id)
-			assert.NoError(err)
-			assert.True(existed, "Expected existing user when deleted, but it wasn't.")
-
-			existed, apiErr, err = groupsClient.Delete(tc.Context(), g.Id)
+			_, apiErr, err = groupsClient.Delete(tc.Context(), g.Item.Id)
 			require.NoError(err)
 			assert.Nil(apiErr)
-			assert.False(existed)
+
+			_, apiErr, err = groupsClient.Delete(tc.Context(), g.Item.Id)
+			require.NoError(err)
+			require.NotNil(apiErr)
+			assert.EqualValues(http.StatusNotFound, apiErr.Status)
 		})
 	}
 }
@@ -211,7 +212,7 @@ func TestErrors(t *testing.T) {
 			assert.NotNil(apiErr)
 			assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
-			_, apiErr, err = groupClient.Update(tc.Context(), g.Id, g.Version)
+			_, apiErr, err = groupClient.Update(tc.Context(), g.Item.Id, g.Item.Version)
 			require.NoError(err)
 			assert.NotNil(apiErr)
 			assert.EqualValues(http.StatusBadRequest, apiErr.Status)

@@ -180,14 +180,14 @@ func (c *StaticCommand) Run(args []string) int {
 		}
 	}
 
-	var host *hosts.Host
+	var result api.GenericResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		host, apiErr, err = hostClient.Create(c.Context, c.flagHostCatalogId, opts...)
+		result, apiErr, err = hostClient.Create(c.Context, c.flagHostCatalogId, opts...)
 	case "update":
-		host, apiErr, err = hostClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = hostClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
 	plural := "static-type host"
@@ -200,6 +200,7 @@ func (c *StaticCommand) Run(args []string) int {
 		return 1
 	}
 
+	host := result.GetItem().(*hosts.Host)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateHostTableOutput(host))

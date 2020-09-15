@@ -140,14 +140,14 @@ func (c *StaticCommand) Run(args []string) int {
 		}
 	}
 
-	var catalog *hostcatalogs.HostCatalog
+	var result api.GenericResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		catalog, apiErr, err = hostcatalogClient.Create(c.Context, "static", c.FlagScopeId, opts...)
+		result, apiErr, err = hostcatalogClient.Create(c.Context, "static", c.FlagScopeId, opts...)
 	case "update":
-		catalog, apiErr, err = hostcatalogClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = hostcatalogClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
 	plural := "static-type host-catalog"
@@ -160,6 +160,7 @@ func (c *StaticCommand) Run(args []string) int {
 		return 1
 	}
 
+	catalog := result.GetItem().(*hostcatalogs.HostCatalog)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateHostCatalogTableOutput(catalog))

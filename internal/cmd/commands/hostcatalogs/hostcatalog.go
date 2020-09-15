@@ -2,6 +2,7 @@ package hostcatalogs
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
@@ -153,18 +154,22 @@ func (c *Command) Run(args []string) int {
 
 	hostcatalogClient := hostcatalogs.NewClient(client)
 
-	var existed bool
-	var catalog *hostcatalogs.HostCatalog
-	var listedCatalogs []*hostcatalogs.HostCatalog
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		catalog, apiErr, err = hostcatalogClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = hostcatalogClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = hostcatalogClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = hostcatalogClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedCatalogs, apiErr, err = hostcatalogClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, apiErr, err = hostcatalogClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "host catalog"
@@ -198,6 +203,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedCatalogs := listResult.GetItems().([]*hostcatalogs.HostCatalog)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedCatalogs) == 0 {
@@ -248,6 +254,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	catalog := result.GetItem().(*hostcatalogs.HostCatalog)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateHostCatalogTableOutput(catalog))

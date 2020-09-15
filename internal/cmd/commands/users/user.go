@@ -2,6 +2,7 @@ package users
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/users"
@@ -123,22 +124,26 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	var existed bool
-	var user *users.User
-	var listedUsers []*users.User
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		user, apiErr, err = userClient.Create(c.Context, c.FlagScopeId, opts...)
+		result, apiErr, err = userClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
-		user, apiErr, err = userClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = userClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		user, apiErr, err = userClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = userClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = userClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = userClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedUsers, apiErr, err = userClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, apiErr, err = userClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "user"
@@ -172,6 +177,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedUsers := listResult.GetItems().([]*users.User)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedUsers) == 0 {
@@ -221,6 +227,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	user := result.GetItem().(*users.User)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateUserTableOutput(user))

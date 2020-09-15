@@ -2,6 +2,7 @@ package accounts
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 
@@ -260,22 +261,26 @@ func (c *Command) Run(args []string) int {
 
 	accountClient := accounts.NewClient(client)
 
-	var existed bool
-	var account *accounts.Account
-	var listedAccounts []*accounts.Account
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		account, apiErr, err = accountClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = accountClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = accountClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = accountClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedAccounts, apiErr, err = accountClient.List(c.Context, c.flagAuthMethodId, opts...)
+		listResult, apiErr, err = accountClient.List(c.Context, c.flagAuthMethodId, opts...)
 	case "set-password":
-		account, apiErr, err = accountClient.SetPassword(c.Context, c.FlagId, c.flagPassword, version, opts...)
+		result, apiErr, err = accountClient.SetPassword(c.Context, c.FlagId, c.flagPassword, version, opts...)
 	case "change-password":
-		account, apiErr, err = accountClient.ChangePassword(c.Context, c.FlagId, c.flagCurrentPassword, c.flagNewPassword, version, opts...)
+		result, apiErr, err = accountClient.ChangePassword(c.Context, c.FlagId, c.flagCurrentPassword, c.flagNewPassword, version, opts...)
 	}
 
 	plural := "account"
@@ -309,13 +314,14 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		accounts := listResult.GetItems().([]*accounts.Account)
 		switch base.Format(c.UI) {
 		case "json":
-			if len(listedAccounts) == 0 {
+			if len(accounts) == 0 {
 				c.UI.Output("null")
 				return 0
 			}
-			b, err := base.JsonFormatter{}.Format(listedAccounts)
+			b, err := base.JsonFormatter{}.Format(accounts)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 				return 1
@@ -323,7 +329,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Output(string(b))
 
 		case "table":
-			if len(listedAccounts) == 0 {
+			if len(accounts) == 0 {
 				c.UI.Output("No accounts found")
 				return 0
 			}
@@ -332,7 +338,7 @@ func (c *Command) Run(args []string) int {
 				"",
 				"Account information:",
 			}
-			for i, m := range listedAccounts {
+			for i, m := range accounts {
 				if i > 0 {
 					output = append(output, "")
 				}
@@ -359,6 +365,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	account := result.GetItem().(*accounts.Account)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateAccountTableOutput(account))

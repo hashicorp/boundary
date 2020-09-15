@@ -206,14 +206,14 @@ func (c *PasswordCommand) Run(args []string) int {
 		}
 	}
 
-	var account *accounts.Account
+	var result api.GenericResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		account, apiErr, err = accountClient.Create(c.Context, c.flagAuthMethodId, opts...)
+		result, apiErr, err = accountClient.Create(c.Context, c.flagAuthMethodId, opts...)
 	case "update":
-		account, apiErr, err = accountClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = accountClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
 	plural := "password-type account"
@@ -226,6 +226,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		return 1
 	}
 
+	account := result.GetItem().(*accounts.Account)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateAccountTableOutput(account))

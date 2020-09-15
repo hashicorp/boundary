@@ -135,14 +135,15 @@ func (c *PasswordCommand) Run(args []string) int {
 		return 1
 	}
 
+	token := result.Item
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(base.WrapForHelpText([]string{
 			"",
 			"Authentication information:",
-			fmt.Sprintf("  Expiration Time: %s", result.ExpirationTime.Local().Format(time.RFC3339)),
-			fmt.Sprintf("  Token:           %s", result.Token),
-			fmt.Sprintf("  User ID:         %s", result.UserId),
+			fmt.Sprintf("  Expiration Time: %s", token.ExpirationTime.Local().Format(time.RFC3339)),
+			fmt.Sprintf("  Token:           %s", token.Token),
+			fmt.Sprintf("  User ID:         %s", token.UserId),
 		}))
 	}
 

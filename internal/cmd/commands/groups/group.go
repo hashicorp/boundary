@@ -2,6 +2,7 @@ package groups
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/groups"
@@ -161,28 +162,32 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	var existed bool
-	var group *groups.Group
-	var listedGroups []*groups.Group
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		group, apiErr, err = groupClient.Create(c.Context, c.FlagScopeId, opts...)
+		result, apiErr, err = groupClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
-		group, apiErr, err = groupClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = groupClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		group, apiErr, err = groupClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = groupClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = groupClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = groupClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedGroups, apiErr, err = groupClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, apiErr, err = groupClient.List(c.Context, c.FlagScopeId, opts...)
 	case "add-members":
-		group, apiErr, err = groupClient.AddMembers(c.Context, c.FlagId, version, members, opts...)
+		result, apiErr, err = groupClient.AddMembers(c.Context, c.FlagId, version, members, opts...)
 	case "set-members":
-		group, apiErr, err = groupClient.SetMembers(c.Context, c.FlagId, version, members, opts...)
+		result, apiErr, err = groupClient.SetMembers(c.Context, c.FlagId, version, members, opts...)
 	case "remove-members":
-		group, apiErr, err = groupClient.RemoveMembers(c.Context, c.FlagId, version, members, opts...)
+		result, apiErr, err = groupClient.RemoveMembers(c.Context, c.FlagId, version, members, opts...)
 	}
 
 	plural := "group"
@@ -216,6 +221,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedGroups := listResult.GetItems().([]*groups.Group)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedGroups) == 0 {
@@ -265,6 +271,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	group := result.GetItem().(*groups.Group)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateGroupTableOutput(group))

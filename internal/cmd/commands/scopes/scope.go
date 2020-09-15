@@ -2,6 +2,7 @@ package scopes
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
@@ -134,22 +135,26 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	var existed bool
-	var scope *scopes.Scope
-	var listedScopes []*scopes.Scope
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		scope, apiErr, err = scopeClient.Create(c.Context, c.FlagScopeId, opts...)
+		result, apiErr, err = scopeClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
-		scope, apiErr, err = scopeClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = scopeClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		scope, apiErr, err = scopeClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = scopeClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = scopeClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = scopeClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedScopes, apiErr, err = scopeClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, apiErr, err = scopeClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "scope"
@@ -183,6 +188,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedScopes := listResult.GetItems().([]*scopes.Scope)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedScopes) == 0 {
@@ -232,6 +238,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	scope := result.GetItem().(*scopes.Scope)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateScopeTableOutput(scope))

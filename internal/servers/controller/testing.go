@@ -116,7 +116,7 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.t.Error(fmt.Errorf("api err from logging in: %s", pretty.Sprint(apiErr)))
 		return nil
 	}
-	return token
+	return token.Item
 }
 
 func (tc *TestController) addrs(purpose string) []string {
