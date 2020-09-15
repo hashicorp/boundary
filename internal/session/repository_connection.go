@@ -159,7 +159,7 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, opt 
 }
 
 // UpdateConnection updates the repository entry for the connection, using the
-// fieldMaskPaths.  Only BytesUp, BytesDown, and ClosedReason are muttable and
+// fieldMaskPaths.  Only BytesUp, BytesDown, and ClosedReason are mutable and
 // will be set to NULL if set to a zero value and included in the fieldMaskPaths.
 func (r *Repository) UpdateConnection(ctx context.Context, connection *Connection, version uint32, fieldMaskPaths []string, opt ...Option) (*Connection, []*ConnectionState, int, error) {
 	if connection == nil {
