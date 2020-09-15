@@ -32,34 +32,36 @@ func TestList(t *testing.T) {
 
 	hClient := hosts.NewClient(client)
 
-	ul, apiErr, err := hClient.List(tc.Context(), hc.Id)
+	ul, apiErr, err := hClient.List(tc.Context(), hc.Item.Id)
 	assert.NoError(err)
 	assert.Nil(apiErr)
-	assert.Empty(ul)
+	assert.Empty(ul.Items)
 
 	var expected []*hosts.Host
 	for i := 0; i < 10; i++ {
 		expected = append(expected, &hosts.Host{Name: fmt.Sprint(i)})
 	}
 
-	expected[0], apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName(expected[0].Name), hosts.WithStaticHostAddress("someaddress"))
+	hcr, apiErr, err := hClient.Create(tc.Context(), hc.Item.Id, hosts.WithName(expected[0].Name), hosts.WithStaticHostAddress("someaddress"))
 	assert.NoError(err)
 	assert.Nil(apiErr)
+	expected[0] = hcr.Item
 
-	ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
+	ul, apiErr, err = hClient.List(tc.Context(), hc.Item.Id)
 	assert.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableHostSlice(expected[:1]), comparableHostSlice(ul))
+	assert.ElementsMatch(comparableHostSlice(expected[:1]), comparableHostSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName(expected[i].Name), hosts.WithStaticHostAddress("someaddress"))
+		hcr, apiErr, err = hClient.Create(tc.Context(), hc.Item.Id, hosts.WithName(expected[i].Name), hosts.WithStaticHostAddress("someaddress"))
 		assert.NoError(err)
 		assert.Nil(apiErr)
+		expected[i] = hcr.Item
 	}
-	ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
+	ul, apiErr, err = hClient.List(tc.Context(), hc.Item.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableHostSlice(expected), comparableHostSlice(ul))
+	assert.ElementsMatch(comparableHostSlice(expected), comparableHostSlice(ul.Items))
 }
 
 func comparableHostSlice(in []*hosts.Host) []hosts.Host {
@@ -108,26 +110,26 @@ func TestCrud(t *testing.T) {
 
 	hClient := hosts.NewClient(client)
 
-	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
-	checkHost("create", h, apiErr, err, "foo", 1)
+	h, apiErr, err := hClient.Create(tc.Context(), hc.Item.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
+	checkHost("create", h.Item, apiErr, err, "foo", 1)
 
-	h, apiErr, err = hClient.Read(tc.Context(), h.Id)
-	checkHost("read", h, apiErr, err, "foo", 1)
+	h, apiErr, err = hClient.Read(tc.Context(), h.Item.Id)
+	checkHost("read", h.Item, apiErr, err, "foo", 1)
 
-	h, apiErr, err = hClient.Update(tc.Context(), h.Id, h.Version, hosts.WithName("bar"))
-	checkHost("update", h, apiErr, err, "bar", 2)
+	h, apiErr, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hosts.WithName("bar"))
+	checkHost("update", h.Item, apiErr, err, "bar", 2)
 
-	h, apiErr, err = hClient.Update(tc.Context(), h.Id, h.Version, hosts.DefaultName())
-	checkHost("update", h, apiErr, err, "", 3)
+	h, apiErr, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hosts.DefaultName())
+	checkHost("update", h.Item, apiErr, err, "", 3)
 
-	existed, apiErr, err := hClient.Delete(tc.Context(), h.Id)
+	_, apiErr, err = hClient.Delete(tc.Context(), h.Item.Id)
 	assert.NoError(err)
-	assert.True(existed, "Expected existing catalog when deleted, but it wasn't.")
-
-	existed, apiErr, err = hClient.Delete(tc.Context(), h.Id)
-	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.False(existed)
+
+	_, apiErr, err = hClient.Delete(tc.Context(), h.Item.Id)
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
 
 // TODO: Get better coverage for expected errors and error formats.
@@ -148,12 +150,12 @@ func TestErrors(t *testing.T) {
 
 	hClient := hosts.NewClient(client)
 
-	h, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
+	h, apiErr, err := hClient.Create(tc.Context(), hc.Item.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
 	require.NoError(err)
 	require.Nil(apiErr)
 	assert.NotNil(h)
 
-	_, apiErr, err = hClient.Create(tc.Context(), hc.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
+	_, apiErr, err = hClient.Create(tc.Context(), hc.Item.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 

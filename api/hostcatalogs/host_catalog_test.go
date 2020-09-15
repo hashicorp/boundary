@@ -26,33 +26,35 @@ func TestList(t *testing.T) {
 	catalogClient := hostcatalogs.NewClient(client)
 
 	ul, apiErr, err := catalogClient.List(tc.Context(), proj.GetPublicId())
-	assert.NoError(err)
-	assert.Nil(apiErr)
-	assert.Empty(ul)
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.Empty(ul.Items)
 
 	var expected []*hostcatalogs.HostCatalog
 	for i := 0; i < 10; i++ {
 		expected = append(expected, &hostcatalogs.HostCatalog{Name: fmt.Sprint(i)})
 	}
 
-	expected[0], apiErr, err = catalogClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName(expected[0].Name))
-	assert.NoError(err)
-	assert.Nil(apiErr)
+	cr, apiErr, err := catalogClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName(expected[0].Name))
+	require.NoError(err)
+	require.Nil(apiErr)
+	expected[0] = cr.Item
 
 	ul, apiErr, err = catalogClient.List(tc.Context(), proj.GetPublicId())
-	assert.NoError(err)
-	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul))
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = catalogClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName(expected[i].Name))
-		assert.NoError(err)
-		assert.Nil(apiErr)
+		cr, apiErr, err = catalogClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName(expected[i].Name))
+		require.NoError(err)
+		require.Nil(apiErr)
+		expected[i] = cr.Item
 	}
 	ul, apiErr, err = catalogClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableCatalogSlice(expected), comparableCatalogSlice(ul))
+	assert.ElementsMatch(comparableCatalogSlice(expected), comparableCatalogSlice(ul.Items))
 }
 
 func comparableCatalogSlice(in []*hostcatalogs.HostCatalog) []hostcatalogs.HostCatalog {
@@ -97,25 +99,25 @@ func TestCrud(t *testing.T) {
 	hcClient := hostcatalogs.NewClient(client)
 
 	hc, apiErr, err := hcClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
-	checkCatalog("create", hc, apiErr, err, "foo", 1)
+	checkCatalog("create", hc.Item, apiErr, err, "foo", 1)
 
-	hc, apiErr, err = hcClient.Read(tc.Context(), hc.Id)
-	checkCatalog("read", hc, apiErr, err, "foo", 1)
+	hc, apiErr, err = hcClient.Read(tc.Context(), hc.Item.Id)
+	checkCatalog("read", hc.Item, apiErr, err, "foo", 1)
 
-	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Id, hc.Version, hostcatalogs.WithName("bar"))
-	checkCatalog("update", hc, apiErr, err, "bar", 2)
+	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("bar"))
+	checkCatalog("update", hc.Item, apiErr, err, "bar", 2)
 
-	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Id, hc.Version, hostcatalogs.DefaultName())
-	checkCatalog("update", hc, apiErr, err, "", 3)
+	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.DefaultName())
+	checkCatalog("update", hc.Item, apiErr, err, "", 3)
 
-	existed, apiErr, err := hcClient.Delete(tc.Context(), hc.Id)
+	_, apiErr, err = hcClient.Delete(tc.Context(), hc.Item.Id)
 	assert.NoError(err)
-	assert.True(existed, "Expected existing catalog when deleted, but it wasn't.")
-
-	existed, apiErr, err = hcClient.Delete(tc.Context(), hc.Id)
-	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.False(existed)
+
+	_, apiErr, err = hcClient.Delete(tc.Context(), hc.Item.Id)
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
 
 // TODO: Get better coverage for expected errors and error formats.
