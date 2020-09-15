@@ -2,6 +2,7 @@ package authtokens
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
@@ -90,18 +91,22 @@ func (c *Command) Run(args []string) int {
 
 	authtokenClient := authtokens.NewClient(client)
 
-	var existed bool
-	var token *authtokens.AuthToken
-	var listedTokens []*authtokens.AuthToken
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		token, apiErr, err = authtokenClient.Read(c.Context, c.FlagId)
+		result, apiErr, err = authtokenClient.Read(c.Context, c.FlagId)
 	case "delete":
-		existed, apiErr, err = authtokenClient.Delete(c.Context, c.FlagId)
+		_, apiErr, err = authtokenClient.Delete(c.Context, c.FlagId)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedTokens, apiErr, err = authtokenClient.List(c.Context, c.FlagScopeId)
+		listResult, apiErr, err = authtokenClient.List(c.Context, c.FlagScopeId)
 	}
 
 	plural := "auth token"
@@ -135,6 +140,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedTokens := listResult.GetItems().([]*authtokens.AuthToken)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedTokens) == 0 {
@@ -177,6 +183,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	token := result.GetItem().(*authtokens.AuthToken)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateAuthTokenTableOutput(token))
