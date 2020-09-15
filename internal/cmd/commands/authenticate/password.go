@@ -152,7 +152,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		tokenName = c.Command.FlagTokenName
 	}
 	if tokenName != "none" {
-		marshaled, err := json.Marshal(result)
+		marshaled, err := json.Marshal(token)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to system credential store: %s", err))
 			return 1
