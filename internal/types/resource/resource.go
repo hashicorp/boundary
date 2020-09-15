@@ -19,6 +19,7 @@ const (
 	Target      Type = 12
 	Controller  Type = 13
 	Worker      Type = 14
+	Session     Type = 15
 )
 
 func (r Type) String() string {

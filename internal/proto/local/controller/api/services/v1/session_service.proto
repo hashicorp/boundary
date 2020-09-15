@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "controller/api/resources/sessions/v1/session.proto";
+
+service SessionService {
+	// GetSession returns a stored Session if present.  The provided request
+	// must include the scope and session ID for the session being retrieved. If
+	// any of those IDs are missing, malformed or reference a non existing
+	// resource an error is returned.
+	rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {
+		option (google.api.http) = {
+      get: "/v1/sessions/{id}"
+      response_body: "item"
+    };
+		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Gets a single Session"
+    };
+	}
+
+	// ListSessions returns a list of stored sessions which exist inside the project
+	// referenced inside the request. The request must include the scope ID for
+	// the sessions being retrieved. If the scope ID is missing, malformed, or
+	// reference a non existing scope, an error is returned.
+	rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
+		option (google.api.http) = {
+      get: "/v1/sessions"
+    };
+		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Lists all Sessions"
+    };
+	}
+
+	// CancelSession cancels an existing session in boundary.  An error
+	// is returned if the request attempts to cancel a session that does
+	// not exist.
+	rpc CancelSession(CancelSessionRequest) returns (CancelSessionResponse) {
+		option (google.api.http) = {
+      post: "/v1/sessions/{id}:cancel"
+      response_body: "item"
+    };
+		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Cancels a Session"
+    };
+	}
+}
+
+message GetSessionRequest {
+	string id = 1;
+	string view = 2;
+}
+
+message GetSessionResponse {
+	resources.sessions.v1.Session item = 1;
+}
+
+message ListSessionsRequest {
+	string scope_id = 1;
+	string view = 2;
+}
+
+message ListSessionsResponse {
+	repeated resources.sessions.v1.Session items = 1;
+}
+
+message CancelSessionRequest {
+	string id = 1;
+}
+
+message CancelSessionResponse {
+	resources.sessions.v1.Session item = 1;
+}
