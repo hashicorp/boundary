@@ -8,6 +8,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/api/resources/sessions/v1/session.proto";
 import "controller/custom_options/v1/options.proto";
 
 message HostSet{
@@ -62,4 +63,41 @@ message Target {
 
 message TcpTargetAttributes {
 	google.protobuf.UInt32Value default_port = 10 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.default_port" that: "DefaultPort"}];
+}
+
+
+// SessionAuthorization contains all fields related to authorization for a
+// session. It's in the Targets API because it's returned by a target authorize
+// action.
+message SessionAuthorization {
+	// The ID of the resource
+	// Output only.
+	string session_id = 10;
+
+	// The id of the parent of this resource.  This must be defined for creation
+	// of this resource, but is otherwise read only.
+	string target_id = 20 [json_name="target_id"];
+
+	// Scope information for this resource
+	// Output only.
+	resources.scopes.v1.ScopeInfo scope = 30;
+
+	// The time this resource was created
+	// Output only.
+	google.protobuf.Timestamp created_time = 40 [json_name="created_time"];
+
+	// Type of the session (e.g. tcp, ssh, etc.)
+	string type = 80;
+
+	// The certificate to use when connecting (or if using custom certs, to
+	// serve as the "login"). Raw DER bytes.
+	bytes certificate = 120;
+
+	// The private key to use when connecting (or if using custom certs, to pass
+	// as the "password"). We are using Ed25519 so this is purely raw bytes, no
+	// marshaling.
+	bytes private_key = 130 [json_name="private_key"];
+
+	// Worker information. The first worker in the array should be prioritized.
+	repeated resources.sessions.v1.WorkerInfo worker_info = 150 [json_name="worker_info"];
 }
