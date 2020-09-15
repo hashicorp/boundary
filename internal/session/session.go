@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -63,6 +64,10 @@ type Session struct {
 	Certificate []byte `json:"certificate,omitempty" gorm:"default:null"`
 	// ExpirationTime - after this time the connection will be expired, e.g. forcefully terminated
 	ExpirationTime *timestamp.Timestamp `json:"expiration_time,omitempty" gorm:"default:null"`
+	// CtTofuToken is the ciphertext Tofutoken value stored in the database
+	CtTofuToken []byte `json:"ct_tofu_token,omitempty" gorm:"column:tofu_token;default:null" wrapping:"ct,tofu_token"`
+	// TofuToken - plain text of the "trust on first use" token for session
+	TofuToken []byte `json:"tofu_token,omitempty" gorm:"-" wrapping:"pt,tofu_token"`
 	// termination_reason for the session
 	TerminationReason string `json:"termination_reason,omitempty" gorm:"default:null"`
 	// CreateTime from the RDBMS
@@ -71,6 +76,12 @@ type Session struct {
 	UpdateTime *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// Version for the session
 	Version uint32 `json:"version,omitempty" gorm:"default:null"`
+
+	// key_id is the key ID that was used for the encryption operation. It can be
+	// used to identify a specific version of the key needed to decrypt the value,
+	// which is useful for caching purposes.
+	// @inject_tag: `gorm:"not_null"`
+	KeyId string `json:"key_id,omitempty" gorm:"not_null"`
 
 	tableName string `gorm:"-"`
 }
@@ -121,6 +132,14 @@ func (s *Session) Clone() interface{} {
 		ScopeId:           s.ScopeId,
 		TerminationReason: s.TerminationReason,
 		Version:           s.Version,
+	}
+	if s.TofuToken != nil {
+		clone.TofuToken = make([]byte, len(s.TofuToken))
+		copy(clone.TofuToken, s.TofuToken)
+	}
+	if s.CtTofuToken != nil {
+		clone.CtTofuToken = make([]byte, len(s.CtTofuToken))
+		copy(clone.CtTofuToken, s.CtTofuToken)
 	}
 	if s.Certificate != nil {
 		clone.Certificate = make([]byte, len(s.Certificate))
@@ -241,6 +260,12 @@ func (s *Session) validateNewSession(errorPrefix string) error {
 	if s.ServerType != "" {
 		return fmt.Errorf("%s server type must be empty: %w", errorPrefix, db.ErrInvalidParameter)
 	}
+	if s.TofuToken != nil {
+		return fmt.Errorf("%s tofu token must be empty: %w", errorPrefix, db.ErrInvalidParameter)
+	}
+	if s.CtTofuToken != nil {
+		return fmt.Errorf("%s ct must be empty: %w", errorPrefix, db.ErrInvalidParameter)
+	}
 	return nil
 }
 
@@ -286,4 +311,19 @@ func newCert(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PrivateKey
 		return nil, nil, fmt.Errorf("new session cert: %w", err)
 	}
 	return privKey, certBytes, nil
+}
+
+func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	if err := structwrapping.WrapStruct(ctx, cipher, s, nil); err != nil {
+		return fmt.Errorf("error encrypting session: %w", err)
+	}
+	s.KeyId = cipher.KeyID()
+	return nil
+}
+
+func (s *Session) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	if err := structwrapping.UnwrapStruct(ctx, cipher, s, nil); err != nil {
+		return fmt.Errorf("error decrypting session: %w", err)
+	}
+	return nil
 }

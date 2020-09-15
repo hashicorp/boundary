@@ -424,6 +424,7 @@ func TestRepository_UpdateSession(t *testing.T) {
 		terminationReason TerminationReason
 		serverId          string
 		serverType        string
+		tofu              []byte
 		fieldMaskPaths    []string
 		opt               []Option
 		publicId          *string // not updateable - db.ErrInvalidFieldMask
@@ -447,7 +448,8 @@ func TestRepository_UpdateSession(t *testing.T) {
 				terminationReason: Terminated,
 				serverId:          newServerFunc(),
 				serverType:        servers.ServerTypeWorker.String(),
-				fieldMaskPaths:    []string{"TerminationReason", "ServerId", "ServerType"},
+				tofu:              TestTofu(t),
+				fieldMaskPaths:    []string{"TerminationReason", "ServerId", "ServerType", "TofuToken"},
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -576,6 +578,10 @@ func TestRepository_UpdateSession(t *testing.T) {
 			updateSession.ServerId = tt.args.serverId
 			updateSession.ServerType = tt.args.serverType
 			updateSession.TerminationReason = tt.args.terminationReason.String()
+			if tt.args.tofu != nil {
+				updateSession.TofuToken = make([]byte, len(tt.args.tofu))
+				copy(updateSession.TofuToken, tt.args.tofu)
+			}
 			updateSession.Version = s.Version
 			afterUpdateSession, afterUpdateState, updatedRows, err := repo.UpdateSession(context.Background(), &updateSession, updateSession.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 
@@ -611,6 +617,13 @@ func TestRepository_UpdateSession(t *testing.T) {
 			}
 			if tt.args.serverType == "" {
 				dbassrt.IsNull(foundSession, "ServerType")
+			}
+			if tt.args.tofu == nil {
+				dbassrt.IsNull(foundSession, "CtTofuToken")
+				dbassrt.IsNull(foundSession, "KeyId")
+			} else {
+				dbassrt.NotNull(foundSession, "CtTofuToken")
+				dbassrt.NotNull(foundSession, "KeyId")
 			}
 			assert.Equal(tt.args.terminationReason.String(), foundSession.TerminationReason)
 			assert.Equal(tt.args.serverId, foundSession.ServerId)

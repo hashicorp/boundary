@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/target"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
@@ -130,6 +131,14 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 		AuthTokenId: at.PublicId,
 		ScopeId:     tcpTarget.ScopeId,
 	}
+}
+
+func TestTofu(t *testing.T) []byte {
+	t.Helper()
+	require := require.New(t)
+	tofu, err := base62.Random(20)
+	require.NoError(err)
+	return []byte(tofu)
 }
 
 // TestCert is a temporary test func that intentionally doesn't take testing.T

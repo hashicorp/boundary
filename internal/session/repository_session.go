@@ -8,7 +8,9 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/vault/sdk/helper/strutil"
 )
 
 // CreateSession inserts into the repository and returns the new Session with
@@ -48,6 +50,12 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 	}
 	if newSession.ServerType != "" {
 		return nil, nil, fmt.Errorf("create session: server type must empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.CtTofuToken != nil {
+		return nil, nil, fmt.Errorf("create session: ct must be empty: %w", db.ErrInvalidParameter)
+	}
+	if newSession.TofuToken != nil {
+		return nil, nil, fmt.Errorf("create session: tofu token must be empty: %w", db.ErrInvalidParameter)
 	}
 
 	id, err := newId()
@@ -125,6 +133,17 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 		}
 		return nil, nil, fmt.Errorf("lookup session: %w", err)
 	}
+	if len(session.CtTofuToken) > 0 {
+		databaseWrapper, err := r.kms.GetWrapper(ctx, session.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(session.KeyId))
+		if err != nil {
+			return nil, nil, fmt.Errorf("lookup session: unable to get database wrapper: %w", err)
+		}
+		if err := session.decrypt(ctx, databaseWrapper); err != nil {
+			return nil, nil, fmt.Errorf("lookup session: cannot decrypt session value: %w", err)
+		}
+	} else {
+		session.CtTofuToken = nil
+	}
 	return &session, states, nil
 }
 
@@ -144,6 +163,11 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	err := r.list(ctx, &sessions, strings.Join(where, " and"), args, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
+	}
+	for _, s := range sessions {
+		s.CtTofuToken = nil
+		s.TofuToken = nil
+		s.KeyId = ""
 	}
 	return sessions, nil
 }
@@ -195,23 +219,49 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 	if session.PublicId == "" {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: missing session public id %w", db.ErrInvalidParameter)
 	}
+	if session.CtTofuToken != nil {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: ct must be empty: %w", db.ErrInvalidParameter)
+	}
+
+	translatedFieldMasks := make([]string, 0, len(fieldMaskPaths))
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("TerminationReason", f):
+			translatedFieldMasks = append(translatedFieldMasks, f)
 		case strings.EqualFold("ServerId", f):
+			translatedFieldMasks = append(translatedFieldMasks, f)
 		case strings.EqualFold("ServerType", f):
+			translatedFieldMasks = append(translatedFieldMasks, f)
+		case strings.EqualFold("TofuToken", f):
+			translatedFieldMasks = append(translatedFieldMasks, "CtTofuToken")
 		default:
 			return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
 	}
+
+	updateSession := session.Clone().(*Session)
+	if strutil.StrListContains(translatedFieldMasks, "CtTofuToken") && len(updateSession.TofuToken) != 0 {
+		if err := r.reader.LookupById(ctx, updateSession); err != nil {
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: %w for %s", err, updateSession.PublicId)
+		}
+		databaseWrapper, err := r.kms.GetWrapper(ctx, updateSession.ScopeId, kms.KeyPurposeDatabase)
+		if err != nil {
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: unable to get database wrapper: %w", err)
+		}
+		if err := updateSession.encrypt(ctx, databaseWrapper); err != nil {
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("create session: %w", err)
+		}
+	}
+
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"TerminationReason": session.TerminationReason,
-			"ServerId":          session.ServerId,
-			"ServerType":        session.ServerType,
+			"TerminationReason": updateSession.TerminationReason,
+			"ServerId":          updateSession.ServerId,
+			"ServerType":        updateSession.ServerType,
+			"CtTofuToken":       updateSession.CtTofuToken,
 		},
-		fieldMaskPaths,
+		translatedFieldMasks,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: %w", db.ErrEmptyFieldMask)
@@ -226,7 +276,8 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			s = session.Clone().(*Session)
+			s = updateSession.Clone().(*Session)
+
 			rowsUpdated, err = w.Update(
 				ctx,
 				s,
@@ -249,6 +300,9 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 	)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: %w for %s", err, session.PublicId)
+	}
+	if len(s.CtTofuToken) == 0 {
+		s.CtTofuToken = nil
 	}
 	return s, states, rowsUpdated, err
 }
@@ -308,6 +362,9 @@ func (r *Repository) UpdateState(ctx context.Context, sessionId string, sessionV
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("update session state: error creating new state: %w", err)
+	}
+	if len(updatedSession.CtTofuToken) == 0 {
+		updatedSession.CtTofuToken = nil
 	}
 	return &updatedSession, returnedStates, nil
 }
