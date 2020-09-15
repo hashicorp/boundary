@@ -2355,7 +2355,12 @@
         },
         "auth_method_id": {
           "type": "string",
-          "description": "The id of the user of this AuthToken.\nOutput only.",
+          "description": "The id of the auth method of this AuthToken.\nOutput only.",
+          "readOnly": true
+        },
+        "account_id": {
+          "type": "string",
+          "description": "The id of the auth method account of this AuthToken.\nOutput only.",
           "readOnly": true
         },
         "created_time": {
