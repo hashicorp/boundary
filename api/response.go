@@ -54,6 +54,7 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 		if r.Body.Len() > 0 {
 			reader := bytes.NewReader(r.Body.Bytes())
 			dec := json.NewDecoder(reader)
+			dec.UseNumber()
 			if r.resp.StatusCode >= 400 {
 				inStruct = apiErr
 			}
