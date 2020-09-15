@@ -23,6 +23,7 @@ type options struct {
 	withScopeId        string
 	withUserId         string
 	withExpirationTime *timestamp.Timestamp
+	withTestTofu       []byte
 }
 
 func getDefaultOptions() options {
@@ -63,5 +64,12 @@ func WithUserId(userId string) Option {
 func WithExpirationTime(exp *timestamp.Timestamp) Option {
 	return func(o *options) {
 		o.withExpirationTime = exp
+	}
+}
+
+// WithTestTofu allows specifying a test tofu for a test session
+func WithTestTofu(tofu []byte) Option {
+	return func(o *options) {
+		o.withTestTofu = tofu
 	}
 }

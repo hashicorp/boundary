@@ -61,4 +61,13 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withExpirationTime = &timestamp.Timestamp{Timestamp: now}
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithTestTofu", func(t *testing.T) {
+		assert := assert.New(t)
+		tofu := TestTofu(t)
+		opts := getOpts(WithTestTofu(tofu))
+		testOpts := getDefaultOptions()
+		testOpts.withTestTofu = make([]byte, len(tofu))
+		copy(testOpts.withTestTofu, tofu)
+		assert.Equal(opts, testOpts)
+	})
 }
