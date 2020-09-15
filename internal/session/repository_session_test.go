@@ -251,7 +251,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				AuthTokenId: tt.args.composedOf.AuthTokenId,
 				ScopeId:     tt.args.composedOf.ScopeId,
 			}
-			ses, st, err := repo.CreateSession(context.Background(), wrapper, s)
+			ses, st, privKey, err := repo.CreateSession(context.Background(), wrapper, s)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(ses)
@@ -262,6 +262,9 @@ func TestRepository_CreateSession(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+			assert.NotNil(ses)
+			assert.NotNil(privKey)
+			assert.NotNil(st)
 			assert.NotNil(ses.CreateTime)
 			assert.NotNil(st.StartTime)
 			assert.Equal(st.Status, StatusPending.String())

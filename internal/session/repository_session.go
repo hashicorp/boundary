@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,55 +18,55 @@ import (
 // its State of "Pending".  The following fields must be empty when creating a
 // session: ServerId, ServerType, and PublicId.  No options are
 // currently supported.
-func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, opt ...Option) (*Session, *State, error) {
+func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, opt ...Option) (*Session, *State, ed25519.PrivateKey, error) {
 	if newSession == nil {
-		return nil, nil, fmt.Errorf("create session: missing session: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: missing session: %w", db.ErrInvalidParameter)
 	}
 	if newSession.PublicId != "" {
-		return nil, nil, fmt.Errorf("create session: public id is not empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: public id is not empty: %w", db.ErrInvalidParameter)
 	}
 	if len(newSession.Certificate) != 0 {
-		return nil, nil, fmt.Errorf("create session: certificate is not empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: certificate is not empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.TargetId == "" {
-		return nil, nil, fmt.Errorf("create session: target id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: target id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.HostId == "" {
-		return nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.UserId == "" {
-		return nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.SetId == "" {
-		return nil, nil, fmt.Errorf("create session: set id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: set id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.AuthTokenId == "" {
-		return nil, nil, fmt.Errorf("create session: auth token id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: auth token id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ScopeId == "" {
-		return nil, nil, fmt.Errorf("create session: scope id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: scope id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ServerId != "" {
-		return nil, nil, fmt.Errorf("create session: server id must empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: server id must empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ServerType != "" {
-		return nil, nil, fmt.Errorf("create session: server type must empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: server type must empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.CtTofuToken != nil {
-		return nil, nil, fmt.Errorf("create session: ct must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: ct must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.TofuToken != nil {
-		return nil, nil, fmt.Errorf("create session: tofu token must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: tofu token must be empty: %w", db.ErrInvalidParameter)
 	}
 
 	id, err := newId()
 	if err != nil {
-		return nil, nil, fmt.Errorf("create session: %w", err)
+		return nil, nil, nil, fmt.Errorf("create session: %w", err)
 	}
 
-	_, certBytes, err := newCert(sessionWrapper, newSession.UserId, id)
+	privKey, certBytes, err := newCert(sessionWrapper, newSession.UserId, id)
 	if err != nil {
-		return nil, nil, fmt.Errorf("create session: %w", err)
+		return nil, nil, nil, fmt.Errorf("create session: %w", err)
 	}
 	newSession.Certificate = certBytes
 	newSession.PublicId = id
@@ -97,9 +98,9 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 		},
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("create session: %w", err)
+		return nil, nil, nil, fmt.Errorf("create session: %w", err)
 	}
-	return returnedSession, returnedState, err
+	return returnedSession, returnedState, privKey, err
 }
 
 // LookupSession will look up a session in the repository and return the session
@@ -323,13 +324,6 @@ func (r *Repository) UpdateState(ctx context.Context, sessionId string, sessionV
 	newState, err := NewState(sessionId, s)
 	if err != nil {
 		return nil, nil, fmt.Errorf("update session state: %w", err)
-	}
-	ses, _, err := r.LookupSession(ctx, sessionId)
-	if err != nil {
-		return nil, nil, fmt.Errorf("update session state: %w", err)
-	}
-	if ses == nil {
-		return nil, nil, fmt.Errorf("update session state: unable to look up session for %s: %w", sessionId, err)
 	}
 
 	updatedSession := AllocSession()
