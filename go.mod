@@ -16,6 +16,7 @@ require (
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.1
+	github.com/gorilla/sessions v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.0-beta.4.0.20200813083929-9bdca3d79b97
 	github.com/hashicorp/dbassert v0.0.0-20200602142727-a6709b436ad6
 	github.com/hashicorp/errwrap v1.0.0

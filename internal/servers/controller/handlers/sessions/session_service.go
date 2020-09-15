@@ -12,13 +12,12 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
-	"github.com/hashicorp/boundary/internal/sessions"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // Service handles request as described by the pbs.SessionServiceServer interface.
@@ -85,7 +84,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.cancelInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -98,45 +97,31 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	if err != nil {
 		return nil, err
 	}
-	u, m, err := repo.LookupSession(ctx, id)
+	sess, _, err := repo.LookupSession(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", id)
 		}
 		return nil, err
 	}
-	if u == nil {
+	if sess == nil {
 		return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", id)
 	}
-	return toProto(u), nil
+	return toProto(sess), nil
 }
 
-func (s Service) cancelInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Session) (*pb.Session, error) {
-	var opts []session.Option
-	if desc := item.GetDescription(); desc != nil {
-		opts = append(opts, session.WithDescription(desc.GetValue()))
-	}
-	if name := item.GetName(); name != nil {
-		opts = append(opts, session.WithName(name.GetValue()))
-	}
-	if item.GetDefaultPort().GetValue() != 0 {
-		opts = append(opts, session.WithDefaultPort(item.GetDefaultPort().GetValue()))
-	}
-	version := item.GetVersion()
-	u, err := session.NewTcpSession(scopeId, opts...)
+func (s Service) cancelInRepo(ctx context.Context, id string) (*pb.Session, error) {
+	version := 1
+	u, err := session.New(id, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build session for update: %v.", err)
 	}
 	u.PublicId = id
-	dbMask := maskManager.Translate(mask)
-	if len(dbMask) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
-	}
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, m, rowsUpdated, err := repo.UpdateTcpSession(ctx, u, version, dbMask)
+	out, _, rowsUpdated, err := repo.UpdateState(ctx, id, version, session.StatusCanceling)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update session: %v.", err)
 	}
@@ -209,19 +194,19 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in sessions.Session) *pb.Session {
+func toProto(in *session.Session) *pb.Session {
 	out := pb.Session{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.GetScopeId(),
-		CreatedTime: in.GetCreateTime().GetTimestamp(),
-		TargetId:    in.GetTargetId(),
+		Id:             in.GetPublicId(),
+		ScopeId:        in.ScopeId,
+		TargetId:       in.TargetId,
+		Version:        in.Version,
+		UserId:         in.UserId,
+		HostId:         in.HostId,
+		CreatedTime:    in.CreateTime.GetTimestamp(),
+		UpdatedTime:    in.UpdateTime.GetTimestamp(),
+		ExpirationTime: in.ExpirationTime.GetTimestamp(),
 	}
-	if in.GetDescription() != "" {
-		out.Description = wrapperspb.String(in.GetDescription())
-	}
-	if in.GetName() != "" {
-		out.Name = wrapperspb.String(in.GetName())
-	}
+	in.AuthTokenId
 	return &out
 }
 

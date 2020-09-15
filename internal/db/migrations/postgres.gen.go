@@ -598,6 +598,7 @@ create table iam_scope_project (
     parent_id wt_public_id not null references iam_scope_org(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
+    unique(scope_id),
     primary key(scope_id, parent_id)
   );
 
@@ -3242,6 +3243,15 @@ begin;
   drop table session;
   drop table session_termination_reason_enm;
   drop function insert_session_state;
+  drop function insert_new_session_state;
+  drop function insert_session;
+
+
+  delete
+  from oplog_ticket
+  where name in (
+          'session'
+      );
 
 commit;
 
@@ -3373,67 +3383,152 @@ begin;
       references auth_token (public_id)
       on delete set null
       on update cascade,
-    -- the organization which owns this session
+    -- the project which owns this session
     scope_id wt_scope_id -- fk7
-      references iam_scope_org (scope_id)
+      references iam_scope_project (scope_id)
       on delete set null
       on update cascade,
+    -- Certificate to use when connecting (or if using custom certs, to
+	  -- serve as the "login"). Raw DER bytes.  
+    certificate bytea not null,
+    -- after this time the connection will be expired, e.g. forcefully terminated
+    expiration_time wt_timestamp, -- maybe null
+    -- trust of first use token 
+    tofu_token bytea, -- will be null when session is first created
     -- the reason this session ended (null until terminated)
+     -- TODO: Make key_id a foreign key once we have DEKs
+    key_id text, -- will be null on insert
+      -- references kms_database_key_version(private_id) 
+      -- on delete restrict
+      -- on update cascade,
     termination_reason text -- fk8
       references session_termination_reason_enm (name)
       on delete restrict
       on update cascade,
-    -- the network address of the host the worker proxied a connection to for
-    -- the user
-    address text
-      not null
-      check(
-        length(trim(address)) > 7
-        and
-        length(trim(address)) < 256
-      ),
-    -- the network port at the address of the host the worker proxied a
-    -- connection to for the user
-    port integer
-      not null
-      check(
-        port > 0
-        and
-        port <= 65535
-      ),
-    -- the total number of bytes received by the worker from the user and sent
-    -- to the host for this session
-    bytes_up bigint -- can be null
-      check (
-        bytes_up is null
-        or
-        bytes_up >= 0
-      ),
-    -- the total number of bytes received by the worker from the host and sent
-    -- to the user for this session
-    bytes_down bigint -- can be null
-      check (
-        bytes_down is null
-        or
-        bytes_down >= 0
-      )
+    version wt_version,
+    create_time wt_timestamp,
+    update_time wt_timestamp
   );
+
+  create trigger 
+    immutable_columns
+  before
+  update on session
+    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'create_time');
+  
+  create trigger 
+    update_version_column 
+  after update on session
+    for each row execute procedure update_version_column();
+    
+  create trigger 
+    update_time_column 
+  before update on session 
+    for each row execute procedure update_time_column();
+    
+  create trigger 
+    default_create_time_column
+  before
+  insert on session
+    for each row execute procedure default_create_time();
+
+  create or replace function
+    insert_session()
+    returns trigger
+  as $$
+  begin
+    case 
+      when new.user_id is null then
+        raise exception 'user_id is null';
+      when new.host_id is null then
+        raise exception 'host_id is null';
+      when new.target_id is null then
+        raise exception 'target_id is null';
+      when new.set_id is null then
+        raise exception 'set_id is null';
+      when new.auth_token_id is null then
+        raise exception 'auth_token_id is null';
+      when new.scope_id is null then
+        raise exception 'scope_id is null';
+    else
+    end case;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger 
+    insert_session
+  before insert on session
+    for each row execute procedure insert_session();
+
+  create or replace function 
+    insert_new_session_state()
+    returns trigger
+  as $$
+  begin
+    insert into session_state (session_id, state)
+    values
+      (new.public_id, 'pending');
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger 
+    insert_new_session_state
+  after insert on session
+    for each row execute procedure insert_new_session_state();
+
+  -- update_connection_state_on_closed_reason() is used in an update insert trigger on the
+  -- session_connection table.  it will valiadate that all the session's
+  -- connections are closed, and then insert a state of "closed" in
+  -- session_connection_state for the closed session connection. 
+  create or replace function 
+    update_session_state_on_termination_reason()
+    returns trigger
+  as $$
+  begin
+    if new.termination_reason is not null then
+      perform from
+        session_connection sc,
+        session_connection_state scs
+      where
+        sc.public_id = scs.connection_id and 
+        scs.state != 'closed' and
+        sc.session_id = new.public_id;
+      if found then 
+        raise 'session %s has existing open connections', new.public_id;
+      end if;
+      insert into session_state (session_id, state)
+      values
+        (new.public_id, 'terminated');
+      end if;
+      return new;
+  end;
+  $$ language plpgsql;
+
+
+  create trigger 
+    update_session_state_on_termination_reason
+  after update of termination_reason on session
+    for each row execute procedure update_session_state_on_termination_reason();
+ 
 
   create table session_state_enm (
     name text primary key
       check (
-        name in ('pending', 'connected', 'canceling', 'closed')
+        name in ('pending', 'active', 'canceling', 'terminated')
       )
   );
 
   insert into session_state_enm (name)
   values
     ('pending'),
-    ('connected'),
+    ('active'),
     ('canceling'),
-    ('closed');
+    ('terminated');
 
 /*
+
 
                                               ┌────────────────┐
          start                                │                │
@@ -3445,7 +3540,7 @@ begin;
            ▼                            │                            ▼
   ┌────────────────┐           ┌────────────────┐           ┌────────────────┐
   │                │           │                │           │                │
-  │    Pending     │           │   Connected    │           │     Closed     │
+  │    Pending     │           │     Active     │           │   Terminated   │
   │                │──────────▶│                │──────────▶│                │
   │                │           │                │           │                │
   └────────────────┘           └────────────────┘           └────────────────┘
@@ -3486,6 +3581,12 @@ begin;
   );
 
 
+  create trigger 
+    immutable_columns
+  before
+  update on session_state
+    for each row execute procedure immutable_columns('session_id', 'start_time', 'previous_end_time');
+    
   create or replace function
     insert_session_state()
     returns trigger
@@ -3515,6 +3616,299 @@ begin;
 
   create trigger insert_session_state before insert on session_state
     for each row execute procedure insert_session_state();
+
+
+commit;
+
+`),
+	},
+	"migrations/51_connection.down.sql": {
+		name: "51_connection.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table session_connection_state;
+  drop table session_connection_state_enm;
+  drop table session_connection;
+  drop table session_connection_closed_reason_enm;
+  drop function insert_session_connection_state;
+
+commit;
+
+`),
+	},
+	"migrations/51_connection.up.sql": {
+		name: "51_connection.up.sql",
+		bytes: []byte(`
+begin;
+
+/*
+
+               ┌────────────────┐
+               │    session     │
+               ├────────────────┤
+               │ public_id (pk) │
+               │                │
+               │                │
+               └────────────────┘
+                   ▲fk1 ┼
+                        ┼
+                        │
+                        │
+                        ┼
+                       ╱│╲                  ┌──────────────────────────────────────┐
+            ┌───────────────────────┐       │ session_connection_closed_reason_enm │
+            │  session_connection   │╲ fk2▶ ├──────────────────────────────────────┤
+            ├───────────────────────┤─○───○┼│ name                                 │
+            │ public_id     (pk)    │╱      └──────────────────────────────────────┘
+            │ session_id    (fk1)   │
+            │ closed_reason (fk2)   │
+            └───────────────────────┘
+                   ▲fk1 ┼
+                        ┼
+                        │
+                        │
+                        ┼
+                       ╱│╲
+  ┌──────────────────────────────────────────┐
+  │         session_connection_state         │
+  ├──────────────────────────────────────────┤┼○┐
+  │ connection_id     (pk,fk1,fk2,unq1,unq2) │  │◀fk2
+  │ state             (fk3)                  │  │
+  │ previous_end_time (fk2,unq1)             │┼○┘
+  │ start_time        (pk)                   │
+  │ end_time          (unq2)                 │
+  └──────────────────────────────────────────┘
+                       ╲│╱
+                        ○
+                        │
+                        │
+                        ┼
+                  ▼fk3  ┼
+        ┌───────────────────────────────┐
+        │ session_connection_state_enm  │
+        ├───────────────────────────────┤
+        │ name                          │
+        └───────────────────────────────┘
+
+*/
+
+  create table session_connection_closed_reason_enm (
+    name text primary key
+      check (
+        name in (
+          'unknown',
+          'timed out',
+          'closed by end-user',
+          'cancelled',
+          'network error',
+          'system error'
+        )
+      )
+  );
+
+  insert into session_connection_closed_reason_enm (name)
+  values
+    ('unknown'),
+    ('timed out'),
+    ('closed by end-user'),
+    ('cancelled'),
+    ('network error'),
+    ('system error');
+
+  -- A session connection is one connection proxied by a worker from a client to
+  -- a backend for a session. The client initiates the connection to the worker
+  -- and the worker initiates the connection to the backend.
+  -- A session can have zero or more session connections.
+  create table session_connection (
+    public_id wt_public_id primary key,
+    session_id wt_public_id not null
+      references session (public_id)
+      on delete cascade
+      on update cascade,
+    -- the client_address is the network address of the client which initiated
+    -- the connection to a worker
+    client_address inet not null,
+    -- the client_port is the network port at the address of the client the
+    -- worker proxied a connection for the user
+    client_port integer not null
+      check(
+        client_port > 0
+        and
+        client_port <= 65535
+      ),
+    -- the backend_address is the network address of the backend which the
+    -- worker initiated the connection to, for the user
+    backend_address inet not null,
+    -- the backend_port is the network port at the address of the backend the
+    -- worker proxied a connection to, for the user
+    backend_port integer not null
+      check(
+        backend_port > 0
+        and
+        backend_port <= 65535
+      ),
+    -- the total number of bytes received by the worker from the client and sent
+    -- to the backend for this connection
+    bytes_up bigint -- can be null
+      check (
+        bytes_up is null
+        or
+        bytes_up >= 0
+      ),
+    -- the total number of bytes received by the worker from the backend and sent
+    -- to the client for this connection
+    bytes_down bigint -- can be null
+      check (
+        bytes_down is null
+        or
+        bytes_down >= 0
+      ),
+    closed_reason text
+      references session_connection_closed_reason_enm (name)
+      on delete restrict
+      on update cascade,
+    version wt_version,
+    create_time wt_timestamp,
+    update_time wt_timestamp
+  );
+
+  create trigger 
+    immutable_columns
+  before
+  update on session_connection
+    for each row execute procedure immutable_columns('public_id', 'session_id', 'client_address', 'client_port', 'backend_address', 'backend_port', 'create_time');
+
+  create trigger 
+    update_version_column 
+  after update on session_connection
+    for each row execute procedure update_version_column();
+    
+  create trigger 
+    update_time_column 
+  before update on session_connection 
+    for each row execute procedure update_time_column();
+    
+  create trigger 
+    default_create_time_column
+  before
+  insert on session_connection
+    for each row execute procedure default_create_time();
+
+  -- insert_new_connection_state() is used in an after insert trigger on the
+  -- session_connection table.  it will insert a state of "connected" in
+  -- session_connection_state for the new session connection. 
+  create or replace function 
+    insert_new_connection_state()
+    returns trigger
+  as $$
+  begin
+    insert into session_connection_state (connection_id, state)
+    values
+      (new.public_id, 'connected');
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger 
+    insert_new_connection_state
+  after insert on session_connection
+    for each row execute procedure insert_new_connection_state();
+
+  -- update_connection_state_on_closed_reason() is used in an update insert trigger on the
+  -- session_connection table.  it will insert a state of "closed" in
+  -- session_connection_state for the closed session connection. 
+  create or replace function 
+    update_connection_state_on_closed_reason()
+    returns trigger
+  as $$
+  begin
+    if new.closed_reason is not null then
+      insert into session_connection_state (connection_id, state)
+      values
+        (new.public_id, 'closed');
+      end if;
+      return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger 
+    update_connection_state_on_closed_reason
+  after update of closed_reason on session_connection
+    for each row execute procedure update_connection_state_on_closed_reason();
+
+  create table session_connection_state_enm (
+    name text primary key
+      check (
+        name in ('connected', 'closed')
+      )
+  );
+
+  insert into session_connection_state_enm (name)
+  values
+    ('connected'),
+    ('closed');
+
+
+  create table session_connection_state (
+    connection_id wt_public_id not null
+      references session_connection (public_id)
+      on delete cascade
+      on update cascade,
+    state text not null
+      references session_connection_state_enm(name)
+      on delete restrict
+      on update cascade,
+    previous_end_time timestamp with time zone, -- fk2 -- null means first state
+    start_time timestamp with time zone default current_timestamp not null,
+      constraint previous_end_time_and_start_time_in_sequence
+        check (previous_end_time <= start_time),
+    end_time timestamp with time zone, -- null means unfinished current state
+      constraint start_and_end_times_in_sequence
+        check (start_time <= end_time),
+      constraint end_times_in_sequence
+        check (previous_end_time <> end_time),
+    primary key (connection_id, start_time),
+    unique (connection_id, previous_end_time), -- null means first state
+    unique (connection_id, end_time), -- one null current state
+    foreign key (connection_id, previous_end_time) -- self-reference
+      references session_connection_state (connection_id, end_time)
+  );
+
+  create trigger 
+    immutable_columns
+  before
+  update on session_connection_state
+    for each row execute procedure immutable_columns('connection_id', 'state', 'start_time');
+
+  create or replace function
+    insert_session_connection_state()
+    returns trigger
+  as $$
+  begin
+
+    update session_connection_state
+       set end_time = now()
+     where connection_id = new.connection_id
+       and end_time is null;
+
+    if not found then
+      new.previous_end_time = null;
+      new.start_time = now();
+      new.end_time = null;
+      return new;
+    end if;
+
+    new.previous_end_time = now();
+    new.start_time = now();
+    new.end_time = null;
+    return new;
+
+  end;
+  $$ language plpgsql;
+
+  create trigger insert_session_connection_state before insert on session_connection_state
+    for each row execute procedure insert_session_connection_state();
 
 commit;
 

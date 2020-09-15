@@ -72,23 +72,18 @@ message Session {
 	// Type of the session (e.g. tcp, ssh, etc.)
 	string type = 80;
 
+	// The id of the token used to authenticate.
+	string auth_token_id = 90 [json_name="auth_token_id"];
+
 	// The ID of the user that requested the session
-	string user_id = 90 [json_name="user_id"];
+	string user_id = 100 [json_name="user_id"];
 
-	string host_id = 100 [json_name="host_id"];
+	string host_id = 110 [json_name="host_id"];
 
-	string scope_id = 110 [json_name="scope_id"];
+	string scope_id = 120 [json_name="scope_id"];
 
-	// The certificate to use when connecting (or if using custom certs, to
-	// serve as the "login"). Raw DER bytes.
-	bytes certificate = 120;
-
-	// The private key to use when connecting (or if using custom certs, to pass
-	// as the "password").
-	bytes private_key = 130 [json_name="private_key"];
-
-	string endpoint = 140;
+	string endpoint = 150;
 
 	// Worker information. The first worker in the slice should be prioritized.
-	repeated WorkerInfo worker_info = 150 [json_name="worker_info"];
+	repeated WorkerInfo worker_info = 160 [json_name="worker_info"];
 }

@@ -2990,6 +2990,10 @@
           "type": "string",
           "title": "Type of the session (e.g. tcp, ssh, etc.)"
         },
+        "auth_token_id": {
+          "type": "string",
+          "description": "The id of the token used to authenticate."
+        },
         "user_id": {
           "type": "string",
           "title": "The ID of the user that requested the session"
@@ -2999,16 +3003,6 @@
         },
         "scope_id": {
           "type": "string"
-        },
-        "certificate": {
-          "type": "string",
-          "format": "byte",
-          "description": "The certificate to use when connecting (or if using custom certs, to\nserve as the \"login\"). Raw DER bytes."
-        },
-        "private_key": {
-          "type": "string",
-          "format": "byte",
-          "description": "The private key to use when connecting (or if using custom certs, to pass\nas the \"password\")."
         },
         "endpoint": {
           "type": "string"

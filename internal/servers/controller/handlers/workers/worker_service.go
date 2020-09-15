@@ -9,7 +9,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
-	"github.com/hashicorp/boundary/internal/sessions"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc/codes"
@@ -89,7 +89,7 @@ func (ws *workerServiceServer) GetSession(ctx context.Context, req *pbs.GetSessi
 
 	// Derive the private key, which should match. Deriving on both ends allows
 	// us to not store it in the DB.
-	_, privKey, err := sessions.DeriveED25519Key(wrapper, sessionInfo.GetUserId(), req.GetId())
+	_, privKey, err := session.DeriveED25519Key(wrapper, sessionInfo.GetUserId(), req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
 	}

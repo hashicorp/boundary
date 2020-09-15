@@ -28,7 +28,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
-	"github.com/hashicorp/boundary/internal/sessions"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/shared-secure-libs/configutil"
@@ -370,7 +370,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 		jobId = "s_" + jobId
-		pubKey, privKey, err := sessions.DeriveED25519Key(wrapper, "u_1234567890", jobId)
+		pubKey, privKey, err := session.DeriveED25519Key(wrapper, "u_1234567890", jobId)
 
 		template := &x509.Certificate{
 			ExtKeyUsage: []x509.ExtKeyUsage{
