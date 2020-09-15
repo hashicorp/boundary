@@ -28,7 +28,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&store.TcpTarget{}, &pb.Target{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&store.TcpTarget{}, &pb.Target{}, &pb.TcpTargetAttributes{}); err != nil {
 		panic(err)
 	}
 }
