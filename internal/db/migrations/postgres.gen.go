@@ -3393,7 +3393,14 @@ begin;
     certificate bytea not null,
     -- after this time the connection will be expired, e.g. forcefully terminated
     expiration_time wt_timestamp, -- maybe null
+    -- trust of first use token 
+    tofu_token bytea, -- will be null when session is first created
     -- the reason this session ended (null until terminated)
+     -- TODO: Make key_id a foreign key once we have DEKs
+    key_id text, -- will be null on insert
+      -- references kms_database_key_version(private_id) 
+      -- on delete restrict
+      -- on update cascade,
     termination_reason text -- fk8
       references session_termination_reason_enm (name)
       on delete restrict
