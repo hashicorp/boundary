@@ -164,14 +164,14 @@ func (c *TcpCommand) Run(args []string) int {
 		}
 	}
 
-	var catalog *targets.Target
+	var result api.GenericResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		catalog, apiErr, err = targetClient.Create(c.Context, "tcp", c.FlagScopeId, opts...)
+		result, apiErr, err = targetClient.Create(c.Context, "tcp", c.FlagScopeId, opts...)
 	case "update":
-		catalog, apiErr, err = targetClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = targetClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
 	plural := "tcp-type target"
@@ -184,11 +184,12 @@ func (c *TcpCommand) Run(args []string) int {
 		return 1
 	}
 
+	target := result.GetItem().(*targets.Target)
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateTargetTableOutput(catalog))
+		c.UI.Output(generateTargetTableOutput(target))
 	case "json":
-		b, err := base.JsonFormatter{}.Format(catalog)
+		b, err := base.JsonFormatter{}.Format(target)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1

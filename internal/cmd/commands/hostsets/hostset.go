@@ -2,6 +2,7 @@ package hostsets
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hostsets"
@@ -244,24 +245,28 @@ func (c *Command) Run(args []string) int {
 
 	hostsetClient := hostsets.NewClient(client)
 
-	var existed bool
-	var set *hostsets.HostSet
-	var listedSets []*hostsets.HostSet
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		set, apiErr, err = hostsetClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = hostsetClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = hostsetClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = hostsetClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedSets, apiErr, err = hostsetClient.List(c.Context, c.flagHostCatalogId, opts...)
+		listResult, apiErr, err = hostsetClient.List(c.Context, c.flagHostCatalogId, opts...)
 	case "add-hosts":
-		set, apiErr, err = hostsetClient.AddHosts(c.Context, c.FlagId, version, hosts, opts...)
+		result, apiErr, err = hostsetClient.AddHosts(c.Context, c.FlagId, version, hosts, opts...)
 	case "remove-hosts":
-		set, apiErr, err = hostsetClient.RemoveHosts(c.Context, c.FlagId, version, hosts, opts...)
+		result, apiErr, err = hostsetClient.RemoveHosts(c.Context, c.FlagId, version, hosts, opts...)
 	case "set-hosts":
-		set, apiErr, err = hostsetClient.SetHosts(c.Context, c.FlagId, version, hosts, opts...)
+		result, apiErr, err = hostsetClient.SetHosts(c.Context, c.FlagId, version, hosts, opts...)
 	}
 
 	plural := "host set"
@@ -295,6 +300,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedSets := listResult.GetItems().([]*hostsets.HostSet)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedSets) == 0 {
@@ -345,6 +351,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	set := result.GetItem().(*hostsets.HostSet)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateHostSetTableOutput(set))

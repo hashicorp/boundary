@@ -2,6 +2,7 @@ package roles
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/roles"
@@ -206,34 +207,36 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	var existed bool
-	var role *roles.Role
-	var listedRoles []*roles.Role
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		role, apiErr, err = roleClient.Create(c.Context, c.FlagScopeId, opts...)
+		result, apiErr, err = roleClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
-		role, apiErr, err = roleClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = roleClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		role, apiErr, err = roleClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = roleClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = roleClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = roleClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedRoles, apiErr, err = roleClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, apiErr, err = roleClient.List(c.Context, c.FlagScopeId, opts...)
 	case "add-principals":
-		role, apiErr, err = roleClient.AddPrincipals(c.Context, c.FlagId, version, principals, opts...)
+		result, apiErr, err = roleClient.AddPrincipals(c.Context, c.FlagId, version, principals, opts...)
 	case "set-principals":
-		role, apiErr, err = roleClient.SetPrincipals(c.Context, c.FlagId, version, principals, opts...)
+		result, apiErr, err = roleClient.SetPrincipals(c.Context, c.FlagId, version, principals, opts...)
 	case "remove-principals":
-		role, apiErr, err = roleClient.RemovePrincipals(c.Context, c.FlagId, version, principals, opts...)
+		result, apiErr, err = roleClient.RemovePrincipals(c.Context, c.FlagId, version, principals, opts...)
 	case "add-grants":
-		role, apiErr, err = roleClient.AddGrants(c.Context, c.FlagId, version, grants, opts...)
-	case "set-grants":
-		role, apiErr, err = roleClient.SetGrants(c.Context, c.FlagId, version, grants, opts...)
+		result, apiErr, err = roleClient.SetGrants(c.Context, c.FlagId, version, grants, opts...)
 	case "remove-grants":
-		role, apiErr, err = roleClient.RemoveGrants(c.Context, c.FlagId, version, grants, opts...)
+		result, apiErr, err = roleClient.RemoveGrants(c.Context, c.FlagId, version, grants, opts...)
 	}
 
 	plural := "role"
@@ -267,6 +270,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedRoles := listResult.GetItems().([]*roles.Role)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedRoles) == 0 {
@@ -316,6 +320,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	role := result.GetItem().(*roles.Role)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateRoleTableOutput(role))

@@ -2,6 +2,7 @@ package hosts
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hosts"
@@ -164,18 +165,22 @@ func (c *Command) Run(args []string) int {
 
 	hostClient := hosts.NewClient(client)
 
-	var existed bool
-	var host *hosts.Host
-	var listedHosts []*hosts.Host
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		host, apiErr, err = hostClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = hostClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = hostClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = hostClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedHosts, apiErr, err = hostClient.List(c.Context, c.flagHostCatalogId, opts...)
+		listResult, apiErr, err = hostClient.List(c.Context, c.flagHostCatalogId, opts...)
 	}
 
 	plural := "host"
@@ -209,6 +214,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedHosts := listResult.GetItems().([]*hosts.Host)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedHosts) == 0 {
@@ -259,6 +265,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	host := result.GetItem().(*hosts.Host)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateHostTableOutput(host))
