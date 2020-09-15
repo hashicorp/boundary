@@ -258,7 +258,7 @@ func (r *Repository) UpdateConnectionState(ctx context.Context, connectionId str
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			// We need to update the session version as that's the aggregate
+			// We need to update the connection version as that's the aggregate
 			updatedConnection.PublicId = connectionId
 			updatedConnection.Version = uint32(connectionVersion) + 1
 			rowsUpdated, err := w.Update(ctx, &updatedConnection, []string{"Version"}, nil, db.WithVersion(&connectionVersion))
