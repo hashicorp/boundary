@@ -61,5 +61,5 @@ message Target {
 }
 
 message TcpTargetAttributes {
-	google.protobuf.UInt32Value default_port = 10 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"default_port" that: "DefaultPort"}];
+	google.protobuf.UInt32Value default_port = 10 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.default_port" that: "DefaultPort"}];
 }

@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -299,7 +300,9 @@ func TestCreate(t *testing.T) {
 				Name:        wrapperspb.String("name"),
 				Description: wrapperspb.String("desc"),
 				Type:        target.TcpTargetType.String(),
-				DefaultPort: wrapperspb.UInt32(2),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"default_port": structpb.NewNumberValue(2),
+				}},
 			}},
 			res: &pbs.CreateTargetResponse{
 				Uri: fmt.Sprintf("targets/%s_", target.TcpTargetPrefix),
@@ -309,7 +312,9 @@ func TestCreate(t *testing.T) {
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
 					Type:        target.TcpTargetType.String(),
-					DefaultPort: wrapperspb.UInt32(2),
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"default_port": structpb.NewNumberValue(2),
+					}},
 				},
 			},
 			errCode: codes.OK,
@@ -320,7 +325,9 @@ func TestCreate(t *testing.T) {
 				Name:        wrapperspb.String("name"),
 				Description: wrapperspb.String("desc"),
 				Type:        target.TcpTargetType.String(),
-				DefaultPort: wrapperspb.UInt32(0),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"default_port": structpb.NewNumberValue(0),
+				}},
 			}},
 			errCode: codes.InvalidArgument,
 		},
@@ -468,7 +475,9 @@ func TestUpdate(t *testing.T) {
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
 					Type:        target.TcpTargetType.String(),
-					DefaultPort: wrapperspb.UInt32(2),
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"default_port": structpb.NewNumberValue(2),
+					}},
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
 					HostSetIds:  hsIds,
 					HostSets:    hostSets,
@@ -496,9 +505,11 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("desc"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
 					Type:        target.TcpTargetType.String(),
-					DefaultPort: wrapperspb.UInt32(2),
-					HostSetIds:  hsIds,
-					HostSets:    hostSets,
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"default_port": structpb.NewNumberValue(2),
+					}},
+					HostSetIds: hsIds,
+					HostSets:   hostSets,
 				},
 			},
 			errCode: codes.OK,
@@ -529,7 +540,9 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateTargetRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"default_port"}},
 				Item: &pb.Target{
-					DefaultPort: wrapperspb.UInt32(0),
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"default_port": structpb.NewNumberValue(0),
+					}},
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -575,9 +588,11 @@ func TestUpdate(t *testing.T) {
 					Name:        wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
 					Type:        target.TcpTargetType.String(),
-					DefaultPort: wrapperspb.UInt32(2),
-					HostSetIds:  hsIds,
-					HostSets:    hostSets,
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"default_port": structpb.NewNumberValue(2),
+					}},
+					HostSetIds: hsIds,
+					HostSets:   hostSets,
 				},
 			},
 			errCode: codes.OK,
@@ -602,9 +617,11 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
 					Type:        target.TcpTargetType.String(),
-					DefaultPort: wrapperspb.UInt32(2),
-					HostSetIds:  hsIds,
-					HostSets:    hostSets,
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"default_port": structpb.NewNumberValue(2),
+					}},
+					HostSetIds: hsIds,
+					HostSets:   hostSets,
 				},
 			},
 			errCode: codes.OK,
@@ -628,10 +645,12 @@ func TestUpdate(t *testing.T) {
 					Name:        wrapperspb.String("default"),
 					Description: wrapperspb.String("notignored"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
-					DefaultPort: wrapperspb.UInt32(2),
-					Type:        target.TcpTargetType.String(),
-					HostSetIds:  hsIds,
-					HostSets:    hostSets,
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"default_port": structpb.NewNumberValue(2),
+					}},
+					Type:       target.TcpTargetType.String(),
+					HostSetIds: hsIds,
+					HostSets:   hostSets,
 				},
 			},
 			errCode: codes.OK,
