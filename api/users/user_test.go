@@ -27,31 +27,33 @@ func TestList(t *testing.T) {
 	ul, apiErr, err := userClient.List(tc.Context(), org.GetPublicId())
 	assert.NoError(err)
 	assert.Nil(apiErr)
-	assert.Empty(ul)
+	assert.Empty(ul.Items)
 
 	var expected []*users.User
 	for i := 0; i < 10; i++ {
 		expected = append(expected, &users.User{Name: fmt.Sprint(i)})
 	}
 
-	expected[0], apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[0].Name))
+	ucr, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[0].Name))
 	assert.NoError(err)
 	assert.Nil(apiErr)
+	expected[0] = ucr.Item
 
 	ul, apiErr, err = userClient.List(tc.Context(), org.GetPublicId())
 	assert.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul))
+	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[i].Name))
+		ucr, apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[i].Name))
 		assert.NoError(err)
 		assert.Nil(apiErr)
+		expected[i] = ucr.Item
 	}
 	ul, apiErr, err = userClient.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))
+	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul.Items))
 }
 
 func comparableSlice(in []*users.User) []users.User {
@@ -95,26 +97,25 @@ func TestCrud(t *testing.T) {
 	}
 
 	u, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("foo"))
-	checkUser("create", u, apiErr, err, "foo", 1)
+	checkUser("create", u.Item, apiErr, err, "foo", 1)
 
-	u, apiErr, err = userClient.Read(tc.Context(), u.Id)
-	checkUser("read", u, apiErr, err, "foo", 1)
+	u, apiErr, err = userClient.Read(tc.Context(), u.Item.Id)
+	checkUser("read", u.Item, apiErr, err, "foo", 1)
 
-	u, apiErr, err = userClient.Update(tc.Context(), u.Id, u.Version, users.WithName("bar"))
-	checkUser("update", u, apiErr, err, "bar", 2)
+	u, apiErr, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version, users.WithName("bar"))
+	checkUser("update", u.Item, apiErr, err, "bar", 2)
 
-	u, apiErr, err = userClient.Update(tc.Context(), u.Id, u.Version, users.DefaultName())
-	checkUser("update", u, apiErr, err, "", 3)
+	u, apiErr, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version, users.DefaultName())
+	checkUser("update", u.Item, apiErr, err, "", 3)
 
-	existed, _, err := userClient.Delete(tc.Context(), u.Id)
+	_, apiErr, err = userClient.Delete(tc.Context(), u.Item.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.True(existed, "Expected existing user when deleted, but it wasn't.")
 
-	existed, apiErr, err = userClient.Delete(tc.Context(), u.Id)
+	_, apiErr, err = userClient.Delete(tc.Context(), u.Item.Id)
 	require.NoError(err)
-	assert.Nil(apiErr)
-	assert.False(existed)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
 
 func TestErrors(t *testing.T) {
@@ -148,7 +149,7 @@ func TestErrors(t *testing.T) {
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
-	_, apiErr, err = userClient.Update(tc.Context(), u.Id, u.Version)
+	_, apiErr, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version)
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
