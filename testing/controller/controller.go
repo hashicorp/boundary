@@ -39,18 +39,19 @@ func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {
 }
 
 type option struct {
-	tcOptions                    *controller.TestControllerOpts
-	setWithConfigFile            bool
-	setWithConfigText            bool
-	setDisableAuthMethodCreation bool
-	setDisableDatabaseCreation   bool
-	setDefaultAuthMethodId       bool
-	setDefaultLoginName          bool
-	setDefaultPassword           bool
-	setRootKms                   bool
-	setWorkerAuthKms             bool
-	setRecoveryKms               bool
-	setDatabaseUrl               bool
+	tcOptions                      *controller.TestControllerOpts
+	setWithConfigFile              bool
+	setWithConfigText              bool
+	setDisableAuthMethodCreation   bool
+	setDisableDatabaseCreation     bool
+	setDisableDatabaseDesctruction bool
+	setDefaultAuthMethodId         bool
+	setDefaultLoginName            bool
+	setDefaultPassword             bool
+	setRootKms                     bool
+	setWorkerAuthKms               bool
+	setRecoveryKms                 bool
+	setDatabaseUrl                 bool
 }
 
 type Option func(*option) error
@@ -104,6 +105,16 @@ func DisableDatabaseCreation() Option {
 	return func(c *option) error {
 		c.setDisableDatabaseCreation = true
 		c.tcOptions.DisableDatabaseCreation = true
+		return nil
+	}
+}
+
+// DisableDatabaseCreation skips creating a database in docker and allows one to
+// be provided through a tcOptions.
+func DisableDatabaseDestruction() Option {
+	return func(c *option) error {
+		c.setDisableDatabaseDestruction = true
+		c.tcOptions.DisableDatabaseDestruction = true
 		return nil
 	}
 }

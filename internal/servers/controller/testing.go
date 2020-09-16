@@ -194,9 +194,11 @@ func (tc *TestController) Shutdown() {
 		if err := tc.b.RunShutdownFuncs(); err != nil {
 			tc.t.Error(err)
 		}
-		if tc.b.DestroyDevDatabase() != nil {
-			if err := tc.b.DestroyDevDatabase(); err != nil {
-				tc.t.Error(err)
+		if !tc.opts.DisableDatabaseDestruction {
+			if tc.b.DestroyDevDatabase() != nil {
+				if err := tc.b.DestroyDevDatabase(); err != nil {
+					tc.t.Error(err)
+				}
 			}
 		}
 	}
@@ -222,6 +224,10 @@ type TestControllerOpts struct {
 	// DisableDatabaseCreation can be set true to disable creating a dev
 	// database
 	DisableDatabaseCreation bool
+
+	// DisableDatabaseDestruction can be set true to allow a database to be
+	// created but examined after-the-fact
+	DisableDatabaseDestruction bool
 
 	// If set, instead of creating a dev database, it will connect to an
 	// existing database given the url
@@ -349,6 +355,14 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		}
 		if err := tc.b.ConnectToDatabase("postgres"); err != nil {
 			t.Fatal(err)
+		}
+		if err := tc.b.CreateGlobalKmsKeys(); err != nil {
+			t.Fatal(err)
+		}
+		if !opts.DisableAuthMethodCreation {
+			if err := tc.b.CreateInitialAuthMethod(); err != nil {
+				t.Fatal(err)
+			}
 		}
 	} else if !opts.DisableDatabaseCreation {
 		var createOpts []base.Option
