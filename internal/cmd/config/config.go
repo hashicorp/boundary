@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
+	"os"
+	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/hcl"
@@ -91,6 +95,7 @@ type Config struct {
 	PassthroughDirectory string      `hcl:"-"`
 	Worker               *Worker     `hcl:"worker"`
 	Controller           *Controller `hcl:"controller"`
+	Database             *Database   `hcl:"database"`
 }
 
 type Controller struct {
@@ -105,6 +110,10 @@ type Worker struct {
 	Name        string   `hcl:"name"`
 	Description string   `hcl:"description"`
 	Controllers []string `hcl:"controllers"`
+}
+
+type Database struct {
+	Url string `hcl:"url"`
 }
 
 // DevWorker is a Config that is used for dev mode of Boundary
@@ -234,4 +243,38 @@ func (c *Config) Sanitized() map[string]interface{} {
 	}
 
 	return result
+}
+
+var ErrNotAUrl = errors.New("not a url")
+
+// ParseAddress parses a URL with schemes file://, env://, or any other.
+// Depending on the scheme it will return specific types of data:
+//
+// * file:// will return a string with the file's contents * env:// will return
+// a string with the env var's contents * anything else will return the string
+// as it was
+//
+// On error, we return the original string along with the error. The caller can
+// switch on ErrNotAUrl to understand whether it was the parsing step that
+// errored or something else. This is useful to attempt to read a non-URL string
+// from some resource, but where the original input may simply be a valid string
+// of that type.
+func ParseAddress(addr string) (string, error) {
+	addr = strings.TrimSpace(addr)
+	parsed, err := url.Parse(addr)
+	if err != nil {
+		return addr, ErrNotAUrl
+	}
+	switch parsed.Scheme {
+	case "file":
+		contents, err := ioutil.ReadFile(strings.TrimPrefix(addr, "file://"))
+		if err != nil {
+			return addr, fmt.Errorf("error reading file at %s: %w", addr, err)
+		}
+		return string(contents), nil
+	case "env":
+		return os.Getenv(strings.TrimPrefix(addr, "env://")), nil
+	}
+
+	return addr, nil
 }
