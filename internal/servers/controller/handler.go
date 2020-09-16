@@ -49,7 +49,6 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 		return nil, err
 	}
 	mux.Handle("/v1/", h)
-	mux.Handle("/jobtesting", jobTestingHandler(c))
 	mux.Handle("/", handleUi(c))
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
@@ -305,93 +304,6 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		}
 
 		h.ServeHTTP(w, req)
-	})
-}
-
-func jobTestingHandler(c *Controller) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		errorResp := func(e error) {
-			w.Write([]byte(e.Error()))
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-
-		if err := r.ParseForm(); err != nil {
-			errorResp(err)
-			return
-		}
-		return
-		/*
-			endpoint := r.URL.Query().Get("endpoint")
-			if endpoint == "" {
-				errorResp(errors.New("missing endpoint query param"))
-				return
-			}
-
-			timeout := 15 * time.Second
-			var err error
-			if t := r.URL.Query().Get("timeout"); t != "" {
-				if timeout, err = time.ParseDuration(t); err != nil {
-					errorResp(fmt.Errorf("error parsing timeout: %w", err))
-					return
-				}
-			}
-
-			var workers []*pb.WorkerInfo
-			repo, err := c.ServersRepoFn()
-			if err != nil {
-				errorResp(err)
-				return
-			}
-			servers, err := repo.ListServers(r.Context(), servers.ServerTypeWorker)
-			if err != nil {
-				errorResp(err)
-				return
-			}
-			for _, v := range servers {
-				workers = append(workers, &pb.WorkerInfo{Address: v.Address})
-			}
-
-			wrapper, err := c.kms.GetWrapper(r.Context(), scope.Global.String(), kms.KeyPurposeSessions)
-			if err != nil {
-				errorResp(err)
-				return
-			}
-			jobId, err := base62.Random(10)
-			if err != nil {
-				errorResp(err)
-				return
-			}
-			// TODO (jimlambrt 8/2020): this is quite correct.  We need to create a
-			// new session here (in the session repo) which would have a cert.
-			privKey, certBytes, err := session.TestCert(wrapper, "u_1234567890", jobId)
-			if err != nil {
-				errorResp(err)
-				return
-			}
-
-				ret := &targetspb.SessionAuthorization{
-					SessionId:   jobId,
-					TargetId:    "ttcp_abc123",
-					Endpoint:    endpoint,
-					Certificate: certBytes,
-					PrivateKey:  privKey,
-					WorkerInfo:  workers,
-				}
-
-				marshaled, err := proto.Marshal(ret)
-				if err != nil {
-					errorResp(err)
-					return
-				}
-
-				if _, err := w.Write([]byte(base58.Encode(marshaled))); err != nil {
-					errorResp(err)
-					return
-				}
-
-				ret.Session.PrivateKey = nil
-				c.jobMap.Store(jobId, ret.GetSession())
-		*/
 	})
 }
 
