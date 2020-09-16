@@ -23,7 +23,7 @@ begin;
         │ server_id          (fk3) │                                    ▲fk4 ┼
         │ server_type        (fk3) │╲                                        ┼
         │ target_id          (fk4) │─○─────────────────┬─────────────────────┤
-        │ set_id             (fk5) │╱                  ┼                     ┼
+        │ host_set_id        (fk5) │╱                  ┼                     ┼
         │ auth_token_id      (fk6) │              ▼fk5 ┼                ▼fk2 ┼
         │ scope_id           (fk7) │          ┌─────────────────┐   ┌─────────────────┐
         │ termination_reason (fk8) │          │    host_set     │   │      host       │
@@ -112,7 +112,7 @@ begin;
       on update cascade,
     -- the host set the host was chosen from and the user was authorized to
     -- connect to via the target
-    set_id wt_public_id -- fk5
+    host_set_id wt_public_id -- fk5
       references host_set (public_id)
       on delete set null
       on update cascade,
@@ -121,67 +121,152 @@ begin;
       references auth_token (public_id)
       on delete set null
       on update cascade,
-    -- the organization which owns this session
+    -- the project which owns this session
     scope_id wt_scope_id -- fk7
-      references iam_scope_org (scope_id)
+      references iam_scope_project (scope_id)
       on delete set null
       on update cascade,
+    -- Certificate to use when connecting (or if using custom certs, to
+	  -- serve as the "login"). Raw DER bytes.  
+    certificate bytea not null,
+    -- after this time the connection will be expired, e.g. forcefully terminated
+    expiration_time wt_timestamp, -- maybe null
+    -- trust of first use token 
+    tofu_token bytea, -- will be null when session is first created
     -- the reason this session ended (null until terminated)
+     -- TODO: Make key_id a foreign key once we have DEKs
+    key_id text, -- will be null on insert
+      -- references kms_database_key_version(private_id) 
+      -- on delete restrict
+      -- on update cascade,
     termination_reason text -- fk8
       references session_termination_reason_enm (name)
       on delete restrict
       on update cascade,
-    -- the network address of the host the worker proxied a connection to for
-    -- the user
-    address text
-      not null
-      check(
-        length(trim(address)) > 7
-        and
-        length(trim(address)) < 256
-      ),
-    -- the network port at the address of the host the worker proxied a
-    -- connection to for the user
-    port integer
-      not null
-      check(
-        port > 0
-        and
-        port <= 65535
-      ),
-    -- the total number of bytes received by the worker from the user and sent
-    -- to the host for this session
-    bytes_up bigint -- can be null
-      check (
-        bytes_up is null
-        or
-        bytes_up >= 0
-      ),
-    -- the total number of bytes received by the worker from the host and sent
-    -- to the user for this session
-    bytes_down bigint -- can be null
-      check (
-        bytes_down is null
-        or
-        bytes_down >= 0
-      )
+    version wt_version,
+    create_time wt_timestamp,
+    update_time wt_timestamp
   );
+
+  create trigger 
+    immutable_columns
+  before
+  update on session
+    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'create_time');
+  
+  create trigger 
+    update_version_column 
+  after update on session
+    for each row execute procedure update_version_column();
+    
+  create trigger 
+    update_time_column 
+  before update on session 
+    for each row execute procedure update_time_column();
+    
+  create trigger 
+    default_create_time_column
+  before
+  insert on session
+    for each row execute procedure default_create_time();
+
+  create or replace function
+    insert_session()
+    returns trigger
+  as $$
+  begin
+    case 
+      when new.user_id is null then
+        raise exception 'user_id is null';
+      when new.host_id is null then
+        raise exception 'host_id is null';
+      when new.target_id is null then
+        raise exception 'target_id is null';
+      when new.host_set_id is null then
+        raise exception 'host_set_id is null';
+      when new.auth_token_id is null then
+        raise exception 'auth_token_id is null';
+      when new.scope_id is null then
+        raise exception 'scope_id is null';
+    else
+    end case;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger 
+    insert_session
+  before insert on session
+    for each row execute procedure insert_session();
+
+  create or replace function 
+    insert_new_session_state()
+    returns trigger
+  as $$
+  begin
+    insert into session_state (session_id, state)
+    values
+      (new.public_id, 'pending');
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger 
+    insert_new_session_state
+  after insert on session
+    for each row execute procedure insert_new_session_state();
+
+  -- update_connection_state_on_closed_reason() is used in an update insert trigger on the
+  -- session_connection table.  it will valiadate that all the session's
+  -- connections are closed, and then insert a state of "closed" in
+  -- session_connection_state for the closed session connection. 
+  create or replace function 
+    update_session_state_on_termination_reason()
+    returns trigger
+  as $$
+  begin
+    if new.termination_reason is not null then
+      perform from
+        session_connection sc,
+        session_connection_state scs
+      where
+        sc.public_id = scs.connection_id and 
+        scs.state != 'closed' and
+        sc.session_id = new.public_id;
+      if found then 
+        raise 'session %s has existing open connections', new.public_id;
+      end if;
+      insert into session_state (session_id, state)
+      values
+        (new.public_id, 'terminated');
+      end if;
+      return new;
+  end;
+  $$ language plpgsql;
+
+
+  create trigger 
+    update_session_state_on_termination_reason
+  after update of termination_reason on session
+    for each row execute procedure update_session_state_on_termination_reason();
+ 
 
   create table session_state_enm (
     name text primary key
       check (
-        name in ('pending', 'connected', 'canceling', 'closed')
+        name in ('pending', 'active', 'canceling', 'terminated')
       )
   );
 
   insert into session_state_enm (name)
   values
     ('pending'),
-    ('connected'),
+    ('active'),
     ('canceling'),
-    ('closed');
+    ('terminated');
 
 /*
+
 
                                               ┌────────────────┐
          start                                │                │
@@ -193,7 +278,7 @@ begin;
            ▼                            │                            ▼
   ┌────────────────┐           ┌────────────────┐           ┌────────────────┐
   │                │           │                │           │                │
-  │    Pending     │           │   Connected    │           │     Closed     │
+  │    Pending     │           │     Active     │           │   Terminated   │
   │                │──────────▶│                │──────────▶│                │
   │                │           │                │           │                │
   └────────────────┘           └────────────────┘           └────────────────┘
@@ -234,6 +319,12 @@ begin;
   );
 
 
+  create trigger 
+    immutable_columns
+  before
+  update on session_state
+    for each row execute procedure immutable_columns('session_id', 'start_time', 'previous_end_time');
+    
   create or replace function
     insert_session_state()
     returns trigger
@@ -263,5 +354,6 @@ begin;
 
   create trigger insert_session_state before insert on session_state
     for each row execute procedure insert_session_state();
+
 
 commit;

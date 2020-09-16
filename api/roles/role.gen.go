@@ -159,7 +159,7 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Ro
 
 func (c *Client) Read(ctx context.Context, roleId string, opt ...Option) (*RoleReadResult, *api.Error, error) {
 	if roleId == "" {
-		return nil, nil, fmt.Errorf("empty  roleId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty roleId value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")

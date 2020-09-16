@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/boundary/sdk/wrapper"
@@ -304,10 +305,29 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 		if err := c.CreateDevDatabase("postgres", opts...); err != nil {
-			c.UI.Error(fmt.Errorf("Error creating dev database container: %s", err.Error()).Error())
+			c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 			return 1
 		}
 		c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
+	} else {
+		if c.Config.Database == nil || c.Config.Database.Url == "" {
+			c.UI.Error(`"url" not specified in "database" config block"`)
+			return 1
+		}
+		dbaseUrl, err := config.ParseAddress(c.Config.Database.Url)
+		if err != nil && err != config.ErrNotAUrl {
+			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
+			return 1
+		}
+		c.DatabaseUrl = strings.TrimSpace(dbaseUrl)
+		if err := db.InitStore("postgres", nil, c.DatabaseUrl); err != nil {
+			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
+			return 1
+		}
+		if err := c.ConnectToDatabase("postgres"); err != nil {
+			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
+			return 1
+		}
 	}
 
 	defer func() {

@@ -2442,7 +2442,12 @@
         },
         "auth_method_id": {
           "type": "string",
-          "description": "The id of the user of this AuthToken.\nOutput only.",
+          "description": "The id of the auth method of this AuthToken.\nOutput only.",
+          "readOnly": true
+        },
+        "account_id": {
+          "type": "string",
+          "description": "The id of the auth method account of this AuthToken.\nOutput only.",
           "readOnly": true
         },
         "created_time": {
@@ -3097,10 +3102,9 @@
           "description": "The host sets that make up this target.\nOutput only.",
           "readOnly": true
         },
-        "default_port": {
-          "type": "integer",
-          "format": "int64",
-          "description": "The  default port a target should use if present."
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applied for the specific Target type."
         }
       },
       "title": "Target contains all fields related to a Target resource"

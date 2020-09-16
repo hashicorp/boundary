@@ -342,4 +342,9 @@ var inputStructs = []*structInfo{
 		typeOnCreate:        true,
 		createResponseTypes: true,
 	},
+	{
+		inProto:     &targets.TcpTargetAttributes{},
+		outFile:     "targets/tcp_target_attributes.gen.go",
+		subtypeName: "TcpTarget",
+	},
 }

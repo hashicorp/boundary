@@ -19,6 +19,7 @@ type AuthToken struct {
 	Token                   string            `json:"token,omitempty"`
 	UserId                  string            `json:"user_id,omitempty"`
 	AuthMethodId            string            `json:"auth_method_id,omitempty"`
+	AccountId               string            `json:"account_id,omitempty"`
 	CreatedTime             time.Time         `json:"created_time,omitempty"`
 	UpdatedTime             time.Time         `json:"updated_time,omitempty"`
 	ApproximateLastUsedTime time.Time         `json:"approximate_last_used_time,omitempty"`
@@ -108,7 +109,7 @@ func (c *Client) ApiClient() *api.Client {
 
 func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*AuthTokenReadResult, *api.Error, error) {
 	if authTokenId == "" {
-		return nil, nil, fmt.Errorf("empty  authTokenId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty authTokenId value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")

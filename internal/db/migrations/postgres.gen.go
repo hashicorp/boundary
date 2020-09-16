@@ -1075,7 +1075,7 @@ end;
 $$ language plpgsql;
 
 insert into iam_role (public_id, name, description, scope_id)
-  values('r_default', 'default', 'Default role created on first instantiation of Boundary. It is meant to provide enough permissions for users to successfully authenticate via various clients types.', 'global');
+  values('r_default', 'default', 'Default role created on first instantiation of Boundary. It is meant to provide enough permissions for users to successfully authenticate via various client types.', 'global');
 insert into iam_role_grant (role_id, canonical_grant, raw_grant)
   values
     ('r_default', 'type=scope;actions=list', 'type=scope;actions=list'),
@@ -3245,6 +3245,8 @@ begin;
   drop function insert_session_state;
   drop function insert_new_session_state;
   drop function insert_session;
+  drop function update_session_state_on_termination_reason;
+  drop function insert_session_state;
 
 
   delete
@@ -3285,7 +3287,7 @@ begin;
         │ server_id          (fk3) │                                    ▲fk4 ┼
         │ server_type        (fk3) │╲                                        ┼
         │ target_id          (fk4) │─○─────────────────┬─────────────────────┤
-        │ set_id             (fk5) │╱                  ┼                     ┼
+        │ host_set_id        (fk5) │╱                  ┼                     ┼
         │ auth_token_id      (fk6) │              ▼fk5 ┼                ▼fk2 ┼
         │ scope_id           (fk7) │          ┌─────────────────┐   ┌─────────────────┐
         │ termination_reason (fk8) │          │    host_set     │   │      host       │
@@ -3374,7 +3376,7 @@ begin;
       on update cascade,
     -- the host set the host was chosen from and the user was authorized to
     -- connect to via the target
-    set_id wt_public_id -- fk5
+    host_set_id wt_public_id -- fk5
       references host_set (public_id)
       on delete set null
       on update cascade,
@@ -3444,8 +3446,8 @@ begin;
         raise exception 'host_id is null';
       when new.target_id is null then
         raise exception 'target_id is null';
-      when new.set_id is null then
-        raise exception 'set_id is null';
+      when new.host_set_id is null then
+        raise exception 'host_set_id is null';
       when new.auth_token_id is null then
         raise exception 'auth_token_id is null';
       when new.scope_id is null then
@@ -3632,7 +3634,8 @@ begin;
   drop table session_connection;
   drop table session_connection_closed_reason_enm;
   drop function insert_session_connection_state;
-
+  drop function insert_new_connection_state;
+  drop function update_connection_state_on_closed_reason;
 commit;
 
 `),
@@ -3726,27 +3729,27 @@ begin;
       references session (public_id)
       on delete cascade
       on update cascade,
-    -- the client_address is the network address of the client which initiated
+    -- the client_tcp_address is the network address of the client which initiated
     -- the connection to a worker
-    client_address inet not null,
-    -- the client_port is the network port at the address of the client the
+    client_tcp_address inet not null,
+    -- the client_tcp_port is the network port at the address of the client the
     -- worker proxied a connection for the user
-    client_port integer not null
+    client_tcp_port integer not null
       check(
-        client_port > 0
+        client_tcp_port > 0
         and
-        client_port <= 65535
+        client_tcp_port <= 65535
       ),
-    -- the backend_address is the network address of the backend which the
+    -- the backend_tcp_address is the network address of the backend which the
     -- worker initiated the connection to, for the user
-    backend_address inet not null,
-    -- the backend_port is the network port at the address of the backend the
+    backend_tcp_address inet not null,
+    -- the backend_tcp_port is the network port at the address of the backend the
     -- worker proxied a connection to, for the user
-    backend_port integer not null
+    backend_tcp_port integer not null
       check(
-        backend_port > 0
+        backend_tcp_port > 0
         and
-        backend_port <= 65535
+        backend_tcp_port <= 65535
       ),
     -- the total number of bytes received by the worker from the client and sent
     -- to the backend for this connection
@@ -3777,7 +3780,7 @@ begin;
     immutable_columns
   before
   update on session_connection
-    for each row execute procedure immutable_columns('public_id', 'session_id', 'client_address', 'client_port', 'backend_address', 'backend_port', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'session_id', 'client_tcp_address', 'client_tcp_port', 'backend_tcp_address', 'backend_tcp_port', 'create_time');
 
   create trigger 
     update_version_column 

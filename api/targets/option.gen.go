@@ -45,15 +45,39 @@ func WithAutomaticVersioning(enable bool) Option {
 	}
 }
 
-func WithDefaultPort(inDefaultPort uint32) Option {
+func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
-		o.postMap["default_port"] = inDefaultPort
+		o.postMap["attributes"] = inAttributes
 	}
 }
 
-func DefaultDefaultPort() Option {
+func DefaultAttributes() Option {
 	return func(o *options) {
-		o.postMap["default_port"] = nil
+		o.postMap["attributes"] = nil
+	}
+}
+
+func WithTcpTargetDefaultPort(inDefaultPort uint32) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["default_port"] = inDefaultPort
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultTcpTargetDefaultPort() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["default_port"] = nil
+		o.postMap["attributes"] = val
 	}
 }
 

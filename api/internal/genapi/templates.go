@@ -255,7 +255,7 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 var readTemplate = template.Must(template.New("").Parse(`
 func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, opt... Option) (*{{ .Name }}ReadResult, *api.Error, error) {
 	if {{ .ResourceFunctionArg }} == "" {
-		return nil, nil, fmt.Errorf("empty  {{ .ResourceFunctionArg }} value passed into Read request")
+		return nil, nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")

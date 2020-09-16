@@ -16,7 +16,7 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 				Target:     &c.FlagScopeId,
 				Default:    "global",
 				Completion: complete.PredictAnything,
-				Usage:      `Scope in which to make the request. Defaults to "global".`,
+				Usage:      `Scope in which to make the request.`,
 			})
 		case "id":
 			f.StringVar(&base.StringVar{

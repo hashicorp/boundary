@@ -194,6 +194,7 @@ func toProto(in *authtoken.AuthToken) *pb.AuthToken {
 		ExpirationTime:          in.GetExpirationTime().GetTimestamp(),
 		UserId:                  in.GetIamUserId(),
 		AuthMethodId:            in.GetAuthMethodId(),
+		AccountId:               in.GetAuthAccountId(),
 	}
 	return &out
 }

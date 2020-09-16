@@ -156,7 +156,7 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Gr
 
 func (c *Client) Read(ctx context.Context, groupId string, opt ...Option) (*GroupReadResult, *api.Error, error) {
 	if groupId == "" {
-		return nil, nil, fmt.Errorf("empty  groupId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty groupId value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")

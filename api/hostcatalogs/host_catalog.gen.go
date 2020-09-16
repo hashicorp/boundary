@@ -161,7 +161,7 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 
 func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) (*HostCatalogReadResult, *api.Error, error) {
 	if hostCatalogId == "" {
-		return nil, nil, fmt.Errorf("empty  hostCatalogId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")

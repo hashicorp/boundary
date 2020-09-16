@@ -349,7 +349,10 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 
 			kmsLogger := b.Logger.ResetNamed(fmt.Sprintf("kms-%s-%s", purpose, kms.Type))
 
+			origPurpose := kms.Purpose
+			kms.Purpose = []string{purpose}
 			wrapper, wrapperConfigError := configutil.ConfigureWrapper(kms, &b.InfoKeys, &b.Info, kmsLogger)
+			kms.Purpose = origPurpose
 			if wrapperConfigError != nil {
 				if !errwrap.ContainsType(wrapperConfigError, new(logical.KeyNotFoundError)) {
 					return fmt.Errorf(
@@ -458,6 +461,28 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 
 	b.Database.LogMode(true)
 
+	if err := b.CreateGlobalKmsKeys(); err != nil {
+		return err
+	}
+
+	if opts.withSkipAuthMethodCreation {
+		// now that we have passed all the error cases, reset c to be a noop so the
+		// defer doesn't do anything.
+		c = func() error { return nil }
+		return nil
+	}
+
+	if err := b.CreateInitialAuthMethod(); err != nil {
+		return err
+	}
+
+	// now that we have passed all the error cases, reset c to be a noop so the
+	// defer doesn't do anything.
+	c = func() error { return nil }
+	return nil
+}
+
+func (b *Server) CreateGlobalKmsKeys() error {
 	rw := db.New(b.Database)
 
 	kmsRepo, err := kms.NewRepository(rw, rw)
@@ -485,11 +510,24 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		return fmt.Errorf("error creating global scope kms keys: %w", err)
 	}
 
-	if opts.withSkipAuthMethodCreation {
-		// now that we have passed all the error cases, reset c to be a noop so the
-		// defer doesn't do anything.
-		c = func() error { return nil }
-		return nil
+	return nil
+}
+
+func (b *Server) CreateInitialAuthMethod() error {
+	rw := db.New(b.Database)
+
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return fmt.Errorf("error creating kms repository: %w", err)
+	}
+	kmsCache, err := kms.NewKms(kmsRepo)
+	if err != nil {
+		return fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		kms.WithRootWrapper(b.RootKms),
+	); err != nil {
+		return fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
 	// Create the dev auth method
@@ -501,46 +539,53 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 	if err != nil {
 		return fmt.Errorf("error creating new in memory auth method: %w", err)
 	}
-	amId := b.DevAuthMethodId
-	if amId == "" {
-		amId = "ampw_1234567890"
+	if b.DevAuthMethodId == "" {
+		b.DevAuthMethodId, err = db.NewPublicId(password.AuthMethodPrefix)
+		if err != nil {
+			return fmt.Errorf("error generating dev auth method id: %w", err)
+		}
 	}
-	_, err = pwRepo.CreateAuthMethod(ctx, authMethod, password.WithPublicId(amId))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-b.ShutdownCh
+		cancel()
+	}()
+
+	_, err = pwRepo.CreateAuthMethod(ctx, authMethod, password.WithPublicId(b.DevAuthMethodId))
 	if err != nil {
 		return fmt.Errorf("error saving auth method to the db: %w", err)
 	}
-	b.InfoKeys = append(b.InfoKeys, "dev auth method id")
-	b.Info["dev auth method id"] = amId
+	b.InfoKeys = append(b.InfoKeys, "generated auth method id")
+	b.Info["generated auth method id"] = b.DevAuthMethodId
 
 	// Create the dev user
-	acctLoginName := b.DevLoginName
-	if acctLoginName == "" {
-		acctLoginName, err = base62.Random(10)
+	if b.DevLoginName == "" {
+		b.DevLoginName, err = base62.Random(10)
 		if err != nil {
-			return fmt.Errorf("unable to generate dev login name: %w", err)
+			return fmt.Errorf("unable to generate login name: %w", err)
 		}
-		acctLoginName = strings.ToLower(acctLoginName)
+		b.DevLoginName = strings.ToLower(b.DevLoginName)
 	}
-	pw := b.DevPassword
-	if pw == "" {
-		pw, err = base62.Random(20)
+	if b.DevPassword == "" {
+		b.DevPassword, err = base62.Random(20)
 		if err != nil {
-			return fmt.Errorf("unable to generate dev password: %w", err)
+			return fmt.Errorf("unable to generate password: %w", err)
 		}
 	}
-	b.InfoKeys = append(b.InfoKeys, "dev password")
-	b.Info["dev password"] = pw
+	b.InfoKeys = append(b.InfoKeys, "generated password")
+	b.Info["generated password"] = b.DevPassword
 
-	acct, err := password.NewAccount(amId, password.WithLoginName(acctLoginName))
+	acct, err := password.NewAccount(b.DevAuthMethodId, password.WithLoginName(b.DevLoginName))
 	if err != nil {
 		return fmt.Errorf("error creating new in memory auth account: %w", err)
 	}
-	acct, err = pwRepo.CreateAccount(ctx, scope.Global.String(), acct, password.WithPassword(pw))
+	acct, err = pwRepo.CreateAccount(ctx, scope.Global.String(), acct, password.WithPassword(b.DevPassword))
 	if err != nil {
 		return fmt.Errorf("error saving auth account to the db: %w", err)
 	}
-	b.InfoKeys = append(b.InfoKeys, "dev login name")
-	b.Info["dev login name"] = acct.GetLoginName()
+	b.InfoKeys = append(b.InfoKeys, "generated login name")
+	b.Info["generated login name"] = acct.GetLoginName()
 
 	// Create a role tying them together
 	iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
@@ -549,24 +594,21 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 	}
 	pr, err := iam.NewRole(scope.Global.String())
 	if err != nil {
-		return fmt.Errorf("error creating in memory role for default dev grants: %w", err)
+		return fmt.Errorf("error creating in memory role for generated grants: %w", err)
 	}
-	pr.Name = "Dev Mode Global Scope Admin Role"
+	pr.Name = "Generated Global Scope Admin Role"
 	pr.Description = `Provides admin grants to all authenticated users within the "global" scope`
 	defPermsRole, err := iamRepo.CreateRole(ctx, pr)
 	if err != nil {
-		return fmt.Errorf("error creating role for default dev grants: %w", err)
+		return fmt.Errorf("error creating role for default generated grants: %w", err)
 	}
 	if _, err := iamRepo.AddRoleGrants(ctx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;actions=*"}); err != nil {
-		return fmt.Errorf("error creating grant for default dev grants: %w", err)
+		return fmt.Errorf("error creating grant for default generated grants: %w", err)
 	}
 	if _, err := iamRepo.AddPrincipalRoles(ctx, defPermsRole.PublicId, defPermsRole.Version+1, []string{"u_auth"}, nil); err != nil {
-		return fmt.Errorf("error adding principal to role for default dev grants: %w", err)
+		return fmt.Errorf("error adding principal to role for default generated grants: %w", err)
 	}
 
-	// now that we have passed all the error cases, reset c to be a noop so the
-	// defer doesn't do anything.
-	c = func() error { return nil }
 	return nil
 }
 
