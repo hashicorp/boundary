@@ -349,7 +349,10 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 
 			kmsLogger := b.Logger.ResetNamed(fmt.Sprintf("kms-%s-%s", purpose, kms.Type))
 
+			origPurpose := kms.Purpose
+			kms.Purpose = []string{purpose}
 			wrapper, wrapperConfigError := configutil.ConfigureWrapper(kms, &b.InfoKeys, &b.Info, kmsLogger)
+			kms.Purpose = origPurpose
 			if wrapperConfigError != nil {
 				if !errwrap.ContainsType(wrapperConfigError, new(logical.KeyNotFoundError)) {
 					return fmt.Errorf(
