@@ -311,7 +311,7 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 
 // ActivateSession will activate the session and is called by a worker after
 // authenticating the session. States are ordered by start time descending.
-func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, []*State, error) {
+func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, tofuToken []byte) (*Session, []*State, error) {
 	if sessionId == "" {
 		return nil, nil, fmt.Errorf("activate session state: missing session id %w", db.ErrInvalidParameter)
 	}
@@ -334,9 +334,29 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			if rowsAffected == 0 {
 				return fmt.Errorf("unable to activate session %s", sessionId)
 			}
-			if err := r.reader.LookupById(ctx, &updatedSession); err != nil {
+			foundSession := AllocSession()
+			foundSession.PublicId = sessionId
+			if err := r.reader.LookupById(ctx, &foundSession); err != nil {
 				return fmt.Errorf("lookup session: failed %w for %s", err, sessionId)
 			}
+			databaseWrapper, err := r.kms.GetWrapper(ctx, foundSession.ScopeId, kms.KeyPurposeDatabase)
+			if err != nil {
+				fmt.Errorf("unable to get database wrapper: %w", err)
+			}
+
+			updatedSession.TofuToken = tofuToken
+			if err := updatedSession.encrypt(ctx, databaseWrapper); err != nil {
+				return err
+			}
+			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"CtTofuToken"}, nil)
+			if err != nil {
+				return err
+			}
+			if err == nil && rowsUpdated > 1 {
+				// return err, which will result in a rollback of the update
+				return errors.New("error more than 1 session would have been updated ")
+			}
+
 			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
 			if err != nil {
 				return err

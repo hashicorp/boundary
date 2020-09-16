@@ -406,6 +406,8 @@ func TestRepository_ActivateState(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
+
+	tofu := TestTofu(t)
 	tests := []struct {
 		name                   string
 		session                *Session
@@ -423,7 +425,7 @@ func TestRepository_ActivateState(t *testing.T) {
 			name: "already-active",
 			session: func() *Session {
 				s := TestDefaultSession(t, conn, wrapper, iamRepo)
-				activeSession, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version)
+				activeSession, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, tofu)
 				require.NoError(t, err)
 				return activeSession
 			}(),
@@ -486,7 +488,7 @@ func TestRepository_ActivateState(t *testing.T) {
 			default:
 				version = tt.session.Version
 			}
-			s, ss, err := repo.ActivateSession(context.Background(), id, version)
+			s, ss, err := repo.ActivateSession(context.Background(), id, version, tofu)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
@@ -497,23 +499,24 @@ func TestRepository_ActivateState(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(s)
 			require.NotNil(ss)
+			assert.Equal(tofu, s.TofuToken)
 			assert.Equal(2, len(ss))
 			assert.Equal(StatusActive.String(), ss[0].Status)
 		})
 		t.Run("already active", func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			session := TestDefaultSession(t, conn, wrapper, iamRepo)
-			s, ss, err := repo.ActivateSession(context.Background(), session.PublicId, 1)
+			s, ss, err := repo.ActivateSession(context.Background(), session.PublicId, 1, tofu)
 			require.NoError(err)
 			require.NotNil(s)
 			require.NotNil(ss)
 			assert.Equal(2, len(ss))
 			assert.Equal(StatusActive.String(), ss[0].Status)
 
-			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 1)
+			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 1, tofu)
 			require.Error(err)
 
-			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 2)
+			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 2, tofu)
 			require.Error(err)
 		})
 	}
