@@ -104,8 +104,9 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 }
 
 // LookupSession will look up a session in the repository and return the session
-// with its states.  If the session is not found, it will return nil, nil, nil.
-// No options are currently supported.
+// with its states.  Returned States are ordered by start time descending.  If the
+// session is not found, it will return nil, nil, nil. No options are currently
+// supported.
 func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ...Option) (*Session, []*State, error) {
 	if sessionId == "" {
 		return nil, nil, fmt.Errorf("lookup session: missing sessionId id: %w", db.ErrInvalidParameter)
@@ -210,9 +211,9 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...
 }
 
 // UpdateSession updates the repository entry for the session, using the
-// fieldMaskPaths.  Only BytesUp, BytesDown, TerminationReason, ServerId and
-// ServerType a muttable and will be set to NULL if set to a zero value and
-// included in the fieldMaskPaths.
+// fieldMaskPaths.  Only TerminationReason, ServerId and ServerType a muttable
+// and will be set to NULL if set to a zero value and included in the
+// fieldMaskPaths. Returned States are ordered by start time descending.
 func (r *Repository) UpdateSession(ctx context.Context, session *Session, version uint32, fieldMaskPaths []string, opt ...Option) (*Session, []*State, int, error) {
 	if session == nil {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: missing session %w", db.ErrInvalidParameter)
@@ -309,7 +310,7 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 }
 
 // ActivateSession will activate the session and is called by a worker after
-// authenticating the session.
+// authenticating the session. States are ordered by start time descending.
 func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, []*State, error) {
 	if sessionId == "" {
 		return nil, nil, fmt.Errorf("activate session state: missing session id %w", db.ErrInvalidParameter)
@@ -350,7 +351,8 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 }
 
 // UpdateState will update the session's state using the session id and its
-// version.  No options are currently supported.
+// version.  States are ordered by start time descending. No options are
+// currently supported.
 func (r *Repository) UpdateState(ctx context.Context, sessionId string, sessionVersion uint32, s Status, opt ...Option) (*Session, []*State, error) {
 	if sessionId == "" {
 		return nil, nil, fmt.Errorf("update session state: missing session id %w", db.ErrInvalidParameter)

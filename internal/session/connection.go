@@ -13,7 +13,7 @@ const (
 	defaultConnectionTableName = "session_connection"
 )
 
-// Session contains information about a user's session with a target
+// Connection contains information about session's connection to a target
 type Connection struct {
 	// PublicId is used to access the connection via an API
 	PublicId string `json:"public_id,omitempty" gorm:"primary_key"`

@@ -11,7 +11,7 @@ import (
 )
 
 // CreateConnection inserts into the repository and returns the new Connection with
-// its State of "Pending".  The following fields must be empty when creating a
+// its State of "Connected".  The following fields must be empty when creating a
 // session: PublicId, BytesUp, BytesDown, ClosedReason, Version, CreateTime,
 // UpdateTime.  No options are currently supported.
 func (r *Repository) CreateConnection(ctx context.Context, newConnection *Connection, opt ...Option) (*Connection, *ConnectionState, error) {
@@ -58,7 +58,7 @@ func (r *Repository) CreateConnection(ctx context.Context, newConnection *Connec
 				return err
 			}
 			var foundStates []*ConnectionState
-			// trigger will create new "Pending" state
+			// trigger will create new "Connected" state
 			if foundStates, err = fetchConnectionStates(ctx, read, returnedConnection.PublicId); err != nil {
 				return err
 			}

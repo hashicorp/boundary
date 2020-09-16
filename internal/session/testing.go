@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestConnection creates a test connection for the sessionId in the repository.
 func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, backendTcpAddr string, backendTcpPort uint32) *Connection {
 	t.Helper()
 	require := require.New(t)
@@ -133,6 +134,7 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	}
 }
 
+// TestTofu will create a test "trust on first use" token
 func TestTofu(t *testing.T) []byte {
 	t.Helper()
 	require := require.New(t)
