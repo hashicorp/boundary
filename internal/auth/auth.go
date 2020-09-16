@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/recovery"
 	"github.com/hashicorp/go-hclog"
@@ -142,6 +143,10 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		Id:      opts.withId,
 		Pin:     opts.withPin,
 		Type:    opts.withType,
+	}
+	// Global scope has no parent ID; account for this
+	if opts.withId == scope.Global.String() && opts.withType == resource.Scope {
+		v.res.ScopeId = scope.Global.String()
 	}
 
 	if v.requestInfo.EncryptedToken != "" {
