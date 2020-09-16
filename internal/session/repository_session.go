@@ -37,8 +37,8 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 	if newSession.UserId == "" {
 		return nil, nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
 	}
-	if newSession.SetId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: set id is empty: %w", db.ErrInvalidParameter)
+	if newSession.HostSetId == "" {
+		return nil, nil, nil, fmt.Errorf("create session: host set id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.AuthTokenId == "" {
 		return nil, nil, nil, fmt.Errorf("create session: auth token id is empty: %w", db.ErrInvalidParameter)

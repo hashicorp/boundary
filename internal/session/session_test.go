@@ -48,7 +48,7 @@ func TestSession_Create(t *testing.T) {
 				UserId:      composedOf.UserId,
 				HostId:      composedOf.HostId,
 				TargetId:    composedOf.TargetId,
-				SetId:       composedOf.HostSetId,
+				HostSetId:   composedOf.HostSetId,
 				AuthTokenId: composedOf.AuthTokenId,
 				ScopeId:     composedOf.ScopeId,
 			},

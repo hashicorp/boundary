@@ -23,7 +23,7 @@ begin;
         │ server_id          (fk3) │                                    ▲fk4 ┼
         │ server_type        (fk3) │╲                                        ┼
         │ target_id          (fk4) │─○─────────────────┬─────────────────────┤
-        │ set_id             (fk5) │╱                  ┼                     ┼
+        │ host_set_id        (fk5) │╱                  ┼                     ┼
         │ auth_token_id      (fk6) │              ▼fk5 ┼                ▼fk2 ┼
         │ scope_id           (fk7) │          ┌─────────────────┐   ┌─────────────────┐
         │ termination_reason (fk8) │          │    host_set     │   │      host       │
@@ -112,7 +112,7 @@ begin;
       on update cascade,
     -- the host set the host was chosen from and the user was authorized to
     -- connect to via the target
-    set_id wt_public_id -- fk5
+    host_set_id wt_public_id -- fk5
       references host_set (public_id)
       on delete set null
       on update cascade,
@@ -182,8 +182,8 @@ begin;
         raise exception 'host_id is null';
       when new.target_id is null then
         raise exception 'target_id is null';
-      when new.set_id is null then
-        raise exception 'set_id is null';
+      when new.host_set_id is null then
+        raise exception 'host_set_id is null';
       when new.auth_token_id is null then
         raise exception 'auth_token_id is null';
       when new.scope_id is null then

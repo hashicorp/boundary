@@ -247,7 +247,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				UserId:      tt.args.composedOf.UserId,
 				HostId:      tt.args.composedOf.HostId,
 				TargetId:    tt.args.composedOf.TargetId,
-				SetId:       tt.args.composedOf.HostSetId,
+				HostSetId:   tt.args.composedOf.HostSetId,
 				AuthTokenId: tt.args.composedOf.AuthTokenId,
 				ScopeId:     tt.args.composedOf.ScopeId,
 			}
@@ -555,7 +555,7 @@ func TestRepository_UpdateSession(t *testing.T) {
 		userId            string  // not updateable - db.ErrInvalidFieldMask
 		hostId            string  // not updateable - db.ErrInvalidFieldMask
 		targetId          string  // not updateable - db.ErrInvalidFieldMask
-		setId             string  // not updateable - db.ErrInvalidFieldMask
+		hostSetId         string  // not updateable - db.ErrInvalidFieldMask
 		authTokenId       string  // not updateable - db.ErrInvalidFieldMask
 		scopeId           string  // not updateable - db.ErrInvalidFieldMask
 	}
@@ -636,15 +636,15 @@ func TestRepository_UpdateSession(t *testing.T) {
 			wantIsError:    db.ErrInvalidFieldMask,
 		},
 		{
-			name: "setId",
+			name: "hostSetId",
 			args: args{
-				setId: func() string {
+				hostSetId: func() string {
 					_, proj := iam.TestScopes(t, iamRepo)
 					cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
 					sets := static.TestSets(t, conn, cats[0].PublicId, 1)
 					return sets[0].PublicId
 				}(),
-				fieldMaskPaths: []string{"SetId"},
+				fieldMaskPaths: []string{"HostSetId"},
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,

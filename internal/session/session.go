@@ -52,8 +52,8 @@ type Session struct {
 	ServerType string `json:"server_type,omitempty" gorm:"default:null"`
 	// TargetId for the session
 	TargetId string `json:"target_id,omitempty" gorm:"default:null"`
-	// SetId for the session
-	SetId string `json:"set_id,omitempty" gorm:"default:null"`
+	// HostSetId for the session
+	HostSetId string `json:"host_set_id,omitempty" gorm:"default:null"`
 	// AuthTokenId for the session
 	AuthTokenId string `json:"auth_token_id,omitempty" gorm:"default:null"`
 	// ScopeId for the session
@@ -102,7 +102,7 @@ func New(c ComposedOf, opt ...Option) (*Session, error) {
 		UserId:         c.UserId,
 		HostId:         c.HostId,
 		TargetId:       c.TargetId,
-		SetId:          c.HostSetId,
+		HostSetId:      c.HostSetId,
 		AuthTokenId:    c.AuthTokenId,
 		ScopeId:        c.ScopeId,
 		ExpirationTime: opts.withExpirationTime,
@@ -127,7 +127,7 @@ func (s *Session) Clone() interface{} {
 		ServerId:          s.ServerId,
 		ServerType:        s.ServerType,
 		TargetId:          s.TargetId,
-		SetId:             s.SetId,
+		HostSetId:         s.HostSetId,
 		AuthTokenId:       s.AuthTokenId,
 		ScopeId:           s.ScopeId,
 		TerminationReason: s.TerminationReason,
@@ -197,8 +197,8 @@ func (s *Session) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 			return fmt.Errorf("session vet for write: host id is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "TargetId"):
 			return fmt.Errorf("session vet for write: target id is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "SetId"):
-			return fmt.Errorf("session vet for write: set id is immutable: %w", db.ErrInvalidParameter)
+		case contains(opts.WithFieldMaskPaths, "HostSetId"):
+			return fmt.Errorf("session vet for write: host set id is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "AuthTokenId"):
 			return fmt.Errorf("session vet for write: auth token id is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "Certificate"):
@@ -242,7 +242,7 @@ func (s *Session) validateNewSession(errorPrefix string) error {
 	if s.TargetId == "" {
 		return fmt.Errorf("%s missing target id: %w", errorPrefix, db.ErrInvalidParameter)
 	}
-	if s.SetId == "" {
+	if s.HostSetId == "" {
 		return fmt.Errorf("%s missing host set id: %w", errorPrefix, db.ErrInvalidParameter)
 	}
 	if s.AuthTokenId == "" {
