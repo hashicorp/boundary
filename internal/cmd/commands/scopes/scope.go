@@ -117,7 +117,9 @@ func (c *Command) Run(args []string) int {
 		opts = append(opts, scopes.WithDescription(c.FlagDescription))
 	}
 
-	opts = append(opts, scopes.WithSkipRoleCreation(c.flagSkipRoleCreation))
+	if c.flagSkipRoleCreation {
+		opts = append(opts, scopes.WithSkipRoleCreation(c.flagSkipRoleCreation))
+	}
 
 	scopeClient := scopes.NewClient(client)
 
