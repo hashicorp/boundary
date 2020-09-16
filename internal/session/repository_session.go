@@ -47,10 +47,10 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 		return nil, nil, nil, fmt.Errorf("create session: scope id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ServerId != "" {
-		return nil, nil, nil, fmt.Errorf("create session: server id must empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: server id must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ServerType != "" {
-		return nil, nil, nil, fmt.Errorf("create session: server type must empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: server type must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.CtTofuToken != nil {
 		return nil, nil, nil, fmt.Errorf("create session: ct must be empty: %w", db.ErrInvalidParameter)

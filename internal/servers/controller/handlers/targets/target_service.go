@@ -4,14 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
+	"strings"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -35,19 +41,36 @@ func init() {
 
 // Service handles request as described by the pbs.TargetServiceServer interface.
 type Service struct {
-	repoFn    common.TargetRepoFactory
-	iamRepoFn common.IamRepoFactory
+	repoFn           common.TargetRepoFactory
+	iamRepoFn        common.IamRepoFactory
+	serversRepoFn    common.ServersRepoFactory
+	sessionRepoFn    common.SessionRepoFactory
+	staticHostRepoFn common.StaticRepoFactory
 }
 
 // NewService returns a target service which handles target related requests to boundary.
-func NewService(repoFn common.TargetRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(
+	repoFn common.TargetRepoFactory,
+	iamRepoFn common.IamRepoFactory,
+	serversRepoFn common.ServersRepoFactory,
+	sessionRepoFn common.SessionRepoFactory,
+	staticHostRepoFn common.StaticRepoFactory) (Service, error) {
 	if repoFn == nil {
 		return Service{}, fmt.Errorf("nil target repository provided")
 	}
 	if iamRepoFn == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
-	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn}, nil
+	if serversRepoFn == nil {
+		return Service{}, fmt.Errorf("nil servers repository provided")
+	}
+	if sessionRepoFn == nil {
+		return Service{}, fmt.Errorf("nil session repository provided")
+	}
+	if staticHostRepoFn == nil {
+		return Service{}, fmt.Errorf("nil static host repository provided")
+	}
+	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn, staticHostRepoFn: staticHostRepoFn}, nil
 }
 
 var _ pbs.TargetServiceServer = Service{}
@@ -187,6 +210,114 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 	}
 	u.Scope = authResults.Scope
 	return &pbs.RemoveTargetHostSetsResponse{Item: u}, nil
+}
+
+func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (*pbs.AuthorizeSessionResponse, error) {
+	if err := validateAuthorizeRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Authorize)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	// This could happen if, say, u_recovery was used or u_anon was granted. But
+	// don't allow it.
+	if authResults.AuthTokenId == "" {
+		return nil, handlers.ForbiddenError()
+	}
+	t, err := s.getFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	sessionRepo, err := s.sessionRepoFn()
+	if err != nil {
+		return nil, err
+	}
+
+	serversRepo, err := s.serversRepoFn()
+	if err != nil {
+		return nil, err
+	}
+
+	// First, fetch all available hosts. Unless one was chosen in the request,
+	// we will pick one at random.
+	requestedId := req.GetHostId()
+	var chosenId string
+	staticHostRepo, err := s.staticHostRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	hostIds := make([]string, 0, len(t.HostSetIds)*10)
+	for _, hsId := range t.HostSetIds {
+		switch host.SubtypeFromId(hsId) {
+		case host.StaticSubtype:
+			_, hosts, err := staticHostRepo.LookupSet(ctx, hsId)
+			if err != nil {
+				return nil, err
+			}
+			for _, host := range hosts {
+				compoundId := fmt.Sprint("%s|%s", hsId, host.PublicId)
+				if host.PublicId == requestedId {
+					chosenId = compoundId
+					goto HOST_GATHERING_DONE
+				}
+				hostIds = append(hostIds, compoundId)
+			}
+		}
+	}
+	if requestedId != "" {
+		// We didn't find it
+		return nil, handlers.InvalidArgumentErrorf(
+			"Errors in provided fields.",
+			map[string]string{
+				"host_id": "The requested host id is not available.",
+			})
+	}
+	chosenId = hostIds[rand.Intn(len(hostIds))]
+
+HOST_GATHERING_DONE:
+	splitChosenId := strings.Split(chosenId, "|")
+	if len(splitChosenId) != 2 {
+		return nil, fmt.Errorf("invalid split of chosen id %q", chosenId)
+	}
+	sessionComposition := session.ComposedOf{
+		UserId:      authResults.UserId,
+		HostId:      splitChosenId[1],
+		TargetId:    t.Id,
+		HostSetId:   splitChosenId[0],
+		AuthTokenId: authResults.AuthTokenId,
+		ScopeId:     authResults.Scope.Id,
+	}
+	sess, err := session.New(sessionComposition)
+	if err != nil {
+		return nil, err
+	}
+	sess, _, privKey, err := sessionRepo.CreateSession(ctx, nil, sess)
+	if err != nil {
+		return nil, err
+	}
+
+	var workers []*sessions.WorkerInfo
+	servers, err := serversRepo.ListServers(ctx, servers.ServerTypeWorker)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range servers {
+		workers = append(workers, &sessions.WorkerInfo{Address: v.Address})
+	}
+
+	ret := &pb.SessionAuthorization{
+		SessionId:   sess.PublicId,
+		TargetId:    t.Id,
+		Scope:       authResults.Scope,
+		CreatedTime: sess.CreateTime.GetTimestamp(),
+		Type:        t.Type,
+		Certificate: sess.Certificate,
+		PrivateKey:  privKey,
+		WorkerInfo:  workers,
+	}
+	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error) {
@@ -563,6 +694,22 @@ func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	}
 	if len(req.GetHostSetIds()) == 0 {
 		badFields["host_set_ids"] = "Must be non-empty."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateAuthorizeRequest(req *pbs.AuthorizeSessionRequest) error {
+	badFields := map[string]string{}
+	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetHostId() != "" {
+		if !handlers.ValidId(host.StaticSubtype.String(), req.GetHostId()) {
+			badFields["host_id"] = "Incorrectly formatted identifier."
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

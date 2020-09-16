@@ -1999,6 +1999,39 @@
         ]
       }
     },
+    "/v1/targets/{id}:authorize": {
+      "post": {
+        "summary": "Authorizes a Session",
+        "operationId": "TargetService_AuthorizeSession",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.SessionAuthorization"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AuthorizeSessionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
     "/v1/targets/{id}:remove-host-sets": {
       "post": {
         "summary": "Removes Host Sets from the Target.",
@@ -2014,7 +2047,6 @@
         "parameters": [
           {
             "name": "id",
-            "description": "This host set's id.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2865,6 +2897,15 @@
         }
       }
     },
+    "controller.api.resources.sessions.v1.WorkerInfo": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "title": "The address of the worker"
+        }
+      }
+    },
     "controller.api.resources.targets.v1.HostSet": {
       "type": "object",
       "properties": {
@@ -2875,6 +2916,53 @@
           "type": "string"
         }
       }
+    },
+    "controller.api.resources.targets.v1.SessionAuthorization": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "description": "The ID of the resource\nOutput only.",
+          "readOnly": true
+        },
+        "target_id": {
+          "type": "string",
+          "description": "The id of the target authorizing this session. This must be defined for\ncreation of this resource, but is otherwise read only."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "title": "Type of the session (e.g. tcp, ssh, etc.)"
+        },
+        "certificate": {
+          "type": "string",
+          "format": "byte",
+          "description": "The certificate to use when connecting (or if using custom certs, to\nserve as the \"login\"). Raw DER bytes."
+        },
+        "private_key": {
+          "type": "string",
+          "format": "byte",
+          "description": "The private key to use when connecting (or if using custom certs, to pass\nas the \"password\"). We are using Ed25519 so this is purely raw bytes, no\nmarshaling."
+        },
+        "worker_info": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.sessions.v1.WorkerInfo"
+          },
+          "description": "Worker information. The first worker in the array should be prioritized."
+        }
+      },
+      "description": "SessionAuthorization contains all fields related to authorization for a\nsession. It's in the Targets API because it's returned by a target authorize\naction."
     },
     "controller.api.resources.targets.v1.Target": {
       "type": "object",
@@ -3149,6 +3237,26 @@
         "token_type": {
           "type": "string",
           "description": "This can be \"cookie\" or \"token\".  If not present, \"token\" should be assumed."
+        }
+      }
+    },
+    "controller.api.services.v1.AuthorizeSessionRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "host_id": {
+          "type": "string",
+          "description": "An optional parameter allowing specification of the particular host within\nthe target's host sets to connect to during this session."
+        }
+      }
+    },
+    "controller.api.services.v1.AuthorizeSessionResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.SessionAuthorization"
         }
       }
     },
@@ -3643,8 +3751,7 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "This host set's id."
+          "type": "string"
         },
         "version": {
           "type": "integer",

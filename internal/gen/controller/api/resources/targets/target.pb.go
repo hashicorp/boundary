@@ -298,8 +298,8 @@ type SessionAuthorization struct {
 	// The ID of the resource
 	// Output only.
 	SessionId string `protobuf:"bytes,10,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	// The id of the parent of this resource.  This must be defined for creation
-	// of this resource, but is otherwise read only.
+	// The id of the target authorizing this session. This must be defined for
+	// creation of this resource, but is otherwise read only.
 	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty"`
 	// Scope information for this resource
 	// Output only.

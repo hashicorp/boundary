@@ -74,8 +74,8 @@ message SessionAuthorization {
 	// Output only.
 	string session_id = 10;
 
-	// The id of the parent of this resource.  This must be defined for creation
-	// of this resource, but is otherwise read only.
+	// The id of the target authorizing this session. This must be defined for
+	// creation of this resource, but is otherwise read only.
 	string target_id = 20 [json_name="target_id"];
 
 	// Scope information for this resource
