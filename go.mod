@@ -22,7 +22,7 @@ require (
 	github.com/hashicorp/go-alpnmux v0.0.0-20200822022353-14527cfc58e5
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.14.1
-	github.com/hashicorp/go-kms-wrapping v0.5.15
+	github.com/hashicorp/go-kms-wrapping v0.5.14
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-plugin v1.2.0 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.7
