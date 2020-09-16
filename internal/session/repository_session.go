@@ -341,7 +341,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			}
 			databaseWrapper, err := r.kms.GetWrapper(ctx, foundSession.ScopeId, kms.KeyPurposeDatabase)
 			if err != nil {
-				fmt.Errorf("unable to get database wrapper: %w", err)
+				return fmt.Errorf("unable to get database wrapper: %w", err)
 			}
 
 			updatedSession.TofuToken = tofuToken
