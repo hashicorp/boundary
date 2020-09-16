@@ -309,6 +309,58 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 	return s, states, rowsUpdated, err
 }
 
+// CancelReason is the reason the session was cancelled
+type CancelReason string
+
+// CancelSession sets a session's state to "cancelling" in the repo.  It's
+// called when the user cancels a session and the controller wants to update the
+// session state to "cancelling" for the given reason, so the workers can get
+// the "cancelling signal" during their next status heartbeat.
+func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32, reason CancelReason) (*Session, []*State, error) {
+	panic("not implemented")
+}
+
+// TerminateSession sets a session's state to "terminated" in the repo.  It's
+// called by the worker when the session has been terminated or by a controller
+// when all of a session's workers have stopped sending heartbeat status for a
+// period of time.  Sessions cannot be terminated which still have connections
+// that are not closed.
+func (r *Repository) TerminateSession(ctx context.Context, sessionId string, sessionVersion uint32, reason TerminationReason) (*Session, []*State, error) {
+	panic("not implemented")
+}
+
+// ConnectWith defines the boundary data that is saved in the repo when the
+// worker has established a connection between the client and the backend (aka
+// endpoint).
+type ConnectWith struct {
+	SessionId         string
+	ClientTcpAddress  string
+	ClientTcpPort     string
+	BackendTcpAddress string
+	BackendTcpPort    string
+}
+
+// ConnectSession creates a connection in the repo with a state of "connected".
+func (r *Repository) ConnectSession(c ConnectWith) {
+	panic("not implemented")
+}
+
+// ClosedWith defines the boundary data that is saved in the repo when the
+// worker closes a connection between the client and the backend (aka endpoint).
+type ClosedWith struct {
+	ConnectionId string
+	BytesUp      uint64
+	BytesDown    uint64
+	ClosedReason ClosedReason
+}
+
+// CloseConnections set's a connection's state to "closed" in the repo.  It's
+// called by a worker after it's closed a connection between the client and the
+// backend (aka endpoint)
+func (r *Repository) CloseConnections(c []ClosedWith, opt ...Option) {
+	panic("not implemented")
+}
+
 // ActivateSession will activate the session and is called by a worker after
 // authenticating the session. States are ordered by start time descending.
 func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, tofuToken []byte) (*Session, []*State, error) {
