@@ -370,12 +370,14 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 		if bit&FlagSetOutputFormat != 0 {
 			f := set.NewFlagSet("Output Options")
 
-			f.BoolVar(&BoolVar{
-				Name:       "verbose",
-				Target:     &c.flagVerbose,
-				Completion: complete.PredictAnything,
-				Usage:      "Turns on some extra verbosity in the command output.",
-			})
+			/*
+				f.BoolVar(&BoolVar{
+					Name:       "verbose",
+					Target:     &c.flagVerbose,
+					Completion: complete.PredictAnything,
+					Usage:      "Turns on some extra verbosity in the command output.",
+				})
+			*/
 
 			if bit&FlagSetOutputFormat != 0 {
 				f.StringVar(&StringVar{
