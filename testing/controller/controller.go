@@ -48,6 +48,7 @@ type option struct {
 	setDefaultLoginName          bool
 	setDefaultPassword           bool
 	setRecoveryKms               bool
+	setDatabaseUrl               bool
 }
 
 type Option func(*option) error
@@ -133,6 +134,14 @@ func WithRecoveryKms(wrapper wrapping.Wrapper) Option {
 	return func(c *option) error {
 		c.setRecoveryKms = true
 		c.tcOptions.RecoveryKms = wrapper
+		return nil
+	}
+}
+
+func WithDatabaseUrl(url string) Option {
+	return func(c *option) error {
+		c.setDatabaseUrl = true
+		c.tcOptions.DatabaseUrl = url
 		return nil
 	}
 }
