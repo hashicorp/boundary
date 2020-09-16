@@ -157,7 +157,7 @@ func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option
 
 func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*HostReadResult, *api.Error, error) {
 	if hostId == "" {
-		return nil, nil, fmt.Errorf("empty  hostId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty hostId value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")

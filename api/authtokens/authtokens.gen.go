@@ -109,7 +109,7 @@ func (c *Client) ApiClient() *api.Client {
 
 func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*AuthTokenReadResult, *api.Error, error) {
 	if authTokenId == "" {
-		return nil, nil, fmt.Errorf("empty  authTokenId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty authTokenId value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")

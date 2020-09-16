@@ -156,7 +156,7 @@ func (c *Client) Create(ctx context.Context, authMethodId string, opt ...Option)
 
 func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*AccountReadResult, *api.Error, error) {
 	if accountId == "" {
-		return nil, nil, fmt.Errorf("empty  accountId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty accountId value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")

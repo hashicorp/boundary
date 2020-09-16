@@ -154,7 +154,7 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Sc
 
 func (c *Client) Read(ctx context.Context, scopeId string, opt ...Option) (*ScopeReadResult, *api.Error, error) {
 	if scopeId == "" {
-		return nil, nil, fmt.Errorf("empty  scopeId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty scopeId value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")

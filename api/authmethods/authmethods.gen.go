@@ -161,7 +161,7 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 
 func (c *Client) Read(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethodReadResult, *api.Error, error) {
 	if authMethodId == "" {
-		return nil, nil, fmt.Errorf("empty  authMethodId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty authMethodId value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")

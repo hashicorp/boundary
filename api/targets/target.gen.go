@@ -163,7 +163,7 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 
 func (c *Client) Read(ctx context.Context, targetId string, opt ...Option) (*TargetReadResult, *api.Error, error) {
 	if targetId == "" {
-		return nil, nil, fmt.Errorf("empty  targetId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty targetId value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
