@@ -21,11 +21,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientAddr string, clientPort uint32, backendAddr string, backendPort uint32) *Connection {
+func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, backendTcpAddr string, backendTcpPort uint32) *Connection {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	c, err := NewConnection(sessionId, clientAddr, clientPort, backendAddr, backendPort)
+	c, err := NewConnection(sessionId, clientTcpAddr, clientTcpPort, backendTcpAddr, backendTcpPort)
 	require.NoError(err)
 	id, err := newConnectionId()
 	require.NoError(err)

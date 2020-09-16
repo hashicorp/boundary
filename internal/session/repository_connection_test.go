@@ -171,10 +171,10 @@ func TestRepository_CreateConnection(t *testing.T) {
 			name: "empty-session-id",
 			args: args{
 				connection: &Connection{
-					ClientAddress:  "127.0.0.1",
-					ClientPort:     22,
-					BackendAddress: "127.0.0.1",
-					BackendPort:    2222,
+					ClientTcpAddress:  "127.0.0.1",
+					ClientTcpPort:     22,
+					BackendTcpAddress: "127.0.0.1",
+					BackendTcpPort:    2222,
 				},
 			},
 			wantErr:     true,
@@ -184,10 +184,10 @@ func TestRepository_CreateConnection(t *testing.T) {
 			name: "empty-client-address",
 			args: args{
 				connection: &Connection{
-					SessionId:      session.PublicId,
-					ClientPort:     22,
-					BackendAddress: "127.0.0.1",
-					BackendPort:    2222,
+					SessionId:         session.PublicId,
+					ClientTcpPort:     22,
+					BackendTcpAddress: "127.0.0.1",
+					BackendTcpPort:    2222,
 				},
 			},
 			wantErr:     true,
@@ -197,10 +197,10 @@ func TestRepository_CreateConnection(t *testing.T) {
 			name: "empty-client-port",
 			args: args{
 				connection: &Connection{
-					SessionId:      session.PublicId,
-					ClientAddress:  "127.0.0.1",
-					BackendAddress: "127.0.0.1",
-					BackendPort:    2222,
+					SessionId:         session.PublicId,
+					ClientTcpAddress:  "127.0.0.1",
+					BackendTcpAddress: "127.0.0.1",
+					BackendTcpPort:    2222,
 				},
 			},
 			wantErr:     true,
@@ -210,10 +210,10 @@ func TestRepository_CreateConnection(t *testing.T) {
 			name: "empty-backend-address",
 			args: args{
 				connection: &Connection{
-					SessionId:     session.PublicId,
-					ClientAddress: "127.0.0.1",
-					ClientPort:    22,
-					BackendPort:   2222,
+					SessionId:        session.PublicId,
+					ClientTcpAddress: "127.0.0.1",
+					ClientTcpPort:    22,
+					BackendTcpPort:   2222,
 				},
 			},
 			wantErr:     true,
@@ -223,10 +223,10 @@ func TestRepository_CreateConnection(t *testing.T) {
 			name: "empty-backend-port",
 			args: args{
 				connection: &Connection{
-					SessionId:      session.PublicId,
-					ClientAddress:  "127.0.0.1",
-					ClientPort:     22,
-					BackendAddress: "127.0.0.1",
+					SessionId:         session.PublicId,
+					ClientTcpAddress:  "127.0.0.1",
+					ClientTcpPort:     22,
+					BackendTcpAddress: "127.0.0.1",
 				},
 			},
 			wantErr:     true,
@@ -381,17 +381,17 @@ func TestRepository_UpdateConnection(t *testing.T) {
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
 
 	type args struct {
-		closedReason   ClosedReason
-		bytesUp        uint64
-		bytesDown      uint64
-		fieldMaskPaths []string
-		opt            []Option
-		publicId       *string // not updateable - db.ErrInvalidFieldMask
-		sessionId      string  // not updateable - db.ErrInvalidFieldMask
-		clientAddress  string  // not updateable - db.ErrInvalidFieldMask
-		clientPort     uint32  // not updateable - db.ErrInvalidFieldMask
-		backendAddress string  // not updateable - db.ErrInvalidFieldMask
-		backendPort    uint32  // not updateable - db.ErrInvalidFieldMask
+		closedReason      ClosedReason
+		bytesUp           uint64
+		bytesDown         uint64
+		fieldMaskPaths    []string
+		opt               []Option
+		publicId          *string // not updateable - db.ErrInvalidFieldMask
+		sessionId         string  // not updateable - db.ErrInvalidFieldMask
+		clientTcpAddress  string  // not updateable - db.ErrInvalidFieldMask
+		clientTcpPort     uint32  // not updateable - db.ErrInvalidFieldMask
+		backendTcpAddress string  // not updateable - db.ErrInvalidFieldMask
+		backendTcpPort    uint32  // not updateable - db.ErrInvalidFieldMask
 	}
 	tests := []struct {
 		name           string
@@ -440,40 +440,40 @@ func TestRepository_UpdateConnection(t *testing.T) {
 			wantIsError:    db.ErrInvalidFieldMask,
 		},
 		{
-			name: "clientAddress",
+			name: "clientTcpAddress",
 			args: args{
-				clientAddress:  "127.0.0.1",
-				fieldMaskPaths: []string{"ClientAddress"},
+				clientTcpAddress: "127.0.0.1",
+				fieldMaskPaths:   []string{"ClientTcpAddress"},
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantIsError:    db.ErrInvalidFieldMask,
 		},
 		{
-			name: "clientPort",
+			name: "clientTcpPort",
 			args: args{
-				clientPort:     443,
-				fieldMaskPaths: []string{"ClientPort"},
+				clientTcpPort:  443,
+				fieldMaskPaths: []string{"ClientTcpPort"},
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantIsError:    db.ErrInvalidFieldMask,
 		},
 		{
-			name: "backendAddress",
+			name: "backendTcpAddress",
 			args: args{
-				backendAddress: "127.0.0.1",
-				fieldMaskPaths: []string{"BackendAddress"},
+				backendTcpAddress: "127.0.0.1",
+				fieldMaskPaths:    []string{"BackendTcpAddress"},
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantIsError:    db.ErrInvalidFieldMask,
 		},
 		{
-			name: "backendPort",
+			name: "backendTcpPort",
 			args: args{
-				backendPort:    4443,
-				fieldMaskPaths: []string{"BackendPort"},
+				backendTcpPort: 4443,
+				fieldMaskPaths: []string{"BackendTcpPort"},
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,

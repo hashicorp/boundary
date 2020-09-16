@@ -84,27 +84,27 @@ begin;
       references session (public_id)
       on delete cascade
       on update cascade,
-    -- the client_address is the network address of the client which initiated
+    -- the client_tcp_address is the network address of the client which initiated
     -- the connection to a worker
-    client_address inet not null,
-    -- the client_port is the network port at the address of the client the
+    client_tcp_address inet not null,
+    -- the client_tcp_port is the network port at the address of the client the
     -- worker proxied a connection for the user
-    client_port integer not null
+    client_tcp_port integer not null
       check(
-        client_port > 0
+        client_tcp_port > 0
         and
-        client_port <= 65535
+        client_tcp_port <= 65535
       ),
-    -- the backend_address is the network address of the backend which the
+    -- the backend_tcp_address is the network address of the backend which the
     -- worker initiated the connection to, for the user
-    backend_address inet not null,
-    -- the backend_port is the network port at the address of the backend the
+    backend_tcp_address inet not null,
+    -- the backend_tcp_port is the network port at the address of the backend the
     -- worker proxied a connection to, for the user
-    backend_port integer not null
+    backend_tcp_port integer not null
       check(
-        backend_port > 0
+        backend_tcp_port > 0
         and
-        backend_port <= 65535
+        backend_tcp_port <= 65535
       ),
     -- the total number of bytes received by the worker from the client and sent
     -- to the backend for this connection
@@ -135,7 +135,7 @@ begin;
     immutable_columns
   before
   update on session_connection
-    for each row execute procedure immutable_columns('public_id', 'session_id', 'client_address', 'client_port', 'backend_address', 'backend_port', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'session_id', 'client_tcp_address', 'client_tcp_port', 'backend_tcp_address', 'backend_tcp_port', 'create_time');
 
   create trigger 
     update_version_column 
