@@ -47,6 +47,8 @@ type option struct {
 	setDefaultAuthMethodId       bool
 	setDefaultLoginName          bool
 	setDefaultPassword           bool
+	setRootKms                   bool
+	setWorkerAuthKms             bool
 	setRecoveryKms               bool
 	setDatabaseUrl               bool
 }
@@ -126,6 +128,22 @@ func WithDefaultPassword(pw string) Option {
 	return func(c *option) error {
 		c.setDefaultPassword = true
 		c.tcOptions.DefaultPassword = pw
+		return nil
+	}
+}
+
+func WithRootKms(wrapper wrapping.Wrapper) Option {
+	return func(c *option) error {
+		c.setRootKms = true
+		c.tcOptions.RootKms = wrapper
+		return nil
+	}
+}
+
+func WithWorkerAuthKms(wrapper wrapping.Wrapper) Option {
+	return func(c *option) error {
+		c.setWorkerAuthKms = true
+		c.tcOptions.WorkerAuthKms = wrapper
 		return nil
 	}
 }
