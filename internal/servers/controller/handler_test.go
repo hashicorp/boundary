@@ -17,6 +17,7 @@ import (
 func TestAuthenticationHandler(t *testing.T) {
 	c := NewTestController(t, &TestControllerOpts{
 		DisableAuthorizationFailures: true,
+		DefaultAuthMethodId:          "ampw_1234567890",
 		DefaultLoginName:             "admin",
 		DefaultPassword:              "password123",
 	})

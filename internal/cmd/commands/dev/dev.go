@@ -35,6 +35,7 @@ type Command struct {
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
 	flagDevSkipAuthMethodCreation      bool
+	flagDevDisableDatabaseDestruction  bool
 }
 
 func (c *Command) Synopsis() string {
@@ -122,6 +123,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:   "dev-skip-auth-method-creation",
 		Target: &c.flagDevSkipAuthMethodCreation,
 		Usage:  "If set, an auth method will not be created as part of the dev instance. The recovery KMS will be needed to perform any actions.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "dev-disable-database-destruction",
+		Target: &c.flagDevDisableDatabaseDestruction,
+		Usage:  "If set, if a database is created automatically in Docker, it will not be removed when the dev server is shut down.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -266,7 +273,9 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 		return 1
 	}
-	c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
+	if !c.flagDevDisableDatabaseDestruction {
+		c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
+	}
 
 	c.PrintInfo(c.UI, "dev mode")
 	c.ReleaseLogGate()
