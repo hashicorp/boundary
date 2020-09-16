@@ -207,7 +207,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if logUrls {
-			c.logger.Trace("request received", "url", r.URL.RequestURI())
+			c.logger.Trace("request received", "method", r.Method, "url", r.URL.RequestURI())
 		}
 
 		// Set the Cache-Control header for all responses returned
