@@ -139,11 +139,11 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, opt 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			deleteSession := connection.Clone()
+			deleteConnection := connection.Clone()
 			var err error
 			rowsDeleted, err = w.Delete(
 				ctx,
-				deleteSession,
+				deleteConnection,
 			)
 			if err == nil && rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
@@ -159,7 +159,7 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, opt 
 }
 
 // UpdateConnection updates the repository entry for the connection, using the
-// fieldMaskPaths.  Only BytesUp, BytesDown, and ClosedReason are muttable and
+// fieldMaskPaths.  Only BytesUp, BytesDown, and ClosedReason are mutable and
 // will be set to NULL if set to a zero value and included in the fieldMaskPaths.
 func (r *Repository) UpdateConnection(ctx context.Context, connection *Connection, version uint32, fieldMaskPaths []string, opt ...Option) (*Connection, []*ConnectionState, int, error) {
 	if connection == nil {
@@ -258,7 +258,7 @@ func (r *Repository) UpdateConnectionState(ctx context.Context, connectionId str
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			// We need to update the session version as that's the aggregate
+			// We need to update the connection version as that's the aggregate
 			updatedConnection.PublicId = connectionId
 			updatedConnection.Version = uint32(connectionVersion) + 1
 			rowsUpdated, err := w.Update(ctx, &updatedConnection, []string{"Version"}, nil, db.WithVersion(&connectionVersion))
