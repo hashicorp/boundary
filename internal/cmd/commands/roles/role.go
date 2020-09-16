@@ -234,6 +234,8 @@ func (c *Command) Run(args []string) int {
 	case "remove-principals":
 		result, apiErr, err = roleClient.RemovePrincipals(c.Context, c.FlagId, version, principals, opts...)
 	case "add-grants":
+		result, apiErr, err = roleClient.AddGrants(c.Context, c.FlagId, version, grants, opts...)
+	case "set-grants":
 		result, apiErr, err = roleClient.SetGrants(c.Context, c.FlagId, version, grants, opts...)
 	case "remove-grants":
 		result, apiErr, err = roleClient.RemoveGrants(c.Context, c.FlagId, version, grants, opts...)
