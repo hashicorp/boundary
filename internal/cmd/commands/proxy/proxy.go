@@ -147,7 +147,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	sessionResponseInfo := new(wpbs.GetSessionCredsResponse)
+	sessionResponseInfo := new(wpbs.GetSessionResponse)
 	if err := proto.Unmarshal(marshaled, sessionResponseInfo); err != nil {
 		c.UI.Error(fmt.Errorf("Unable to proto-decode authorization string: %w", err).Error())
 		return 1

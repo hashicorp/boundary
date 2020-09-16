@@ -8,18 +8,18 @@ import "google/protobuf/timestamp.proto";
 import "controller/servers/v1/servers.proto";
 import "controller/api/resources/sessions/v1/session.proto";
 
-service SessionManagementService {
+service SessionService {
 	// Validate session allows a worker to retrieve session information from the controller.
 	// This endpoint validates the session
-	rpc GetSessionCreds(GetSessionCredsRequest) returns (GetSessionCredsResponse) {}
+	rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {}
 }
 
-message GetSessionCredsRequest {
+message GetSessionRequest {
 	// The session ID from the client
 	string id = 10;
 }
 
 // SessionResponse contains information necessary for a client to establish a session
-message GetSessionCredsResponse {
-	api.resources.sessions.v1.SessionCreds session_creds = 1;
+message GetSessionResponse {
+	api.resources.sessions.v1.Session session = 1;
 }

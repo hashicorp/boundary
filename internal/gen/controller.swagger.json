@@ -3003,6 +3003,9 @@
           "type": "string",
           "title": "The ID of the user that requested the session"
         },
+        "host_set_id": {
+          "type": "string"
+        },
         "host_id": {
           "type": "string"
         },
@@ -3012,15 +3015,57 @@
         "endpoint": {
           "type": "string"
         },
+        "states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.sessions.v1.SessionState"
+          },
+          "description": "The states of this session in descending from the current state to the first."
+        },
+        "status": {
+          "type": "string",
+          "description": "The name of the current status of this session."
+        },
         "worker_info": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.sessions.v1.WorkerInfo"
           },
           "description": "Worker information. The first worker in the slice should be prioritized."
+        },
+        "certificate": {
+          "type": "string",
+          "format": "byte",
+          "description": "Deprecated, to be moved to another proto by another PR:\nThe certificate to use when connecting (or if using custom certs, to\nserve as the \"login\"). Raw DER bytes."
+        },
+        "private_key": {
+          "type": "string",
+          "format": "byte",
+          "description": "The private key to use when connecting (or if using custom certs, to pass\nas the \"password\")."
         }
       },
       "title": "Session contains all fields related to a Session resource"
+    },
+    "controller.api.resources.sessions.v1.SessionState": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "This is the status of the session.  For example \"pending\", \"active\", \"canceling\", \"terminated\"."
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the session entered this state.\nOutput only.",
+          "readOnly": true
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the session stopped being in this state.\nOutput only.",
+          "readOnly": true
+        }
+      }
     },
     "controller.api.resources.sessions.v1.WorkerInfo": {
       "type": "object",

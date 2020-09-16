@@ -10,41 +10,23 @@ import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
-message SessionCredPayload {
-	// The certificate to use when connecting (or if using custom certs, to
-	// serve as the "login"). Raw DER bytes.
-	bytes certificate = 10;
-
-	// The private key to use when connecting (or if using custom certs, to pass
-	// as the "password").
-	bytes private_key = 20;
-}
-
-message SessionCreds {
-	// Contains the credentials that connecting results in
-	string session_id = 10;
-
-	string target_id = 20;
-
-	// After this time the connection will be expired, e.g. forcefully terminated
-	google.protobuf.Timestamp expiration_time = 30 [json_name="expiration_time"];
-
-	// Type of the session (e.g. tcp, ssh, etc.)
-	string type = 40;
-
-	bytes auth_payload = 50;
-
-	// Worker information. The first worker in the slice should be prioritized.
-	repeated WorkerInfo worker_info = 60 [json_name="worker_info"];
-}
 
 message WorkerInfo {
 	// The address of the worker
 	string address = 10;
 }
 
-message Connection {
+message SessionState {
+	// This is the status of the session.  For example "pending", "active", "canceling", "terminated".
+	string status = 10;
 
+	// The time the session entered this state.
+	// Output only.
+	google.protobuf.Timestamp start_time = 20 [json_name="start_time"];
+
+	// The time the session stopped being in this state.
+	// Output only.
+	google.protobuf.Timestamp end_time = 30 [json_name="end_time"];
 }
 
 // Session contains all fields related to a Session resource
@@ -85,12 +67,29 @@ message Session {
 	// The ID of the user that requested the session
 	string user_id = 100 [json_name="user_id"];
 
-	string host_id = 110 [json_name="host_id"];
+	string host_set_id = 110 [json_name="host_set_id"];
 
-	string scope_id = 120 [json_name="scope_id"];
+	string host_id = 120 [json_name="host_id"];
 
-	string endpoint = 150;
+	string scope_id = 130 [json_name="scope_id"];
+
+	string endpoint = 140;
+
+	// The states of this session in descending from the current state to the first.
+	repeated SessionState states = 150;
+
+	// The name of the current status of this session.
+	string status = 160;
 
 	// Worker information. The first worker in the slice should be prioritized.
-	repeated WorkerInfo worker_info = 160 [json_name="worker_info"];
+	repeated WorkerInfo worker_info = 170 [json_name="worker_info"];
+
+	// Deprecated, to be moved to another proto by another PR:
+	// The certificate to use when connecting (or if using custom certs, to
+	// serve as the "login"). Raw DER bytes.
+	bytes certificate = 220;
+
+	// The private key to use when connecting (or if using custom certs, to pass
+	// as the "password").
+	bytes private_key = 230 [json_name="private_key"];
 }

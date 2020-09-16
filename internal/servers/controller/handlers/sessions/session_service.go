@@ -83,7 +83,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.cancelInRepo(ctx, req.GetId())
+	u, err := s.cancelInRepo(ctx, req.GetId(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	if err != nil {
 		return nil, err
 	}
-	sess, _, err := repo.LookupSession(ctx, id)
+	sess, state, err := repo.LookupSession(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", id)
@@ -106,7 +106,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	if sess == nil {
 		return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", id)
 	}
-	return toProto(sess), nil
+	return toProto(sess, state), nil
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Session, error) {
@@ -120,21 +120,21 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Sessio
 	}
 	var outUl []*pb.Session
 	for _, u := range ul {
-		outUl = append(outUl, toProto(u))
+		outUl = append(outUl, toProto(u, nil))
 	}
 	return outUl, nil
 }
 
-func (s Service) cancelInRepo(ctx context.Context, id string) (*pb.Session, error) {
+func (s Service) cancelInRepo(ctx context.Context, id string, version uint32) (*pb.Session, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, _, err := repo.UpdateState(ctx, id, 1, session.StatusCanceling)
+	out, state, err := repo.UpdateState(ctx, id, version, session.StatusCanceling)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update session: %v.", err)
 	}
-	return toProto(out), nil
+	return toProto(out, state), nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -184,7 +184,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *session.Session) *pb.Session {
+func toProto(in *session.Session, state []*session.State) *pb.Session {
 	out := pb.Session{
 		Id:          in.GetPublicId(),
 		ScopeId:     in.ScopeId,
@@ -192,11 +192,28 @@ func toProto(in *session.Session) *pb.Session {
 		Version:     in.Version,
 		UserId:      in.UserId,
 		HostId:      in.HostId,
+		HostSetId:   in.HostSetId,
 		AuthTokenId: in.AuthTokenId,
+		// TODO: Provide the ServerType and the ServerId when that information becomes relevant in the API.
 
 		CreatedTime:    in.CreateTime.GetTimestamp(),
 		UpdatedTime:    in.UpdateTime.GetTimestamp(),
 		ExpirationTime: in.ExpirationTime.GetTimestamp(),
+	}
+	if len(state) > 0 {
+		out.Status = state[0].Status
+	}
+	for _, s := range state {
+		sessState := &pb.SessionState{
+			Status: s.Status,
+		}
+		if s.StartTime != nil {
+			sessState.StartTime = s.StartTime.GetTimestamp()
+		}
+		if s.EndTime != nil {
+			sessState.EndTime = s.EndTime.GetTimestamp()
+		}
+		out.States = append(out.States, sessState)
 	}
 	return &out
 }
@@ -225,6 +242,9 @@ func validateCancelRequest(req *pbs.CancelSessionRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(session.SessionPrefix, req.GetId()) {
 		badFields["id"] = "Impropperly formatted identifier."
+	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Required field."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

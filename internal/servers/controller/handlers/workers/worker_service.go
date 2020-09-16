@@ -21,22 +21,22 @@ type workerServiceServer struct {
 	repoFn       common.ServersRepoFactory
 	updateTimes  *sync.Map
 	kms          *kms.Kms
-	sessRepoFn   common.SessionRepoFactory
+	jobMap       *sync.Map
 	jobCancelMap *sync.Map
 }
 
-func NewWorkerServiceServer(logger hclog.Logger, sessRepoFn common.SessionRepoFactory, servRepoFn common.ServersRepoFactory, updateTimes *sync.Map, kms *kms.Kms, jobMap *sync.Map) *workerServiceServer {
+func NewWorkerServiceServer(logger hclog.Logger, repoFn common.ServersRepoFactory, updateTimes *sync.Map, kms *kms.Kms, jobMap *sync.Map) *workerServiceServer {
 	return &workerServiceServer{
 		logger:       logger,
-		repoFn:       servRepoFn,
+		repoFn:       repoFn,
 		updateTimes:  updateTimes,
 		kms:          kms,
-		sessRepoFn:   sessRepoFn,
+		jobMap:       jobMap,
 		jobCancelMap: new(sync.Map),
 	}
 }
 
-var _ pbs.SessionManagementServiceServer = &workerServiceServer{}
+var _ pbs.SessionServiceServer = &workerServiceServer{}
 var _ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
@@ -72,38 +72,30 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	return ret, nil
 }
 
-func (ws *workerServiceServer) GetSessionCreds(ctx context.Context, req *pbs.GetSessionCredsRequest) (*pbs.GetSessionCredsResponse, error) {
+func (ws *workerServiceServer) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*pbs.GetSessionResponse, error) {
 	ws.logger.Trace("got validate session request from worker", "job_id", req.GetId())
 
-	// Look up the session creds
-	repo, err := ws.sessRepoFn()
-	if err != nil {
-		return nil, err
+	// Look up the job info
+	storedSessionInfo, loaded := ws.jobMap.LoadAndDelete(req.GetId())
+	if !loaded {
+		return nil, status.Errorf(codes.PermissionDenied, "Unknown job ID: %v", req.GetId())
 	}
-	sess, _, err := repo.LookupSession(ctx, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	if sess == nil {
-		return nil, status.Errorf(codes.NotFound, "Unable to find session creds for session %q", req.GetId())
-	}
+	sessionInfo := storedSessionInfo.(*pb.Session)
 
-	wrapper, err := ws.kms.GetWrapper(ctx, sess.ScopeId, kms.KeyPurposeSessions)
+	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ScopeId, kms.KeyPurposeSessions)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error getting sessions wrapper: %v", err)
 	}
 
 	// Derive the private key, which should match. Deriving on both ends allows
 	// us to not store it in the DB.
-	_, privKey, err := session.DeriveED25519Key(wrapper, sess.UserId, req.GetId())
+	_, privKey, err := session.DeriveED25519Key(wrapper, sessionInfo.GetUserId(), req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
 	}
 
-	sessCreds := &pb.SessionCreds{}
-
-	if sess.ExpirationTime.GetTimestamp().GetSeconds() > 0 {
-		timeDiff := time.Until(sess.ExpirationTime.GetTimestamp().AsTime())
+	if sessionInfo.ExpirationTime.GetSeconds() > 0 {
+		timeDiff := time.Until(sessionInfo.GetExpirationTime().AsTime())
 		if timeDiff < 0 {
 			return nil, status.Errorf(codes.OutOfRange, "Session has already expired")
 		}
@@ -114,6 +106,6 @@ func (ws *workerServiceServer) GetSessionCreds(ctx context.Context, req *pbs.Get
 		}()
 	}
 
-	sessCreds.PrivateKey = privKey
-	return &pbs.GetSessionCredsResponse{SessionCreds: sessCreds}, nil
+	sessionInfo.PrivateKey = privKey
+	return &pbs.GetSessionResponse{Session: sessionInfo}, nil
 }
