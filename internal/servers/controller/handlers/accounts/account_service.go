@@ -125,11 +125,11 @@ func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
+	_, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteAccountResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 // ChangePassword implements the interface pbs.AccountServiceServer.
@@ -141,7 +141,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.changePasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetOldPassword(), req.GetNewPassword())
+	u, err := s.changePasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetCurrentPassword(), req.GetNewPassword())
 	if err != nil {
 		return nil, err
 	}
@@ -295,12 +295,12 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.A
 	return outUl, nil
 }
 
-func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, oldPassword, newPassword string) (*pb.Account, error) {
+func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, currentPassword, newPassword string) (*pb.Account, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.ChangePassword(ctx, scopeId, id, oldPassword, newPassword, version)
+	out, err := repo.ChangePassword(ctx, scopeId, id, currentPassword, newPassword, version)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to change password: %v.", err)
 	}
@@ -343,7 +343,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			return nil, res
 		}
 		if acct == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return nil, res
 		}
 		parentId = acct.GetAuthMethodId()
@@ -356,7 +356,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		return nil, res
 	}
 	if authMeth == nil {
-		res.Error = handlers.ForbiddenError()
+		res.Error = handlers.NotFoundError()
 		return nil, res
 	}
 	opts = append(opts, auth.WithScopeId(authMeth.GetScopeId()), auth.WithPin(parentId))
@@ -413,13 +413,28 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 			if pwAttrs.GetLoginName() == "" {
 				badFields["login_name"] = "This is a required field for this type."
 			}
+		default:
+			badFields["auth_method_id"] = "Unknown auth method type from ID."
 		}
 		return badFields
 	})
 }
 
 func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
-	return handlers.ValidateUpdateRequest(password.AccountPrefix, req, req.GetItem(), handlers.NoopValidatorFn)
+	return handlers.ValidateUpdateRequest(password.AccountPrefix, req, req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		switch auth.SubtypeFromId(req.GetId()) {
+		case auth.PasswordSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.PasswordSubtype.String() {
+				badFields["type"] = "Cannot modify resource type."
+			}
+			pwAttrs := &pb.PasswordAccountAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {
+				badFields["attributes"] = "Attribute fields do not match the expected format."
+			}
+		}
+		return badFields
+	})
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
@@ -448,8 +463,8 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 	if req.GetNewPassword() == "" {
 		badFields["new_password"] = "This is a required field."
 	}
-	if req.GetOldPassword() == "" {
-		badFields["old_password"] = "This is a required field."
+	if req.GetCurrentPassword() == "" {
+		badFields["current_password"] = "This is a required field."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

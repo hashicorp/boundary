@@ -2,13 +2,14 @@ package roles
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -22,6 +23,7 @@ type Command struct {
 
 	Func string
 
+	flagScope        string
 	flagGrantScopeId string
 	flagPrincipals   []string
 	flagGrants       []string
@@ -51,10 +53,11 @@ var helpMap = func() map[string]func() string {
 }
 
 var flagsMap = map[string][]string{
-	"create":            {"name", "description", "grantscopeid"},
+	"create":            {"scope-id", "name", "description", "grantscopeid"},
 	"update":            {"id", "name", "description", "grantscopeid", "version"},
 	"read":              {"id"},
 	"delete":            {"id"},
+	"list":              {"scope-id"},
 	"add-principals":    {"id", "principal", "version"},
 	"set-principals":    {"id", "principal", "version"},
 	"remove-principals": {"id", "principal", "version"},
@@ -103,6 +106,10 @@ func (c *Command) Run(args []string) int {
 
 	if strutil.StrListContains(flagsMap[c.Func], "id") && c.FlagId == "" {
 		c.UI.Error("ID is required but not passed in via -id")
+		return 1
+	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
 		return 1
 	}
 
@@ -154,27 +161,23 @@ func (c *Command) Run(args []string) int {
 	case "set-principals":
 		switch len(c.flagPrincipals) {
 		case 0:
-		case 1:
-			if c.flagPrincipals[0] == "null" {
-				principals = []string{}
-			}
-		}
-		if principals == nil {
 			c.UI.Error("No principals supplied via -principal")
 			return 1
+		case 1:
+			if c.flagPrincipals[0] == "null" {
+				principals = nil
+			}
 		}
 
 	case "set-grants":
 		switch len(c.flagGrants) {
 		case 0:
-		case 1:
-			if c.flagGrants[0] == "null" {
-				grants = []string{}
-			}
-		}
-		if grants == nil {
 			c.UI.Error("No grants supplied via -grant")
 			return 1
+		case 1:
+			if c.flagGrants[0] == "null" {
+				grants = nil
+			}
 		}
 	}
 
@@ -198,40 +201,44 @@ func (c *Command) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, roles.WithAutomaticVersioning())
+			opts = append(opts, roles.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
 	}
 
-	var existed bool
-	var role *roles.Role
-	var listedRoles []*roles.Role
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		role, apiErr, err = roleClient.Create(c.Context, opts...)
+		result, apiErr, err = roleClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
-		role, apiErr, err = roleClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = roleClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		role, apiErr, err = roleClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = roleClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = roleClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = roleClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedRoles, apiErr, err = roleClient.List(c.Context, opts...)
+		listResult, apiErr, err = roleClient.List(c.Context, c.FlagScopeId, opts...)
 	case "add-principals":
-		role, apiErr, err = roleClient.AddPrincipals(c.Context, c.FlagId, version, principals, opts...)
+		result, apiErr, err = roleClient.AddPrincipals(c.Context, c.FlagId, version, principals, opts...)
 	case "set-principals":
-		role, apiErr, err = roleClient.SetPrincipals(c.Context, c.FlagId, version, principals, opts...)
+		result, apiErr, err = roleClient.SetPrincipals(c.Context, c.FlagId, version, principals, opts...)
 	case "remove-principals":
-		role, apiErr, err = roleClient.RemovePrincipals(c.Context, c.FlagId, version, principals, opts...)
+		result, apiErr, err = roleClient.RemovePrincipals(c.Context, c.FlagId, version, principals, opts...)
 	case "add-grants":
-		role, apiErr, err = roleClient.AddGrants(c.Context, c.FlagId, version, grants, opts...)
+		result, apiErr, err = roleClient.AddGrants(c.Context, c.FlagId, version, grants, opts...)
 	case "set-grants":
-		role, apiErr, err = roleClient.SetGrants(c.Context, c.FlagId, version, grants, opts...)
+		result, apiErr, err = roleClient.SetGrants(c.Context, c.FlagId, version, grants, opts...)
 	case "remove-grants":
-		role, apiErr, err = roleClient.RemoveGrants(c.Context, c.FlagId, version, grants, opts...)
+		result, apiErr, err = roleClient.RemoveGrants(c.Context, c.FlagId, version, grants, opts...)
 	}
 
 	plural := "role"
@@ -265,6 +272,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedRoles := listResult.GetItems().([]*roles.Role)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedRoles) == 0 {
@@ -314,6 +322,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	role := result.GetItem().(*roles.Role)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateRoleTableOutput(role))

@@ -47,7 +47,7 @@ func TestConfigSetAddress(t *testing.T) {
 		},
 		{
 			"longer path project",
-			"http://127.0.0.1:9200/v1/scopes/orgid/auth-methods",
+			"http://127.0.0.1:9200/v1/auth-methods",
 			"http://127.0.0.1:9200",
 			"",
 		},

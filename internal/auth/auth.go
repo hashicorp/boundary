@@ -11,14 +11,14 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/recovery"
+	"github.com/hashicorp/boundary/sdk/recovery"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/kr/pretty"
@@ -28,6 +28,7 @@ import (
 type TokenFormat int
 
 const (
+	// We weren't given one or couldn't parse it
 	AuthTokenTypeUnknown TokenFormat = iota
 
 	// Came in via the Authentication: Bearer header
@@ -38,10 +39,6 @@ const (
 
 	// It's of recovery type
 	AuthTokenTypeRecoveryKms
-
-	// It's _known_ to be invalid, that is, a token was provided that is simply
-	// not valid and may be part of a DDoS or other attack
-	AuthTokenTypeInvalid
 )
 
 type key int
@@ -50,20 +47,16 @@ var verifierKey key
 
 // RequestInfo contains request parameters necessary for checking authn/authz
 type RequestInfo struct {
-	Path        string
-	Method      string
-	PublicId    string
-	Token       string
-	TokenFormat TokenFormat
-
-	// These are set by the service handlers via options
-	scopeId string
-	pin     string
-
-	// This is used by the scopes collection
-	userIdOverride string
+	Path           string
+	Method         string
+	PublicId       string
+	EncryptedToken string
+	Token          string
+	TokenFormat    TokenFormat
 
 	// The following are useful for tests
+	scopeIdOverride      string
+	userIdOverride       string
 	DisableAuthzFailures bool
 	DisableAuthEntirely  bool
 }
@@ -126,7 +119,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 
 	ret.Scope = new(scopes.ScopeInfo)
 	if v.requestInfo.DisableAuthEntirely {
-		ret.Scope.Id = v.requestInfo.scopeId
+		ret.Scope.Id = v.requestInfo.scopeIdOverride
 		if ret.Scope.Id == "" {
 			ret.Scope.Id = opts.withScopeId
 		}
@@ -143,32 +136,16 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		return
 	}
 
-	// table stakes
-	if v.requestInfo.TokenFormat == AuthTokenTypeInvalid {
-		v.logger.Trace("got invalid token type in auth function, which should not have occurred")
-		return
+	v.act = opts.withAction
+	v.res = &perms.Resource{
+		ScopeId: opts.withScopeId,
+		Id:      opts.withId,
+		Pin:     opts.withPin,
+		Type:    opts.withType,
 	}
 
-	// check if it's new style
-	if opts.withAction != action.Unknown {
-		v.act = opts.withAction
-		v.res = &perms.Resource{
-			ScopeId: opts.withScopeId,
-			Id:      opts.withId,
-			Pin:     opts.withPin,
-			Type:    opts.withType,
-		}
-	} else {
-		// This remains for legacy
-		v.requestInfo.scopeId = opts.withScopeId
-		if err := v.parseAuthParams(); err != nil {
-			v.logger.Trace("error reading auth parameters from URL", "url", v.requestInfo.Path, "method", v.requestInfo.Method, "error", err)
-			return
-		}
-	}
-	if v.res == nil {
-		v.logger.Trace("got nil resource information after decorating auth parameters")
-		return
+	if v.requestInfo.EncryptedToken != "" {
+		v.decryptToken()
 	}
 
 	var authResults *perms.ACLResults
@@ -184,235 +161,18 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			// TODO: Decide whether to remove this
 			v.logger.Info("failed authz info for request", "resource", pretty.Sprint(v.res), "user_id", ret.UserId, "action", v.act.String())
 		} else {
+			// If the anon user was used (either no token, or invalid (perhaps
+			// expired) token), return a 401. That way if it's an authn'd user
+			// that is not authz'd we'll return 403 to be explicit.
+			if ret.UserId == "u_anon" {
+				ret.Error = handlers.UnauthenticatedError()
+			}
 			return
 		}
 	}
 
 	ret.Error = nil
 	return
-}
-
-func (v *verifier) parseAuthParams() error {
-	// Remove trailing and leading slashes
-	trimmedPath := strings.Trim(v.requestInfo.Path, "/")
-	// Remove `v1/`
-	splitPath := strings.Split(strings.TrimPrefix(trimmedPath, "v1/"), "/")
-	splitLen := len(splitPath)
-
-	// It must be at least length 1. If so, figure out new vs. legacy parsing
-	if len(splitPath) == 0 {
-		return fmt.Errorf("parse auth params: invalid path")
-	}
-
-	for i := 1; i < splitLen; i++ {
-		if splitPath[i] == "" {
-			return fmt.Errorf("parse auth params: empty segment found")
-		}
-	}
-
-	// The first segment must be "scopes"
-	if splitPath[0] != "scopes" {
-		return fmt.Errorf("parse auth params: invalid first segment %q", splitPath[0])
-	}
-
-	v.act = action.Unknown
-	v.res = &perms.Resource{
-		// Start out with scope, and replace when we walk backwards if it's
-		// actually something else
-		Type: resource.Scope,
-	}
-
-	// Handle non-custom types. We'll deal with custom types, including list,
-	// after parsing the path.
-	switch v.requestInfo.Method {
-	case "GET":
-		v.act = action.Read
-	case "POST":
-		v.act = action.Create
-	case "PATCH":
-		v.act = action.Update
-	case "DELETE":
-		v.act = action.Delete
-	default:
-		return fmt.Errorf("parse auth params: unknown method %q", v.requestInfo.Method)
-	}
-
-	// Look for a custom action
-	colonSplit := strings.Split(splitPath[splitLen-1], ":")
-	switch len(colonSplit) {
-	case 1:
-		// No custom action specified
-
-	case 2:
-		// Parse and validate the action, then elide it
-		actStr := colonSplit[len(colonSplit)-1]
-		v.act = action.Map[actStr]
-		if v.act == action.Unknown || v.act == action.All {
-			return fmt.Errorf("parse auth params: unknown action %q", actStr)
-		}
-		// Keep going with the logic without the custom action
-		splitPath[splitLen-1] = colonSplit[0]
-
-	default:
-		return fmt.Errorf("parse auth params: unexpected number of colons in last segment %q", colonSplit[len(colonSplit)-1])
-	}
-
-	// Get scope information and handle it in a special case; that is, for
-	// operating on scopes, scope from the request ID, not the path scope
-	switch splitLen {
-	case 1:
-		// We've already validated that this is "scopes"
-		if v.act == action.Read {
-			v.act = action.List
-		}
-		if v.requestInfo.scopeId == "" {
-			return errors.New("parse auth params: missing scope ID information for scopes collection operation")
-		}
-		v.res.ScopeId = v.requestInfo.scopeId
-		return nil
-
-	case 2:
-		id := splitPath[1]
-		// The next segment should be the scope ID, but it takes place not in
-		// its own scope but in the parent scope. Rather than require the user
-		// to provide it, look up the parent.
-		switch {
-		case id == "global", strings.HasPrefix(id, scope.Org.Prefix()):
-			// Org scope parent is always global. Set scope for global
-			// operations to global as well (it's basically acting as its own
-			// parent scope). We want this so that users can e.g. modify the
-			// name or description of the global scope if they have permissions
-			// in the scope.
-			v.res.ScopeId = "global"
-
-		default:
-			// Project case
-			iamRepo, err := v.iamRepoFn()
-			if err != nil {
-				return fmt.Errorf("perform auth check: failed to get iam repo: %w", err)
-			}
-
-			scp, err := iamRepo.LookupScope(v.ctx, id)
-			if err != nil {
-				return fmt.Errorf("perform auth check: failed to lookup scope: %w", err)
-			}
-			if scp == nil {
-				return fmt.Errorf("perform auth check: non-existent scope %q", id)
-			}
-			v.res.ScopeId = scp.GetParentId()
-		}
-		v.res.Id = id
-		return nil
-
-	case 3:
-		// If a custom action was being performed within a scope, it will have
-		// been elided above. If the last path segment is now empty, address
-		// this scenario. In this case the action took place _in_ the scope so
-		// it should be bound accordingly. (This is for actions like
-		// /scopes/o_abc/:deauthenticate where the action is _in_ the scope, not
-		// on the scope.)
-		if splitPath[2] == "" {
-			v.res.ScopeId = splitPath[1]
-			v.res.Id = splitPath[1]
-			return nil
-		}
-
-		fallthrough
-
-	default:
-		// In all other cases the scope ID is the next segment
-		v.res.ScopeId = splitPath[1]
-	}
-
-	// Walk backwards. As we walk backwards we look for a pin and figure out if
-	// we're operating on a resource or a collection. The rules for the pin are
-	// as follows:
-	//
-	// * If the last segment is a collection, the pin is the immediately
-	// preceding ID. This does not include scopes since those are permission
-	// boundaries.
-	//
-	// * If the last segment is an ID, the pin is the immediately preceding ID
-	// not including the last segment
-	//
-	// * If at the end of the logic the pin is the id of a scope then there is
-	// no pin. The scopes are already enclosing so a pin is redundant.
-	nextIdIsPin := true
-	// Use an empty string so we can detect if we found anything in this loop.
-	var foundId string
-	var typStr string
-	// We stop at [2] because we've already dealt with the first two segments
-	// (scopes/<scope_id> above.
-	for i := splitLen - 1; i >= 2; i-- {
-		segment := splitPath[i]
-
-		if segment == "" {
-			return fmt.Errorf("parse auth parameters: unexpected empty segment")
-		}
-
-		// If the segment contains whitespace, it's not valid
-		if fields := strings.Fields(segment); len(fields) != 1 || fields[0] != segment {
-			return fmt.Errorf("parse auth params: segment %q contains whitespace", segment)
-		}
-
-		// Collections don't contain underscores; every resource ID does.
-		segmentIsCollection := !strings.Contains(segment, "_")
-
-		// If we see an ID, ensure that it's not the right-most ID; if not, it's
-		// the pin
-		if !segmentIsCollection && i != splitLen-1 && nextIdIsPin {
-			v.res.Pin = segment
-			// By definition this is the last thing we'd be looking for as
-			// scopes were found above, so we can now break out
-			break
-		}
-
-		if typStr == "" {
-			// The resource check takes place inside the type check because if
-			// we've identified the type we have either already identified the
-			// right-most resource ID or we're operating on a collection, so
-			// this prevents us from finding a different ID earlier in the path.
-			// We still work backwards to identify a pin.
-			if foundId == "" && !segmentIsCollection {
-				foundId = segment
-			} else {
-				// Every collection is the plural of the resource type so drop
-				// the last 's'
-				if !strings.HasSuffix(segment, "s") {
-					return fmt.Errorf("parse auth params: invalid collection syntax for %q", segment)
-				}
-				typStr = strings.TrimSuffix(segment, "s")
-			}
-		}
-	}
-
-	if foundId != "" {
-		v.res.Id = foundId
-	}
-
-	if typStr != "" {
-		v.res.Type = resource.Map[typStr]
-		if v.res.Type == resource.Unknown {
-			return fmt.Errorf("parse auth params: unknown resource type %q", typStr)
-		}
-	} else {
-		// If we found no other type information, we walked backwards all the
-		// way to the scope boundary, so the type is scope
-		v.res.Type = resource.Scope
-	}
-
-	// If we're operating on a collection (that is, the ID is blank) and it's a
-	// GET, it's actually a list
-	if v.res.Id == "" && v.act == action.Read {
-		v.act = action.List
-	}
-
-	// If the pin ended up being a scope, nil it out
-	if v.res.Pin != "" && v.res.Pin == v.res.ScopeId {
-		v.res.Pin = ""
-	}
-
-	return nil
 }
 
 func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId string, scopeInfo *scopes.ScopeInfo, retErr error) {
@@ -425,6 +185,14 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 
 	// Validate the token and fetch the corresponding user ID
 	switch v.requestInfo.TokenFormat {
+	case AuthTokenTypeUnknown:
+		// Nothing; remain as the anonymous user
+
+	case AuthTokenTypeRecoveryKms:
+		// We validated the encrypted token in decryptToken and handled the
+		// nonces there, so just set the user
+		userId = "u_recovery"
+
 	case AuthTokenTypeBearer, AuthTokenTypeSplitCookie:
 		if v.requestInfo.Token == "" {
 			// This will end up staying as the anonymous user
@@ -437,46 +205,14 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		}
 		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
 		if err != nil {
-			retErr = fmt.Errorf("perform auth check: failed to validate token: %w", err)
-			return
+			// Continue as the anonymous user as maybe this token is expired but
+			// we can still perform the action
+			v.logger.Error("perform auth check: error validating token; continuing as anonymous user", "error", err)
+			break
 		}
 		if at != nil {
 			userId = at.GetIamUserId()
 		}
-
-	case AuthTokenTypeRecoveryKms:
-		userId = "u_recovery"
-		if v.kms == nil {
-			retErr = errors.New("perform auth check: no KMS object available to authz system")
-			return
-		}
-		wrapper := v.kms.GetExternalWrappers().Recovery()
-		if wrapper == nil {
-			retErr = errors.New("perform auth check: no recovery KMS is available")
-			return
-		}
-		info, err := recovery.ParseRecoveryToken(v.ctx, wrapper, v.requestInfo.Token)
-		if err != nil {
-			retErr = fmt.Errorf("perform auth check: error validating recovery token: %w", err)
-			return
-		}
-		// If we add the validity period to the creation time (which we've
-		// verified is before the current time, with a minute of fudging), and
-		// it's before now, it's expired and might be a replay.
-		if info.CreationTime.Add(globals.RecoveryTokenValidityPeriod).Before(time.Now()) {
-			retErr = errors.New("WARNING: perform auth check: recovery token has expired (possible replay attack)")
-			return
-		}
-		repo, err := v.serversRepoFn()
-		if err != nil {
-			retErr = fmt.Errorf("perform auth check: error fetching servers repo: %w", err)
-			return
-		}
-		if err := repo.AddRecoveryNonce(v.ctx, info.Nonce); err != nil {
-			retErr = fmt.Errorf("WARNING: perform auth check: error adding nonce to database (possible replay attack): %w", err)
-			return
-		}
-		v.logger.Warn("NOTE: recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
 	}
 
 	iamRepo, err := v.iamRepoFn()
@@ -554,7 +290,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 // GetTokenFromRequest pulls the token from either the Authorization header or
 // split cookies and parses it. If it cannot be parsed successfully, the issue
 // is logged and we return blank, so logic will continue as the anonymous user.
-// The public ID and token are returned along with the token format.
+// The public ID and _encrypted_ token are returned along with the token format.
 func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Request) (string, string, TokenFormat) {
 	// First, get the token, either from the authorization header or from split
 	// cookies
@@ -595,47 +331,132 @@ func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Reque
 
 	splitFullToken := strings.Split(fullToken, "_")
 	if len(splitFullToken) != 3 {
-		logger.Trace("get token from request: unexpected number of segments in token", "expected", 3, "found", len(splitFullToken))
-		return "", "", AuthTokenTypeInvalid
-	}
-
-	publicId := strings.Join(splitFullToken[0:2], "_")
-
-	// This is hardcoded to global because at this point we don't know the
-	// scope. But that's okay; this is not really a security feature so much as
-	// an anti-DDoSing-the-backing-database feature.
-	tokenWrapper, err := kmsCache.GetWrapper(req.Context(), scope.Global.String(), kms.KeyPurposeTokens)
-	if err != nil {
-		logger.Warn("get token from request: unable to get wrapper for tokens", "error", err)
-		return "", "", AuthTokenTypeInvalid
-	}
-
-	version := string(splitFullToken[2][0])
-	switch version {
-	case globals.TokenEncryptionVersion:
-	default:
-		logger.Trace("unknown token encryption version", "version", version)
-		return "", "", AuthTokenTypeInvalid
-	}
-	marshaledToken := base58.Decode(splitFullToken[2][1:])
-
-	blobInfo := new(wrapping.EncryptedBlobInfo)
-	if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
-		logger.Trace("error decoding encrypted token", "error", err)
-		return "", "", AuthTokenTypeInvalid
-	}
-
-	tokenBytes, err := tokenWrapper.Decrypt(req.Context(), blobInfo, []byte(publicId))
-	if err != nil {
-		logger.Trace("error decrypting encrypted token", "error", err)
-		return "", "", AuthTokenTypeInvalid
-	}
-	token := string(tokenBytes)
-
-	if receivedTokenType == AuthTokenTypeUnknown || token == "" || publicId == "" {
-		logger.Trace("get token from request: after parsing, could not find valid token")
+		logger.Trace("get token from request: unexpected number of segments in token; continuing as anonymous user", "expected", 3, "found", len(splitFullToken))
 		return "", "", AuthTokenTypeUnknown
 	}
 
-	return publicId, token, receivedTokenType
+	publicId := strings.Join(splitFullToken[0:2], "_")
+	encryptedToken := splitFullToken[2]
+
+	return publicId, encryptedToken, receivedTokenType
+}
+
+func (v *verifier) decryptToken() {
+	switch v.requestInfo.TokenFormat {
+	case AuthTokenTypeUnknown:
+		// Nothing to decrypt
+		return
+
+	case AuthTokenTypeBearer, AuthTokenTypeSplitCookie:
+		if v.kms == nil {
+			v.logger.Trace("decrypt token: no KMS object available to authz system")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		tokenRepo, err := v.authTokenRepoFn()
+		if err != nil {
+			v.logger.Warn("decrypt bearer token: failed to get authtoken repo", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		at, err := tokenRepo.LookupAuthToken(v.ctx, v.requestInfo.PublicId)
+		if err != nil {
+			v.logger.Trace("decrypt bearer token: failed to look up auth token by public ID", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		if at == nil {
+			v.logger.Trace("decrypt bearer token: nil result from looking up auth token by public ID")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		tokenWrapper, err := v.kms.GetWrapper(v.ctx, at.GetScopeId(), kms.KeyPurposeTokens)
+		if err != nil {
+			v.logger.Warn("decrypt bearer token: unable to get wrapper for tokens; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		version := v.requestInfo.EncryptedToken[0:len(globals.ServiceTokenV1)]
+		switch version {
+		case globals.ServiceTokenV1:
+		default:
+			v.logger.Trace("decrypt bearer token: unknown token encryption version; continuing as anonymous user", "version", version)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		marshaledToken := base58.Decode(v.requestInfo.EncryptedToken[len(globals.ServiceTokenV1):])
+
+		blobInfo := new(wrapping.EncryptedBlobInfo)
+		if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
+			v.logger.Trace("decrypt bearer token: error decoding encrypted token; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		s1Bytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, []byte(v.requestInfo.PublicId))
+		if err != nil {
+			v.logger.Trace("decrypt bearer token: error decrypting encrypted token; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		var s1Info tokens.S1TokenInfo
+		if err := proto.Unmarshal(s1Bytes, &s1Info); err != nil {
+			v.logger.Trace("decrypt bearer token: error unmarshaling token info; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		if v.requestInfo.TokenFormat == AuthTokenTypeUnknown || s1Info.Token == "" || v.requestInfo.PublicId == "" {
+			v.logger.Trace("decrypt bearer token: after parsing, could not find valid token; continuing as anonymous user")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		v.requestInfo.Token = s1Info.Token
+		return
+
+	case AuthTokenTypeRecoveryKms:
+		if v.kms == nil {
+			v.logger.Trace("decrypt recovery token: no KMS object available to authz system")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		wrapper := v.kms.GetExternalWrappers().Recovery()
+		if wrapper == nil {
+			v.logger.Trace("decrypt recovery token: no recovery KMS is available")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		info, err := recovery.ParseRecoveryToken(v.ctx, wrapper, v.requestInfo.EncryptedToken)
+		if err != nil {
+			v.logger.Trace("decrypt recovery token: error parsing and validating recovery token", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		// If we add the validity period to the creation time (which we've
+		// verified is before the current time, with a minute of fudging), and
+		// it's before now, it's expired and might be a replay.
+		if info.CreationTime.Add(globals.RecoveryTokenValidityPeriod).Before(time.Now()) {
+			v.logger.Warn("WARNING: decrypt recovery token: recovery token has expired (possible replay attack)")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		repo, err := v.serversRepoFn()
+		if err != nil {
+			v.logger.Trace("decrypt recovery token: error fetching servers repo", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		if err := repo.AddRecoveryNonce(v.ctx, info.Nonce); err != nil {
+			v.logger.Warn("WARNING: decrypt recovery token: error adding nonce to database (possible replay attack)", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		v.logger.Info("NOTE: recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
+	}
 }

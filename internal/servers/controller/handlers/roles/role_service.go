@@ -127,11 +127,11 @@ func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	_, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteRoleResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 // AddRolePrincipals implements the interface pbs.RoleServiceServer.
@@ -489,7 +489,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if scp == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 	default:
@@ -499,7 +499,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if r == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 		parentId = r.GetScopeId()
@@ -625,7 +625,9 @@ func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
 
 func validateListRequest(req *pbs.ListRolesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) && !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+		!handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Improperly formatted field."
 	}
 	if len(badFields) > 0 {

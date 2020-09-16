@@ -128,6 +128,4 @@ message DeleteScopeRequest {
   string id = 1;
 }
 
-message DeleteScopeResponse {
-  bool existed = 1;
-}
+message DeleteScopeResponse {}

@@ -18,129 +18,95 @@ import (
 )
 
 func TestCustom(t *testing.T) {
-	for _, newStyle := range []bool{false, true} {
-		t.Run(fmt.Sprintf("custom_%t", newStyle), func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			tc := controller.NewTestController(t, nil)
-			defer tc.Shutdown()
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
 
-			token := tc.Token()
-			_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
-			client := tc.Client().Clone()
-			client.SetScopeId(proj.GetPublicId())
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
-			hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
-			require.NoError(err)
-			require.Nil(apiErr)
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
+	require.NoError(err)
+	require.Nil(apiErr)
 
-			hClient := hosts.NewClient(client)
-			h1, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithStaticHostAddress("someaddress"))
-			require.NoError(err)
-			require.Nil(apiErr)
-			h2, apiErr, err := hClient.Create(tc.Context(), hc.Id, hosts.WithStaticHostAddress("someaddress"))
-			require.NoError(err)
-			require.Nil(apiErr)
+	hClient := hosts.NewClient(client)
+	h1, apiErr, err := hClient.Create(tc.Context(), hc.Item.Id, hosts.WithStaticHostAddress("someaddress"))
+	require.NoError(err)
+	require.Nil(apiErr)
+	h2, apiErr, err := hClient.Create(tc.Context(), hc.Item.Id, hosts.WithStaticHostAddress("someaddress"))
+	require.NoError(err)
+	require.Nil(apiErr)
 
-			hSetClient := hostsets.NewClient(client)
-			var hSet *hostsets.HostSet
-			if newStyle {
-				hSet, apiErr, err = hSetClient.Create2(tc.Context(), hc.Id)
-			} else {
-				hSet, apiErr, err = hSetClient.Create(tc.Context(), hc.Id)
-			}
-			require.NoError(err)
-			require.Nil(apiErr)
+	hSetClient := hostsets.NewClient(client)
+	hSet, apiErr, err := hSetClient.Create(tc.Context(), hc.Item.Id)
+	require.NoError(err)
+	require.Nil(apiErr)
 
-			if newStyle {
-				hSet, apiErr, err = hSetClient.AddHosts2(tc.Context(), hSet.Id, hSet.Version, []string{h1.Id, h2.Id})
-			} else {
-				hSet, apiErr, err = hSetClient.AddHosts(tc.Context(), hc.Id, hSet.Id, hSet.Version, []string{h1.Id, h2.Id})
-			}
-			require.NoError(err)
-			require.Nil(apiErr)
-			assert.Contains(hSet.HostIds, h1.Id, h2.Id)
+	hSet, apiErr, err = hSetClient.AddHosts(tc.Context(), hSet.Item.Id, hSet.Item.Version, []string{h1.Item.Id, h2.Item.Id})
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.Contains(hSet.Item.HostIds, h1.Item.Id, h2.Item.Id)
 
-			if newStyle {
-				hSet, apiErr, err = hSetClient.SetHosts2(tc.Context(), hSet.Id, hSet.Version, []string{h1.Id})
-			} else {
-				hSet, apiErr, err = hSetClient.SetHosts(tc.Context(), hc.Id, hSet.Id, hSet.Version, []string{h1.Id})
-			}
-			require.NoError(err)
-			require.Nil(apiErr, pretty.Sprint(apiErr))
-			assert.ElementsMatch([]string{h1.Id}, hSet.HostIds)
+	hSet, apiErr, err = hSetClient.SetHosts(tc.Context(), hSet.Item.Id, hSet.Item.Version, []string{h1.Item.Id})
+	require.NoError(err)
+	require.Nil(apiErr, pretty.Sprint(apiErr))
+	assert.ElementsMatch([]string{h1.Item.Id}, hSet.Item.HostIds)
 
-			if newStyle {
-				hSet, apiErr, err = hSetClient.RemoveHosts2(tc.Context(), hSet.Id, hSet.Version, []string{h1.Id})
-			} else {
-				hSet, apiErr, err = hSetClient.RemoveHosts(tc.Context(), hc.Id, hSet.Id, hSet.Version, []string{h1.Id})
-			}
-			require.NoError(err)
-			require.Nil(apiErr)
-			assert.Empty(hSet.HostIds)
-		})
-	}
+	hSet, apiErr, err = hSetClient.RemoveHosts(tc.Context(), hSet.Item.Id, hSet.Item.Version, []string{h1.Item.Id})
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.Empty(hSet.Item.HostIds)
 }
 
-func TestSet_List(t *testing.T) {
-	for _, newStyle := range []bool{false, true} {
-		assert, require := assert.New(t), require.New(t)
-		tc := controller.NewTestController(t, nil)
-		defer tc.Shutdown()
+func TestList(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
 
-		client := tc.Client()
-		token := tc.Token()
-		_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
-		client.SetScopeId(proj.GetPublicId())
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
-		hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
-		require.NoError(err)
-		require.Nil(apiErr)
-		require.NotNil(hc)
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(hc)
 
-		hClient := hostsets.NewClient(client)
-		var ul []*hostsets.HostSet
+	hClient := hostsets.NewClient(client)
 
-		if newStyle {
-			ul, apiErr, err = hClient.List2(tc.Context(), hc.Id)
-		} else {
-			ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
-		}
-		require.NoError(err)
-		require.Nil(apiErr)
-		assert.Empty(ul)
+	ul, apiErr, err := hClient.List(tc.Context(), hc.Item.Id)
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.Empty(ul.Items)
 
-		var expected []*hostsets.HostSet
-		for i := 0; i < 10; i++ {
-			expected = append(expected, &hostsets.HostSet{Name: fmt.Sprint(i)})
-		}
-
-		expected[0], apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName(expected[0].Name))
-		require.NoError(err)
-		require.Nil(apiErr)
-
-		if newStyle {
-			ul, apiErr, err = hClient.List2(tc.Context(), hc.Id)
-		} else {
-			ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
-		}
-		require.NoError(err)
-		require.Nil(apiErr)
-		assert.ElementsMatch(comparableSetSlice(expected[:1]), comparableSetSlice(ul))
-
-		for i := 1; i < 10; i++ {
-			expected[i], apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName(expected[i].Name))
-			require.NoError(err)
-			require.Nil(apiErr)
-		}
-		if newStyle {
-			ul, apiErr, err = hClient.List2(tc.Context(), hc.Id)
-		} else {
-			ul, apiErr, err = hClient.List(tc.Context(), hc.Id)
-		}
-		require.NoError(err)
-		require.Nil(apiErr)
-		assert.ElementsMatch(comparableSetSlice(expected), comparableSetSlice(ul))
+	var expected []*hostsets.HostSet
+	for i := 0; i < 10; i++ {
+		expected = append(expected, &hostsets.HostSet{Name: fmt.Sprint(i)})
 	}
+
+	hcr, apiErr, err := hClient.Create(tc.Context(), hc.Item.Id, hostsets.WithName(expected[0].Name))
+	require.NoError(err)
+	require.Nil(apiErr)
+	expected[0] = hcr.Item
+
+	ul, apiErr, err = hClient.List(tc.Context(), hc.Item.Id)
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.ElementsMatch(comparableSetSlice(expected[:1]), comparableSetSlice(ul.Items))
+
+	for i := 1; i < 10; i++ {
+		hcr, apiErr, err = hClient.Create(tc.Context(), hc.Item.Id, hostsets.WithName(expected[i].Name))
+		require.NoError(err)
+		require.Nil(apiErr)
+		expected[i] = hcr.Item
+	}
+	ul, apiErr, err = hClient.List(tc.Context(), hc.Item.Id)
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.ElementsMatch(comparableSetSlice(expected), comparableSetSlice(ul.Items))
 }
 
 func comparableSetSlice(in []*hostsets.HostSet) []hostsets.HostSet {
@@ -158,146 +124,94 @@ func comparableSetSlice(in []*hostsets.HostSet) []hostsets.HostSet {
 	return filtered
 }
 
-func TestSet_Crud(t *testing.T) {
-	for _, newStyle := range []bool{false, true} {
-		t.Run(fmt.Sprintf("crud_%t", newStyle), func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			tc := controller.NewTestController(t, nil)
-			defer tc.Shutdown()
+func TestCrud(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
 
-			client := tc.Client()
-			token := tc.Token()
-			org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
-			client.SetScopeId(org.GetPublicId())
-			projClient := client.Clone()
-			projClient.SetScopeId(proj.GetPublicId())
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
-			hc, apiErr, err := hostcatalogs.NewClient(projClient).Create(tc.Context(), "static")
-			require.NoError(err)
-			require.Nil(apiErr)
-			require.NotNil(hc)
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(hc)
 
-			checkHost := func(t *testing.T, step string, h *hostsets.HostSet, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
-				t.Helper()
-				require.NoError(err, step)
-				if !assert.Nil(apiErr, step) && apiErr.Message != "" {
-					t.Errorf("ApiError message: %q", apiErr.Message)
-				}
-				assert.NotNil(h, "returned no resource", step)
-				gotName := ""
-				if h.Name != "" {
-					gotName = h.Name
-				}
-				assert.Equal(wantedName, gotName, step)
-				assert.Equal(wantVersion, h.Version)
-			}
-
-			hClient := hostsets.NewClient(projClient)
-
-			var h *hostsets.HostSet
-			if newStyle {
-				h, apiErr, err = hClient.Create2(tc.Context(), hc.Id, hostsets.WithName("foo"))
-			} else {
-				h, apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
-			}
-			checkHost(t, "create", h, apiErr, err, "foo", 1)
-
-			if newStyle {
-				h, apiErr, err = hClient.Read2(tc.Context(), h.Id)
-			} else {
-				h, apiErr, err = hClient.Read(tc.Context(), hc.Id, h.Id)
-			}
-			checkHost(t, "read", h, apiErr, err, "foo", 1)
-
-			if newStyle {
-				h, apiErr, err = hClient.Update2(tc.Context(), h.Id, h.Version, hostsets.WithName("bar"))
-			} else {
-				h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hostsets.WithName("bar"))
-			}
-			checkHost(t, "update", h, apiErr, err, "bar", 2)
-
-			if newStyle {
-				h, apiErr, err = hClient.Update2(tc.Context(), h.Id, h.Version, hostsets.DefaultName())
-			} else {
-				h, apiErr, err = hClient.Update(tc.Context(), hc.Id, h.Id, h.Version, hostsets.DefaultName())
-			}
-			checkHost(t, "update", h, apiErr, err, "", 3)
-
-			var existed bool
-			if newStyle {
-				existed, apiErr, err = hClient.Delete2(tc.Context(), h.Id)
-			} else {
-				existed, apiErr, err = hClient.Delete(tc.Context(), hc.Id, h.Id)
-			}
-			assert.NoError(err)
-			assert.True(existed, "Expected existing catalog when deleted, but it wasn't.")
-
-			if newStyle {
-				existed, apiErr, err = hClient.Delete2(tc.Context(), h.Id)
-			} else {
-				existed, apiErr, err = hClient.Delete(tc.Context(), hc.Id, h.Id)
-			}
-			require.NoError(err)
-			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusForbidden, apiErr.Status)
-		})
+	checkHost := func(t *testing.T, step string, h *hostsets.HostSet, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
+		t.Helper()
+		require.NoError(err, step)
+		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
+			t.Errorf("ApiError message: %q", apiErr.Message)
+		}
+		assert.NotNil(h, "returned no resource", step)
+		gotName := ""
+		if h.Name != "" {
+			gotName = h.Name
+		}
+		assert.Equal(wantedName, gotName, step)
+		assert.Equal(wantVersion, h.Version)
 	}
+
+	hClient := hostsets.NewClient(client)
+
+	h, apiErr, err := hClient.Create(tc.Context(), hc.Item.Id, hostsets.WithName("foo"))
+	checkHost(t, "create", h.Item, apiErr, err, "foo", 1)
+
+	h, apiErr, err = hClient.Read(tc.Context(), h.Item.Id)
+	checkHost(t, "read", h.Item, apiErr, err, "foo", 1)
+
+	h, apiErr, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hostsets.WithName("bar"))
+	checkHost(t, "update", h.Item, apiErr, err, "bar", 2)
+
+	h, apiErr, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hostsets.DefaultName())
+	checkHost(t, "update", h.Item, apiErr, err, "", 3)
+
+	_, apiErr, err = hClient.Delete(tc.Context(), h.Item.Id)
+	assert.NoError(err)
+	assert.Nil(apiErr)
+	_, apiErr, err = hClient.Delete(tc.Context(), h.Item.Id)
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
 
 // TODO: Get better coverage for expected errors and error formats.
-func TestSet_Errors(t *testing.T) {
-	for _, newStyle := range []bool{false, true} {
-		assert, require := assert.New(t), require.New(t)
-		tc := controller.NewTestController(t, nil)
-		defer tc.Shutdown()
+func TestErrors(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
 
-		client := tc.Client()
-		token := tc.Token()
-		_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
-		client.SetScopeId(proj.GetPublicId())
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
-		hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static")
-		require.NoError(err)
-		require.Nil(apiErr)
-		require.NotNil(hc)
+	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(hc)
 
-		hClient := hostsets.NewClient(client)
+	hClient := hostsets.NewClient(client)
 
-		var h *hostsets.HostSet
-		if newStyle {
-			h, apiErr, err = hClient.Create2(tc.Context(), hc.Id, hostsets.WithName("foo"))
-		} else {
-			h, apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
-		}
-		require.NoError(err)
-		require.Nil(apiErr)
-		assert.NotNil(h)
+	h, apiErr, err := hClient.Create(tc.Context(), hc.Item.Id, hostsets.WithName("foo"))
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.NotNil(h)
 
-		if newStyle {
-			h, apiErr, err = hClient.Create2(tc.Context(), hc.Id, hostsets.WithName("foo"))
-		} else {
-			h, apiErr, err = hClient.Create(tc.Context(), hc.Id, hostsets.WithName("foo"))
-		}
-		require.NoError(err)
-		assert.NotNil(apiErr)
-		assert.Nil(h)
+	h, apiErr, err = hClient.Create(tc.Context(), hc.Item.Id, hostsets.WithName("foo"))
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.Nil(h)
 
-		if newStyle {
-			_, apiErr, err = hClient.Read2(tc.Context(), static.HostSetPrefix+"_doesntexis")
-		} else {
-			_, apiErr, err = hClient.Read(tc.Context(), hc.Id, static.HostSetPrefix+"_doesntexis")
-		}
-		require.NoError(err)
-		assert.NotNil(apiErr)
-		assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	_, apiErr, err = hClient.Read(tc.Context(), static.HostSetPrefix+"_doesntexis")
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
-		if newStyle {
-			_, apiErr, err = hClient.Read2(tc.Context(), "invalid id")
-		} else {
-			_, apiErr, err = hClient.Read(tc.Context(), hc.Id, "invalid id")
-		}
-		require.NoError(err)
-		assert.NotNil(apiErr)
-		assert.EqualValues(http.StatusBadRequest, apiErr.Status)
-	}
+	_, apiErr, err = hClient.Read(tc.Context(), "invalid id")
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 }

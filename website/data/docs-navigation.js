@@ -8,7 +8,7 @@
 
 export default [
   {
-    category: 'architecture',
+    category: 'introduction',
     content: [
       'security-model',
       'reference-architecture',
@@ -35,16 +35,24 @@ export default [
     ],
   },
   {
-    category: 'command-line',
-    content: ['login'],
+    category: 'installing',
+    content: ['dev-mode'],
   },
   {
     category: 'admin-console',
     content: ['login'],
   },
   {
+    category: 'command-line',
+    content: ['login'],
+  },
+  {
     category: 'sdk',
     content: ['login'],
+  },
+  {
+    category: 'releases',
+    content: ['release-notes', 'downloads'],
   },
 
   '---',

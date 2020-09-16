@@ -2,13 +2,14 @@ package authmethods
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -37,10 +38,12 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"delete": {"id"},
+	"list":   {"scope-id"},
 }
 
 func (c *Command) Help() string {
 	helpMap := common.HelpMap("auth-method")
+	var helpStr string
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
@@ -55,7 +58,7 @@ func (c *Command) Help() string {
 			"  Please see the auth-methods subcommand help for detailed usage information.",
 		})
 	case "create":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary auth-methods create [type] [sub command] [options] [args]",
 			"",
 			"  This command allows create operations on Boundary auth-method resources. Example:",
@@ -67,7 +70,7 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "update":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary auth-methods update [type] [sub command] [options] [args]",
 			"",
 			"  This command allows update operations on Boundary auth-method resources. Example:",
@@ -79,8 +82,9 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	default:
-		return helpMap[c.Func]() + c.Flags().Help()
+		helpStr = helpMap[c.Func]()
 	}
+	return helpStr + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -119,6 +123,10 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
+		return 1
+	}
 
 	client, err := c.Client()
 	if err != nil {
@@ -146,18 +154,22 @@ func (c *Command) Run(args []string) int {
 
 	authmethodClient := authmethods.NewClient(client)
 
-	var existed bool
-	var method *authmethods.AuthMethod
-	var listedMethods []*authmethods.AuthMethod
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		method, apiErr, err = authmethodClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = authmethodClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = authmethodClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = authmethodClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedMethods, apiErr, err = authmethodClient.List(c.Context, opts...)
+		listResult, apiErr, err = authmethodClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "auth method"
@@ -191,6 +203,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedMethods := listResult.GetItems().([]*authmethods.AuthMethod)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedMethods) == 0 {
@@ -245,6 +258,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	method := result.GetItem().(*authmethods.AuthMethod)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateAuthMethodTableOutput(method))

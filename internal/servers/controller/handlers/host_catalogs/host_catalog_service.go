@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -130,11 +131,11 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, req.GetId())
+	_, err := s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteHostCatalogResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, error) {
@@ -257,7 +258,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if scp == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 	default:
@@ -272,7 +273,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if cat == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 		parentId = cat.GetScopeId()
@@ -314,6 +315,9 @@ func validateGetRequest(req *pbs.GetHostCatalogRequest) error {
 func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		if !handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) {
+			badFields["scope_id"] = "This field must be a valid project scope id."
+		}
 		switch host.SubtypeFromType(req.GetItem().GetType()) {
 		case host.StaticSubtype:
 		default:
@@ -326,8 +330,11 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 	return handlers.ValidateUpdateRequest(static.HostCatalogPrefix, req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.GetItem().GetType() != "" {
-			badFields["type"] = "This is a read only field and cannot be specified in an update request."
+		switch host.SubtypeFromId(req.GetId()) {
+		case host.StaticSubtype:
+			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != host.StaticSubtype {
+				badFields["type"] = "Cannot modify resource type."
+			}
 		}
 		return badFields
 	})
@@ -339,6 +346,9 @@ func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
 
 func validateListRequest(req *pbs.ListHostCatalogsRequest) error {
 	badFields := map[string]string{}
+	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
+		badFields["scope_id"] = "This field must be a valid project scope id."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}

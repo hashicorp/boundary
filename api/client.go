@@ -19,8 +19,10 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/hashicorp/boundary/api/internal/parseutil"
+	"github.com/hashicorp/boundary/sdk/parseutil"
+	"github.com/hashicorp/boundary/sdk/recovery"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"golang.org/x/time/rate"
@@ -38,7 +40,6 @@ const EnvBoundaryMaxRetries = "BOUNDARY_MAX_RETRIES"
 const EnvBoundaryToken = "BOUNDARY_TOKEN"
 const EnvBoundaryRateLimit = "BOUNDARY_RATE_LIMIT"
 const EnvBoundarySRVLookup = "BOUNDARY_SRV_LOOKUP"
-const EnvBoundaryScopeId = "BOUNDARY_SCOPE_ID"
 
 // Config is used to configure the creation of the client
 type Config struct {
@@ -51,6 +52,11 @@ type Config struct {
 	// Token is the client token that reuslts from authentication and can be
 	// used to make calls into Boundary
 	Token string
+
+	// RecoveryKmsWrapper is a wrapper used in the recovery KMS authentication
+	// flow. If set, this will always be used to generate a new token value
+	// per-call, regardless of any value set in Token.
+	RecoveryKmsWrapper wrapping.Wrapper
 
 	// HttpClient is the HTTP client to use. Boundary sets sane defaults for
 	// the http.Client and its associated http.Transport created in
@@ -97,9 +103,6 @@ type Config struct {
 
 	// SRVLookup enables the client to lookup the host through DNS SRV lookup
 	SRVLookup bool
-
-	// ScopeId is the ID of the scope to use if not overridden per-call
-	ScopeId string
 }
 
 // TLSConfig contains the parameters needed to configure TLS on the HTTP client
@@ -140,7 +143,6 @@ func DefaultConfig() (*Config, error) {
 		HttpClient: cleanhttp.DefaultPooledClient(),
 		Timeout:    time.Second * 60,
 		TLSConfig:  &TLSConfig{},
-		ScopeId:    "global",
 	}
 
 	// We read the environment now; after DefaultClient returns we can override
@@ -215,10 +217,9 @@ func (c *Config) ConfigureTLS() error {
 	return nil
 }
 
-// setAddr parses a given string and looks for scope info, setting the
-// actual address to the base. Note that if a very malformed URL is passed in,
-// this may not return what one expects. For now this is on purpose to avoid
-// requiring error handling.
+// setAddr parses a given string, setting the actual address to the base. Note
+// that if a very malformed URL is passed in, this may not return what one
+// expects. For now this is on purpose to avoid requiring error handling.
 //
 // This also removes any trailing "/v1"; we'll use that in our commands so we
 // don't require it from users.
@@ -229,11 +230,12 @@ func (c *Config) setAddr(addr string) error {
 	}
 	c.Addr = fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 
-	// If there is a scopes segment, elide everything after it. Do this only for
-	// the last "scopes" segment in case it's part of the base path.
-	if lastIndex := strings.LastIndex(u.Path, "scopes"); lastIndex != -1 {
+	// If there is a v1 segment, elide everything after it. Do this only for
+	// the last v1 segment in case it's part of the base path.
+	if lastIndex := strings.LastIndex(u.Path, "v1"); lastIndex != -1 {
 		u.Path = u.Path[:lastIndex]
 	}
+
 	// Remove trailing or leading slashes
 	path := strings.Trim(u.Path, "/")
 	// Remove v1 in front or back (e.g. they could have
@@ -268,10 +270,6 @@ func (c *Config) ReadEnvironment() error {
 
 	if v := os.Getenv(EnvBoundaryToken); v != "" {
 		c.Token = v
-	}
-
-	if v := os.Getenv(EnvBoundaryScopeId); v != "" {
-		c.ScopeId = v
 	}
 
 	if v := os.Getenv(EnvBoundaryMaxRetries); v != "" {
@@ -439,23 +437,6 @@ func (c *Client) SetAddr(addr string) error {
 	return c.config.setAddr(addr)
 }
 
-// ScopeId fetches the scope ID the client will use by default
-func (c *Client) ScopeId() string {
-	c.modifyLock.RLock()
-	defer c.modifyLock.RUnlock()
-
-	return c.config.ScopeId
-}
-
-// Sets the scope ID to use when making calls. This will apply to all calls with
-// this client unless overridden per request via WithScopeId.
-func (c *Client) SetScopeId(scopeId string) {
-	c.modifyLock.Lock()
-	defer c.modifyLock.Unlock()
-
-	c.config.ScopeId = scopeId
-}
-
 // SetTLSConfig sets the TLS parameters to use and calls ConfigureTLS
 func (c *Client) SetTLSConfig(conf *TLSConfig) error {
 	c.modifyLock.Lock()
@@ -527,6 +508,22 @@ func (c *Client) SetToken(token string) {
 	c.config.Token = token
 }
 
+// RecoveryKmsWrapper gets the configured recovery KMS wrapper.
+func (c *Client) RecoveryKmsWrapper() wrapping.Wrapper {
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
+
+	return c.config.RecoveryKmsWrapper
+}
+
+// SetRecoveryKmsWrapper sets the wrapper used for the recovery workflow
+func (c *Client) SetRecoveryKmsWrapper(wrapper wrapping.Wrapper) {
+	c.modifyLock.Lock()
+	defer c.modifyLock.Unlock()
+
+	c.config.RecoveryKmsWrapper = wrapper
+}
+
 // SetHeaders clears all previous headers and uses only the given
 // ones going forward.
 func (c *Client) SetHeaders(headers http.Header) {
@@ -554,17 +551,17 @@ func (c *Client) Clone() *Client {
 	config := c.config
 
 	newConfig := &Config{
-		Addr:       config.Addr,
-		Token:      config.Token,
-		HttpClient: config.HttpClient,
-		Headers:    make(http.Header),
-		MaxRetries: config.MaxRetries,
-		Timeout:    config.Timeout,
-		Backoff:    config.Backoff,
-		CheckRetry: config.CheckRetry,
-		Limiter:    config.Limiter,
-		SRVLookup:  config.SRVLookup,
-		ScopeId:    config.ScopeId,
+		Addr:               config.Addr,
+		Token:              config.Token,
+		RecoveryKmsWrapper: config.RecoveryKmsWrapper,
+		HttpClient:         config.HttpClient,
+		Headers:            make(http.Header),
+		MaxRetries:         config.MaxRetries,
+		Timeout:            config.Timeout,
+		Backoff:            config.Backoff,
+		CheckRetry:         config.CheckRetry,
+		Limiter:            config.Limiter,
+		SRVLookup:          config.SRVLookup,
 	}
 	if config.TLSConfig != nil {
 		newConfig.TLSConfig = new(TLSConfig)
@@ -572,9 +569,7 @@ func (c *Client) Clone() *Client {
 	}
 	for k, v := range config.Headers {
 		vSlice := make([]string, 0, len(v))
-		for _, i := range v {
-			vSlice = append(vSlice, i)
-		}
+		vSlice = append(vSlice, v...)
 		newConfig.Headers[k] = vSlice
 	}
 
@@ -584,23 +579,10 @@ func (c *Client) Clone() *Client {
 func copyHeaders(in http.Header) http.Header {
 	ret := make(http.Header)
 	for k, v := range in {
-		for _, val := range v {
-			ret[k] = append(ret[k], val)
-		}
+		ret[k] = append(ret[k], v...)
 	}
 
 	return ret
-}
-
-// GetReaderFuncForJSON returns a func compatible with retryablehttp.ReaderFunc
-// after marshaling JSON
-func getBufferForJSON(val interface{}) (*bytes.Buffer, error) {
-	b, err := json.Marshal(val)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes.NewBuffer(b), nil
 }
 
 // NewRequest creates a new raw request object to query the Boundary controller
@@ -632,9 +614,9 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 
 	c.modifyLock.RLock()
 	addr := c.config.Addr
-	scopeId := c.config.ScopeId
 	srvLookup := c.config.SRVLookup
 	token := c.config.Token
+	recoveryKmsWrapper := c.config.RecoveryKmsWrapper
 	httpClient := c.config.HttpClient
 	headers := copyHeaders(c.config.Headers)
 	c.modifyLock.RUnlock()
@@ -677,37 +659,11 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 	}
 
-	opts := getOpts(opt...)
-	if opts.withScopeId != "" {
-		scopeId = opts.withScopeId
-	}
-	if scopeId == "" {
-		scopeId = "global"
-	}
-
-	var finalPath string
-	switch opts.withNewStyle {
-	case true:
-		// Do nothing. Eventually, remove the notion of a scoped client; calls
-		// to specific resources won't need it, and calls to collections can
-		// take care of it in the functions themselves as part of the api
-		// parameters.
-		finalPath = path.Join(u.Path, "/v1/", requestPath)
-	default:
-		scopedPath := strings.TrimPrefix(requestPath, "/")
-		switch requestPath {
-		case "scopes":
-			// This is a special case for creating or listing scopes; don't do
-			// anything
-
-		default:
-			// If their path already has 'scopes/' in it, use the given request path
-			// instead of building it from the client's scope information
-			if !strings.HasPrefix(scopedPath, "scopes/") {
-				scopedPath = path.Join("scopes", scopeId, scopedPath)
-			}
+	if recoveryKmsWrapper != nil {
+		token, err = recovery.GenerateRecoveryToken(ctx, recoveryKmsWrapper)
+		if err != nil {
+			return nil, fmt.Errorf("error generating recovery KMS workflow token: %w", err)
 		}
-		finalPath = path.Join(u.Path, "/v1", scopedPath)
 	}
 
 	req := &http.Request{
@@ -716,7 +672,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 			User:   u.User,
 			Scheme: u.Scheme,
 			Host:   host,
-			Path:   finalPath,
+			Path:   path.Join(u.Path, "/v1/", requestPath),
 		},
 		Host: u.Host,
 	}

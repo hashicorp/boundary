@@ -72,7 +72,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existing account",
 			req:     &pbs.GetAccountRequest{Id: password.AccountPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -165,7 +165,7 @@ func TestList(t *testing.T) {
 		{
 			name:       "Unfound Auth Method",
 			authMethod: password.AuthMethodPrefix + "_DoesntExis",
-			errCode:    codes.PermissionDenied,
+			errCode:    codes.NotFound,
 		},
 	}
 	for _, tc := range cases {
@@ -208,9 +208,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAccountRequest{
 				Id: ac.GetPublicId(),
 			},
-			res: &pbs.DeleteAccountResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -218,7 +215,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAccountRequest{
 				Id: password.AccountPrefix + "_doesntexis",
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Bad account id formatting",
@@ -257,12 +254,11 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteAccountRequest{
 		Id: ac.GetPublicId(),
 	}
-	got, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+	_, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+	_, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -517,6 +513,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -540,6 +537,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -561,6 +559,19 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 					Attributes:  modifiedAttributes,
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant change type",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Account{
+					Name: &wrapperspb.StringValue{Value: ""},
+					Type: "oidc",
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -695,7 +706,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Cant change Id",
@@ -950,10 +961,10 @@ func TestChangePassword(t *testing.T) {
 		acct := createAccount(t, "originalpassword")
 
 		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
-			Id:          acct.GetId(),
-			Version:     acct.GetVersion(),
-			OldPassword: "originalpassword",
-			NewPassword: "a different password",
+			Id:              acct.GetId(),
+			Version:         acct.GetVersion(),
+			CurrentPassword: "originalpassword",
+			NewPassword:     "a different password",
 		})
 		require.NoError(err)
 		assert.Equal(acct.GetVersion()+1, changeResp.GetItem().GetVersion())
@@ -969,10 +980,10 @@ func TestChangePassword(t *testing.T) {
 		acct := createAccount(t, "originalpassword")
 
 		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
-			Id:          acct.GetId(),
-			Version:     acct.GetVersion(),
-			OldPassword: "thewrongpassword",
-			NewPassword: "a different password",
+			Id:              acct.GetId(),
+			Version:         acct.GetVersion(),
+			CurrentPassword: "thewrongpassword",
+			NewPassword:     "a different password",
 		})
 		assert.Error(err)
 		assert.Nil(changeResp)
@@ -1042,10 +1053,10 @@ func TestChangePassword(t *testing.T) {
 			assert := assert.New(t)
 
 			changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
-				Id:          tt.accountId,
-				Version:     tt.version,
-				OldPassword: tt.oldPW,
-				NewPassword: tt.newPW,
+				Id:              tt.accountId,
+				Version:         tt.version,
+				CurrentPassword: tt.oldPW,
+				NewPassword:     tt.newPW,
 			})
 			assert.Error(err)
 			assert.Nil(changeResp)

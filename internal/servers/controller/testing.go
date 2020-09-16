@@ -103,8 +103,10 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 	token, apiErr, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
 		tc.b.DevAuthMethodId,
-		tc.b.DevLoginName,
-		tc.b.DevPassword,
+		map[string]interface{}{
+			"login_name": tc.b.DevLoginName,
+			"password":   tc.b.DevPassword,
+		},
 	)
 	if err != nil {
 		tc.t.Error(fmt.Errorf("error logging in: %w", err))
@@ -114,7 +116,7 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.t.Error(fmt.Errorf("api err from logging in: %s", pretty.Sprint(apiErr)))
 		return nil
 	}
-	return token
+	return token.Item
 }
 
 func (tc *TestController) addrs(purpose string) []string {

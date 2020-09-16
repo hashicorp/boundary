@@ -3,17 +3,30 @@ package wrapper
 import (
 	"fmt"
 
+	"github.com/hashicorp/boundary/sdk/strutil"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
 )
 
-func GetWrapper(path, purpose string) (wrapping.Wrapper, error) {
+func GetWrapperFromPath(path, purpose string) (wrapping.Wrapper, error) {
 	kmses, err := configutil.LoadConfigKMSes(path)
 	if err != nil {
 		return nil, fmt.Errorf("Error parsing config file: %w", err)
 	}
 
+	return getWrapper(kmses, purpose)
+}
+
+func GetWrapperFromHcl(inHcl, purpose string) (wrapping.Wrapper, error) {
+	kmses, err := configutil.ParseKMSes(inHcl)
+	if err != nil {
+		return nil, fmt.Errorf("Error parsing KMS HCL: %w", err)
+	}
+
+	return getWrapper(kmses, purpose)
+}
+
+func getWrapper(kmses []*configutil.KMS, purpose string) (wrapping.Wrapper, error) {
 	var kms *configutil.KMS
 	for _, v := range kmses {
 		if strutil.StrListContains(v.Purpose, purpose) {

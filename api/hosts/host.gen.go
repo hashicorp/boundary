@@ -2,6 +2,7 @@
 package hosts
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -26,29 +27,107 @@ type Host struct {
 	Type          string                 `json:"type,omitempty"`
 	HostSetIds    []string               `json:"host_set_ids,omitempty"`
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
+
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
 }
 
+func (n Host) ResponseBody() *bytes.Buffer {
+	return n.responseBody
+}
+
+func (n Host) ResponseMap() map[string]interface{} {
+	return n.responseMap
+}
+
+type HostReadResult struct {
+	Item         *Host
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
+}
+
+func (n HostReadResult) GetItem() interface{} {
+	return n.Item
+}
+
+func (n HostReadResult) GetResponseBody() *bytes.Buffer {
+	return n.responseBody
+}
+
+func (n HostReadResult) GetResponseMap() map[string]interface{} {
+	return n.responseMap
+}
+
+type HostCreateResult = HostReadResult
+type HostUpdateResult = HostReadResult
+
+type HostDeleteResult struct {
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
+}
+
+func (n HostDeleteResult) GetResponseBody() *bytes.Buffer {
+	return n.responseBody
+}
+
+func (n HostDeleteResult) GetResponseMap() map[string]interface{} {
+	return n.responseMap
+}
+
+type HostListResult struct {
+	Items        []*Host
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
+}
+
+func (n HostListResult) GetItems() interface{} {
+	return n.Items
+}
+
+func (n HostListResult) GetResponseBody() *bytes.Buffer {
+	return n.responseBody
+}
+
+func (n HostListResult) GetResponseMap() map[string]interface{} {
+	return n.responseMap
+}
+
+// Client is a client for this collection
 type Client struct {
 	client *api.Client
 }
 
+// Creates a new client for this collection. The submitted API client is cloned;
+// modifications to it after generating this client will not have effect. If you
+// need to make changes to the underlying API client, use ApiClient() to access
+// it.
 func NewClient(c *api.Client) *Client {
-	return &Client{client: c}
+	return &Client{client: c.Clone()}
 }
 
-func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option) (*Host, *api.Error, error) {
+// ApiClient returns the underlying API client
+func (c *Client) ApiClient() *api.Client {
+	return c.client
+}
+
+func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option) (*HostCreateResult, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Create request")
 	}
+
 	opts, apiOpts := getOpts(opt...)
+
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/hosts", hostCatalogId), opts.postMap, apiOpts...)
+	opts.postMap["host_catalog_id"] = hostCatalogId
+
+	req, err := c.client.NewRequest(ctx, "POST", "hosts", opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
+
 	if len(opts.queryMap) > 0 {
 		q := url.Values{}
 		for k, v := range opts.queryMap {
@@ -62,33 +141,31 @@ func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option
 		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
 	}
 
-	target := new(Host)
-	apiErr, err := resp.Decode(target)
+	target := new(HostCreateResult)
+	target.Item = new(Host)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
-func (c *Client) Read(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (*Host, *api.Error, error) {
-	if hostCatalogId == "" {
-		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
-	}
-
+func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*HostReadResult, *api.Error, error) {
 	if hostId == "" {
-		return nil, nil, fmt.Errorf("empty hostId value passed into Read request")
+		return nil, nil, fmt.Errorf("empty  hostId value passed into Read request")
 	}
-
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s/hosts/%s", hostCatalogId, hostId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("hosts/%s", hostId), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -106,21 +183,21 @@ func (c *Client) Read(ctx context.Context, hostCatalogId string, hostId string, 
 		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
 
-	target := new(Host)
-	apiErr, err := resp.Decode(target)
+	target := new(HostReadResult)
+	target.Item = new(Host)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
-func (c *Client) Update(ctx context.Context, hostCatalogId string, hostId string, version uint32, opt ...Option) (*Host, *api.Error, error) {
-	if hostCatalogId == "" {
-		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
-	}
+func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt ...Option) (*HostUpdateResult, *api.Error, error) {
 	if hostId == "" {
 		return nil, nil, fmt.Errorf("empty hostId value passed into Update request")
 	}
@@ -134,7 +211,7 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, hostId string
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, hostCatalogId, hostId, opt...)
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, hostId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
@@ -142,14 +219,17 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, hostId string
 			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s/hosts/%s", hostCatalogId, hostId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("hosts/%s", hostId), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -167,35 +247,33 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, hostId string
 		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
 	}
 
-	target := new(Host)
-	apiErr, err := resp.Decode(target)
+	target := new(HostUpdateResult)
+	target.Item = new(Host)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
 	return target, apiErr, nil
 }
 
-func (c *Client) Delete(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (bool, *api.Error, error) {
-	if hostCatalogId == "" {
-		return false, nil, fmt.Errorf("empty hostCatalogId value passed into Delete request")
-	}
-
+func (c *Client) Delete(ctx context.Context, hostId string, opt ...Option) (*HostDeleteResult, *api.Error, error) {
 	if hostId == "" {
-		return false, nil, fmt.Errorf("empty hostId value passed into Delete request")
+		return nil, nil, fmt.Errorf("empty hostId value passed into Delete request")
 	}
-
 	if c.client == nil {
-		return false, nil, fmt.Errorf("nil client")
+		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-catalogs/%s/hosts/%s", hostCatalogId, hostId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("hosts/%s", hostId), nil, apiOpts...)
 	if err != nil {
-		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+		return nil, nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -208,35 +286,36 @@ func (c *Client) Delete(ctx context.Context, hostCatalogId string, hostId string
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
 	}
 
-	type deleteResponse struct {
-		Existed bool
-	}
-	target := &deleteResponse{}
-	apiErr, err := resp.Decode(target)
+	apiErr, err := resp.Decode(nil)
 	if err != nil {
-		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
 	if apiErr != nil {
-		return false, apiErr, nil
+		return nil, apiErr, nil
 	}
-	return target.Existed, apiErr, nil
+
+	target := &HostDeleteResult{
+		responseBody: resp.Body,
+		responseMap:  resp.Map,
+	}
+	return target, nil, nil
 }
 
-func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) ([]*Host, *api.Error, error) {
+func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) (*HostListResult, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into List request")
 	}
-
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
+	opts.queryMap["host_catalog_id"] = hostCatalogId
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s/hosts", hostCatalogId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "hosts", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -254,10 +333,7 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
 	}
 
-	type listResponse struct {
-		Items []*Host
-	}
-	target := &listResponse{}
+	target := new(HostListResult)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
@@ -265,5 +341,7 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	return target.Items, apiErr, nil
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
+	return target, apiErr, nil
 }

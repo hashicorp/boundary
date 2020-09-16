@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -28,7 +28,7 @@ func (c *StaticCommand) Synopsis() string {
 }
 
 var staticFlagsMap = map[string][]string{
-	"create": {"name", "description"},
+	"create": {"scope-id", "name", "description"},
 	"update": {"id", "name", "description", "version"},
 }
 
@@ -95,6 +95,10 @@ func (c *StaticCommand) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
+	if strutil.StrListContains(staticFlagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
+		return 1
+	}
 
 	client, err := c.Client()
 	if err != nil {
@@ -130,20 +134,20 @@ func (c *StaticCommand) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, hostcatalogs.WithAutomaticVersioning())
+			opts = append(opts, hostcatalogs.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
 	}
 
-	var catalog *hostcatalogs.HostCatalog
+	var result api.GenericResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		catalog, apiErr, err = hostcatalogClient.Create(c.Context, "static", opts...)
+		result, apiErr, err = hostcatalogClient.Create(c.Context, "static", c.FlagScopeId, opts...)
 	case "update":
-		catalog, apiErr, err = hostcatalogClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = hostcatalogClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
 	plural := "static-type host-catalog"
@@ -156,6 +160,7 @@ func (c *StaticCommand) Run(args []string) int {
 		return 1
 	}
 
+	catalog := result.GetItem().(*hostcatalogs.HostCatalog)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateHostCatalogTableOutput(catalog))

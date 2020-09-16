@@ -111,7 +111,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId
 		return nil, err
 	}
 
-	token, err := authtoken.EncryptToken(ctx, s.kms, tok.GetPublicId(), tok.GetToken())
+	token, err := authtoken.EncryptToken(ctx, s.kms, scopeId, tok.GetPublicId(), tok.GetToken())
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		return res
 	}
 	if authMeth == nil {
-		res.Error = handlers.ForbiddenError()
+		res.Error = handlers.NotFoundError()
 		return res
 	}
 
@@ -199,7 +199,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	}
 	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
 	if tType != "" && tType != "token" && tType != "cookie" {
-		badFields["token_type"] = "The only accepted type is 'token'."
+		badFields["token_type"] = `The only accepted types are "token" and "cookie".`
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)

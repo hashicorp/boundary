@@ -10,12 +10,12 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/servers/controller"
-	"github.com/hashicorp/boundary/internal/wrapper"
+	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -341,7 +341,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	if c.flagConfigKms != "" {
 		wrapperPath = c.flagConfigKms
 	}
-	wrapper, err := wrapper.GetWrapper(wrapperPath, "config")
+	wrapper, err := wrapper.GetWrapperFromPath(wrapperPath, "config")
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1

@@ -13,50 +13,47 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUsers_List(t *testing.T) {
+func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	userClient := users.NewClient(client)
 
-	ul, apiErr, err := userClient.List(tc.Context())
+	ul, apiErr, err := userClient.List(tc.Context(), org.GetPublicId())
 	assert.NoError(err)
 	assert.Nil(apiErr)
-	assert.Empty(ul)
+	assert.Empty(ul.Items)
 
 	var expected []*users.User
 	for i := 0; i < 10; i++ {
 		expected = append(expected, &users.User{Name: fmt.Sprint(i)})
 	}
 
-	expected[0], apiErr, err = userClient.Create(tc.Context(), users.WithName(expected[0].Name))
+	ucr, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[0].Name))
 	assert.NoError(err)
 	assert.Nil(apiErr)
+	expected[0] = ucr.Item
 
-	ul, apiErr, err = userClient.List(tc.Context())
+	ul, apiErr, err = userClient.List(tc.Context(), org.GetPublicId())
 	assert.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul))
+	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = userClient.Create(tc.Context(), users.WithName(expected[i].Name))
+		ucr, apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[i].Name))
 		assert.NoError(err)
 		assert.Nil(apiErr)
+		expected[i] = ucr.Item
 	}
-	ul, apiErr, err = userClient.List(tc.Context())
+	ul, apiErr, err = userClient.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))
+	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul.Items))
 }
 
 func comparableSlice(in []*users.User) []users.User {
@@ -74,20 +71,15 @@ func comparableSlice(in []*users.User) []users.User {
 	return filtered
 }
 
-func TestUser_Crud(t *testing.T) {
+func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	userClient := users.NewClient(client)
 
 	checkUser := func(step string, u *users.User, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
@@ -104,66 +96,60 @@ func TestUser_Crud(t *testing.T) {
 		assert.EqualValues(wantedVersion, u.Version)
 	}
 
-	u, apiErr, err := userClient.Create(tc.Context(), users.WithName("foo"))
-	checkUser("create", u, apiErr, err, "foo", 1)
+	u, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("foo"))
+	checkUser("create", u.Item, apiErr, err, "foo", 1)
 
-	u, apiErr, err = userClient.Read(tc.Context(), u.Id)
-	checkUser("read", u, apiErr, err, "foo", 1)
+	u, apiErr, err = userClient.Read(tc.Context(), u.Item.Id)
+	checkUser("read", u.Item, apiErr, err, "foo", 1)
 
-	u, apiErr, err = userClient.Update(tc.Context(), u.Id, u.Version, users.WithName("bar"))
-	checkUser("update", u, apiErr, err, "bar", 2)
+	u, apiErr, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version, users.WithName("bar"))
+	checkUser("update", u.Item, apiErr, err, "bar", 2)
 
-	u, apiErr, err = userClient.Update(tc.Context(), u.Id, u.Version, users.DefaultName())
-	checkUser("update", u, apiErr, err, "", 3)
+	u, apiErr, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version, users.DefaultName())
+	checkUser("update", u.Item, apiErr, err, "", 3)
 
-	existed, _, err := userClient.Delete(tc.Context(), u.Id)
+	_, apiErr, err = userClient.Delete(tc.Context(), u.Item.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.True(existed, "Expected existing user when deleted, but it wasn't.")
 
-	existed, apiErr, err = userClient.Delete(tc.Context(), u.Id)
+	_, apiErr, err = userClient.Delete(tc.Context(), u.Item.Id)
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
 
-func TestUser_Errors(t *testing.T) {
+func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	userClient := users.NewClient(client)
 
-	u, apiErr, err := userClient.Create(tc.Context(), users.WithName("first"))
+	u, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.NotNil(u)
 
 	// Create another resource with the same name.
-	_, apiErr, err = userClient.Create(tc.Context(), users.WithName("first"))
+	_, apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 
 	_, apiErr, err = userClient.Read(tc.Context(), iam.UserPrefix+"_doesntexis")
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 	_, apiErr, err = userClient.Read(tc.Context(), "invalid id")
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
-	_, apiErr, err = userClient.Update(tc.Context(), u.Id, u.Version)
+	_, apiErr, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version)
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)

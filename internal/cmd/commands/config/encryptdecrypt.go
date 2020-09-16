@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/wrapper"
+	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -143,7 +143,7 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		kmsDefFile = strings.TrimSpace(c.flagConfigKms)
 	}
 
-	wrapper, err := wrapper.GetWrapper(kmsDefFile, "config")
+	wrapper, err := wrapper.GetWrapperFromPath(kmsDefFile, "config")
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1

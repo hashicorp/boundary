@@ -4,7 +4,6 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,14 +13,18 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	wpbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wspb"
 )
 
 var _ cli.Command = (*Command)(nil)
@@ -109,6 +112,13 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
+	var handshake proxy.Handshake
+	var err error
+	if handshake.TofuToken, err = base62.Random(20); err != nil {
+		c.UI.Error(fmt.Errorf("Could not derive random bytes for tofu token: %w", err).Error())
+		return 1
+	}
+
 	if c.flagListenAddr == "" {
 		c.flagListenAddr = "127.0.0.1"
 	}
@@ -131,17 +141,18 @@ func (c *Command) Run(args []string) int {
 		c.flagAuth = string(authBytes)
 	}
 
-	marshaled, err := base64.RawStdEncoding.DecodeString(c.flagAuth)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Unable to decode authorization string: %w", err).Error())
+	marshaled := base58.Decode(c.flagAuth)
+	if len(marshaled) == 0 {
+		c.UI.Error("Zero length authorization information after decoding")
 		return 1
 	}
 
-	sessionInfo := new(services.ValidateSessionResponse)
-	if err := proto.Unmarshal(marshaled, sessionInfo); err != nil {
+	sessionResponseInfo := new(wpbs.GetSessionResponse)
+	if err := proto.Unmarshal(marshaled, sessionResponseInfo); err != nil {
 		c.UI.Error(fmt.Errorf("Unable to proto-decode authorization string: %w", err).Error())
 		return 1
 	}
+	sessionInfo := sessionResponseInfo.GetSession()
 
 	if len(sessionInfo.GetWorkerInfo()) == 0 {
 		c.UI.Error("No workers found in authorization string")
@@ -224,6 +235,11 @@ func (c *Command) Run(args []string) int {
 	negProto := resp.Header.Get("Sec-WebSocket-Protocol")
 	if negProto != globals.TcpProxyV1 {
 		c.UI.Error(fmt.Sprintf("Unexpected negotiated protocol: %s", negProto))
+		return 1
+	}
+
+	if err := wspb.Write(c.Context, conn, &handshake); err != nil {
+		c.UI.Error(fmt.Errorf("error sending tofu token to worker: %w", err).Error())
 		return 1
 	}
 

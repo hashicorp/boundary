@@ -13,38 +13,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestProjects_List(t *testing.T) {
+func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	scps := scopes.NewClient(client)
 
 	pl, apiErr, err := scps.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.Empty(pl)
+	assert.Empty(pl.Items)
 
 	expected := make([]*scopes.Scope, 10)
 	for i := 0; i < 10; i++ {
-		expected[i], apiErr, err = scps.Create(tc.Context(), org.GetPublicId(), scopes.WithName(fmt.Sprintf("%d", i)))
+		scr, apiErr, err := scps.Create(tc.Context(), org.GetPublicId(), scopes.WithName(fmt.Sprintf("%d", i)))
 		require.NoError(err)
 		assert.Nil(apiErr)
+		expected[i] = scr.Item
 	}
 	pl, apiErr, err = scps.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
+	assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl.Items))
 }
 
 func comparableSlice(in []*scopes.Scope) []scopes.Scope {
@@ -63,20 +59,15 @@ func comparableSlice(in []*scopes.Scope) []scopes.Scope {
 	return filtered
 }
 
-func TestProjects_Crud(t *testing.T) {
+func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, _ := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, _ := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	scps := scopes.NewClient(client)
 
@@ -93,43 +84,37 @@ func TestProjects_Crud(t *testing.T) {
 	}
 
 	s, apiErr, err := scps.Create(tc.Context(), org.GetPublicId(), scopes.WithName("foo"))
-	checkProject("create", s, apiErr, err, "foo", 1)
+	checkProject("create", s.Item, apiErr, err, "foo", 1)
 
-	s, apiErr, err = scps.Read(tc.Context(), s.Id)
-	checkProject("read", s, apiErr, err, "foo", 1)
+	s, apiErr, err = scps.Read(tc.Context(), s.Item.Id)
+	checkProject("read", s.Item, apiErr, err, "foo", 1)
 
-	s, apiErr, err = scps.Update(tc.Context(), s.Id, s.Version, scopes.WithName("bar"))
-	checkProject("update", s, apiErr, err, "bar", 2)
+	s, apiErr, err = scps.Update(tc.Context(), s.Item.Id, s.Item.Version, scopes.WithName("bar"))
+	checkProject("update", s.Item, apiErr, err, "bar", 2)
 
-	s, apiErr, err = scps.Update(tc.Context(), s.Id, s.Version, scopes.DefaultName())
-	checkProject("update, unset name", s, apiErr, err, "", 3)
+	s, apiErr, err = scps.Update(tc.Context(), s.Item.Id, s.Item.Version, scopes.DefaultName())
+	checkProject("update, unset name", s.Item, apiErr, err, "", 3)
 
-	existed, apiErr, err := scps.Delete(tc.Context(), s.Id)
+	_, apiErr, err = scps.Delete(tc.Context(), s.Item.Id)
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.True(existed, "Expected existing project when deleted, but it wasn't.")
 
-	_, apiErr, err = scps.Delete(tc.Context(), s.Id)
+	_, apiErr, err = scps.Delete(tc.Context(), s.Item.Id)
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status, "Expected project to not exist when deleted, but it did.")
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
 
 // TODO: Get better coverage for expected errors and error formats.
-func TestProject_Errors(t *testing.T) {
+func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, _ := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, _ := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	scps := scopes.NewClient(client)
 
@@ -142,7 +127,7 @@ func TestProject_Errors(t *testing.T) {
 	require.NoError(err)
 	// TODO: Should this be nil instead of just a Project that has no values set
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 	_, apiErr, err = scps.Read(tc.Context(), "invalid id")
 	assert.NoError(err)

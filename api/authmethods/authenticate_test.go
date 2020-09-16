@@ -15,23 +15,22 @@ func TestAuthenticate(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "ampw_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
+		DefaultAuthMethodId: amId,
+		DefaultLoginName:    "user",
+		DefaultPassword:     "passpass",
 	})
 	defer tc.Shutdown()
 
 	client := tc.Client()
 	methods := authmethods.NewClient(client)
 
-	tok, apiErr, err := methods.Authenticate(tc.Context(), amId, "user", "passpass")
+	tok, apiErr, err := methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
 	assert.Nil(apiErr, pretty.Sprint(apiErr))
 	assert.NotNil(tok)
 
-	_, apiErr, err = methods.Authenticate(tc.Context(), amId, "user", "wrong")
+	_, apiErr, err = methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "wrong"})
 	require.NoError(err)
 	require.NotNil(t, apiErr)
-	assert.EqualValuesf(http.StatusUnauthorized, apiErr.Status, "Expected unauthenticated, got %q", apiErr.Message)
+	assert.EqualValuesf(http.StatusUnauthorized, apiErr.Status, "Expected unauthorized, got %q", apiErr.Message)
 }

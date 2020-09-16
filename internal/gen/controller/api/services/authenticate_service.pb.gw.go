@@ -197,7 +197,7 @@ func (m response_AuthenticationService_Authenticate_0) XXX_ResponseBody() interf
 }
 
 var (
-	pattern_AuthenticationService_Authenticate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "auth-methods", "auth_method_id"}, "authenticate"))
+	pattern_AuthenticationService_Authenticate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "auth-methods", "auth_method_id"}, "authenticate"))
 )
 
 var (

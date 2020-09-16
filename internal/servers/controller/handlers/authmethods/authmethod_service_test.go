@@ -80,7 +80,7 @@ func TestGet(t *testing.T) {
 			scopeId: o.GetPublicId(),
 			req:     &pbs.GetAuthMethodRequest{Id: password.AuthMethodPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -186,11 +186,10 @@ func TestList(t *testing.T) {
 			res:     &pbs.ListAuthMethodsResponse{},
 			errCode: codes.OK,
 		},
-		// TODO: When an auth method doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:    "Unfound Auth Method",
-			scopeId: password.AuthMethodPrefix + "_DoesntExis",
-			errCode: codes.PermissionDenied,
+			scopeId: "o_DoesntExis",
+			errCode: codes.NotFound,
 		},
 	}
 	for _, tc := range cases {
@@ -236,9 +235,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthMethodRequest{
 				Id: am.GetPublicId(),
 			},
-			res: &pbs.DeleteAuthMethodResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -246,14 +242,13 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthMethodRequest{
 				Id: password.AuthMethodPrefix + "_doesntexis",
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Bad AuthMethod Id formatting",
 			req: &pbs.DeleteAuthMethodRequest{
 				Id: "bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -290,12 +285,11 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteAuthMethodRequest{
 		Id: am.GetPublicId(),
 	}
-	got, gErr := s.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+	_, gErr := s.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+	_, gErr = s.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -529,6 +523,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -550,11 +545,12 @@ func TestUpdate(t *testing.T) {
 			name: "Multiple Paths in single string",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name,description"},
+					Paths: []string{"name,description,type"},
 				},
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -600,6 +596,17 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant change type",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"name", "type"}},
+				Item: &pb.AuthMethod{
+					Name: &wrapperspb.StringValue{Value: "updated name"},
+					Type: "oidc",
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -692,7 +699,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Cant change Id",

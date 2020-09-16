@@ -31,23 +31,27 @@ message AuthToken {
 	// Output only.
 	string user_id = 50 [json_name="user_id"];
 
-	// The id of the user of this AuthToken.
+	// The id of the auth method of this AuthToken.
 	// Output only.
 	string auth_method_id = 60 [json_name="auth_method_id"];
 
+	// The id of the auth method account of this AuthToken.
+	// Output only.
+	string account_id = 70 [json_name="account_id"];
+
 	// The time this resource was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 70 [json_name="created_time"];
+	google.protobuf.Timestamp created_time = 80 [json_name="created_time"];
 
 	// The time this resource was last updated.
 	// Output only.
-	google.protobuf.Timestamp updated_time = 80 [json_name="updated_time"];
+	google.protobuf.Timestamp updated_time = 90 [json_name="updated_time"];
 
 	// The approximate time this AuthToken was last used.
 	// Output only.
-	google.protobuf.Timestamp approximate_last_used_time = 90 [json_name = "approximate_last_used_time"];
+	google.protobuf.Timestamp approximate_last_used_time = 100 [json_name = "approximate_last_used_time"];
 
 	// The time this AuthToken expires.
 	// Output only.
-	google.protobuf.Timestamp expiration_time = 100 [json_name="expiration_time"];
+	google.protobuf.Timestamp expiration_time = 110 [json_name="expiration_time"];
 }

@@ -2,12 +2,13 @@ package groups
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/groups"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -43,10 +44,11 @@ var helpMap = func() map[string]func() string {
 }
 
 var flagsMap = map[string][]string{
-	"create":         {"name", "description"},
+	"create":         {"scope-id", "name", "description"},
 	"update":         {"id", "name", "description", "version"},
 	"read":           {"id"},
 	"delete":         {"id"},
+	"list":           {"scope-id"},
 	"add-members":    {"id", "member", "version"},
 	"set-members":    {"id", "member", "version"},
 	"remove-members": {"id", "member", "version"},
@@ -95,6 +97,10 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
+		return 1
+	}
 
 	client, err := c.Client()
 	if err != nil {
@@ -130,15 +136,14 @@ func (c *Command) Run(args []string) int {
 	case "set-members":
 		switch len(c.flagMembers) {
 		case 0:
-		case 1:
-			if c.flagMembers[0] == "null" {
-				members = []string{}
-			}
-		}
-		if members == nil {
 			c.UI.Error("No members supplied via -member")
 			return 1
+		case 1:
+			if c.flagMembers[0] == "null" {
+				members = nil
+			}
 		}
+
 	}
 
 	groupClient := groups.NewClient(client)
@@ -151,34 +156,38 @@ func (c *Command) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, groups.WithAutomaticVersioning())
+			opts = append(opts, groups.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
 	}
 
-	var existed bool
-	var group *groups.Group
-	var listedGroups []*groups.Group
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		group, apiErr, err = groupClient.Create(c.Context, opts...)
+		result, apiErr, err = groupClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
-		group, apiErr, err = groupClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = groupClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		group, apiErr, err = groupClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = groupClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = groupClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = groupClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedGroups, apiErr, err = groupClient.List(c.Context, opts...)
+		listResult, apiErr, err = groupClient.List(c.Context, c.FlagScopeId, opts...)
 	case "add-members":
-		group, apiErr, err = groupClient.AddMembers(c.Context, c.FlagId, version, members, opts...)
+		result, apiErr, err = groupClient.AddMembers(c.Context, c.FlagId, version, members, opts...)
 	case "set-members":
-		group, apiErr, err = groupClient.SetMembers(c.Context, c.FlagId, version, members, opts...)
+		result, apiErr, err = groupClient.SetMembers(c.Context, c.FlagId, version, members, opts...)
 	case "remove-members":
-		group, apiErr, err = groupClient.RemoveMembers(c.Context, c.FlagId, version, members, opts...)
+		result, apiErr, err = groupClient.RemoveMembers(c.Context, c.FlagId, version, members, opts...)
 	}
 
 	plural := "group"
@@ -212,6 +221,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedGroups := listResult.GetItems().([]*groups.Group)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedGroups) == 0 {
@@ -261,6 +271,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	group := result.GetItem().(*groups.Group)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateGroupTableOutput(group))

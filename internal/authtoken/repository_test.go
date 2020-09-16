@@ -211,7 +211,8 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			assert.Equal(tt.authAcctId, got.GetAuthAccountId())
 			assert.Equal(got.CreateTime, got.UpdateTime)
 			assert.Equal(got.CreateTime, got.ApproximateLastAccessTime)
-			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE)))
+			// We should find no oplog since tokens are not replicated, so they don't need oplog entries.
+			assert.Error(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE)))
 		})
 	}
 }
@@ -294,6 +295,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 func TestRepository_ValidateToken(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	lastAccessedUpdateDuration = 0
+	timeSkew = 20 * time.Millisecond
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -360,6 +362,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := repo.ValidateToken(context.Background(), tt.id, tt.token)
+
 			if tt.wantErr != nil {
 				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
@@ -396,9 +399,11 @@ func TestRepository_ValidateToken(t *testing.T) {
 			require.NoError(err)
 			assert.True(preTime2.After(preTime1), "First updated time %q was not after the creation time %q", preTime2, preTime1)
 
-			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE)))
+			// We should find no oplog since tokens are not replicated, so they don't need oplog entries.
+			assert.Error(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE)))
 
 			got3, err := repo.ValidateToken(context.Background(), tt.id, tt.token)
+			require.NoError(err)
 			preTime3, err := ptypes.Timestamp(got3.GetApproximateLastAccessTime().GetTimestamp())
 			require.NoError(err)
 			assert.True(preTime3.Equal(preTime2), "The 3rd timestamp %q was not equal to the second time %q", preTime3, preTime2)
@@ -461,6 +466,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 
 			maxStaleness = tt.staleDuration
 			maxTokenDuration = tt.expirationDuration
+			timeSkew = 20 * time.Millisecond
 
 			ctx := context.Background()
 			at, err := repo.CreateAuthToken(ctx, iamUser, baseAT.GetAuthAccountId())
@@ -472,7 +478,8 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 			if tt.wantReturned {
 				assert.NotNil(got)
 			} else {
-				assert.NoError(db.TestVerifyOplog(t, rw, at.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE)))
+				// We should find no oplog since tokens are not replicated, so they don't need oplog entries.
+				assert.Error(db.TestVerifyOplog(t, rw, at.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE)))
 				assert.Nil(got)
 			}
 
@@ -535,7 +542,8 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 			assert.NoError(err)
 			assert.Equal(tt.want, got, "row count")
 			if tt.want != 0 {
-				assert.NoError(db.TestVerifyOplog(t, rw, tt.id, db.WithOperation(oplog.OpType_OP_TYPE_DELETE)))
+				// We should find no oplog since tokens are not replicated, so they don't need oplog entries.
+				assert.Error(db.TestVerifyOplog(t, rw, tt.id, db.WithOperation(oplog.OpType_OP_TYPE_DELETE)))
 			}
 		})
 	}

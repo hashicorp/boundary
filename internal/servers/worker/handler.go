@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
+	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wspb"
 )
 
 type HandlerProperties struct {
@@ -43,7 +45,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		jobInfo := jobInfoRaw.(*services.ValidateSessionResponse)
+		jobInfo := jobInfoRaw.(*pb.Session)
 
 		opts := &websocket.AcceptOptions{
 			Subprotocols: []string{globals.TcpProxyV1},
@@ -66,6 +68,18 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			}
 			cancel.(context.CancelFunc)()
 		}()
+
+		var handshake proxy.Handshake
+		if err := wspb.Read(connCtx, conn, &handshake); err != nil {
+			w.logger.Error("error reading nonce from client", "error", err)
+			wr.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if len(handshake.GetTofuToken()) < 20 {
+			w.logger.Error("invalid tofu token")
+			wr.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
 		switch conn.Subprotocol() {
 		case globals.TcpProxyV1:

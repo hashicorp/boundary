@@ -2,13 +2,14 @@ package scopes
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -30,10 +31,11 @@ func (c *Command) Synopsis() string {
 }
 
 var flagsMap = map[string][]string{
-	"create": {"name", "description", "skip-role-creation"},
+	"create": {"scope-id", "name", "description", "skip-role-creation"},
 	"update": {"id", "name", "description", "version"},
 	"read":   {"id"},
 	"delete": {"id"},
+	"list":   {"scope-id"},
 }
 
 func (c *Command) Help() string {
@@ -86,6 +88,10 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
+		return 1
+	}
 
 	client, err := c.Client()
 	if err != nil {
@@ -123,28 +129,32 @@ func (c *Command) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, scopes.WithAutomaticVersioning())
+			opts = append(opts, scopes.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
 	}
 
-	var existed bool
-	var scope *scopes.Scope
-	var listedScopes []*scopes.Scope
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		scope, apiErr, err = scopeClient.Create(c.Context, client.ScopeId(), opts...)
+		result, apiErr, err = scopeClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
-		scope, apiErr, err = scopeClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = scopeClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		scope, apiErr, err = scopeClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = scopeClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = scopeClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = scopeClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedScopes, apiErr, err = scopeClient.List(c.Context, client.ScopeId(), opts...)
+		listResult, apiErr, err = scopeClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "scope"
@@ -178,6 +188,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedScopes := listResult.GetItems().([]*scopes.Scope)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedScopes) == 0 {
@@ -193,7 +204,7 @@ func (c *Command) Run(args []string) int {
 
 		case "table":
 			if len(listedScopes) == 0 {
-				c.UI.Output("No scopes found")
+				c.UI.Output("No child scopes found")
 				return 0
 			}
 			var output []string
@@ -227,6 +238,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	scope := result.GetItem().(*scopes.Scope)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateScopeTableOutput(scope))

@@ -8,9 +8,7 @@ import (
 	"github.com/hashicorp/boundary/api/authtokens"
 )
 
-// TODO: This will need to be changed when we add Auth Method API to boundary.  We'll also need a better
-// way to handle different auth method types.
-func (c *Client) Authenticate(ctx context.Context, authMethodId, loginName, password string, opt ...Option) (*authtokens.AuthToken, *api.Error, error) {
+func (c *Client) Authenticate(ctx context.Context, authMethodId string, credentials map[string]interface{}, opt ...Option) (*authtokens.AuthTokenReadResult, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client in Authenticate request")
 	}
@@ -18,10 +16,7 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId, loginName, pass
 	_, apiOpts := getOpts(opt...)
 
 	reqBody := map[string]interface{}{
-		"credentials": map[string]string{
-			"login_name": loginName,
-			"password":   password,
-		},
+		"credentials": credentials,
 	}
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:authenticate", authMethodId), reqBody, apiOpts...)
@@ -34,14 +29,11 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId, loginName, pass
 		return nil, nil, fmt.Errorf("error performing client request during Authenticate call: %w", err)
 	}
 
-	target := new(authtokens.AuthToken)
-	apiErr, err := resp.Decode(target)
+	target := new(authtokens.AuthTokenReadResult)
+	target.Item = new(authtokens.AuthToken)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Authenticate response: %w", err)
-	}
-
-	if target.Token != "" {
-		c.client.SetToken(target.Token)
 	}
 
 	return target, apiErr, nil

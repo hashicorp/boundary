@@ -9,12 +9,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcutil/base58"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 	"google.golang.org/protobuf/proto"
 )
 
-const nonceLength = 32
+const (
+	nonceLength = 32
+	v1String    = "1"
+)
 
 // FutureLeeway indicates how far in the future we should allow the creation
 // time of the token to be, in order to account for clock drift
@@ -57,22 +61,32 @@ func formatToken(ctx context.Context, wrapper wrapping.Wrapper, info *Info) (str
 		return "", fmt.Errorf("error marshaling encrypted blob: %w", err)
 	}
 
-	return fmt.Sprintf("r_%s", base64.RawStdEncoding.EncodeToString(marshaledBlob)), nil
+	return fmt.Sprintf("r_%s%s", v1String, base58.Encode(marshaledBlob)), nil
 }
 
-func ParseRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper, token string) (*Info, error) {
-	token = strings.TrimSpace(token)
-	if token == "" {
+func ParseRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper, versionedToken string) (*Info, error) {
+	versionedToken = strings.TrimSpace(versionedToken)
+	if versionedToken == "" {
 		return nil, errors.New("empty token")
 	}
-	if !strings.HasPrefix(token, "r_") {
+	if !strings.HasPrefix(versionedToken, "r_") {
 		return nil, errors.New("token has wrong format")
 	}
-	token = strings.TrimPrefix(token, "r_")
+	versionedToken = strings.TrimPrefix(versionedToken, "r_")
 
-	marshaledBlob, err := base64.RawStdEncoding.DecodeString(token)
-	if err != nil {
-		return nil, fmt.Errorf("error base64-decoding token: %w", err)
+	ver, token := versionedToken[0:1], versionedToken[1:]
+
+	// Don't do anything yet, but if we ever need to adjust data based on
+	// version we'd do it here
+	switch ver {
+	case v1String:
+	default:
+		return nil, fmt.Errorf("unknown recovery token version %s", ver)
+	}
+
+	marshaledBlob := base58.Decode(token)
+	if len(marshaledBlob) == 0 {
+		return nil, fmt.Errorf("length zero after base58-decoding token")
 	}
 
 	blobInfo := new(wrapping.EncryptedBlobInfo)

@@ -73,7 +73,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existing Host Set",
 			req:     &pbs.GetHostRequest{Id: static.HostPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -197,9 +197,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostRequest{
 				Id: h.GetPublicId(),
 			},
-			res: &pbs.DeleteHostResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -208,7 +205,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostRequest{
 				Id: static.HostPrefix + "_doesntexis",
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Bad Host Id formatting",
@@ -216,7 +213,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostRequest{
 				Id: static.HostPrefix + "_bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -252,12 +248,11 @@ func TestDelete_twice(t *testing.T) {
 		Id: h.GetPublicId(),
 	}
 	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
-	got, gErr := s.DeleteHost(ctx, req)
+	_, gErr := s.DeleteHost(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteHost(ctx, req)
+	_, gErr = s.DeleteHost(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -308,6 +303,19 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			errCode: codes.OK,
+		},
+		{
+			name: "Create with empty address",
+			req: &pbs.CreateHostRequest{Item: &pb.Host{
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "name"},
+				Description:   &wrappers.StringValue{Value: "desc"},
+				Type:          "static",
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"address": structpb.NewStringValue(""),
+				}},
+			}},
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Create without address",
@@ -464,11 +472,12 @@ func TestUpdate(t *testing.T) {
 			name: "Update an Existing Host",
 			req: &pbs.UpdateHostRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description"},
+					Paths: []string{"name", "description", "type"},
 				},
 				Item: &pb.Host{
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
+					Type:        "static",
 				},
 			},
 			res: &pbs.UpdateHostResponse{
@@ -491,11 +500,12 @@ func TestUpdate(t *testing.T) {
 			name: "Multiple Paths in single string",
 			req: &pbs.UpdateHostRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name,description"},
+					Paths: []string{"name,description,type"},
 				},
 				Item: &pb.Host{
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
+					Type:        "static",
 				},
 			},
 			res: &pbs.UpdateHostResponse{
@@ -520,6 +530,19 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Host{
 					Name:        &wrappers.StringValue{Value: "updated name"},
 					Description: &wrappers.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "No Update Mask",
+			req: &pbs.UpdateHostRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,type"},
+				},
+				Item: &pb.Host{
+					Name: &wrappers.StringValue{Value: "updated name"},
+					Type: "ec2",
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -663,7 +686,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Cant change Id",
@@ -677,6 +700,36 @@ func TestUpdate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "new desc"},
+				}},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant unset address",
+			req: &pbs.UpdateHostRequest{
+				Id: hc.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.address"},
+				},
+				Item: &pb.Host{
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewNullValue(),
+					}},
+				}},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant set address to empty string",
+			req: &pbs.UpdateHostRequest{
+				Id: hc.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.address"},
+				},
+				Item: &pb.Host{
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewStringValue(""),
+					}},
 				}},
 			res:     nil,
 			errCode: codes.InvalidArgument,

@@ -91,7 +91,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existing Host Catalog",
 			req:     &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -196,7 +196,12 @@ func TestList(t *testing.T) {
 		{
 			name:    "Unfound Catalogs",
 			scopeId: scope.Project.Prefix() + "_DoesntExis",
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
+		},
+		{
+			name:    "Bad scope level",
+			scopeId: scope.Global.String(),
+			errCode: codes.InvalidArgument,
 		},
 	}
 	for _, tc := range cases {
@@ -233,9 +238,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostCatalogRequest{
 				Id: hc.GetPublicId(),
 			},
-			res: &pbs.DeleteHostCatalogResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -244,7 +246,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostCatalogRequest{
 				Id: static.HostCatalogPrefix + "_doesntexis",
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Bad HostCatalog Id formatting",
@@ -252,7 +254,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostCatalogRequest{
 				Id: static.HostCatalogPrefix + "_bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -277,12 +278,11 @@ func TestDelete_twice(t *testing.T) {
 		Id: hc.GetPublicId(),
 	}
 	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
-	got, gErr := s.DeleteHostCatalog(ctx, req)
+	_, gErr := s.DeleteHostCatalog(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteHostCatalog(ctx, req)
+	_, gErr = s.DeleteHostCatalog(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -317,6 +317,26 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			errCode: codes.OK,
+		},
+		{
+			name: "Cant create in org",
+			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
+				ScopeId:     proj.GetParentId(),
+				Name:        &wrappers.StringValue{Value: "name"},
+				Description: &wrappers.StringValue{Value: "desc"},
+				Type:        "static",
+			}},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant create in global",
+			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
+				ScopeId:     scope.Global.String(),
+				Name:        &wrappers.StringValue{Value: "name"},
+				Description: &wrappers.StringValue{Value: "desc"},
+				Type:        "static",
+			}},
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Create with unknown type",
@@ -433,6 +453,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostCatalog{
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
+					Type:        "static",
 				},
 			},
 			res: &pbs.UpdateHostCatalogResponse{
@@ -457,6 +478,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostCatalog{
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
+					Type:        "static",
 				},
 			},
 			res: &pbs.UpdateHostCatalogResponse{
@@ -597,6 +619,19 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
+			name: "Cant change type",
+			req: &pbs.UpdateHostCatalogRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "type"},
+				},
+				Item: &pb.HostCatalog{
+					Name: &wrappers.StringValue{Value: "updated name"},
+					Type: "ec2",
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
 			name: "Update a Non Existing HostCatalog",
 			req: &pbs.UpdateHostCatalogRequest{
 				Id: static.HostCatalogPrefix + "_DoesntExis",
@@ -609,7 +644,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Cant change Id",

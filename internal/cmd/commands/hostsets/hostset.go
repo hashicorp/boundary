@@ -2,13 +2,14 @@ package hostsets
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -46,6 +47,7 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":         {"id"},
 	"delete":       {"id"},
+	"list":         {"host-catalog-id"},
 	"add-hosts":    {"id", "host", "version"},
 	"set-hosts":    {"id", "host", "version"},
 	"remove-hosts": {"id", "host", "version"},
@@ -53,6 +55,7 @@ var flagsMap = map[string][]string{
 
 func (c *Command) Help() string {
 	helpMap := common.HelpMap("host-set")
+	var helpStr string
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
@@ -67,7 +70,7 @@ func (c *Command) Help() string {
 			"  Please see the host-sets subcommand help for detailed usage information.",
 		})
 	case "create":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets create [type] [sub command] [options] [args]",
 			"",
 			"  This command allows create operations on Boundary host-set resources. Example:",
@@ -79,7 +82,7 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "update":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets update [type] [sub command] [options] [args]",
 			"",
 			"  This command allows update operations on Boundary host-set resources. Example:",
@@ -91,7 +94,7 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "add-hosts":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets add-hosts [sub command] [options] [args]",
 			"",
 			"  This command allows adding hosts to host-set resources, if the types match and the operation is allowed by the given host-set type. Example:",
@@ -101,7 +104,7 @@ func (c *Command) Help() string {
 			`      $ boundary host-sets add-hosts -id hsst_1234567890 -host hst_1234567890 -host hst_0987654321`,
 		})
 	case "remove-hosts":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets remove-hosts [sub command] [options] [args]",
 			"",
 			"  This command allows removing hosts from host-set resources, if the types match and the operation is allowed by the given host-set type. Example:",
@@ -111,7 +114,7 @@ func (c *Command) Help() string {
 			`      $ boundary host-sets remove-hosts -id hsst_1234567890 -host hst_0987654321`,
 		})
 	case "set-hosts":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets set-hosts [sub command] [options] [args]",
 			"",
 			"  This command allows setting the complete set of hosts on host-set resources, if the types match and the operation is allowed by the given host-set type. Example:",
@@ -121,27 +124,25 @@ func (c *Command) Help() string {
 			`      $ boundary host-sets remove-hosts -id hsst_1234567890 -host hst_1234567890`,
 		})
 	default:
-		return helpMap[c.Func]() + c.Flags().Help()
+		helpStr = helpMap[c.Func]()
 	}
+	return helpStr + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
-
-	if len(flagsMap[c.Func]) > 0 {
-		common.PopulateCommonFlags(c.Command, f, resource.HostSet.String(), flagsMap[c.Func])
-	}
-
-	f.StringVar(&base.StringVar{
-		Name:   "host-catalog-id",
-		Target: &c.flagHostCatalogId,
-		Usage:  "The host-catalog resource in which to create or update the host-set resource",
-	})
+	common.PopulateCommonFlags(c.Command, f, resource.HostSet.String(), flagsMap[c.Func])
 
 	for _, name := range flagsMap[c.Func] {
 		switch name {
+		case "host-catalog-id":
+			f.StringVar(&base.StringVar{
+				Name:   "host-catalog-id",
+				Target: &c.flagHostCatalogId,
+				Usage:  "The host-catalog resource in which to list host-set resources",
+			})
 		case "host":
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   "host",
@@ -174,9 +175,12 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return 1
 	}
-
 	if strutil.StrListContains(flagsMap[c.Func], "id") && c.FlagId == "" {
 		c.UI.Error("ID is required but not passed in via -id")
+		return 1
+	}
+	if strutil.StrListContains(flagsMap[c.Func], "host-catalog-id") && c.flagHostCatalogId == "" {
+		c.UI.Error("Host Catalog ID must be passed in via -host-catalog-id")
 		return 1
 	}
 
@@ -215,14 +219,12 @@ func (c *Command) Run(args []string) int {
 	case "set-hosts":
 		switch len(c.flagHosts) {
 		case 0:
-		case 1:
-			if c.flagHosts[0] == "null" {
-				hosts = []string{}
-			}
-		}
-		if hosts == nil {
 			c.UI.Error("No hosts supplied via -host")
 			return 1
+		case 1:
+			if c.flagHosts[0] == "null" {
+				hosts = nil
+			}
 		}
 	}
 
@@ -232,7 +234,7 @@ func (c *Command) Run(args []string) int {
 	case "add-hosts", "remove-hosts", "set-hosts":
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, hostsets.WithAutomaticVersioning())
+			opts = append(opts, hostsets.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
@@ -243,24 +245,28 @@ func (c *Command) Run(args []string) int {
 
 	hostsetClient := hostsets.NewClient(client)
 
-	var existed bool
-	var set *hostsets.HostSet
-	var listedSets []*hostsets.HostSet
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		set, apiErr, err = hostsetClient.Read(c.Context, c.flagHostCatalogId, c.FlagId, opts...)
+		result, apiErr, err = hostsetClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = hostsetClient.Delete(c.Context, c.flagHostCatalogId, c.FlagId, opts...)
+		_, apiErr, err = hostsetClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedSets, apiErr, err = hostsetClient.List(c.Context, c.flagHostCatalogId, opts...)
+		listResult, apiErr, err = hostsetClient.List(c.Context, c.flagHostCatalogId, opts...)
 	case "add-hosts":
-		set, apiErr, err = hostsetClient.AddHosts(c.Context, c.flagHostCatalogId, c.FlagId, version, c.flagHosts, opts...)
+		result, apiErr, err = hostsetClient.AddHosts(c.Context, c.FlagId, version, hosts, opts...)
 	case "remove-hosts":
-		set, apiErr, err = hostsetClient.RemoveHosts(c.Context, c.flagHostCatalogId, c.FlagId, version, c.flagHosts, opts...)
+		result, apiErr, err = hostsetClient.RemoveHosts(c.Context, c.FlagId, version, hosts, opts...)
 	case "set-hosts":
-		set, apiErr, err = hostsetClient.SetHosts(c.Context, c.flagHostCatalogId, c.FlagId, version, c.flagHosts, opts...)
+		result, apiErr, err = hostsetClient.SetHosts(c.Context, c.FlagId, version, hosts, opts...)
 	}
 
 	plural := "host set"
@@ -294,6 +300,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedSets := listResult.GetItems().([]*hostsets.HostSet)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedSets) == 0 {
@@ -344,6 +351,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	set := result.GetItem().(*hostsets.HostSet)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateHostSetTableOutput(set))

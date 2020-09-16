@@ -182,9 +182,7 @@ message DeleteTargetRequest {
   string id = 1;
 }
 
-message DeleteTargetResponse {
-  bool existed = 1;
-}
+message DeleteTargetResponse {}
 
 message AddTargetHostSetsRequest {
   string id = 1;
