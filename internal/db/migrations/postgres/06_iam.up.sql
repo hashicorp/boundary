@@ -80,6 +80,7 @@ create table iam_scope_project (
     parent_id wt_public_id not null references iam_scope_org(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
+    unique(scope_id),
     primary key(scope_id, parent_id)
   );
 
