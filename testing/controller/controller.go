@@ -39,19 +39,19 @@ func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {
 }
 
 type option struct {
-	tcOptions                      *controller.TestControllerOpts
-	setWithConfigFile              bool
-	setWithConfigText              bool
-	setDisableAuthMethodCreation   bool
-	setDisableDatabaseCreation     bool
-	setDisableDatabaseDesctruction bool
-	setDefaultAuthMethodId         bool
-	setDefaultLoginName            bool
-	setDefaultPassword             bool
-	setRootKms                     bool
-	setWorkerAuthKms               bool
-	setRecoveryKms                 bool
-	setDatabaseUrl                 bool
+	tcOptions                     *controller.TestControllerOpts
+	setWithConfigFile             bool
+	setWithConfigText             bool
+	setDisableAuthMethodCreation  bool
+	setDisableDatabaseCreation    bool
+	setDisableDatabaseDestruction bool
+	setDefaultAuthMethodId        bool
+	setDefaultLoginName           bool
+	setDefaultPassword            bool
+	setRootKms                    bool
+	setWorkerAuthKms              bool
+	setRecoveryKms                bool
+	setDatabaseUrl                bool
 }
 
 type Option func(*option) error
