@@ -80,6 +80,7 @@ create table iam_scope_project (
     parent_id wt_public_id not null references iam_scope_org(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
+    unique(scope_id),
     primary key(scope_id, parent_id)
   );
 
@@ -556,7 +557,7 @@ end;
 $$ language plpgsql;
 
 insert into iam_role (public_id, name, description, scope_id)
-  values('r_default', 'default', 'Default role created on first instantiation of Boundary. It is meant to provide enough permissions for users to successfully authenticate via various clients types.', 'global');
+  values('r_default', 'default', 'Default role created on first instantiation of Boundary. It is meant to provide enough permissions for users to successfully authenticate via various client types.', 'global');
 insert into iam_role_grant (role_id, canonical_grant, raw_grant)
   values
     ('r_default', 'type=scope;actions=list', 'type=scope;actions=list'),

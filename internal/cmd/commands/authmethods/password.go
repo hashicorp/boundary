@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -32,7 +32,7 @@ func (c *PasswordCommand) Synopsis() string {
 }
 
 var passwordFlagsMap = map[string][]string{
-	"create": {"name", "description"},
+	"create": {"scope-id", "name", "description"},
 	"update": {"id", "name", "description", "version"},
 }
 
@@ -100,6 +100,10 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	if strutil.StrListContains(passwordFlagsMap[c.Func], "id") && c.FlagId == "" {
 		c.UI.Error("ID is required but not passed in via -id")
+		return 1
+	}
+	if strutil.StrListContains(passwordFlagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
 		return 1
 	}
 
@@ -174,20 +178,20 @@ func (c *PasswordCommand) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, authmethods.WithAutomaticVersioning())
+			opts = append(opts, authmethods.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
 	}
 
-	var method *authmethods.AuthMethod
+	var result api.GenericResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		method, apiErr, err = authmethodClient.Create(c.Context, "password", opts...)
+		result, apiErr, err = authmethodClient.Create(c.Context, "password", c.FlagScopeId, opts...)
 	case "update":
-		method, apiErr, err = authmethodClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = authmethodClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
 	plural := "password-type auth-method"
@@ -200,6 +204,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		return 1
 	}
 
+	method := result.GetItem().(*authmethods.AuthMethod)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateAuthMethodTableOutput(method))

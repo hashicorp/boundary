@@ -2,6 +2,7 @@ package authtokens
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
@@ -9,7 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -31,6 +32,7 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"delete": {"id"},
+	"list":   {"scope-id"},
 }
 
 func (c *Command) Help() string {
@@ -76,6 +78,10 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
+		return 1
+	}
 
 	client, err := c.Client()
 	if err != nil {
@@ -85,18 +91,22 @@ func (c *Command) Run(args []string) int {
 
 	authtokenClient := authtokens.NewClient(client)
 
-	var existed bool
-	var token *authtokens.AuthToken
-	var listedTokens []*authtokens.AuthToken
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		token, apiErr, err = authtokenClient.Read(c.Context, c.FlagId)
+		result, apiErr, err = authtokenClient.Read(c.Context, c.FlagId)
 	case "delete":
-		existed, apiErr, err = authtokenClient.Delete(c.Context, c.FlagId)
+		_, apiErr, err = authtokenClient.Delete(c.Context, c.FlagId)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedTokens, apiErr, err = authtokenClient.List(c.Context)
+		listResult, apiErr, err = authtokenClient.List(c.Context, c.FlagScopeId)
 	}
 
 	plural := "auth token"
@@ -130,6 +140,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedTokens := listResult.GetItems().([]*authtokens.AuthToken)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedTokens) == 0 {
@@ -172,6 +183,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	token := result.GetItem().(*authtokens.AuthToken)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateAuthTokenTableOutput(token))

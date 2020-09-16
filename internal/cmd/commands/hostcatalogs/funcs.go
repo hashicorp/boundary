@@ -13,6 +13,7 @@ func generateHostCatalogTableOutput(in *hostcatalogs.HostCatalog) string {
 
 	nonAttributeMap := map[string]interface{}{
 		"ID":           in.Id,
+		"Scope ID":     in.Scope.Id,
 		"Version":      in.Version,
 		"Type":         in.Type,
 		"Created Time": in.CreatedTime.Local().Format(time.RFC3339),
@@ -54,12 +55,8 @@ func generateHostCatalogTableOutput(in *hostcatalogs.HostCatalog) string {
 	)
 
 	if len(in.Attributes) > 0 {
-		if true {
-			ret = append(ret,
-				fmt.Sprintf("  Attributes:   %s", ""),
-			)
-		}
 		ret = append(ret,
+			fmt.Sprintf("  Attributes:   %s", ""),
 			base.WrapMap(4, maxLength, in.Attributes),
 		)
 	}
@@ -67,4 +64,6 @@ func generateHostCatalogTableOutput(in *hostcatalogs.HostCatalog) string {
 	return base.WrapForHelpText(ret)
 }
 
-var attributeMap = map[string]string{}
+var attributeMap = map[string]string{
+	"address": "Address",
+}

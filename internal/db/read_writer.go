@@ -103,6 +103,11 @@ type Writer interface {
 	// DB returns the sql.DB
 	DB() (*sql.DB, error)
 
+	// Exec will execute the sql with the values as parameters. The int returned
+	// is the number of rows affected by the sql. No options are currently
+	// supported.
+	Exec(sql string, values []interface{}, opt ...Option) (int, error)
+
 	// GetTicket returns an oplog ticket for the aggregate root of "i" which can
 	// be used to WriteOplogEntryWith for that aggregate root.
 	GetTicket(i interface{}) (*store.Ticket, error)
@@ -185,6 +190,20 @@ func (rw *Db) DB() (*sql.DB, error) {
 		return nil, fmt.Errorf("missing underlying db: %w", ErrInvalidParameter)
 	}
 	return rw.underlying.DB(), nil
+}
+
+// Exec will execute the sql with the values as parameters. The int returned
+// is the number of rows affected by the sql. No options are currently
+// supported.
+func (rw *Db) Exec(sql string, values []interface{}, opt ...Option) (int, error) {
+	if sql == "" {
+		return NoRowsAffected, fmt.Errorf("missing sql: %w", ErrInvalidParameter)
+	}
+	gormDb := rw.underlying.Exec(sql, values...)
+	if gormDb.Error != nil {
+		return NoRowsAffected, fmt.Errorf("exec: failed: %w", gormDb.Error)
+	}
+	return int(gormDb.RowsAffected), nil
 }
 
 // Scan rows will scan the rows into the interface

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package controller.servers.services.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/servers/services;services";
+
+import "google/protobuf/timestamp.proto";
+import "controller/servers/v1/servers.proto";
+import "controller/api/resources/sessions/v1/session.proto";
+
+service SessionService {
+	// Validate session allows a worker to retrieve session information from the controller.
+	// This endpoint validates the session
+	rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {}
+}
+
+message GetSessionRequest {
+	// The session ID from the client
+	string id = 10;
+}
+
+// SessionResponse contains information necessary for a client to establish a session
+message GetSessionResponse {
+	api.resources.sessions.v1.Session session = 1;
+}

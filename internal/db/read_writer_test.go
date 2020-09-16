@@ -1091,6 +1091,24 @@ func TestDb_DB(t *testing.T) {
 	})
 }
 
+func TestDb_Exec(t *testing.T) {
+	t.Parallel()
+	t.Run("update", func(t *testing.T) {
+		db, _ := TestSetup(t, "postgres")
+		require := require.New(t)
+		w := Db{underlying: db}
+		id := testId(t)
+		user, err := db_test.NewTestUser()
+		require.NoError(err)
+		user.Name = "foo-" + id
+		err = w.Create(context.Background(), user)
+		require.NoError(err)
+		require.NotEmpty(user.Id)
+		rowsAffected, err := w.Exec("update db_test_user set name = ? where public_id = ?", []interface{}{"updated-" + id, user.PublicId})
+		require.NoError(err)
+		require.Equal(1, rowsAffected)
+	})
+}
 func TestDb_DoTx(t *testing.T) {
 	t.Parallel()
 	db, _ := TestSetup(t, "postgres")

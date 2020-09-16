@@ -45,6 +45,7 @@ func TestGet(t *testing.T) {
 		ScopeId:                 at.GetScopeId(),
 		UserId:                  at.GetIamUserId(),
 		AuthMethodId:            at.GetAuthMethodId(),
+		AccountId:               at.GetAuthAccountId(),
 		CreatedTime:             at.GetCreateTime().GetTimestamp(),
 		UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 		ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
@@ -68,7 +69,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existing auth token",
 			req:     &pbs.GetAuthTokenRequest{Id: authtoken.AuthTokenPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -117,6 +118,7 @@ func TestList(t *testing.T) {
 			ScopeId:                 at.GetScopeId(),
 			UserId:                  at.GetIamUserId(),
 			AuthMethodId:            at.GetAuthMethodId(),
+			AccountId:               at.GetAuthAccountId(),
 			CreatedTime:             at.GetCreateTime().GetTimestamp(),
 			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
@@ -134,6 +136,7 @@ func TestList(t *testing.T) {
 			ScopeId:                 at.GetScopeId(),
 			UserId:                  at.GetIamUserId(),
 			AuthMethodId:            at.GetAuthMethodId(),
+			AccountId:               at.GetAuthAccountId(),
 			CreatedTime:             at.GetCreateTime().GetTimestamp(),
 			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
@@ -170,7 +173,7 @@ func TestList(t *testing.T) {
 		{
 			name:    "Unfound Org",
 			scope:   scope.Org.Prefix() + "_DoesntExis",
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 	}
 	for _, tc := range cases {
@@ -217,9 +220,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthTokenRequest{
 				Id: at.GetPublicId(),
 			},
-			res: &pbs.DeleteAuthTokenResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -228,7 +228,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthTokenRequest{
 				Id: authtoken.AuthTokenPrefix + "_doesntexis",
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:  "Bad token id formatting",
@@ -236,7 +236,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthTokenRequest{
 				Id: "bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -272,10 +271,9 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteAuthTokenRequest{
 		Id: at.GetPublicId(),
 	}
-	got, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(at.GetScopeId())), req)
+	_, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(at.GetScopeId())), req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(at.GetScopeId())), req)
+	_, gErr = s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(at.GetScopeId())), req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }

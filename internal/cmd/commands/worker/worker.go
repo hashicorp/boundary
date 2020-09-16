@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/servers/worker"
-	"github.com/hashicorp/boundary/internal/wrapper"
+	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
@@ -230,7 +230,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	if c.flagConfigKms != "" {
 		wrapperPath = c.flagConfigKms
 	}
-	wrapper, err := wrapper.GetWrapper(wrapperPath, "config")
+	wrapper, err := wrapper.GetWrapperFromPath(wrapperPath, "config")
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1

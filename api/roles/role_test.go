@@ -18,36 +18,29 @@ import (
 
 func TestCustom(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
-		name        string
-		scopeClient *api.Client
+		name    string
+		scopeId string
 	}{
 		{
-			name:        "org",
-			scopeClient: client,
+			name:    "org",
+			scopeId: org.GetPublicId(),
 		},
 		{
-			name:        "proj",
-			scopeClient: projClient,
+			name:    "proj",
+			scopeId: proj.GetPublicId(),
 		},
 	}
 
-	user, apiErr, err := users.NewClient(client).Create(tc.Context())
+	user, apiErr, err := users.NewClient(client).Create(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 
@@ -69,128 +62,125 @@ func TestCustom(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			g, apiErr, err := groups.NewClient(tt.scopeClient).Create(tc.Context())
+			g, apiErr, err := groups.NewClient(client).Create(tc.Context(), tt.scopeId)
 			require.NoError(err)
 			require.Nil(apiErr)
 			require.NotNil(g)
 
-			rc := roles.NewClient(tt.scopeClient)
+			rc := roles.NewClient(client)
 			var version uint32 = 1
 
-			r, apiErr, err := rc.Create(tc.Context(), roles.WithName("foo"))
+			r, apiErr, err := rc.Create(tc.Context(), tt.scopeId, roles.WithName("foo"))
 			require.NoError(err)
 			require.Nil(apiErr)
 			require.NotNil(r)
-			require.EqualValues(r.Version, version)
+			require.EqualValues(r.Item.Version, version)
 			version++
 
-			updatedRole, apiErr, err := rc.AddPrincipals(tc.Context(), r.Id, r.Version, []string{g.Id})
+			updatedRole, apiErr, err := rc.AddPrincipals(tc.Context(), r.Item.Id, r.Item.Version, []string{g.Item.Id})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", pretty.Sprint(apiErr))
-			assert.EqualValues(updatedRole.Version, version)
-			assert.True(hasPrincipal(updatedRole, g.Id))
+			assert.EqualValues(updatedRole.Item.Version, version)
+			assert.True(hasPrincipal(updatedRole.Item, g.Item.Id))
 			version++
 
-			updatedRole, apiErr, err = rc.SetPrincipals(tc.Context(), updatedRole.Id, updatedRole.Version, []string{user.Id})
+			updatedRole, apiErr, err = rc.SetPrincipals(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{user.Item.Id})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
-			assert.EqualValues(updatedRole.Version, version)
-			assert.True(hasPrincipal(updatedRole, user.Id))
+			assert.EqualValues(updatedRole.Item.Version, version)
+			assert.True(hasPrincipal(updatedRole.Item, user.Item.Id))
 			version++
 
-			updatedRole, apiErr, err = rc.RemovePrincipals(tc.Context(), updatedRole.Id, updatedRole.Version, []string{user.Id})
+			updatedRole, apiErr, err = rc.RemovePrincipals(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{user.Item.Id})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
-			assert.EqualValues(updatedRole.Version, version)
-			assert.Empty(updatedRole.Principals)
+			assert.EqualValues(updatedRole.Item.Version, version)
+			assert.Empty(updatedRole.Item.Principals)
 			version++
 
-			updatedRole, apiErr, err = rc.AddGrants(tc.Context(), updatedRole.Id, updatedRole.Version, []string{"id=*;actions=read"})
+			updatedRole, apiErr, err = rc.AddGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=read"})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
-			assert.EqualValues(updatedRole.Version, version)
-			assert.Contains(updatedRole.GrantStrings, "id=*;actions=read")
+			assert.EqualValues(updatedRole.Item.Version, version)
+			assert.Contains(updatedRole.Item.GrantStrings, "id=*;actions=read")
 			version++
 
-			updatedRole, apiErr, err = rc.SetGrants(tc.Context(), updatedRole.Id, updatedRole.Version, []string{"id=*;actions=*"})
+			updatedRole, apiErr, err = rc.SetGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=*"})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
-			assert.EqualValues(updatedRole.Version, version)
-			assert.Contains(updatedRole.GrantStrings, "id=*;actions=*")
+			assert.EqualValues(updatedRole.Item.Version, version)
+			assert.Contains(updatedRole.Item.GrantStrings, "id=*;actions=*")
 			version++
 
-			updatedRole, apiErr, err = rc.RemoveGrants(tc.Context(), updatedRole.Id, updatedRole.Version, []string{"id=*;actions=*"})
+			updatedRole, apiErr, err = rc.RemoveGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=*"})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
-			assert.EqualValues(updatedRole.Version, version)
-			assert.Empty(updatedRole.Grants)
+			assert.EqualValues(updatedRole.Item.Version, version)
+			assert.Empty(updatedRole.Item.Grants)
 			version++
 		})
 	}
 }
 
-func TestRole_List(t *testing.T) {
+func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
-		name        string
-		scopeClient *api.Client
+		name    string
+		scopeId string
 	}{
 		{
-			name:        "org",
-			scopeClient: client,
+			name:    "org",
+			scopeId: org.GetPublicId(),
 		},
 		{
-			name:        "proj",
-			scopeClient: projClient,
+			name:    "proj",
+			scopeId: proj.GetPublicId(),
 		},
 	}
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			roleClient := roles.NewClient(tt.scopeClient)
-			p1, apiErr, err := roleClient.List(tc.Context())
+			var expected []*roles.Role
+
+			roleClient := roles.NewClient(client)
+			p1, apiErr, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
 			assert.Nil(apiErr)
-			require.Len(p1, 0)
+			require.Len(p1.Items, 1)
+			expected = append(expected, p1.Items[0])
 
-			var expected []*roles.Role
-			for i := 0; i < 10; i++ {
+			for i := 1; i < 11; i++ {
 				expected = append(expected, &roles.Role{Name: fmt.Sprint(i)})
 			}
 
-			expected[0], apiErr, err = roleClient.Create(tc.Context(), roles.WithName(expected[0].Name))
+			rcr, apiErr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[1].Name))
 			require.NoError(err)
-			assert.Nil(apiErr)
+			require.Nil(apiErr)
+			expected[1] = rcr.Item
 
-			p2, apiErr, err := roleClient.List(tc.Context())
-			assert.NoError(err)
-			assert.Nil(apiErr)
-			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(p2))
+			p2, apiErr, err := roleClient.List(tc.Context(), tt.scopeId)
+			require.NoError(err)
+			require.Nil(apiErr)
+			assert.ElementsMatch(comparableSlice(expected[0:2]), comparableSlice(p2.Items))
 
-			for i := 1; i < 10; i++ {
-				expected[i], apiErr, err = roleClient.Create(tc.Context(), roles.WithName(expected[i].Name))
+			for i := 2; i < 11; i++ {
+				rcr, apiErr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[i].Name))
 				assert.NoError(err)
 				assert.Nil(apiErr)
+				expected[i] = rcr.Item
 			}
-			p3, apiErr, err := roleClient.List(tc.Context())
+			p3, apiErr, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
-			assert.Nil(apiErr)
-			assert.ElementsMatch(comparableSlice(expected), comparableSlice(p3))
+			require.Nil(apiErr)
+			assert.ElementsMatch(comparableSlice(expected), comparableSlice(p3.Items))
 		})
 	}
 }
@@ -210,34 +200,27 @@ func comparableSlice(in []*roles.Role) []roles.Role {
 	return filtered
 }
 
-func TestRole_Crud(t *testing.T) {
+func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
-		name        string
-		scopeClient *api.Client
+		name    string
+		scopeId string
 	}{
 		{
-			name:        "org",
-			scopeClient: client,
+			name:    "org",
+			scopeId: org.GetPublicId(),
 		},
 		{
-			name:        "proj",
-			scopeClient: projClient,
+			name:    "proj",
+			scopeId: proj.GetPublicId(),
 		},
 	}
 
@@ -257,82 +240,74 @@ func TestRole_Crud(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			roleClient := roles.NewClient(tt.scopeClient)
-			g, apiErr, err := roleClient.Create(tc.Context(), roles.WithName("foo"))
-			checkRole("create", g, apiErr, err, "foo", 1)
+			roleClient := roles.NewClient(client)
+			g, apiErr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("foo"))
+			checkRole("create", g.Item, apiErr, err, "foo", 1)
 
-			g, apiErr, err = roleClient.Read(tc.Context(), g.Id)
-			checkRole("read", g, apiErr, err, "foo", 1)
+			g, apiErr, err = roleClient.Read(tc.Context(), g.Item.Id)
+			checkRole("read", g.Item, apiErr, err, "foo", 1)
 
-			g, apiErr, err = roleClient.Update(tc.Context(), g.Id, g.Version, roles.WithName("bar"))
-			checkRole("update", g, apiErr, err, "bar", 2)
+			g, apiErr, err = roleClient.Update(tc.Context(), g.Item.Id, g.Item.Version, roles.WithName("bar"))
+			checkRole("update", g.Item, apiErr, err, "bar", 2)
 
-			g, apiErr, err = roleClient.Update(tc.Context(), g.Id, g.Version, roles.DefaultName())
-			checkRole("update", g, apiErr, err, "", 3)
+			g, apiErr, err = roleClient.Update(tc.Context(), g.Item.Id, g.Item.Version, roles.DefaultName())
+			checkRole("update", g.Item, apiErr, err, "", 3)
 
-			existed, apiErr, err := roleClient.Delete(tc.Context(), g.Id)
+			_, apiErr, err = roleClient.Delete(tc.Context(), g.Item.Id)
 			require.NoError(err)
 			assert.Nil(apiErr)
-			assert.True(existed, "Expected existing user when deleted, but it wasn't.")
 		})
 	}
 }
 
-func TestRole_Errors(t *testing.T) {
+func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cases := []struct {
-		name        string
-		scopeClient *api.Client
+		name    string
+		scopeId string
 	}{
 		{
-			name:        "org",
-			scopeClient: client,
+			name:    "org",
+			scopeId: org.GetPublicId(),
 		},
 		{
-			name:        "proj",
-			scopeClient: projClient,
+			name:    "proj",
+			scopeId: proj.GetPublicId(),
 		},
 	}
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			roleClient := roles.NewClient(tt.scopeClient)
-			u, apiErr, err := roleClient.Create(tc.Context(), roles.WithName("first"))
+			roleClient := roles.NewClient(client)
+			u, apiErr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("first"))
 			require.NoError(err)
 			assert.Nil(apiErr)
 			assert.NotNil(u)
 
 			// Create another resource with the same name.
-			_, apiErr, err = roleClient.Create(tc.Context(), roles.WithName("first"))
+			_, apiErr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("first"))
 			require.NoError(err)
 			assert.NotNil(apiErr)
 
 			_, apiErr, err = roleClient.Read(tc.Context(), iam.RolePrefix+"_doesntexis")
 			require.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusForbidden, apiErr.Status)
+			assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 			_, apiErr, err = roleClient.Read(tc.Context(), "invalid id")
 			require.NoError(err)
 			assert.NotNil(apiErr)
 			assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
-			_, apiErr, err = roleClient.Update(tc.Context(), u.Id, u.Version)
+			_, apiErr, err = roleClient.Update(tc.Context(), u.Item.Id, u.Item.Version)
 			require.NoError(err)
 			assert.NotNil(apiErr)
 			assert.EqualValues(http.StatusBadRequest, apiErr.Status)

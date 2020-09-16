@@ -69,6 +69,7 @@ func TestGet(t *testing.T) {
 		CreatedTime: org.CreateTime.GetTimestamp(),
 		UpdatedTime: org.UpdateTime.GetTimestamp(),
 		Version:     2,
+		Type:        scope.Org.String(),
 	}
 
 	pScope := &pb.Scope{
@@ -80,6 +81,7 @@ func TestGet(t *testing.T) {
 		CreatedTime: proj.CreateTime.GetTimestamp(),
 		UpdatedTime: proj.UpdateTime.GetTimestamp(),
 		Version:     2,
+		Type:        scope.Project.String(),
 	}
 
 	cases := []struct {
@@ -101,7 +103,7 @@ func TestGet(t *testing.T) {
 			scopeId: "global",
 			req:     &pbs.GetScopeRequest{Id: "o_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Get an existing project",
@@ -115,7 +117,7 @@ func TestGet(t *testing.T) {
 			scopeId: org.GetPublicId(),
 			req:     &pbs.GetScopeRequest{Id: "p_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -223,6 +225,7 @@ func TestList(t *testing.T) {
 			CreatedTime: o.GetCreateTime().GetTimestamp(),
 			UpdatedTime: o.GetUpdateTime().GetTimestamp(),
 			Version:     1,
+			Type:        scope.Org.String(),
 		})
 	}
 	wantOrgs = append(wantOrgs, initialOrgs...)
@@ -241,6 +244,7 @@ func TestList(t *testing.T) {
 			CreatedTime: p.GetCreateTime().GetTimestamp(),
 			UpdatedTime: p.GetUpdateTime().GetTimestamp(),
 			Version:     1,
+			Type:        scope.Project.String(),
 		})
 	}
 	scopes.SortScopes(wantProjects)
@@ -300,9 +304,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: proj.GetPublicId(),
 			},
-			res: &pbs.DeleteScopeResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -311,7 +312,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: "p_doesntexis",
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Bad Project Id formatting",
@@ -319,7 +320,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: "bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
@@ -327,9 +327,6 @@ func TestDelete(t *testing.T) {
 			scopeId: scope.Global.String(),
 			req: &pbs.DeleteScopeRequest{
 				Id: org.GetPublicId(),
-			},
-			res: &pbs.DeleteScopeResponse{
-				Existed: true,
 			},
 			errCode: codes.OK,
 		},
@@ -339,7 +336,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: "p_doesntexis",
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Bad Org Id formatting",
@@ -347,7 +344,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: "bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -372,43 +368,40 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteScopeRequest{
 		Id: proj.GetPublicId(),
 	}
-	got, gErr := s.DeleteScope(ctx, req)
+	_, gErr := s.DeleteScope(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteScope(ctx, req)
+	_, gErr = s.DeleteScope(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected not found for the second delete.")
 
 	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(scope.Global.String()))
 	req = &pbs.DeleteScopeRequest{
 		Id: org.GetPublicId(),
 	}
-	got, gErr = s.DeleteScope(ctx, req)
+	_, gErr = s.DeleteScope(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteScope(ctx, req)
+	_, gErr = s.DeleteScope(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected not found for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
 	ctx := context.Background()
-	require := require.New(t)
 	defaultOrg, defaultProj, repoFn := createDefaultScopesAndRepo(t)
 	defaultProjCreated, err := ptypes.Timestamp(defaultProj.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Error converting proto to timestamp.")
+	require.NoError(t, err, "Error converting proto to timestamp.")
 	toMerge := &pbs.CreateScopeRequest{}
 
 	repo, err := repoFn()
-	require.NoError(err)
+	require.NoError(t, err)
 	globalUser, err := iam.NewUser(scope.Global.String())
-	require.NoError(err)
+	require.NoError(t, err)
 	globalUser, err = repo.CreateUser(ctx, globalUser)
-	require.NoError(err)
+	require.NoError(t, err)
 	orgUser, err := iam.NewUser(defaultOrg.GetPublicId())
-	require.NoError(err)
+	require.NoError(t, err)
 	orgUser, err = repo.CreateUser(ctx, orgUser)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	cases := []struct {
 		name    string
@@ -435,6 +428,7 @@ func TestCreate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Version:     1,
+					Type:        scope.Project.String(),
 				},
 			},
 			errCode: codes.OK,
@@ -457,9 +451,78 @@ func TestCreate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Version:     1,
+					Type:        scope.Org.String(),
 				},
 			},
 			errCode: codes.OK,
+		},
+		{
+			name:    "Create a valid Project with type specified",
+			scopeId: defaultOrg.GetPublicId(),
+			req: &pbs.CreateScopeRequest{
+				Item: &pb.Scope{
+					ScopeId:     defaultOrg.GetPublicId(),
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        scope.Project.String(),
+				},
+			},
+			res: &pbs.CreateScopeResponse{
+				Uri: "scopes/p_",
+				Item: &pb.Scope{
+					ScopeId:     defaultOrg.GetPublicId(),
+					Scope:       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
+					Type:        scope.Project.String(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Create a valid Org with type specified",
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateScopeRequest{
+				Item: &pb.Scope{
+					ScopeId:     scope.Global.String(),
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        scope.Org.String(),
+				},
+			},
+			res: &pbs.CreateScopeResponse{
+				Uri: "scopes/o_",
+				Item: &pb.Scope{
+					ScopeId:     scope.Global.String(),
+					Scope:       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
+					Type:        scope.Org.String(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Project with bad type specified",
+			scopeId: defaultOrg.GetPublicId(),
+			req: &pbs.CreateScopeRequest{
+				Item: &pb.Scope{
+					ScopeId:     defaultOrg.GetPublicId(),
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        scope.Org.String(),
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name:    "Org with bad type specified",
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateScopeRequest{
+				Item: &pb.Scope{
+					ScopeId:     scope.Global.String(),
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        scope.Project.String(),
+				},
+			},
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name:    "Can't specify Id",
@@ -492,6 +555,7 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		for _, withUserId := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s-userid-%t", tc.name, withUserId), func(t *testing.T) {
+				assert, require := assert.New(t), require.New(t)
 				var name string
 				if tc.req != nil && tc.req.GetItem() != nil && tc.req.GetItem().GetName() != nil {
 					name = tc.req.GetItem().GetName().GetValue()
@@ -500,7 +564,6 @@ func TestCreate(t *testing.T) {
 						tc.res.GetItem().GetName().Value = localName
 					}()
 				}
-				assert := assert.New(t)
 				req := proto.Clone(toMerge).(*pbs.CreateScopeRequest)
 				proto.Merge(req, tc.req)
 
@@ -563,10 +626,9 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	require := require.New(t)
 	org, proj, repoFn := createDefaultScopesAndRepo(t)
 	tested, err := scopes.NewService(repoFn)
-	require.NoError(err, "Error when getting new project service.")
+	require.NoError(t, err, "Error when getting new project service.")
 
 	var orgVersion uint32 = 2
 	var projVersion uint32 = 2
@@ -574,23 +636,23 @@ func TestUpdate(t *testing.T) {
 	resetOrg := func() {
 		orgVersion++
 		repo, err := repoFn()
-		require.NoError(err, "Couldn't get a new repo")
+		require.NoError(t, err, "Couldn't get a new repo")
 		org, _, err = repo.UpdateScope(context.Background(), org, orgVersion, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset the org")
+		require.NoError(t, err, "Failed to reset the org")
 		orgVersion++
 	}
 
 	resetProject := func() {
 		projVersion++
 		repo, err := repoFn()
-		require.NoError(err, "Couldn't get a new repo")
+		require.NoError(t, err, "Couldn't get a new repo")
 		proj, _, err = repo.UpdateScope(context.Background(), proj, projVersion, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset the project")
+		require.NoError(t, err, "Failed to reset the project")
 		projVersion++
 	}
 
 	projCreated, err := ptypes.Timestamp(proj.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Error converting proto to timestamp")
+	require.NoError(t, err, "Error converting proto to timestamp")
 	projToMerge := &pbs.UpdateScopeRequest{
 		Id: proj.GetPublicId(),
 	}
@@ -616,6 +678,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        scope.Project.String(),
 				},
 			},
 			res: &pbs.UpdateScopeResponse{
@@ -626,6 +689,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+					Type:        scope.Project.String(),
 				},
 			},
 			errCode: codes.OK,
@@ -640,6 +704,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        scope.Org.String(),
 				},
 			},
 			res: &pbs.UpdateScopeResponse{
@@ -650,6 +715,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: org.GetCreateTime().GetTimestamp(),
+					Type:        scope.Org.String(),
 				},
 			},
 			errCode: codes.OK,
@@ -674,6 +740,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+					Type:        scope.Project.String(),
 				},
 			},
 			errCode: codes.OK,
@@ -685,6 +752,20 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name:    "Cant modify type",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "type"},
+				},
+				Item: &pb.Scope{
+					Name: &wrapperspb.StringValue{Value: "updated name"},
+					Type: scope.Org.String(),
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -731,6 +812,7 @@ func TestUpdate(t *testing.T) {
 					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 					Description: &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+					Type:        scope.Project.String(),
 				},
 			},
 			errCode: codes.OK,
@@ -753,6 +835,7 @@ func TestUpdate(t *testing.T) {
 					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrappers.StringValue{Value: "defaultProj"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+					Type:        scope.Project.String(),
 				},
 			},
 			errCode: codes.OK,
@@ -777,6 +860,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+					Type:        scope.Project.String(),
 				},
 			},
 			errCode: codes.OK,
@@ -801,6 +885,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "defaultProj"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+					Type:        scope.Project.String(),
 				},
 			},
 			errCode: codes.OK,
@@ -818,7 +903,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Cant change Id",
@@ -874,7 +959,7 @@ func TestUpdate(t *testing.T) {
 			}
 			tc.req.Item.Version = ver
 
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			var req *pbs.UpdateScopeRequest
 			switch tc.scopeId {
 			case scope.Global.String():

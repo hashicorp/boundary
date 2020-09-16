@@ -76,7 +76,7 @@ func TestGet(t *testing.T) {
 			name:    "Get a non existing Host Set",
 			req:     &pbs.GetHostSetRequest{Id: static.HostSetPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
@@ -201,9 +201,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: h.GetPublicId(),
 			},
-			res: &pbs.DeleteHostSetResponse{
-				Existed: true,
-			},
 			errCode: codes.OK,
 		},
 		{
@@ -212,8 +209,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: static.HostSetPrefix + "_doesntexis",
 			},
-			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Delete bad host catalog id in Host",
@@ -221,8 +217,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: h.GetPublicId(),
 			},
-			res:     nil,
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name:    "Bad Host Id formatting",
@@ -230,7 +225,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: static.HostSetPrefix + "_bad_format",
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -266,12 +260,11 @@ func TestDelete_twice(t *testing.T) {
 		Id: h.GetPublicId(),
 	}
 	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
-	got, gErr := s.DeleteHostSet(ctx, req)
+	_, gErr := s.DeleteHostSet(ctx, req)
 	assert.NoError(gErr, "First attempt")
-	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
 	_, gErr = s.DeleteHostSet(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.PermissionDenied, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -462,11 +455,12 @@ func TestUpdate(t *testing.T) {
 			name: "Update an Existing Host",
 			req: &pbs.UpdateHostSetRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description"},
+					Paths: []string{"name", "description", "type"},
 				},
 				Item: &pb.HostSet{
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
+					Type:        "static",
 				},
 			},
 			res: &pbs.UpdateHostSetResponse{
@@ -487,11 +481,12 @@ func TestUpdate(t *testing.T) {
 			name: "Multiple Paths in single string",
 			req: &pbs.UpdateHostSetRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name,description"},
+					Paths: []string{"name,description,type"},
 				},
 				Item: &pb.HostSet{
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
+					Type:        "static",
 				},
 			},
 			res: &pbs.UpdateHostSetResponse{
@@ -507,6 +502,20 @@ func TestUpdate(t *testing.T) {
 				},
 			},
 			errCode: codes.OK,
+		},
+		{
+			name: "Cant modify type",
+			req: &pbs.UpdateHostSetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,type"},
+				},
+				Item: &pb.HostSet{
+					Name:        &wrappers.StringValue{Value: "updated name"},
+					Description: &wrappers.StringValue{Value: "updated desc"},
+					Type:        "ec2",
+				},
+			},
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "No Update Mask",
@@ -649,7 +658,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.PermissionDenied,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "Cant change Id",

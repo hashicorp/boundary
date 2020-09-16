@@ -47,6 +47,10 @@ type structInfo struct {
 	// the attributes map.
 	subtypeName string
 
+	// For non-top-level collections, this can be used to indicate the name of
+	// the argument that should be used
+	parentTypeName string
+
 	// mappings of names of resources and param names for sub slice types, e.g.
 	// role principals and group members
 	sliceSubTypes map[string]string
@@ -77,9 +81,8 @@ type structInfo struct {
 	// conveyed within the item itself
 	extraOptions []fieldInfo
 
-	useNewStyle bool
-
-	disableOldStyle bool
+	// createResponseTypes controls for which structs response types are created
+	createResponseTypes bool
 }
 
 var inputStructs = []*structInfo{
@@ -124,7 +127,8 @@ var inputStructs = []*structInfo{
 				Query:     true,
 			},
 		},
-		versionEnabled: true,
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	// User related resources
 	{
@@ -138,8 +142,9 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"user"},
-		versionEnabled: true,
+		pathArgs:            []string{"user"},
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	// Group related resources
 	{
@@ -161,8 +166,9 @@ var inputStructs = []*structInfo{
 		sliceSubTypes: map[string]string{
 			"Members": "memberIds",
 		},
-		pathArgs:       []string{"group"},
-		versionEnabled: true,
+		pathArgs:            []string{"group"},
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	// Role related resources
 	{
@@ -195,8 +201,9 @@ var inputStructs = []*structInfo{
 			"Principals": "principalIds",
 			"Grants":     "grantStrings",
 		},
-		pathArgs:       []string{"role"},
-		versionEnabled: true,
+		pathArgs:            []string{"role"},
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	// Auth Methods related resources
 	{
@@ -210,9 +217,10 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"auth-method"},
-		typeOnCreate:   true,
-		versionEnabled: true,
+		pathArgs:            []string{"auth-method"},
+		typeOnCreate:        true,
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	{
 		inProto:     &authmethods.PasswordAuthMethodAttributes{},
@@ -231,8 +239,10 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"auth-method", "account"},
-		versionEnabled: true,
+		pathArgs:            []string{"account"},
+		parentTypeName:      "auth-method",
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	{
 		inProto:     &accounts.PasswordAccountAttributes{},
@@ -249,7 +259,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"auth-token"},
+		pathArgs:            []string{"auth-token"},
+		createResponseTypes: true,
 	},
 	// Host related resources
 	{
@@ -263,9 +274,10 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"host-catalog"},
-		typeOnCreate:   true,
-		versionEnabled: true,
+		pathArgs:            []string{"host-catalog"},
+		typeOnCreate:        true,
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	{
 		inProto: &hosts.Host{},
@@ -278,8 +290,10 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"host-catalog", "host"},
-		versionEnabled: true,
+		pathArgs:            []string{"host"},
+		parentTypeName:      "host-catalog",
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	{
 		inProto:     &hosts.StaticHostAttributes{},
@@ -296,18 +310,14 @@ var inputStructs = []*structInfo{
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
-			createTemplate2,
-			readTemplate2,
-			updateTemplate2,
-			deleteTemplate2,
-			listTemplate2,
 		},
-		pathArgs: []string{"host-catalog", "host-set"},
+		pathArgs:       []string{"host-set"},
+		parentTypeName: "host-catalog",
 		sliceSubTypes: map[string]string{
 			"Hosts": "hostIds",
 		},
-		versionEnabled: true,
-		useNewStyle:    true,
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	{
 		inProto: &targets.HostSet{},
@@ -318,19 +328,23 @@ var inputStructs = []*structInfo{
 		outFile: "targets/target.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate2,
-			readTemplate2,
-			updateTemplate2,
-			deleteTemplate2,
-			listTemplate2,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
 		},
 		pathArgs: []string{"target"},
 		sliceSubTypes: map[string]string{
 			"HostSets": "hostSetIds",
 		},
-		versionEnabled:  true,
-		typeOnCreate:    true,
-		useNewStyle:     true,
-		disableOldStyle: true,
+		versionEnabled:      true,
+		typeOnCreate:        true,
+		createResponseTypes: true,
+	},
+	{
+		inProto:     &targets.TcpTargetAttributes{},
+		outFile:     "targets/tcp_target_attributes.gen.go",
+		subtypeName: "TcpTarget",
 	},
 }

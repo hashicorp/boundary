@@ -4,11 +4,20 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/posener/complete"
 )
 
 func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, flagNames []string) {
 	for _, name := range flagNames {
 		switch name {
+		case "scope-id":
+			f.StringVar(&base.StringVar{
+				Name:       "scope-id",
+				Target:     &c.FlagScopeId,
+				Default:    "global",
+				Completion: complete.PredictAnything,
+				Usage:      `Scope in which to make the request.`,
+			})
 		case "id":
 			f.StringVar(&base.StringVar{
 				Name:   "id",

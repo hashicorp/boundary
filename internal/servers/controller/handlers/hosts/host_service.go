@@ -3,6 +3,7 @@ package hosts
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
@@ -126,11 +127,11 @@ func (s Service) DeleteHost(ctx context.Context, req *pbs.DeleteHostRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
+	_, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteHostResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
@@ -272,7 +273,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			return nil, res
 		}
 		if h == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return nil, res
 		}
 		parentId = h.GetCatalogId()
@@ -285,7 +286,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		return nil, res
 	}
 	if cat == nil {
-		res.Error = handlers.ForbiddenError()
+		res.Error = handlers.NotFoundError()
 		return nil, res
 	}
 	opts = append(opts, auth.WithScopeId(cat.GetScopeId()), auth.WithPin(parentId))
@@ -351,8 +352,10 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields["attributes"] = "Attribute fields do not match the expected format."
 			}
-			if attrs.GetAddress() == nil {
-				badFields["attributes.address"] = "This is a required field for this type."
+			if attrs.GetAddress() == nil ||
+				len(attrs.GetAddress().GetValue()) < static.MinHostAddressLength ||
+				len(attrs.GetAddress().GetValue()) > static.MaxHostAddressLength {
+				badFields["attributes.address"] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
 			}
 		}
 		return badFields
@@ -362,12 +365,26 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 	return handlers.ValidateUpdateRequest(static.HostPrefix, req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		ct := host.SubtypeFromId(req.GetId())
-		if ct == host.UnknownSubtype {
+		switch host.SubtypeFromId(req.GetId()) {
+		case host.StaticSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
+				badFields["type"] = "Cannot modify the resource type."
+
+				attrs := &pb.StaticHostAttributes{}
+				if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+					badFields["attributes"] = "Attribute fields do not match the expected format."
+				}
+
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.address") {
+					if attrs.GetAddress() == nil ||
+						len(strings.TrimSpace(attrs.GetAddress().GetValue())) < static.MinHostAddressLength ||
+						len(strings.TrimSpace(attrs.GetAddress().GetValue())) > static.MaxHostAddressLength {
+						badFields["attributes.address"] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+					}
+				}
+			}
+		default:
 			badFields["id"] = "Improperly formatted identifier used."
-		}
-		if req.GetItem().GetType() != "" {
-			badFields["type"] = "This is a read only field and cannot be specified in an update request."
 		}
 		return badFields
 	})

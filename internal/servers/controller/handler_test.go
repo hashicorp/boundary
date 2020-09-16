@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,6 +17,7 @@ import (
 func TestAuthenticationHandler(t *testing.T) {
 	c := NewTestController(t, &TestControllerOpts{
 		DisableAuthorizationFailures: true,
+		DefaultAuthMethodId:          "ampw_1234567890",
 		DefaultLoginName:             "admin",
 		DefaultPassword:              "password123",
 	})
@@ -33,8 +33,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	b, err := json.Marshal(request)
 	require.NoError(t, err)
 
-	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/%s/auth-methods/ampw_1234567890:authenticate", c.ApiAddrs()[0],
-		scope.Global.String()), "application/json", bytes.NewReader(b))
+	resp, err := http.Post(fmt.Sprintf("%s/v1/auth-methods/ampw_1234567890:authenticate", c.ApiAddrs()[0]), "application/json", bytes.NewReader(b))
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
@@ -54,8 +53,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	// Set the token type to cookie and make sure the body does not contain the token anymore.
 	request["token_type"] = "cookie"
 	b, err = json.Marshal(request)
-	resp, err = http.Post(fmt.Sprintf("%s/v1/scopes/%s/auth-methods/ampw_1234567890:authenticate", c.ApiAddrs()[0],
-		scope.Global.String()), "application/json", bytes.NewReader(b))
+	resp, err = http.Post(fmt.Sprintf("%s/v1/auth-methods/ampw_1234567890:authenticate", c.ApiAddrs()[0]), "application/json", bytes.NewReader(b))
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
@@ -116,28 +114,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/roles/someid",
 			"v1/users",
 			"v1/users/someid",
-
-			// old paths
-			"v1/scopes",
-			"v1/scopes/someid",
-			"v1/scopes/someid/auth-tokens",
-			"v1/scopes/someid/auth-tokens/someid",
-			"v1/scopes/someid/auth-methods",
-			"v1/scopes/someid/auth-methods/someid",
-			"v1/scopes/someid/auth-methods/someid/accounts",
-			"v1/scopes/someid/auth-methods/someid/accounts/someid",
-			"v1/scopes/someid/groups",
-			"v1/scopes/someid/groups/someid",
-			"v1/scopes/someid/host-catalogs",
-			"v1/scopes/someid/host-catalogs/someid",
-			"v1/scopes/someid/host-catalogs/someid/host-sets",
-			"v1/scopes/someid/host-catalogs/someid/host-sets/someid",
-			"v1/scopes/someid/host-catalogs/someid/hosts",
-			"v1/scopes/someid/host-catalogs/someid/hosts/someid",
-			"v1/scopes/someid/roles",
-			"v1/scopes/someid/roles/someid",
-			"v1/scopes/someid/users",
-			"v1/scopes/someid/users/someid",
+			"v1/targets",
+			"v1/targets/someid",
 		},
 		"POST": {
 			// Creation end points
@@ -151,6 +129,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/host-catalogs",
 			"v1/host-sets",
 			"v1/hosts",
+			"v1/targets",
 
 			// custom methods
 			"v1/auth-methods/someid:authenticate",
@@ -165,31 +144,6 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/groups/someid:add-members",
 			"v1/groups/someid:set-members",
 			"v1/groups/someid:remove-members",
-
-			// old paths
-			"v1/scopes",
-			"v1/scopes/someid/groups",
-			"v1/scopes/someid/roles",
-			"v1/scopes/someid/users",
-			"v1/scopes/someid/auth-methods",
-			"v1/scopes/someid/auth-methods/someid/accounts",
-			"v1/scopes/someid/host-catalogs",
-			"v1/scopes/someid/host-catalogs/someid/host-sets",
-			"v1/scopes/someid/host-catalogs/someid/hosts",
-
-			// custom methods
-			"v1/scopes/someid/auth-methods/someid:authenticate",
-			"v1/scopes/someid/auth-methods/someid/accounts/someid:set-password",
-			"v1/scopes/someid/auth-methods/someid/accounts/someid:change-password",
-			"v1/scopes/someid/roles/someid:add-principals",
-			"v1/scopes/someid/roles/someid:set-principals",
-			"v1/scopes/someid/roles/someid:remove-principals",
-			"v1/scopes/someid/roles/someid:add-grants",
-			"v1/scopes/someid/roles/someid:set-grants",
-			"v1/scopes/someid/roles/someid:remove-grants",
-			"v1/scopes/someid/groups/someid:add-members",
-			"v1/scopes/someid/groups/someid:set-members",
-			"v1/scopes/someid/groups/someid:remove-members",
 		},
 		"DELETE": {
 			// new paths
@@ -203,18 +157,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/host-catalogs/someid",
 			"v1/host-sets/someid",
 			"v1/hosts/someid",
-
-			// old paths
-			"v1/scopes/someid",
-			"v1/scopes/someid/users/someid",
-			"v1/scopes/someid/roles/someid",
-			"v1/scopes/someid/groups/someid",
-			"v1/scopes/someid/auth-tokens/someid",
-			"v1/scopes/someid/auth-methods/someid",
-			"v1/scopes/someid/auth-methods/someid/accounts/someid",
-			"v1/scopes/someid/host-catalogs/someid",
-			"v1/scopes/someid/host-catalogs/someid/host-sets/someid",
-			"v1/scopes/someid/host-catalogs/someid/hosts/someid",
+			"v1/targets/someid",
 		},
 		"PATCH": {
 			// new paths
@@ -226,16 +169,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/host-catalogs/someid",
 			"v1/host-sets/someid",
 			"v1/hosts/someid",
-
-			// old paths
-			"v1/scopes/someid",
-			"v1/scopes/someid/users/someid",
-			"v1/scopes/someid/roles/someid",
-			"v1/scopes/someid/groups/someid",
-			"v1/scopes/someid/auth-methods/someid",
-			"v1/scopes/someid/host-catalogs/someid",
-			"v1/scopes/someid/host-catalogs/someid/host-sets/someid",
-			"v1/scopes/someid/host-catalogs/someid/hosts/someid",
+			"v1/targets/someid",
 		},
 	} {
 		for _, p := range paths {

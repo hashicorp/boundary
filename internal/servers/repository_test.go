@@ -8,7 +8,8 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/servers/controller"
-	"github.com/hashicorp/boundary/recovery"
+	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/recovery"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,7 +41,7 @@ func TestRecoveryNonces(t *testing.T) {
 	// Token 1, try 1
 	client.SetToken(token1)
 	roleClient := roles.NewClient(client)
-	_, apiErr, err := roleClient.Create(tc.Context())
+	_, apiErr, err := roleClient.Create(tc.Context(), scope.Global.String())
 	require.NoError(err)
 	assert.Nil(apiErr)
 	nonces, err := repo.ListNonces(tc.Context())
@@ -48,7 +49,7 @@ func TestRecoveryNonces(t *testing.T) {
 	assert.Len(nonces, 1)
 
 	// Token 1, try 2
-	_, apiErr, err = roleClient.Create(tc.Context())
+	_, apiErr, err = roleClient.Create(tc.Context(), scope.Global.String())
 	require.NoError(err)
 	assert.NotNil(apiErr)
 	nonces, err = repo.ListNonces(tc.Context())
@@ -56,8 +57,8 @@ func TestRecoveryNonces(t *testing.T) {
 	assert.Len(nonces, 1)
 
 	// Token 2
-	client.SetToken(token2)
-	_, apiErr, err = roleClient.Create(tc.Context())
+	roleClient.ApiClient().SetToken(token2)
+	_, apiErr, err = roleClient.Create(tc.Context(), scope.Global.String())
 	require.NoError(err)
 	assert.Nil(apiErr)
 	nonces, err = repo.ListNonces(tc.Context())
@@ -72,8 +73,8 @@ func TestRecoveryNonces(t *testing.T) {
 
 	// And finally, make sure they still can't be used
 	for _, token := range []string{token1, token2} {
-		client.SetToken(token)
-		_, apiErr, err = roleClient.Create(tc.Context())
+		roleClient.ApiClient().SetToken(token)
+		_, apiErr, err = roleClient.Create(tc.Context(), scope.Global.String())
 		require.NoError(err)
 		assert.NotNil(apiErr)
 		nonces, err = repo.ListNonces(tc.Context())

@@ -139,24 +139,30 @@ func InitStore(dialect string, cleanup func() error, url string) error {
 	source, err := migrations.NewMigrationSource(dialect)
 	if err != nil {
 		mErr = multierror.Append(mErr, fmt.Errorf("error creating migration driver: %w", err))
-		if err := cleanup(); err != nil {
-			mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating driver: %w", err))
+		if cleanup != nil {
+			if err := cleanup(); err != nil {
+				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating driver: %w", err))
+			}
 		}
 		return mErr.ErrorOrNil()
 	}
 	m, err := migrate.NewWithSourceInstance("httpfs", source, url)
 	if err != nil {
 		mErr = multierror.Append(mErr, fmt.Errorf("error creating migrations: %w", err))
-		if err := cleanup(); err != nil {
-			mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating migrations: %w", err))
+		if cleanup != nil {
+			if err := cleanup(); err != nil {
+				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating migrations: %w", err))
+			}
 		}
 		return mErr.ErrorOrNil()
 
 	}
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		mErr = multierror.Append(mErr, fmt.Errorf("error running migrations: %w", err))
-		if err := cleanup(); err != nil {
-			mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from running migrations: %w", err))
+		if cleanup != nil {
+			if err := cleanup(); err != nil {
+				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from running migrations: %w", err))
+			}
 		}
 		return mErr.ErrorOrNil()
 	}

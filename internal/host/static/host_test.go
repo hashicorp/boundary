@@ -54,12 +54,12 @@ func TestHost_New(t *testing.T) {
 			name: "address-to-short",
 			args: args{
 				catalogId: cat.GetPublicId(),
-				opts:      []Option{WithAddress("1234567")},
+				opts:      []Option{WithAddress("12")},
 			},
 			want: &Host{
 				Host: &store.Host{
 					CatalogId: cat.GetPublicId(),
-					Address:   "1234567",
+					Address:   "12",
 				},
 			},
 			wantWriteErr: true,
@@ -68,12 +68,12 @@ func TestHost_New(t *testing.T) {
 			name: "minimum-address",
 			args: args{
 				catalogId: cat.GetPublicId(),
-				opts:      []Option{WithAddress("12345678")},
+				opts:      []Option{WithAddress("123")},
 			},
 			want: &Host{
 				Host: &store.Host{
 					CatalogId: cat.GetPublicId(),
-					Address:   "12345678",
+					Address:   "123",
 				},
 			},
 		},

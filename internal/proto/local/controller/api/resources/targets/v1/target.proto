@@ -56,6 +56,10 @@ message Target {
 	// Output only.
 	repeated HostSet host_sets = 110;
 
-	// The  default port a target should use if present.
-	google.protobuf.UInt32Value default_port = 120 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"default_port" that: "DefaultPort"}];
+	// The attributes that are applied for the specific Target type.
+	google.protobuf.Struct attributes = 120 [(custom_options.v1.generate_sdk_option) = true];
+}
+
+message TcpTargetAttributes {
+	google.protobuf.UInt32Value default_port = 10 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.default_port" that: "DefaultPort"}];
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/servers/controller"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {
@@ -38,14 +39,19 @@ func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {
 }
 
 type option struct {
-	tcOptions                    *controller.TestControllerOpts
-	setWithConfigFile            bool
-	setWithConfigText            bool
-	setDisableAuthMethodCreation bool
-	setDisableDatabaseCreation   bool
-	setDefaultAuthMethodId       bool
-	setDefaultLoginName          bool
-	setDefaultPassword           bool
+	tcOptions                     *controller.TestControllerOpts
+	setWithConfigFile             bool
+	setWithConfigText             bool
+	setDisableAuthMethodCreation  bool
+	setDisableDatabaseCreation    bool
+	setDisableDatabaseDestruction bool
+	setDefaultAuthMethodId        bool
+	setDefaultLoginName           bool
+	setDefaultPassword            bool
+	setRootKms                    bool
+	setWorkerAuthKms              bool
+	setRecoveryKms                bool
+	setDatabaseUrl                bool
 }
 
 type Option func(*option) error
@@ -103,6 +109,16 @@ func DisableDatabaseCreation() Option {
 	}
 }
 
+// DisableDatabaseCreation skips creating a database in docker and allows one to
+// be provided through a tcOptions.
+func DisableDatabaseDestruction() Option {
+	return func(c *option) error {
+		c.setDisableDatabaseDestruction = true
+		c.tcOptions.DisableDatabaseDestruction = true
+		return nil
+	}
+}
+
 func WithDefaultAuthMethodId(id string) Option {
 	return func(c *option) error {
 		c.setDefaultAuthMethodId = true
@@ -123,6 +139,38 @@ func WithDefaultPassword(pw string) Option {
 	return func(c *option) error {
 		c.setDefaultPassword = true
 		c.tcOptions.DefaultPassword = pw
+		return nil
+	}
+}
+
+func WithRootKms(wrapper wrapping.Wrapper) Option {
+	return func(c *option) error {
+		c.setRootKms = true
+		c.tcOptions.RootKms = wrapper
+		return nil
+	}
+}
+
+func WithWorkerAuthKms(wrapper wrapping.Wrapper) Option {
+	return func(c *option) error {
+		c.setWorkerAuthKms = true
+		c.tcOptions.WorkerAuthKms = wrapper
+		return nil
+	}
+}
+
+func WithRecoveryKms(wrapper wrapping.Wrapper) Option {
+	return func(c *option) error {
+		c.setRecoveryKms = true
+		c.tcOptions.RecoveryKms = wrapper
+		return nil
+	}
+}
+
+func WithDatabaseUrl(url string) Option {
+	return func(c *option) error {
+		c.setDatabaseUrl = true
+		c.tcOptions.DatabaseUrl = url
 		return nil
 	}
 }

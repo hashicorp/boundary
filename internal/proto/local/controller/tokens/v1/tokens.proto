@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package controller.tokens.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/tokens;tokens";
+
+message S1TokenInfo {
+	string token = 10;
+	bytes confounder = 20;
+}

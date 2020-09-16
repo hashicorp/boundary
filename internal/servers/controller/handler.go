@@ -2,35 +2,33 @@ package controller
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
-	mathrand "math/rand"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	wpbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
-	"github.com/hashicorp/boundary/internal/sessions"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authenticate"
@@ -205,7 +203,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if logUrls {
-			c.logger.Trace("request received", "url", r.URL.RequestURI())
+			c.logger.Trace("request received", "method", r.Method, "url", r.URL.RequestURI())
 		}
 
 		// Set the Cache-Control header for all responses returned
@@ -227,15 +225,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			DisableAuthzFailures: disableAuthzFailures,
 		}
 
-		requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, c.kms, r)
-		if requestInfo.TokenFormat == auth.AuthTokenTypeInvalid {
-			if disableAuthzFailures {
-				requestInfo.TokenFormat = auth.AuthTokenTypeBearer
-			} else {
-				w.WriteHeader(http.StatusForbidden)
-				return
-			}
-		}
+		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, c.kms, r)
 		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, requestInfo)
 
 		// Set the context back on the request
@@ -350,7 +340,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			}
 		}
 
-		var workers []*services.WorkerInfo
+		var workers []*pb.WorkerInfo
 		repo, err := c.ServersRepoFn()
 		if err != nil {
 			errorResp(err)
@@ -362,7 +352,7 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 		for _, v := range servers {
-			workers = append(workers, &services.WorkerInfo{Address: v.Address})
+			workers = append(workers, &pb.WorkerInfo{Address: v.Address})
 		}
 
 		wrapper, err := c.kms.GetWrapper(r.Context(), scope.Global.String(), kms.KeyPurposeSessions)
@@ -375,39 +365,26 @@ func jobTestingHandler(c *Controller) http.Handler {
 			errorResp(err)
 			return
 		}
-		jobId = "s_" + jobId
-		pubKey, privKey, err := sessions.DeriveED25519Key(wrapper, "u_1234567890", jobId)
-
-		template := &x509.Certificate{
-			ExtKeyUsage: []x509.ExtKeyUsage{
-				x509.ExtKeyUsageServerAuth,
-				x509.ExtKeyUsageClientAuth,
-			},
-			DNSNames:              []string{jobId},
-			KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
-			SerialNumber:          big.NewInt(mathrand.Int63()),
-			NotBefore:             time.Now().Add(-1 * time.Minute),
-			NotAfter:              time.Now().Add(5 * time.Minute),
-			BasicConstraintsValid: true,
-			IsCA:                  true,
-		}
-
-		certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pubKey, privKey)
+		// TODO (jimlambrt 8/2020): this is quite correct.  We need to create a
+		// new session here (in the session repo) which would have a cert.
+		privKey, certBytes, err := session.TestCert(wrapper, "u_1234567890", jobId)
 		if err != nil {
 			errorResp(err)
 			return
 		}
 
-		ret := &services.ValidateSessionResponse{
-			Id:             jobId,
-			ScopeId:        scope.Global.String(),
-			UserId:         "u_1234567890",
-			Type:           "tcp",
-			Endpoint:       endpoint,
-			Certificate:    certBytes,
-			PrivateKey:     privKey,
-			WorkerInfo:     workers,
-			ExpirationTime: &timestamppb.Timestamp{Seconds: time.Now().Add(timeout).Unix()},
+		ret := &wpbs.GetSessionResponse{
+			Session: &pb.Session{
+				Id:             jobId,
+				ScopeId:        scope.Global.String(),
+				UserId:         "u_1234567890",
+				Type:           "tcp",
+				Endpoint:       endpoint,
+				Certificate:    certBytes,
+				PrivateKey:     privKey,
+				WorkerInfo:     workers,
+				ExpirationTime: &timestamppb.Timestamp{Seconds: time.Now().Add(timeout).Unix()},
+			},
 		}
 
 		marshaled, err := proto.Marshal(ret)
@@ -416,13 +393,13 @@ func jobTestingHandler(c *Controller) http.Handler {
 			return
 		}
 
-		if _, err := w.Write([]byte(base64.RawStdEncoding.EncodeToString(marshaled))); err != nil {
+		if _, err := w.Write([]byte(base58.Encode(marshaled))); err != nil {
 			errorResp(err)
 			return
 		}
 
-		ret.PrivateKey = nil
-		c.jobMap.Store(jobId, ret)
+		ret.Session.PrivateKey = nil
+		c.jobMap.Store(jobId, ret.GetSession())
 	})
 }
 

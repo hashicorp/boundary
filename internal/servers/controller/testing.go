@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
@@ -103,8 +104,10 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 	token, apiErr, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
 		tc.b.DevAuthMethodId,
-		tc.b.DevLoginName,
-		tc.b.DevPassword,
+		map[string]interface{}{
+			"login_name": tc.b.DevLoginName,
+			"password":   tc.b.DevPassword,
+		},
 	)
 	if err != nil {
 		tc.t.Error(fmt.Errorf("error logging in: %w", err))
@@ -114,7 +117,7 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.t.Error(fmt.Errorf("api err from logging in: %s", pretty.Sprint(apiErr)))
 		return nil
 	}
-	return token
+	return token.Item
 }
 
 func (tc *TestController) addrs(purpose string) []string {
@@ -191,9 +194,11 @@ func (tc *TestController) Shutdown() {
 		if err := tc.b.RunShutdownFuncs(); err != nil {
 			tc.t.Error(err)
 		}
-		if tc.b.DestroyDevDatabase() != nil {
-			if err := tc.b.DestroyDevDatabase(); err != nil {
-				tc.t.Error(err)
+		if !tc.opts.DisableDatabaseDestruction {
+			if tc.b.DestroyDevDatabase() != nil {
+				if err := tc.b.DestroyDevDatabase(); err != nil {
+					tc.t.Error(err)
+				}
 			}
 		}
 	}
@@ -219,6 +224,10 @@ type TestControllerOpts struct {
 	// DisableDatabaseCreation can be set true to disable creating a dev
 	// database
 	DisableDatabaseCreation bool
+
+	// DisableDatabaseDestruction can be set true to allow a database to be
+	// created but examined after-the-fact
+	DisableDatabaseDestruction bool
 
 	// If set, instead of creating a dev database, it will connect to an
 	// existing database given the url
@@ -341,8 +350,19 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	if opts.DatabaseUrl != "" {
 		tc.b.DatabaseUrl = opts.DatabaseUrl
+		if err := db.InitStore("postgres", nil, tc.b.DatabaseUrl); err != nil {
+			t.Fatal(err)
+		}
 		if err := tc.b.ConnectToDatabase("postgres"); err != nil {
 			t.Fatal(err)
+		}
+		if err := tc.b.CreateGlobalKmsKeys(); err != nil {
+			t.Fatal(err)
+		}
+		if !opts.DisableAuthMethodCreation {
+			if err := tc.b.CreateInitialAuthMethod(); err != nil {
+				t.Fatal(err)
+			}
 		}
 	} else if !opts.DisableDatabaseCreation {
 		var createOpts []base.Option

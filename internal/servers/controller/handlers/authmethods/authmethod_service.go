@@ -130,11 +130,11 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	existed, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
+	_, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteAuthMethodResponse{Existed: existed}, nil
+	return nil, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, error) {
@@ -279,7 +279,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if scp == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 	default:
@@ -294,7 +294,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		if authMeth == nil {
-			res.Error = handlers.ForbiddenError()
+			res.Error = handlers.NotFoundError()
 			return res
 		}
 		parentId = authMeth.GetScopeId()
@@ -362,8 +362,17 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 	return handlers.ValidateUpdateRequest(password.AuthMethodPrefix, req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.GetItem().GetType() != "" {
-			badFields["type"] = "This is a read only field and cannot be specified in an update request."
+		switch auth.SubtypeFromId(req.GetId()) {
+		case auth.PasswordSubtype:
+			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != auth.PasswordSubtype {
+				badFields["type"] = "Cannot modify resource type."
+			}
+			pwAttrs := &pb.PasswordAuthMethodAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {
+				badFields["attributes"] = "Attribute fields do not match the expected format."
+			}
+		default:
+			badFields["id"] = "Incorrectly formatted identifier."
 		}
 		return badFields
 	})
@@ -373,8 +382,12 @@ func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
 	return handlers.ValidateDeleteRequest(password.AuthMethodPrefix, req, handlers.NoopValidatorFn)
 }
 
-func validateListRequest(_ *pbs.ListAuthMethodsRequest) error {
+func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	badFields := map[string]string{}
+	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+		req.GetScopeId() != scope.Global.String() {
+		badFields["scope_id"] = "This field must be a valid project scope id."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}

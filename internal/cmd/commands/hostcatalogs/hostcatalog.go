@@ -2,13 +2,14 @@ package hostcatalogs
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -26,7 +27,7 @@ type Command struct {
 func (c *Command) Synopsis() string {
 	switch c.Func {
 	case "create":
-		return "Create host-catalolg resources within Boundary"
+		return "Create host-catalog resources within Boundary"
 	case "update":
 		return "Update host-catalog resources within Boundary"
 	default:
@@ -37,10 +38,12 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"delete": {"id"},
+	"list":   {"scope-id"},
 }
 
 func (c *Command) Help() string {
 	helpMap := common.HelpMap("host-catalog")
+	var helpStr string
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
@@ -55,7 +58,7 @@ func (c *Command) Help() string {
 			"  Please see the host-catalogs subcommand help for detailed usage information.",
 		})
 	case "create":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-catalogs create [type] [sub command] [options] [args]",
 			"",
 			"  This command allows create operations on Boundary host-catalog resources. Example:",
@@ -67,7 +70,7 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "update":
-		return base.WrapForHelpText([]string{
+		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-catalogs update [type] [sub command] [options] [args]",
 			"",
 			"  This command allows update operations on Boundary host-catalog resources. Example:",
@@ -79,8 +82,9 @@ func (c *Command) Help() string {
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	default:
-		return helpMap[c.Func]() + c.Flags().Help()
+		helpStr = helpMap[c.Func]()
 	}
+	return helpStr + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -119,6 +123,10 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
+		return 1
+	}
 
 	client, err := c.Client()
 	if err != nil {
@@ -146,18 +154,22 @@ func (c *Command) Run(args []string) int {
 
 	hostcatalogClient := hostcatalogs.NewClient(client)
 
-	var existed bool
-	var catalog *hostcatalogs.HostCatalog
-	var listedCatalogs []*hostcatalogs.HostCatalog
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		catalog, apiErr, err = hostcatalogClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = hostcatalogClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = hostcatalogClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = hostcatalogClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedCatalogs, apiErr, err = hostcatalogClient.List(c.Context, opts...)
+		listResult, apiErr, err = hostcatalogClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "host catalog"
@@ -191,6 +203,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedCatalogs := listResult.GetItems().([]*hostcatalogs.HostCatalog)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedCatalogs) == 0 {
@@ -241,6 +254,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	catalog := result.GetItem().(*hostcatalogs.HostCatalog)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateHostCatalogTableOutput(catalog))

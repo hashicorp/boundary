@@ -14,50 +14,47 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCatalog_List(t *testing.T) {
+func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	_, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	catalogClient := hostcatalogs.NewClient(client)
 
-	ul, apiErr, err := catalogClient.List(tc.Context())
-	assert.NoError(err)
-	assert.Nil(apiErr)
-	assert.Empty(ul)
+	ul, apiErr, err := catalogClient.List(tc.Context(), proj.GetPublicId())
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.Empty(ul.Items)
 
 	var expected []*hostcatalogs.HostCatalog
 	for i := 0; i < 10; i++ {
 		expected = append(expected, &hostcatalogs.HostCatalog{Name: fmt.Sprint(i)})
 	}
 
-	expected[0], apiErr, err = catalogClient.Create(tc.Context(), "static", hostcatalogs.WithName(expected[0].Name))
-	assert.NoError(err)
-	assert.Nil(apiErr)
+	cr, apiErr, err := catalogClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName(expected[0].Name))
+	require.NoError(err)
+	require.Nil(apiErr)
+	expected[0] = cr.Item
 
-	ul, apiErr, err = catalogClient.List(tc.Context())
-	assert.NoError(err)
-	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul))
+	ul, apiErr, err = catalogClient.List(tc.Context(), proj.GetPublicId())
+	require.NoError(err)
+	require.Nil(apiErr)
+	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		expected[i], apiErr, err = catalogClient.Create(tc.Context(), "static", hostcatalogs.WithName(expected[i].Name))
-		assert.NoError(err)
-		assert.Nil(apiErr)
+		cr, apiErr, err = catalogClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName(expected[i].Name))
+		require.NoError(err)
+		require.Nil(apiErr)
+		expected[i] = cr.Item
 	}
-	ul, apiErr, err = catalogClient.List(tc.Context())
+	ul, apiErr, err = catalogClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
 	assert.Nil(apiErr)
-	assert.ElementsMatch(comparableCatalogSlice(expected), comparableCatalogSlice(ul))
+	assert.ElementsMatch(comparableCatalogSlice(expected), comparableCatalogSlice(ul.Items))
 }
 
 func comparableCatalogSlice(in []*hostcatalogs.HostCatalog) []hostcatalogs.HostCatalog {
@@ -75,22 +72,15 @@ func comparableCatalogSlice(in []*hostcatalogs.HostCatalog) []hostcatalogs.HostC
 	return filtered
 }
 
-func TestCatalogs_Crud(t *testing.T) {
+func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(org.GetPublicId())
-	projClient := client.Clone()
-	projClient.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	checkCatalog := func(step string, hc *hostcatalogs.HostCatalog, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
 		require.NoError(err, step)
@@ -106,53 +96,48 @@ func TestCatalogs_Crud(t *testing.T) {
 		assert.Equal(wantVersion, hc.Version)
 	}
 
-	hcClient := hostcatalogs.NewClient(projClient)
+	hcClient := hostcatalogs.NewClient(client)
 
-	hc, apiErr, err := hcClient.Create(tc.Context(), "static", hostcatalogs.WithName("foo"))
-	checkCatalog("create", hc, apiErr, err, "foo", 1)
+	hc, apiErr, err := hcClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
+	checkCatalog("create", hc.Item, apiErr, err, "foo", 1)
 
-	hc, apiErr, err = hcClient.Read(tc.Context(), hc.Id)
-	checkCatalog("read", hc, apiErr, err, "foo", 1)
+	hc, apiErr, err = hcClient.Read(tc.Context(), hc.Item.Id)
+	checkCatalog("read", hc.Item, apiErr, err, "foo", 1)
 
-	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Id, hc.Version, hostcatalogs.WithName("bar"))
-	checkCatalog("update", hc, apiErr, err, "bar", 2)
+	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("bar"))
+	checkCatalog("update", hc.Item, apiErr, err, "bar", 2)
 
-	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Id, hc.Version, hostcatalogs.DefaultName())
-	checkCatalog("update", hc, apiErr, err, "", 3)
+	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.DefaultName())
+	checkCatalog("update", hc.Item, apiErr, err, "", 3)
 
-	existed, apiErr, err := hcClient.Delete(tc.Context(), hc.Id)
+	_, apiErr, err = hcClient.Delete(tc.Context(), hc.Item.Id)
 	assert.NoError(err)
-	assert.True(existed, "Expected existing catalog when deleted, but it wasn't.")
+	assert.Nil(apiErr)
 
-	existed, apiErr, err = hcClient.Delete(tc.Context(), hc.Id)
+	_, apiErr, err = hcClient.Delete(tc.Context(), hc.Item.Id)
 	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusForbidden, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
 
 // TODO: Get better coverage for expected errors and error formats.
-func TestCatalogs_Errors(t *testing.T) {
+func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          amId,
-		DefaultLoginName:             "user",
-		DefaultPassword:              "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	_, proj := iam.TestScopes(t, tc.IamRepo())
-	client.SetScopeId(proj.GetPublicId())
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	pc := hostcatalogs.NewClient(client)
 
-	hc, apiErr, err := pc.Create(tc.Context(), "static", hostcatalogs.WithName("foo"))
+	hc, apiErr, err := pc.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
 	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.NotNil(hc)
 
-	_, apiErr, err = pc.Create(tc.Context(), "static", hostcatalogs.WithName("foo"))
+	_, apiErr, err = pc.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
 
@@ -160,7 +145,7 @@ func TestCatalogs_Errors(t *testing.T) {
 	require.NoError(err)
 	// TODO: Should this be nil instead of just a catalog that has no values set
 	assert.NotNil(apiErr)
-	assert.EqualValues(apiErr.Status, http.StatusForbidden)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 	_, apiErr, err = pc.Read(tc.Context(), "invalid id")
 	require.NoError(err)

@@ -10,8 +10,8 @@ import "time"
 // only ever be set at startup, but simply available to reference from anywhere.
 
 const (
-	TcpProxyV1             = "boundary-tcp-proxy-v1"
-	TokenEncryptionVersion = "1"
+	TcpProxyV1     = "boundary-tcp-proxy-v1"
+	ServiceTokenV1 = "s1"
 )
 
 type ContextMaxRequestSizeType int

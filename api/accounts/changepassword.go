@@ -9,10 +9,7 @@ import (
 	"github.com/kr/pretty"
 )
 
-func (c *Client) ChangePassword(ctx context.Context, authMethodId, accountId, oldPassword, newPassword string, version uint32, opt ...Option) (*Account, *api.Error, error) {
-	if authMethodId == "" {
-		return nil, nil, fmt.Errorf("empty authMethodId value passed into ChangePassword request")
-	}
+func (c *Client) ChangePassword(ctx context.Context, accountId, currentPassword, newPassword string, version uint32, opt ...Option) (*AccountUpdateResult, *api.Error, error) {
 	if accountId == "" {
 		return nil, nil, fmt.Errorf("empty accountId value passed into ChangePassword request")
 	}
@@ -26,7 +23,7 @@ func (c *Client) ChangePassword(ctx context.Context, authMethodId, accountId, ol
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, authMethodId, accountId, opt...)
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, accountId, opt...)
 		if existingErr != nil {
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
@@ -36,16 +33,16 @@ func (c *Client) ChangePassword(ctx context.Context, authMethodId, accountId, ol
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
-		version = existingTarget.Version
+		version = existingTarget.Item.Version
 	}
 
 	reqBody := map[string]interface{}{
-		"version":      version,
-		"old_password": oldPassword,
-		"new_password": newPassword,
+		"version":          version,
+		"current_password": currentPassword,
+		"new_password":     newPassword,
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s/accounts/%s:change-password", authMethodId, accountId), reqBody, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("accounts/%s:change-password", accountId), reqBody, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating ChangePassword request: %w", err)
 	}
@@ -55,8 +52,9 @@ func (c *Client) ChangePassword(ctx context.Context, authMethodId, accountId, ol
 		return nil, nil, fmt.Errorf("error performing client request during ChangePassword call: %w", err)
 	}
 
-	target := new(Account)
-	apiErr, err := resp.Decode(target)
+	target := new(AccountUpdateResult)
+	target.Item = new(Account)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding ChangePassword response: %w", err)
 	}

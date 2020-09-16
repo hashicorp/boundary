@@ -16,7 +16,6 @@ type Option func(*options)
 type options struct {
 	postMap                 map[string]interface{}
 	queryMap                map[string]string
-	withScopeId             string
 	withAutomaticVersioning bool
 }
 
@@ -33,37 +32,52 @@ func getOpts(opt ...Option) (options, []api.Option) {
 		o(&opts)
 	}
 	var apiOpts []api.Option
-	if opts.withScopeId != "" {
-		apiOpts = append(apiOpts, api.WithScopeId(opts.withScopeId))
-	}
 	return opts, apiOpts
-}
-
-func WithScopeId(id string) Option {
-	return func(o *options) {
-		o.withScopeId = id
-	}
 }
 
 // If set, and if the version is zero during an update, the API will perform a
 // fetch to get the current version of the resource and populate it during the
 // update call. This is convenient but opens up the possibility for subtle
 // order-of-modification issues, so use carefully.
-func WithAutomaticVersioning() Option {
+func WithAutomaticVersioning(enable bool) Option {
 	return func(o *options) {
-		o.withAutomaticVersioning = true
+		o.withAutomaticVersioning = enable
 	}
 }
 
-func WithDefaultPort(inDefaultPort uint32) Option {
+func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
-		o.postMap["default_port"] = inDefaultPort
+		o.postMap["attributes"] = inAttributes
 	}
 }
 
-func DefaultDefaultPort() Option {
+func DefaultAttributes() Option {
 	return func(o *options) {
-		o.postMap["default_port"] = nil
+		o.postMap["attributes"] = nil
+	}
+}
+
+func WithTcpTargetDefaultPort(inDefaultPort uint32) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["default_port"] = inDefaultPort
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultTcpTargetDefaultPort() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["default_port"] = nil
+		o.postMap["attributes"] = val
 	}
 }
 

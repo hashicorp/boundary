@@ -2,13 +2,14 @@ package users
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -28,10 +29,11 @@ func (c *Command) Synopsis() string {
 }
 
 var flagsMap = map[string][]string{
-	"create": {"name", "description"},
+	"create": {"scope-id", "name", "description"},
 	"update": {"id", "name", "description", "version"},
 	"read":   {"id"},
 	"delete": {"id"},
+	"list":   {"scope-id"},
 }
 
 func (c *Command) Help() string {
@@ -77,6 +79,10 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id")
+		return 1
+	}
 
 	client, err := c.Client()
 	if err != nil {
@@ -112,28 +118,32 @@ func (c *Command) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, users.WithAutomaticVersioning())
+			opts = append(opts, users.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
 	}
 
-	var existed bool
-	var user *users.User
-	var listedUsers []*users.User
+	existed := true
+	var result api.GenericResult
+	var listResult api.GenericListResult
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		user, apiErr, err = userClient.Create(c.Context, opts...)
+		result, apiErr, err = userClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
-		user, apiErr, err = userClient.Update(c.Context, c.FlagId, version, opts...)
+		result, apiErr, err = userClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		user, apiErr, err = userClient.Read(c.Context, c.FlagId, opts...)
+		result, apiErr, err = userClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = userClient.Delete(c.Context, c.FlagId, opts...)
+		_, apiErr, err = userClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+			existed = false
+			apiErr = nil
+		}
 	case "list":
-		listedUsers, apiErr, err = userClient.List(c.Context, opts...)
+		listResult, apiErr, err = userClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "user"
@@ -167,6 +177,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
+		listedUsers := listResult.GetItems().([]*users.User)
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedUsers) == 0 {
@@ -216,6 +227,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 	}
 
+	user := result.GetItem().(*users.User)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateUserTableOutput(user))

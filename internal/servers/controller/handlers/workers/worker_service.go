@@ -5,10 +5,11 @@ import (
 	"sync"
 	"time"
 
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
-	"github.com/hashicorp/boundary/internal/sessions"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc/codes"
@@ -35,8 +36,11 @@ func NewWorkerServiceServer(logger hclog.Logger, repoFn common.ServersRepoFactor
 	}
 }
 
+var _ pbs.SessionServiceServer = &workerServiceServer{}
+var _ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
+
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
-	ws.logger.Trace("got status request from worker", "name", req.Worker.Name, "address", req.Worker.Address, "active_jobs", req.ActiveJobIds)
+	ws.logger.Trace("got status request from worker", "name", req.Worker.Name, "address", req.Worker.Address, "jobs", req.GetJobs())
 	ws.updateTimes.Store(req.Worker.Name, time.Now())
 	repo, err := ws.repoFn()
 	if err != nil {
@@ -53,41 +57,47 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		Controllers: controllers,
 	}
 	ws.jobCancelMap.Range(func(key, value interface{}) bool {
-		ret.CancelJobIds = append(ret.CancelJobIds, key.(string))
+		ret.JobsRequests = append(ret.JobsRequests, &pbs.JobChangeRequest{
+			Job: &pbs.Job{
+				JobId: key.(string),
+				Type:  pbs.Job_JOBTYPE_SESSION,
+			},
+			RequestType: 0,
+		})
 		return true
 	})
-	for _, id := range ret.CancelJobIds {
-		ws.jobCancelMap.Delete(id)
+	for _, j := range ret.JobsRequests {
+		ws.jobCancelMap.Delete(j.GetJob().GetJobId())
 	}
 	return ret, nil
 }
 
-func (ws *workerServiceServer) ValidateSession(ctx context.Context, req *pbs.ValidateSessionRequest) (*pbs.ValidateSessionResponse, error) {
+func (ws *workerServiceServer) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*pbs.GetSessionResponse, error) {
 	ws.logger.Trace("got validate session request from worker", "job_id", req.GetId())
 
 	// Look up the job info
 	storedSessionInfo, loaded := ws.jobMap.LoadAndDelete(req.GetId())
 	if !loaded {
-		return &pbs.ValidateSessionResponse{}, status.Errorf(codes.PermissionDenied, "Unknown job ID: %v", req.GetId())
+		return nil, status.Errorf(codes.PermissionDenied, "Unknown job ID: %v", req.GetId())
 	}
-	sessionInfo := storedSessionInfo.(*pbs.ValidateSessionResponse)
+	sessionInfo := storedSessionInfo.(*pb.Session)
 
 	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ScopeId, kms.KeyPurposeSessions)
 	if err != nil {
-		return &pbs.ValidateSessionResponse{}, status.Errorf(codes.Internal, "Error getting sessions wrapper: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error getting sessions wrapper: %v", err)
 	}
 
 	// Derive the private key, which should match. Deriving on both ends allows
 	// us to not store it in the DB.
-	_, privKey, err := sessions.DeriveED25519Key(wrapper, sessionInfo.GetUserId(), req.GetId())
+	_, privKey, err := session.DeriveED25519Key(wrapper, sessionInfo.GetUserId(), req.GetId())
 	if err != nil {
-		return &pbs.ValidateSessionResponse{}, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
 	}
 
 	if sessionInfo.ExpirationTime.GetSeconds() > 0 {
 		timeDiff := time.Until(sessionInfo.GetExpirationTime().AsTime())
 		if timeDiff < 0 {
-			return &pbs.ValidateSessionResponse{}, status.Errorf(codes.OutOfRange, "Session has already expired")
+			return nil, status.Errorf(codes.OutOfRange, "Session has already expired")
 		}
 		defer func() {
 			time.AfterFunc(timeDiff, func() {
@@ -97,5 +107,5 @@ func (ws *workerServiceServer) ValidateSession(ctx context.Context, req *pbs.Val
 	}
 
 	sessionInfo.PrivateKey = privKey
-	return sessionInfo, nil
+	return &pbs.GetSessionResponse{Session: sessionInfo}, nil
 }

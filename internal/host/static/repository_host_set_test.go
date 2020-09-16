@@ -539,14 +539,14 @@ func TestRepository_UpdateSet(t *testing.T) {
 		assert.Empty(gotHosts1)
 
 		sB.Name = name
-		got2, gotHosts2, gotCount2, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sB, 1, []string{"name"})
+		got2, gotHosts, gotCount2, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sB, 1, []string{"name"})
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, sB.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
 		assert.True(errors.Is(db.ErrRecordNotFound, err))
-		assert.Empty(gotHosts2)
+		assert.Empty(gotHosts)
 	})
 
 	t.Run("valid-duplicate-names-diff-Catalogs", func(t *testing.T) {
