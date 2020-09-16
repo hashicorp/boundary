@@ -308,6 +308,47 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 	return s, states, rowsUpdated, err
 }
 
+// ActivateSession will activate the session and is called by a worker after
+// authenticating the session.
+func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, []*State, error) {
+	if sessionId == "" {
+		return nil, nil, fmt.Errorf("activate session state: missing session id %w", db.ErrInvalidParameter)
+	}
+	if sessionVersion == 0 {
+		return nil, nil, fmt.Errorf("activate session state: version cannot be zero: %w", db.ErrInvalidParameter)
+	}
+
+	updatedSession := AllocSession()
+	updatedSession.PublicId = sessionId
+	var returnedStates []*State
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			rowsAffected, err := w.Exec(activateStateCte, []interface{}{sessionId, sessionVersion})
+			if err != nil {
+				return fmt.Errorf("unable to activate session %s: %w", sessionId, err)
+			}
+			if rowsAffected == 0 {
+				return fmt.Errorf("unable to activate session %s", sessionId)
+			}
+			if err := r.reader.LookupById(ctx, &updatedSession); err != nil {
+				return fmt.Errorf("lookup session: failed %w for %s", err, sessionId)
+			}
+			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("activate session: %w", err)
+	}
+	return &updatedSession, returnedStates, nil
+}
+
 // UpdateState will update the session's state using the session id and its
 // version.  No options are currently supported.
 func (r *Repository) UpdateState(ctx context.Context, sessionId string, sessionVersion uint32, s Status, opt ...Option) (*Session, []*State, error) {
@@ -319,6 +360,9 @@ func (r *Repository) UpdateState(ctx context.Context, sessionId string, sessionV
 	}
 	if s == "" {
 		return nil, nil, fmt.Errorf("update session state: missing session status: %w", db.ErrInvalidParameter)
+	}
+	if s == StatusActive {
+		return nil, nil, fmt.Errorf("update session: you must call ActivateSession to update a session's state to active: %w", db.ErrInvalidParameter)
 	}
 
 	newState, err := NewState(sessionId, s)
