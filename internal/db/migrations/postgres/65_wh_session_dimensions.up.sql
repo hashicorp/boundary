@@ -34,11 +34,11 @@ begin;
     target_name                   text not null,
     target_description            text not null,
 
-    project_id                    wt_public_id not null,
+    project_id                    wt_scope_id not null,
     project_name                  text not null,
     project_description           text not null,
 
-    host_organization_id          wt_public_id not null,
+    host_organization_id          wt_scope_id not null,
     host_organization_name        text not null,
     host_organization_description text not null,
 
