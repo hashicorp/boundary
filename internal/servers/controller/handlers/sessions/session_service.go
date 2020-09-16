@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gorilla/sessions"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
@@ -39,6 +38,23 @@ func NewService(repoFn common.SessionRepoFactory, iamRepoFn common.IamRepoFactor
 
 var _ pbs.SessionServiceServer = Service{}
 
+// GetSessions implements the interface pbs.SessionServiceServer.
+func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*pbs.GetSessionResponse, error) {
+	if err := validateGetRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	u, err := s.getFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	u.Scope = authResults.Scope
+	return &pbs.GetSessionResponse{Item: u}, nil
+}
+
 // ListSessions implements the interface pbs.SessionServiceServer.
 func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest) (*pbs.ListSessionsResponse, error) {
 	if err := validateListRequest(req); err != nil {
@@ -58,23 +74,6 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	return &pbs.ListSessionsResponse{Items: ul}, nil
 }
 
-// GetSessions implements the interface pbs.SessionServiceServer.
-func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*pbs.GetSessionResponse, error) {
-	if err := validateGetRequest(req); err != nil {
-		return nil, err
-	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	u, err := s.getFromRepo(ctx, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	u.Scope = authResults.Scope
-	return &pbs.GetSessionResponse{Item: u}, nil
-}
-
 // CancelSession implements the interface pbs.SessionServiceServer.
 func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionRequest) (*pbs.CancelSessionResponse, error) {
 	if err := validateCancelRequest(req); err != nil {
@@ -84,7 +83,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.cancelInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.cancelInRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -110,27 +109,6 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	return toProto(sess), nil
 }
 
-func (s Service) cancelInRepo(ctx context.Context, id string) (*pb.Session, error) {
-	version := 1
-	u, err := session.New(id, opts...)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build session for update: %v.", err)
-	}
-	u.PublicId = id
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, err
-	}
-	out, _, rowsUpdated, err := repo.UpdateState(ctx, id, version, session.StatusCanceling)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update session: %v.", err)
-	}
-	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", id)
-	}
-	return toProto(out), nil
-}
-
 func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Session, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -145,6 +123,18 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Sessio
 		outUl = append(outUl, toProto(u))
 	}
 	return outUl, nil
+}
+
+func (s Service) cancelInRepo(ctx context.Context, id string) (*pb.Session, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, _, err := repo.UpdateState(ctx, id, 1, session.StatusCanceling)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to update session: %v.", err)
+	}
+	return toProto(out), nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -184,7 +174,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			res.Error = handlers.NotFoundError()
 			return res
 		}
-		parentId = t.GetScopeId()
+		parentId = t.ScopeId
 		opts = append(opts, auth.WithId(id))
 	default:
 		res.Error = errors.New("unsupported action")
@@ -196,17 +186,18 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 
 func toProto(in *session.Session) *pb.Session {
 	out := pb.Session{
-		Id:             in.GetPublicId(),
-		ScopeId:        in.ScopeId,
-		TargetId:       in.TargetId,
-		Version:        in.Version,
-		UserId:         in.UserId,
-		HostId:         in.HostId,
+		Id:          in.GetPublicId(),
+		ScopeId:     in.ScopeId,
+		TargetId:    in.TargetId,
+		Version:     in.Version,
+		UserId:      in.UserId,
+		HostId:      in.HostId,
+		AuthTokenId: in.AuthTokenId,
+
 		CreatedTime:    in.CreateTime.GetTimestamp(),
 		UpdatedTime:    in.UpdateTime.GetTimestamp(),
 		ExpirationTime: in.ExpirationTime.GetTimestamp(),
 	}
-	in.AuthTokenId
 	return &out
 }
 
@@ -216,29 +207,24 @@ func toProto(in *session.Session) *pb.Session {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetSessionRequest) error {
-	return handlers.ValidateGetRequest(session.TcpSessionPrefix, req, handlers.NoopValidatorFn)
-}
-
-func validateCancelRequest(req *pbs.CancelSessionRequest) error {
-	return handlers.ValidateUpdateRequest(sessions.TcpSessionPrefix, req, req.GetItem(), func() map[string]string {
-		badFields := map[string]string{}
-		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "name") && req.GetItem().GetName().GetValue() == "" {
-			badFields["name"] = "This field cannot be set to empty."
-		}
-		if req.GetItem().GetDefaultPort() != nil && req.GetItem().GetDefaultPort().GetValue() == 0 {
-			badFields["default_port"] = "This optional field cannot be set to 0."
-		}
-		if req.GetItem().GetType() != "" {
-			badFields["type"] = "This field cannot be updated."
-		}
-		return badFields
-	})
+	return handlers.ValidateGetRequest(session.SessionPrefix, req, handlers.NoopValidatorFn)
 }
 
 func validateListRequest(req *pbs.ListSessionsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
 		badFields["scope_id"] = "This field is required to have a properly formatted project scope id."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+	}
+	return nil
+}
+
+func validateCancelRequest(req *pbs.CancelSessionRequest) error {
+	badFields := map[string]string{}
+	if !handlers.ValidId(session.SessionPrefix, req.GetId()) {
+		badFields["id"] = "Impropperly formatted identifier."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

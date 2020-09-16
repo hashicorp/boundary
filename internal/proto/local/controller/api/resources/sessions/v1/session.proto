@@ -10,8 +10,17 @@ import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
+message SessionCredPayload {
+	// The certificate to use when connecting (or if using custom certs, to
+	// serve as the "login"). Raw DER bytes.
+	bytes certificate = 10;
 
-message SessionCredentials {
+	// The private key to use when connecting (or if using custom certs, to pass
+	// as the "password").
+	bytes private_key = 20;
+}
+
+message SessionCreds {
 	// Contains the credentials that connecting results in
 	string session_id = 10;
 
@@ -23,21 +32,19 @@ message SessionCredentials {
 	// Type of the session (e.g. tcp, ssh, etc.)
 	string type = 40;
 
-	// The certificate to use when connecting (or if using custom certs, to
-	// serve as the "login"). Raw DER bytes.
-	bytes certificate = 50;
-
-	// The private key to use when connecting (or if using custom certs, to pass
-	// as the "password").
-	bytes private_key = 60 [json_name="private_key"];
+	bytes auth_payload = 50;
 
 	// Worker information. The first worker in the slice should be prioritized.
-	repeated WorkerInfo worker_info = 150 [json_name="worker_info"];
+	repeated WorkerInfo worker_info = 60 [json_name="worker_info"];
 }
 
 message WorkerInfo {
 	// The address of the worker
 	string address = 10;
+}
+
+message Connection {
+
 }
 
 // Session contains all fields related to a Session resource

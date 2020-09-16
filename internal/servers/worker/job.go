@@ -30,7 +30,7 @@ func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	if rawConn == nil {
 		return nil, errors.New("could not get a controller client")
 	}
-	conn, ok := rawConn.(pbs.SessionServiceClient)
+	conn, ok := rawConn.(pbs.SessionManagementServiceClient)
 	if !ok {
 		return nil, errors.New("could not cast atomic controller client to the real thing")
 	}
@@ -41,14 +41,14 @@ func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	timeoutContext, cancel := context.WithTimeout(w.baseContext, validateSessionTimeout)
 	defer cancel()
 
-	resp, err := conn.GetSession(timeoutContext, &pbs.GetSessionRequest{
+	resp, err := conn.GetSessionCreds(timeoutContext, &pbs.GetSessionCredsRequest{
 		Id: jobId,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error validating session: %w", err)
 	}
 
-	parsedCert, err := x509.ParseCertificate(resp.GetSession().GetCertificate())
+	parsedCert, err := x509.ParseCertificate(resp.GetSessionCreds().GetCertificate())
 	if err != nil {
 		return nil, fmt.Errorf("error parsing session certificate: %w", err)
 	}
@@ -63,8 +63,8 @@ func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	tlsConf := &tls.Config{
 		Certificates: []tls.Certificate{
 			{
-				Certificate: [][]byte{resp.GetSession().GetCertificate()},
-				PrivateKey:  ed25519.PrivateKey(resp.GetSession().GetPrivateKey()),
+				Certificate: [][]byte{resp.GetSessionCreds().GetCertificate()},
+				PrivateKey:  ed25519.PrivateKey(resp.GetSessionCreds().GetPrivateKey()),
 				Leaf:        parsedCert,
 			},
 		},
