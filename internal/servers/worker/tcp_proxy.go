@@ -6,11 +6,11 @@ import (
 	"net"
 	"sync"
 
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
+	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"nhooyr.io/websocket"
 )
 
-func (w *Worker) handleTcpProxyV1(jobCtx context.Context, conn *websocket.Conn, jobInfo *pb.Session) {
+func (w *Worker) handleTcpProxyV1(jobCtx context.Context, conn *websocket.Conn, jobInfo *services.GetSessionResponse) {
 	remoteConn, err := net.Dial("tcp", jobInfo.Endpoint)
 	if err != nil {
 		w.logger.Error("error dialing endpoint", "error", err, "endpoint", jobInfo.Endpoint)

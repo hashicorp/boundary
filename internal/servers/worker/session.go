@@ -17,13 +17,13 @@ const (
 	validateSessionTimeout = 90 * time.Second
 )
 
-func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
-	var jobId string
+func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+	var sessionId string
 	switch {
 	case strings.HasPrefix(hello.ServerName, "s_"):
-		jobId = hello.ServerName
+		sessionId = hello.ServerName
 	default:
-		return nil, fmt.Errorf("could not find job ID in SNI")
+		return nil, fmt.Errorf("could not find session ID in SNI")
 	}
 
 	rawConn := w.controllerConn.Load()
@@ -42,13 +42,13 @@ func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	defer cancel()
 
 	resp, err := conn.GetSession(timeoutContext, &pbs.GetSessionRequest{
-		Id: jobId,
+		SessionId: sessionId,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error validating session: %w", err)
 	}
 
-	parsedCert, err := x509.ParseCertificate(resp.GetSession().GetCertificate())
+	parsedCert, err := x509.ParseCertificate(resp.GetAuthorization().Certificate)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing session certificate: %w", err)
 	}
@@ -63,8 +63,8 @@ func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	tlsConf := &tls.Config{
 		Certificates: []tls.Certificate{
 			{
-				Certificate: [][]byte{resp.GetSession().GetCertificate()},
-				PrivateKey:  ed25519.PrivateKey(resp.GetSession().GetPrivateKey()),
+				Certificate: [][]byte{resp.GetAuthorization().Certificate},
+				PrivateKey:  ed25519.PrivateKey(resp.GetAuthorization().PrivateKey),
 				Leaf:        parsedCert,
 			},
 		},
@@ -78,7 +78,7 @@ func (w *Worker) getJobTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	// not in cancellation because they could be on the way to being
 	// established. However, since cert lifetimes are short, we can simply range
 	// through and remove values that are expired.
-	w.jobInfoMap.Store(jobId, resp)
+	w.sessionInfoMap.Store(sessionId, resp)
 
 	return tlsConf, nil
 }

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
+	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"nhooyr.io/websocket"
@@ -37,15 +37,15 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		jobId := r.TLS.ServerName
+		sessionId := r.TLS.ServerName
 
-		jobInfoRaw, valid := w.jobInfoMap.LoadAndDelete(jobId)
+		sessionInfoRaw, valid := w.sessionInfoMap.LoadAndDelete(sessionId)
 		if !valid {
-			w.logger.Error("job not found in info map", "job_id", jobId)
+			w.logger.Error("session not found in info map", "session_id", sessionId)
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		jobInfo := jobInfoRaw.(*pb.Session)
+		sessionInfo := sessionInfoRaw.(*services.GetSessionResponse)
 
 		opts := &websocket.AcceptOptions{
 			Subprotocols: []string{globals.TcpProxyV1},
@@ -60,9 +60,9 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		defer conn.Close(websocket.StatusNormalClosure, "done")
 
 		connCtx, connCancel := context.WithCancel(r.Context())
-		w.cancellationMap.Store(jobId, connCancel)
+		w.cancellationMap.Store(sessionId, connCancel)
 		defer func() {
-			cancel, loaded := w.cancellationMap.LoadAndDelete(jobId)
+			cancel, loaded := w.cancellationMap.LoadAndDelete(sessionId)
 			if !loaded {
 				return
 			}
@@ -80,6 +80,13 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			conn.Close(websocket.StatusUnsupportedData, "invalid tofu token")
 			return
 		}
+
+		if sessionInfo.TofuToken != "" && sessionInfo.TofuToken != handshake.GetTofuToken() {
+			w.logger.Error("WARNING: mismatched tofu token", "session_id", sessionId)
+			conn.Close(websocket.StatusPolicyViolation, "tofu token not allowed")
+			return
+		}
+
 		if err := wspb.Write(connCtx, conn, &proxy.HandshakeResult{}); err != nil {
 			w.logger.Error("error sending handshake result to client", "error", err)
 			conn.Close(websocket.StatusProtocolError, "unable to send handshake result")
@@ -88,7 +95,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 
 		switch conn.Subprotocol() {
 		case globals.TcpProxyV1:
-			w.handleTcpProxyV1(connCtx, conn, jobInfo)
+			w.handleTcpProxyV1(connCtx, conn, sessionInfo)
 		default:
 			conn.Close(websocket.StatusProtocolError, "unsupported-protocol")
 			return

@@ -6,7 +6,7 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/serve
 
 import "google/protobuf/timestamp.proto";
 import "controller/servers/v1/servers.proto";
-import "controller/api/resources/sessions/v1/session.proto";
+import "controller/api/resources/targets/v1/target.proto";
 
 service SessionService {
 	// Validate session allows a worker to retrieve session information from the controller.
@@ -16,10 +16,14 @@ service SessionService {
 
 message GetSessionRequest {
 	// The session ID from the client
-	string id = 10;
+	string session_id = 10;
 }
 
 // SessionResponse contains information necessary for a client to establish a session
 message GetSessionResponse {
-	api.resources.sessions.v1.Session session = 1;
+	api.resources.targets.v1.SessionAuthorizationData authorization = 10;
+
+	string tofu_token = 20;
+
+	uint32 version = 30;
 }

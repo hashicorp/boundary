@@ -2,10 +2,11 @@ package workers
 
 import (
 	"context"
+	"encoding/base64"
 	"sync"
 	"time"
 
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -17,22 +18,30 @@ import (
 )
 
 type workerServiceServer struct {
-	logger       hclog.Logger
-	repoFn       common.ServersRepoFactory
-	updateTimes  *sync.Map
-	kms          *kms.Kms
-	jobMap       *sync.Map
-	jobCancelMap *sync.Map
+	logger        hclog.Logger
+	serversRepoFn common.ServersRepoFactory
+	sessionRepoFn common.SessionRepoFactory
+	updateTimes   *sync.Map
+	kms           *kms.Kms
+	jobMap        *sync.Map
+	jobCancelMap  *sync.Map
 }
 
-func NewWorkerServiceServer(logger hclog.Logger, repoFn common.ServersRepoFactory, updateTimes *sync.Map, kms *kms.Kms, jobMap *sync.Map) *workerServiceServer {
+func NewWorkerServiceServer(
+	logger hclog.Logger,
+	serversRepoFn common.ServersRepoFactory,
+	sessionRepoFn common.SessionRepoFactory,
+	updateTimes *sync.Map,
+	kms *kms.Kms,
+	jobMap *sync.Map) *workerServiceServer {
 	return &workerServiceServer{
-		logger:       logger,
-		repoFn:       repoFn,
-		updateTimes:  updateTimes,
-		kms:          kms,
-		jobMap:       jobMap,
-		jobCancelMap: new(sync.Map),
+		logger:        logger,
+		serversRepoFn: serversRepoFn,
+		sessionRepoFn: sessionRepoFn,
+		updateTimes:   updateTimes,
+		kms:           kms,
+		jobMap:        jobMap,
+		jobCancelMap:  new(sync.Map),
 	}
 }
 
@@ -42,7 +51,7 @@ var _ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
 	ws.logger.Trace("got status request from worker", "name", req.Worker.Name, "address", req.Worker.Address, "jobs", req.GetJobs())
 	ws.updateTimes.Store(req.Worker.Name, time.Now())
-	repo, err := ws.repoFn()
+	repo, err := ws.serversRepoFn()
 	if err != nil {
 		ws.logger.Error("error getting servers repo", "error", err)
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error aqcuiring repo to store worker status: %v", err)
@@ -73,14 +82,29 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 }
 
 func (ws *workerServiceServer) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*pbs.GetSessionResponse, error) {
-	ws.logger.Trace("got validate session request from worker", "job_id", req.GetId())
+	ws.logger.Trace("got validate session request from worker", "job_id", req.GetSessionId())
 
-	// Look up the job info
-	storedSessionInfo, loaded := ws.jobMap.LoadAndDelete(req.GetId())
-	if !loaded {
-		return nil, status.Errorf(codes.PermissionDenied, "Unknown job ID: %v", req.GetId())
+	sessRepo, err := ws.sessionRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
-	sessionInfo := storedSessionInfo.(*pb.Session)
+
+	sessionInfo, _, err := sessRepo.LookupSession(ctx, req.GetSessionId())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error looking up session: %v", err)
+	}
+	if sessionInfo == nil {
+		return nil, status.Error(codes.PermissionDenied, "Unknown session ID.")
+	}
+
+	resp := &pbs.GetSessionResponse{
+		Authorization: &targets.SessionAuthorizationData{
+			SessionId:   sessionInfo.GetPublicId(),
+			Certificate: sessionInfo.Certificate,
+		},
+		Version:   sessionInfo.Version,
+		TofuToken: base64.StdEncoding.EncodeToString(sessionInfo.TofuToken),
+	}
 
 	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ScopeId, kms.KeyPurposeSessions)
 	if err != nil {
@@ -89,23 +113,10 @@ func (ws *workerServiceServer) GetSession(ctx context.Context, req *pbs.GetSessi
 
 	// Derive the private key, which should match. Deriving on both ends allows
 	// us to not store it in the DB.
-	_, privKey, err := session.DeriveED25519Key(wrapper, sessionInfo.GetUserId(), req.GetId())
+	_, resp.Authorization.PrivateKey, err = session.DeriveED25519Key(wrapper, sessionInfo.UserId, sessionInfo.GetPublicId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
 	}
 
-	if sessionInfo.ExpirationTime.GetSeconds() > 0 {
-		timeDiff := time.Until(sessionInfo.GetExpirationTime().AsTime())
-		if timeDiff < 0 {
-			return nil, status.Errorf(codes.OutOfRange, "Session has already expired")
-		}
-		defer func() {
-			time.AfterFunc(timeDiff, func() {
-				ws.jobCancelMap.Store(req.GetId(), true)
-			})
-		}()
-	}
-
-	sessionInfo.PrivateKey = privKey
-	return &pbs.GetSessionResponse{Session: sessionInfo}, nil
+	return resp, nil
 }

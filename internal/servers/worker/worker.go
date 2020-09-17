@@ -32,7 +32,7 @@ type Worker struct {
 	controllerResolver        *atomic.Value
 	controllerResolverCleanup *atomic.Value
 
-	jobInfoMap      *sync.Map
+	sessionInfoMap  *sync.Map
 	cancellationMap *sync.Map
 }
 
@@ -44,7 +44,7 @@ func New(conf *Config) (*Worker, error) {
 		lastStatusSuccess:         new(atomic.Value),
 		controllerResolver:        new(atomic.Value),
 		controllerResolverCleanup: new(atomic.Value),
-		jobInfoMap:                new(sync.Map),
+		sessionInfoMap:            new(sync.Map),
 		cancellationMap:           new(sync.Map),
 	}
 
