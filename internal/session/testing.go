@@ -146,6 +146,7 @@ func TestTofu(t *testing.T) []byte {
 }
 
 func TestWorker(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *servers.Server {
+	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
 	serversRepo, err := servers.NewRepository(rw, rw, kms)
