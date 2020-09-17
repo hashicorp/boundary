@@ -357,10 +357,9 @@ var inputStructs = []*structInfo{
 		subtypeName: "TcpTarget",
 	},
 	{
-		inProto:             &targets.SessionAuthorization{},
-		outFile:             "targets/session_authorization.gen.go",
-		subtypeName:         "SessionAuthorization",
-		createResponseTypes: true,
+		inProto:     &targets.SessionAuthorization{},
+		outFile:     "targets/session_authorization.gen.go",
+		subtypeName: "SessionAuthorization",
 	},
 	{
 		inProto:     &targets.WorkerInfo{},

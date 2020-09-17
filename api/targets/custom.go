@@ -1,6 +1,7 @@
 package targets
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/url"
@@ -8,7 +9,25 @@ import (
 	"github.com/hashicorp/boundary/api"
 )
 
-func (c *Client) Authorize(ctx context.Context, targetId string, opt ...Option) (*SessionAuthorization, *api.Error, error) {
+type SessionAuthorizationResult struct {
+	Item         *SessionAuthorization
+	responseBody *bytes.Buffer
+	responseMap  map[string]interface{}
+}
+
+func (n SessionAuthorizationResult) GetItem() interface{} {
+	return n.Item
+}
+
+func (n SessionAuthorizationResult) GetResponseBody() *bytes.Buffer {
+	return n.responseBody
+}
+
+func (n SessionAuthorizationResult) GetResponseMap() map[string]interface{} {
+	return n.responseMap
+}
+
+func (c *Client) Authorize(ctx context.Context, targetId string, opt ...Option) (*SessionAuthorizationResult, *api.Error, error) {
 	if targetId == "" {
 		return nil, nil, fmt.Errorf("empty targetId value passed into Authorize request")
 	}
@@ -37,13 +56,16 @@ func (c *Client) Authorize(ctx context.Context, targetId string, opt ...Option) 
 		return nil, nil, fmt.Errorf("error performing client request during Authorize call: %w", err)
 	}
 
-	sa := new(SessionAuthorization)
-	apiErr, err := resp.Decode(sa)
+	sar := new(SessionAuthorizationResult)
+	sar.Item = new(SessionAuthorization)
+	apiErr, err := resp.Decode(sar.Item)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Authorize response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr, nil
 	}
-	return sa, apiErr, nil
+	sar.responseBody = resp.Body
+	sar.responseMap = resp.Map
+	return sar, apiErr, nil
 }

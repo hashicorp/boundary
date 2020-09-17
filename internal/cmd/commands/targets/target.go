@@ -265,7 +265,7 @@ func (c *Command) Run(args []string) int {
 	var result api.GenericResult
 	var listResult api.GenericListResult
 	var apiErr *api.Error
-	var sa *targets.SessionAuthorization
+	var sar *targets.SessionAuthorizationResult
 
 	switch c.Func {
 	case "read":
@@ -285,7 +285,7 @@ func (c *Command) Run(args []string) int {
 	case "set-host-sets":
 		result, apiErr, err = targetClient.SetHostSets(c.Context, c.FlagId, version, hostSets, opts...)
 	case "authorize":
-		sa, apiErr, err = targetClient.Authorize(c.Context, c.FlagId, opts...)
+		sar, apiErr, err = targetClient.Authorize(c.Context, c.FlagId, opts...)
 	}
 
 	plural := "target"
@@ -370,6 +370,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "authorize":
+		sa := sar.GetItem().(*targets.SessionAuthorization)
 		switch base.Format(c.UI) {
 		case "table":
 			c.UI.Output(generateAuthorizationTableOutput(sa))
