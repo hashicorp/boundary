@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -174,6 +175,13 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	}
 	if err := services.RegisterRoleServiceHandlerServer(ctx, mux, rs); err != nil {
 		return nil, fmt.Errorf("failed to register role service handler: %w", err)
+	}
+	ss, err := sessions.NewService(c.SessionRepoFn, c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create session handler service: %w", err)
+	}
+	if err := services.RegisterSessionServiceHandlerServer(ctx, mux, ss); err != nil {
+		return nil, fmt.Errorf("failed to register session service handler: %w", err)
 	}
 
 	return mux, nil
