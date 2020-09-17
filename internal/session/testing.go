@@ -22,11 +22,11 @@ import (
 )
 
 // TestConnection creates a test connection for the sessionId in the repository.
-func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, backendTcpAddr string, backendTcpPort uint32) *Connection {
+func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32) *Connection {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	c, err := NewConnection(sessionId, clientTcpAddr, clientTcpPort, backendTcpAddr, backendTcpPort)
+	c, err := NewConnection(sessionId, clientTcpAddr, clientTcpPort, endpointTcpAddr, endpointTcpPort)
 	require.NoError(err)
 	id, err := newConnectionId()
 	require.NoError(err)
