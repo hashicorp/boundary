@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	"google.golang.org/protobuf/proto"
@@ -346,5 +347,24 @@ var inputStructs = []*structInfo{
 		inProto:     &targets.TcpTargetAttributes{},
 		outFile:     "targets/tcp_target_attributes.gen.go",
 		subtypeName: "TcpTarget",
+	},
+	{
+		inProto: &sessions.Session{},
+		outFile: "sessions/session.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			readTemplate,
+			listTemplate,
+		},
+		pathArgs:            []string{"session"},
+		createResponseTypes: true,
+	},
+	{
+		inProto: &sessions.SessionState{},
+		outFile: "sessions/state.gen.go",
+	},
+	{
+		inProto: &sessions.WorkerInfo{},
+		outFile: "sessions/workers.gen.go",
 	},
 }
