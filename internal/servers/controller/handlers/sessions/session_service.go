@@ -79,7 +79,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	if err := validateCancelRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Cancel)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
