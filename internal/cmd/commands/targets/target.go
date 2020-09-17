@@ -289,8 +289,11 @@ func (c *Command) Run(args []string) int {
 	}
 
 	plural := "target"
-	if c.Func == "list" {
+	switch c.Func {
+	case "list":
 		plural = "targets"
+	case "authorize":
+		plural = "a session against target"
 	}
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))

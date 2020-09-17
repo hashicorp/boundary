@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"nhooyr.io/websocket"
@@ -45,38 +46,79 @@ type Command struct {
 	flagListenAddr string
 	flagListenPort int
 	flagVerbose    bool
+	flagTargetId   string
+	flagHostId     string
+
+	Func string
 }
 
 func (c *Command) Synopsis() string {
-	return "Launch the Boundary CLI in proxy mode"
+	switch c.Func {
+	case "proxy":
+		return "Launch the Boundary CLI in proxy mode"
+	case "connect":
+		return "Authorize a session against a target and launch a proxied connection"
+	}
+	return ""
 }
 
 func (c *Command) Help() string {
-	return base.WrapForHelpText([]string{
-		"Usage: boundary proxy [options] [args]",
-		"",
-		"  This command allows launching the Boundary CLI in proxy mode. In this mode, the CLI expects to take in an authorization string returned from a Boundary controller. The CLI will then create a connection to a Boundary worker and ready a listening port for a local connection.",
-		"",
-		"  Example:",
-		"",
-		`      $ boundary proxy -auth "UgxzX29mVEpwNUt6QlGiAQ..."`,
-		"",
-		"  Please see the {{type}}s subcommand help for detailed usage information.",
-	}) + c.Flags().Help()
+	switch c.Func {
+	case "proxy":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary proxy [options] [args]",
+			"",
+			"  This command allows launching the Boundary CLI in proxy mode. In this mode, the CLI expects to take in an authorization string returned from a Boundary controller. The CLI will then create a connection to a Boundary worker and ready a listening port for a local connection.",
+			"",
+			"  Example:",
+			"",
+			`      $ boundary proxy -auth "UgxzX29mVEpwNUt6QlGiAQ..."`,
+		}) + c.Flags().Help()
+
+	case "connect":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary connect [options] [args]",
+			"",
+			`  This command performs a target authorization and proxy launch in one command; it is equivalent to sending the output of "boundary targets authorize" into "boundary proxy". See the help output for those commands for more information.`,
+			"",
+			"  Example:",
+			"",
+			`      $ boundary connect -target-id ttcp_1234567890"`,
+		}) + c.Flags().Help()
+	}
+	return ""
 }
 
 func (c *Command) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetOutputFormat)
+	bits := base.FlagSetOutputFormat
+	if c.Func == "connect" {
+		bits = base.FlagSetHTTP | base.FlagSetClient | bits
+	}
+	set := c.FlagSet(bits)
 
 	f := set.NewFlagSet("Proxy Options")
 
-	f.StringVar(&base.StringVar{
-		Name:       "authz",
-		Target:     &c.flagAuthz,
-		EnvVar:     "BOUNDARY_PROXY_AUTHZ",
-		Completion: complete.PredictAnything,
-		Usage:      `The authorization string returned from the Boundary controller. If set to "-", the command will attempt to read in the authorization string from standard input.`,
-	})
+	switch c.Func {
+	case "proxy":
+		f.StringVar(&base.StringVar{
+			Name:       "authz",
+			Target:     &c.flagAuthz,
+			EnvVar:     "BOUNDARY_PROXY_AUTHZ",
+			Completion: complete.PredictAnything,
+			Usage:      `The authorization string returned from the Boundary controller. If set to "-", the command will attempt to read in the authorization string from standard input.`,
+		})
+	case "connect":
+		f.StringVar(&base.StringVar{
+			Name:   "target-id",
+			Target: &c.flagTargetId,
+			Usage:  "The ID of the target to authorize against.",
+		})
+		f.StringVar(&base.StringVar{
+			Name:   "host-id",
+			Target: &c.flagHostId,
+			Usage:  "The ID of a specific host to connect to out of the hosts from the target's host sets. If not specified, one is chosen at random.",
+		})
+	}
 
 	f.StringVar(&base.StringVar{
 		Name:       "listen-addr",
@@ -136,34 +178,68 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if c.flagAuthz == "-" {
-		authBytes, err := ioutil.ReadAll(os.Stdin)
+	authzString := c.flagAuthz
+	switch c.Func {
+	case "proxy":
+		if authzString == "-" {
+			authBytes, err := ioutil.ReadAll(os.Stdin)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("No authorization string was provided and encountered the following error attempting to read it from stdin: %w", err).Error())
+				return 1
+			}
+			if len(authBytes) == 0 {
+				c.UI.Error("No authorization data read from stdin")
+				return 1
+			}
+			authzString = string(authBytes)
+		}
+
+		if authzString == "" {
+			c.UI.Error("Authorization data was empty")
+			return 1
+		}
+
+		if authzString[0] == '{' {
+			// Attempt to decode the JSON output of an authorize call and pull the
+			// token out of there
+			var sa targets.SessionAuthorization
+			if err := json.Unmarshal([]byte(authzString), &sa); err == nil {
+				authzString = sa.AuthorizationToken
+			}
+		}
+
+	case "connect":
+		if c.flagTargetId == "" {
+			c.UI.Error("Target ID must be provided")
+			return 1
+		}
+
+		client, err := c.Client()
 		if err != nil {
-			c.UI.Error(fmt.Errorf("No authorization string was provided and encountered the following error attempting to read it from stdin: %w", err).Error())
+			c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
+			return 2
+		}
+		targetClient := targets.NewClient(client)
+
+		var opts []targets.Option
+		if len(c.flagHostId) != 0 {
+			opts = append(opts, targets.WithHostId(c.flagHostId))
+		}
+
+		sar, apiErr, err := targetClient.Authorize(c.Context, c.flagTargetId, opts...)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))
+			return 2
+		}
+		if apiErr != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing authorize on a session against target: %s", pretty.Sprint(apiErr)))
 			return 1
 		}
-		if len(authBytes) == 0 {
-			c.UI.Error("No authorization data read from stdin")
-			return 1
-		}
-		c.flagAuthz = string(authBytes)
+		sa := sar.GetItem().(*targets.SessionAuthorization)
+		authzString = sa.AuthorizationToken
 	}
 
-	if c.flagAuthz == "" {
-		c.UI.Error("Authorization data was empty")
-		return 1
-	}
-
-	if c.flagAuthz[0] == '{' {
-		// Attempt to decode the JSON output of an authorize call and pull the
-		// token out of there
-		var sa targets.SessionAuthorization
-		if err := json.Unmarshal([]byte(c.flagAuthz), &sa); err == nil {
-			c.flagAuthz = sa.AuthorizationToken
-		}
-	}
-
-	marshaled := base58.Decode(c.flagAuthz)
+	marshaled := base58.Decode(authzString)
 	if len(marshaled) == 0 {
 		c.UI.Error("Zero length authorization information after decoding")
 		return 1
