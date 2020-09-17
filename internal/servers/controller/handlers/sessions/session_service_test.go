@@ -5,14 +5,18 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -23,17 +27,24 @@ import (
 func TestGetSession(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
+
 	iamRepo := iam.TestRepo(t, conn, wrap)
+
+	rw := db.New(conn)
+	sessRepo, err := session.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
 
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
 	sessRepoFn := func() (*session.Repository, error) {
-		return nil, nil
+		return sessRepo, nil
 	}
 
 	o, p := iam.TestScopes(t, iamRepo)
-	u := iam.TestUser(t, iamRepo, o.GetPublicId())
+	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	uId := at.GetIamUserId()
 	hc := static.TestCatalogs(t, conn, p.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
@@ -41,16 +52,29 @@ func TestGetSession(t *testing.T) {
 	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
 
 	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
-		UserId:      u.GetPublicId(),
+		UserId:      uId,
 		HostId:      h.GetPublicId(),
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
-		AuthTokenId: "",
+		AuthTokenId: at.GetPublicId(),
 		ScopeId:     p.GetPublicId(),
 	})
 
 	wireSess := &pb.Session{
-		Id: sess.GetPublicId(),
+		Id:             sess.GetPublicId(),
+		ScopeId:        p.GetPublicId(),
+		AuthTokenId:    at.GetPublicId(),
+		UserId:         at.GetIamUserId(),
+		TargetId:       sess.TargetId,
+		HostSetId:      sess.HostSetId,
+		HostId:         sess.HostId,
+		Version:        sess.Version,
+		Status:         session.StatusPending.String(),
+		UpdatedTime:    sess.UpdateTime.GetTimestamp(),
+		CreatedTime:    sess.CreateTime.GetTimestamp(),
+		ExpirationTime: sess.ExpirationTime.GetTimestamp(),
+		Scope:          &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
+		States:         []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
 	}
 
 	cases := []struct {
@@ -63,7 +87,7 @@ func TestGetSession(t *testing.T) {
 		{
 			name:    "Get a session",
 			scopeId: sess.ScopeId,
-			req:     &pbs.GetSessionRequest{Id: p.GetPublicId()},
+			req:     &pbs.GetSessionRequest{Id: sess.GetPublicId()},
 			res:     &pbs.GetSessionResponse{Item: wireSess},
 			errCode: codes.OK,
 		},
@@ -91,7 +115,7 @@ func TestGetSession(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			s, err := sessions.NewService(sessRepoFn, iamRepoFn)
-			require.NoError(err, "Couldn't create new group service.")
+			require.NoError(err, "Couldn't create new session service.")
 
 			got, gErr := s.GetSession(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
