@@ -25,7 +25,7 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-type Handshake struct {
+type ClientHandshake struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -33,8 +33,8 @@ type Handshake struct {
 	TofuToken string `protobuf:"bytes,10,opt,name=tofu_token,json=tofuToken,proto3" json:"tofu_token,omitempty"`
 }
 
-func (x *Handshake) Reset() {
-	*x = Handshake{}
+func (x *ClientHandshake) Reset() {
+	*x = ClientHandshake{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_worker_proxy_v1_proxy_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -42,13 +42,13 @@ func (x *Handshake) Reset() {
 	}
 }
 
-func (x *Handshake) String() string {
+func (x *ClientHandshake) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Handshake) ProtoMessage() {}
+func (*ClientHandshake) ProtoMessage() {}
 
-func (x *Handshake) ProtoReflect() protoreflect.Message {
+func (x *ClientHandshake) ProtoReflect() protoreflect.Message {
 	mi := &file_worker_proxy_v1_proxy_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -60,16 +60,54 @@ func (x *Handshake) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Handshake.ProtoReflect.Descriptor instead.
-func (*Handshake) Descriptor() ([]byte, []int) {
+// Deprecated: Use ClientHandshake.ProtoReflect.Descriptor instead.
+func (*ClientHandshake) Descriptor() ([]byte, []int) {
 	return file_worker_proxy_v1_proxy_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Handshake) GetTofuToken() string {
+func (x *ClientHandshake) GetTofuToken() string {
 	if x != nil {
 		return x.TofuToken
 	}
 	return ""
+}
+
+type HandshakeResult struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *HandshakeResult) Reset() {
+	*x = HandshakeResult{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_worker_proxy_v1_proxy_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *HandshakeResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HandshakeResult) ProtoMessage() {}
+
+func (x *HandshakeResult) ProtoReflect() protoreflect.Message {
+	mi := &file_worker_proxy_v1_proxy_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HandshakeResult.ProtoReflect.Descriptor instead.
+func (*HandshakeResult) Descriptor() ([]byte, []int) {
+	return file_worker_proxy_v1_proxy_proto_rawDescGZIP(), []int{1}
 }
 
 var File_worker_proxy_v1_proxy_proto protoreflect.FileDescriptor
@@ -77,14 +115,16 @@ var File_worker_proxy_v1_proxy_proto protoreflect.FileDescriptor
 var file_worker_proxy_v1_proxy_proto_rawDesc = []byte{
 	0x0a, 0x1b, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x2f, 0x76,
 	0x31, 0x2f, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0f, 0x77,
-	0x6f, 0x72, 0x6b, 0x65, 0x72, 0x2e, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x2e, 0x76, 0x31, 0x22, 0x2a,
-	0x0a, 0x09, 0x48, 0x61, 0x6e, 0x64, 0x73, 0x68, 0x61, 0x6b, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x74,
-	0x6f, 0x66, 0x75, 0x5f, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x09, 0x74, 0x6f, 0x66, 0x75, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69,
-	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f,
-	0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65,
-	0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x3b, 0x70, 0x72, 0x6f, 0x78, 0x79,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6f, 0x72, 0x6b, 0x65, 0x72, 0x2e, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x2e, 0x76, 0x31, 0x22, 0x30,
+	0x0a, 0x0f, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x48, 0x61, 0x6e, 0x64, 0x73, 0x68, 0x61, 0x6b,
+	0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x74, 0x6f, 0x66, 0x75, 0x5f, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18,
+	0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x74, 0x6f, 0x66, 0x75, 0x54, 0x6f, 0x6b, 0x65, 0x6e,
+	0x22, 0x11, 0x0a, 0x0f, 0x48, 0x61, 0x6e, 0x64, 0x73, 0x68, 0x61, 0x6b, 0x65, 0x52, 0x65, 0x73,
+	0x75, 0x6c, 0x74, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e,
+	0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x70, 0x72,
+	0x6f, 0x78, 0x79, 0x3b, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var (
@@ -99,9 +139,10 @@ func file_worker_proxy_v1_proxy_proto_rawDescGZIP() []byte {
 	return file_worker_proxy_v1_proxy_proto_rawDescData
 }
 
-var file_worker_proxy_v1_proxy_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_worker_proxy_v1_proxy_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_worker_proxy_v1_proxy_proto_goTypes = []interface{}{
-	(*Handshake)(nil), // 0: worker.proxy.v1.Handshake
+	(*ClientHandshake)(nil), // 0: worker.proxy.v1.ClientHandshake
+	(*HandshakeResult)(nil), // 1: worker.proxy.v1.HandshakeResult
 }
 var file_worker_proxy_v1_proxy_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -118,7 +159,19 @@ func file_worker_proxy_v1_proxy_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_worker_proxy_v1_proxy_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Handshake); i {
+			switch v := v.(*ClientHandshake); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_worker_proxy_v1_proxy_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*HandshakeResult); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -136,7 +189,7 @@ func file_worker_proxy_v1_proxy_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_worker_proxy_v1_proxy_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

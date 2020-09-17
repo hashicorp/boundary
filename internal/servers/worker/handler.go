@@ -69,15 +69,20 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			cancel.(context.CancelFunc)()
 		}()
 
-		var handshake proxy.Handshake
+		var handshake proxy.ClientHandshake
 		if err := wspb.Read(connCtx, conn, &handshake); err != nil {
-			w.logger.Error("error reading nonce from client", "error", err)
-			wr.WriteHeader(http.StatusBadRequest)
+			w.logger.Error("error reading handshake from client", "error", err)
+			conn.Close(websocket.StatusPolicyViolation, "invalid handshake received")
 			return
 		}
 		if len(handshake.GetTofuToken()) < 20 {
 			w.logger.Error("invalid tofu token")
-			wr.WriteHeader(http.StatusBadRequest)
+			conn.Close(websocket.StatusUnsupportedData, "invalid tofu token")
+			return
+		}
+		if err := wspb.Write(connCtx, conn, &proxy.HandshakeResult{}); err != nil {
+			w.logger.Error("error sending handshake result to client", "error", err)
+			conn.Close(websocket.StatusProtocolError, "unable to send handshake result")
 			return
 		}
 

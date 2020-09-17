@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,9 +16,10 @@ import (
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/golang/protobuf/proto"
+	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	wpbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	targetspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -27,13 +29,19 @@ import (
 	"nhooyr.io/websocket/wspb"
 )
 
+type ConnectionInfo struct {
+	Address  string `json:"address"`
+	Port     int    `json:"port"`
+	Protocol string `json:"protocol"`
+}
+
 var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
 
 type Command struct {
 	*base.Command
 
-	flagAuth       string
+	flagAuthz      string
 	flagListenAddr string
 	flagListenPort int
 	flagVerbose    bool
@@ -58,14 +66,14 @@ func (c *Command) Help() string {
 }
 
 func (c *Command) Flags() *base.FlagSets {
-	set := c.FlagSet(0)
+	set := c.FlagSet(base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Proxy Options")
 
 	f.StringVar(&base.StringVar{
-		Name:       "auth",
-		Target:     &c.flagAuth,
-		EnvVar:     "BOUNDARY_PROXY_AUTH",
+		Name:       "authz",
+		Target:     &c.flagAuthz,
+		EnvVar:     "BOUNDARY_PROXY_AUTHZ",
 		Completion: complete.PredictAnything,
 		Usage:      `The authorization string returned from the Boundary controller. If set to "-", the command will attempt to read in the authorization string from standard input.`,
 	})
@@ -112,7 +120,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	var handshake proxy.Handshake
+	var handshake proxy.ClientHandshake
 	var err error
 	if handshake.TofuToken, err = base62.Random(20); err != nil {
 		c.UI.Error(fmt.Errorf("Could not derive random bytes for tofu token: %w", err).Error())
@@ -128,7 +136,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if c.flagAuth == "-" {
+	if c.flagAuthz == "-" {
 		authBytes, err := ioutil.ReadAll(os.Stdin)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("No authorization string was provided and encountered the following error attempting to read it from stdin: %w", err).Error())
@@ -138,28 +146,41 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error("No authorization data read from stdin")
 			return 1
 		}
-		c.flagAuth = string(authBytes)
+		c.flagAuthz = string(authBytes)
 	}
 
-	marshaled := base58.Decode(c.flagAuth)
+	if c.flagAuthz == "" {
+		c.UI.Error("Authorization data was empty")
+		return 1
+	}
+
+	if c.flagAuthz[0] == '{' {
+		// Attempt to decode the JSON output of an authorize call and pull the
+		// token out of there
+		var sa targets.SessionAuthorization
+		if err := json.Unmarshal([]byte(c.flagAuthz), &sa); err == nil {
+			c.flagAuthz = sa.AuthorizationToken
+		}
+	}
+
+	marshaled := base58.Decode(c.flagAuthz)
 	if len(marshaled) == 0 {
 		c.UI.Error("Zero length authorization information after decoding")
 		return 1
 	}
 
-	sessionResponseInfo := new(wpbs.GetSessionResponse)
-	if err := proto.Unmarshal(marshaled, sessionResponseInfo); err != nil {
-		c.UI.Error(fmt.Errorf("Unable to proto-decode authorization string: %w", err).Error())
+	data := new(targetspb.SessionAuthorizationData)
+	if err := proto.Unmarshal(marshaled, data); err != nil {
+		c.UI.Error(fmt.Errorf("Unable to proto-decode authorization data: %w", err).Error())
 		return 1
 	}
-	sessionInfo := sessionResponseInfo.GetSession()
 
-	if len(sessionInfo.GetWorkerInfo()) == 0 {
+	if len(data.GetWorkerInfo()) == 0 {
 		c.UI.Error("No workers found in authorization string")
 		return 1
 	}
 
-	parsedCert, err := x509.ParseCertificate(sessionInfo.Certificate)
+	parsedCert, err := x509.ParseCertificate(data.Certificate)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Unable to decode mTLS certificate: %w", err).Error())
 		return 1
@@ -176,8 +197,8 @@ func (c *Command) Run(args []string) int {
 	tlsConf := &tls.Config{
 		Certificates: []tls.Certificate{
 			{
-				Certificate: [][]byte{sessionInfo.Certificate},
-				PrivateKey:  ed25519.PrivateKey(sessionInfo.PrivateKey),
+				Certificate: [][]byte{data.Certificate},
+				PrivateKey:  ed25519.PrivateKey(data.PrivateKey),
 				Leaf:        parsedCert,
 			},
 		},
@@ -198,9 +219,8 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Errorf("Error starting listening port: %w", err).Error())
 		return 1
 	}
-	c.UI.Info(fmt.Sprintf("%s", listener.Addr().String()))
 
-	workerAddr := sessionInfo.GetWorkerInfo()[0].GetAddress()
+	workerAddr := data.GetWorkerInfo()[0].GetAddress()
 
 	conn, resp, err := websocket.Dial(
 		c.Context,
@@ -239,8 +259,32 @@ func (c *Command) Run(args []string) int {
 	}
 
 	if err := wspb.Write(c.Context, conn, &handshake); err != nil {
-		c.UI.Error(fmt.Errorf("error sending tofu token to worker: %w", err).Error())
+		c.UI.Error(fmt.Errorf("error sending handshake to worker: %w", err).Error())
 		return 1
+	}
+	var handshakeResult proxy.HandshakeResult
+	if err := wspb.Read(c.Context, conn, &handshakeResult); err != nil {
+		c.UI.Error(fmt.Errorf("error reading handshake result: %w", err).Error())
+		return 1
+	}
+
+	listenerAddr := listener.Addr().(*net.TCPAddr)
+	connInfo := ConnectionInfo{
+		Protocol: "tcp",
+		Address:  listenerAddr.IP.String(),
+		Port:     listenerAddr.Port,
+	}
+
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateConnectionInfoTableOutput(connInfo))
+	case "json":
+		out, err := json.Marshal(&connInfo)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
+			return 1
+		}
+		c.UI.Output(string(out))
 	}
 
 	// Get a wrapped net.Conn so we can use io.Copy
