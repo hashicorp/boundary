@@ -341,7 +341,7 @@ type ConnectWith struct {
 }
 
 // ConnectSession creates a connection in the repo with a state of "connected".
-func (r *Repository) ConnectSession(c ConnectWith) {
+func (r *Repository) ConnectSession(ctx context.Context, c ConnectWith) (*Connection, []*ConnectionState, error) {
 	panic("not implemented")
 }
 
@@ -362,7 +362,8 @@ func (r *Repository) CloseConnections(c []ClosedWith, opt ...Option) {
 }
 
 // ActivateSession will activate the session and is called by a worker after
-// authenticating the session. States are ordered by start time descending.
+// authenticating the session. The session must be in a "pending" state to be
+// activated. States are ordered by start time descending.
 func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, tofuToken []byte) (*Session, []*State, error) {
 	if sessionId == "" {
 		return nil, nil, fmt.Errorf("activate session state: missing session id %w", db.ErrInvalidParameter)
