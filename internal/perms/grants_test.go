@@ -61,7 +61,7 @@ func Test_ActionParsingValidation(t *testing.T) {
 		{
 			name: "all valid",
 			input: Grant{
-				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authenticate", "connect"},
+				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authenticate", "authorize"},
 			},
 			result: Grant{
 				actions: map[action.Type]bool{
@@ -71,7 +71,7 @@ func Test_ActionParsingValidation(t *testing.T) {
 					action.Read:         true,
 					action.Delete:       true,
 					action.Authenticate: true,
-					action.Connect:      true,
+					action.Authorize:    true,
 				},
 			},
 		},

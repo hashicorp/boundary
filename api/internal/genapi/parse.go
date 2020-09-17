@@ -63,7 +63,12 @@ func parsePBs() {
 				}
 				fi.FieldType = sliceText + ptr + name
 			default:
-				fi.FieldType = sliceText + k.String()
+				switch k.String() {
+				case "bytes":
+					fi.FieldType = "[]byte"
+				default:
+					fi.FieldType = sliceText + k.String()
+				}
 			}
 			in.generatedStructure.fields = append(in.generatedStructure.fields, fi)
 		}

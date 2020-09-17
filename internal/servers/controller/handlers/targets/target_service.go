@@ -7,13 +7,14 @@ import (
 	"math/rand"
 	"strings"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -25,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -46,10 +48,12 @@ type Service struct {
 	serversRepoFn    common.ServersRepoFactory
 	sessionRepoFn    common.SessionRepoFactory
 	staticHostRepoFn common.StaticRepoFactory
+	kmsCache         *kms.Kms
 }
 
 // NewService returns a target service which handles target related requests to boundary.
 func NewService(
+	kmsCache *kms.Kms,
 	repoFn common.TargetRepoFactory,
 	iamRepoFn common.IamRepoFactory,
 	serversRepoFn common.ServersRepoFactory,
@@ -70,7 +74,14 @@ func NewService(
 	if staticHostRepoFn == nil {
 		return Service{}, fmt.Errorf("nil static host repository provided")
 	}
-	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn, staticHostRepoFn: staticHostRepoFn}, nil
+	return Service{
+		repoFn:           repoFn,
+		iamRepoFn:        iamRepoFn,
+		serversRepoFn:    serversRepoFn,
+		sessionRepoFn:    sessionRepoFn,
+		staticHostRepoFn: staticHostRepoFn,
+		kmsCache:         kmsCache,
+	}, nil
 }
 
 var _ pbs.TargetServiceServer = Service{}
@@ -229,12 +240,10 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-
 	sessionRepo, err := s.sessionRepoFn()
 	if err != nil {
 		return nil, err
 	}
-
 	serversRepo, err := s.serversRepoFn()
 	if err != nil {
 		return nil, err
@@ -257,7 +266,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 				return nil, err
 			}
 			for _, host := range hosts {
-				compoundId := fmt.Sprint("%s|%s", hsId, host.PublicId)
+				compoundId := fmt.Sprintf("%s|%s", hsId, host.PublicId)
 				if host.PublicId == requestedId {
 					chosenId = compoundId
 					goto HOST_GATHERING_DONE
@@ -293,21 +302,25 @@ HOST_GATHERING_DONE:
 	if err != nil {
 		return nil, err
 	}
-	sess, _, privKey, err := sessionRepo.CreateSession(ctx, nil, sess)
+	wrapper, err := s.kmsCache.GetWrapper(ctx, authResults.Scope.Id, kms.KeyPurposeSessions)
+	if err != nil {
+		return nil, err
+	}
+	sess, _, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess)
 	if err != nil {
 		return nil, err
 	}
 
-	var workers []*sessions.WorkerInfo
+	var workers []*pb.WorkerInfo
 	servers, err := serversRepo.ListServers(ctx, servers.ServerTypeWorker)
 	if err != nil {
 		return nil, err
 	}
 	for _, v := range servers {
-		workers = append(workers, &sessions.WorkerInfo{Address: v.Address})
+		workers = append(workers, &pb.WorkerInfo{Address: v.Address})
 	}
 
-	ret := &pb.SessionAuthorization{
+	sad := &pb.SessionAuthorizationData{
 		SessionId:   sess.PublicId,
 		TargetId:    t.Id,
 		Scope:       authResults.Scope,
@@ -316,6 +329,18 @@ HOST_GATHERING_DONE:
 		Certificate: sess.Certificate,
 		PrivateKey:  privKey,
 		WorkerInfo:  workers,
+	}
+	marshaledSad, err := proto.Marshal(sad)
+	if err != nil {
+		return nil, err
+	}
+	ret := &pb.SessionAuthorization{
+		SessionId:          sess.PublicId,
+		TargetId:           t.Id,
+		Scope:              authResults.Scope,
+		CreatedTime:        sess.CreateTime.GetTimestamp(),
+		Type:               t.Type,
+		AuthorizationToken: base58.Encode(marshaledSad),
 	}
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
 }

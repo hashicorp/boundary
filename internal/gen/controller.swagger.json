@@ -2897,15 +2897,6 @@
         }
       }
     },
-    "controller.api.resources.sessions.v1.WorkerInfo": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string",
-          "title": "The address of the worker"
-        }
-      }
-    },
     "controller.api.resources.targets.v1.HostSet": {
       "type": "object",
       "properties": {
@@ -2922,12 +2913,13 @@
       "properties": {
         "session_id": {
           "type": "string",
-          "description": "The ID of the resource\nOutput only.",
+          "description": "The ID of the session\nOutput only.",
           "readOnly": true
         },
         "target_id": {
           "type": "string",
-          "description": "The id of the target authorizing this session. This must be defined for\ncreation of this resource, but is otherwise read only."
+          "description": "The id of the target authorizing this session. This must be defined for\ncreation of this resource, but is otherwise read only.\nOutput only.",
+          "readOnly": true
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
@@ -2942,27 +2934,15 @@
         },
         "type": {
           "type": "string",
-          "title": "Type of the session (e.g. tcp, ssh, etc.)"
+          "description": "Type of the session (e.g. tcp, ssh, etc.)\nOutput only.",
+          "readOnly": true
         },
-        "certificate": {
+        "authorization_token": {
           "type": "string",
-          "format": "byte",
-          "description": "The certificate to use when connecting (or if using custom certs, to\nserve as the \"login\"). Raw DER bytes."
-        },
-        "private_key": {
-          "type": "string",
-          "format": "byte",
-          "description": "The private key to use when connecting (or if using custom certs, to pass\nas the \"password\"). We are using Ed25519 so this is purely raw bytes, no\nmarshaling."
-        },
-        "worker_info": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/controller.api.resources.sessions.v1.WorkerInfo"
-          },
-          "description": "Worker information. The first worker in the array should be prioritized."
+          "description": "The marshaled SessionAuthorizationData message containing all information\nthat the proxy needs.\nOutput only.",
+          "readOnly": true
         }
-      },
-      "description": "SessionAuthorization contains all fields related to authorization for a\nsession. It's in the Targets API because it's returned by a target authorize\naction."
+      }
     },
     "controller.api.resources.targets.v1.Target": {
       "type": "object",
