@@ -24,26 +24,28 @@ type Worker struct {
 	baseCancel  context.CancelFunc
 	started     ua.Bool
 
-	controllerConn    *atomic.Value
-	lastStatusSuccess *atomic.Value
+	controllerStatusConn *atomic.Value
+	lastStatusSuccess    *atomic.Value
 
 	listeningAddress string
 
 	controllerResolver        *atomic.Value
 	controllerResolverCleanup *atomic.Value
 
-	sessionInfoMap  *sync.Map
-	cancellationMap *sync.Map
+	controllerSessionConn *atomic.Value
+	sessionInfoMap        *sync.Map
+	cancellationMap       *sync.Map
 }
 
 func New(conf *Config) (*Worker, error) {
 	w := &Worker{
 		conf:                      conf,
 		logger:                    conf.Logger.Named("worker"),
-		controllerConn:            new(atomic.Value),
+		controllerStatusConn:      new(atomic.Value),
 		lastStatusSuccess:         new(atomic.Value),
 		controllerResolver:        new(atomic.Value),
 		controllerResolverCleanup: new(atomic.Value),
+		controllerSessionConn:     new(atomic.Value),
 		sessionInfoMap:            new(sync.Map),
 		cancellationMap:           new(sync.Map),
 	}

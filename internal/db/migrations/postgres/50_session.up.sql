@@ -145,14 +145,15 @@ begin;
       on update cascade,
     version wt_version,
     create_time wt_timestamp,
-    update_time wt_timestamp
+    update_time wt_timestamp,
+    endpoint text -- not part of the warehouse, used to send info to the worker
   );
 
   create trigger 
     immutable_columns
   before
   update on session
-    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'create_time', 'endpoint');
   
   create trigger 
     update_version_column 
@@ -188,6 +189,8 @@ begin;
         raise exception 'auth_token_id is null';
       when new.scope_id is null then
         raise exception 'scope_id is null';
+      when new.endpoint is null then
+        raise exception 'endpoint is null';
     else
     end case;
     return new;

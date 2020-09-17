@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"strings"
 
 	"github.com/btcsuite/btcutil/base58"
@@ -236,10 +237,24 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if authResults.AuthTokenId == "" {
 		return nil, handlers.ForbiddenError()
 	}
-	t, err := s.getFromRepo(ctx, req.GetId())
+
+	// Get the target information
+	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
+	t, hostSets, err := repo.LookupTarget(ctx, req.GetId())
+	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", req.GetId())
+		}
+		return nil, err
+	}
+	if t == nil {
+		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", req.GetId())
+	}
+
+	// Instantiate some repos
 	sessionRepo, err := s.sessionRepoFn()
 	if err != nil {
 		return nil, err
@@ -257,8 +272,9 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	hostIds := make([]string, 0, len(t.HostSetIds)*10)
-	for _, hsId := range t.HostSetIds {
+	hostIds := make([]string, 0, len(hostSets)*10)
+	for _, tSet := range hostSets {
+		hsId := tSet.PublicId
 		switch host.SubtypeFromId(hsId) {
 		case host.StaticSubtype:
 			_, hosts, err := staticHostRepo.LookupSet(ctx, hsId)
@@ -290,14 +306,41 @@ HOST_GATHERING_DONE:
 	if len(splitChosenId) != 2 {
 		return nil, fmt.Errorf("invalid split of chosen id %q", chosenId)
 	}
+	hostId := splitChosenId[1]
+
+	// Generate the endpoint URL
+	endpointUrl := &url.URL{
+		Scheme: t.GetType(),
+	}
+	defaultPort := t.GetDefaultPort()
+	var endpointHost string
+	switch host.SubtypeFromId(hostId) {
+	case host.StaticSubtype:
+		h, err := staticHostRepo.LookupHost(ctx, hostId)
+		if err != nil {
+			return nil, fmt.Errorf("error looking up host: %w", err)
+		}
+		endpointHost = h.Address
+		if endpointHost == "" {
+			return nil, errors.New("host had empty address")
+		}
+	}
+	if defaultPort != 0 {
+		endpointUrl.Host = fmt.Sprintf("%s:%d", endpointHost, defaultPort)
+	} else {
+		endpointUrl.Host = endpointHost
+	}
+
 	sessionComposition := session.ComposedOf{
 		UserId:      authResults.UserId,
 		HostId:      splitChosenId[1],
-		TargetId:    t.Id,
+		TargetId:    t.GetPublicId(),
 		HostSetId:   splitChosenId[0],
 		AuthTokenId: authResults.AuthTokenId,
 		ScopeId:     authResults.Scope.Id,
+		Endpoint:    endpointUrl.String(),
 	}
+
 	sess, err := session.New(sessionComposition)
 	if err != nil {
 		return nil, err
@@ -322,10 +365,10 @@ HOST_GATHERING_DONE:
 
 	sad := &pb.SessionAuthorizationData{
 		SessionId:   sess.PublicId,
-		TargetId:    t.Id,
+		TargetId:    t.GetPublicId(),
 		Scope:       authResults.Scope,
 		CreatedTime: sess.CreateTime.GetTimestamp(),
-		Type:        t.Type,
+		Type:        t.GetType(),
 		Certificate: sess.Certificate,
 		PrivateKey:  privKey,
 		WorkerInfo:  workers,
@@ -336,10 +379,10 @@ HOST_GATHERING_DONE:
 	}
 	ret := &pb.SessionAuthorization{
 		SessionId:          sess.PublicId,
-		TargetId:           t.Id,
+		TargetId:           t.GetPublicId(),
 		Scope:              authResults.Scope,
 		CreatedTime:        sess.CreateTime.GetTimestamp(),
-		Type:               t.Type,
+		Type:               t.GetType(),
 		AuthorizationToken: base58.Encode(marshaledSad),
 	}
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
@@ -646,7 +689,6 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			badFields["name"] = "This field cannot be set to empty."
 		}
 		switch target.SubtypeFromType(req.GetItem().GetType()) {
-
 		case target.TcpSubType:
 			tcpAttrs := &pb.TcpTargetAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), tcpAttrs); err != nil {
@@ -732,7 +774,9 @@ func validateAuthorizeRequest(req *pbs.AuthorizeSessionRequest) error {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetHostId() != "" {
-		if !handlers.ValidId(host.StaticSubtype.String(), req.GetHostId()) {
+		switch host.SubtypeFromId(req.GetHostId()) {
+		case host.StaticSubtype:
+		default:
 			badFields["host_id"] = "Incorrectly formatted identifier."
 		}
 	}

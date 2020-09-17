@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"crypto/ed25519"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"strings"
@@ -313,10 +314,13 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 // authenticating the session. States are ordered by start time descending.
 func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, tofuToken []byte) (*Session, []*State, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("activate session state: missing session id %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("activate session state: missing session id: %w", db.ErrInvalidParameter)
 	}
 	if sessionVersion == 0 {
 		return nil, nil, fmt.Errorf("activate session state: version cannot be zero: %w", db.ErrInvalidParameter)
+	}
+	if len(tofuToken) == 0 {
+		return nil, nil, fmt.Errorf("activate session state: missing tofu token: %w", db.ErrInvalidParameter)
 	}
 
 	updatedSession := AllocSession()
@@ -337,11 +341,14 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			foundSession := AllocSession()
 			foundSession.PublicId = sessionId
 			if err := r.reader.LookupById(ctx, &foundSession); err != nil {
-				return fmt.Errorf("lookup session: failed %w for %s", err, sessionId)
+				return fmt.Errorf("lookup session: failed for %s: %w", sessionId, err)
 			}
 			databaseWrapper, err := r.kms.GetWrapper(ctx, foundSession.ScopeId, kms.KeyPurposeDatabase)
 			if err != nil {
 				return fmt.Errorf("unable to get database wrapper: %w", err)
+			}
+			if len(foundSession.TofuToken) > 0 && subtle.ConstantTimeCompare(foundSession.TofuToken, tofuToken) != 1 {
+				return fmt.Errorf("tofu token mismatch")
 			}
 
 			updatedSession.TofuToken = tofuToken

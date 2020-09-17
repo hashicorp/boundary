@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
@@ -21,27 +22,33 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	var sessionId string
 	switch {
 	case strings.HasPrefix(hello.ServerName, "s_"):
+		w.logger.Trace("got valid session in SNI", "session_id", hello.ServerName)
 		sessionId = hello.ServerName
 	default:
+		w.logger.Trace("invalid session in SNI", "session_id", hello.ServerName)
 		return nil, fmt.Errorf("could not find session ID in SNI")
 	}
 
-	rawConn := w.controllerConn.Load()
+	rawConn := w.controllerSessionConn.Load()
 	if rawConn == nil {
+		w.logger.Trace("could not get a controller client", "session_id", sessionId)
 		return nil, errors.New("could not get a controller client")
 	}
 	conn, ok := rawConn.(pbs.SessionServiceClient)
 	if !ok {
+		w.logger.Trace("could not cast controller client to the real thing", "session_id", sessionId)
 		return nil, errors.New("could not cast atomic controller client to the real thing")
 	}
 	if conn == nil {
+		w.logger.Trace("controller client is nil", "session_id", sessionId)
 		return nil, errors.New("controller client is nil")
 	}
 
 	timeoutContext, cancel := context.WithTimeout(w.baseContext, validateSessionTimeout)
 	defer cancel()
 
-	resp, err := conn.GetSession(timeoutContext, &pbs.GetSessionRequest{
+	w.logger.Trace("looking up session", "session_id", sessionId)
+	resp, err := conn.LookupSession(timeoutContext, &pbs.LookupSessionRequest{
 		SessionId: sessionId,
 	})
 	if err != nil {
@@ -80,5 +87,30 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	// through and remove values that are expired.
 	w.sessionInfoMap.Store(sessionId, resp)
 
+	w.logger.Trace("returning TLS configuration", "session_id", sessionId)
 	return tlsConf, nil
+}
+
+func (w *Worker) activateSession(ctx context.Context, tofuToken string, sess *services.LookupSessionResponse) error {
+	rawConn := w.controllerSessionConn.Load()
+	if rawConn == nil {
+		return errors.New("could not get a controller client")
+	}
+	conn, ok := rawConn.(pbs.SessionServiceClient)
+	if !ok {
+		return errors.New("could not cast atomic controller client to the real thing")
+	}
+	if conn == nil {
+		return errors.New("controller client is nil")
+	}
+
+	_, err := conn.ActivateSession(ctx, &pbs.ActivateSessionRequest{
+		SessionId: sess.GetAuthorization().GetSessionId(),
+		TofuToken: tofuToken,
+		Version:   sess.GetVersion(),
+	})
+	if err != nil {
+		return fmt.Errorf("error activating session: %w", err)
+	}
+	return nil
 }

@@ -4,16 +4,29 @@ import (
 	"context"
 	"io"
 	"net"
+	"net/url"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"nhooyr.io/websocket"
 )
 
-func (w *Worker) handleTcpProxyV1(jobCtx context.Context, conn *websocket.Conn, jobInfo *services.GetSessionResponse) {
-	remoteConn, err := net.Dial("tcp", jobInfo.Endpoint)
+func (w *Worker) handleTcpProxyV1(sessionCtx context.Context, conn *websocket.Conn, sessionInfo *services.LookupSessionResponse) {
+	sessionId := sessionInfo.GetAuthorization().GetSessionId()
+	sessionUrl, err := url.Parse(sessionInfo.Endpoint)
 	if err != nil {
-		w.logger.Error("error dialing endpoint", "error", err, "endpoint", jobInfo.Endpoint)
+		w.logger.Error("error parsing endpoint information", "error", err, "session_id", sessionId, "endpoint", sessionInfo.Endpoint)
+		conn.Close(websocket.StatusInternalError, "cannot parse endpoint url")
+		return
+	}
+	if sessionUrl.Scheme != "tcp" {
+		w.logger.Error("invalid scheme for tcp proxy", "error", err, "session_id", sessionId, "endpoint", sessionInfo.Endpoint)
+		conn.Close(websocket.StatusInternalError, "invalid scheme for type")
+		return
+	}
+	remoteConn, err := net.Dial("tcp", sessionUrl.Host)
+	if err != nil {
+		w.logger.Error("error dialing endpoint", "error", err, "endpoint", sessionInfo.Endpoint)
 		conn.Close(websocket.StatusInternalError, "endpoint-dialing")
 		return
 	}
@@ -21,7 +34,7 @@ func (w *Worker) handleTcpProxyV1(jobCtx context.Context, conn *websocket.Conn, 
 	tcpRemoteConn := remoteConn.(*net.TCPConn)
 
 	// Get a wrapped net.Conn so we can use io.Copy
-	netConn := websocket.NetConn(jobCtx, conn, websocket.MessageBinary)
+	netConn := websocket.NetConn(sessionCtx, conn, websocket.MessageBinary)
 
 	connWg := new(sync.WaitGroup)
 	connWg.Add(2)

@@ -120,7 +120,7 @@ func (c *Controller) startListeners() error {
 			grpc.MaxRecvMsgSize(math.MaxInt32),
 			grpc.MaxSendMsgSize(math.MaxInt32),
 		)
-		workerService := workers.NewWorkerServiceServer(c.logger.Named("worker-handler"), c.ServersRepoFn, c.SessionRepoFn, c.workerStatusUpdateTimes, c.kms, c.jobMap)
+		workerService := workers.NewWorkerServiceServer(c.logger.Named("worker-handler"), c.ServersRepoFn, c.SessionRepoFn, c.workerStatusUpdateTimes, c.kms)
 		pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
 		pbs.RegisterSessionServiceServer(workerServer, workerService)
 

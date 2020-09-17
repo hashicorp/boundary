@@ -23,7 +23,6 @@ type workerServiceServer struct {
 	sessionRepoFn common.SessionRepoFactory
 	updateTimes   *sync.Map
 	kms           *kms.Kms
-	jobMap        *sync.Map
 	jobCancelMap  *sync.Map
 }
 
@@ -32,15 +31,13 @@ func NewWorkerServiceServer(
 	serversRepoFn common.ServersRepoFactory,
 	sessionRepoFn common.SessionRepoFactory,
 	updateTimes *sync.Map,
-	kms *kms.Kms,
-	jobMap *sync.Map) *workerServiceServer {
+	kms *kms.Kms) *workerServiceServer {
 	return &workerServiceServer{
 		logger:        logger,
 		serversRepoFn: serversRepoFn,
 		sessionRepoFn: sessionRepoFn,
 		updateTimes:   updateTimes,
 		kms:           kms,
-		jobMap:        jobMap,
 		jobCancelMap:  new(sync.Map),
 	}
 }
@@ -81,8 +78,8 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	return ret, nil
 }
 
-func (ws *workerServiceServer) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*pbs.GetSessionResponse, error) {
-	ws.logger.Trace("got validate session request from worker", "job_id", req.GetSessionId())
+func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
+	ws.logger.Trace("got validate session request from worker", "session_id", req.GetSessionId())
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
@@ -97,13 +94,14 @@ func (ws *workerServiceServer) GetSession(ctx context.Context, req *pbs.GetSessi
 		return nil, status.Error(codes.PermissionDenied, "Unknown session ID.")
 	}
 
-	resp := &pbs.GetSessionResponse{
+	resp := &pbs.LookupSessionResponse{
 		Authorization: &targets.SessionAuthorizationData{
 			SessionId:   sessionInfo.GetPublicId(),
 			Certificate: sessionInfo.Certificate,
 		},
 		Version:   sessionInfo.Version,
 		TofuToken: base64.StdEncoding.EncodeToString(sessionInfo.TofuToken),
+		Endpoint:  sessionInfo.Endpoint,
 	}
 
 	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ScopeId, kms.KeyPurposeSessions)
@@ -119,4 +117,23 @@ func (ws *workerServiceServer) GetSession(ctx context.Context, req *pbs.GetSessi
 	}
 
 	return resp, nil
+}
+
+func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.ActivateSessionRequest) (*pbs.ActivateSessionResponse, error) {
+	ws.logger.Trace("got activate session request from worker", "session_id", req.GetSessionId())
+
+	sessRepo, err := ws.sessionRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
+	}
+
+	sessionInfo, _, err := sessRepo.ActivateSession(ctx, req.GetSessionId(), req.GetVersion(), []byte(req.GetTofuToken()))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error looking up session: %v", err)
+	}
+	if sessionInfo == nil {
+		return nil, status.Error(codes.PermissionDenied, "Unknown session ID.")
+	}
+
+	return &pbs.ActivateSessionResponse{}, nil
 }

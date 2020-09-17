@@ -53,7 +53,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 					})
 					return true
 				})
-				client := w.controllerConn.Load().(pbs.ServerCoordinationServiceClient)
+				client := w.controllerStatusConn.Load().(pbs.ServerCoordinationServiceClient)
 				result, err := client.Status(cancelCtx, &pbs.StatusRequest{
 					Jobs: activeJobs,
 					Worker: &servers.Server{
