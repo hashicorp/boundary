@@ -63,6 +63,7 @@ begin;
     -- bytes_down is a fully additive measurement.
     bytes_down wh_bytes_transmitted -- can be null
   );
+
   -- TODO(mgaffney) 09/2020: Research and test if the comment fields are used by
   -- data analysis tools.
   comment on table wh_session_connection_transaction_fact is
@@ -77,7 +78,7 @@ begin;
     'backend and sent to the client for this connection. Bytes Down is a fully '
     'additive measurement.';
 
-    /*
+  /*
   -- The wh_session_accumulating_fact table is an accumulating snapshot.
   -- The table wh_session_transaction_fact is a transaction fact table.
   -- The grain of the fact table is one row per session.
@@ -145,5 +146,6 @@ begin;
     -- bytes_down is a fully additive measurement.
     bytes_down wh_bytes_transmitted -- can be null
   );
-*/
+  */
+
 commit;
