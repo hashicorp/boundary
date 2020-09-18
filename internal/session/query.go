@@ -25,7 +25,7 @@ with terminated as (
 	from 
 		session s
 	where 
-		s.version = 1  and
+		s.version = $2  and
 		s.public_id in (
 			-- sessions without any connections
 			select s.public_id 
