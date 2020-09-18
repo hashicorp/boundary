@@ -3840,9 +3840,19 @@ begin;
   as $$
   begin
     if new.closed_reason is not null then
-      insert into session_connection_state (connection_id, state)
-      values
-        (new.public_id, 'closed');
+      -- check to see if there's a closed state already, before inserting a
+      -- new one.
+      perform from
+        session_connection_state cs
+      where
+        cs.connection_id = new.public_id and 
+        cs.state = 'closed';
+      if not found then 
+        insert into session_connection_state (connection_id, state)
+        values
+          (new.public_id, 'closed');
+        end if;
+        return new;
       end if;
       return new;
   end;
