@@ -257,12 +257,12 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	t, hostSets, err := repo.LookupTarget(ctx, req.GetId())
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", req.GetId())
+			return nil, nil
 		}
 		return nil, err
 	}
 	if t == nil {
-		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", req.GetId())
+		return nil, nil
 	}
 
 	// Instantiate some repos
@@ -407,12 +407,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error)
 	u, m, err := repo.LookupTarget(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+			return nil, nil
 		}
 		return nil, err
 	}
 	if u == nil {
-		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+		return nil, nil
 	}
 	return toProto(u, m)
 }
@@ -482,7 +482,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 		return nil, status.Errorf(codes.Internal, "Unable to update target: %v.", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+		return nil, nil
 	}
 	return toProto(out, m)
 }
