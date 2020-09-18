@@ -88,7 +88,7 @@ func TestClosedWith_validate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := ClosedWith{
+			c := CloseWith{
 				ConnectionId:      tt.fields.ConnectionId,
 				ConnectionVersion: tt.fields.ConnectionVersion,
 				BytesUp:           tt.fields.BytesUp,
