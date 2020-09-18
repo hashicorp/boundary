@@ -1,7 +1,7 @@
 begin;
 
-  create or replace function wh_upsert_host(p_host_id text, p_host_set_id text, p_target_id text)
-    returns text
+  create or replace function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
+    returns wh_dim_id
   as $$
   declare
     src whx_host_dimension_target%rowtype;
