@@ -19,7 +19,7 @@ type Status string
 const (
 	StatusPending    Status = "pending"
 	StatusActive     Status = "active"
-	StatusCanceling  Status = "canceling"
+	StatusCancelling Status = "canceling"
 	StatusTerminated Status = "terminated"
 )
 
