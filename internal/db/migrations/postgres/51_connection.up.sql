@@ -193,10 +193,9 @@ begin;
         insert into session_connection_state (connection_id, state)
         values
           (new.public_id, 'closed');
-        end if;
-        return new;
       end if;
-      return new;
+    end if;
+    return new;
   end;
   $$ language plpgsql;
 
