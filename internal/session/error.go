@@ -5,9 +5,9 @@ import "errors"
 // Errors returned from this package may be tested against these errors
 // with errors.Is.
 var (
-	// ErrCancelledOrTerminatedSession indicates a connection cannot be made
-	// because the session has been cancelled or terminated.
-	ErrCancelledOrTerminatedSession = errors.New("session has been cancelled or terminated")
+	// ErrInvalidStateForOperation indicates the session's state does not allow the
+	// operation.
+	ErrInvalidStateForOperation = errors.New("state is invalid for operation")
 
 	// ErrSessionNotPending indicates that a session cannot be activated
 	// because it's not in a pending state.
