@@ -301,9 +301,9 @@ func (r *Repository) ConnectSession(ctx context.Context, c ConnectWith) (*Connec
 				return fmt.Errorf("unable to connect session %s: %w", c.SessionId, err)
 			}
 			if rowsAffected == 0 {
-				return fmt.Errorf("unable to connect session %s: %w", c.SessionId, ErrCancelledOrTerminatedSession)
+				return fmt.Errorf("session %s is not active: %w", c.SessionId, ErrInvalidStateForOperation)
 			}
-			if err := r.reader.LookupById(ctx, &connection); err != nil {
+			if err := reader.LookupById(ctx, &connection); err != nil {
 				return fmt.Errorf("lookup session: failed %w for %s", err, c.SessionId)
 			}
 			connectionStates, err = fetchConnectionStates(ctx, reader, connectionId, db.WithOrder("start_time desc"))
@@ -424,7 +424,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			}
 			foundSession := AllocSession()
 			foundSession.PublicId = sessionId
-			if err := r.reader.LookupById(ctx, &foundSession); err != nil {
+			if err := reader.LookupById(ctx, &foundSession); err != nil {
 				return fmt.Errorf("lookup session: failed %w for %s", err, sessionId)
 			}
 			databaseWrapper, err := r.kms.GetWrapper(ctx, foundSession.ScopeId, kms.KeyPurposeDatabase)
