@@ -158,7 +158,7 @@ begin;
     immutable_columns
   before
   update on session
-    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'session_duration_seconds', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time');
   
   create trigger 
     update_version_column 
