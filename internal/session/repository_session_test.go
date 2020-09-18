@@ -389,12 +389,117 @@ func TestRepository_UpdateState(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_ConnectSession(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	setupFn := func() ConnectWith {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		srv := TestWorker(t, conn, wrapper)
+		tofu := TestTofu(t)
+		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		require.NoError(t, err)
+		_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		return ConnectWith{
+			SessionId:          s.PublicId,
+			ClientTcpAddress:   "127.0.0.1",
+			ClientTcpPort:      22,
+			EndpointTcpAddress: "127.0.0.1",
+			EndpointTcpPort:    2222,
+		}
+	}
+	tests := []struct {
+		name        string
+		connectWith ConnectWith
+		wantErr     bool
+		wantIsError error
+	}{
+		{
+			name:        "valid",
+			connectWith: setupFn(),
+		},
+		{
+			name: "empty-SessionId",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.SessionId = ""
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-ClientTcpAddress",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.ClientTcpAddress = ""
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-ClientTcpPort",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.ClientTcpPort = 0
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-EndpointTcpAddress",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.EndpointTcpAddress = ""
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-EndpointTcpPort",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.EndpointTcpPort = 0
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			c, cs, err := repo.ConnectSession(context.Background(), tt.connectWith)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantIsError != nil {
+					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(c)
+			require.NotNil(cs)
+			assert.Equal(StatusConnected.String(), cs[0].Status)
+		})
+	}
+}
+
 func TestRepository_TerminateSession(t *testing.T) {
 	panic("test not implemented")
 }
-func TestRepository_ConnectSession(t *testing.T) {
-	panic("test not implemented")
-}
+
 func TestRepository_CloseConnections(t *testing.T) {
 	panic("test not implemented")
 }
@@ -498,7 +603,7 @@ func TestRepository_CancelSession(t *testing.T) {
 		})
 	}
 }
-func TestRepository_ActivateState(t *testing.T) {
+func TestRepository_ActivateSession(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
