@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -115,12 +116,9 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	}
 
 	uiErrWriter := runOpts.Stderr
-	// NOTE: Don't remove this yet. I'm not sure we actually want to do this
-	// rather than show errors; mostly I don't remember why it was done this
-	// way in Vault, which is where this code was snarfed from.
-	//if outputCurlString {
-	//	uiErrWriter = ioutil.Discard
-	//}
+	if outputCurlString {
+		uiErrWriter = ioutil.Discard
+	}
 
 	ui := &base.BoundaryUI{
 		Ui: &cli.ColoredUi{
@@ -185,7 +183,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 				fmt.Fprint(runOpts.Stderr, "cURL command not set by API operation; run without -output-curl-string to see the generated error\n")
 				return exitCode
 			}
-			if api.LastOutputStringError.Error() != api.ErrOutputStringRequest {
+			if !strings.Contains(api.LastOutputStringError.Error(), api.ErrOutputStringRequest) {
 				runOpts.Stdout.Write([]byte(fmt.Sprintf("Error creating request string: %s\n", api.LastOutputStringError.Error())))
 				return 1
 			}
