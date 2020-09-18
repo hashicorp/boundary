@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -116,9 +115,12 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	}
 
 	uiErrWriter := runOpts.Stderr
-	if outputCurlString {
-		uiErrWriter = ioutil.Discard
-	}
+	// NOTE: Don't remove this yet. I'm not sure we actually want to do this
+	// rather than show errors; mostly I don't remember why it was done this
+	// way in Vault, which is where this code was snarfed from.
+	//if outputCurlString {
+	//	uiErrWriter = ioutil.Discard
+	//}
 
 	ui := &base.BoundaryUI{
 		Ui: &cli.ColoredUi{
