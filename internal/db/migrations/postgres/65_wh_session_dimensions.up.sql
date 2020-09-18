@@ -1,7 +1,11 @@
 begin;
 
   create table wh_host_dimension (
-    id                            bigint generated always as identity primary key,
+    -- random id generated using encode(digest(gen_random_bytes(16), 'sha256'), 'base64')
+    -- this is done to prevent conflicts with rows in other clusters
+    -- which enables warehouse data from multiple clusters to be loaded into a
+    -- single database instance
+    id                            wh_dim_id primary key default wh_dim_id(),
 
     host_id                       wt_public_id not null,
     host_type                     text not null,
@@ -126,7 +130,11 @@ begin;
   -- TODO(mgaffney) 09/2020: insert 0 row
 
   create table wh_user_dimension (
-    id                            bigint generated always as identity primary key,
+    -- random id generated using encode(digest(gen_random_bytes(16), 'sha256'), 'base64')
+    -- this is done to prevent conflicts with rows in other clusters
+    -- which enables warehouse data from multiple clusters to be loaded into a
+    -- single database instance
+    id                            wh_dim_id primary key default wh_dim_id(),
 
     user_id                       wt_public_id not null,
     user_name                     text not null,

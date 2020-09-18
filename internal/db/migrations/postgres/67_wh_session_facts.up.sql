@@ -17,11 +17,11 @@ begin;
     auth_token_id wt_public_id not null,
 
     -- foreign keys to the dimension tables
-    host_id bigint not null
+    host_id wh_dim_id not null
       references wh_host_dimension (id)
       on delete restrict
       on update cascade,
-    user_id bigint not null
+    user_id wh_dim_id not null
       references wh_user_dimension (id)
       on delete restrict
       on update cascade,
@@ -88,11 +88,11 @@ begin;
     -- auth token id is a degenerate dimension
     auth_token_id wt_public_id not null,
     -- foreign keys to the dimension tables
-    host_id bigint not null
+    host_id wh_dim_id not null
       references wh_host_dimension (id)
       on delete restrict
       on update cascade,
-    user_id bigint not null
+    user_id wh_dim_id not null
       references wh_user_dimension (id)
       on delete restrict
       on update cascade,
