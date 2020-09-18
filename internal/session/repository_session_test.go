@@ -497,7 +497,89 @@ func TestRepository_ConnectSession(t *testing.T) {
 }
 
 func TestRepository_TerminateSession(t *testing.T) {
-	panic("test not implemented")
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	setupFn := func() *Session {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		srv := TestWorker(t, conn, wrapper)
+		tofu := TestTofu(t)
+		s, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		require.NoError(t, err)
+		return s
+	}
+	tests := []struct {
+		name        string
+		session     *Session
+		reason      TerminationReason
+		wantErr     bool
+		wantIsError error
+	}{
+		{
+			name:    "valid-active-session",
+			session: setupFn(),
+			reason:  ClosedByUser,
+		},
+		{
+			name:    "valid-pending-session",
+			session: TestDefaultSession(t, conn, wrapper, iamRepo),
+			reason:  ClosedByUser,
+		},
+		{
+			name: "empty-session-id",
+			session: func() *Session {
+				s := setupFn()
+				s.PublicId = ""
+				return s
+			}(),
+			reason:      ClosedByUser,
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-session-version",
+			session: func() *Session {
+				s := setupFn()
+				s.Version = 0
+				return s
+			}(),
+			reason:      ClosedByUser,
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "open-connection",
+			session: func() *Session {
+				s := setupFn()
+				_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222)
+				return s
+			}(),
+			reason:  ClosedByUser,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, ss, err := repo.TerminateSession(context.Background(), tt.session.PublicId, tt.session.Version, tt.reason)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantIsError != nil {
+					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.reason.String(), s.TerminationReason)
+			assert.Equal(StatusTerminated.String(), ss[0].Status)
+		})
+	}
 }
 
 func TestRepository_CloseConnections(t *testing.T) {
