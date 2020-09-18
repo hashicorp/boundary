@@ -209,7 +209,7 @@ func (s *Session) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 			return fmt.Errorf("session vet for write: update time is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
 			if _, err := convertToReason(s.TerminationReason); err != nil {
-				return fmt.Errorf("session vet for write: %w", db.ErrInvalidParameter)
+				return fmt.Errorf("session vet for write: termination reason '%s' is invalid: %w", s.TerminationReason, db.ErrInvalidParameter)
 			}
 		}
 	}
