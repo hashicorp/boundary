@@ -257,7 +257,7 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 			}
 			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"TerminationReason"}, nil, db.WithVersion(&sessionVersion))
 			if err != nil {
-				return fmt.Errorf("lookup session: failed %w for %s", err, sessionId)
+				return fmt.Errorf("update session: failed %w for %s", err, sessionId)
 			}
 			if rowsUpdated != 1 {
 				return fmt.Errorf("update to session %s would have updated %d session", updatedSession.PublicId, rowsUpdated)
