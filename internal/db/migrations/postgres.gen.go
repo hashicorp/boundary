@@ -3404,6 +3404,8 @@ begin;
     certificate bytea not null,
     -- after this time the connection will be expired, e.g. forcefully terminated
     expiration_time wt_timestamp, -- maybe null
+    -- max duration of the session in seconds.  default of 0 equals no limit
+    session_duration_seconds int not null default 0,
     -- limit on number of session connections allowed.  default of 0 equals no limit
     connection_limit int not null default 0, 
     -- trust of first use token 
@@ -3427,7 +3429,7 @@ begin;
     immutable_columns
   before
   update on session
-    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'session_duration_seconds', 'create_time');
   
   create trigger 
     update_version_column 
