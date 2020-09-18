@@ -64,10 +64,10 @@ with active_session as (
 	select 
 		$1 as session_id,
 		$2 as public_id,
-		$3 as client_tcp_address,
-		$4 as client_tcp_port,
-		$5 as endpoint_tcp_address,
-		$6 as endpoint_tcp_address
+		$3::inet as client_tcp_address,
+		$4::int as client_tcp_port,
+		$5::inet as endpoint_tcp_address,
+		$6::int as endpoint_tcp_port
 	from
 		session s
 	where
