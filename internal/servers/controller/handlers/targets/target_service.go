@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
-	"strings"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/golang/protobuf/ptypes/wrappers"
@@ -233,7 +232,19 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, authResults.Error
 	}
 	// This could happen if, say, u_recovery was used or u_anon was granted. But
-	// don't allow it.
+	// don't allow it. It's one thing if grants give access to resources within
+	// Boundary, even if those could eventually be used to provide an unintended
+	// user access to a remote system. It's quite another to enable anonymous
+	// access directly to a remote system.
+	//
+	// Note that even if u_anon or u_auth are given grants we can still validate
+	// a token! So this is just checking that a valid token was provided. The
+	// actual reality of this works out to excluding:
+	//
+	// * True anonymous access (no token provided and u_anon)
+	//
+	// * u_recovery access (which is fine, recovery is meant for recovering
+	// system state, no real reason to allow it to then connect to systems)
 	if authResults.AuthTokenId == "" {
 		return nil, handlers.ForbiddenError()
 	}
@@ -266,13 +277,19 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 
 	// First, fetch all available hosts. Unless one was chosen in the request,
 	// we will pick one at random.
+	type compoundHost struct {
+		hostSetId string
+		hostId    string
+	}
+
+	var chosenId compoundHost
 	requestedId := req.GetHostId()
-	var chosenId string
 	staticHostRepo, err := s.staticHostRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	hostIds := make([]string, 0, len(hostSets)*10)
+
+	hostIds := make([]compoundHost, 0, len(hostSets)*10)
 	for _, tSet := range hostSets {
 		hsId := tSet.PublicId
 		switch host.SubtypeFromId(hsId) {
@@ -282,7 +299,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 				return nil, err
 			}
 			for _, host := range hosts {
-				compoundId := fmt.Sprintf("%s|%s", hsId, host.PublicId)
+				compoundId := compoundHost{hostSetId: hsId, hostId: host.PublicId}
 				if host.PublicId == requestedId {
 					chosenId = compoundId
 					goto HOST_GATHERING_DONE
@@ -302,21 +319,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	chosenId = hostIds[rand.Intn(len(hostIds))]
 
 HOST_GATHERING_DONE:
-	splitChosenId := strings.Split(chosenId, "|")
-	if len(splitChosenId) != 2 {
-		return nil, fmt.Errorf("invalid split of chosen id %q", chosenId)
-	}
-	hostId := splitChosenId[1]
-
 	// Generate the endpoint URL
 	endpointUrl := &url.URL{
 		Scheme: t.GetType(),
 	}
 	defaultPort := t.GetDefaultPort()
 	var endpointHost string
-	switch host.SubtypeFromId(hostId) {
+	switch host.SubtypeFromId(chosenId.hostId) {
 	case host.StaticSubtype:
-		h, err := staticHostRepo.LookupHost(ctx, hostId)
+		h, err := staticHostRepo.LookupHost(ctx, chosenId.hostId)
 		if err != nil {
 			return nil, fmt.Errorf("error looking up host: %w", err)
 		}
@@ -333,9 +344,9 @@ HOST_GATHERING_DONE:
 
 	sessionComposition := session.ComposedOf{
 		UserId:      authResults.UserId,
-		HostId:      splitChosenId[1],
+		HostId:      chosenId.hostId,
 		TargetId:    t.GetPublicId(),
-		HostSetId:   splitChosenId[0],
+		HostSetId:   chosenId.hostSetId,
 		AuthTokenId: authResults.AuthTokenId,
 		ScopeId:     authResults.Scope.Id,
 		Endpoint:    endpointUrl.String(),
