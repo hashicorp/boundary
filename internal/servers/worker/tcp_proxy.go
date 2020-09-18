@@ -11,7 +11,7 @@ import (
 	"nhooyr.io/websocket"
 )
 
-func (w *Worker) handleTcpProxyV1(sessionCtx context.Context, conn *websocket.Conn, sessionInfo *services.LookupSessionResponse) {
+func (w *Worker) handleTcpProxyV1(connCtx context.Context, conn *websocket.Conn, sessionInfo *services.LookupSessionResponse) {
 	sessionId := sessionInfo.GetAuthorization().GetSessionId()
 	sessionUrl, err := url.Parse(sessionInfo.Endpoint)
 	if err != nil {
@@ -34,7 +34,7 @@ func (w *Worker) handleTcpProxyV1(sessionCtx context.Context, conn *websocket.Co
 	tcpRemoteConn := remoteConn.(*net.TCPConn)
 
 	// Get a wrapped net.Conn so we can use io.Copy
-	netConn := websocket.NetConn(sessionCtx, conn, websocket.MessageBinary)
+	netConn := websocket.NetConn(connCtx, conn, websocket.MessageBinary)
 
 	connWg := new(sync.WaitGroup)
 	connWg.Add(2)
