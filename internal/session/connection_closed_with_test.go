@@ -56,26 +56,6 @@ func TestClosedWith_validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "missing-BytesUp",
-			fields: fields{
-				ConnectionId:      sessionConnection.PublicId,
-				ConnectionVersion: sessionConnection.Version,
-				BytesDown:         2,
-				ClosedReason:      ConnectionClosedByUser,
-			},
-			wantErr: true,
-		},
-		{
-			name: "missing-BytesDown",
-			fields: fields{
-				ConnectionId:      sessionConnection.PublicId,
-				ConnectionVersion: sessionConnection.Version,
-				BytesUp:           1,
-				ClosedReason:      ConnectionClosedByUser,
-			},
-			wantErr: true,
-		},
-		{
 			name: "missing-ClosedReason",
 			fields: fields{
 				ConnectionId:      sessionConnection.PublicId,
