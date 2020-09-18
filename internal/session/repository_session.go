@@ -329,7 +329,7 @@ type CloseConnectionResp struct {
 // CloseConnections set's a connection's state to "closed" in the repo.  It's
 // called by a worker after it's closed a connection between the client and the
 // endpoint
-func (r *Repository) CloseConnections(ctx context.Context, closeWith []ClosedWith, opt ...Option) ([]CloseConnectionResp, error) {
+func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith, opt ...Option) ([]CloseConnectionResp, error) {
 	if len(closeWith) == 0 {
 		return nil, fmt.Errorf("close connections: missing connections to close: %w", db.ErrInvalidParameter)
 	}
@@ -350,6 +350,8 @@ func (r *Repository) CloseConnections(ctx context.Context, closeWith []ClosedWit
 				updateConnection.BytesUp = cw.BytesUp
 				updateConnection.BytesDown = cw.BytesDown
 				updateConnection.ClosedReason = cw.ClosedReason.String()
+				// updating the ClosedReason will trigger an insert into the
+				// session_connection_state with a state of closed.
 				rowsUpdated, err := w.Update(
 					ctx,
 					&updateConnection,
@@ -362,13 +364,6 @@ func (r *Repository) CloseConnections(ctx context.Context, closeWith []ClosedWit
 				}
 				if rowsUpdated != 1 {
 					return fmt.Errorf("%d would have been updated for connection %s", rowsUpdated, cw.ConnectionId)
-				}
-				closedState, err := NewConnectionState(cw.ConnectionId, StatusClosed)
-				if err != nil {
-					return fmt.Errorf("connection %s: %w", cw.ConnectionId, err)
-				}
-				if err := w.Create(ctx, closedState); err != nil {
-					return fmt.Errorf("connection %s: unable to add closed state: %w", cw.ConnectionId, err)
 				}
 				states, err := fetchConnectionStates(ctx, reader, cw.ConnectionId, db.WithOrder("start_time desc"))
 				if err != nil {
