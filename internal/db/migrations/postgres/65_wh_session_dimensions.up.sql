@@ -48,13 +48,14 @@ begin;
 
   -- The whx_host_dimension_source and whx_host_dimension_target views are used
   -- by an insert trigger to determine if the current row for the dimension has
-  -- changed and new one needs to be inserted. The columns in both views must
-  -- match exactly.
+  -- changed and new one needs to be inserted. The first column in the target
+  -- view must be the current warehouse id and all remaining columns must match
+  -- the columns in the source view.
 
   -- The whx_host_dimension_source view shows the current values in the
   -- operational tables of the host dimension.
   create view whx_host_dimension_source as
-  select
+  select -- id is the first column in the target view
          h.public_id                     as host_id,
          'static host'                   as host_type,
          coalesce(h.name, 'None')        as host_name,
@@ -100,7 +101,8 @@ begin;
   -- The whx_host_dimension_target view shows the rows in the wh_host_dimension
   -- table marked as 'Current'.
   create view whx_host_dimension_target as
-  select host_id,
+  select id,
+         host_id,
          host_type,
          host_name,
          host_description,
@@ -161,13 +163,15 @@ begin;
 
   -- The whx_user_dimension_source and whx_user_dimension_target views are used
   -- by an insert trigger to determine if the current row for the dimension has
-  -- changed and new one needs to be inserted. The columns in both views must
-  -- match exactly.
+  -- changed and new one needs to be inserted. The first column in the target
+  -- view must be the current warehouse id and all remaining columns must match
+  -- the columns in the source view.
 
   -- The whx_user_dimension_source view shows the current values in the
   -- operational tables of the user dimension.
   create view whx_user_dimension_source as
-       select u.public_id                       as user_id,
+       select -- id is the first column in the target view
+              u.public_id                       as user_id,
               coalesce(u.name, 'None')          as user_name,
               coalesce(u.description, 'None')   as user_description,
               coalesce(aa.public_id, 'None')    as auth_account_id,
@@ -192,7 +196,8 @@ begin;
   -- The whx_user_dimension_target view shows the rows in the wh_user_dimension
   -- table marked as 'Current'.
   create view whx_user_dimension_target as
-    select user_id,
+    select id,
+           user_id,
            user_name,
            user_description,
            auth_account_id,
