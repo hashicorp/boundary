@@ -1,5 +1,4 @@
-# Boundary
-
+![](boundary.png)
 ----
 
 **Please note**: We take Boundary's security and our users' trust very
