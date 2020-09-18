@@ -3153,11 +3153,14 @@ create table target_tcp (
   description text,
   default_port int, -- default_port can be null
    -- max duration of the session in seconds.  default of 0 equals no limit
-  session_duration_seconds int not null default 0,
+  session_duration_seconds int not null default 0
+    check(session_duration_seconds > 0),
   -- limit on number of session connections allowed.  default of 0 equals no limit
-  connection_limit int not null default 0, 
+  connection_limit int not null default 0
+    check(connection_limit > 0),
   -- connection idle timout in seconds.  default of 0 equals no limit
-  connection_idle_timeout_seconds int not null default 0, 
+  connection_idle_timeout_seconds int not null default 0
+    check(connection_idle_timeout_seconds > 0),
   create_time wt_timestamp,
   update_time wt_timestamp,
   version wt_version,
@@ -3404,10 +3407,9 @@ begin;
     certificate bytea not null,
     -- after this time the connection will be expired, e.g. forcefully terminated
     expiration_time wt_timestamp, -- maybe null
-    -- max duration of the session in seconds.  default of 0 equals no limit
-    session_duration_seconds int not null default 0,
     -- limit on number of session connections allowed.  default of 0 equals no limit
-    connection_limit int not null default 0, 
+    connection_limit int not null default 0
+      check(connection_limit > 0), 
     -- trust of first use token 
     tofu_token bytea, -- will be null when session is first created
     -- the reason this session ended (null until terminated)
