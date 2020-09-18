@@ -52,7 +52,7 @@ begin;
        where host_id               = p_host_id
          and host_set_id           = p_host_set_id
          and target_id             = p_target_id
-   returning * into new_row;
+      returning * into new_row;
 
       return new_row.id;
     end if;
