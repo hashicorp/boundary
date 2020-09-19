@@ -122,14 +122,6 @@ func (c *Connection) VetForWrite(ctx context.Context, r db.Reader, opType db.OpT
 			return fmt.Errorf("connection vet for write: public id is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "SessionId"):
 			return fmt.Errorf("connection vet for write: session id is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "ClientTcpAddress"):
-			return fmt.Errorf("connection vet for write: client address is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "ClientTcpPort"):
-			return fmt.Errorf("connection vet for write: client port is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "EndpointTcpAddress"):
-			return fmt.Errorf("connection vet for write: endpoint address is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "EndpointTcpPort"):
-			return fmt.Errorf("connection vet for write: endpoint port is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "CreateTime"):
 			return fmt.Errorf("connection vet for write: create time is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
