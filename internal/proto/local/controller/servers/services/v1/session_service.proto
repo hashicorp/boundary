@@ -26,12 +26,11 @@ message LookupSessionRequest {
 // establish a session.
 message LookupSessionResponse {
 	api.resources.targets.v1.SessionAuthorizationData authorization = 10;
-
 	string tofu_token = 20;
-
 	uint32 version = 30;
-
 	string endpoint = 40;
+	google.protobuf.Timestamp expiration = 50;
+	uint32 connection_idle_timeout_seconds = 60;
 }
 
 message ActivateSessionRequest {

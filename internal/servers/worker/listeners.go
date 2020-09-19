@@ -45,7 +45,6 @@ func (w *Worker) startListeners() error {
 				Handler:           handler,
 				ReadHeaderTimeout: 10 * time.Second,
 				ReadTimeout:       30 * time.Second,
-				IdleTimeout:       5 * time.Minute,
 				ErrorLog:          w.logger.StandardLogger(nil),
 				BaseContext: func(net.Listener) context.Context {
 					return cancelCtx

@@ -99,9 +99,11 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			SessionId:   sessionInfo.GetPublicId(),
 			Certificate: sessionInfo.Certificate,
 		},
-		Version:   sessionInfo.Version,
-		TofuToken: base64.StdEncoding.EncodeToString(sessionInfo.TofuToken),
-		Endpoint:  sessionInfo.Endpoint,
+		Version:                      sessionInfo.Version,
+		TofuToken:                    base64.StdEncoding.EncodeToString(sessionInfo.TofuToken),
+		Endpoint:                     sessionInfo.Endpoint,
+		Expiration:                   sessionInfo.ExpirationTime.Timestamp,
+		ConnectionIdleTimeoutSeconds: sessionInfo.ConnectionIdleTimeoutSeconds,
 	}
 
 	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ScopeId, kms.KeyPurposeSessions)
