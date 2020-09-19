@@ -157,7 +157,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *Command) Run(args []string) int {
+func (c *Command) Run(args []string) (retCode int) {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
@@ -301,6 +301,12 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Errorf("Error starting listening port: %w", err).Error())
 		return 1
 	}
+	defer func() {
+		if err := listener.Close(); err != nil {
+			c.UI.Error(fmt.Errorf("Error closing listener on shutdown: %w", err).Error())
+			retCode = 1
+		}
+	}()
 
 	workerAddr := data.GetWorkerInfo()[0].GetAddress()
 
@@ -386,7 +392,6 @@ func (c *Command) Run(args []string) int {
 	}()
 
 	listeningConn, err := listener.AcceptTCP()
-	listener.Close()
 	if err != nil {
 		select {
 		case <-expiringCtx.Done():

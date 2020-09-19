@@ -23,7 +23,6 @@ type workerServiceServer struct {
 	sessionRepoFn common.SessionRepoFactory
 	updateTimes   *sync.Map
 	kms           *kms.Kms
-	jobCancelMap  *sync.Map
 }
 
 func NewWorkerServiceServer(
@@ -38,7 +37,6 @@ func NewWorkerServiceServer(
 		sessionRepoFn: sessionRepoFn,
 		updateTimes:   updateTimes,
 		kms:           kms,
-		jobCancelMap:  new(sync.Map),
 	}
 }
 
@@ -62,18 +60,64 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	ret := &pbs.StatusResponse{
 		Controllers: controllers,
 	}
-	ws.jobCancelMap.Range(func(key, value interface{}) bool {
-		ret.JobsRequests = append(ret.JobsRequests, &pbs.JobChangeRequest{
-			Job: &pbs.Job{
-				JobId: key.(string),
-				Type:  pbs.Job_JOBTYPE_SESSION,
-			},
-			RequestType: 0,
-		})
-		return true
-	})
-	for _, j := range ret.JobsRequests {
-		ws.jobCancelMap.Delete(j.GetJob().GetJobId())
+
+	// Happy path
+	if len(req.GetJobs()) == 0 {
+		return ret, nil
+	}
+
+	sessRepo, err := ws.sessionRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error getting session repo: %v", err)
+	}
+
+	for _, jobStatus := range req.GetJobs() {
+		switch jobStatus.Job.GetType() {
+		// Check for session cancellation
+		case pbs.JOBTYPE_JOBTYPE_SESSION:
+			si := jobStatus.GetJob().GetSessionInfo()
+			if si == nil {
+				return nil, status.Error(codes.Internal, "Error getting session info at status time")
+			}
+			switch si.Status {
+			case pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELLING,
+				pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED:
+				// No need to see about canceling anything
+				continue
+			}
+			sessionId := si.GetSessionId()
+			sessionInfo, sessionStates, err := sessRepo.LookupSession(ctx, sessionId)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "Error looking up session with id %s: %v", sessionId, err)
+			}
+			if sessionInfo == nil {
+				return nil, status.Errorf(codes.Internal, "Unknown session ID %s at status time.", sessionId)
+			}
+			if len(sessionStates) == 0 {
+				return nil, status.Error(codes.Internal, "Empty session states during lookup at status time.")
+			}
+			// If the session from the DB is in canceling status, and we're
+			// here, it means the job is in pending or active; cancel it. If
+			// it's in termianted status something went wrong and we're
+			// mismatched, so ensure we cancel it also.
+			currState := sessionStates[0].Status
+			switch currState {
+			case session.StatusCancelling,
+				session.StatusTerminated:
+				ret.JobsRequests = append(ret.JobsRequests, &pbs.JobChangeRequest{
+					Job: &pbs.Job{
+						Type: pbs.JOBTYPE_JOBTYPE_SESSION,
+						JobInfo: &pbs.Job_SessionInfo{
+							SessionInfo: &pbs.SessionJobInfo{
+								SessionId: sessionId,
+								Status:    currState.ProtoVal(),
+							},
+						},
+					},
+					RequestType: pbs.CHANGETYPE_CHANGETYPE_CANCEL,
+				})
+			}
+		}
 	}
 	return ret, nil
 }
@@ -83,15 +127,18 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error getting session repo: %v", err)
 	}
 
-	sessionInfo, _, err := sessRepo.LookupSession(ctx, req.GetSessionId())
+	sessionInfo, sessionStates, err := sessRepo.LookupSession(ctx, req.GetSessionId())
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error looking up session: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error looking up session: %v", err)
 	}
 	if sessionInfo == nil {
 		return nil, status.Error(codes.PermissionDenied, "Unknown session ID.")
+	}
+	if len(sessionStates) == 0 {
+		return nil, status.Error(codes.Internal, "Empty session states during lookup.")
 	}
 
 	resp := &pbs.LookupSessionResponse{
@@ -99,6 +146,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			SessionId:   sessionInfo.GetPublicId(),
 			Certificate: sessionInfo.Certificate,
 		},
+		Status:     sessionStates[0].Status.ProtoVal(),
 		Version:    sessionInfo.Version,
 		TofuToken:  base64.StdEncoding.EncodeToString(sessionInfo.TofuToken),
 		Endpoint:   sessionInfo.Endpoint,
@@ -128,7 +176,7 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	sessionInfo, _, err := sessRepo.ActivateSession(
+	sessionInfo, sessionStates, err := sessRepo.ActivateSession(
 		ctx,
 		req.GetSessionId(),
 		req.GetVersion(),
@@ -141,27 +189,37 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 	if sessionInfo == nil {
 		return nil, status.Error(codes.PermissionDenied, "Unknown session ID.")
 	}
+	if len(sessionStates) == 0 {
+		return nil, status.Error(codes.Internal, "Invalid session state in activate response.")
+	}
 
-	return &pbs.ActivateSessionResponse{}, nil
+	return &pbs.ActivateSessionResponse{
+		SessionId: sessionInfo.GetPublicId(),
+		Status:    sessionStates[0].Status.ProtoVal(),
+	}, nil
 }
 
 func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
-	ws.logger.Trace("got activate session request from worker", "session_id", req.GetSessionId())
+	ws.logger.Trace("got authorize connection request from worker", "session_id", req.GetSessionId())
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	connectionInfo, _, err := sessRepo.AuthorizeConnection(ctx, req.GetSessionId())
+	connectionInfo, connStates, err := sessRepo.AuthorizeConnection(ctx, req.GetSessionId())
 	if err != nil {
 		return nil, err
 	}
 	if connectionInfo == nil {
-		return nil, status.Error(codes.Internal, "Invalid activate connection response.")
+		return nil, status.Error(codes.Internal, "Invalid authorize connection response.")
+	}
+	if len(connStates) == 0 {
+		return nil, status.Error(codes.Internal, "Invalid connection state in authorize response.")
 	}
 
 	return &pbs.AuthorizeConnectionResponse{
 		ConnectionId: connectionInfo.GetPublicId(),
+		Status:       connStates[0].Status.ProtoVal(),
 	}, nil
 }

@@ -46,10 +46,30 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 
 			case <-timer.C:
 				var activeJobs []*pbs.JobStatus
-				w.cancellationMap.Range(func(key, value interface{}) bool {
+				w.sessionInfoMap.Range(func(key, value interface{}) bool {
+					var jobInfo pbs.SessionJobInfo
+					sessionId := key.(string)
+					si := value.(*sessionInfo)
+					si.RLock()
+					connections := make([]*pbs.Connection, 0, len(si.connInfoMap))
+					for k, v := range si.connInfoMap {
+						connections = append(connections, &pbs.Connection{
+							ConnectionId: k,
+							Status:       v.status,
+						})
+					}
+					jobInfo.SessionId = sessionId
 					activeJobs = append(activeJobs, &pbs.JobStatus{
-						Job:    &pbs.Job{JobId: key.(string)},
-						Status: pbs.JobStatus_STATUS_ACTIVE,
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_SESSION,
+							JobInfo: &pbs.Job_SessionInfo{
+								SessionInfo: &pbs.SessionJobInfo{
+									SessionId:   sessionId,
+									Status:      si.status,
+									Connections: connections,
+								},
+							},
+						},
 					})
 					return true
 				})
@@ -78,12 +98,31 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 					w.logger.Trace("found controllers", "addresses", strAddrs)
 					w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
 
-					for _, id := range result.GetJobsRequests() {
-						if cancel, ok := w.cancellationMap.LoadAndDelete(id); ok {
-							cancel.(context.CancelFunc)()
-							w.logger.Info("canceled job", "job_id", id)
-						} else {
-							w.logger.Warn("asked to cancel job but could not find a cancellation function for it", "job_id", id)
+					for _, request := range result.GetJobsRequests() {
+						switch request.GetRequestType() {
+						case pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
+							pbs.CHANGETYPE_CHANGETYPE_CANCEL:
+							switch request.GetJob().GetType() {
+							case pbs.JOBTYPE_JOBTYPE_SESSION:
+								sessInfo := request.GetJob().GetSessionInfo()
+								sessionId := sessInfo.GetSessionId()
+								siRaw, ok := w.sessionInfoMap.Load(sessionId)
+								if !ok {
+									w.logger.Warn("asked to cancel session but could not find a local information for it", "session_id", sessionId)
+									continue
+								}
+								si := siRaw.(*sessionInfo)
+								si.Lock()
+								si.status = sessInfo.GetStatus()
+								if request.GetRequestType() == pbs.CHANGETYPE_CHANGETYPE_CANCEL {
+									for k, v := range si.connInfoMap {
+										v.connCancel()
+										w.logger.Info("terminated connection", "session_id", sessionId, "connection_id", k)
+										v.status = pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED
+									}
+								}
+								si.Unlock()
+							}
 						}
 					}
 				}

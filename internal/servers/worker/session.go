@@ -8,15 +8,30 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
 const (
 	validateSessionTimeout = 90 * time.Second
 )
+
+type connInfo struct {
+	id         string
+	connCtx    context.Context
+	connCancel context.CancelFunc
+	status     pbs.CONNECTIONSTATUS
+}
+
+type sessionInfo struct {
+	sync.RWMutex
+	sessionTls            *tls.Config
+	status                pbs.SESSIONSTATUS
+	lookupSessionResponse *pbs.LookupSessionResponse
+	connInfoMap           map[string]*connInfo
+}
 
 func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	var sessionId string
@@ -85,37 +100,76 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		MinVersion: tls.VersionTLS13,
 	}
 
+	si := &sessionInfo{
+		sessionTls:            tlsConf,
+		lookupSessionResponse: resp,
+		status:                resp.GetStatus(),
+		connInfoMap:           make(map[string]*connInfo),
+	}
 	// TODO: Periodicially clean this up. We can't rely on things in here but
 	// not in cancellation because they could be on the way to being
 	// established. However, since cert lifetimes are short, we can simply range
 	// through and remove values that are expired.
-	w.sessionInfoMap.Store(sessionId, resp)
+	actualSiRaw, loaded := w.sessionInfoMap.LoadOrStore(sessionId, si)
+	if loaded {
+		// Update the response to the latest
+		actualSi := actualSiRaw.(*sessionInfo)
+		actualSi.Lock()
+		actualSi.lookupSessionResponse = resp
+		actualSi.Unlock()
+	}
 
 	w.logger.Trace("returning TLS configuration", "session_id", sessionId)
 	return tlsConf, nil
 }
 
-func (w *Worker) activateSession(ctx context.Context, tofuToken string, sess *services.LookupSessionResponse) error {
+func (w *Worker) activateSession(ctx context.Context, sessionId, tofuToken string, version uint32) (pbs.SESSIONSTATUS, error) {
 	rawConn := w.controllerSessionConn.Load()
 	if rawConn == nil {
-		return errors.New("could not get a controller client")
+		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, errors.New("could not get a controller client")
 	}
 	conn, ok := rawConn.(pbs.SessionServiceClient)
 	if !ok {
-		return errors.New("could not cast atomic controller client to the real thing")
+		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, errors.New("could not cast atomic controller client to the real thing")
 	}
 	if conn == nil {
-		return errors.New("controller client is nil")
+		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, errors.New("controller client is nil")
 	}
 
-	_, err := conn.ActivateSession(ctx, &pbs.ActivateSessionRequest{
-		SessionId: sess.GetAuthorization().GetSessionId(),
+	resp, err := conn.ActivateSession(ctx, &pbs.ActivateSessionRequest{
+		SessionId: sessionId,
 		TofuToken: tofuToken,
-		Version:   sess.GetVersion(),
+		Version:   version,
 		WorkerId:  w.conf.RawConfig.Worker.Name,
 	})
 	if err != nil {
-		return fmt.Errorf("error activating session: %w", err)
+		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, fmt.Errorf("error activating session: %w", err)
 	}
-	return nil
+	return resp.GetStatus(), nil
+}
+
+func (w *Worker) authorizeConnection(ctx context.Context, sessionId string) (*connInfo, error) {
+	rawConn := w.controllerSessionConn.Load()
+	if rawConn == nil {
+		return nil, errors.New("could not get a controller client")
+	}
+	conn, ok := rawConn.(pbs.SessionServiceClient)
+	if !ok {
+		return nil, errors.New("could not cast atomic controller client to the real thing")
+	}
+	if conn == nil {
+		return nil, errors.New("controller client is nil")
+	}
+
+	resp, err := conn.AuthorizeConnection(ctx, &pbs.AuthorizeConnectionRequest{
+		SessionId: sessionId,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error authorizing connection: %w", err)
+	}
+
+	return &connInfo{
+		id:     resp.ConnectionId,
+		status: resp.GetStatus(),
+	}, nil
 }

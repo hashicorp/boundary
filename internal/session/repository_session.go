@@ -95,7 +95,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				return fmt.Errorf("%d states found for new session %s", len(foundStates), returnedSession.PublicId)
 			}
 			returnedState = foundStates[0]
-			if returnedState.Status != StatusPending.String() {
+			if returnedState.Status != StatusPending {
 				return fmt.Errorf("new session %s state is not valid: %s", returnedSession.PublicId, returnedState.Status)
 			}
 			return nil
