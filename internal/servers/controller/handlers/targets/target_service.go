@@ -351,7 +351,7 @@ HOST_GATHERING_DONE:
 	}
 
 	expTime := timestamppb.Now()
-	expTime.Seconds += int64(t.GetSessionMaxDuration())
+	expTime.Seconds += int64(t.GetSessionMaxSeconds())
 	sessionComposition := session.ComposedOf{
 		UserId:                       authResults.UserId,
 		HostId:                       chosenId.hostId,
@@ -362,7 +362,7 @@ HOST_GATHERING_DONE:
 		Endpoint:                     endpointUrl.String(),
 		ExpirationTime:               &timestamp.Timestamp{Timestamp: expTime},
 		ConnectionLimit:              t.GetSessionConnectionLimit(),
-		ConnectionIdleTimeoutSeconds: t.GetConnectionIdleTimeoutDuration(),
+		ConnectionIdleTimeoutSeconds: t.GetConnectionIdleTimeoutSeconds(),
 	}
 
 	sess, err := session.New(sessionComposition)
@@ -435,14 +435,14 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	if item.GetDescription() != nil {
 		opts = append(opts, target.WithDescription(item.GetDescription().GetValue()))
 	}
-	if item.GetSessionMaxDuration() != nil {
-		opts = append(opts, target.WithSessionMaxDuration(item.GetSessionMaxDuration().GetValue()))
+	if item.GetSessionMaxSeconds() != nil {
+		opts = append(opts, target.WithSessionMaxSeconds(item.GetSessionMaxSeconds().GetValue()))
 	}
 	if item.GetSessionConnectionLimit() != nil {
 		opts = append(opts, target.WithSessionConnectionLimit(item.GetSessionConnectionLimit().GetValue()))
 	}
-	if item.GetConnectionIdleTimeoutDuration() != nil {
-		opts = append(opts, target.WithConnectionIdleTimeoutDuration(item.GetConnectionIdleTimeoutDuration().GetValue()))
+	if item.GetConnectionIdleTimeoutSeconds() != nil {
+		opts = append(opts, target.WithConnectionIdleTimeoutSeconds(item.GetConnectionIdleTimeoutSeconds().GetValue()))
 	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
@@ -477,14 +477,14 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if name := item.GetName(); name != nil {
 		opts = append(opts, target.WithName(name.GetValue()))
 	}
-	if item.GetSessionMaxDuration() != nil {
-		opts = append(opts, target.WithSessionMaxDuration(item.GetSessionMaxDuration().GetValue()))
+	if item.GetSessionMaxSeconds() != nil {
+		opts = append(opts, target.WithSessionMaxSeconds(item.GetSessionMaxSeconds().GetValue()))
 	}
 	if item.GetSessionConnectionLimit() != nil {
 		opts = append(opts, target.WithSessionConnectionLimit(item.GetSessionConnectionLimit().GetValue()))
 	}
-	if item.GetConnectionIdleTimeoutDuration() != nil {
-		opts = append(opts, target.WithConnectionIdleTimeoutDuration(item.GetConnectionIdleTimeoutDuration().GetValue()))
+	if item.GetConnectionIdleTimeoutSeconds() != nil {
+		opts = append(opts, target.WithConnectionIdleTimeoutSeconds(item.GetConnectionIdleTimeoutSeconds().GetValue()))
 	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
@@ -652,15 +652,15 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 
 func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 	out := pb.Target{
-		Id:                            in.GetPublicId(),
-		ScopeId:                       in.GetScopeId(),
-		CreatedTime:                   in.GetCreateTime().GetTimestamp(),
-		UpdatedTime:                   in.GetUpdateTime().GetTimestamp(),
-		Version:                       in.GetVersion(),
-		Type:                          target.TcpTargetType.String(),
-		SessionMaxDuration:            &wrapperspb.UInt32Value{Value: in.GetSessionMaxDuration()},
-		SessionConnectionLimit:        &wrapperspb.UInt32Value{Value: in.GetSessionConnectionLimit()},
-		ConnectionIdleTimeoutDuration: &wrapperspb.UInt32Value{Value: in.GetConnectionIdleTimeoutDuration()},
+		Id:                           in.GetPublicId(),
+		ScopeId:                      in.GetScopeId(),
+		CreatedTime:                  in.GetCreateTime().GetTimestamp(),
+		UpdatedTime:                  in.GetUpdateTime().GetTimestamp(),
+		Version:                      in.GetVersion(),
+		Type:                         target.TcpTargetType.String(),
+		SessionMaxSeconds:            &wrapperspb.UInt32Value{Value: in.GetSessionMaxSeconds()},
+		SessionConnectionLimit:       &wrapperspb.UInt32Value{Value: in.GetSessionConnectionLimit()},
+		ConnectionIdleTimeoutSeconds: &wrapperspb.UInt32Value{Value: in.GetConnectionIdleTimeoutSeconds()},
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())

@@ -19,9 +19,9 @@ type Target interface {
 	GetType() string
 	GetCreateTime() *timestamp.Timestamp
 	GetUpdateTime() *timestamp.Timestamp
-	GetSessionMaxDuration() uint32
+	GetSessionMaxSeconds() uint32
 	GetSessionConnectionLimit() uint32
-	GetConnectionIdleTimeoutDuration() uint32
+	GetConnectionIdleTimeoutSeconds() uint32
 	oplog(op oplog.OpType) oplog.Metadata
 }
 
@@ -91,9 +91,9 @@ func (t *targetView) targetSubType() (Target, error) {
 		tcpTarget.CreateTime = t.CreateTime
 		tcpTarget.UpdateTime = t.UpdateTime
 		tcpTarget.Version = t.Version
-		tcpTarget.SessionMaxDuration = t.SessionMaxDuration
+		tcpTarget.SessionMaxSeconds = t.SessionMaxSeconds
 		tcpTarget.SessionConnectionLimit = t.SessionConnectionLimit
-		tcpTarget.ConnectionIdleTimeoutDuration = t.ConnectionIdleTimeoutDuration
+		tcpTarget.ConnectionIdleTimeoutSeconds = t.ConnectionIdleTimeoutSeconds
 		return &tcpTarget, nil
 	}
 	return nil, fmt.Errorf("%s is an unknown target subtype of %s", t.PublicId, t.Type)
