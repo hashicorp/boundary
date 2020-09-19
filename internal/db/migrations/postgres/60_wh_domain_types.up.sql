@@ -33,4 +33,13 @@ begin;
   comment on domain wh_dim_id is
   'Random ID generated with pgcrypto';
 
+  create domain wh_public_id as text
+  check(
+    value = 'None'
+    or
+    length(trim(value)) > 10
+  );
+  comment on domain wh_public_id is
+  'Equivalent to wt_public_id but also allows the value to be ''None''';
+
 commit;

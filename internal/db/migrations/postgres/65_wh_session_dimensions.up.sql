@@ -7,23 +7,23 @@ begin;
     -- single database instance
     id                            wh_dim_id primary key default wh_dim_id(),
 
-    host_id                       wt_public_id not null,
+    host_id                       wh_public_id not null,
     host_type                     text not null,
     host_name                     text not null,
     host_description              text not null,
     host_address                  text not null,
 
-    host_set_id                   wt_public_id not null,
+    host_set_id                   wh_public_id not null,
     host_set_type                 text not null,
     host_set_name                 text not null,
     host_set_description          text not null,
 
-    host_catalog_id               wt_public_id not null,
+    host_catalog_id               wh_public_id not null,
     host_catalog_type             text not null,
     host_catalog_name             text not null,
     host_catalog_description      text not null,
 
-    target_id                     wt_public_id not null,
+    target_id                     wh_public_id not null,
     target_type                   text not null,
     target_name                   text not null,
     target_description            text not null,
@@ -138,21 +138,21 @@ begin;
     -- single database instance
     id                            wh_dim_id primary key default wh_dim_id(),
 
-    user_id                       wt_public_id not null,
+    user_id                       wt_user_id not null,
     user_name                     text not null,
     user_description              text not null,
 
-    auth_account_id               wt_public_id not null,
+    auth_account_id               wh_public_id not null,
     auth_account_type             text not null,
     auth_account_name             text not null,
     auth_account_description      text not null,
 
-    auth_method_id                wt_public_id not null,
+    auth_method_id                wh_public_id not null,
     auth_method_type              text not null,
     auth_method_name              text not null,
     auth_method_description       text not null,
 
-    user_organization_id          wt_public_id not null,
+    user_organization_id          wt_scope_id not null,
     user_organization_name        text not null,
     user_organization_description text not null,
 
