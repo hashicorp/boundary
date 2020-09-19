@@ -3765,10 +3765,10 @@ begin;
       on update cascade,
     -- the client_tcp_address is the network address of the client which initiated
     -- the connection to a worker
-    client_tcp_address inet not null,
+    client_tcp_address inet,  -- maybe null on insert
     -- the client_tcp_port is the network port at the address of the client the
     -- worker proxied a connection for the user
-    client_tcp_port integer not null
+    client_tcp_port integer  -- maybe null on insert
       check(
         client_tcp_port > 0
         and
@@ -3776,10 +3776,10 @@ begin;
       ),
     -- the endpoint_tcp_address is the network address of the endpoint which the
     -- worker initiated the connection to, for the user
-    endpoint_tcp_address inet not null,
+    endpoint_tcp_address inet, -- maybe be null on insert
     -- the endpoint_tcp_port is the network port at the address of the endpoint the
     -- worker proxied a connection to, for the user
-    endpoint_tcp_port integer not null
+    endpoint_tcp_port integer -- maybe null on insert
       check(
         endpoint_tcp_port > 0
         and
@@ -3814,7 +3814,7 @@ begin;
     immutable_columns
   before
   update on session_connection
-    for each row execute procedure immutable_columns('public_id', 'session_id', 'client_tcp_address', 'client_tcp_port', 'endpoint_tcp_address', 'endpoint_tcp_port', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'session_id', 'create_time');
 
   create trigger 
     update_version_column 
@@ -3833,7 +3833,7 @@ begin;
     for each row execute procedure default_create_time();
 
   -- insert_new_connection_state() is used in an after insert trigger on the
-  -- session_connection table.  it will insert a state of "connected" in
+  -- session_connection table.  it will insert a state of "authorized" in
   -- session_connection_state for the new session connection. 
   create or replace function 
     insert_new_connection_state()
@@ -3842,7 +3842,7 @@ begin;
   begin
     insert into session_connection_state (connection_id, state)
     values
-      (new.public_id, 'connected');
+      (new.public_id, 'authorized');
     return new;
   end;
   $$ language plpgsql;
@@ -3886,12 +3886,13 @@ begin;
   create table session_connection_state_enm (
     name text primary key
       check (
-        name in ('connected', 'closed')
+        name in ('authorized', 'connected', 'closed')
       )
   );
 
   insert into session_connection_state_enm (name)
   values
+    ('authorized'),
     ('connected'),
     ('closed');
 
