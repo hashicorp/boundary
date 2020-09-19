@@ -44,8 +44,6 @@ type ComposedOf struct {
 	ExpirationTime *timestamp.Timestamp
 	// Max connections for the session
 	ConnectionLimit uint32
-	// Idle timeout for each connection in the session
-	ConnectionIdleTimeoutSeconds uint32
 }
 
 // Session contains information about a user's session with a target
@@ -90,8 +88,6 @@ type Session struct {
 	Endpoint string `json:"-" gorm:"default:null"`
 	// Maximum number of connections in a session
 	ConnectionLimit uint32 `json:"connection_limit,omitempty" gorm:"default:null"`
-	// Time after which a connection idles out
-	ConnectionIdleTimeoutSeconds uint32 `json:"connection_idle_timeout_seconds,omitempty" gorm:"default:null"`
 
 	// key_id is the key ID that was used for the encryption operation. It can be
 	// used to identify a specific version of the key needed to decrypt the value,
@@ -112,16 +108,15 @@ var _ db.VetForWriter = (*Session)(nil)
 // New creates a new in memory session.
 func New(c ComposedOf, opt ...Option) (*Session, error) {
 	s := Session{
-		UserId:                       c.UserId,
-		HostId:                       c.HostId,
-		TargetId:                     c.TargetId,
-		HostSetId:                    c.HostSetId,
-		AuthTokenId:                  c.AuthTokenId,
-		ScopeId:                      c.ScopeId,
-		Endpoint:                     c.Endpoint,
-		ExpirationTime:               c.ExpirationTime,
-		ConnectionLimit:              c.ConnectionLimit,
-		ConnectionIdleTimeoutSeconds: c.ConnectionIdleTimeoutSeconds,
+		UserId:          c.UserId,
+		HostId:          c.HostId,
+		TargetId:        c.TargetId,
+		HostSetId:       c.HostSetId,
+		AuthTokenId:     c.AuthTokenId,
+		ScopeId:         c.ScopeId,
+		Endpoint:        c.Endpoint,
+		ExpirationTime:  c.ExpirationTime,
+		ConnectionLimit: c.ConnectionLimit,
 	}
 	if err := s.validateNewSession("new session:"); err != nil {
 		return nil, err
@@ -137,20 +132,19 @@ func AllocSession() Session {
 // Clone creates a clone of the Session
 func (s *Session) Clone() interface{} {
 	clone := &Session{
-		PublicId:                     s.PublicId,
-		UserId:                       s.UserId,
-		HostId:                       s.HostId,
-		ServerId:                     s.ServerId,
-		ServerType:                   s.ServerType,
-		TargetId:                     s.TargetId,
-		HostSetId:                    s.HostSetId,
-		AuthTokenId:                  s.AuthTokenId,
-		ScopeId:                      s.ScopeId,
-		TerminationReason:            s.TerminationReason,
-		Version:                      s.Version,
-		Endpoint:                     s.Endpoint,
-		ConnectionLimit:              s.ConnectionLimit,
-		ConnectionIdleTimeoutSeconds: s.ConnectionIdleTimeoutSeconds,
+		PublicId:          s.PublicId,
+		UserId:            s.UserId,
+		HostId:            s.HostId,
+		ServerId:          s.ServerId,
+		ServerType:        s.ServerType,
+		TargetId:          s.TargetId,
+		HostSetId:         s.HostSetId,
+		AuthTokenId:       s.AuthTokenId,
+		ScopeId:           s.ScopeId,
+		TerminationReason: s.TerminationReason,
+		Version:           s.Version,
+		Endpoint:          s.Endpoint,
+		ConnectionLimit:   s.ConnectionLimit,
 	}
 	if s.TofuToken != nil {
 		clone.TofuToken = make([]byte, len(s.TofuToken))
@@ -232,8 +226,6 @@ func (s *Session) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 			return fmt.Errorf("session vet for write: expiration time is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "ConnectionLimit"):
 			return fmt.Errorf("session vet for write: connection limit is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "ConnectionIdleTimeoutSeconds"):
-			return fmt.Errorf("session vet for write: connection idle timeout seconds is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
 			if _, err := convertToReason(s.TerminationReason); err != nil {
 				return fmt.Errorf("session vet for write: termination reason '%s' is invalid: %w", s.TerminationReason, db.ErrInvalidParameter)

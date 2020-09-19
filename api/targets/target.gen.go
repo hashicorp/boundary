@@ -16,21 +16,20 @@ import (
 )
 
 type Target struct {
-	Id                           string                 `json:"id,omitempty"`
-	ScopeId                      string                 `json:"scope_id,omitempty"`
-	Scope                        *scopes.ScopeInfo      `json:"scope,omitempty"`
-	Name                         string                 `json:"name,omitempty"`
-	Description                  string                 `json:"description,omitempty"`
-	CreatedTime                  time.Time              `json:"created_time,omitempty"`
-	UpdatedTime                  time.Time              `json:"updated_time,omitempty"`
-	Version                      uint32                 `json:"version,omitempty"`
-	Type                         string                 `json:"type,omitempty"`
-	HostSetIds                   []string               `json:"host_set_ids,omitempty"`
-	HostSets                     []*HostSet             `json:"host_sets,omitempty"`
-	SessionMaxSeconds            uint32                 `json:"session_max_seconds,omitempty"`
-	SessionConnectionLimit       uint32                 `json:"session_connection_limit,omitempty"`
-	ConnectionIdleTimeoutSeconds uint32                 `json:"connection_idle_timeout_seconds,omitempty"`
-	Attributes                   map[string]interface{} `json:"attributes,omitempty"`
+	Id                     string                 `json:"id,omitempty"`
+	ScopeId                string                 `json:"scope_id,omitempty"`
+	Scope                  *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Name                   string                 `json:"name,omitempty"`
+	Description            string                 `json:"description,omitempty"`
+	CreatedTime            time.Time              `json:"created_time,omitempty"`
+	UpdatedTime            time.Time              `json:"updated_time,omitempty"`
+	Version                uint32                 `json:"version,omitempty"`
+	Type                   string                 `json:"type,omitempty"`
+	HostSetIds             []string               `json:"host_set_ids,omitempty"`
+	HostSets               []*HostSet             `json:"host_sets,omitempty"`
+	SessionMaxSeconds      uint32                 `json:"session_max_seconds,omitempty"`
+	SessionConnectionLimit uint32                 `json:"session_connection_limit,omitempty"`
+	Attributes             map[string]interface{} `json:"attributes,omitempty"`
 
 	responseBody *bytes.Buffer
 	responseMap  map[string]interface{}

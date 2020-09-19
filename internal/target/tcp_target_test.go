@@ -51,7 +51,6 @@ func TestTcpTarget_Create(t *testing.T) {
 				t.Name = "valid-proj-scope"
 				t.SessionMaxSeconds = uint32((8 * time.Hour).Seconds())
 				t.SessionConnectionLimit = 1
-				t.ConnectionIdleTimeoutSeconds = uint32((1 * time.Hour).Seconds())
 				return &t
 			}(),
 			create: true,

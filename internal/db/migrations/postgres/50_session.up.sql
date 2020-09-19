@@ -134,9 +134,6 @@ begin;
     -- limit on number of session connections allowed.  default of 0 equals no limit
     connection_limit int not null default 1
       check(connection_limit >= 0), 
-    -- connection idle timout in seconds.  default of 0 equals no limit
-    connection_idle_timeout_seconds int not null default 0
-      check(connection_idle_timeout_seconds >= 0),
     -- trust of first use token 
     tofu_token bytea, -- will be null when session is first created
     -- the reason this session ended (null until terminated)
@@ -159,7 +156,7 @@ begin;
     immutable_columns
   before
   update on session
-    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time', 'endpoint', 'connection_idle_timeout_seconds');
+    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time', 'endpoint');
   
   create trigger 
     update_version_column 
