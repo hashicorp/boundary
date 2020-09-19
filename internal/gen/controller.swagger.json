@@ -3004,6 +3004,21 @@
           "description": "The host sets that make up this target.\nOutput only.",
           "readOnly": true
         },
+        "session_max_duration": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Maximum total lifetime of a created session, in seconds"
+        },
+        "session_connection_limit": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Maximum number of connections in a session"
+        },
+        "connection_idle_timeout_duration": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Idle timeout for a connection in the session, in seconds"
+        },
         "attributes": {
           "type": "object",
           "description": "The attributes that are applied for the specific Target type."

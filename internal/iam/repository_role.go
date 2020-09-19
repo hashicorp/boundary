@@ -74,6 +74,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 			"GrantScopeId": role.GrantScopeId,
 		},
 		fieldMaskPaths,
+		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: %w", db.ErrEmptyFieldMask)

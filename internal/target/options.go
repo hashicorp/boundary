@@ -1,5 +1,7 @@
 package target
 
+import "time"
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -14,26 +16,32 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName        string
-	withDescription string
-	withDefaultPort uint32
-	withLimit       int
-	withScopeId     string
-	withUserId      string
-	withTargetType  *TargetType
-	withHostSets    []string
+	withName                          string
+	withDescription                   string
+	withDefaultPort                   uint32
+	withLimit                         int
+	withScopeId                       string
+	withUserId                        string
+	withTargetType                    *TargetType
+	withHostSets                      []string
+	withSessionMaxDuration            uint32
+	withSessionConnectionLimit        uint32
+	withConnectionIdleTimeoutDuration uint32
 }
 
 func getDefaultOptions() options {
 	return options{
-		withName:        "",
-		withDescription: "",
-		withLimit:       0,
-		withDefaultPort: 0,
-		withScopeId:     "",
-		withUserId:      "",
-		withTargetType:  nil,
-		withHostSets:    nil,
+		withName:                          "",
+		withDescription:                   "",
+		withLimit:                         0,
+		withDefaultPort:                   0,
+		withScopeId:                       "",
+		withUserId:                        "",
+		withTargetType:                    nil,
+		withHostSets:                      nil,
+		withSessionMaxDuration:            uint32((8 * time.Hour).Seconds()),
+		withSessionConnectionLimit:        1,
+		withConnectionIdleTimeoutDuration: uint32((1 * time.Hour).Seconds()),
 	}
 }
 
@@ -92,5 +100,23 @@ func WithTargetType(t TargetType) Option {
 func WithHostSets(hs []string) Option {
 	return func(o *options) {
 		o.withHostSets = hs
+	}
+}
+
+func WithSessionMaxDuration(dur uint32) Option {
+	return func(o *options) {
+		o.withSessionMaxDuration = dur
+	}
+}
+
+func WithSessionConnectionLimit(limit uint32) Option {
+	return func(o *options) {
+		o.withSessionConnectionLimit = limit
+	}
+}
+
+func WithConnectionIdleTimeoutDuration(dur uint32) Option {
+	return func(o *options) {
+		o.withConnectionIdleTimeoutDuration = dur
 	}
 }
