@@ -142,16 +142,16 @@ func Intersection(av, bv []string) ([]string, map[string]string, map[string]stri
 	return s, ah, bh, nil
 }
 
-// BuildUpdatePaths takes a map of field names to field values and field masks
-// and returns both a list of field names to udpate and a list of field names
-// that should be set to null.
-func BuildUpdatePaths(fieldValues map[string]interface{}, fieldMask []string) (masks []string, nulls []string) {
+// BuildUpdatePaths takes a map of field names to field values, field masks,
+// fields allowed to be zero value, and returns both a list of field names to
+// udpate and a list of field names that should be set to null.
+func BuildUpdatePaths(fieldValues map[string]interface{}, fieldMask []string, allowZeroFields []string) (masks []string, nulls []string) {
 	for f, v := range fieldValues {
 		if !contains(fieldMask, f) {
 			continue
 		}
 		switch {
-		case isZero(v):
+		case isZero(v) && !contains(allowZeroFields, f):
 			nulls = append(nulls, f)
 		default:
 			masks = append(masks, f)

@@ -133,6 +133,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 			"ConnectionIdleTimeoutDuration": target.ConnectionIdleTimeoutDuration,
 		},
 		fieldMaskPaths,
+		[]string{"SessionMaxDuration", "SessionConnectionLimit", "ConnectionIdleTimeoutDuration"},
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: %w", db.ErrEmptyFieldMask)
