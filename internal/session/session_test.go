@@ -51,6 +51,7 @@ func TestSession_Create(t *testing.T) {
 				HostSetId:   composedOf.HostSetId,
 				AuthTokenId: composedOf.AuthTokenId,
 				ScopeId:     composedOf.ScopeId,
+				Endpoint:    "tcp://127.0.0.1:22",
 			},
 			create: true,
 		},
