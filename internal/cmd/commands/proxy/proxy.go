@@ -286,6 +286,8 @@ func (c *Command) Run(args []string) int {
 	transport := cleanhttp.DefaultTransport()
 	transport.DisableKeepAlives = false
 	transport.TLSClientConfig = tlsConf
+	// We'll rely on the server to use the configured idle conn timeout
+	transport.IdleConnTimeout = 0
 
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{
 		IP:   listenAddr,
