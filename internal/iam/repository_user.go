@@ -30,7 +30,7 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 	resource, err := r.create(ctx, u.(*User))
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, fmt.Errorf("create user: user %s already exists in org %s", user.Name, user.ScopeId)
+			return nil, fmt.Errorf("create user: user %s already exists in org %s: %w", user.Name, user.ScopeId, err)
 		}
 		return nil, fmt.Errorf("create user: %w for %s", err, u.(*User).PublicId)
 	}

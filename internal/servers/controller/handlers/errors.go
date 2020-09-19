@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"sort"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
 	"github.com/hashicorp/go-hclog"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
@@ -50,6 +52,21 @@ func InvalidArgumentErrorf(msg string, fields map[string]string) error {
 	return st.Err()
 }
 
+// Converts a db error into an error that can presented to an end user over the API.
+func fromDbError(dbErr error) error {
+	switch {
+	case errors.Is(dbErr, db.ErrInvalidFieldMask):
+		return InvalidArgumentErrorf("Invalid request.", map[string]string{"update_mask": "Invalid list of fields provided in mask."})
+	case errors.Is(dbErr, db.ErrInvalidParameter):
+		return InvalidArgumentErrorf("Invalid request.", nil)
+	case db.IsUniqueError(dbErr):
+		return InvalidArgumentErrorf("Invalid request.  Request attempted to make second resource with the same field value that must be unique.", nil)
+	case db.IsCheckConstraintError(dbErr):
+		// return a 500 with a error trace number.
+	}
+	return dbErr
+}
+
 func statusErrorToApiError(s *status.Status) *pb.Error {
 	apiErr := &pb.Error{}
 	apiErr.Status = int32(runtime.HTTPStatusFromCode(s.Code()))
@@ -76,10 +93,9 @@ func statusErrorToApiError(s *status.Status) *pb.Error {
 	return apiErr
 }
 
-// TODO(ICU-194): Remove all information from internal errors.
 func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 	const errorFallback = `{"error": "failed to marshal error message"}`
-	return func(ctx context.Context, _ *runtime.ServeMux, marshaler runtime.Marshaler, w http.ResponseWriter, r *http.Request, inErr error) {
+	return func(ctx context.Context, _ *runtime.ServeMux, mar runtime.Marshaler, w http.ResponseWriter, r *http.Request, inErr error) {
 		if inErr == runtime.ErrNotMatch {
 			// grpc gateway uses this error when the path was not matched, but the error uses codes.Unimplemented which doesn't match the intention.
 			// Overwrite the error to match our expected behavior.
@@ -87,10 +103,15 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 		}
 		s, ok := status.FromError(inErr)
 		if !ok {
-			s = status.New(codes.Unknown, inErr.Error())
+			s = status.New(codes.Internal, inErr.Error())
+		}
+		if s.Code() == codes.Internal {
+			errorId := "123"
+			logger.Error("internal error returned", "error", inErr, "error id", errorId)
+			s = status.Newf(codes.Internal, "Error Id: %s", errorId)
 		}
 		apiErr := statusErrorToApiError(s)
-		buf, merr := marshaler.Marshal(apiErr)
+		buf, merr := mar.Marshal(apiErr)
 		if merr != nil {
 			logger.Error("failed to marshal error response", "response", fmt.Sprintf("%#v", apiErr), "error", merr)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -100,7 +121,7 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", marshaler.ContentType(apiErr))
+		w.Header().Set("Content-Type", mar.ContentType(apiErr))
 		w.WriteHeader(int(apiErr.GetStatus()))
 		if _, err := w.Write(buf); err != nil {
 			logger.Error("failed to send response chunk", "error", err)

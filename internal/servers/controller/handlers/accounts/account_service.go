@@ -302,6 +302,13 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 	}
 	out, err := repo.ChangePassword(ctx, scopeId, id, currentPassword, newPassword, version)
 	if err != nil {
+		switch {
+		case errors.Is(err, db.ErrRecordNotFound):
+			return nil, handlers.NotFoundErrorf("Account not found.")
+		case errors.Is(err, password.ErrTooShort):
+			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+				map[string]string{"new_password": "Password is too short."})
+		}
 		return nil, status.Errorf(codes.Internal, "Unable to change password: %v.", err)
 	}
 	if out == nil {
@@ -447,7 +454,7 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
 }
@@ -467,7 +474,7 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 		badFields["current_password"] = "This is a required field."
 	}
 	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
 }
@@ -481,7 +488,7 @@ func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
 		badFields["version"] = "Existing resource version is required for an update."
 	}
 	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
 }
