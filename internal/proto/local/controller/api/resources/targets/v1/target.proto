@@ -56,8 +56,17 @@ message Target {
 	// Output only.
 	repeated HostSet host_sets = 110;
 
+	// Maximum total lifetime of a created session, in seconds
+	uint32 session_max_duration = 120 [(custom_options.v1.generate_sdk_option) = true];
+
+	// Maximum number of connections in a session
+	uint32 session_connection_limit = 130 [(custom_options.v1.generate_sdk_option) = true];
+
+	// Idle timeout for a connection in the session, in seconds
+	uint32 connection_idle_timeout_duration = 140 [(custom_options.v1.generate_sdk_option) = true];
+
 	// The attributes that are applied for the specific Target type.
-	google.protobuf.Struct attributes = 120 [(custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.Struct attributes = 200 [(custom_options.v1.generate_sdk_option) = true];
 }
 
 message TcpTargetAttributes {
