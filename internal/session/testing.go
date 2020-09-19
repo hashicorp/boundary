@@ -36,6 +36,11 @@ func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientTcpAddr string
 	c.PublicId = id
 	err = rw.Create(context.Background(), c)
 	require.NoError(err)
+
+	connectedState, err := NewConnectionState(c.PublicId, StatusConnected)
+	require.NoError(err)
+	err = rw.Create(context.Background(), connectedState)
+	require.NoError(err)
 	return c
 }
 
