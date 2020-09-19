@@ -195,42 +195,6 @@ func TestConnection_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"SessionId"},
 		},
 		{
-			name: "client_tcp_address",
-			update: func() *Connection {
-				c := new.Clone().(*Connection)
-				c.ClientTcpAddress = "0.0.0.0"
-				return c
-			}(),
-			fieldMask: []string{"ClientTcpAddress"},
-		},
-		{
-			name: "client_tcp_port",
-			update: func() *Connection {
-				c := new.Clone().(*Connection)
-				c.ClientTcpPort = 443
-				return c
-			}(),
-			fieldMask: []string{"ClientTcpPort"},
-		},
-		{
-			name: "endpoint_tcp_address",
-			update: func() *Connection {
-				c := new.Clone().(*Connection)
-				c.EndpointTcpAddress = "0.0.0.0"
-				return c
-			}(),
-			fieldMask: []string{"EndpointTcpAddress"},
-		},
-		{
-			name: "endpoint_tcp_port",
-			update: func() *Connection {
-				c := new.Clone().(*Connection)
-				c.EndpointTcpPort = 443
-				return c
-			}(),
-			fieldMask: []string{"EndpointTcpPort"},
-		},
-		{
 			name: "create time",
 			update: func() *Connection {
 				s := new.Clone().(*Connection)
