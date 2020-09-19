@@ -86,4 +86,27 @@ with active_session as (
 )
 select * from active_session;
 `
+
+	remainingConnectionsCte = `
+with
+session_connection_count(current_connection_count) as (
+	select count(*) 
+	from 
+		session_connection sc
+	where
+		sc.session_id = $1
+),
+session_connection_limit(expiration_time, connection_limit) as (
+	select 
+		s.expiration_time,
+		s.connection_limit
+	from
+		session s
+	where 
+		s.public_id = $1
+)
+select expiration_time, connection_limit, current_connection_count 
+from  
+	session_connection_limit, session_connection_count;	
+`
 )
