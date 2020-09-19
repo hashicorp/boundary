@@ -11,7 +11,6 @@ import (
 )
 
 func Test_TestSession(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -22,7 +21,6 @@ func Test_TestSession(t *testing.T) {
 }
 
 func Test_TestState(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -36,7 +34,6 @@ func Test_TestState(t *testing.T) {
 }
 
 func Test_TestConnection(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -50,7 +47,6 @@ func Test_TestConnection(t *testing.T) {
 }
 
 func Test_TestConnectionState(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -73,6 +69,13 @@ func Test_TestConnectionState(t *testing.T) {
 	assert.NotEmpty(initialState.StartTime)
 }
 
+func Test_TestWorker(t *testing.T) {
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	w := TestWorker(t, conn, wrapper)
+	require.NotNil(w)
+}
 func Test_TestCert(t *testing.T) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)

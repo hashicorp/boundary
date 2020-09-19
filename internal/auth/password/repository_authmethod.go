@@ -209,6 +209,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 			"MinLoginNameLength": authMethod.MinLoginNameLength,
 		},
 		fieldMaskPaths,
+		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w", db.ErrEmptyFieldMask)

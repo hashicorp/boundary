@@ -1999,6 +1999,39 @@
         ]
       }
     },
+    "/v1/targets/{id}:authorize": {
+      "post": {
+        "summary": "Authorizes a Session",
+        "operationId": "TargetService_AuthorizeSession",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.SessionAuthorization"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AuthorizeSessionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
     "/v1/targets/{id}:remove-host-sets": {
       "post": {
         "summary": "Removes Host Sets from the Target.",
@@ -2014,7 +2047,6 @@
         "parameters": [
           {
             "name": "id",
-            "description": "This host set's id.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2876,6 +2908,42 @@
         }
       }
     },
+    "controller.api.resources.targets.v1.SessionAuthorization": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "description": "The ID of the session\nOutput only.",
+          "readOnly": true
+        },
+        "target_id": {
+          "type": "string",
+          "description": "The id of the target authorizing this session. This must be defined for\ncreation of this resource, but is otherwise read only.\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of the session (e.g. tcp, ssh, etc.)\nOutput only.",
+          "readOnly": true
+        },
+        "authorization_token": {
+          "type": "string",
+          "description": "The marshaled SessionAuthorizationData message containing all information\nthat the proxy needs.\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.targets.v1.Target": {
       "type": "object",
       "properties": {
@@ -2935,6 +3003,16 @@
           },
           "description": "The host sets that make up this target.\nOutput only.",
           "readOnly": true
+        },
+        "session_max_seconds": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Maximum total lifetime of a created session, in seconds"
+        },
+        "session_connection_limit": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Maximum number of connections in a session"
         },
         "attributes": {
           "type": "object",
@@ -3149,6 +3227,26 @@
         "token_type": {
           "type": "string",
           "description": "This can be \"cookie\" or \"token\".  If not present, \"token\" should be assumed."
+        }
+      }
+    },
+    "controller.api.services.v1.AuthorizeSessionRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "host_id": {
+          "type": "string",
+          "description": "An optional parameter allowing specification of the particular host within\nthe target's host sets to connect to during this session."
+        }
+      }
+    },
+    "controller.api.services.v1.AuthorizeSessionResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.SessionAuthorization"
         }
       }
     },
@@ -3643,8 +3741,7 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "This host set's id."
+          "type": "string"
         },
         "version": {
           "type": "integer",

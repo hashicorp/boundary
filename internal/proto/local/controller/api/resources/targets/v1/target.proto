@@ -56,10 +56,92 @@ message Target {
 	// Output only.
 	repeated HostSet host_sets = 110;
 
+	// Maximum total lifetime of a created session, in seconds
+	google.protobuf.UInt32Value session_max_seconds = 120 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"session_max_seconds" that: "SessionMaxSeconds"}];
+
+	// Maximum number of connections in a session
+	google.protobuf.UInt32Value session_connection_limit = 130 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"session_connection_limit" that: "SessionConnectionLimit"}];
+
 	// The attributes that are applied for the specific Target type.
-	google.protobuf.Struct attributes = 120 [(custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.Struct attributes = 200 [(custom_options.v1.generate_sdk_option) = true];
 }
 
 message TcpTargetAttributes {
 	google.protobuf.UInt32Value default_port = 10 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.default_port" that: "DefaultPort"}];
+}
+
+// WorkerInfo contains information about workers, returned in
+// SessionAuthorization
+message WorkerInfo {
+	// The address of the worker
+	string address = 10;
+}
+
+// SessionAuthorization contains all fields related to authorization for a
+// session. It's in the Targets API because it's returned by a target authorize
+// action.
+message SessionAuthorizationData {
+	// The ID of the session
+	// Output only.
+	string session_id = 10;
+
+	// The id of the target authorizing this session. This must be defined for
+	// creation of this resource, but is otherwise read only.
+	// Output only.
+	string target_id = 20 [json_name="target_id"];
+
+	// Scope information for this resource
+	// Output only.
+	resources.scopes.v1.ScopeInfo scope = 30;
+
+	// The time this resource was created
+	// Output only.
+	google.protobuf.Timestamp created_time = 40 [json_name="created_time"];
+
+	// Type of the session (e.g. tcp, ssh, etc.)
+	// Output only.
+	string type = 80;
+
+	// The certificate to use when connecting (or if using custom certs, to
+	// serve as the "login"). Raw DER bytes.
+	// Output only.
+	bytes certificate = 120;
+
+	// The private key to use when connecting (or if using custom certs, to pass
+	// as the "password"). We are using Ed25519 so this is purely raw bytes, no
+	// marshaling.
+	// Output only.
+	bytes private_key = 130 [json_name="private_key"];
+
+	// Worker information. The first worker in the array should be prioritized.
+	// Output only.
+	repeated WorkerInfo worker_info = 150 [json_name="worker_info"];
+}
+
+message SessionAuthorization {
+	// The ID of the session
+	// Output only.
+	string session_id = 10;
+
+	// The id of the target authorizing this session. This must be defined for
+	// creation of this resource, but is otherwise read only.
+	// Output only.
+	string target_id = 20 [json_name="target_id"];
+
+	// Scope information for this resource
+	// Output only.
+	resources.scopes.v1.ScopeInfo scope = 30;
+
+	// The time this resource was created
+	// Output only.
+	google.protobuf.Timestamp created_time = 40 [json_name="created_time"];
+
+	// Type of the session (e.g. tcp, ssh, etc.)
+	// Output only.
+	string type = 80;
+
+	// The marshaled SessionAuthorizationData message containing all information
+	// that the proxy needs.
+	// Output only.
+	string authorization_token = 90;
 }

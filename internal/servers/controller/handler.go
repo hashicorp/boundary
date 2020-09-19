@@ -3,32 +3,23 @@ package controller
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	wpbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
-	"github.com/hashicorp/boundary/internal/session"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/vault/sdk/helper/base62"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authenticate"
@@ -40,8 +31,6 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type HandlerProperties struct {
@@ -60,7 +49,6 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 		return nil, err
 	}
 	mux.Handle("/v1/", h)
-	mux.Handle("/jobtesting", jobTestingHandler(c))
 	mux.Handle("/", handleUi(c))
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
@@ -154,7 +142,13 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	if err := services.RegisterUserServiceHandlerServer(ctx, mux, us); err != nil {
 		return nil, fmt.Errorf("failed to register user service handler: %w", err)
 	}
-	ts, err := targets.NewService(c.TargetRepoFn, c.IamRepoFn)
+	ts, err := targets.NewService(
+		c.kms,
+		c.TargetRepoFn,
+		c.IamRepoFn,
+		c.ServersRepoFn,
+		c.SessionRepoFn,
+		c.StaticHostRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create target handler service: %w", err)
 	}
@@ -311,95 +305,6 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		}
 
 		h.ServeHTTP(w, req)
-	})
-}
-
-func jobTestingHandler(c *Controller) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		errorResp := func(e error) {
-			w.Write([]byte(e.Error()))
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-
-		if err := r.ParseForm(); err != nil {
-			errorResp(err)
-			return
-		}
-		endpoint := r.URL.Query().Get("endpoint")
-		if endpoint == "" {
-			errorResp(errors.New("missing endpoint query param"))
-			return
-		}
-
-		timeout := 15 * time.Second
-		var err error
-		if t := r.URL.Query().Get("timeout"); t != "" {
-			if timeout, err = time.ParseDuration(t); err != nil {
-				errorResp(fmt.Errorf("error parsing timeout: %w", err))
-				return
-			}
-		}
-
-		var workers []*pb.WorkerInfo
-		repo, err := c.ServersRepoFn()
-		if err != nil {
-			errorResp(err)
-			return
-		}
-		servers, err := repo.ListServers(r.Context(), servers.ServerTypeWorker)
-		if err != nil {
-			errorResp(err)
-			return
-		}
-		for _, v := range servers {
-			workers = append(workers, &pb.WorkerInfo{Address: v.Address})
-		}
-
-		wrapper, err := c.kms.GetWrapper(r.Context(), scope.Global.String(), kms.KeyPurposeSessions)
-		if err != nil {
-			errorResp(err)
-			return
-		}
-		jobId, err := base62.Random(10)
-		if err != nil {
-			errorResp(err)
-			return
-		}
-		// TODO (jimlambrt 8/2020): this is quite correct.  We need to create a
-		// new session here (in the session repo) which would have a cert.
-		privKey, certBytes, err := session.TestCert(wrapper, "u_1234567890", jobId)
-		if err != nil {
-			errorResp(err)
-			return
-		}
-
-		ret := &wpbs.GetSessionResponse{
-			Session: &pb.Session{
-				Id:             jobId,
-				ScopeId:        scope.Global.String(),
-				UserId:         "u_1234567890",
-				Type:           "tcp",
-				Endpoint:       endpoint,
-				Certificate:    certBytes,
-				PrivateKey:     privKey,
-				WorkerInfo:     workers,
-				ExpirationTime: &timestamppb.Timestamp{Seconds: time.Now().Add(timeout).Unix()},
-			},
-		}
-
-		marshaled, err := proto.Marshal(ret)
-		if err != nil {
-			errorResp(err)
-			return
-		}
-
-		if _, err := w.Write([]byte(base58.Encode(marshaled))); err != nil {
-			errorResp(err)
-			return
-		}
-
-		ret.Session.PrivateKey = nil
-		c.jobMap.Store(jobId, ret.GetSession())
 	})
 }
 

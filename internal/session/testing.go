@@ -14,24 +14,32 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/target"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // TestConnection creates a test connection for the sessionId in the repository.
-func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, backendTcpAddr string, backendTcpPort uint32) *Connection {
+func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32) *Connection {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	c, err := NewConnection(sessionId, clientTcpAddr, clientTcpPort, backendTcpAddr, backendTcpPort)
+	c, err := NewConnection(sessionId, clientTcpAddr, clientTcpPort, endpointTcpAddr, endpointTcpPort)
 	require.NoError(err)
 	id, err := newConnectionId()
 	require.NoError(err)
 	c.PublicId = id
 	err = rw.Create(context.Background(), c)
+	require.NoError(err)
+
+	connectedState, err := NewConnectionState(c.PublicId, StatusConnected)
+	require.NoError(err)
+	err = rw.Create(context.Background(), connectedState)
 	require.NoError(err)
 	return c
 }
@@ -70,7 +78,7 @@ func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c Compos
 	id, err := newId()
 	require.NoError(err)
 	s.PublicId = id
-	_, certBytes, err := newCert(wrapper, c.UserId, id)
+	_, certBytes, err := newCert(wrapper, c.UserId, id, c.ExpirationTime.Timestamp.AsTime())
 	require.NoError(err)
 	s.Certificate = certBytes
 	err = rw.Create(context.Background(), s)
@@ -124,13 +132,18 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 	require.NoError(err)
 
+	expTime := timestamppb.Now()
+	expTime.Seconds += int64(tcpTarget.GetSessionMaxSeconds())
 	return ComposedOf{
-		UserId:      user.PublicId,
-		HostId:      hosts[0].PublicId,
-		TargetId:    tcpTarget.PublicId,
-		HostSetId:   sets[0].PublicId,
-		AuthTokenId: at.PublicId,
-		ScopeId:     tcpTarget.ScopeId,
+		UserId:          user.PublicId,
+		HostId:          hosts[0].PublicId,
+		TargetId:        tcpTarget.PublicId,
+		HostSetId:       sets[0].PublicId,
+		AuthTokenId:     at.PublicId,
+		ScopeId:         tcpTarget.ScopeId,
+		Endpoint:        "tcp://127.0.0.1:22",
+		ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
+		ConnectionLimit: tcpTarget.GetSessionConnectionLimit(),
 	}
 }
 
@@ -143,9 +156,29 @@ func TestTofu(t *testing.T) []byte {
 	return []byte(tofu)
 }
 
+func TestWorker(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *servers.Server {
+	t.Helper()
+	rw := db.New(conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	serversRepo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	id, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	worker := &servers.Server{
+		Name:        "test-session-worker-" + id,
+		Type:        servers.ServerTypeWorker.String(),
+		Description: "Test Session Worker",
+		Address:     "127.0.0.1",
+	}
+	_, _, err = serversRepo.UpsertServer(context.Background(), worker)
+	require.NoError(t, err)
+	return worker
+}
+
 // TestCert is a temporary test func that intentionally doesn't take testing.T
 // as a parameter.  It's currently used in controller.jobTestingHandler() and
 // should be deprecated once that function is refactored to use sessions properly.
 func TestCert(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PrivateKey, []byte, error) {
-	return newCert(wrapper, userId, jobId)
+	return newCert(wrapper, userId, jobId, time.Now().Add(5*time.Minute))
 }

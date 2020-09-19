@@ -4,14 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
+	"net/url"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -19,6 +27,8 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -35,19 +45,45 @@ func init() {
 
 // Service handles request as described by the pbs.TargetServiceServer interface.
 type Service struct {
-	repoFn    common.TargetRepoFactory
-	iamRepoFn common.IamRepoFactory
+	repoFn           common.TargetRepoFactory
+	iamRepoFn        common.IamRepoFactory
+	serversRepoFn    common.ServersRepoFactory
+	sessionRepoFn    common.SessionRepoFactory
+	staticHostRepoFn common.StaticRepoFactory
+	kmsCache         *kms.Kms
 }
 
 // NewService returns a target service which handles target related requests to boundary.
-func NewService(repoFn common.TargetRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(
+	kmsCache *kms.Kms,
+	repoFn common.TargetRepoFactory,
+	iamRepoFn common.IamRepoFactory,
+	serversRepoFn common.ServersRepoFactory,
+	sessionRepoFn common.SessionRepoFactory,
+	staticHostRepoFn common.StaticRepoFactory) (Service, error) {
 	if repoFn == nil {
 		return Service{}, fmt.Errorf("nil target repository provided")
 	}
 	if iamRepoFn == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
-	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn}, nil
+	if serversRepoFn == nil {
+		return Service{}, fmt.Errorf("nil servers repository provided")
+	}
+	if sessionRepoFn == nil {
+		return Service{}, fmt.Errorf("nil session repository provided")
+	}
+	if staticHostRepoFn == nil {
+		return Service{}, fmt.Errorf("nil static host repository provided")
+	}
+	return Service{
+		repoFn:           repoFn,
+		iamRepoFn:        iamRepoFn,
+		serversRepoFn:    serversRepoFn,
+		sessionRepoFn:    sessionRepoFn,
+		staticHostRepoFn: staticHostRepoFn,
+		kmsCache:         kmsCache,
+	}, nil
 }
 
 var _ pbs.TargetServiceServer = Service{}
@@ -84,6 +120,9 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 	if err != nil {
 		return nil, err
 	}
+	if u == nil {
+		return nil, nil
+	}
 	u.Scope = authResults.Scope
 	return &pbs.GetTargetResponse{Item: u}, nil
 }
@@ -117,6 +156,9 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
+	}
+	if u == nil {
+		return nil, nil
 	}
 	u.Scope = authResults.Scope
 	return &pbs.UpdateTargetResponse{Item: u}, nil
@@ -189,6 +231,186 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 	return &pbs.RemoveTargetHostSetsResponse{Item: u}, nil
 }
 
+func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (*pbs.AuthorizeSessionResponse, error) {
+	if err := validateAuthorizeRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Authorize)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	// This could happen if, say, u_recovery was used or u_anon was granted. But
+	// don't allow it. It's one thing if grants give access to resources within
+	// Boundary, even if those could eventually be used to provide an unintended
+	// user access to a remote system. It's quite another to enable anonymous
+	// access directly to a remote system.
+	//
+	// Note that even if u_anon or u_auth are given grants we can still validate
+	// a token! So this is just checking that a valid token was provided. The
+	// actual reality of this works out to excluding:
+	//
+	// * True anonymous access (no token provided and u_anon)
+	//
+	// * u_recovery access (which is fine, recovery is meant for recovering
+	// system state, no real reason to allow it to then connect to systems)
+	if authResults.AuthTokenId == "" {
+		return nil, handlers.ForbiddenError()
+	}
+
+	// Get the target information
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	t, hostSets, err := repo.LookupTarget(ctx, req.GetId())
+	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if t == nil {
+		return nil, nil
+	}
+
+	// Instantiate some repos
+	sessionRepo, err := s.sessionRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	serversRepo, err := s.serversRepoFn()
+	if err != nil {
+		return nil, err
+	}
+
+	// First, fetch all available hosts. Unless one was chosen in the request,
+	// we will pick one at random.
+	type compoundHost struct {
+		hostSetId string
+		hostId    string
+	}
+
+	var chosenId compoundHost
+	requestedId := req.GetHostId()
+	staticHostRepo, err := s.staticHostRepoFn()
+	if err != nil {
+		return nil, err
+	}
+
+	hostIds := make([]compoundHost, 0, len(hostSets)*10)
+	for _, tSet := range hostSets {
+		hsId := tSet.PublicId
+		switch host.SubtypeFromId(hsId) {
+		case host.StaticSubtype:
+			_, hosts, err := staticHostRepo.LookupSet(ctx, hsId)
+			if err != nil {
+				return nil, err
+			}
+			for _, host := range hosts {
+				compoundId := compoundHost{hostSetId: hsId, hostId: host.PublicId}
+				if host.PublicId == requestedId {
+					chosenId = compoundId
+					goto HOST_GATHERING_DONE
+				}
+				hostIds = append(hostIds, compoundId)
+			}
+		}
+	}
+	if requestedId != "" {
+		// We didn't find it
+		return nil, handlers.InvalidArgumentErrorf(
+			"Errors in provided fields.",
+			map[string]string{
+				"host_id": "The requested host id is not available.",
+			})
+	}
+	chosenId = hostIds[rand.Intn(len(hostIds))]
+
+HOST_GATHERING_DONE:
+	// Generate the endpoint URL
+	endpointUrl := &url.URL{
+		Scheme: t.GetType(),
+	}
+	defaultPort := t.GetDefaultPort()
+	var endpointHost string
+	switch host.SubtypeFromId(chosenId.hostId) {
+	case host.StaticSubtype:
+		h, err := staticHostRepo.LookupHost(ctx, chosenId.hostId)
+		if err != nil {
+			return nil, fmt.Errorf("error looking up host: %w", err)
+		}
+		endpointHost = h.Address
+		if endpointHost == "" {
+			return nil, errors.New("host had empty address")
+		}
+	}
+	if defaultPort != 0 {
+		endpointUrl.Host = fmt.Sprintf("%s:%d", endpointHost, defaultPort)
+	} else {
+		endpointUrl.Host = endpointHost
+	}
+
+	expTime := timestamppb.Now()
+	expTime.Seconds += int64(t.GetSessionMaxSeconds())
+	sessionComposition := session.ComposedOf{
+		UserId:          authResults.UserId,
+		HostId:          chosenId.hostId,
+		TargetId:        t.GetPublicId(),
+		HostSetId:       chosenId.hostSetId,
+		AuthTokenId:     authResults.AuthTokenId,
+		ScopeId:         authResults.Scope.Id,
+		Endpoint:        endpointUrl.String(),
+		ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
+		ConnectionLimit: t.GetSessionConnectionLimit(),
+	}
+
+	sess, err := session.New(sessionComposition)
+	if err != nil {
+		return nil, err
+	}
+	wrapper, err := s.kmsCache.GetWrapper(ctx, authResults.Scope.Id, kms.KeyPurposeSessions)
+	if err != nil {
+		return nil, err
+	}
+	sess, _, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess)
+	if err != nil {
+		return nil, err
+	}
+
+	var workers []*pb.WorkerInfo
+	servers, err := serversRepo.ListServers(ctx, servers.ServerTypeWorker)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range servers {
+		workers = append(workers, &pb.WorkerInfo{Address: v.Address})
+	}
+
+	sad := &pb.SessionAuthorizationData{
+		SessionId:   sess.PublicId,
+		TargetId:    t.GetPublicId(),
+		Scope:       authResults.Scope,
+		CreatedTime: sess.CreateTime.GetTimestamp(),
+		Type:        t.GetType(),
+		Certificate: sess.Certificate,
+		PrivateKey:  privKey,
+		WorkerInfo:  workers,
+	}
+	marshaledSad, err := proto.Marshal(sad)
+	if err != nil {
+		return nil, err
+	}
+	ret := &pb.SessionAuthorization{
+		SessionId:          sess.PublicId,
+		TargetId:           t.GetPublicId(),
+		Scope:              authResults.Scope,
+		CreatedTime:        sess.CreateTime.GetTimestamp(),
+		Type:               t.GetType(),
+		AuthorizationToken: base58.Encode(marshaledSad),
+	}
+	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
+}
+
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -197,12 +419,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error)
 	u, m, err := repo.LookupTarget(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+			return nil, nil
 		}
 		return nil, err
 	}
 	if u == nil {
-		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+		return nil, nil
 	}
 	return toProto(u, m)
 }
@@ -211,6 +433,12 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	opts := []target.Option{target.WithName(item.GetName().GetValue())}
 	if item.GetDescription() != nil {
 		opts = append(opts, target.WithDescription(item.GetDescription().GetValue()))
+	}
+	if item.GetSessionMaxSeconds() != nil {
+		opts = append(opts, target.WithSessionMaxSeconds(item.GetSessionMaxSeconds().GetValue()))
+	}
+	if item.GetSessionConnectionLimit() != nil {
+		opts = append(opts, target.WithSessionConnectionLimit(item.GetSessionConnectionLimit().GetValue()))
 	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
@@ -245,7 +473,12 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if name := item.GetName(); name != nil {
 		opts = append(opts, target.WithName(name.GetValue()))
 	}
-
+	if item.GetSessionMaxSeconds() != nil {
+		opts = append(opts, target.WithSessionMaxSeconds(item.GetSessionMaxSeconds().GetValue()))
+	}
+	if item.GetSessionConnectionLimit() != nil {
+		opts = append(opts, target.WithSessionConnectionLimit(item.GetSessionConnectionLimit().GetValue()))
+	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
@@ -272,7 +505,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 		return nil, status.Errorf(codes.Internal, "Unable to update target: %v.", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+		return nil, nil
 	}
 	return toProto(out, m)
 }
@@ -412,12 +645,14 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 
 func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 	out := pb.Target{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.GetScopeId(),
-		CreatedTime: in.GetCreateTime().GetTimestamp(),
-		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
-		Version:     in.GetVersion(),
-		Type:        target.TcpTargetType.String(),
+		Id:                     in.GetPublicId(),
+		ScopeId:                in.GetScopeId(),
+		CreatedTime:            in.GetCreateTime().GetTimestamp(),
+		UpdatedTime:            in.GetUpdateTime().GetTimestamp(),
+		Version:                in.GetVersion(),
+		Type:                   target.TcpTargetType.String(),
+		SessionMaxSeconds:      &wrapperspb.UInt32Value{Value: in.GetSessionMaxSeconds()},
+		SessionConnectionLimit: &wrapperspb.UInt32Value{Value: in.GetSessionConnectionLimit()},
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -490,7 +725,6 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			badFields["name"] = "This field cannot be set to empty."
 		}
 		switch target.SubtypeFromType(req.GetItem().GetType()) {
-
 		case target.TcpSubType:
 			tcpAttrs := &pb.TcpTargetAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), tcpAttrs); err != nil {
@@ -563,6 +797,24 @@ func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	}
 	if len(req.GetHostSetIds()) == 0 {
 		badFields["host_set_ids"] = "Must be non-empty."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateAuthorizeRequest(req *pbs.AuthorizeSessionRequest) error {
+	badFields := map[string]string{}
+	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetHostId() != "" {
+		switch host.SubtypeFromId(req.GetHostId()) {
+		case host.StaticSubtype:
+		default:
+			badFields["host_id"] = "Incorrectly formatted identifier."
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

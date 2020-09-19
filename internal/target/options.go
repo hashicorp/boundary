@@ -1,5 +1,7 @@
 package target
 
+import "time"
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -14,26 +16,30 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName        string
-	withDescription string
-	withDefaultPort uint32
-	withLimit       int
-	withScopeId     string
-	withUserId      string
-	withTargetType  *TargetType
-	withHostSets    []string
+	withName                   string
+	withDescription            string
+	withDefaultPort            uint32
+	withLimit                  int
+	withScopeId                string
+	withUserId                 string
+	withTargetType             *TargetType
+	withHostSets               []string
+	withSessionMaxSeconds      uint32
+	withSessionConnectionLimit uint32
 }
 
 func getDefaultOptions() options {
 	return options{
-		withName:        "",
-		withDescription: "",
-		withLimit:       0,
-		withDefaultPort: 0,
-		withScopeId:     "",
-		withUserId:      "",
-		withTargetType:  nil,
-		withHostSets:    nil,
+		withName:                   "",
+		withDescription:            "",
+		withLimit:                  0,
+		withDefaultPort:            0,
+		withScopeId:                "",
+		withUserId:                 "",
+		withTargetType:             nil,
+		withHostSets:               nil,
+		withSessionMaxSeconds:      uint32((8 * time.Hour).Seconds()),
+		withSessionConnectionLimit: 1,
 	}
 }
 
@@ -92,5 +98,17 @@ func WithTargetType(t TargetType) Option {
 func WithHostSets(hs []string) Option {
 	return func(o *options) {
 		o.withHostSets = hs
+	}
+}
+
+func WithSessionMaxSeconds(dur uint32) Option {
+	return func(o *options) {
+		o.withSessionMaxSeconds = dur
+	}
+}
+
+func WithSessionConnectionLimit(limit uint32) Option {
+	return func(o *options) {
+		o.withSessionConnectionLimit = limit
 	}
 }

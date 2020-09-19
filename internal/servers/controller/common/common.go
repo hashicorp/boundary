@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 )
 
@@ -16,4 +17,5 @@ type (
 	ServersRepoFactory      func() (*servers.Repository, error)
 	StaticRepoFactory       func() (*static.Repository, error)
 	TargetRepoFactory       func() (*target.Repository, error)
+	SessionRepoFactory      func() (*session.Repository, error)
 )

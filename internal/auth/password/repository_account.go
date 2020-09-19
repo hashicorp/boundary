@@ -251,6 +251,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 			"LoginName":   a.LoginName,
 		},
 		fieldMaskPaths,
+		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", db.ErrEmptyFieldMask)

@@ -250,6 +250,10 @@ type TestControllerOpts struct {
 	// The recovery KMS to use, or one will be created
 	RecoveryKms wrapping.Wrapper
 
+	// Disables KMS key creation. Only valid when a database url is specified,
+	// at the moment.
+	DisableKmsKeyCreation bool
+
 	// The name to use for the controller, otherwise one will be randomly
 	// generated, unless provided in a non-nil Config
 	Name string
@@ -356,8 +360,10 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		if err := tc.b.ConnectToDatabase("postgres"); err != nil {
 			t.Fatal(err)
 		}
-		if err := tc.b.CreateGlobalKmsKeys(); err != nil {
-			t.Fatal(err)
+		if !opts.DisableKmsKeyCreation {
+			if err := tc.b.CreateGlobalKmsKeys(); err != nil {
+				t.Fatal(err)
+			}
 		}
 		if !opts.DisableAuthMethodCreation {
 			if err := tc.b.CreateInitialAuthMethod(); err != nil {
@@ -403,13 +409,15 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		opts = new(TestControllerOpts)
 	}
 	nextOpts := &TestControllerOpts{
-		DatabaseUrl:         tc.c.conf.DatabaseUrl,
-		DefaultAuthMethodId: tc.c.conf.DevAuthMethodId,
-		RootKms:             tc.c.conf.RootKms,
-		WorkerAuthKms:       tc.c.conf.WorkerAuthKms,
-		RecoveryKms:         tc.c.conf.RecoveryKms,
-		Name:                opts.Name,
-		Logger:              tc.c.conf.Logger,
+		DatabaseUrl:               tc.c.conf.DatabaseUrl,
+		DefaultAuthMethodId:       tc.c.conf.DevAuthMethodId,
+		RootKms:                   tc.c.conf.RootKms,
+		WorkerAuthKms:             tc.c.conf.WorkerAuthKms,
+		RecoveryKms:               tc.c.conf.RecoveryKms,
+		Name:                      opts.Name,
+		Logger:                    tc.c.conf.Logger,
+		DisableKmsKeyCreation:     true,
+		DisableAuthMethodCreation: true,
 	}
 	if opts.Logger != nil {
 		nextOpts.Logger = opts.Logger

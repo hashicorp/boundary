@@ -17,8 +17,9 @@ const (
 type ConnectionStatus string
 
 const (
-	StatusConnected ConnectionStatus = "connected"
-	StatusClosed    ConnectionStatus = "closed"
+	StatusAuthorized ConnectionStatus = "authorized"
+	StatusConnected  ConnectionStatus = "connected"
+	StatusClosed     ConnectionStatus = "closed"
 )
 
 // String representation of the state's status
