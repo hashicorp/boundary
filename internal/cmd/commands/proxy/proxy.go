@@ -289,8 +289,8 @@ func (c *Command) Run(args []string) int {
 	transport := cleanhttp.DefaultTransport()
 	transport.DisableKeepAlives = false
 	transport.TLSClientConfig = tlsConf
-	// This isn't/shouldn't used anyways really because the connection is hijacked, just
-	// setting for completeness
+	// This isn't/shouldn't used anyways really because the connection is
+	// hijacked, just setting for completeness
 	transport.IdleConnTimeout = 0
 
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{

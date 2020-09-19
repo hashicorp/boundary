@@ -53,10 +53,6 @@ message TargetView {
   // Maximum number of connections in a session
   // @inject_tag: `gorm:"default:null"`
   uint32 session_connection_limit = 110;
-
-  // Idle timeout for a connection in the session, in seconds
-  // @inject_tag: `gorm:"default:null"`
-  uint32 connection_idle_timeout_seconds = 120;
 }
 
 message TargetHostSet {
@@ -127,12 +123,5 @@ message TcpTarget {
   uint32 session_connection_limit = 110 [(custom_options.v1.mask_mapping) = {
     this: "SessionConnectionLimit"
     that: "session_connection_limit"
-  }];
-
-  // Idle timeout for a connection in the session, in seconds
-  // @inject_tag: `gorm:"default:null"`
-  uint32 connection_idle_timeout_seconds = 120 [(custom_options.v1.mask_mapping) = {
-    this: "ConnectionIdleTimeoutSeconds"
-    that: "connection_idle_timeout_seconds"
   }];
 }

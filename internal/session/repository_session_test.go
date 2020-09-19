@@ -237,16 +237,15 @@ func TestRepository_CreateSession(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			s := &Session{
-				UserId:                       tt.args.composedOf.UserId,
-				HostId:                       tt.args.composedOf.HostId,
-				TargetId:                     tt.args.composedOf.TargetId,
-				HostSetId:                    tt.args.composedOf.HostSetId,
-				AuthTokenId:                  tt.args.composedOf.AuthTokenId,
-				ScopeId:                      tt.args.composedOf.ScopeId,
-				Endpoint:                     "tcp://127.0.0.1:22",
-				ExpirationTime:               tt.args.composedOf.ExpirationTime,
-				ConnectionLimit:              tt.args.composedOf.ConnectionLimit,
-				ConnectionIdleTimeoutSeconds: tt.args.composedOf.ConnectionIdleTimeoutSeconds,
+				UserId:          tt.args.composedOf.UserId,
+				HostId:          tt.args.composedOf.HostId,
+				TargetId:        tt.args.composedOf.TargetId,
+				HostSetId:       tt.args.composedOf.HostSetId,
+				AuthTokenId:     tt.args.composedOf.AuthTokenId,
+				ScopeId:         tt.args.composedOf.ScopeId,
+				Endpoint:        "tcp://127.0.0.1:22",
+				ExpirationTime:  tt.args.composedOf.ExpirationTime,
+				ConnectionLimit: tt.args.composedOf.ConnectionLimit,
 			}
 			ses, st, privKey, err := repo.CreateSession(context.Background(), wrapper, s)
 			if tt.wantErr {

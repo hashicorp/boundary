@@ -57,18 +57,6 @@ func DefaultAttributes() Option {
 	}
 }
 
-func WithConnectionIdleTimeoutSeconds(inConnectionIdleTimeoutSeconds uint32) Option {
-	return func(o *options) {
-		o.postMap["connection_idle_timeout_seconds"] = inConnectionIdleTimeoutSeconds
-	}
-}
-
-func DefaultConnectionIdleTimeoutSeconds() Option {
-	return func(o *options) {
-		o.postMap["connection_idle_timeout_seconds"] = nil
-	}
-}
-
 func WithTcpTargetDefaultPort(inDefaultPort uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
