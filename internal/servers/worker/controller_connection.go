@@ -31,6 +31,7 @@ func (w *Worker) startControllerConnections() error {
 	for _, addr := range w.conf.RawConfig.Worker.Controllers {
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil && strings.Contains(err.Error(), "missing port in address") {
+			w.logger.Trace("missing port in controller address, using port 9201", "address", addr)
 			host, port, err = net.SplitHostPort(fmt.Sprintf("%s:%s", addr, "9201"))
 		}
 		if err != nil {
