@@ -144,3 +144,24 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 
 	return &pbs.ActivateSessionResponse{}, nil
 }
+
+func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
+	ws.logger.Trace("got activate session request from worker", "session_id", req.GetSessionId())
+
+	sessRepo, err := ws.sessionRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
+	}
+
+	connectionInfo, _, err := sessRepo.AuthorizeConnection(ctx, req.GetSessionId())
+	if err != nil {
+		return nil, err
+	}
+	if connectionInfo == nil {
+		return nil, status.Error(codes.Internal, "Invalid activate connection response.")
+	}
+
+	return &pbs.AuthorizeConnectionResponse{
+		ConnectionId: connectionInfo.GetPublicId(),
+	}, nil
+}
