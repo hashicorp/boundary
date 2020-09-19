@@ -57,13 +57,16 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 	if newSession.TofuToken != nil {
 		return nil, nil, nil, fmt.Errorf("create session: tofu token must be empty: %w", db.ErrInvalidParameter)
 	}
+	if newSession.ExpirationTime == nil || newSession.ExpirationTime.Timestamp.AsTime().IsZero() {
+		return nil, nil, nil, fmt.Errorf("create session: expiration is empty: %w", db.ErrInvalidParameter)
+	}
 
 	id, err := newId()
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("create session: %w", err)
 	}
 
-	privKey, certBytes, err := newCert(sessionWrapper, newSession.UserId, id)
+	privKey, certBytes, err := newCert(sessionWrapper, newSession.UserId, id, newSession.ExpirationTime.Timestamp.AsTime())
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("create session: %w", err)
 	}

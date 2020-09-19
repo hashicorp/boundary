@@ -45,13 +45,16 @@ func TestSession_Create(t *testing.T) {
 				opt:        []Option{WithExpirationTime(exp)},
 			},
 			want: &Session{
-				UserId:      composedOf.UserId,
-				HostId:      composedOf.HostId,
-				TargetId:    composedOf.TargetId,
-				HostSetId:   composedOf.HostSetId,
-				AuthTokenId: composedOf.AuthTokenId,
-				ScopeId:     composedOf.ScopeId,
-				Endpoint:    "tcp://127.0.0.1:22",
+				UserId:                       composedOf.UserId,
+				HostId:                       composedOf.HostId,
+				TargetId:                     composedOf.TargetId,
+				HostSetId:                    composedOf.HostSetId,
+				AuthTokenId:                  composedOf.AuthTokenId,
+				ScopeId:                      composedOf.ScopeId,
+				Endpoint:                     "tcp://127.0.0.1:22",
+				ExpirationTime:               composedOf.ExpirationTime,
+				ConnectionLimit:              composedOf.ConnectionLimit,
+				ConnectionIdleTimeoutSeconds: composedOf.ConnectionIdleTimeoutSeconds,
 			},
 			create: true,
 		},
@@ -143,7 +146,7 @@ func TestSession_Create(t *testing.T) {
 				id, err := db.NewPublicId(SessionPrefix)
 				require.NoError(err)
 				got.PublicId = id
-				_, certBytes, err := newCert(wrapper, got.UserId, id)
+				_, certBytes, err := newCert(wrapper, got.UserId, id, composedOf.ExpirationTime.Timestamp.AsTime())
 				require.NoError(err)
 				got.Certificate = certBytes
 				err = db.New(conn).Create(context.Background(), got)

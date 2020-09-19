@@ -32,10 +32,13 @@ func NewTcpTarget(scopeId string, opt ...Option) (*TcpTarget, error) {
 	}
 	t := &TcpTarget{
 		TcpTarget: &store.TcpTarget{
-			ScopeId:     scopeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-			DefaultPort: opts.withDefaultPort,
+			ScopeId:                       scopeId,
+			Name:                          opts.withName,
+			Description:                   opts.withDescription,
+			DefaultPort:                   opts.withDefaultPort,
+			ConnectionIdleTimeoutDuration: opts.withConnectionIdleTimeoutDuration,
+			SessionConnectionLimit:        opts.withSessionConnectionLimit,
+			SessionMaxDuration:            opts.withSessionMaxDuration,
 		},
 	}
 	return t, nil

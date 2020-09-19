@@ -68,15 +68,18 @@ func TestGet(t *testing.T) {
 	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test", target.WithHostSets([]string{hs[0].GetPublicId(), hs[1].GetPublicId()}))
 
 	pTar := &pb.Target{
-		Id:          tar.GetPublicId(),
-		ScopeId:     proj.GetPublicId(),
-		Name:        wrapperspb.String("test"),
-		CreatedTime: tar.CreateTime.GetTimestamp(),
-		UpdatedTime: tar.UpdateTime.GetTimestamp(),
-		Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-		Type:        target.TcpTargetType.String(),
-		HostSetIds:  []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
-		Attributes:  new(structpb.Struct),
+		Id:                            tar.GetPublicId(),
+		ScopeId:                       proj.GetPublicId(),
+		Name:                          wrapperspb.String("test"),
+		CreatedTime:                   tar.CreateTime.GetTimestamp(),
+		UpdatedTime:                   tar.UpdateTime.GetTimestamp(),
+		Scope:                         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+		Type:                          target.TcpTargetType.String(),
+		HostSetIds:                    []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
+		Attributes:                    new(structpb.Struct),
+		SessionMaxDuration:            &wrapperspb.UInt32Value{Value: 28800},
+		ConnectionIdleTimeoutDuration: &wrapperspb.UInt32Value{Value: 3600},
+		SessionConnectionLimit:        &wrapperspb.UInt32Value{Value: 1},
 	}
 	for _, ihs := range hs {
 		pTar.HostSets = append(pTar.HostSets, &pb.HostSet{Id: ihs.GetPublicId(), HostCatalogId: ihs.GetCatalogId()})
@@ -146,15 +149,18 @@ func TestList(t *testing.T) {
 		name := fmt.Sprintf("tar%d", i)
 		tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), name, target.WithHostSets([]string{hss[0].GetPublicId(), hss[1].GetPublicId()}))
 		wantTars = append(wantTars, &pb.Target{
-			Id:          tar.GetPublicId(),
-			ScopeId:     proj.GetPublicId(),
-			Name:        wrapperspb.String(name),
-			Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-			CreatedTime: tar.GetCreateTime().GetTimestamp(),
-			UpdatedTime: tar.GetUpdateTime().GetTimestamp(),
-			Version:     tar.GetVersion(),
-			Type:        target.TcpTargetType.String(),
-			Attributes:  new(structpb.Struct),
+			Id:                            tar.GetPublicId(),
+			ScopeId:                       proj.GetPublicId(),
+			Name:                          wrapperspb.String(name),
+			Scope:                         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+			CreatedTime:                   tar.GetCreateTime().GetTimestamp(),
+			UpdatedTime:                   tar.GetUpdateTime().GetTimestamp(),
+			Version:                       tar.GetVersion(),
+			Type:                          target.TcpTargetType.String(),
+			Attributes:                    new(structpb.Struct),
+			SessionMaxDuration:            &wrapperspb.UInt32Value{Value: 28800},
+			ConnectionIdleTimeoutDuration: &wrapperspb.UInt32Value{Value: 3600},
+			SessionConnectionLimit:        &wrapperspb.UInt32Value{Value: 1},
 		})
 	}
 
@@ -304,6 +310,9 @@ func TestCreate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
+					SessionMaxDuration:            &wrapperspb.UInt32Value{Value: 28800},
+					ConnectionIdleTimeoutDuration: &wrapperspb.UInt32Value{Value: 3600},
+					SessionConnectionLimit:        &wrapperspb.UInt32Value{Value: 1},
 				},
 			},
 			errCode: codes.OK,
@@ -446,11 +455,14 @@ func TestUpdate(t *testing.T) {
 			name: "Update an Existing Target",
 			req: &pbs.UpdateTargetRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description"},
+					Paths: []string{"name", "description", "session_max_duration", "connection_idle_timeout_duration", "session_connection_limit"},
 				},
 				Item: &pb.Target{
-					Name:        wrapperspb.String("name"),
-					Description: wrapperspb.String("desc"),
+					Name:                          wrapperspb.String("name"),
+					Description:                   wrapperspb.String("desc"),
+					SessionMaxDuration:            wrapperspb.UInt32(3600),
+					ConnectionIdleTimeoutDuration: wrapperspb.UInt32(180),
+					SessionConnectionLimit:        wrapperspb.UInt32(5),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -464,9 +476,12 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
-					CreatedTime: tar.GetCreateTime().GetTimestamp(),
-					HostSetIds:  hsIds,
-					HostSets:    hostSets,
+					CreatedTime:                   tar.GetCreateTime().GetTimestamp(),
+					HostSetIds:                    hsIds,
+					HostSets:                      hostSets,
+					SessionMaxDuration:            wrapperspb.UInt32(3600),
+					ConnectionIdleTimeoutDuration: wrapperspb.UInt32(180),
+					SessionConnectionLimit:        wrapperspb.UInt32(5),
 				},
 			},
 			errCode: codes.OK,
@@ -494,8 +509,11 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
-					HostSetIds: hsIds,
-					HostSets:   hostSets,
+					HostSetIds:                    hsIds,
+					HostSets:                      hostSets,
+					SessionMaxDuration:            wrapperspb.UInt32(3600),
+					ConnectionIdleTimeoutDuration: wrapperspb.UInt32(180),
+					SessionConnectionLimit:        wrapperspb.UInt32(5),
 				},
 			},
 			errCode: codes.OK,
@@ -577,8 +595,11 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
-					HostSetIds: hsIds,
-					HostSets:   hostSets,
+					HostSetIds:                    hsIds,
+					HostSets:                      hostSets,
+					SessionMaxDuration:            wrapperspb.UInt32(3600),
+					ConnectionIdleTimeoutDuration: wrapperspb.UInt32(180),
+					SessionConnectionLimit:        wrapperspb.UInt32(5),
 				},
 			},
 			errCode: codes.OK,
@@ -606,8 +627,11 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
-					HostSetIds: hsIds,
-					HostSets:   hostSets,
+					HostSetIds:                    hsIds,
+					HostSets:                      hostSets,
+					SessionMaxDuration:            wrapperspb.UInt32(3600),
+					ConnectionIdleTimeoutDuration: wrapperspb.UInt32(180),
+					SessionConnectionLimit:        wrapperspb.UInt32(5),
 				},
 			},
 			errCode: codes.OK,
@@ -634,9 +658,12 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
-					Type:       target.TcpTargetType.String(),
-					HostSetIds: hsIds,
-					HostSets:   hostSets,
+					Type:                          target.TcpTargetType.String(),
+					HostSetIds:                    hsIds,
+					HostSets:                      hostSets,
+					SessionMaxDuration:            wrapperspb.UInt32(3600),
+					ConnectionIdleTimeoutDuration: wrapperspb.UInt32(180),
+					SessionConnectionLimit:        wrapperspb.UInt32(5),
 				},
 			},
 			errCode: codes.OK,

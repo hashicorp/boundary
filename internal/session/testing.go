@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // TestConnection creates a test connection for the sessionId in the repository.
@@ -72,7 +73,7 @@ func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c Compos
 	id, err := newId()
 	require.NoError(err)
 	s.PublicId = id
-	_, certBytes, err := newCert(wrapper, c.UserId, id)
+	_, certBytes, err := newCert(wrapper, c.UserId, id, c.ExpirationTime.Timestamp.AsTime())
 	require.NoError(err)
 	s.Certificate = certBytes
 	err = rw.Create(context.Background(), s)
@@ -126,14 +127,19 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 	require.NoError(err)
 
+	expTime := timestamppb.Now()
+	expTime.Seconds += int64(tcpTarget.GetSessionMaxDuration())
 	return ComposedOf{
-		UserId:      user.PublicId,
-		HostId:      hosts[0].PublicId,
-		TargetId:    tcpTarget.PublicId,
-		HostSetId:   sets[0].PublicId,
-		AuthTokenId: at.PublicId,
-		ScopeId:     tcpTarget.ScopeId,
-		Endpoint:    "tcp://127.0.0.1:22",
+		UserId:                       user.PublicId,
+		HostId:                       hosts[0].PublicId,
+		TargetId:                     tcpTarget.PublicId,
+		HostSetId:                    sets[0].PublicId,
+		AuthTokenId:                  at.PublicId,
+		ScopeId:                      tcpTarget.ScopeId,
+		Endpoint:                     "tcp://127.0.0.1:22",
+		ExpirationTime:               &timestamp.Timestamp{Timestamp: expTime},
+		ConnectionLimit:              tcpTarget.GetSessionConnectionLimit(),
+		ConnectionIdleTimeoutSeconds: tcpTarget.GetConnectionIdleTimeoutDuration(),
 	}
 }
 
@@ -170,5 +176,5 @@ func TestWorker(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *servers.
 // as a parameter.  It's currently used in controller.jobTestingHandler() and
 // should be deprecated once that function is refactored to use sessions properly.
 func TestCert(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PrivateKey, []byte, error) {
-	return newCert(wrapper, userId, jobId)
+	return newCert(wrapper, userId, jobId, time.Now().Add(5*time.Minute))
 }

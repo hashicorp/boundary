@@ -3182,7 +3182,7 @@ create trigger
   immutable_columns
 before
 update on target_tcp
-  for each row execute procedure immutable_columns('public_id', 'scope_id', 'session_max_duration', 'session_connection_limit', 'connection_idle_timeout_duration', 'create_time');
+  for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
 
 create trigger
   update_version_column
@@ -3435,7 +3435,7 @@ begin;
     immutable_columns
   before
   update on session
-    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time', 'endpoint');
+    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time', 'endpoint', 'connection_idle_timeout_seconds');
   
   create trigger 
     update_version_column 
