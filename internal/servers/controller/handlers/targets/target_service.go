@@ -118,6 +118,9 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 	if err != nil {
 		return nil, err
 	}
+	if u == nil {
+		return nil, nil
+	}
 	u.Scope = authResults.Scope
 	return &pbs.GetTargetResponse{Item: u}, nil
 }
@@ -151,6 +154,9 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
+	}
+	if u == nil {
+		return nil, nil
 	}
 	u.Scope = authResults.Scope
 	return &pbs.UpdateTargetResponse{Item: u}, nil
