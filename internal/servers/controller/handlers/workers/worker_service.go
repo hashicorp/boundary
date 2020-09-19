@@ -127,7 +127,13 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	sessionInfo, _, err := sessRepo.ActivateSession(ctx, req.GetSessionId(), req.GetVersion(), []byte(req.GetTofuToken()))
+	sessionInfo, _, err := sessRepo.ActivateSession(
+		ctx,
+		req.GetSessionId(),
+		req.GetVersion(),
+		req.GetWorkerId(),
+		resource.Worker.String(),
+		[]byte(req.GetTofuToken()))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error looking up session: %v", err)
 	}

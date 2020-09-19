@@ -38,6 +38,7 @@ message ActivateSessionRequest {
 	string session_id = 10;
 	string tofu_token = 20;
 	uint32 version = 30;
+	string worker_id = 40;
 }
 
 message ActivateSessionResponse{}

@@ -720,15 +720,6 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateTargetRequest)
 			proto.Merge(req, tc.req)
 
-			// Test some bad versions
-			req.Item.Version = version + 2
-			_, gErr := tested.UpdateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
-			require.Error(gErr)
-			req.Item.Version = version - 1
-			_, gErr = tested.UpdateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
-			require.Error(gErr)
-			req.Item.Version = version
-
 			got, gErr := tested.UpdateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateTarget(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 

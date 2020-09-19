@@ -108,6 +108,7 @@ func (w *Worker) activateSession(ctx context.Context, tofuToken string, sess *se
 		SessionId: sess.GetAuthorization().GetSessionId(),
 		TofuToken: tofuToken,
 		Version:   sess.GetVersion(),
+		WorkerId:  w.conf.RawConfig.Worker.Name,
 	})
 	if err != nil {
 		return fmt.Errorf("error activating session: %w", err)
