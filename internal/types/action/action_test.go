@@ -44,8 +44,8 @@ func TestAction(t *testing.T) {
 			want:   "*",
 		},
 		{
-			action: Connect,
-			want:   "connect",
+			action: Authorize,
+			want:   "authorize",
 		},
 		{
 			action: AddGrants,

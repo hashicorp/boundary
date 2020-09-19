@@ -16,6 +16,7 @@ type Target interface {
 	GetName() string
 	GetDescription() string
 	GetVersion() uint32
+	GetType() string
 	GetCreateTime() *timestamp.Timestamp
 	GetUpdateTime() *timestamp.Timestamp
 	oplog(op oplog.OpType) oplog.Metadata

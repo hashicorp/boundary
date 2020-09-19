@@ -183,7 +183,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 				fmt.Fprint(runOpts.Stderr, "cURL command not set by API operation; run without -output-curl-string to see the generated error\n")
 				return exitCode
 			}
-			if api.LastOutputStringError.Error() != api.ErrOutputStringRequest {
+			if !strings.Contains(api.LastOutputStringError.Error(), api.ErrOutputStringRequest) {
 				runOpts.Stdout.Write([]byte(fmt.Sprintf("Error creating request string: %s\n", api.LastOutputStringError.Error())))
 				return 1
 			}

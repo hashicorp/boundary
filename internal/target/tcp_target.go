@@ -97,3 +97,7 @@ func (t *TcpTarget) oplog(op oplog.OpType) oplog.Metadata {
 	}
 	return metadata
 }
+
+func (t TcpTarget) GetType() string {
+	return "tcp"
+}

@@ -58,11 +58,12 @@ type Config struct {
 	// per-call, regardless of any value set in Token.
 	RecoveryKmsWrapper wrapping.Wrapper
 
-	// HttpClient is the HTTP client to use. Boundary sets sane defaults for
-	// the http.Client and its associated http.Transport created in
-	// DefaultConfig. If you must modify Boundary's defaults, it is
-	// suggested that you start with that client and modify as needed rather
-	// than start with an empty client (or http.DefaultClient).
+	// HttpClient is the HTTP client to use. Boundary sets sane defaults for the
+	// http.Client and its associated http.Transport created in DefaultConfig.
+	// If you must modify Boundary's defaults, it is suggested that you start
+	// with that client and modify as needed rather than start with an empty
+	// client (or http.DefaultClient). Currently if the client is cloned the
+	// same HttpClient is used.
 	HttpClient *http.Client
 
 	// TLSConfig contains TLS configuration information. After modifying these
@@ -86,19 +87,16 @@ type Config struct {
 	// The CheckRetry function to use; a default is used if not provided
 	CheckRetry retryablehttp.CheckRetry
 
-	// Limiter is the rate limiter used by the client.
-	// If this pointer is nil, then there will be no limit set.
-	// In contrast, if this pointer is set, even to an empty struct,
-	// then that limiter will be used. Note that an empty Limiter
-	// is equivalent blocking all events.
+	// Limiter is the rate limiter used by the client. If this pointer is nil,
+	// then there will be no limit set. In contrast, if this pointer is set,
+	// even to an empty struct, then that limiter will be used. Note that an
+	// empty Limiter is equivalent blocking all events. Currently if the client
+	// is cloned the same limiter is used.
 	Limiter *rate.Limiter
 
 	// OutputCurlString causes the actual request to return an error of type
 	// *OutputStringError. Type asserting the error message will allow
 	// fetching a cURL-compatible string for the operation.
-	//
-	// Note: It is not thread-safe to set this and make concurrent requests
-	// with the same client. Cloning a client will not clone this value.
 	OutputCurlString bool
 
 	// SRVLookup enables the client to lookup the host through DNS SRV lookup
@@ -561,6 +559,7 @@ func (c *Client) Clone() *Client {
 		Backoff:            config.Backoff,
 		CheckRetry:         config.CheckRetry,
 		Limiter:            config.Limiter,
+		OutputCurlString:   config.OutputCurlString,
 		SRVLookup:          config.SRVLookup,
 	}
 	if config.TLSConfig != nil {

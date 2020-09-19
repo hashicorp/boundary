@@ -93,6 +93,12 @@ func DefaultDescription() Option {
 	}
 }
 
+func WithHostId(inHostId string) Option {
+	return func(o *options) {
+		o.postMap["host_id"] = inHostId
+	}
+}
+
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.postMap["name"] = inName

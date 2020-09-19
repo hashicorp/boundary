@@ -728,7 +728,7 @@ func With{{ .SubtypeName }}{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
 		o.postMap["{{ .ProtoName }}"] = in{{ .Name }}
 		{{ end }}	}
 }
-
+{{ if ( not .SkipDefault ) }}
 func Default{{ .SubtypeName }}{{ .Name }}() Option {
 	return func(o *options) {		{{ if ( not ( eq .SubtypeName "" ) ) }}
 		raw, ok := o.postMap["attributes"]
@@ -742,6 +742,7 @@ func Default{{ .SubtypeName }}{{ .Name }}() Option {
 		o.postMap["{{ .ProtoName }}"] = nil
 		{{ end }}	}
 }
+{{ end }}
 {{ end }}
 `))
 

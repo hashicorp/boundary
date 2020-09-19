@@ -65,6 +65,13 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"proxy": func() (cli.Command, error) {
 			return &proxy.Command{
 				Command: base.NewCommand(ui),
+				Func:    "proxy",
+			}, nil
+		},
+		"connect": func() (cli.Command, error) {
+			return &proxy.Command{
+				Command: base.NewCommand(ui),
+				Func:    "connect",
 			}, nil
 		},
 
@@ -556,6 +563,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"targets": func() (cli.Command, error) {
 			return &targets.Command{
 				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"targets authorize": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "authorize",
 			}, nil
 		},
 		"targets read": func() (cli.Command, error) {

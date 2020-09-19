@@ -243,6 +243,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				HostSetId:   tt.args.composedOf.HostSetId,
 				AuthTokenId: tt.args.composedOf.AuthTokenId,
 				ScopeId:     tt.args.composedOf.ScopeId,
+				Endpoint:    "tcp://127.0.0.1:22",
 			}
 			ses, st, privKey, err := repo.CreateSession(context.Background(), wrapper, s)
 			if tt.wantErr {

@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"crypto/ed25519"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"strings"
@@ -45,10 +46,10 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 		return nil, nil, nil, fmt.Errorf("create session: scope id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ServerId != "" {
-		return nil, nil, nil, fmt.Errorf("create session: server id must empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: server id must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ServerType != "" {
-		return nil, nil, nil, fmt.Errorf("create session: server type must empty: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("create session: server type must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.CtTofuToken != nil {
 		return nil, nil, nil, fmt.Errorf("create session: ct must be empty: %w", db.ErrInvalidParameter)
@@ -391,7 +392,7 @@ func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith
 // was cancelled or terminated.
 func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, serverId, serverType string, tofuToken []byte) (*Session, []*State, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("activate session: missing session id %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("activate session: missing session id: %w", db.ErrInvalidParameter)
 	}
 	if sessionVersion == 0 {
 		return nil, nil, fmt.Errorf("activate session: version cannot be zero: %w", db.ErrInvalidParameter)
@@ -402,6 +403,10 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 	if serverType == "" {
 		return nil, nil, fmt.Errorf("activate session: missing server type: %w", db.ErrInvalidParameter)
 	}
+	if len(tofuToken) == 0 {
+		return nil, nil, fmt.Errorf("activate session: missing tofu token: %w", db.ErrInvalidParameter)
+	}
+
 	updatedSession := AllocSession()
 	updatedSession.PublicId = sessionId
 	var returnedStates []*State
@@ -420,12 +425,16 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			foundSession := AllocSession()
 			foundSession.PublicId = sessionId
 			if err := reader.LookupById(ctx, &foundSession); err != nil {
-				return fmt.Errorf("lookup session: failed %w for %s", err, sessionId)
+				return fmt.Errorf("lookup session: failed for %s: %w", sessionId, err)
 			}
 			databaseWrapper, err := r.kms.GetWrapper(ctx, foundSession.ScopeId, kms.KeyPurposeDatabase)
 			if err != nil {
 				return fmt.Errorf("unable to get database wrapper: %w", err)
 			}
+			if len(foundSession.TofuToken) > 0 && subtle.ConstantTimeCompare(foundSession.TofuToken, tofuToken) != 1 {
+				return fmt.Errorf("tofu token mismatch")
+			}
+
 			updatedSession.TofuToken = tofuToken
 			updatedSession.ServerId = serverId
 			updatedSession.ServerType = serverType

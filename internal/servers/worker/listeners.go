@@ -70,7 +70,7 @@ func (w *Worker) startListeners() error {
 			ln.Mux.UnregisterProto(alpnmux.DefaultProto)
 			ln.Mux.UnregisterProto(alpnmux.NoProto)
 			l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
-				GetConfigForClient: w.getJobTls,
+				GetConfigForClient: w.getSessionTls,
 			})
 			if err != nil {
 				return fmt.Errorf("error getting tls listener: %w", err)
