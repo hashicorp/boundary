@@ -362,8 +362,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f.BoolVar(&BoolVar{
 				Name:   "output-curl-string",
 				Target: &c.flagOutputCurlString,
-				Usage: "Instead of executing the request, print an equivalent cURL " +
-					"command string and exit.",
+				Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
 			})
 		}
 
@@ -386,8 +385,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 					Default:    "table",
 					EnvVar:     EnvBoundaryCLIFormat,
 					Completion: complete.PredictSet("table", "json", "yaml"),
-					Usage: "Print the output in the given format. Valid formats " +
-						"are \"table\", \"json\", or \"yaml\".",
+					Usage:      "Print the output in the given format. Valid formats are \"table\" or \"json\".",
 				})
 			}
 		}

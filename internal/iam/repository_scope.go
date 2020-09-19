@@ -255,6 +255,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 			"description": scope.Description,
 		},
 		fieldMaskPaths,
+		nil,
 	)
 	// nada to update, so reload scope from db and return it
 	if len(dbMask) == 0 && len(nullFields) == 0 {

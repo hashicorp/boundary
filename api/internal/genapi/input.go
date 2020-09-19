@@ -31,6 +31,7 @@ type fieldInfo struct {
 	GenerateSdkOption bool
 	SubtypeName       string
 	Query             bool
+	SkipDefault       bool
 }
 
 type structInfo struct {
@@ -338,6 +339,14 @@ var inputStructs = []*structInfo{
 		sliceSubTypes: map[string]string{
 			"HostSets": "hostSetIds",
 		},
+		extraOptions: []fieldInfo{
+			{
+				Name:        "HostId",
+				ProtoName:   "host_id",
+				FieldType:   "string",
+				SkipDefault: true,
+			},
+		},
 		versionEnabled:      true,
 		typeOnCreate:        true,
 		createResponseTypes: true,
@@ -346,5 +355,15 @@ var inputStructs = []*structInfo{
 		inProto:     &targets.TcpTargetAttributes{},
 		outFile:     "targets/tcp_target_attributes.gen.go",
 		subtypeName: "TcpTarget",
+	},
+	{
+		inProto:     &targets.SessionAuthorization{},
+		outFile:     "targets/session_authorization.gen.go",
+		subtypeName: "SessionAuthorization",
+	},
+	{
+		inProto:     &targets.WorkerInfo{},
+		outFile:     "targets/worker_info.gen.go",
+		subtypeName: "WorkerInfo",
 	},
 }

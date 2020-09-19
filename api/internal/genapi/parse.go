@@ -62,6 +62,8 @@ func parsePBs() {
 					name = fmt.Sprintf("%s.%s", pkg, name)
 				}
 				fi.FieldType = sliceText + ptr + name
+			case protoreflect.BytesKind:
+				fi.FieldType = "[]byte"
 			default:
 				fi.FieldType = sliceText + k.String()
 			}

@@ -10,7 +10,7 @@ import (
 	context "context"
 	proto "github.com/golang/protobuf/proto"
 	_ "github.com/golang/protobuf/ptypes/timestamp"
-	sessions "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
+	targets "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	_ "github.com/hashicorp/boundary/internal/servers"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -32,17 +32,17 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-type GetSessionRequest struct {
+type LookupSessionRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
 	// The session ID from the client
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
+	SessionId string `protobuf:"bytes,10,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 }
 
-func (x *GetSessionRequest) Reset() {
-	*x = GetSessionRequest{}
+func (x *LookupSessionRequest) Reset() {
+	*x = LookupSessionRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -50,13 +50,13 @@ func (x *GetSessionRequest) Reset() {
 	}
 }
 
-func (x *GetSessionRequest) String() string {
+func (x *LookupSessionRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetSessionRequest) ProtoMessage() {}
+func (*LookupSessionRequest) ProtoMessage() {}
 
-func (x *GetSessionRequest) ProtoReflect() protoreflect.Message {
+func (x *LookupSessionRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -68,29 +68,33 @@ func (x *GetSessionRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetSessionRequest.ProtoReflect.Descriptor instead.
-func (*GetSessionRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use LookupSessionRequest.ProtoReflect.Descriptor instead.
+func (*LookupSessionRequest) Descriptor() ([]byte, []int) {
 	return file_controller_servers_services_v1_session_service_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *GetSessionRequest) GetId() string {
+func (x *LookupSessionRequest) GetSessionId() string {
 	if x != nil {
-		return x.Id
+		return x.SessionId
 	}
 	return ""
 }
 
-// SessionResponse contains information necessary for a client to establish a session
-type GetSessionResponse struct {
+// LookupSessionResponse contains information necessary for a client to
+// establish a session.
+type LookupSessionResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Session *sessions.Session `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
+	Authorization *targets.SessionAuthorizationData `protobuf:"bytes,10,opt,name=authorization,proto3" json:"authorization,omitempty"`
+	TofuToken     string                            `protobuf:"bytes,20,opt,name=tofu_token,json=tofuToken,proto3" json:"tofu_token,omitempty"`
+	Version       uint32                            `protobuf:"varint,30,opt,name=version,proto3" json:"version,omitempty"`
+	Endpoint      string                            `protobuf:"bytes,40,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
 }
 
-func (x *GetSessionResponse) Reset() {
-	*x = GetSessionResponse{}
+func (x *LookupSessionResponse) Reset() {
+	*x = LookupSessionResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -98,13 +102,13 @@ func (x *GetSessionResponse) Reset() {
 	}
 }
 
-func (x *GetSessionResponse) String() string {
+func (x *LookupSessionResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetSessionResponse) ProtoMessage() {}
+func (*LookupSessionResponse) ProtoMessage() {}
 
-func (x *GetSessionResponse) ProtoReflect() protoreflect.Message {
+func (x *LookupSessionResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -116,16 +120,146 @@ func (x *GetSessionResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetSessionResponse.ProtoReflect.Descriptor instead.
-func (*GetSessionResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use LookupSessionResponse.ProtoReflect.Descriptor instead.
+func (*LookupSessionResponse) Descriptor() ([]byte, []int) {
 	return file_controller_servers_services_v1_session_service_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GetSessionResponse) GetSession() *sessions.Session {
+func (x *LookupSessionResponse) GetAuthorization() *targets.SessionAuthorizationData {
 	if x != nil {
-		return x.Session
+		return x.Authorization
 	}
 	return nil
+}
+
+func (x *LookupSessionResponse) GetTofuToken() string {
+	if x != nil {
+		return x.TofuToken
+	}
+	return ""
+}
+
+func (x *LookupSessionResponse) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *LookupSessionResponse) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+type ActivateSessionRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	SessionId string `protobuf:"bytes,10,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	TofuToken string `protobuf:"bytes,20,opt,name=tofu_token,json=tofuToken,proto3" json:"tofu_token,omitempty"`
+	Version   uint32 `protobuf:"varint,30,opt,name=version,proto3" json:"version,omitempty"`
+	WorkerId  string `protobuf:"bytes,40,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+}
+
+func (x *ActivateSessionRequest) Reset() {
+	*x = ActivateSessionRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ActivateSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ActivateSessionRequest) ProtoMessage() {}
+
+func (x *ActivateSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ActivateSessionRequest.ProtoReflect.Descriptor instead.
+func (*ActivateSessionRequest) Descriptor() ([]byte, []int) {
+	return file_controller_servers_services_v1_session_service_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ActivateSessionRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *ActivateSessionRequest) GetTofuToken() string {
+	if x != nil {
+		return x.TofuToken
+	}
+	return ""
+}
+
+func (x *ActivateSessionRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *ActivateSessionRequest) GetWorkerId() string {
+	if x != nil {
+		return x.WorkerId
+	}
+	return ""
+}
+
+type ActivateSessionResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *ActivateSessionResponse) Reset() {
+	*x = ActivateSessionResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ActivateSessionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ActivateSessionResponse) ProtoMessage() {}
+
+func (x *ActivateSessionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_servers_services_v1_session_service_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ActivateSessionResponse.ProtoReflect.Descriptor instead.
+func (*ActivateSessionResponse) Descriptor() ([]byte, []int) {
+	return file_controller_servers_services_v1_session_service_proto_rawDescGZIP(), []int{3}
 }
 
 var File_controller_servers_services_v1_session_service_proto protoreflect.FileDescriptor
@@ -140,26 +274,54 @@ var file_controller_servers_services_v1_session_service_proto_rawDesc = []byte{
 	0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d,
 	0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x23, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c,
 	0x6c, 0x65, 0x72, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2f, 0x76, 0x31, 0x2f, 0x73,
-	0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x32, 0x63, 0x6f,
+	0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x30, 0x63, 0x6f,
 	0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65, 0x73,
-	0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2f, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x2f,
-	0x76, 0x31, 0x2f, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x22, 0x23, 0x0a, 0x11, 0x47, 0x65, 0x74, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x02, 0x69, 0x64, 0x22, 0x5d, 0x0a, 0x12, 0x47, 0x65, 0x74, 0x53, 0x65, 0x73, 0x73,
-	0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x47, 0x0a, 0x07, 0x73,
-	0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2d, 0x2e, 0x63,
-	0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x72, 0x65,
-	0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2e, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73,
-	0x2e, 0x76, 0x31, 0x2e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x07, 0x73, 0x65, 0x73,
-	0x73, 0x69, 0x6f, 0x6e, 0x32, 0x87, 0x01, 0x0a, 0x0e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e,
-	0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x75, 0x0a, 0x0a, 0x47, 0x65, 0x74, 0x53, 0x65,
-	0x73, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x31, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c,
-	0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69,
-	0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f,
-	0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x32, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72,
+	0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2f, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x73, 0x2f, 0x76,
+	0x31, 0x2f, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x35,
+	0x0a, 0x14, 0x4c, 0x6f, 0x6f, 0x6b, 0x75, 0x70, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f,
+	0x6e, 0x5f, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73,
+	0x69, 0x6f, 0x6e, 0x49, 0x64, 0x22, 0xd1, 0x01, 0x0a, 0x15, 0x4c, 0x6f, 0x6f, 0x6b, 0x75, 0x70,
+	0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x63, 0x0a, 0x0d, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x18, 0x0a, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x3d, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c,
+	0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65,
+	0x73, 0x2e, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x65, 0x73,
+	0x73, 0x69, 0x6f, 0x6e, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x44, 0x61, 0x74, 0x61, 0x52, 0x0d, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61,
+	0x74, 0x69, 0x6f, 0x6e, 0x12, 0x1d, 0x0a, 0x0a, 0x74, 0x6f, 0x66, 0x75, 0x5f, 0x74, 0x6f, 0x6b,
+	0x65, 0x6e, 0x18, 0x14, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x74, 0x6f, 0x66, 0x75, 0x54, 0x6f,
+	0x6b, 0x65, 0x6e, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x1e,
+	0x20, 0x01, 0x28, 0x0d, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x1a, 0x0a,
+	0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x18, 0x28, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x22, 0x8d, 0x01, 0x0a, 0x16, 0x41, 0x63,
+	0x74, 0x69, 0x76, 0x61, 0x74, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x5f,
+	0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f,
+	0x6e, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x74, 0x6f, 0x66, 0x75, 0x5f, 0x74, 0x6f, 0x6b, 0x65,
+	0x6e, 0x18, 0x14, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x74, 0x6f, 0x66, 0x75, 0x54, 0x6f, 0x6b,
+	0x65, 0x6e, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x1e, 0x20,
+	0x01, 0x28, 0x0d, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x1b, 0x0a, 0x09,
+	0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x28, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x08, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x49, 0x64, 0x22, 0x19, 0x0a, 0x17, 0x41, 0x63, 0x74,
+	0x69, 0x76, 0x61, 0x74, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x32, 0x97, 0x02, 0x0a, 0x0e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e,
+	0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x7e, 0x0a, 0x0d, 0x4c, 0x6f, 0x6f, 0x6b, 0x75,
+	0x70, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x34, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72,
 	0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2e, 0x73, 0x65,
-	0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x65, 0x73,
+	0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x6f, 0x6f, 0x6b, 0x75, 0x70,
+	0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x35,
+	0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76,
+	0x65, 0x72, 0x73, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e,
+	0x4c, 0x6f, 0x6f, 0x6b, 0x75, 0x70, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x84, 0x01, 0x0a, 0x0f, 0x41, 0x63, 0x74, 0x69,
+	0x76, 0x61, 0x74, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x36, 0x2e, 0x63, 0x6f,
+	0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73,
+	0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x63, 0x74,
+	0x69, 0x76, 0x61, 0x74, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x37, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72,
+	0x2e, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
+	0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x76, 0x61, 0x74, 0x65, 0x53, 0x65, 0x73,
 	0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x51,
 	0x5a, 0x4f, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73,
 	0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f,
@@ -181,18 +343,22 @@ func file_controller_servers_services_v1_session_service_proto_rawDescGZIP() []b
 	return file_controller_servers_services_v1_session_service_proto_rawDescData
 }
 
-var file_controller_servers_services_v1_session_service_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_controller_servers_services_v1_session_service_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_controller_servers_services_v1_session_service_proto_goTypes = []interface{}{
-	(*GetSessionRequest)(nil),  // 0: controller.servers.services.v1.GetSessionRequest
-	(*GetSessionResponse)(nil), // 1: controller.servers.services.v1.GetSessionResponse
-	(*sessions.Session)(nil),   // 2: controller.api.resources.sessions.v1.Session
+	(*LookupSessionRequest)(nil),             // 0: controller.servers.services.v1.LookupSessionRequest
+	(*LookupSessionResponse)(nil),            // 1: controller.servers.services.v1.LookupSessionResponse
+	(*ActivateSessionRequest)(nil),           // 2: controller.servers.services.v1.ActivateSessionRequest
+	(*ActivateSessionResponse)(nil),          // 3: controller.servers.services.v1.ActivateSessionResponse
+	(*targets.SessionAuthorizationData)(nil), // 4: controller.api.resources.targets.v1.SessionAuthorizationData
 }
 var file_controller_servers_services_v1_session_service_proto_depIdxs = []int32{
-	2, // 0: controller.servers.services.v1.GetSessionResponse.session:type_name -> controller.api.resources.sessions.v1.Session
-	0, // 1: controller.servers.services.v1.SessionService.GetSession:input_type -> controller.servers.services.v1.GetSessionRequest
-	1, // 2: controller.servers.services.v1.SessionService.GetSession:output_type -> controller.servers.services.v1.GetSessionResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
+	4, // 0: controller.servers.services.v1.LookupSessionResponse.authorization:type_name -> controller.api.resources.targets.v1.SessionAuthorizationData
+	0, // 1: controller.servers.services.v1.SessionService.LookupSession:input_type -> controller.servers.services.v1.LookupSessionRequest
+	2, // 2: controller.servers.services.v1.SessionService.ActivateSession:input_type -> controller.servers.services.v1.ActivateSessionRequest
+	1, // 3: controller.servers.services.v1.SessionService.LookupSession:output_type -> controller.servers.services.v1.LookupSessionResponse
+	3, // 4: controller.servers.services.v1.SessionService.ActivateSession:output_type -> controller.servers.services.v1.ActivateSessionResponse
+	3, // [3:5] is the sub-list for method output_type
+	1, // [1:3] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -205,7 +371,7 @@ func file_controller_servers_services_v1_session_service_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_controller_servers_services_v1_session_service_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetSessionRequest); i {
+			switch v := v.(*LookupSessionRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -217,7 +383,31 @@ func file_controller_servers_services_v1_session_service_proto_init() {
 			}
 		}
 		file_controller_servers_services_v1_session_service_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetSessionResponse); i {
+			switch v := v.(*LookupSessionResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_controller_servers_services_v1_session_service_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ActivateSessionRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_controller_servers_services_v1_session_service_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ActivateSessionResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -235,7 +425,7 @@ func file_controller_servers_services_v1_session_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_servers_services_v1_session_service_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
@@ -261,9 +451,11 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type SessionServiceClient interface {
-	// Validate session allows a worker to retrieve session information from the controller.
-	// This endpoint validates the session
-	GetSession(ctx context.Context, in *GetSessionRequest, opts ...grpc.CallOption) (*GetSessionResponse, error)
+	// GetSession allows a worker to retrieve session information from the
+	// controller.
+	LookupSession(ctx context.Context, in *LookupSessionRequest, opts ...grpc.CallOption) (*LookupSessionResponse, error)
+	// ActivateSession allows a worker to activate a session on a controller.
+	ActivateSession(ctx context.Context, in *ActivateSessionRequest, opts ...grpc.CallOption) (*ActivateSessionResponse, error)
 }
 
 type sessionServiceClient struct {
@@ -274,9 +466,18 @@ func NewSessionServiceClient(cc grpc.ClientConnInterface) SessionServiceClient {
 	return &sessionServiceClient{cc}
 }
 
-func (c *sessionServiceClient) GetSession(ctx context.Context, in *GetSessionRequest, opts ...grpc.CallOption) (*GetSessionResponse, error) {
-	out := new(GetSessionResponse)
-	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.SessionService/GetSession", in, out, opts...)
+func (c *sessionServiceClient) LookupSession(ctx context.Context, in *LookupSessionRequest, opts ...grpc.CallOption) (*LookupSessionResponse, error) {
+	out := new(LookupSessionResponse)
+	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.SessionService/LookupSession", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sessionServiceClient) ActivateSession(ctx context.Context, in *ActivateSessionRequest, opts ...grpc.CallOption) (*ActivateSessionResponse, error) {
+	out := new(ActivateSessionResponse)
+	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.SessionService/ActivateSession", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -285,37 +486,60 @@ func (c *sessionServiceClient) GetSession(ctx context.Context, in *GetSessionReq
 
 // SessionServiceServer is the server API for SessionService service.
 type SessionServiceServer interface {
-	// Validate session allows a worker to retrieve session information from the controller.
-	// This endpoint validates the session
-	GetSession(context.Context, *GetSessionRequest) (*GetSessionResponse, error)
+	// GetSession allows a worker to retrieve session information from the
+	// controller.
+	LookupSession(context.Context, *LookupSessionRequest) (*LookupSessionResponse, error)
+	// ActivateSession allows a worker to activate a session on a controller.
+	ActivateSession(context.Context, *ActivateSessionRequest) (*ActivateSessionResponse, error)
 }
 
 // UnimplementedSessionServiceServer can be embedded to have forward compatible implementations.
 type UnimplementedSessionServiceServer struct {
 }
 
-func (*UnimplementedSessionServiceServer) GetSession(context.Context, *GetSessionRequest) (*GetSessionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSession not implemented")
+func (*UnimplementedSessionServiceServer) LookupSession(context.Context, *LookupSessionRequest) (*LookupSessionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LookupSession not implemented")
+}
+func (*UnimplementedSessionServiceServer) ActivateSession(context.Context, *ActivateSessionRequest) (*ActivateSessionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ActivateSession not implemented")
 }
 
 func RegisterSessionServiceServer(s *grpc.Server, srv SessionServiceServer) {
 	s.RegisterService(&_SessionService_serviceDesc, srv)
 }
 
-func _SessionService_GetSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetSessionRequest)
+func _SessionService_LookupSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LookupSessionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SessionServiceServer).GetSession(ctx, in)
+		return srv.(SessionServiceServer).LookupSession(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/controller.servers.services.v1.SessionService/GetSession",
+		FullMethod: "/controller.servers.services.v1.SessionService/LookupSession",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SessionServiceServer).GetSession(ctx, req.(*GetSessionRequest))
+		return srv.(SessionServiceServer).LookupSession(ctx, req.(*LookupSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SessionService_ActivateSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ActivateSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SessionServiceServer).ActivateSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.servers.services.v1.SessionService/ActivateSession",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SessionServiceServer).ActivateSession(ctx, req.(*ActivateSessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -325,8 +549,12 @@ var _SessionService_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*SessionServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetSession",
-			Handler:    _SessionService_GetSession_Handler,
+			MethodName: "LookupSession",
+			Handler:    _SessionService_LookupSession_Handler,
+		},
+		{
+			MethodName: "ActivateSession",
+			Handler:    _SessionService_ActivateSession_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

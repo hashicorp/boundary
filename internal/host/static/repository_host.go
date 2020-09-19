@@ -126,6 +126,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 			"Address":     h.Address,
 		},
 		fieldMaskPaths,
+		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: %w", db.ErrEmptyFieldMask)

@@ -57,6 +57,18 @@ func DefaultAttributes() Option {
 	}
 }
 
+func WithConnectionIdleTimeoutDuration(inConnectionIdleTimeoutDuration uint32) Option {
+	return func(o *options) {
+		o.postMap["connection_idle_timeout_duration"] = inConnectionIdleTimeoutDuration
+	}
+}
+
+func DefaultConnectionIdleTimeoutDuration() Option {
+	return func(o *options) {
+		o.postMap["connection_idle_timeout_duration"] = nil
+	}
+}
+
 func WithTcpTargetDefaultPort(inDefaultPort uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -93,6 +105,12 @@ func DefaultDescription() Option {
 	}
 }
 
+func WithHostId(inHostId string) Option {
+	return func(o *options) {
+		o.postMap["host_id"] = inHostId
+	}
+}
+
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.postMap["name"] = inName
@@ -102,5 +120,29 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.postMap["name"] = nil
+	}
+}
+
+func WithSessionConnectionLimit(inSessionConnectionLimit uint32) Option {
+	return func(o *options) {
+		o.postMap["session_connection_limit"] = inSessionConnectionLimit
+	}
+}
+
+func DefaultSessionConnectionLimit() Option {
+	return func(o *options) {
+		o.postMap["session_connection_limit"] = nil
+	}
+}
+
+func WithSessionMaxDuration(inSessionMaxDuration uint32) Option {
+	return func(o *options) {
+		o.postMap["session_max_duration"] = inSessionMaxDuration
+	}
+}
+
+func DefaultSessionMaxDuration() Option {
+	return func(o *options) {
+		o.postMap["session_max_duration"] = nil
 	}
 }

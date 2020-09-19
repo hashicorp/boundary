@@ -111,8 +111,8 @@ func (w *Worker) createClientConn(addr string) error {
 		return fmt.Errorf("error dialing controller for worker auth: %w", err)
 	}
 
-	client := pbs.NewServerCoordinationServiceClient(cc)
-	w.controllerConn.Store(client)
+	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
+	w.controllerSessionConn.Store(pbs.NewSessionServiceClient(cc))
 
 	w.logger.Info("connected to controller", "address", addr)
 	return nil

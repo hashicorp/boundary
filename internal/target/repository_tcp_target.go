@@ -115,6 +115,9 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
 		case strings.EqualFold("defaultport", f):
+		case strings.EqualFold("sessionmaxduration", f):
+		case strings.EqualFold("sessionconnectionlimit", f):
+		case strings.EqualFold("connectionidletimeoutduration", f):
 		default:
 			return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
@@ -122,11 +125,15 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"Name":        target.Name,
-			"Description": target.Description,
-			"DefaultPort": target.DefaultPort,
+			"Name":                          target.Name,
+			"Description":                   target.Description,
+			"DefaultPort":                   target.DefaultPort,
+			"SessionMaxDuration":            target.SessionMaxDuration,
+			"SessionConnectionLimit":        target.SessionConnectionLimit,
+			"ConnectionIdleTimeoutDuration": target.ConnectionIdleTimeoutDuration,
 		},
 		fieldMaskPaths,
+		[]string{"SessionMaxDuration", "SessionConnectionLimit", "ConnectionIdleTimeoutDuration"},
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: %w", db.ErrEmptyFieldMask)
