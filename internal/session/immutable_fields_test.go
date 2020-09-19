@@ -213,22 +213,22 @@ func TestConnection_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"ClientTcpPort"},
 		},
 		{
-			name: "backend_tcp_address",
+			name: "endpoint_tcp_address",
 			update: func() *Connection {
 				c := new.Clone().(*Connection)
-				c.BackendTcpAddress = "0.0.0.0"
+				c.EndpointTcpAddress = "0.0.0.0"
 				return c
 			}(),
-			fieldMask: []string{"BackendTcpAddress"},
+			fieldMask: []string{"EndpointTcpAddress"},
 		},
 		{
-			name: "backend_tcp_port",
+			name: "endpoint_tcp_port",
 			update: func() *Connection {
 				c := new.Clone().(*Connection)
-				c.BackendTcpPort = 443
+				c.EndpointTcpPort = 443
 				return c
 			}(),
-			fieldMask: []string{"BackendTcpPort"},
+			fieldMask: []string{"EndpointTcpPort"},
 		},
 		{
 			name: "create time",

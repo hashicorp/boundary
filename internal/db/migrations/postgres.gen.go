@@ -3152,6 +3152,15 @@ create table target_tcp (
   name text not null, -- name is not optional for a target subtype
   description text,
   default_port int, -- default_port can be null
+   -- max duration of the session in seconds.  default of 0 equals no limit
+  session_duration_seconds int not null default 0
+    check(session_duration_seconds >= 0),
+  -- limit on number of session connections allowed.  default of 0 equals no limit
+  connection_limit int not null default 1
+    check(connection_limit >= 0),
+  -- connection idle timout in seconds.  default of 0 equals no limit
+  connection_idle_timeout_seconds int not null default 0
+    check(connection_idle_timeout_seconds >= 0),
   create_time wt_timestamp,
   update_time wt_timestamp,
   version wt_version,
@@ -3173,7 +3182,7 @@ create trigger
   immutable_columns
 before
 update on target_tcp
-  for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
+  for each row execute procedure immutable_columns('public_id', 'scope_id', 'session_duration_seconds', 'connection_limit', 'connection_idle_timeout_seconds', 'create_time');
 
 create trigger
   update_version_column
@@ -3206,6 +3215,9 @@ select
   name, 
   description, 
   default_port, 
+  session_duration_seconds,
+  connection_limit,
+  connection_idle_timeout_seconds,
   version, 
   create_time,
   update_time,
@@ -3395,6 +3407,12 @@ begin;
     certificate bytea not null,
     -- after this time the connection will be expired, e.g. forcefully terminated
     expiration_time wt_timestamp, -- maybe null
+    -- limit on number of session connections allowed.  default of 0 equals no limit
+    connection_limit int not null default 1
+      check(connection_limit >= 0), 
+    -- connection idle timout in seconds.  default of 0 equals no limit
+    connection_idle_timeout_seconds int not null default 0
+      check(connection_idle_timeout_seconds >= 0),
     -- trust of first use token 
     tofu_token bytea, -- will be null when session is first created
     -- the reason this session ended (null until terminated)
@@ -3417,7 +3435,7 @@ begin;
     immutable_columns
   before
   update on session
-    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'create_time', 'endpoint');
+    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time', 'endpoint');
   
   create trigger 
     update_version_column 
@@ -3493,6 +3511,7 @@ begin;
   as $$
   begin
     if new.termination_reason is not null then
+      -- check to see if there are any open connections.
       perform from
         session_connection sc,
         session_connection_state scs
@@ -3503,6 +3522,18 @@ begin;
       if found then 
         raise 'session %s has existing open connections', new.public_id;
       end if;
+      
+      -- check to see if there's a terminated state already, before inserting a
+      -- new one.
+      perform from
+        session_state ss
+      where
+        ss.session_id = new.public_id and 
+        ss.state = 'terminated';
+      if found then 
+        return new;
+      end if;
+
       insert into session_state (session_id, state)
       values
         (new.public_id, 'terminated');
@@ -3723,8 +3754,8 @@ begin;
     ('system error');
 
   -- A session connection is one connection proxied by a worker from a client to
-  -- a backend for a session. The client initiates the connection to the worker
-  -- and the worker initiates the connection to the backend.
+  -- a endpoint for a session. The client initiates the connection to the worker
+  -- and the worker initiates the connection to the endpoint.
   -- A session can have zero or more session connections.
   create table session_connection (
     public_id wt_public_id primary key,
@@ -3743,26 +3774,26 @@ begin;
         and
         client_tcp_port <= 65535
       ),
-    -- the backend_tcp_address is the network address of the backend which the
+    -- the endpoint_tcp_address is the network address of the endpoint which the
     -- worker initiated the connection to, for the user
-    backend_tcp_address inet not null,
-    -- the backend_tcp_port is the network port at the address of the backend the
+    endpoint_tcp_address inet not null,
+    -- the endpoint_tcp_port is the network port at the address of the endpoint the
     -- worker proxied a connection to, for the user
-    backend_tcp_port integer not null
+    endpoint_tcp_port integer not null
       check(
-        backend_tcp_port > 0
+        endpoint_tcp_port > 0
         and
-        backend_tcp_port <= 65535
+        endpoint_tcp_port <= 65535
       ),
     -- the total number of bytes received by the worker from the client and sent
-    -- to the backend for this connection
+    -- to the endpoint for this connection
     bytes_up bigint -- can be null
       check (
         bytes_up is null
         or
         bytes_up >= 0
       ),
-    -- the total number of bytes received by the worker from the backend and sent
+    -- the total number of bytes received by the worker from the endpoint and sent
     -- to the client for this connection
     bytes_down bigint -- can be null
       check (
@@ -3783,7 +3814,7 @@ begin;
     immutable_columns
   before
   update on session_connection
-    for each row execute procedure immutable_columns('public_id', 'session_id', 'client_tcp_address', 'client_tcp_port', 'backend_tcp_address', 'backend_tcp_port', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'session_id', 'client_tcp_address', 'client_tcp_port', 'endpoint_tcp_address', 'endpoint_tcp_port', 'create_time');
 
   create trigger 
     update_version_column 
@@ -3830,11 +3861,20 @@ begin;
   as $$
   begin
     if new.closed_reason is not null then
-      insert into session_connection_state (connection_id, state)
-      values
-        (new.public_id, 'closed');
+      -- check to see if there's a closed state already, before inserting a
+      -- new one.
+      perform from
+        session_connection_state cs
+      where
+        cs.connection_id = new.public_id and 
+        cs.state = 'closed';
+      if not found then 
+        insert into session_connection_state (connection_id, state)
+        values
+          (new.public_id, 'closed');
       end if;
-      return new;
+    end if;
+    return new;
   end;
   $$ language plpgsql;
 

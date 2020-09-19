@@ -9,10 +9,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
 )
 
 // CreateSession inserts into the repository and returns the new Session with
@@ -211,90 +209,61 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...
 	return rowsDeleted, nil
 }
 
-// UpdateSession updates the repository entry for the session, using the
-// fieldMaskPaths.  Only TerminationReason, ServerId and ServerType a muttable
-// and will be set to NULL if set to a zero value and included in the
-// fieldMaskPaths. Returned States are ordered by start time descending.
-func (r *Repository) UpdateSession(ctx context.Context, session *Session, version uint32, fieldMaskPaths []string, opt ...Option) (*Session, []*State, int, error) {
-	if session == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: missing session %w", db.ErrInvalidParameter)
+// CancelSession sets a session's state to "cancelling" in the repo.  It's
+// called when the user cancels a session and the controller wants to update the
+// session state to "cancelling" for the given reason, so the workers can get
+// the "cancelling signal" during their next status heartbeat.
+func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, []*State, error) {
+	if sessionId == "" {
+		return nil, nil, fmt.Errorf("cancel session: missing session id: %w", db.ErrInvalidParameter)
 	}
-	if session.PublicId == "" {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: missing session public id %w", db.ErrInvalidParameter)
+	if sessionVersion == 0 {
+		return nil, nil, fmt.Errorf("cancel session: missing session version: %w", db.ErrInvalidParameter)
 	}
-	if session.CtTofuToken != nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: ct must be empty: %w", db.ErrInvalidParameter)
+	s, ss, err := r.updateState(ctx, sessionId, sessionVersion, StatusCancelling)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cancel session: %w", err)
+	}
+	return s, ss, nil
+}
+
+// TerminateSession sets a session's state to "terminated" in the repo.  It's
+// called by the worker when the session has been terminated or by a controller
+// when all of a session's workers have stopped sending heartbeat status for a
+// period of time.  Sessions cannot be terminated which still have connections
+// that are not closed.
+func (r *Repository) TerminateSession(ctx context.Context, sessionId string, sessionVersion uint32, reason TerminationReason) (*Session, []*State, error) {
+	if sessionId == "" {
+		return nil, nil, fmt.Errorf("terminate session: missing session id: %w", db.ErrInvalidParameter)
+	}
+	if sessionVersion == 0 {
+		return nil, nil, fmt.Errorf("terminate session: version cannot be zero: %w", db.ErrInvalidParameter)
 	}
 
-	translatedFieldMasks := make([]string, 0, len(fieldMaskPaths))
-	for _, f := range fieldMaskPaths {
-		switch {
-		case strings.EqualFold("TerminationReason", f):
-			translatedFieldMasks = append(translatedFieldMasks, f)
-		case strings.EqualFold("ServerId", f):
-			translatedFieldMasks = append(translatedFieldMasks, f)
-		case strings.EqualFold("ServerType", f):
-			translatedFieldMasks = append(translatedFieldMasks, f)
-		case strings.EqualFold("TofuToken", f):
-			translatedFieldMasks = append(translatedFieldMasks, "CtTofuToken")
-		default:
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: field: %s: %w", f, db.ErrInvalidFieldMask)
-		}
-	}
-
-	updateSession := session.Clone().(*Session)
-	if strutil.StrListContains(translatedFieldMasks, "CtTofuToken") && len(updateSession.TofuToken) != 0 {
-		if err := r.reader.LookupById(ctx, updateSession); err != nil {
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: %w for %s", err, updateSession.PublicId)
-		}
-		databaseWrapper, err := r.kms.GetWrapper(ctx, updateSession.ScopeId, kms.KeyPurposeDatabase)
-		if err != nil {
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: unable to get database wrapper: %w", err)
-		}
-		if err := updateSession.encrypt(ctx, databaseWrapper); err != nil {
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("create session: %w", err)
-		}
-	}
-
-	var dbMask, nullFields []string
-	dbMask, nullFields = dbcommon.BuildUpdatePaths(
-		map[string]interface{}{
-			"TerminationReason": updateSession.TerminationReason,
-			"ServerId":          updateSession.ServerId,
-			"ServerType":        updateSession.ServerType,
-			"CtTofuToken":       updateSession.CtTofuToken,
-		},
-		translatedFieldMasks,
-	)
-	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: %w", db.ErrEmptyFieldMask)
-	}
-
-	var s *Session
-	var states []*State
-	var rowsUpdated int
+	updatedSession := AllocSession()
+	updatedSession.PublicId = sessionId
+	updatedSession.TerminationReason = reason.String()
+	var returnedStates []*State
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			var err error
-			s = updateSession.Clone().(*Session)
-
-			rowsUpdated, err = w.Update(
-				ctx,
-				s,
-				dbMask,
-				nullFields,
-			)
+			rowsAffected, err := w.Exec(terminateSessionCte, []interface{}{sessionId, sessionVersion})
 			if err != nil {
-				return err
+				return fmt.Errorf("unable to terminate session %s: %w", sessionId, err)
 			}
-			if err == nil && rowsUpdated > 1 {
-				// return err, which will result in a rollback of the update
-				return errors.New("error more than 1 session would have been updated ")
+			if rowsAffected == 0 {
+				return fmt.Errorf("unable to terminate session %s", sessionId)
 			}
-			states, err = fetchStates(ctx, reader, s.PublicId, db.WithOrder("start_time desc"))
+			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"TerminationReason"}, nil, db.WithVersion(&sessionVersion))
+			if err != nil {
+				return fmt.Errorf("update session: failed %w for %s", err, sessionId)
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("update to session %s would have updated %d session", updatedSession.PublicId, rowsUpdated)
+			}
+			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
 			if err != nil {
 				return err
 			}
@@ -302,25 +271,140 @@ func (r *Repository) UpdateSession(ctx context.Context, session *Session, versio
 		},
 	)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update session: %w for %s", err, session.PublicId)
+		return nil, nil, fmt.Errorf("terminate session: %w", err)
 	}
-	if len(s.CtTofuToken) == 0 {
-		s.CtTofuToken = nil
+	return &updatedSession, returnedStates, nil
+}
+
+// ConnectSession creates a connection in the repo with a state of "connected".
+// Returns an ErrCancelledOrTerminatedSession error if a connection cannot be made
+// because the session was cancelled or terminated.
+func (r *Repository) ConnectSession(ctx context.Context, c ConnectWith) (*Connection, []*ConnectionState, error) {
+	// ConnectWith.validate will check all the fields...
+	if err := c.validate(); err != nil {
+		return nil, nil, fmt.Errorf("connect session: %w", err)
 	}
-	return s, states, rowsUpdated, err
+	connectionId, err := newConnectionId()
+	if err != nil {
+		return nil, nil, fmt.Errorf("connect session: %w", err)
+	}
+
+	connection := AllocConnection()
+	connection.PublicId = connectionId
+	var connectionStates []*ConnectionState
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			rowsAffected, err := w.Exec(createConnectionCte, []interface{}{c.SessionId, connectionId, c.ClientTcpAddress, c.ClientTcpPort, c.EndpointTcpAddress, c.EndpointTcpPort})
+			if err != nil {
+				return fmt.Errorf("unable to connect session %s: %w", c.SessionId, err)
+			}
+			if rowsAffected == 0 {
+				return fmt.Errorf("session %s is not active: %w", c.SessionId, ErrInvalidStateForOperation)
+			}
+			if err := reader.LookupById(ctx, &connection); err != nil {
+				return fmt.Errorf("lookup session: failed %w for %s", err, c.SessionId)
+			}
+			connectionStates, err = fetchConnectionStates(ctx, reader, connectionId, db.WithOrder("start_time desc"))
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("connect session: %w", err)
+	}
+	return &connection, connectionStates, nil
+}
+
+// CloseConnectionRep is just a wrapper for the response from CloseConnections.
+// It wraps the connection and its states for each connection closed.
+type CloseConnectionResp struct {
+	Connection       *Connection
+	ConnectionStates []*ConnectionState
+}
+
+// CloseConnections set's a connection's state to "closed" in the repo.  It's
+// called by a worker after it's closed a connection between the client and the
+// endpoint
+func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith, opt ...Option) ([]CloseConnectionResp, error) {
+	if len(closeWith) == 0 {
+		return nil, fmt.Errorf("close connections: missing connections to close: %w", db.ErrInvalidParameter)
+	}
+	for _, cw := range closeWith {
+		if err := cw.validate(); err != nil {
+			return nil, fmt.Errorf("close connections: %s was invalid: %w", cw.ConnectionId, err)
+		}
+	}
+	var resp []CloseConnectionResp
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			for _, cw := range closeWith {
+				updateConnection := AllocConnection()
+				updateConnection.PublicId = cw.ConnectionId
+				updateConnection.BytesUp = cw.BytesUp
+				updateConnection.BytesDown = cw.BytesDown
+				updateConnection.ClosedReason = cw.ClosedReason.String()
+				// updating the ClosedReason will trigger an insert into the
+				// session_connection_state with a state of closed.
+				rowsUpdated, err := w.Update(
+					ctx,
+					&updateConnection,
+					[]string{"BytesUp", "BytesDown", "ClosedReason"},
+					nil,
+					db.WithVersion(&cw.ConnectionVersion),
+				)
+				if err != nil {
+					return fmt.Errorf("unable to update connection %s: %w", cw.ConnectionId, err)
+				}
+				if rowsUpdated != 1 {
+					return fmt.Errorf("%d would have been updated for connection %s", rowsUpdated, cw.ConnectionId)
+				}
+				states, err := fetchConnectionStates(ctx, reader, cw.ConnectionId, db.WithOrder("start_time desc"))
+				if err != nil {
+					return err
+				}
+				resp = append(resp, CloseConnectionResp{
+					Connection:       &updateConnection,
+					ConnectionStates: states,
+				})
+
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("close connections: %w", err)
+	}
+	return resp, nil
 }
 
 // ActivateSession will activate the session and is called by a worker after
-// authenticating the session. States are ordered by start time descending.
-func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, tofuToken []byte) (*Session, []*State, error) {
+// authenticating the session. The session must be in a "pending" state to be
+// activated. States are ordered by start time descending. Returns an
+// ErrSessionNotPending error if a connection cannot be made because the session
+// was cancelled or terminated.
+func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, serverId, serverType string, tofuToken []byte) (*Session, []*State, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("activate session state: missing session id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("activate session: missing session id: %w", db.ErrInvalidParameter)
 	}
 	if sessionVersion == 0 {
-		return nil, nil, fmt.Errorf("activate session state: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("activate session: version cannot be zero: %w", db.ErrInvalidParameter)
+	}
+	if serverId == "" {
+		return nil, nil, fmt.Errorf("activate session: missing server id: %w", db.ErrInvalidParameter)
+	}
+	if serverType == "" {
+		return nil, nil, fmt.Errorf("activate session: missing server type: %w", db.ErrInvalidParameter)
 	}
 	if len(tofuToken) == 0 {
-		return nil, nil, fmt.Errorf("activate session state: missing tofu token: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("activate session: missing tofu token: %w", db.ErrInvalidParameter)
 	}
 
 	updatedSession := AllocSession()
@@ -336,11 +420,11 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 				return fmt.Errorf("unable to activate session %s: %w", sessionId, err)
 			}
 			if rowsAffected == 0 {
-				return fmt.Errorf("unable to activate session %s", sessionId)
+				return fmt.Errorf("unable to activate session %s: %w", sessionId, ErrSessionNotPending)
 			}
 			foundSession := AllocSession()
 			foundSession.PublicId = sessionId
-			if err := r.reader.LookupById(ctx, &foundSession); err != nil {
+			if err := reader.LookupById(ctx, &foundSession); err != nil {
 				return fmt.Errorf("lookup session: failed for %s: %w", sessionId, err)
 			}
 			databaseWrapper, err := r.kms.GetWrapper(ctx, foundSession.ScopeId, kms.KeyPurposeDatabase)
@@ -352,6 +436,8 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			}
 
 			updatedSession.TofuToken = tofuToken
+			updatedSession.ServerId = serverId
+			updatedSession.ServerType = serverType
 			if err := updatedSession.encrypt(ctx, databaseWrapper); err != nil {
 				return err
 			}
@@ -377,10 +463,10 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 	return &updatedSession, returnedStates, nil
 }
 
-// UpdateState will update the session's state using the session id and its
+// updateState will update the session's state using the session id and its
 // version.  States are ordered by start time descending. No options are
 // currently supported.
-func (r *Repository) UpdateState(ctx context.Context, sessionId string, sessionVersion uint32, s Status, opt ...Option) (*Session, []*State, error) {
+func (r *Repository) updateState(ctx context.Context, sessionId string, sessionVersion uint32, s Status, opt ...Option) (*Session, []*State, error) {
 	if sessionId == "" {
 		return nil, nil, fmt.Errorf("update session state: missing session id %w", db.ErrInvalidParameter)
 	}

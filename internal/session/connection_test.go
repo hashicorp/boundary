@@ -19,11 +19,11 @@ func TestConnection_Create(t *testing.T) {
 	s := TestDefaultSession(t, conn, wrapper, iamRepo)
 
 	type args struct {
-		sessionId         string
-		clientTcpAddress  string
-		clientTcpPort     uint32
-		backendTcpAddress string
-		backendTcpPort    uint32
+		sessionId          string
+		clientTcpAddress   string
+		clientTcpPort      uint32
+		endpointTcpAddress string
+		endpointTcpPort    uint32
 	}
 	tests := []struct {
 		name          string
@@ -37,28 +37,28 @@ func TestConnection_Create(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				sessionId:         s.PublicId,
-				clientTcpAddress:  "127.0.0.1",
-				clientTcpPort:     22,
-				backendTcpAddress: "127.0.0.1",
-				backendTcpPort:    2222,
+				sessionId:          s.PublicId,
+				clientTcpAddress:   "127.0.0.1",
+				clientTcpPort:      22,
+				endpointTcpAddress: "127.0.0.1",
+				endpointTcpPort:    2222,
 			},
 			want: &Connection{
-				SessionId:         s.PublicId,
-				ClientTcpAddress:  "127.0.0.1",
-				ClientTcpPort:     22,
-				BackendTcpAddress: "127.0.0.1",
-				BackendTcpPort:    2222,
+				SessionId:          s.PublicId,
+				ClientTcpAddress:   "127.0.0.1",
+				ClientTcpPort:      22,
+				EndpointTcpAddress: "127.0.0.1",
+				EndpointTcpPort:    2222,
 			},
 			create: true,
 		},
 		{
 			name: "empty-session-id",
 			args: args{
-				clientTcpAddress:  "127.0.0.1",
-				clientTcpPort:     22,
-				backendTcpAddress: "127.0.0.1",
-				backendTcpPort:    2222,
+				clientTcpAddress:   "127.0.0.1",
+				clientTcpPort:      22,
+				endpointTcpAddress: "127.0.0.1",
+				endpointTcpPort:    2222,
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -66,10 +66,10 @@ func TestConnection_Create(t *testing.T) {
 		{
 			name: "empty-client-address",
 			args: args{
-				sessionId:         s.PublicId,
-				clientTcpPort:     22,
-				backendTcpAddress: "127.0.0.1",
-				backendTcpPort:    2222,
+				sessionId:          s.PublicId,
+				clientTcpPort:      22,
+				endpointTcpAddress: "127.0.0.1",
+				endpointTcpPort:    2222,
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -77,32 +77,32 @@ func TestConnection_Create(t *testing.T) {
 		{
 			name: "empty-client-port",
 			args: args{
-				sessionId:         s.PublicId,
-				clientTcpAddress:  "localhost",
-				backendTcpAddress: "127.0.0.1",
-				backendTcpPort:    2222,
+				sessionId:          s.PublicId,
+				clientTcpAddress:   "localhost",
+				endpointTcpAddress: "127.0.0.1",
+				endpointTcpPort:    2222,
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "empty-backend-address",
+			name: "empty-endpoint-address",
 			args: args{
 				sessionId:        s.PublicId,
 				clientTcpAddress: "localhost",
 				clientTcpPort:    22,
-				backendTcpPort:   2222,
+				endpointTcpPort:  2222,
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "empty-backend-port",
+			name: "empty-endpoint-port",
 			args: args{
-				sessionId:         s.PublicId,
-				clientTcpAddress:  "localhost",
-				clientTcpPort:     22,
-				backendTcpAddress: "127.0.0.1",
+				sessionId:          s.PublicId,
+				clientTcpAddress:   "localhost",
+				clientTcpPort:      22,
+				endpointTcpAddress: "127.0.0.1",
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -115,8 +115,8 @@ func TestConnection_Create(t *testing.T) {
 				tt.args.sessionId,
 				tt.args.clientTcpAddress,
 				tt.args.clientTcpPort,
-				tt.args.backendTcpAddress,
-				tt.args.backendTcpPort,
+				tt.args.endpointTcpAddress,
+				tt.args.endpointTcpPort,
 			)
 			if tt.wantErr {
 				require.Error(err)

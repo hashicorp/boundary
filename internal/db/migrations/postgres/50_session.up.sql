@@ -131,6 +131,12 @@ begin;
     certificate bytea not null,
     -- after this time the connection will be expired, e.g. forcefully terminated
     expiration_time wt_timestamp, -- maybe null
+    -- limit on number of session connections allowed.  default of 0 equals no limit
+    connection_limit int not null default 1
+      check(connection_limit >= 0), 
+    -- connection idle timout in seconds.  default of 0 equals no limit
+    connection_idle_timeout_seconds int not null default 0
+      check(connection_idle_timeout_seconds >= 0),
     -- trust of first use token 
     tofu_token bytea, -- will be null when session is first created
     -- the reason this session ended (null until terminated)
@@ -153,7 +159,7 @@ begin;
     immutable_columns
   before
   update on session
-    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'create_time', 'endpoint');
+    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time', 'endpoint');
   
   create trigger 
     update_version_column 
@@ -229,6 +235,7 @@ begin;
   as $$
   begin
     if new.termination_reason is not null then
+      -- check to see if there are any open connections.
       perform from
         session_connection sc,
         session_connection_state scs
@@ -239,6 +246,18 @@ begin;
       if found then 
         raise 'session %s has existing open connections', new.public_id;
       end if;
+      
+      -- check to see if there's a terminated state already, before inserting a
+      -- new one.
+      perform from
+        session_state ss
+      where
+        ss.session_id = new.public_id and 
+        ss.state = 'terminated';
+      if found then 
+        return new;
+      end if;
+
       insert into session_state (session_id, state)
       values
         (new.public_id, 'terminated');

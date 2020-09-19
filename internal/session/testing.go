@@ -14,19 +14,21 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/target"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
 
 // TestConnection creates a test connection for the sessionId in the repository.
-func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, backendTcpAddr string, backendTcpPort uint32) *Connection {
+func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32) *Connection {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	c, err := NewConnection(sessionId, clientTcpAddr, clientTcpPort, backendTcpAddr, backendTcpPort)
+	c, err := NewConnection(sessionId, clientTcpAddr, clientTcpPort, endpointTcpAddr, endpointTcpPort)
 	require.NoError(err)
 	id, err := newConnectionId()
 	require.NoError(err)
@@ -141,6 +143,26 @@ func TestTofu(t *testing.T) []byte {
 	tofu, err := base62.Random(20)
 	require.NoError(err)
 	return []byte(tofu)
+}
+
+func TestWorker(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *servers.Server {
+	t.Helper()
+	rw := db.New(conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	serversRepo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	id, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	worker := &servers.Server{
+		Name:        "test-session-worker-" + id,
+		Type:        servers.ServerTypeWorker.String(),
+		Description: "Test Session Worker",
+		Address:     "127.0.0.1",
+	}
+	_, _, err = serversRepo.UpsertServer(context.Background(), worker)
+	require.NoError(t, err)
+	return worker
 }
 
 // TestCert is a temporary test func that intentionally doesn't take testing.T
