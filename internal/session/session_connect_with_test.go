@@ -86,7 +86,7 @@ func TestConnectWith_validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := ConnectWith{
-				SessionId:          tt.fields.SessionId,
+				ConnectionId:       tt.fields.SessionId,
 				ClientTcpAddress:   tt.fields.ClientTcpAddress,
 				ClientTcpPort:      tt.fields.ClientTcpPort,
 				EndpointTcpAddress: tt.fields.EndpointTcpAddress,

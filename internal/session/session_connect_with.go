@@ -9,7 +9,7 @@ import (
 // ConnectWith defines the boundary data that is saved in the repo when the
 // worker has established a connection between the client and the endpoint.
 type ConnectWith struct {
-	SessionId          string
+	ConnectionId       string
 	ClientTcpAddress   string
 	ClientTcpPort      uint32
 	EndpointTcpAddress string
@@ -17,7 +17,7 @@ type ConnectWith struct {
 }
 
 func (c ConnectWith) validate() error {
-	if c.SessionId == "" {
+	if c.ConnectionId == "" {
 		return fmt.Errorf("missing session id: %w", db.ErrInvalidParameter)
 	}
 	if c.ClientTcpAddress == "" {

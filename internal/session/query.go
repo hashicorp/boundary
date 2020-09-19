@@ -51,26 +51,22 @@ with terminated as (
 )
 select * from terminated;
 `
-	createConnectionCte = `
+	authorizeConnectionCte = `
 insert into session_connection (
 	session_id, 
-	public_id, 
-	client_tcp_address, 
-	client_tcp_port,
-	endpoint_tcp_address,
-	endpoint_tcp_port
+	public_id
 )
 with active_session as ( 
 	select 
 		$1 as session_id,
-		$2 as public_id,
-		$3::inet as client_tcp_address,
-		$4::int as client_tcp_port,
-		$5::inet as endpoint_tcp_address,
-		$6::int as endpoint_tcp_port
+		$2 as public_id
 	from
 		session s
 	where
+		-- check that the session hasn't expired.
+		s.expiration_time > now() and
+		-- check that there are still connections available. connection_limit of 0 equals unlimited connections
+		(s.connection_limit = 0 or s.connection_limit > (select count(*) from session_connection sc where sc.session_id = $1)) and
 		-- check that there's a state of active
 		s.public_id in (
 			select 
@@ -90,7 +86,7 @@ with active_session as (
 			where
 				ss.session_id = $1 and 
 				ss.state in('cancelling', 'terminated') 			
-		)
+		) 
 )
 select * from active_session;
 `

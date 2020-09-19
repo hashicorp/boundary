@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -398,6 +399,81 @@ func TestRepository_UpdateState(t *testing.T) {
 	}
 }
 
+func TestRepository_AuthorizeConnect(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	setupFn := func(exp *timestamp.Timestamp) string {
+		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+		if exp != nil {
+			composedOf.ExpirationTime = exp
+		}
+		s := TestSession(t, conn, wrapper, composedOf)
+		srv := TestWorker(t, conn, wrapper)
+		tofu := TestTofu(t)
+		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		require.NoError(t, err)
+		return s.PublicId
+	}
+	tests := []struct {
+		name        string
+		sessionId   string
+		wantErr     bool
+		wantIsError error
+	}{
+		{
+			name:      "valid",
+			sessionId: setupFn(nil),
+		},
+		{
+			name:        "empty-sessionId",
+			sessionId:   "",
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "exceeded-connection-limit",
+			sessionId: func() string {
+				sessionId := setupFn(nil)
+				_ = TestConnection(t, conn, sessionId, "127.0.0.1", 22, "127.0.0.1", 2222)
+				return sessionId
+			}(),
+			wantErr:     true,
+			wantIsError: ErrInvalidStateForOperation,
+		},
+		{
+			name:        "expired-session",
+			sessionId:   setupFn(&timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}),
+			wantErr:     true,
+			wantIsError: ErrInvalidStateForOperation,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			c, cs, err := repo.AuthorizeConnection(context.Background(), tt.sessionId)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantIsError != nil {
+					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(c)
+			require.NotNil(cs)
+			assert.Equal(StatusAuthorized.String(), cs[0].Status)
+		})
+	}
+}
+
 func TestRepository_ConnectSession(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -414,9 +490,9 @@ func TestRepository_ConnectSession(t *testing.T) {
 		tofu := TestTofu(t)
 		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
 		require.NoError(t, err)
-		_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
 		return ConnectWith{
-			SessionId:          s.PublicId,
+			ConnectionId:       c.PublicId,
 			ClientTcpAddress:   "127.0.0.1",
 			ClientTcpPort:      22,
 			EndpointTcpAddress: "127.0.0.1",
@@ -437,7 +513,7 @@ func TestRepository_ConnectSession(t *testing.T) {
 			name: "empty-SessionId",
 			connectWith: func() ConnectWith {
 				cw := setupFn()
-				cw.SessionId = ""
+				cw.ConnectionId = ""
 				return cw
 			}(),
 			wantErr:     true,
