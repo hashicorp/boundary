@@ -281,8 +281,8 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 
 // AuthorizeConnection will check to see if a connection is allowed.  Currently,
 // that authorization checks:
-//		* the hasn't expired based on the session.Expiration
-//      * number of connections already created is less than session.ConnectionLimit
+// * the hasn't expired based on the session.Expiration
+// * number of connections already created is less than session.ConnectionLimit
 // If authorization is success, it creates/stores a new connection in the repo
 // and returns it, along with it's states.  If the authorization fails, it
 // an error of ErrInvalidStateForOperation.
