@@ -102,7 +102,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		Version:                      sessionInfo.Version,
 		TofuToken:                    base64.StdEncoding.EncodeToString(sessionInfo.TofuToken),
 		Endpoint:                     sessionInfo.Endpoint,
-		MaxSeconds:                   uint32(time.Until(sessionInfo.ExpirationTime.Timestamp.AsTime()).Seconds()),
+		Expiration:                   sessionInfo.ExpirationTime.Timestamp,
 		ConnectionIdleTimeoutSeconds: sessionInfo.ConnectionIdleTimeoutSeconds,
 	}
 

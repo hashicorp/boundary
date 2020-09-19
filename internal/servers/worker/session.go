@@ -55,6 +55,10 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		return nil, fmt.Errorf("error validating session: %w", err)
 	}
 
+	if resp.GetExpiration().AsTime().Before(time.Now()) {
+		return nil, fmt.Errorf("session is expired")
+	}
+
 	parsedCert, err := x509.ParseCertificate(resp.GetAuthorization().Certificate)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing session certificate: %w", err)

@@ -29,7 +29,7 @@ message LookupSessionResponse {
 	string tofu_token = 20;
 	uint32 version = 30;
 	string endpoint = 40;
-	uint32 max_seconds = 50;
+	google.protobuf.Timestamp expiration = 50;
 	uint32 connection_idle_timeout_seconds = 60;
 }
 

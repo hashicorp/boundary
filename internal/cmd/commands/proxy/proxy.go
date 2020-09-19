@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
@@ -13,6 +14,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/golang/protobuf/proto"
@@ -31,9 +33,10 @@ import (
 )
 
 type ConnectionInfo struct {
-	Address  string `json:"address"`
-	Port     int    `json:"port"`
-	Protocol string `json:"protocol"`
+	Address    string    `json:"address"`
+	Port       int       `json:"port"`
+	Protocol   string    `json:"protocol"`
+	Expiration time.Time `json:"expiration"`
 }
 
 var _ cli.Command = (*Command)(nil)
@@ -348,9 +351,10 @@ func (c *Command) Run(args []string) int {
 
 	listenerAddr := listener.Addr().(*net.TCPAddr)
 	connInfo := ConnectionInfo{
-		Protocol: "tcp",
-		Address:  listenerAddr.IP.String(),
-		Port:     listenerAddr.Port,
+		Protocol:   "tcp",
+		Address:    listenerAddr.IP.String(),
+		Port:       listenerAddr.Port,
+		Expiration: handshakeResult.GetExpiration().AsTime(),
 	}
 
 	switch base.Format(c.UI) {
@@ -365,12 +369,18 @@ func (c *Command) Run(args []string) int {
 		c.UI.Output(string(out))
 	}
 
+	// We don't _rely_ on client-side timeout verification but this prevents us
+	// seeming to be ready for a connection that will immediately fail when we
+	// try to actually make it
+	expiringCtx, cancel := context.WithDeadline(c.Context, handshakeResult.GetExpiration().AsTime())
+	defer cancel()
+
 	// Get a wrapped net.Conn so we can use io.Copy
-	netConn := websocket.NetConn(c.Context, conn, websocket.MessageBinary)
+	netConn := websocket.NetConn(expiringCtx, conn, websocket.MessageBinary)
 
 	// Allow closing the listener from Ctrl-C
 	go func() {
-		<-c.Context.Done()
+		<-expiringCtx.Done()
 		listener.Close()
 	}()
 
@@ -378,7 +388,7 @@ func (c *Command) Run(args []string) int {
 	listener.Close()
 	if err != nil {
 		select {
-		case <-c.Context.Done():
+		case <-expiringCtx.Done():
 			return 0
 		default:
 			c.UI.Error(fmt.Errorf("Error accepting connection: %w", err).Error())

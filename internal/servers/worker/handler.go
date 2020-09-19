@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -65,7 +64,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 
 		w.logger.Trace("websocket upgrade done")
 
-		connCtx, connCancel := context.WithCancel(r.Context())
+		connCtx, connCancel := context.WithDeadline(r.Context(), sessionInfo.Expiration.AsTime())
 		w.cancellationMap.Store(sessionId, connCancel)
 		defer func() {
 			cancel, loaded := w.cancellationMap.LoadAndDelete(sessionId)
@@ -104,7 +103,10 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			}
 		}
 
-		if err := wspb.Write(connCtx, conn, &proxy.HandshakeResult{}); err != nil {
+		handshakeResult := &proxy.HandshakeResult{
+			Expiration: sessionInfo.GetExpiration(),
+		}
+		if err := wspb.Write(connCtx, conn, handshakeResult); err != nil {
 			w.logger.Error("error sending handshake result to client", "error", err)
 			conn.Close(websocket.StatusProtocolError, "unable to send handshake result")
 			return
@@ -121,36 +123,10 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 }
 
 func (w *Worker) wrapGenericHandler(h http.Handler, props HandlerProperties) http.Handler {
-	var maxRequestDuration time.Duration
-	var maxRequestSize int64
-	if props.ListenerConfig != nil {
-		maxRequestDuration = props.ListenerConfig.MaxRequestDuration
-		maxRequestSize = props.ListenerConfig.MaxRequestSize
-	}
-	if maxRequestDuration == 0 {
-		maxRequestDuration = globals.DefaultMaxRequestDuration
-	}
-	if maxRequestSize == 0 {
-		maxRequestSize = globals.DefaultMaxRequestSize
-	}
 	return http.HandlerFunc(func(wr http.ResponseWriter, r *http.Request) {
 		// Set the Cache-Control header for all responses returned
 		wr.Header().Set("Cache-Control", "no-store")
-
-		// Start with the request context
-		ctx := r.Context()
-		var cancelFunc context.CancelFunc
-		// Add our timeout
-		ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
-		// Add a size limiter if desired
-		if maxRequestSize > 0 {
-			ctx = context.WithValue(ctx, globals.ContextMaxRequestSizeTypeKey, maxRequestSize)
-		}
-		ctx = context.WithValue(ctx, globals.ContextOriginalRequestPathTypeKey, r.URL.Path)
-		r = r.WithContext(ctx)
-
 		h.ServeHTTP(wr, r)
-		cancelFunc()
 	})
 }
 
