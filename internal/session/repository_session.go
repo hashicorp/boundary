@@ -319,6 +319,12 @@ func (r *Repository) ConnectSession(ctx context.Context, c ConnectWith) (*Connec
 	return &connection, connectionStates, nil
 }
 
+// AuthorizeConnection will check to see if a connection is allowed.  Currently,
+// that entails checking the sessions connection limit
+func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) (*Connection, []*ConnectionState, error) {
+	panic("not implemented")
+}
+
 // CloseConnectionRep is just a wrapper for the response from CloseConnections.
 // It wraps the connection and its states for each connection closed.
 type CloseConnectionResp struct {
