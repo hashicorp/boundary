@@ -22,11 +22,11 @@ var _ cli.CommandAutocomplete = (*TcpCommand)(nil)
 type TcpCommand struct {
 	*base.Command
 
-	Func                              string
-	flagDefaultPort                   string
-	flagSessionMaxDuration            string
-	flagSessionConnectionLimit        string
-	flagConnectionIdleTimeoutDuration string
+	Func                             string
+	flagDefaultPort                  string
+	flagSessionMaxSeconds            string
+	flagSessionConnectionLimit       string
+	flagConnectionIdleTimeoutSeconds string
 }
 
 func (c *TcpCommand) Synopsis() string {
@@ -34,8 +34,8 @@ func (c *TcpCommand) Synopsis() string {
 }
 
 var tcpFlagsMap = map[string][]string{
-	"create": {"scope-id", "name", "description", "default-port", "session-max-duration", "session-connection-limit", "connection-idle-timeout-duration"},
-	"update": {"id", "name", "description", "version", "default-port", "session-max-duration", "session-connection-limit", "connection-idle-timeout-duration"},
+	"create": {"scope-id", "name", "description", "default-port", "session-max-seconds", "session-connection-limit", "connection-idle-timeout-seconds"},
+	"update": {"id", "name", "description", "version", "default-port", "session-max-seconds", "session-connection-limit", "connection-idle-timeout-seconds"},
 }
 
 func (c *TcpCommand) Help() string {
@@ -80,10 +80,10 @@ func (c *TcpCommand) Flags() *base.FlagSets {
 				Target: &c.flagDefaultPort,
 				Usage:  "The default port to set on the target.",
 			})
-		case "session-max-duration":
+		case "session-max-seconds":
 			f.StringVar(&base.StringVar{
-				Name:   "session-max-duration",
-				Target: &c.flagSessionMaxDuration,
+				Name:   "session-max-seconds",
+				Target: &c.flagSessionMaxSeconds,
 				Usage:  `The maximum lifetime of the session, including all connections. Can be specified as an integer number of seconds or a duration string.`,
 			})
 		case "session-connection-limit":
@@ -92,10 +92,10 @@ func (c *TcpCommand) Flags() *base.FlagSets {
 				Target: &c.flagSessionConnectionLimit,
 				Usage:  "The maximum number of connections allowed for a session. 0 means unlimited.",
 			})
-		case "connection-idle-timeout-duration":
+		case "connection-idle-timeout-seconds":
 			f.StringVar(&base.StringVar{
-				Name:   "connection-idle-timeout-duration",
-				Target: &c.flagConnectionIdleTimeoutDuration,
+				Name:   "connection-idle-timeout-seconds",
+				Target: &c.flagConnectionIdleTimeoutSeconds,
 				Usage:  `Time period after which the connection will be disconnected if there is no network traffic. Can be specified as an integer number of seconds or a duration string. 0 means unlimited.`,
 			})
 		}
@@ -170,24 +170,24 @@ func (c *TcpCommand) Run(args []string) int {
 		opts = append(opts, targets.WithTcpTargetDefaultPort(uint32(port)))
 	}
 
-	switch c.flagSessionMaxDuration {
+	switch c.flagSessionMaxSeconds {
 	case "":
 	case "null":
-		opts = append(opts, targets.DefaultSessionMaxDuration())
+		opts = append(opts, targets.DefaultSessionMaxSeconds())
 	default:
 		var final uint32
-		dur, err := strconv.ParseUint(c.flagSessionMaxDuration, 10, 32)
+		dur, err := strconv.ParseUint(c.flagSessionMaxSeconds, 10, 32)
 		if err == nil {
 			final = uint32(dur)
 		} else {
-			dur, err := time.ParseDuration(c.flagSessionMaxDuration)
+			dur, err := time.ParseDuration(c.flagSessionMaxSeconds)
 			if err != nil {
-				c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagSessionMaxDuration, err))
+				c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagSessionMaxSeconds, err))
 				return 1
 			}
 			final = uint32(dur.Seconds())
 		}
-		opts = append(opts, targets.WithSessionMaxDuration(final))
+		opts = append(opts, targets.WithSessionMaxSeconds(final))
 	}
 
 	switch c.flagSessionConnectionLimit {
@@ -203,24 +203,24 @@ func (c *TcpCommand) Run(args []string) int {
 		opts = append(opts, targets.WithSessionConnectionLimit(uint32(limit)))
 	}
 
-	switch c.flagConnectionIdleTimeoutDuration {
+	switch c.flagConnectionIdleTimeoutSeconds {
 	case "":
 	case "null":
-		opts = append(opts, targets.DefaultConnectionIdleTimeoutDuration())
+		opts = append(opts, targets.DefaultConnectionIdleTimeoutSeconds())
 	default:
 		var final uint32
-		dur, err := strconv.ParseUint(c.flagConnectionIdleTimeoutDuration, 10, 32)
+		dur, err := strconv.ParseUint(c.flagConnectionIdleTimeoutSeconds, 10, 32)
 		if err == nil {
 			final = uint32(dur)
 		} else {
-			dur, err := time.ParseDuration(c.flagConnectionIdleTimeoutDuration)
+			dur, err := time.ParseDuration(c.flagConnectionIdleTimeoutSeconds)
 			if err != nil {
-				c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagConnectionIdleTimeoutDuration, err))
+				c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagConnectionIdleTimeoutSeconds, err))
 				return 1
 			}
 			final = uint32(dur.Seconds())
 		}
-		opts = append(opts, targets.WithConnectionIdleTimeoutDuration(final))
+		opts = append(opts, targets.WithConnectionIdleTimeoutSeconds(final))
 	}
 
 	targetClient := targets.NewClient(client)

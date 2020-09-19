@@ -13,15 +13,15 @@ func generateTargetTableOutput(in *targets.Target) string {
 	var ret []string
 
 	nonAttributeMap := map[string]interface{}{
-		"ID":                                   in.Id,
-		"Scope ID":                             in.Scope.Id,
-		"Version":                              in.Version,
-		"Type":                                 in.Type,
-		"Created Time":                         in.CreatedTime.Local().Format(time.RFC3339),
-		"Updated Time":                         in.UpdatedTime.Local().Format(time.RFC3339),
-		"Connection Idle Timeout Duration (s)": in.ConnectionIdleTimeoutDuration,
-		"Session Connection Limit":             in.SessionConnectionLimit,
-		"Session Max Duration (s)":             in.SessionMaxDuration,
+		"ID":                              in.Id,
+		"Scope ID":                        in.Scope.Id,
+		"Version":                         in.Version,
+		"Type":                            in.Type,
+		"Created Time":                    in.CreatedTime.Local().Format(time.RFC3339),
+		"Updated Time":                    in.UpdatedTime.Local().Format(time.RFC3339),
+		"Connection Idle Timeout Seconds": in.ConnectionIdleTimeoutSeconds,
+		"Session Connection Limit":        in.SessionConnectionLimit,
+		"Session Max Seconds":             in.SessionMaxSeconds,
 	}
 
 	if in.Name != "" {

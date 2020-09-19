@@ -48,7 +48,7 @@ message TargetView {
 
   // Maximum total lifetime of a created session, in seconds
   // @inject_tag: `gorm:"default:null"`
-  uint32 session_max_duration = 100;
+  uint32 session_max_seconds = 100;
 
   // Maximum number of connections in a session
   // @inject_tag: `gorm:"default:null"`
@@ -56,7 +56,7 @@ message TargetView {
 
   // Idle timeout for a connection in the session, in seconds
   // @inject_tag: `gorm:"default:null"`
-  uint32 connection_idle_timeout_duration = 120;
+  uint32 connection_idle_timeout_seconds = 120;
 }
 
 message TargetHostSet {
@@ -117,9 +117,9 @@ message TcpTarget {
 
   // Maximum total lifetime of a created session, in seconds
   // @inject_tag: `gorm:"default:null"`
-  uint32 session_max_duration = 100 [(custom_options.v1.mask_mapping) = {
-    this: "SessionMaxDuration"
-    that: "session_max_duration"
+  uint32 session_max_seconds = 100 [(custom_options.v1.mask_mapping) = {
+    this: "SessionMaxSeconds"
+    that: "session_max_seconds"
   }];
 
   // Maximum number of connections in a session
@@ -131,8 +131,8 @@ message TcpTarget {
 
   // Idle timeout for a connection in the session, in seconds
   // @inject_tag: `gorm:"default:null"`
-  uint32 connection_idle_timeout_duration = 120 [(custom_options.v1.mask_mapping) = {
-    this: "ConnectionIdleTimeoutDuration"
-    that: "connection_idle_timeout_duration"
+  uint32 connection_idle_timeout_seconds = 120 [(custom_options.v1.mask_mapping) = {
+    this: "ConnectionIdleTimeoutSeconds"
+    that: "connection_idle_timeout_seconds"
   }];
 }

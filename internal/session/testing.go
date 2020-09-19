@@ -128,7 +128,7 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	require.NoError(err)
 
 	expTime := timestamppb.Now()
-	expTime.Seconds += int64(tcpTarget.GetSessionMaxDuration())
+	expTime.Seconds += int64(tcpTarget.GetSessionMaxSeconds())
 	return ComposedOf{
 		UserId:                       user.PublicId,
 		HostId:                       hosts[0].PublicId,
@@ -139,7 +139,7 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 		Endpoint:                     "tcp://127.0.0.1:22",
 		ExpirationTime:               &timestamp.Timestamp{Timestamp: expTime},
 		ConnectionLimit:              tcpTarget.GetSessionConnectionLimit(),
-		ConnectionIdleTimeoutSeconds: tcpTarget.GetConnectionIdleTimeoutDuration(),
+		ConnectionIdleTimeoutSeconds: tcpTarget.GetConnectionIdleTimeoutSeconds(),
 	}
 }
 

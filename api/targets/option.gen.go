@@ -57,15 +57,15 @@ func DefaultAttributes() Option {
 	}
 }
 
-func WithConnectionIdleTimeoutDuration(inConnectionIdleTimeoutDuration uint32) Option {
+func WithConnectionIdleTimeoutSeconds(inConnectionIdleTimeoutSeconds uint32) Option {
 	return func(o *options) {
-		o.postMap["connection_idle_timeout_duration"] = inConnectionIdleTimeoutDuration
+		o.postMap["connection_idle_timeout_seconds"] = inConnectionIdleTimeoutSeconds
 	}
 }
 
-func DefaultConnectionIdleTimeoutDuration() Option {
+func DefaultConnectionIdleTimeoutSeconds() Option {
 	return func(o *options) {
-		o.postMap["connection_idle_timeout_duration"] = nil
+		o.postMap["connection_idle_timeout_seconds"] = nil
 	}
 }
 
@@ -135,14 +135,14 @@ func DefaultSessionConnectionLimit() Option {
 	}
 }
 
-func WithSessionMaxDuration(inSessionMaxDuration uint32) Option {
+func WithSessionMaxSeconds(inSessionMaxSeconds uint32) Option {
 	return func(o *options) {
-		o.postMap["session_max_duration"] = inSessionMaxDuration
+		o.postMap["session_max_seconds"] = inSessionMaxSeconds
 	}
 }
 
-func DefaultSessionMaxDuration() Option {
+func DefaultSessionMaxSeconds() Option {
 	return func(o *options) {
-		o.postMap["session_max_duration"] = nil
+		o.postMap["session_max_seconds"] = nil
 	}
 }
