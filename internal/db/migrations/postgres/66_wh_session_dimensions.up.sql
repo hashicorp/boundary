@@ -4,8 +4,8 @@ begin;
     returns wh_dim_id
   as $$
   declare
-    src whx_host_dimension_target%rowtype;
-    target whx_host_dimension_target%rowtype;
+    src     whx_host_dimension_target%rowtype;
+    target  whx_host_dimension_target%rowtype;
     new_row wh_host_dimension%rowtype;
   begin
     select * into target
@@ -61,4 +61,52 @@ begin;
   end;
   $$ language plpgsql;
 
+  create or replace function wh_upsert_user(p_user_id wt_user_id)
+    returns wh_dim_id
+  as $$
+  declare
+    src     whx_user_dimension_target%rowtype;
+    target  whx_user_dimension_target%rowtype;
+    new_row wh_user_dimension%rowtype;
+  begin
+    select * into target
+      from whx_user_dimension_target as t
+     where t.user_id               = p_user_id;
+
+    select target.id, t.* into src
+      from whx_user_dimension_source as t
+     where t.user_id               = p_user_id;
+
+    if src is distinct from target then
+
+      -- expire the current row
+      update wh_user_dimension
+         set current_row_indicator = 'Expired',
+             row_expiration_time   = current_timestamp
+       where user_id               = p_user_id
+         and current_row_indicator = 'Current';
+
+      -- insert a new row
+      insert into wh_user_dimension (
+             user_id,               user_name,              user_description,
+             auth_account_id,       auth_account_type,      auth_account_name,             auth_account_description,
+             auth_method_id,        auth_method_type,       auth_method_name,              auth_method_description,
+             user_organization_id,  user_organization_name, user_organization_description,
+             current_row_indicator, row_effective_time,     row_expiration_time
+      )
+      select user_id,               user_name,              user_description,
+             auth_account_id,       auth_account_type,      auth_account_name,             auth_account_description,
+             auth_method_id,        auth_method_type,       auth_method_name,              auth_method_description,
+             user_organization_id,  user_organization_name, user_organization_description,
+             'Current',             current_timestamp,      'infinity'::timestamptz
+        from whx_user_dimension_source
+       where user_id               = p_user_id
+      returning * into new_row;
+
+      return new_row.id;
+    end if;
+    return target.id;
+
+  end;
+  $$ language plpgsql;
 commit;
