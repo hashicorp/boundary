@@ -175,11 +175,15 @@ begin;
               coalesce(u.name, 'None')          as user_name,
               coalesce(u.description, 'None')   as user_description,
               coalesce(aa.public_id, 'None')    as auth_account_id,
-              'password auth account'           as auth_account_type,
+              case when aa.public_id is null then 'None'
+                   else 'password auth account'
+                   end                          as auth_account_type,
               coalesce(apa.name, 'None')        as auth_account_name,
               coalesce(apa.description, 'None') as auth_account_description,
               coalesce(am.public_id, 'None')    as auth_method_id,
-              'password auth method'            as auth_method_type,
+              case when am.public_id is null then 'None'
+                   else 'password auth method'
+                   end                          as auth_method_type,
               coalesce(apm.name, 'None')        as auth_method_name,
               coalesce(apm.description, 'None') as auth_method_description,
               org.public_id                     as user_organization_id,
