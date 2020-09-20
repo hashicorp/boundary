@@ -65,9 +65,9 @@ with active_session as (
 	where
 		-- check that the session hasn't expired.
 		s.expiration_time > now() and
-		-- check that there are still connections available. connection_limit of 0 equals unlimited connections
+		-- check that there are still connections available. connection_limit of -1 equals unlimited connections
 		(
-			s.connection_limit = 0 
+			s.connection_limit = -1
 				or 
 			s.connection_limit > (select count(*) from session_connection sc where sc.session_id = $1)
 		) and
