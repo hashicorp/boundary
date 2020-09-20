@@ -95,7 +95,10 @@ type Session struct {
 	// @inject_tag: `gorm:"not_null"`
 	KeyId string `json:"key_id,omitempty" gorm:"not_null"`
 
-	tableName string `gorm:"-"`
+	// States for the session which are for read only and are ignored during
+	// write operations
+	States    []*State `gorm:"-"`
+	tableName string   `gorm:"-"`
 }
 
 func (s *Session) GetPublicId() string {
@@ -351,4 +354,39 @@ func (s *Session) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 		return fmt.Errorf("error decrypting session: %w", err)
 	}
 	return nil
+}
+
+type sessionView struct {
+	// Session fields
+	PublicId          string               `json:"public_id,omitempty" gorm:"primary_key"`
+	UserId            string               `json:"user_id,omitempty" gorm:"default:null"`
+	HostId            string               `json:"host_id,omitempty" gorm:"default:null"`
+	ServerId          string               `json:"server_id,omitempty" gorm:"default:null"`
+	ServerType        string               `json:"server_type,omitempty" gorm:"default:null"`
+	TargetId          string               `json:"target_id,omitempty" gorm:"default:null"`
+	HostSetId         string               `json:"host_set_id,omitempty" gorm:"default:null"`
+	AuthTokenId       string               `json:"auth_token_id,omitempty" gorm:"default:null"`
+	ScopeId           string               `json:"scope_id,omitempty" gorm:"default:null"`
+	Certificate       []byte               `json:"certificate,omitempty" gorm:"default:null"`
+	ExpirationTime    *timestamp.Timestamp `json:"expiration_time,omitempty" gorm:"default:null"`
+	CtTofuToken       []byte               `json:"ct_tofu_token,omitempty" gorm:"column:tofu_token;default:null" wrapping:"ct,tofu_token"`
+	TofuToken         []byte               `json:"tofu_token,omitempty" gorm:"-" wrapping:"pt,tofu_token"`
+	TerminationReason string               `json:"termination_reason,omitempty" gorm:"default:null"`
+	CreateTime        *timestamp.Timestamp `json:"create_time,omitempty" gorm:"default:current_timestamp"`
+	UpdateTime        *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
+	Version           uint32               `json:"version,omitempty" gorm:"default:null"`
+	Endpoint          string               `json:"-" gorm:"default:null"`
+	ConnectionLimit   uint32               `json:"connection_limit,omitempty" gorm:"default:null"`
+	KeyId             string               `json:"key_id,omitempty" gorm:"not_null"`
+
+	// State fields
+	Status          string               `json:"state,omitempty" gorm:"column:state"`
+	PreviousEndTime *timestamp.Timestamp `json:"previous_end_time,omitempty" gorm:"default:current_timestamp"`
+	StartTime       *timestamp.Timestamp `json:"start_time,omitempty" gorm:"default:current_timestamp;primary_key"`
+	EndTime         *timestamp.Timestamp `json:"end_time,omitempty" gorm:"default:current_timestamp"`
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *sessionView) TableName() string {
+	return "session_with_state"
 }

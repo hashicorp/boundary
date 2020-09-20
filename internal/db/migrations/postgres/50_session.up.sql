@@ -374,5 +374,35 @@ begin;
   create trigger insert_session_state before insert on session_state
     for each row execute procedure insert_session_state();
 
+  create view session_with_state as
+  select
+    s.public_id,
+    s.user_id,
+    s.host_id,
+    s.server_id,
+    s.server_type,
+    s.target_id,
+    s.host_set_id,
+    s.auth_token_id,
+    s.scope_id,
+    s.certificate,
+    s.expiration_time,
+    s.connection_limit,
+    s.tofu_token,
+    s.key_id,
+    s.termination_reason,
+    s.version,
+    s.create_time,
+    s.update_time,
+    s.endpoint,
+    ss.state,
+    ss.previous_end_time,
+    ss.start_time,
+    ss.end_time
+  from  
+    session s,
+    session_state ss
+  where 
+    s.public_id = ss.session_id;
 
 commit;

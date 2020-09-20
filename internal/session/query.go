@@ -109,4 +109,14 @@ select expiration_time, connection_limit, current_connection_count
 from  
 	session_connection_limit, session_connection_count;	
 `
+	sessionList = `
+select * 
+from
+	(select public_id from session %s) s,
+	session_with_state ss
+where 
+	s.public_id = ss.public_id 
+	%s
+%s
+`
 )
