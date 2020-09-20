@@ -373,7 +373,7 @@ HostSetIterationLoop:
 	if err != nil {
 		return nil, err
 	}
-	sess, _, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess)
+	sess, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess)
 	if err != nil {
 		return nil, err
 	}

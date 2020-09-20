@@ -376,7 +376,7 @@ type sessionView struct {
 	UpdateTime        *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	Version           uint32               `json:"version,omitempty" gorm:"default:null"`
 	Endpoint          string               `json:"-" gorm:"default:null"`
-	ConnectionLimit   uint32               `json:"connection_limit,omitempty" gorm:"default:null"`
+	ConnectionLimit   int32                `json:"connection_limit,omitempty" gorm:"default:null"`
 	KeyId             string               `json:"key_id,omitempty" gorm:"not_null"`
 
 	// State fields

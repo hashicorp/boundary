@@ -85,21 +85,21 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 				continue
 			}
 			sessionId := si.GetSessionId()
-			sessionInfo, sessionStates, err := sessRepo.LookupSession(ctx, sessionId)
+			sessionInfo, err := sessRepo.LookupSession(ctx, sessionId)
 			if err != nil {
 				return nil, status.Errorf(codes.Internal, "Error looking up session with id %s: %v", sessionId, err)
 			}
 			if sessionInfo == nil {
 				return nil, status.Errorf(codes.Internal, "Unknown session ID %s at status time.", sessionId)
 			}
-			if len(sessionStates) == 0 {
+			if len(sessionInfo.States) == 0 {
 				return nil, status.Error(codes.Internal, "Empty session states during lookup at status time.")
 			}
 			// If the session from the DB is in canceling status, and we're
 			// here, it means the job is in pending or active; cancel it. If
 			// it's in termianted status something went wrong and we're
 			// mismatched, so ensure we cancel it also.
-			currState := sessionStates[0].Status
+			currState := sessionInfo.States[0].Status
 			switch currState {
 			case session.StatusCancelling,
 				session.StatusTerminated:
@@ -129,14 +129,14 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		return nil, status.Errorf(codes.Internal, "Error getting session repo: %v", err)
 	}
 
-	sessionInfo, sessionStates, err := sessRepo.LookupSession(ctx, req.GetSessionId())
+	sessionInfo, err := sessRepo.LookupSession(ctx, req.GetSessionId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error looking up session: %v", err)
 	}
 	if sessionInfo == nil {
 		return nil, status.Error(codes.PermissionDenied, "Unknown session ID.")
 	}
-	if len(sessionStates) == 0 {
+	if len(sessionInfo.States) == 0 {
 		return nil, status.Error(codes.Internal, "Empty session states during lookup.")
 	}
 
@@ -145,7 +145,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			SessionId:   sessionInfo.GetPublicId(),
 			Certificate: sessionInfo.Certificate,
 		},
-		Status:     sessionStates[0].Status.ProtoVal(),
+		Status:     sessionInfo.States[0].Status.ProtoVal(),
 		Version:    sessionInfo.Version,
 		TofuToken:  string(sessionInfo.TofuToken),
 		Endpoint:   sessionInfo.Endpoint,
