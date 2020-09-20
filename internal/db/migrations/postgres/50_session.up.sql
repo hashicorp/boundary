@@ -133,7 +133,7 @@ begin;
     expiration_time wt_timestamp, -- maybe null
     -- limit on number of session connections allowed.  default of 0 equals no limit
     connection_limit int not null default 1
-      check(connection_limit >= 0), 
+      check(connection_limit > 0 or connection_limit = -1), 
     -- trust of first use token 
     tofu_token bytea, -- will be null when session is first created
     -- the reason this session ended (null until terminated)
