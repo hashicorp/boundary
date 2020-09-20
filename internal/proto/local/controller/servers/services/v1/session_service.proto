@@ -57,4 +57,5 @@ message AuthorizeConnectionRequest{
 message AuthorizeConnectionResponse{
 	string connection_id = 10;
 	controller.servers.services.v1.CONNECTIONSTATUS status = 20;
+	int32 connections_left = 30;
 }

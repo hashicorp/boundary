@@ -110,7 +110,8 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		}
 
 		var ci *connInfo
-		ci, err = w.authorizeConnection(r.Context(), sessionId)
+		var connsLeft int32
+		ci, connsLeft, err = w.authorizeConnection(r.Context(), sessionId)
 		if err != nil {
 			w.logger.Error("unable to authorize conneciton", "error", err)
 			conn.Close(websocket.StatusInternalError, "unable to authorize connection")
@@ -127,7 +128,8 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		w.logger.Trace("authorized connection", "connection_id", ci.id)
 
 		handshakeResult := &proxy.HandshakeResult{
-			Expiration: expiration,
+			Expiration:      expiration,
+			ConnectionsLeft: connsLeft,
 		}
 		if err := wspb.Write(connCtx, conn, handshakeResult); err != nil {
 			w.logger.Error("error sending handshake result to client", "error", err)

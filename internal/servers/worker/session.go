@@ -148,28 +148,28 @@ func (w *Worker) activateSession(ctx context.Context, sessionId, tofuToken strin
 	return resp.GetStatus(), nil
 }
 
-func (w *Worker) authorizeConnection(ctx context.Context, sessionId string) (*connInfo, error) {
+func (w *Worker) authorizeConnection(ctx context.Context, sessionId string) (*connInfo, int32, error) {
 	rawConn := w.controllerSessionConn.Load()
 	if rawConn == nil {
-		return nil, errors.New("could not get a controller client")
+		return nil, 0, errors.New("could not get a controller client")
 	}
 	conn, ok := rawConn.(pbs.SessionServiceClient)
 	if !ok {
-		return nil, errors.New("could not cast atomic controller client to the real thing")
+		return nil, 0, errors.New("could not cast atomic controller client to the real thing")
 	}
 	if conn == nil {
-		return nil, errors.New("controller client is nil")
+		return nil, 0, errors.New("controller client is nil")
 	}
 
 	resp, err := conn.AuthorizeConnection(ctx, &pbs.AuthorizeConnectionRequest{
 		SessionId: sessionId,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error authorizing connection: %w", err)
+		return nil, 0, fmt.Errorf("error authorizing connection: %w", err)
 	}
 
 	return &connInfo{
 		id:     resp.ConnectionId,
 		status: resp.GetStatus(),
-	}, nil
+	}, resp.GetConnectionsLeft(), nil
 }

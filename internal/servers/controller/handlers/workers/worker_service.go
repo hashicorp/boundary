@@ -206,7 +206,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	connectionInfo, connStates, _, err := sessRepo.AuthorizeConnection(ctx, req.GetSessionId())
+	connectionInfo, connStates, authzSummary, err := sessRepo.AuthorizeConnection(ctx, req.GetSessionId())
 	if err != nil {
 		return nil, err
 	}
@@ -217,8 +217,14 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		return nil, status.Error(codes.Internal, "Invalid connection state in authorize response.")
 	}
 
-	return &pbs.AuthorizeConnectionResponse{
-		ConnectionId: connectionInfo.GetPublicId(),
-		Status:       connStates[0].Status.ProtoVal(),
-	}, nil
+	ret := &pbs.AuthorizeConnectionResponse{
+		ConnectionId:    connectionInfo.GetPublicId(),
+		Status:          connStates[0].Status.ProtoVal(),
+		ConnectionsLeft: authzSummary.ConnectionLimit,
+	}
+	if ret.ConnectionsLeft != -1 {
+		ret.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
+	}
+
+	return ret, nil
 }
