@@ -2,7 +2,6 @@ package workers
 
 import (
 	"context"
-	"encoding/base64"
 	"sync"
 	"time"
 
@@ -148,7 +147,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		},
 		Status:     sessionStates[0].Status.ProtoVal(),
 		Version:    sessionInfo.Version,
-		TofuToken:  base64.StdEncoding.EncodeToString(sessionInfo.TofuToken),
+		TofuToken:  string(sessionInfo.TofuToken),
 		Endpoint:   sessionInfo.Endpoint,
 		Expiration: sessionInfo.ExpirationTime.Timestamp,
 	}
@@ -207,7 +206,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	connectionInfo, connStates, err := sessRepo.AuthorizeConnection(ctx, req.GetSessionId())
+	connectionInfo, connStates, _, err := sessRepo.AuthorizeConnection(ctx, req.GetSessionId())
 	if err != nil {
 		return nil, err
 	}

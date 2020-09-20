@@ -360,6 +360,7 @@ AcceptLoop:
 		}
 		connWg.Add(1)
 		go func() {
+			defer listeningConn.Close()
 			if err := handleConnection(
 				c.Context,
 				connWg,

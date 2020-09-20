@@ -51,6 +51,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 					sessionId := key.(string)
 					si := value.(*sessionInfo)
 					si.RLock()
+					status := si.status
 					connections := make([]*pbs.Connection, 0, len(si.connInfoMap))
 					for k, v := range si.connInfoMap {
 						connections = append(connections, &pbs.Connection{
@@ -58,6 +59,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 							Status:       v.status,
 						})
 					}
+					si.RUnlock()
 					jobInfo.SessionId = sessionId
 					activeJobs = append(activeJobs, &pbs.JobStatus{
 						Job: &pbs.Job{
@@ -65,7 +67,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 							JobInfo: &pbs.Job_SessionInfo{
 								SessionInfo: &pbs.SessionJobInfo{
 									SessionId:   sessionId,
-									Status:      si.status,
+									Status:      status,
 									Connections: connections,
 								},
 							},
@@ -94,8 +96,13 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 						addrs = append(addrs, resolver.Address{Addr: v.Address})
 						strAddrs = append(strAddrs, v.Address)
 					}
-					w.Resolver().UpdateState(resolver.State{Addresses: addrs})
 					w.logger.Trace("found controllers", "addresses", strAddrs)
+					switch len(strAddrs) {
+					case 0:
+						w.logger.Warn("got no controller addresses from controller; possibly prior to first status save, not persisting")
+					default:
+						w.Resolver().UpdateState(resolver.State{Addresses: addrs})
+					}
 					w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
 
 					for _, request := range result.GetJobsRequests() {
