@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
@@ -281,18 +282,18 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 
 // AuthorizeConnection will check to see if a connection is allowed.  Currently,
 // that authorization checks:
-//		* the hasn't expired based on the session.Expiration
-//      * number of connections already created is less than session.ConnectionLimit
+// * the hasn't expired based on the session.Expiration
+// * number of connections already created is less than session.ConnectionLimit
 // If authorization is success, it creates/stores a new connection in the repo
 // and returns it, along with it's states.  If the authorization fails, it
 // an error of ErrInvalidStateForOperation.
-func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) (*Connection, []*ConnectionState, error) {
+func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) (*Connection, []*ConnectionState, *ConnectionAuthzSummary, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("authorize connection: missing session id: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("authorize connection: missing session id: %w", db.ErrInvalidParameter)
 	}
 	connectionId, err := newConnectionId()
 	if err != nil {
-		return nil, nil, fmt.Errorf("authorize connection: %w", err)
+		return nil, nil, nil, fmt.Errorf("authorize connection: %w", err)
 	}
 
 	connection := AllocConnection()
@@ -321,9 +322,43 @@ func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) 
 		},
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("authorize connection: %w", err)
+		return nil, nil, nil, fmt.Errorf("authorize connection: %w", err)
 	}
-	return &connection, connectionStates, nil
+	authzSummary, err := r.sessionAuthzSummary(ctx, connection.SessionId)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("authorize connection: %w", err)
+	}
+	return &connection, connectionStates, authzSummary, nil
+}
+
+type ConnectionAuthzSummary struct {
+	ExpirationTime         *timestamp.Timestamp
+	ConnectionLimit        uint32
+	CurrentConnectionCount uint32
+}
+
+func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) (*ConnectionAuthzSummary, error) {
+	tx, err := r.reader.DB()
+	if err != nil {
+		return nil, fmt.Errorf("session summary: unable to get DB: %w", err)
+	}
+	rows, err := tx.QueryContext(ctx, remainingConnectionsCte, sessionId)
+	if err != nil {
+		return nil, fmt.Errorf("session summary: query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var info *ConnectionAuthzSummary
+	for rows.Next() {
+		if info != nil {
+			return nil, fmt.Errorf("session summary: query returned more than one row")
+		}
+		info = &ConnectionAuthzSummary{}
+		if err := r.reader.ScanRows(rows, info); err != nil {
+			return nil, fmt.Errorf("session summary: scan row failed: %w", err)
+		}
+	}
+	return info, nil
 }
 
 // ConnectSession updates a connection in the repo with a state of "connected".
