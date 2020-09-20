@@ -89,6 +89,7 @@ func TestRepository_ListSession(t *testing.T) {
 			testSessions := []*Session{}
 			for i := 0; i < tt.createCnt; i++ {
 				s := TestSession(t, conn, wrapper, composedOf)
+				_ = TestState(t, conn, s.PublicId, StatusActive)
 				testSessions = append(testSessions, s)
 			}
 			assert.Equal(tt.createCnt, len(testSessions))
@@ -99,6 +100,10 @@ func TestRepository_ListSession(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
+			if tt.wantCnt > 0 {
+				assert.Equal(StatusActive.String(), got[0].States[0].Status)
+				assert.Equal(StatusPending.String(), got[0].States[1].Status)
+			}
 		})
 	}
 	t.Run("withOrder", func(t *testing.T) {
