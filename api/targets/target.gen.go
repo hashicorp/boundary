@@ -28,7 +28,7 @@ type Target struct {
 	HostSetIds             []string               `json:"host_set_ids,omitempty"`
 	HostSets               []*HostSet             `json:"host_sets,omitempty"`
 	SessionMaxSeconds      uint32                 `json:"session_max_seconds,omitempty"`
-	SessionConnectionLimit uint32                 `json:"session_connection_limit,omitempty"`
+	SessionConnectionLimit int32                  `json:"session_connection_limit,omitempty"`
 	Attributes             map[string]interface{} `json:"attributes,omitempty"`
 
 	responseBody *bytes.Buffer

@@ -652,8 +652,8 @@ func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 		UpdatedTime:            in.GetUpdateTime().GetTimestamp(),
 		Version:                in.GetVersion(),
 		Type:                   target.TcpTargetType.String(),
-		SessionMaxSeconds:      &wrapperspb.UInt32Value{Value: in.GetSessionMaxSeconds()},
-		SessionConnectionLimit: &wrapperspb.UInt32Value{Value: in.GetSessionConnectionLimit()},
+		SessionMaxSeconds:      wrapperspb.UInt32(in.GetSessionMaxSeconds()),
+		SessionConnectionLimit: wrapperspb.Int32(in.GetSessionConnectionLimit()),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -698,6 +698,18 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 		if req.GetItem().GetName() == nil || req.GetItem().GetName().GetValue() == "" {
 			badFields["name"] = "This field is required."
 		}
+		if req.GetItem().GetSessionConnectionLimit() != nil {
+			val := req.GetItem().GetSessionConnectionLimit().GetValue()
+			switch {
+			case val == -1:
+			case val > 0:
+			default:
+				badFields["session_connection_limit"] = "This must be -1 (unlimited) or greater than zero."
+			}
+		}
+		if req.GetItem().GetSessionMaxSeconds() != nil && req.GetItem().GetSessionMaxSeconds().GetValue() == 0 {
+			badFields["session_max_seconds"] = "This must be greater than zero."
+		}
 		switch target.SubtypeFromType(req.GetItem().GetType()) {
 		case target.TcpSubType:
 			tcpAttrs := &pb.TcpTargetAttributes{}
@@ -724,6 +736,18 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 		badFields := map[string]string{}
 		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "name") && req.GetItem().GetName().GetValue() == "" {
 			badFields["name"] = "This field cannot be set to empty."
+		}
+		if req.GetItem().GetSessionConnectionLimit() != nil {
+			val := req.GetItem().GetSessionConnectionLimit().GetValue()
+			switch {
+			case val == -1:
+			case val > 0:
+			default:
+				badFields["session_connection_limit"] = "This must be -1 (unlimited) or greater than zero."
+			}
+		}
+		if req.GetItem().GetSessionMaxSeconds() != nil && req.GetItem().GetSessionMaxSeconds().GetValue() == 0 {
+			badFields["session_max_seconds"] = "This must be greater than zero."
 		}
 		switch target.SubtypeFromType(req.GetItem().GetType()) {
 		case target.TcpSubType:

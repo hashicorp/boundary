@@ -20,7 +20,7 @@ type Target interface {
 	GetCreateTime() *timestamp.Timestamp
 	GetUpdateTime() *timestamp.Timestamp
 	GetSessionMaxSeconds() uint32
-	GetSessionConnectionLimit() uint32
+	GetSessionConnectionLimit() int32
 	oplog(op oplog.OpType) oplog.Metadata
 }
 

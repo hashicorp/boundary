@@ -25,7 +25,7 @@ type options struct {
 	withTargetType             *TargetType
 	withHostSets               []string
 	withSessionMaxSeconds      uint32
-	withSessionConnectionLimit uint32
+	withSessionConnectionLimit int32
 }
 
 func getDefaultOptions() options {
@@ -107,7 +107,7 @@ func WithSessionMaxSeconds(dur uint32) Option {
 	}
 }
 
-func WithSessionConnectionLimit(limit uint32) Option {
+func WithSessionConnectionLimit(limit int32) Option {
 	return func(o *options) {
 		o.withSessionConnectionLimit = limit
 	}

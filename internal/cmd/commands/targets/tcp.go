@@ -89,7 +89,7 @@ func (c *TcpCommand) Flags() *base.FlagSets {
 			f.StringVar(&base.StringVar{
 				Name:   "session-connection-limit",
 				Target: &c.flagSessionConnectionLimit,
-				Usage:  "The maximum number of connections allowed for a session. 0 means unlimited.",
+				Usage:  "The maximum number of connections allowed for a session. -1 means unlimited.",
 			})
 		}
 	}
@@ -188,12 +188,12 @@ func (c *TcpCommand) Run(args []string) int {
 	case "null":
 		opts = append(opts, targets.DefaultSessionConnectionLimit())
 	default:
-		limit, err := strconv.ParseUint(c.flagSessionConnectionLimit, 10, 32)
+		limit, err := strconv.ParseInt(c.flagSessionConnectionLimit, 10, 32)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagSessionConnectionLimit, err))
 			return 1
 		}
-		opts = append(opts, targets.WithSessionConnectionLimit(uint32(limit)))
+		opts = append(opts, targets.WithSessionConnectionLimit(int32(limit)))
 	}
 
 	targetClient := targets.NewClient(client)

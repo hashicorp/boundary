@@ -3011,7 +3011,7 @@
         },
         "session_connection_limit": {
           "type": "integer",
-          "format": "int64",
+          "format": "int32",
           "title": "Maximum number of connections in a session"
         },
         "attributes": {
