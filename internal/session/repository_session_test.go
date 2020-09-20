@@ -409,7 +409,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
-	setupFn := func(exp *timestamp.Timestamp) string {
+	setupFn := func(exp *timestamp.Timestamp) *Session {
 		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 		if exp != nil {
 			composedOf.ExpirationTime = exp
@@ -419,37 +419,48 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 		tofu := TestTofu(t)
 		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
 		require.NoError(t, err)
-		return s.PublicId
+		return s
 	}
+	testSession := setupFn(nil)
+
 	tests := []struct {
-		name        string
-		sessionId   string
-		wantErr     bool
-		wantIsError error
+		name          string
+		session       *Session
+		wantErr       bool
+		wantIsError   error
+		wantAuthzInfo ConnectionAuthzSummary
 	}{
 		{
-			name:      "valid",
-			sessionId: setupFn(nil),
+			name:    "valid",
+			session: testSession,
+			wantAuthzInfo: ConnectionAuthzSummary{
+				ConnectionLimit:        1,
+				CurrentConnectionCount: 1,
+				ExpirationTime:         testSession.ExpirationTime,
+			},
 		},
 		{
-			name:        "empty-sessionId",
-			sessionId:   "",
+			name: "empty-sessionId",
+			session: func() *Session {
+				s := AllocSession()
+				return &s
+			}(),
 			wantErr:     true,
 			wantIsError: db.ErrInvalidParameter,
 		},
 		{
 			name: "exceeded-connection-limit",
-			sessionId: func() string {
-				sessionId := setupFn(nil)
-				_ = TestConnection(t, conn, sessionId, "127.0.0.1", 22, "127.0.0.1", 2222)
-				return sessionId
+			session: func() *Session {
+				session := setupFn(nil)
+				_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+				return session
 			}(),
 			wantErr:     true,
 			wantIsError: ErrInvalidStateForOperation,
 		},
 		{
 			name:        "expired-session",
-			sessionId:   setupFn(&timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}),
+			session:     setupFn(&timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}),
 			wantErr:     true,
 			wantIsError: ErrInvalidStateForOperation,
 		},
@@ -458,7 +469,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			c, cs, err := repo.AuthorizeConnection(context.Background(), tt.sessionId)
+			c, cs, authzInfo, err := repo.AuthorizeConnection(context.Background(), tt.session.PublicId)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
@@ -470,6 +481,9 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 			require.NotNil(c)
 			require.NotNil(cs)
 			assert.Equal(StatusAuthorized.String(), cs[0].Status)
+			assert.Equal(tt.wantAuthzInfo.ExpirationTime, authzInfo.ExpirationTime)
+			assert.Equal(tt.wantAuthzInfo.ConnectionLimit, authzInfo.ConnectionLimit)
+			assert.Equal(tt.wantAuthzInfo.CurrentConnectionCount, authzInfo.CurrentConnectionCount)
 		})
 	}
 }
