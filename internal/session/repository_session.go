@@ -18,64 +18,63 @@ import (
 // its State of "Pending".  The following fields must be empty when creating a
 // session: ServerId, ServerType, and PublicId.  No options are
 // currently supported.
-func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, opt ...Option) (*Session, *State, ed25519.PrivateKey, error) {
+func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, opt ...Option) (*Session, ed25519.PrivateKey, error) {
 	if newSession == nil {
-		return nil, nil, nil, fmt.Errorf("create session: missing session: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: missing session: %w", db.ErrInvalidParameter)
 	}
 	if newSession.PublicId != "" {
-		return nil, nil, nil, fmt.Errorf("create session: public id is not empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: public id is not empty: %w", db.ErrInvalidParameter)
 	}
 	if len(newSession.Certificate) != 0 {
-		return nil, nil, nil, fmt.Errorf("create session: certificate is not empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: certificate is not empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.TargetId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: target id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: target id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.HostId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.UserId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.HostSetId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: host set id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: host set id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.AuthTokenId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: auth token id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: auth token id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ScopeId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: scope id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: scope id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ServerId != "" {
-		return nil, nil, nil, fmt.Errorf("create session: server id must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: server id must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ServerType != "" {
-		return nil, nil, nil, fmt.Errorf("create session: server type must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: server type must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.CtTofuToken != nil {
-		return nil, nil, nil, fmt.Errorf("create session: ct must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: ct must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.TofuToken != nil {
-		return nil, nil, nil, fmt.Errorf("create session: tofu token must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: tofu token must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ExpirationTime == nil || newSession.ExpirationTime.Timestamp.AsTime().IsZero() {
-		return nil, nil, nil, fmt.Errorf("create session: expiration is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: expiration is empty: %w", db.ErrInvalidParameter)
 	}
 
 	id, err := newId()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("create session: %w", err)
+		return nil, nil, fmt.Errorf("create session: %w", err)
 	}
 
 	privKey, certBytes, err := newCert(sessionWrapper, newSession.UserId, id, newSession.ExpirationTime.Timestamp.AsTime())
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("create session: %w", err)
+		return nil, nil, fmt.Errorf("create session: %w", err)
 	}
 	newSession.Certificate = certBytes
 	newSession.PublicId = id
 
 	var returnedSession *Session
-	var returnedState *State
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -93,30 +92,32 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 			if len(foundStates) != 1 {
 				return fmt.Errorf("%d states found for new session %s", len(foundStates), returnedSession.PublicId)
 			}
-			returnedState = foundStates[0]
-			if returnedState.Status != StatusPending.String() {
-				return fmt.Errorf("new session %s state is not valid: %s", returnedSession.PublicId, returnedState.Status)
+			if len(foundStates) == 0 {
+				return fmt.Errorf("no states found for new session %s", returnedSession.PublicId)
+			}
+			returnedSession.States = foundStates
+			if returnedSession.States[0].Status != StatusPending.String() {
+				return fmt.Errorf("new session %s state is not valid: %s", returnedSession.PublicId, returnedSession.States[0].Status)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("create session: %w", err)
+		return nil, nil, fmt.Errorf("create session: %w", err)
 	}
-	return returnedSession, returnedState, privKey, err
+	return returnedSession, privKey, err
 }
 
 // LookupSession will look up a session in the repository and return the session
 // with its states.  Returned States are ordered by start time descending.  If the
 // session is not found, it will return nil, nil, nil. No options are currently
 // supported.
-func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ...Option) (*Session, []*State, error) {
+func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ...Option) (*Session, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("lookup session: missing sessionId id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup session: missing sessionId id: %w", db.ErrInvalidParameter)
 	}
 	session := AllocSession()
 	session.PublicId = sessionId
-	var states []*State
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -125,31 +126,33 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 			if err := read.LookupById(ctx, &session); err != nil {
 				return fmt.Errorf("lookup session: failed %w for %s", err, sessionId)
 			}
-			var err error
-			if states, err = fetchStates(ctx, read, sessionId, db.WithOrder("start_time desc")); err != nil {
+			states, err := fetchStates(ctx, read, sessionId, db.WithOrder("start_time desc"))
+			if err != nil {
 				return err
 			}
+			session.States = states
 			return nil
 		},
 	)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, nil, nil
+			return nil, nil
 		}
-		return nil, nil, fmt.Errorf("lookup session: %w", err)
+		return nil, fmt.Errorf("lookup session: %w", err)
 	}
 	if len(session.CtTofuToken) > 0 {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, session.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(session.KeyId))
 		if err != nil {
-			return nil, nil, fmt.Errorf("lookup session: unable to get database wrapper: %w", err)
+			return nil, fmt.Errorf("lookup session: unable to get database wrapper: %w", err)
 		}
 		if err := session.decrypt(ctx, databaseWrapper); err != nil {
-			return nil, nil, fmt.Errorf("lookup session: cannot decrypt session value: %w", err)
+			return nil, fmt.Errorf("lookup session: cannot decrypt session value: %w", err)
 		}
 	} else {
 		session.CtTofuToken = nil
 	}
-	return &session, states, nil
+
+	return &session, nil
 }
 
 // ListSessions will sessions.  Supports the WithLimit, and WithScopeId options.
@@ -254,18 +257,19 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...
 // called when the user cancels a session and the controller wants to update the
 // session state to "cancelling" for the given reason, so the workers can get
 // the "cancelling signal" during their next status heartbeat.
-func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, []*State, error) {
+func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("cancel session: missing session id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("cancel session: missing session id: %w", db.ErrInvalidParameter)
 	}
 	if sessionVersion == 0 {
-		return nil, nil, fmt.Errorf("cancel session: missing session version: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("cancel session: missing session version: %w", db.ErrInvalidParameter)
 	}
 	s, ss, err := r.updateState(ctx, sessionId, sessionVersion, StatusCancelling)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cancel session: %w", err)
+		return nil, fmt.Errorf("cancel session: %w", err)
 	}
-	return s, ss, nil
+	s.States = ss
+	return s, nil
 }
 
 // TerminateSession sets a session's state to "terminated" in the repo.  It's
@@ -273,18 +277,17 @@ func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessio
 // when all of a session's workers have stopped sending heartbeat status for a
 // period of time.  Sessions cannot be terminated which still have connections
 // that are not closed.
-func (r *Repository) TerminateSession(ctx context.Context, sessionId string, sessionVersion uint32, reason TerminationReason) (*Session, []*State, error) {
+func (r *Repository) TerminateSession(ctx context.Context, sessionId string, sessionVersion uint32, reason TerminationReason) (*Session, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("terminate session: missing session id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("terminate session: missing session id: %w", db.ErrInvalidParameter)
 	}
 	if sessionVersion == 0 {
-		return nil, nil, fmt.Errorf("terminate session: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("terminate session: version cannot be zero: %w", db.ErrInvalidParameter)
 	}
 
 	updatedSession := AllocSession()
 	updatedSession.PublicId = sessionId
 	updatedSession.TerminationReason = reason.String()
-	var returnedStates []*State
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -304,17 +307,18 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 			if rowsUpdated != 1 {
 				return fmt.Errorf("update to session %s would have updated %d session", updatedSession.PublicId, rowsUpdated)
 			}
-			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
+			states, err := fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
 			if err != nil {
 				return err
 			}
+			updatedSession.States = states
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("terminate session: %w", err)
+		return nil, fmt.Errorf("terminate session: %w", err)
 	}
-	return &updatedSession, returnedStates, nil
+	return &updatedSession, nil
 }
 
 // AuthorizeConnection will check to see if a connection is allowed.  Currently,

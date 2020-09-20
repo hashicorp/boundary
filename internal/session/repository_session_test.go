@@ -253,11 +253,10 @@ func TestRepository_CreateSession(t *testing.T) {
 				ExpirationTime:  tt.args.composedOf.ExpirationTime,
 				ConnectionLimit: tt.args.composedOf.ConnectionLimit,
 			}
-			ses, st, privKey, err := repo.CreateSession(context.Background(), wrapper, s)
+			ses, privKey, err := repo.CreateSession(context.Background(), wrapper, s)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(ses)
-				assert.Nil(st)
 				if tt.wantIsError != nil {
 					assert.True(errors.Is(err, tt.wantIsError))
 				}
@@ -266,11 +265,11 @@ func TestRepository_CreateSession(t *testing.T) {
 			require.NoError(err)
 			assert.NotNil(ses)
 			assert.NotNil(privKey)
-			assert.NotNil(st)
+			assert.NotNil(ses.States)
 			assert.NotNil(ses.CreateTime)
-			assert.NotNil(st.StartTime)
-			assert.Equal(st.Status, StatusPending.String())
-			foundSession, foundStates, err := repo.LookupSession(context.Background(), ses.PublicId)
+			assert.NotNil(ses.States[0].StartTime)
+			assert.Equal(ses.States[0].Status, StatusPending.String())
+			foundSession, err := repo.LookupSession(context.Background(), ses.PublicId)
 			assert.NoError(err)
 
 			// Account for slight offsets in nanos
@@ -282,8 +281,8 @@ func TestRepository_CreateSession(t *testing.T) {
 			err = db.TestVerifyOplog(t, rw, ses.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 
-			require.Equal(1, len(foundStates))
-			assert.Equal(foundStates[0].Status, StatusPending.String())
+			require.Equal(1, len(foundSession.States))
+			assert.Equal(foundSession.States[0].Status, StatusPending.String())
 		})
 	}
 }
@@ -670,7 +669,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, ss, err := repo.TerminateSession(context.Background(), tt.session.PublicId, tt.session.Version, tt.reason)
+			s, err := repo.TerminateSession(context.Background(), tt.session.PublicId, tt.session.Version, tt.reason)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
@@ -680,7 +679,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.reason.String(), s.TerminationReason)
-			assert.Equal(StatusTerminated.String(), ss[0].Status)
+			assert.Equal(StatusTerminated.String(), s.States[0].Status)
 		})
 	}
 }
@@ -865,7 +864,7 @@ func TestRepository_CancelSession(t *testing.T) {
 				version = tt.session.Version
 			}
 
-			s, ss, err := repo.CancelSession(context.Background(), id, version)
+			s, err := repo.CancelSession(context.Background(), id, version)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
@@ -875,8 +874,8 @@ func TestRepository_CancelSession(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(s)
-			require.NotNil(ss)
-			assert.Equal(StatusCancelling.String(), ss[0].Status)
+			require.NotNil(s.States)
+			assert.Equal(StatusCancelling.String(), s.States[0].Status)
 		})
 	}
 }
@@ -1078,7 +1077,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundSession, _, err := repo.LookupSession(context.Background(), tt.args.session.PublicId)
+			foundSession, err := repo.LookupSession(context.Background(), tt.args.session.PublicId)
 			assert.NoError(err)
 			assert.Nil(foundSession)
 
