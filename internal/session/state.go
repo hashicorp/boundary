@@ -7,6 +7,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	workerpbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
 const (
@@ -28,12 +30,27 @@ func (s Status) String() string {
 	return string(s)
 }
 
+// ProtoVal returns the enum value corresponding to the state
+func (s Status) ProtoVal() workerpbs.SESSIONSTATUS {
+	switch s {
+	case StatusPending:
+		return workerpbs.SESSIONSTATUS_SESSIONSTATUS_PENDING
+	case StatusActive:
+		return workerpbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE
+	case StatusCancelling:
+		return workerpbs.SESSIONSTATUS_SESSIONSTATUS_CANCELLING
+	case StatusTerminated:
+		return workerpbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED
+	}
+	return workerpbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED
+}
+
 // State of the session
 type State struct {
 	// SessionId references the session public id
 	SessionId string `json:"session_id,omitempty" gorm:"primary_key"`
 	// status of the session
-	Status string `json:"status,omitempty" gorm:"column:state"`
+	Status Status `json:"status,omitempty" gorm:"column:state"`
 	// PreviousEndTime from the RDBMS
 	PreviousEndTime *timestamp.Timestamp `json:"previous_end_time,omitempty" gorm:"default:current_timestamp"`
 	// StartTime from the RDBMS
@@ -52,7 +69,7 @@ var _ db.VetForWriter = (*State)(nil)
 func NewState(session_id string, state Status, opt ...Option) (*State, error) {
 	s := State{
 		SessionId: session_id,
-		Status:    state.String(),
+		Status:    state,
 	}
 
 	if err := s.validate("new session state:"); err != nil {

@@ -101,8 +101,8 @@ func TestRepository_ListSession(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
 			if tt.wantCnt > 0 {
-				assert.Equal(StatusActive.String(), got[0].States[0].Status)
-				assert.Equal(StatusPending.String(), got[0].States[1].Status)
+				assert.Equal(StatusActive, got[0].States[0].Status)
+				assert.Equal(StatusPending, got[0].States[1].Status)
 			}
 		})
 	}
@@ -268,7 +268,7 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.NotNil(ses.States)
 			assert.NotNil(ses.CreateTime)
 			assert.NotNil(ses.States[0].StartTime)
-			assert.Equal(ses.States[0].Status, StatusPending.String())
+			assert.Equal(ses.States[0].Status, StatusPending)
 			foundSession, err := repo.LookupSession(context.Background(), ses.PublicId)
 			assert.NoError(err)
 
@@ -282,7 +282,7 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.Error(err)
 
 			require.Equal(1, len(foundSession.States))
-			assert.Equal(foundSession.States[0].Status, StatusPending.String())
+			assert.Equal(foundSession.States[0].Status, StatusPending)
 		})
 	}
 }
@@ -398,7 +398,7 @@ func TestRepository_UpdateState(t *testing.T) {
 			require.NotNil(s)
 			require.NotNil(ss)
 			assert.Equal(tt.wantStateCnt, len(ss))
-			assert.Equal(tt.newStatus.String(), ss[0].Status)
+			assert.Equal(tt.newStatus, ss[0].Status)
 		})
 	}
 }
@@ -449,8 +449,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 				s := AllocSession()
 				return &s
 			}(),
-			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantErr: true,
 		},
 		{
 			name: "exceeded-connection-limit",
@@ -459,14 +458,12 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 				_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
 				return session
 			}(),
-			wantErr:     true,
-			wantIsError: ErrInvalidStateForOperation,
+			wantErr: true,
 		},
 		{
-			name:        "expired-session",
-			session:     setupFn(&timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}),
-			wantErr:     true,
-			wantIsError: ErrInvalidStateForOperation,
+			name:    "expired-session",
+			session: setupFn(&timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}),
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -476,15 +473,17 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 			c, cs, authzInfo, err := repo.AuthorizeConnection(context.Background(), tt.session.PublicId)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
-				}
+				// TODO (jimlambrt 9/2020): add in tests for errorsIs once we
+				// remove the grpc errors from the repo.
+				// if tt.wantIsError != nil {
+				// 	assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+				// }
 				return
 			}
 			require.NoError(err)
 			require.NotNil(c)
 			require.NotNil(cs)
-			assert.Equal(StatusAuthorized.String(), cs[0].Status)
+			assert.Equal(StatusAuthorized, cs[0].Status)
 			assert.Equal(tt.wantAuthzInfo.ExpirationTime, authzInfo.ExpirationTime)
 			assert.Equal(tt.wantAuthzInfo.ConnectionLimit, authzInfo.ConnectionLimit)
 			assert.Equal(tt.wantAuthzInfo.CurrentConnectionCount, authzInfo.CurrentConnectionCount)
@@ -593,7 +592,7 @@ func TestRepository_ConnectSession(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(c)
 			require.NotNil(cs)
-			assert.Equal(StatusConnected.String(), cs[0].Status)
+			assert.Equal(StatusConnected, cs[0].Status)
 		})
 	}
 }
@@ -679,7 +678,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.reason.String(), s.TerminationReason)
-			assert.Equal(StatusTerminated.String(), s.States[0].Status)
+			assert.Equal(StatusTerminated, s.States[0].Status)
 		})
 	}
 }
@@ -774,7 +773,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 			for _, r := range resp {
 				require.NotNil(r.Connection)
 				require.NotNil(r.ConnectionStates)
-				assert.Equal(StatusClosed.String(), r.ConnectionStates[0].Status)
+				assert.Equal(StatusClosed, r.ConnectionStates[0].Status)
 			}
 		})
 	}
@@ -875,7 +874,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(s)
 			require.NotNil(s.States)
-			assert.Equal(StatusCancelling.String(), s.States[0].Status)
+			assert.Equal(StatusCancelling, s.States[0].Status)
 		})
 	}
 }
@@ -984,7 +983,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 			require.NotNil(ss)
 			assert.Equal(tofu, s.TofuToken)
 			assert.Equal(2, len(ss))
-			assert.Equal(StatusActive.String(), ss[0].Status)
+			assert.Equal(StatusActive, ss[0].Status)
 		})
 		t.Run("already active", func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
@@ -994,7 +993,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 			require.NotNil(s)
 			require.NotNil(ss)
 			assert.Equal(2, len(ss))
-			assert.Equal(StatusActive.String(), ss[0].Status)
+			assert.Equal(StatusActive, ss[0].Status)
 
 			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 1, worker.PrivateId, worker.Type, tofu)
 			require.Error(err)

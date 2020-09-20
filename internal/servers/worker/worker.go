@@ -34,7 +34,6 @@ type Worker struct {
 
 	controllerSessionConn *atomic.Value
 	sessionInfoMap        *sync.Map
-	cancellationMap       *sync.Map
 }
 
 func New(conf *Config) (*Worker, error) {
@@ -47,7 +46,6 @@ func New(conf *Config) (*Worker, error) {
 		controllerResolverCleanup: new(atomic.Value),
 		controllerSessionConn:     new(atomic.Value),
 		sessionInfoMap:            new(sync.Map),
-		cancellationMap:           new(sync.Map),
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))

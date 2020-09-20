@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,10 +15,8 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/btcsuite/btcutil/base58"
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -28,15 +27,15 @@ import (
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
+	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wspb"
 )
 
 type ConnectionInfo struct {
-	Address    string    `json:"address"`
-	Port       int       `json:"port"`
-	Protocol   string    `json:"protocol"`
-	Expiration time.Time `json:"expiration"`
+	Address  string `json:"address"`
+	Port     int    `json:"port"`
+	Protocol string `json:"protocol"`
 }
 
 var _ cli.Command = (*Command)(nil)
@@ -53,6 +52,8 @@ type Command struct {
 	flagHostId     string
 
 	Func string
+
+	listenerCloseFunc sync.Once
 }
 
 func (c *Command) Synopsis() string {
@@ -157,7 +158,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *Command) Run(args []string) int {
+func (c *Command) Run(args []string) (retCode int) {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
@@ -165,9 +166,8 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	var handshake proxy.ClientHandshake
-	var err error
-	if handshake.TofuToken, err = base62.Random(20); err != nil {
+	tofuToken, err := base62.Random(20)
+	if err != nil {
 		c.UI.Error(fmt.Errorf("Could not derive random bytes for tofu token: %w", err).Error())
 		return 1
 	}
@@ -259,6 +259,8 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
+	workerAddr := data.GetWorkerInfo()[0].GetAddress()
+
 	parsedCert, err := x509.ParseCertificate(data.Certificate)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Unable to decode mTLS certificate: %w", err).Error())
@@ -302,60 +304,30 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	workerAddr := data.GetWorkerInfo()[0].GetAddress()
-
-	conn, resp, err := websocket.Dial(
-		c.Context,
-		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
-		&websocket.DialOptions{
-			HTTPClient: &http.Client{
-				Transport: transport,
-			},
-			Subprotocols: []string{globals.TcpProxyV1},
-		},
-	)
-	if err != nil {
-		switch {
-		case strings.Contains(err.Error(), "tls: internal error"):
-			c.UI.Error("Session is unauthorized")
-		case strings.Contains(err.Error(), "connect: connection refused"):
-			c.UI.Error(fmt.Sprintf("Unable to connect to worker at %s", workerAddr))
-		default:
-			c.UI.Error(fmt.Errorf("Error dialing the worker: %w", err).Error())
+	listenerCloseFunc := func() {
+		if err := listener.Close(); err != nil {
+			c.UI.Error(fmt.Errorf("Error closing listener on shutdown: %w", err).Error())
+			retCode = 1
 		}
-		return 1
 	}
 
-	if resp == nil {
-		c.UI.Error("Response from worker is nil")
-		return 1
-	}
-	if resp.Header == nil {
-		c.UI.Error("Response header is nil")
-		return 1
-	}
-	negProto := resp.Header.Get("Sec-WebSocket-Protocol")
-	if negProto != globals.TcpProxyV1 {
-		c.UI.Error(fmt.Sprintf("Unexpected negotiated protocol: %s", negProto))
-		return 1
-	}
+	// Allow closing the listener from Ctrl-C
+	go func() {
+		<-c.Context.Done()
+		c.listenerCloseFunc.Do(listenerCloseFunc)
+	}()
 
-	if err := wspb.Write(c.Context, conn, &handshake); err != nil {
-		c.UI.Error(fmt.Errorf("error sending handshake to worker: %w", err).Error())
-		return 1
-	}
-	var handshakeResult proxy.HandshakeResult
-	if err := wspb.Read(c.Context, conn, &handshakeResult); err != nil {
-		c.UI.Error(fmt.Errorf("error reading handshake result: %w", err).Error())
-		return 1
-	}
+	// Ensure it runs on any other return condition
+	defer func() {
+		c.listenerCloseFunc.Do(listenerCloseFunc)
+	}()
 
 	listenerAddr := listener.Addr().(*net.TCPAddr)
+
 	connInfo := ConnectionInfo{
-		Protocol:   "tcp",
-		Address:    listenerAddr.IP.String(),
-		Port:       listenerAddr.Port,
-		Expiration: handshakeResult.GetExpiration().AsTime(),
+		Protocol: "tcp",
+		Address:  listenerAddr.IP.String(),
+		Port:     listenerAddr.Port,
 	}
 
 	switch base.Format(c.UI) {
@@ -370,53 +342,117 @@ func (c *Command) Run(args []string) int {
 		c.UI.Output(string(out))
 	}
 
+	connWg := new(sync.WaitGroup)
+	connWg.Add(1)
+
+AcceptLoop:
+	for {
+		listeningConn, err := listener.AcceptTCP()
+		if err != nil {
+			select {
+			case <-c.Context.Done():
+				connWg.Done()
+				break AcceptLoop
+			default:
+				c.UI.Error(fmt.Errorf("Error accepting connection: %w", err).Error())
+				continue
+			}
+		}
+		connWg.Add(1)
+		go func() {
+			defer listeningConn.Close()
+			if err := handleConnection(
+				c.Context,
+				connWg,
+				listeningConn,
+				workerAddr,
+				tofuToken,
+				transport); err != nil {
+				c.UI.Error(err.Error())
+			}
+		}()
+	}
+
+	connWg.Wait()
+	return 0
+}
+
+func handleConnection(
+	ctx context.Context,
+	connWg *sync.WaitGroup,
+	listeningConn *net.TCPConn,
+	workerAddr string,
+	tofuToken string,
+	transport *http.Transport) error {
+
+	defer connWg.Done()
+
+	conn, resp, err := websocket.Dial(
+		ctx,
+		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
+		&websocket.DialOptions{
+			HTTPClient: &http.Client{
+				Transport: transport,
+			},
+			Subprotocols: []string{globals.TcpProxyV1},
+		},
+	)
+	if err != nil {
+		switch {
+		case strings.Contains(err.Error(), "tls: internal error"):
+			return errors.New("Session is unauthorized")
+		case strings.Contains(err.Error(), "connect: connection refused"):
+			return fmt.Errorf("Unable to connect to worker at %s", workerAddr)
+		default:
+			return fmt.Errorf("Error dialing the worker: %w", err)
+		}
+	}
+
+	if resp == nil {
+		return errors.New("Response from worker is nil")
+	}
+	if resp.Header == nil {
+		return errors.New("Response header is nil")
+	}
+	negProto := resp.Header.Get("Sec-WebSocket-Protocol")
+	if negProto != globals.TcpProxyV1 {
+		return fmt.Errorf("Unexpected negotiated protocol: %s", negProto)
+	}
+
+	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
+	if err := wspb.Write(ctx, conn, &handshake); err != nil {
+		return fmt.Errorf("error sending handshake to worker: %w", err)
+	}
+	var handshakeResult proxy.HandshakeResult
+	if err := wspb.Read(ctx, conn, &handshakeResult); err != nil {
+		return fmt.Errorf("error reading handshake result: %w", err)
+	}
+
 	// We don't _rely_ on client-side timeout verification but this prevents us
 	// seeming to be ready for a connection that will immediately fail when we
 	// try to actually make it
-	expiringCtx, cancel := context.WithDeadline(c.Context, handshakeResult.GetExpiration().AsTime())
+	expiringCtx, cancel := context.WithDeadline(ctx, handshakeResult.GetExpiration().AsTime())
 	defer cancel()
 
 	// Get a wrapped net.Conn so we can use io.Copy
 	netConn := websocket.NetConn(expiringCtx, conn, websocket.MessageBinary)
 
-	// Allow closing the listener from Ctrl-C
-	go func() {
-		<-expiringCtx.Done()
-		listener.Close()
-	}()
+	localWg := new(sync.WaitGroup)
+	localWg.Add(2)
 
-	listeningConn, err := listener.AcceptTCP()
-	listener.Close()
-	if err != nil {
-		select {
-		case <-expiringCtx.Done():
-			return 0
-		default:
-			c.UI.Error(fmt.Errorf("Error accepting connection: %w", err).Error())
-			return 1
-		}
-	}
-
-	connWg := new(sync.WaitGroup)
-	connWg.Add(2)
 	go func() {
-		defer connWg.Done()
-		_, err := io.Copy(netConn, listeningConn)
-		if c.flagVerbose {
-			c.UI.Info(fmt.Sprintf("copy from client to endpoint done, error: %v", err))
-		}
+		defer localWg.Done()
+		io.Copy(netConn, listeningConn)
 		netConn.Close()
 		listeningConn.Close()
 	}()
 	go func() {
-		defer connWg.Done()
-		_, err := io.Copy(listeningConn, netConn)
-		if c.flagVerbose {
-			c.UI.Info(fmt.Sprintf("copy from endpoint to client done, error: %v", err))
-		}
+		defer localWg.Done()
+		io.Copy(listeningConn, netConn)
 		listeningConn.Close()
 		netConn.Close()
 	}()
-	connWg.Wait()
-	return 0
+	localWg.Wait()
+
+	return nil
 }

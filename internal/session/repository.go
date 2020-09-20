@@ -126,7 +126,7 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionsWithState []
 
 		state := &State{
 			SessionId:       sv.PublicId,
-			Status:          sv.Status,
+			Status:          Status(sv.Status),
 			PreviousEndTime: sv.PreviousEndTime,
 			StartTime:       sv.StartTime,
 			EndTime:         sv.EndTime,

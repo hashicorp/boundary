@@ -12,6 +12,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // CreateSession inserts into the repository and returns the new Session with
@@ -96,7 +98,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				return fmt.Errorf("no states found for new session %s", returnedSession.PublicId)
 			}
 			returnedSession.States = foundStates
-			if returnedSession.States[0].Status != StatusPending.String() {
+			if returnedSession.States[0].Status != StatusPending {
 				return fmt.Errorf("new session %s state is not valid: %s", returnedSession.PublicId, returnedSession.States[0].Status)
 			}
 			return nil
@@ -330,11 +332,11 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 // an error of ErrInvalidStateForOperation.
 func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) (*Connection, []*ConnectionState, *ConnectionAuthzSummary, error) {
 	if sessionId == "" {
-		return nil, nil, nil, fmt.Errorf("authorize connection: missing session id: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, status.Errorf(codes.FailedPrecondition, "authorize connection: missing session id: %v", db.ErrInvalidParameter)
 	}
 	connectionId, err := newConnectionId()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("authorize connection: %w", err)
+		return nil, nil, nil, status.Errorf(codes.Internal, "authorize connection: %v", err)
 	}
 
 	connection := AllocConnection()
@@ -347,13 +349,13 @@ func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) 
 		func(reader db.Reader, w db.Writer) error {
 			rowsAffected, err := w.Exec(authorizeConnectionCte, []interface{}{sessionId, connectionId})
 			if err != nil {
-				return fmt.Errorf("unable to authorize connection %s: %w", sessionId, err)
+				return status.Errorf(codes.Internal, "unable to authorize connection %s: %v", sessionId, err)
 			}
 			if rowsAffected == 0 {
-				return fmt.Errorf("session %s is not authorized (not active, expired or connection limit reached): %w", sessionId, ErrInvalidStateForOperation)
+				return status.Errorf(codes.PermissionDenied, "authorize connection: session %s is not authorized (not active, expired or connection limit reached): %v", sessionId, ErrInvalidStateForOperation)
 			}
 			if err := reader.LookupById(ctx, &connection); err != nil {
-				return fmt.Errorf("lookup connection: failed %w for %s", err, sessionId)
+				return status.Errorf(codes.Internal, "authorize connection: failed for session %s: %v", sessionId, err)
 			}
 			connectionStates, err = fetchConnectionStates(ctx, reader, connectionId, db.WithOrder("start_time desc"))
 			if err != nil {
@@ -363,7 +365,7 @@ func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) 
 		},
 	)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("authorize connection: %w", err)
+		return nil, nil, nil, err
 	}
 	authzSummary, err := r.sessionAuthzSummary(ctx, connection.SessionId)
 	if err != nil {
