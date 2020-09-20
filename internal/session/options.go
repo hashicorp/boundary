@@ -24,6 +24,7 @@ type options struct {
 	withUserId         string
 	withExpirationTime *timestamp.Timestamp
 	withTestTofu       []byte
+	withListingConvert bool
 }
 
 func getDefaultOptions() options {
@@ -71,5 +72,11 @@ func WithExpirationTime(exp *timestamp.Timestamp) Option {
 func WithTestTofu(tofu []byte) Option {
 	return func(o *options) {
 		o.withTestTofu = tofu
+	}
+}
+
+func withListingConvert(withListingConvert bool) Option {
+	return func(o *options) {
+		o.withListingConvert = withListingConvert
 	}
 }
