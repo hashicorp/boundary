@@ -290,7 +290,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		hostId    string
 	}
 
-	var chosenId compoundHost
+	var chosenId *compoundHost
 	requestedId := req.GetHostId()
 	staticHostRepo, err := s.staticHostRepoFn()
 	if err != nil {
@@ -298,6 +298,8 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 
 	hostIds := make([]compoundHost, 0, len(hostSets)*10)
+
+HostSetIterationLoop:
 	for _, tSet := range hostSets {
 		hsId := tSet.PublicId
 		switch host.SubtypeFromId(hsId) {
@@ -309,14 +311,14 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			for _, host := range hosts {
 				compoundId := compoundHost{hostSetId: hsId, hostId: host.PublicId}
 				if host.PublicId == requestedId {
-					chosenId = compoundId
-					goto HOST_GATHERING_DONE
+					chosenId = &compoundId
+					break HostSetIterationLoop
 				}
 				hostIds = append(hostIds, compoundId)
 			}
 		}
 	}
-	if requestedId != "" {
+	if requestedId != "" && chosenId == nil {
 		// We didn't find it
 		return nil, handlers.InvalidArgumentErrorf(
 			"Errors in provided fields.",
@@ -324,9 +326,8 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 				"host_id": "The requested host id is not available.",
 			})
 	}
-	chosenId = hostIds[rand.Intn(len(hostIds))]
+	chosenId = &hostIds[rand.Intn(len(hostIds))]
 
-HOST_GATHERING_DONE:
 	// Generate the endpoint URL
 	endpointUrl := &url.URL{
 		Scheme: t.GetType(),
