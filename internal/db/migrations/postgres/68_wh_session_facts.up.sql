@@ -61,16 +61,18 @@ begin;
     -- connection? If so, what should the units of the duration be?
 
     -- The client address and port are degenerate dimensions
-    client_address inet not null,
-    client_port_number wh_inet_port not null,
-    -- The backend address and port are degenerate dimensions
-    backend_address inet not null,
-    backend_port_number wh_inet_port not null,
+    client_address inet, -- can be null
+    client_port_number wh_inet_port, -- can be null
+
+    -- The endpoint address and port are degenerate dimensions
+    endpoint_address inet, -- can be null
+    endpoint_port_number wh_inet_port, -- can be null
+
     -- The total number of bytes received by the worker from the client and sent
-    -- to the backend for this connection.
+    -- to the endpoint for this connection.
     -- bytes_up is a fully additive measurement.
     bytes_up wh_bytes_transmitted, -- can be null
-    -- The total number of bytes received by the worker from the backend and sent
+    -- The total number of bytes received by the worker from the endpoint and sent
     -- to the client for this connection.
     -- bytes_down is a fully additive measurement.
     bytes_down wh_bytes_transmitted -- can be null
@@ -83,11 +85,11 @@ begin;
     'The grain of the fact table is one row per session connection.';
   comment on column wh_session_connection_transaction_fact.bytes_up is
     'Bytes Up is the total number of bytes received by the worker from the '
-    'client and sent to the backend for this connection. Bytes Up is a fully '
+    'client and sent to the endpoint for this connection. Bytes Up is a fully '
     'additive measurement.';
   comment on column wh_session_connection_transaction_fact.bytes_down is
     'Bytes Down is the total number of bytes received by the worker from the '
-    'backend and sent to the client for this connection. Bytes Down is a fully '
+    'endpoint and sent to the client for this connection. Bytes Down is a fully '
     'additive measurement.';
 
   /*
@@ -148,12 +150,12 @@ begin;
     session_closed_time wh_timestamp,
 
     -- The total number of bytes received by workers from the client and sent
-    -- to the backend for this session.
+    -- to the endpoint for this session.
     -- bytes_up is a fully additive measurement.
     bytes_up wh_bytes_transmitted, -- can be null
     -- the total number of bytes received by the worker from the host and sent
     -- to the user for this session
-    -- The total number of bytes received by workers from the backend and sent
+    -- The total number of bytes received by workers from the endpoint and sent
     -- to the client for this session.
     -- bytes_down is a fully additive measurement.
     bytes_down wh_bytes_transmitted -- can be null
