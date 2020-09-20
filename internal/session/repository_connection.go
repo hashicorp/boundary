@@ -44,8 +44,9 @@ func (r *Repository) LookupConnection(ctx context.Context, connectionId string, 
 
 // ListConnections will sessions.  Supports the WithLimit and WithOrder options.
 func (r *Repository) ListConnections(ctx context.Context, sessionId string, opt ...Option) ([]*Connection, error) {
+	opts := getOpts(opt...)
 	var connections []*Connection
-	err := r.list(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opt...) // pass options, so WithLimit and WithOrder are supported
+	err := r.list(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opts) // pass options, so WithLimit and WithOrder are supported
 	if err != nil {
 		return nil, fmt.Errorf("list connections: %w", err)
 	}
