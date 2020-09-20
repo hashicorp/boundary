@@ -152,27 +152,64 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 	return &session, states, nil
 }
 
-// ListSessions will sessions.  Supports the WithLimit, WithScopeId and WithOrder options.
+// ListSessions will sessions.  Supports the WithLimit, and WithScopeId options.
 func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
 	opts := getOpts(opt...)
 	var where []string
 	var args []interface{}
+
+	inClauseCnt := 0
 	switch {
 	case opts.withScopeId != "":
-		where, args = append(where, "scope_id = ?"), append(args, opts.withScopeId)
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("scope_id = $%d", inClauseCnt)), append(args, opts.withScopeId)
 	case opts.withUserId != "":
-		where, args = append(where, "user_id = ?"), append(args, opts.withUserId)
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("user_id = $%d", inClauseCnt)), append(args, opts.withUserId)
+	}
+	var limit string
+	switch {
+	case opts.withLimit < 0: // any negative number signals unlimited results
+	case opts.withLimit == 0: // zero signals the default value and default limits
+		limit = fmt.Sprintf("limit %d", r.defaultLimit)
+	default:
+		// non-zero signals an override of the default limit for the repo.
+		limit = fmt.Sprintf("limit %d", opts.withLimit)
 	}
 
-	var sessions []*Session
-	err := r.list(ctx, &sessions, strings.Join(where, " and"), args, opt...)
+	if opts.withOrder != "" {
+		opts.withOrder = fmt.Sprintf("order by %s", opts.withOrder)
+	}
+
+	var whereClause string
+	if len(where) > 0 {
+		whereClause = " and " + strings.Join(where, " and")
+	}
+	q := sessionList
+	query := fmt.Sprintf(q, limit, whereClause, opts.withOrder)
+
+	tx, err := r.reader.DB()
+	if err != nil {
+		return nil, fmt.Errorf("list sessions: unable to get DB: %w", err)
+	}
+
+	rows, err := tx.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("changes: query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var sessionsWithState []*sessionView
+	for rows.Next() {
+		var s sessionView
+		if err := r.reader.ScanRows(rows, &s); err != nil {
+			return nil, fmt.Errorf("changes: scan row failed: %w", err)
+		}
+		sessionsWithState = append(sessionsWithState, &s)
+	}
+	sessions, err := r.convertToSessions(ctx, sessionsWithState, withListingConvert(true))
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
-	}
-	for _, s := range sessions {
-		s.CtTofuToken = nil
-		s.TofuToken = nil
-		s.KeyId = ""
 	}
 	return sessions, nil
 }
