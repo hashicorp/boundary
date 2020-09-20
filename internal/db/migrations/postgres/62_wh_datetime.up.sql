@@ -1,18 +1,18 @@
 begin;
 
   create table wh_date_dimension (
-    id                            integer  primary key,
-    date                          date     not null,
-    calendar_quarter              text     not null,
-    calendar_month                text     not null,
-    calendar_year                 smallint not null,
-    day_of_week                   text     not null,
-    day_of_week_number            smallint not null,
-    day_of_week_number_iso        smallint not null,
-    day_of_week_number_zero_based smallint not null,
-    day_number_in_calendar_month  smallint not null,
-    day_number_in_calendar_year   smallint not null,
-    weekday_indicator             text     not null
+    id                            integer      primary key,
+    date                          date         not null,
+    calendar_quarter              wh_dim_text,
+    calendar_month                wh_dim_text,
+    calendar_year                 smallint     not null,
+    day_of_week                   wh_dim_text,
+    day_of_week_number            smallint     not null,
+    day_of_week_number_iso        smallint     not null,
+    day_of_week_number_zero_based smallint     not null,
+    day_number_in_calendar_month  smallint     not null,
+    day_number_in_calendar_year   smallint     not null,
+    weekday_indicator             wh_dim_text
   );
 
   insert into wh_date_dimension (
@@ -54,15 +54,15 @@ begin;
          ) as t(day);
 
   create table wh_time_of_day_dimension (
-    id                 integer  primary key,
-    time_no_zone       time     not null,
-    time_at_utc        timetz   not null,
-    hour_of_day        smallint not null,
-    minute_of_hour     smallint not null,
-    second_of_minute   smallint not null,
-    display_time_24    text     not null,
-    display_time_12    text     not null,
-    meridiem_indicator text     not null
+    id                 integer      primary key,
+    time_no_zone       time         not null,
+    time_at_utc        timetz       not null,
+    hour_of_day        smallint     not null,
+    minute_of_hour     smallint     not null,
+    second_of_minute   smallint     not null,
+    display_time_24    wh_dim_text,
+    display_time_12    wh_dim_text,
+    meridiem_indicator wh_dim_text
   );
 
   set timezone = 'UTC';

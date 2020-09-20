@@ -42,4 +42,15 @@ begin;
   comment on domain wh_public_id is
   'Equivalent to wt_public_id but also allows the value to be ''None''';
 
+  create domain wh_timestamp as timestamp with time zone not null;
+  comment on domain wh_timestamp is
+  'Timestamp used in warehouse tables';
+
+  create domain wh_dim_text as text not null
+  check(
+    length(trim(value)) > 0
+  );
+  comment on domain wh_dim_text is
+  'Text fields in dimension tables are always not null and always not empty strings';
+
 commit;

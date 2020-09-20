@@ -25,7 +25,16 @@ begin;
       references wh_user_dimension (id)
       on delete restrict
       on update cascade,
+
     -- date and time foreign keys
+    connection_authorized_date_id integer not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_authorized_time_id integer not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
     connection_connected_date_id integer not null
       references wh_date_dimension (id)
       on delete restrict
@@ -42,8 +51,9 @@ begin;
       references wh_time_of_day_dimension (id)
       on delete restrict
       on update cascade,
-    connection_connected_time timestamp with time zone not null,
-    connection_closed_time timestamp with time zone not null,
+    connection_authorized_time wh_timestamp,
+    connection_connected_time wh_timestamp,
+    connection_closed_time wh_timestamp,
 
     -- NOTE(mgaffney) 09/2020: should a column be added for the duration of
     -- connection? If so, what should the units of the duration be?
@@ -130,10 +140,10 @@ begin;
       references wh_time_of_day_dimension (id)
       on delete restrict
       on update cascade,
-    session_pending_time timestamp with time zone not null,
-    session_connected_time timestamp with time zone,
-    session_canceling_time timestamp with time zone,
-    session_closed_time timestamp with time zone,
+    session_pending_time wh_timestamp,
+    session_connected_time wh_timestamp,
+    session_canceling_time wh_timestamp,
+    session_closed_time wh_timestamp,
 
     -- The total number of bytes received by workers from the client and sent
     -- to the backend for this session.

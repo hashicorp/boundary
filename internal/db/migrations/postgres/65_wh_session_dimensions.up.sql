@@ -5,40 +5,40 @@ begin;
     -- this is done to prevent conflicts with rows in other clusters
     -- which enables warehouse data from multiple clusters to be loaded into a
     -- single database instance
-    id                            wh_dim_id primary key default wh_dim_id(),
+    id                            wh_dim_id     primary key default wh_dim_id(),
 
-    host_id                       wh_public_id not null,
-    host_type                     text not null,
-    host_name                     text not null,
-    host_description              text not null,
-    host_address                  text not null,
+    host_id                       wh_public_id  not null,
+    host_type                     wh_dim_text,
+    host_name                     wh_dim_text,
+    host_description              wh_dim_text,
+    host_address                  wh_dim_text,
 
-    host_set_id                   wh_public_id not null,
-    host_set_type                 text not null,
-    host_set_name                 text not null,
-    host_set_description          text not null,
+    host_set_id                   wh_public_id  not null,
+    host_set_type                 wh_dim_text,
+    host_set_name                 wh_dim_text,
+    host_set_description          wh_dim_text,
 
-    host_catalog_id               wh_public_id not null,
-    host_catalog_type             text not null,
-    host_catalog_name             text not null,
-    host_catalog_description      text not null,
+    host_catalog_id               wh_public_id  not null,
+    host_catalog_type             wh_dim_text,
+    host_catalog_name             wh_dim_text,
+    host_catalog_description      wh_dim_text,
 
-    target_id                     wh_public_id not null,
-    target_type                   text not null,
-    target_name                   text not null,
-    target_description            text not null,
+    target_id                     wh_public_id  not null,
+    target_type                   wh_dim_text,
+    target_name                   wh_dim_text,
+    target_description            wh_dim_text,
 
-    project_id                    wt_scope_id not null,
-    project_name                  text not null,
-    project_description           text not null,
+    project_id                    wt_scope_id   not null,
+    project_name                  wh_dim_text,
+    project_description           wh_dim_text,
 
-    host_organization_id          wt_scope_id not null,
-    host_organization_name        text not null,
-    host_organization_description text not null,
+    host_organization_id          wt_scope_id   not null,
+    host_organization_name        wh_dim_text,
+    host_organization_description wh_dim_text,
 
-    current_row_indicator         text not null,
-    row_effective_time            wt_timestamp,
-    row_expiration_time           wt_timestamp
+    current_row_indicator         wh_dim_text,
+    row_effective_time            wh_timestamp,
+    row_expiration_time           wh_timestamp
   );
 
   -- https://www.postgresql.org/docs/current/indexes-partial.html
@@ -136,29 +136,29 @@ begin;
     -- this is done to prevent conflicts with rows in other clusters
     -- which enables warehouse data from multiple clusters to be loaded into a
     -- single database instance
-    id                            wh_dim_id primary key default wh_dim_id(),
+    id                            wh_dim_id     primary key default wh_dim_id(),
 
-    user_id                       wt_user_id not null,
-    user_name                     text not null,
-    user_description              text not null,
+    user_id                       wt_user_id    not null,
+    user_name                     wh_dim_text,
+    user_description              wh_dim_text,
 
-    auth_account_id               wh_public_id not null,
-    auth_account_type             text not null,
-    auth_account_name             text not null,
-    auth_account_description      text not null,
+    auth_account_id               wh_public_id  not null,
+    auth_account_type             wh_dim_text,
+    auth_account_name             wh_dim_text,
+    auth_account_description      wh_dim_text,
 
-    auth_method_id                wh_public_id not null,
-    auth_method_type              text not null,
-    auth_method_name              text not null,
-    auth_method_description       text not null,
+    auth_method_id                wh_public_id  not null,
+    auth_method_type              wh_dim_text,
+    auth_method_name              wh_dim_text,
+    auth_method_description       wh_dim_text,
 
-    user_organization_id          wt_scope_id not null,
-    user_organization_name        text not null,
-    user_organization_description text not null,
+    user_organization_id          wt_scope_id   not null,
+    user_organization_name        wh_dim_text,
+    user_organization_description wh_dim_text,
 
-    current_row_indicator         text not null,
-    row_effective_time            wt_timestamp,
-    row_expiration_time           wt_timestamp
+    current_row_indicator         wh_dim_text,
+    row_effective_time            wh_timestamp,
+    row_expiration_time           wh_timestamp
   );
 
   -- The whx_user_dimension_source and whx_user_dimension_target views are used

@@ -1,5 +1,7 @@
 begin;
 
+  drop domain wh_dim_text;
+  drop domain wh_timestamp;
   drop domain wh_public_id;
   drop domain wh_dim_id;
   drop function wh_dim_id;
