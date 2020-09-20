@@ -72,6 +72,11 @@ func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *Sta
 func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c ComposedOf, opt ...Option) *Session {
 	t.Helper()
 	require := require.New(t)
+	if c.ExpirationTime == nil {
+		future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
+		require.NoError(err)
+		c.ExpirationTime = &timestamp.Timestamp{Timestamp: future}
+	}
 	rw := db.New(conn)
 	s, err := New(c, opt...)
 	require.NoError(err)
@@ -81,8 +86,17 @@ func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c Compos
 	_, certBytes, err := newCert(wrapper, c.UserId, id, c.ExpirationTime.Timestamp.AsTime())
 	require.NoError(err)
 	s.Certificate = certBytes
+
+	if len(s.TofuToken) != 0 {
+		err = s.encrypt(context.Background(), wrapper)
+	}
+	require.NoError(err)
 	err = rw.Create(context.Background(), s)
 	require.NoError(err)
+	ss, err := fetchStates(context.Background(), rw, s.PublicId, db.WithOrder("start_time desc"))
+	require.NoError(err)
+	s.States = ss
+
 	return s
 }
 

@@ -149,6 +149,13 @@ func (s *Session) Clone() interface{} {
 		Endpoint:          s.Endpoint,
 		ConnectionLimit:   s.ConnectionLimit,
 	}
+	if len(s.States) > 0 {
+		clone.States = make([]*State, 0, len(s.States))
+		for _, ss := range s.States {
+			cp := ss.Clone().(*State)
+			clone.States = append(clone.States, cp)
+		}
+	}
 	if s.TofuToken != nil {
 		clone.TofuToken = make([]byte, len(s.TofuToken))
 		copy(clone.TofuToken, s.TofuToken)
