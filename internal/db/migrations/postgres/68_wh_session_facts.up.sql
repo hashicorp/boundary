@@ -35,7 +35,7 @@ begin;
       references wh_time_of_day_dimension (id)
       on delete restrict
       on update cascade,
-    connection_authorized_time wh_timestamp,
+    connection_authorized_time wh_timestamp default current_timestamp,
 
     connection_connected_date_id integer default -1 not null
       references wh_date_dimension (id)
