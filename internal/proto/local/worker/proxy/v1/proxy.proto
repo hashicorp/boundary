@@ -11,4 +11,5 @@ message ClientHandshake {
 
 message HandshakeResult {
     google.protobuf.Timestamp expiration = 10;
+    int32 connections_left = 20;
 }

@@ -15,6 +15,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/api/targets"
@@ -27,19 +28,28 @@ import (
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
+	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wspb"
 )
 
-type ConnectionInfo struct {
+type SessionInfo struct {
 	Address  string `json:"address"`
 	Port     int    `json:"port"`
 	Protocol string `json:"protocol"`
 }
 
+type ConnectionInfo struct {
+	Expiration      time.Time `json:"expiration"`
+	ConnectionsLeft int32     `json:"connections_left"`
+}
+
 var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
+
+var connectionsLeft atomic.Int32
+var expiration time.Time
 
 type Command struct {
 	*base.Command
@@ -272,6 +282,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		return 1
 	}
 
+	expiration = parsedCert.NotAfter
+
 	certPool := x509.NewCertPool()
 	certPool.AddCert(parsedCert)
 
@@ -324,7 +336,7 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	listenerAddr := listener.Addr().(*net.TCPAddr)
 
-	connInfo := ConnectionInfo{
+	sessInfo := SessionInfo{
 		Protocol: "tcp",
 		Address:  listenerAddr.IP.String(),
 		Port:     listenerAddr.Port,
@@ -332,11 +344,11 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateConnectionInfoTableOutput(connInfo))
+		c.UI.Output(generateSessionInfoTableOutput(sessInfo))
 	case "json":
-		out, err := json.Marshal(&connInfo)
+		out, err := json.Marshal(&sessInfo)
 		if err != nil {
-			c.UI.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
+			c.UI.Error(fmt.Errorf("error marshaling session information: %w", err).Error())
 			return 1
 		}
 		c.UI.Output(string(out))
@@ -363,6 +375,7 @@ AcceptLoop:
 			defer listeningConn.Close()
 			if err := handleConnection(
 				c.Context,
+				c.UI,
 				connWg,
 				listeningConn,
 				workerAddr,
@@ -379,6 +392,7 @@ AcceptLoop:
 
 func handleConnection(
 	ctx context.Context,
+	ui cli.Ui,
 	connWg *sync.WaitGroup,
 	listeningConn *net.TCPConn,
 	workerAddr string,
@@ -426,6 +440,23 @@ func handleConnection(
 	var handshakeResult proxy.HandshakeResult
 	if err := wspb.Read(ctx, conn, &handshakeResult); err != nil {
 		return fmt.Errorf("error reading handshake result: %w", err)
+	}
+	connectionsLeft.Store(handshakeResult.ConnectionsLeft)
+
+	connInfo := ConnectionInfo{
+		Expiration:      expiration,
+		ConnectionsLeft: handshakeResult.GetConnectionsLeft(),
+	}
+
+	switch base.Format(ui) {
+	case "table":
+		ui.Output(generateConnectionInfoTableOutput(connInfo))
+	case "json":
+		out, err := json.Marshal(&connInfo)
+		if err != nil {
+			ui.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
+		}
+		ui.Output(string(out))
 	}
 
 	// We don't _rely_ on client-side timeout verification but this prevents us
