@@ -21,10 +21,8 @@ begin;
   create or replace function wh_dim_id()
     returns text
   as $$
-  begin
-    return encode(digest(gen_random_bytes(16), 'sha256'), 'base64');
-  end;
-  $$ language plpgsql;
+    select encode(digest(gen_random_bytes(16), 'sha256'), 'base64');
+  $$ language sql;
 
   create domain wh_dim_id as text
   check(
@@ -52,5 +50,17 @@ begin;
   );
   comment on domain wh_dim_text is
   'Text fields in dimension tables are always not null and always not empty strings';
+
+  create or replace function wh_current_date_id()
+    returns integer
+  as $$
+    select to_char(current_timestamp, 'YYYYMMDD')::integer;
+  $$ language sql;
+
+  create or replace function wh_current_time_id()
+    returns integer
+  as $$
+    select to_char(current_timestamp, 'SSSS')::integer;
+  $$ language sql;
 
 commit;

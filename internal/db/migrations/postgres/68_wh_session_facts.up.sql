@@ -26,34 +26,36 @@ begin;
       on delete restrict
       on update cascade,
 
-    -- date and time foreign keys
-    connection_authorized_date_id integer not null
+    -- date and time foreign keys and timestamps
+    connection_authorized_date_id integer default wh_current_date_id() not null
       references wh_date_dimension (id)
       on delete restrict
       on update cascade,
-    connection_authorized_time_id integer not null
-      references wh_time_of_day_dimension (id)
-      on delete restrict
-      on update cascade,
-    connection_connected_date_id integer not null
-      references wh_date_dimension (id)
-      on delete restrict
-      on update cascade,
-    connection_connected_time_id integer not null
-      references wh_time_of_day_dimension (id)
-      on delete restrict
-      on update cascade,
-    connection_closed_date_id integer not null
-      references wh_date_dimension (id)
-      on delete restrict
-      on update cascade,
-    connection_closed_time_id integer not null
+    connection_authorized_time_id integer default wh_current_time_id() not null
       references wh_time_of_day_dimension (id)
       on delete restrict
       on update cascade,
     connection_authorized_time wh_timestamp,
-    connection_connected_time wh_timestamp,
-    connection_closed_time wh_timestamp,
+
+    connection_connected_date_id integer default -1 not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_connected_time_id integer default -1 not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_connected_time wh_timestamp default 'infinity'::timestamptz,
+
+    connection_closed_date_id integer default -1 not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_closed_time_id integer default -1 not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_closed_time wh_timestamp default 'infinity'::timestamptz,
 
     -- NOTE(mgaffney) 09/2020: should a column be added for the duration of
     -- connection? If so, what should the units of the duration be?
