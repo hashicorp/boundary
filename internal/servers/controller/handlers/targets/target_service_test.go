@@ -77,8 +77,8 @@ func TestGet(t *testing.T) {
 		Type:                   target.TcpTargetType.String(),
 		HostSetIds:             []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		Attributes:             new(structpb.Struct),
-		SessionMaxSeconds:      &wrapperspb.UInt32Value{Value: 28800},
-		SessionConnectionLimit: &wrapperspb.UInt32Value{Value: 1},
+		SessionMaxSeconds:      wrapperspb.UInt32(28800),
+		SessionConnectionLimit: wrapperspb.Int32(1),
 	}
 	for _, ihs := range hs {
 		pTar.HostSets = append(pTar.HostSets, &pb.HostSet{Id: ihs.GetPublicId(), HostCatalogId: ihs.GetCatalogId()})
@@ -157,8 +157,8 @@ func TestList(t *testing.T) {
 			Version:                tar.GetVersion(),
 			Type:                   target.TcpTargetType.String(),
 			Attributes:             new(structpb.Struct),
-			SessionMaxSeconds:      &wrapperspb.UInt32Value{Value: 28800},
-			SessionConnectionLimit: &wrapperspb.UInt32Value{Value: 1},
+			SessionMaxSeconds:      wrapperspb.UInt32(28800),
+			SessionConnectionLimit: wrapperspb.Int32(1),
 		})
 	}
 
@@ -308,8 +308,8 @@ func TestCreate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
-					SessionMaxSeconds:      &wrapperspb.UInt32Value{Value: 28800},
-					SessionConnectionLimit: &wrapperspb.UInt32Value{Value: 1},
+					SessionMaxSeconds:      wrapperspb.UInt32(28800),
+					SessionConnectionLimit: wrapperspb.Int32(1),
 				},
 			},
 			errCode: codes.OK,
@@ -458,7 +458,7 @@ func TestUpdate(t *testing.T) {
 					Name:                   wrapperspb.String("name"),
 					Description:            wrapperspb.String("desc"),
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
-					SessionConnectionLimit: wrapperspb.UInt32(5),
+					SessionConnectionLimit: wrapperspb.Int32(5),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -476,7 +476,7 @@ func TestUpdate(t *testing.T) {
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
-					SessionConnectionLimit: wrapperspb.UInt32(5),
+					SessionConnectionLimit: wrapperspb.Int32(5),
 				},
 			},
 			errCode: codes.OK,
@@ -507,7 +507,7 @@ func TestUpdate(t *testing.T) {
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
-					SessionConnectionLimit: wrapperspb.UInt32(5),
+					SessionConnectionLimit: wrapperspb.Int32(5),
 				},
 			},
 			errCode: codes.OK,
@@ -592,7 +592,7 @@ func TestUpdate(t *testing.T) {
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
-					SessionConnectionLimit: wrapperspb.UInt32(5),
+					SessionConnectionLimit: wrapperspb.Int32(5),
 				},
 			},
 			errCode: codes.OK,
@@ -623,7 +623,7 @@ func TestUpdate(t *testing.T) {
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
-					SessionConnectionLimit: wrapperspb.UInt32(5),
+					SessionConnectionLimit: wrapperspb.Int32(5),
 				},
 			},
 			errCode: codes.OK,
@@ -654,7 +654,7 @@ func TestUpdate(t *testing.T) {
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
-					SessionConnectionLimit: wrapperspb.UInt32(5),
+					SessionConnectionLimit: wrapperspb.Int32(5),
 				},
 			},
 			errCode: codes.OK,

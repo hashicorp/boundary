@@ -43,7 +43,7 @@ type ComposedOf struct {
 	// Expiration time for the session
 	ExpirationTime *timestamp.Timestamp
 	// Max connections for the session
-	ConnectionLimit uint32
+	ConnectionLimit int32
 }
 
 // Session contains information about a user's session with a target
@@ -87,7 +87,7 @@ type Session struct {
 	// Endpoint
 	Endpoint string `json:"-" gorm:"default:null"`
 	// Maximum number of connections in a session
-	ConnectionLimit uint32 `json:"connection_limit,omitempty" gorm:"default:null"`
+	ConnectionLimit int32 `json:"connection_limit,omitempty" gorm:"default:null"`
 
 	// key_id is the key ID that was used for the encryption operation. It can be
 	// used to identify a specific version of the key needed to decrypt the value,

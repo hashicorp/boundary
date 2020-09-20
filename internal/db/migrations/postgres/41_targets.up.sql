@@ -99,12 +99,12 @@ create table target_tcp (
   name text not null, -- name is not optional for a target subtype
   description text,
   default_port int, -- default_port can be null
-   -- max duration of the session in seconds.  default of 0 equals no limit
+   -- max duration of the session in seconds.
   session_max_seconds int not null default 0
-    check(session_max_seconds >= 0),
-  -- limit on number of session connections allowed.  default of 0 equals no limit
+    check(session_max_seconds > 0),
+  -- limit on number of session connections allowed. -1 equals no limit
   session_connection_limit int not null default 1
-    check(session_connection_limit >= 0),
+    check(session_connection_limit > 0 or session_connection_limit = -1),
   create_time wt_timestamp,
   update_time wt_timestamp,
   version wt_version,

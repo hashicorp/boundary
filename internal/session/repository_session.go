@@ -335,7 +335,7 @@ func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) 
 
 type ConnectionAuthzSummary struct {
 	ExpirationTime         *timestamp.Timestamp
-	ConnectionLimit        uint32
+	ConnectionLimit        int32
 	CurrentConnectionCount uint32
 }
 

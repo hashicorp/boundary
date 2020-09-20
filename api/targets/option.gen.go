@@ -111,7 +111,7 @@ func DefaultName() Option {
 	}
 }
 
-func WithSessionConnectionLimit(inSessionConnectionLimit uint32) Option {
+func WithSessionConnectionLimit(inSessionConnectionLimit int32) Option {
 	return func(o *options) {
 		o.postMap["session_connection_limit"] = inSessionConnectionLimit
 	}
