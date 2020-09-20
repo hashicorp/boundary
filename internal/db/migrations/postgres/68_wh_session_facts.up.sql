@@ -5,9 +5,9 @@ begin;
   -- certain data analysis tools.
   -- https://help.tableau.com/current/pro/desktop/en-us/data_clean_adm.htm
 
-  -- The wh_session_connection_transaction_fact  table is a transaction fact table.
+  -- The wh_session_connection_accumulating_fact table is an accumulating fact table.
   -- The grain of the fact table is one row per session connection.
-  create table wh_session_connection_transaction_fact  (
+  create table wh_session_connection_accumulating_fact  (
     -- TODO(mgaffney) 09/2020: partition table
 
     connection_id wt_public_id primary key,
@@ -80,23 +80,23 @@ begin;
 
   -- TODO(mgaffney) 09/2020: Research and test if the comment fields are used by
   -- data analysis tools.
-  comment on table wh_session_connection_transaction_fact is
-    'The Wh Session Connection Transaction Fact table is a transaction fact table. '
+  comment on table wh_session_connection_accumulating_fact is
+    'The Wh Session Connection Accumulating Fact table is an accumulating fact table. '
     'The grain of the fact table is one row per session connection.';
-  comment on column wh_session_connection_transaction_fact.bytes_up is
+  comment on column wh_session_connection_accumulating_fact.bytes_up is
     'Bytes Up is the total number of bytes received by the worker from the '
     'client and sent to the endpoint for this connection. Bytes Up is a fully '
     'additive measurement.';
-  comment on column wh_session_connection_transaction_fact.bytes_down is
+  comment on column wh_session_connection_accumulating_fact.bytes_down is
     'Bytes Down is the total number of bytes received by the worker from the '
     'endpoint and sent to the client for this connection. Bytes Down is a fully '
     'additive measurement.';
 
   /*
   -- The wh_session_accumulating_fact table is an accumulating snapshot.
-  -- The table wh_session_transaction_fact is a transaction fact table.
+  -- The table wh_session_accumulating_fact is an accumulating fact table.
   -- The grain of the fact table is one row per session.
-  create table wh_session_transaction_fact (
+  create table wh_session_accumulating_fact (
     -- TODO(mgaffney) 09/2020: partition table
 
     session_id wt_public_id primary key,
