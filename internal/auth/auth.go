@@ -63,9 +63,10 @@ type RequestInfo struct {
 }
 
 type VerifyResults struct {
-	UserId string
-	Error  error
-	Scope  *scopes.ScopeInfo
+	UserId      string
+	AuthTokenId string
+	Error       error
+	Scope       *scopes.ScopeInfo
 }
 
 type verifier struct {
@@ -160,6 +161,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		v.logger.Error("error performing authn/authz check", "error", err)
 		return
 	}
+	ret.AuthTokenId = v.requestInfo.PublicId
 	if !authResults.Allowed {
 		if v.requestInfo.DisableAuthzFailures {
 			ret.Error = nil

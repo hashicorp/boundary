@@ -96,7 +96,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	if err != nil {
 		return nil, err
 	}
-	sess, state, err := repo.LookupSession(ctx, id)
+	sess, err := repo.LookupSession(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", id)
@@ -106,7 +106,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	if sess == nil {
 		return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", id)
 	}
-	return toProto(sess, state), nil
+	return toProto(sess), nil
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Session, error) {
@@ -120,7 +120,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Sessio
 	}
 	var outUl []*pb.Session
 	for _, u := range ul {
-		outUl = append(outUl, toProto(u, nil))
+		outUl = append(outUl, toProto(u))
 	}
 	return outUl, nil
 }
@@ -130,11 +130,11 @@ func (s Service) cancelInRepo(ctx context.Context, id string, version uint32) (*
 	if err != nil {
 		return nil, err
 	}
-	out, state, err := repo.UpdateState(ctx, id, version, session.StatusCanceling)
+	out, err := repo.CancelSession(ctx, id, version)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update session: %v.", err)
 	}
-	return toProto(out, state), nil
+	return toProto(out), nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -165,7 +165,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			res.Error = err
 			return res
 		}
-		t, _, err := repo.LookupSession(ctx, id)
+		t, err := repo.LookupSession(ctx, id)
 		if err != nil {
 			res.Error = err
 			return res
@@ -184,7 +184,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *session.Session, state []*session.State) *pb.Session {
+func toProto(in *session.Session) *pb.Session {
 	out := pb.Session{
 		Id:          in.GetPublicId(),
 		ScopeId:     in.ScopeId,
@@ -200,12 +200,12 @@ func toProto(in *session.Session, state []*session.State) *pb.Session {
 		UpdatedTime:    in.UpdateTime.GetTimestamp(),
 		ExpirationTime: in.ExpirationTime.GetTimestamp(),
 	}
-	if len(state) > 0 {
-		out.Status = state[0].Status
+	if len(in.States) > 0 {
+		out.Status = in.States[0].Status.String()
 	}
-	for _, s := range state {
+	for _, s := range in.States {
 		sessState := &pb.SessionState{
-			Status: s.Status,
+			Status: s.Status.String(),
 		}
 		if s.StartTime != nil {
 			sessState.StartTime = s.StartTime.GetTimestamp()

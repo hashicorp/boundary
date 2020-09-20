@@ -23,10 +23,10 @@ type Connection struct {
 	ClientTcpAddress string `json:"client_tcp_address,omitempty" gorm:"default:null"`
 	// ClientTcpPort of the connection
 	ClientTcpPort uint32 `json:"client_tcp_port,omitempty" gorm:"default:null"`
-	// BackendTcpAddress of the connection
-	BackendTcpAddress string `json:"backend_tcp_address,omitempty" gorm:"default:null"`
-	// BackendTcpPort of the connection
-	BackendTcpPort uint32 `json:"backend_tcp_port,omitempty" gorm:"default:null"`
+	// EndpointTcpAddress of the connection
+	EndpointTcpAddress string `json:"endpoint_tcp_address,omitempty" gorm:"default:null"`
+	// EndpointTcpPort of the connection
+	EndpointTcpPort uint32 `json:"endpoint_tcp_port,omitempty" gorm:"default:null"`
 	// BytesUp of the connection
 	BytesUp uint64 `json:"bytes_up,omitempty" gorm:"default:null"`
 	// BytesDown of the connection
@@ -52,13 +52,13 @@ var _ db.VetForWriter = (*Connection)(nil)
 
 // New creates a new in memory session.  No options
 // are currently supported.
-func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, backendTcpAddr string, backendTcpPort uint32, opt ...Option) (*Connection, error) {
+func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, opt ...Option) (*Connection, error) {
 	c := Connection{
-		SessionId:         sessionID,
-		ClientTcpAddress:  clientTcpAddress,
-		ClientTcpPort:     clientTcpPort,
-		BackendTcpAddress: backendTcpAddr,
-		BackendTcpPort:    backendTcpPort,
+		SessionId:          sessionID,
+		ClientTcpAddress:   clientTcpAddress,
+		ClientTcpPort:      clientTcpPort,
+		EndpointTcpAddress: endpointTcpAddr,
+		EndpointTcpPort:    endpointTcpPort,
 	}
 	if err := c.validateNewConnection("new connection:"); err != nil {
 		return nil, err
@@ -74,16 +74,16 @@ func AllocConnection() Connection {
 // Clone creates a clone of the Session
 func (c *Connection) Clone() interface{} {
 	clone := &Connection{
-		PublicId:          c.PublicId,
-		SessionId:         c.SessionId,
-		ClientTcpAddress:  c.ClientTcpAddress,
-		ClientTcpPort:     c.ClientTcpPort,
-		BackendTcpAddress: c.BackendTcpAddress,
-		BackendTcpPort:    c.BackendTcpPort,
-		BytesUp:           c.BytesUp,
-		BytesDown:         c.BytesDown,
-		ClosedReason:      c.ClosedReason,
-		Version:           c.Version,
+		PublicId:           c.PublicId,
+		SessionId:          c.SessionId,
+		ClientTcpAddress:   c.ClientTcpAddress,
+		ClientTcpPort:      c.ClientTcpPort,
+		EndpointTcpAddress: c.EndpointTcpAddress,
+		EndpointTcpPort:    c.EndpointTcpPort,
+		BytesUp:            c.BytesUp,
+		BytesDown:          c.BytesDown,
+		ClosedReason:       c.ClosedReason,
+		Version:            c.Version,
 	}
 	if c.CreateTime != nil {
 		clone.CreateTime = &timestamp.Timestamp{
@@ -122,14 +122,6 @@ func (c *Connection) VetForWrite(ctx context.Context, r db.Reader, opType db.OpT
 			return fmt.Errorf("connection vet for write: public id is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "SessionId"):
 			return fmt.Errorf("connection vet for write: session id is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "ClientTcpAddress"):
-			return fmt.Errorf("connection vet for write: client address is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "ClientTcpPort"):
-			return fmt.Errorf("connection vet for write: client port is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "BackendTcpAddress"):
-			return fmt.Errorf("connection vet for write: backend address is immutable: %w", db.ErrInvalidParameter)
-		case contains(opts.WithFieldMaskPaths, "BackendTcpPort"):
-			return fmt.Errorf("connection vet for write: backend port is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "CreateTime"):
 			return fmt.Errorf("connection vet for write: create time is immutable: %w", db.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
@@ -169,11 +161,11 @@ func (c *Connection) validateNewConnection(errorPrefix string) error {
 	if c.ClientTcpPort == 0 {
 		return fmt.Errorf("%s missing client port: %w", errorPrefix, db.ErrInvalidParameter)
 	}
-	if c.BackendTcpAddress == "" {
-		return fmt.Errorf("%s missing backend address: %w", errorPrefix, db.ErrInvalidParameter)
+	if c.EndpointTcpAddress == "" {
+		return fmt.Errorf("%s missing endpoint address: %w", errorPrefix, db.ErrInvalidParameter)
 	}
-	if c.BackendTcpPort == 0 {
-		return fmt.Errorf("%s missing backend port: %w", errorPrefix, db.ErrInvalidParameter)
+	if c.EndpointTcpPort == 0 {
+		return fmt.Errorf("%s missing endpoint port: %w", errorPrefix, db.ErrInvalidParameter)
 	}
 	return nil
 }

@@ -49,6 +49,8 @@ func TestTcpTarget_Create(t *testing.T) {
 				t := allocTcpTarget()
 				t.ScopeId = prj.PublicId
 				t.Name = "valid-proj-scope"
+				t.SessionMaxSeconds = uint32((8 * time.Hour).Seconds())
+				t.SessionConnectionLimit = 1
 				return &t
 			}(),
 			create: true,

@@ -32,10 +32,12 @@ func NewTcpTarget(scopeId string, opt ...Option) (*TcpTarget, error) {
 	}
 	t := &TcpTarget{
 		TcpTarget: &store.TcpTarget{
-			ScopeId:     scopeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-			DefaultPort: opts.withDefaultPort,
+			ScopeId:                scopeId,
+			Name:                   opts.withName,
+			Description:            opts.withDescription,
+			DefaultPort:            opts.withDefaultPort,
+			SessionConnectionLimit: opts.withSessionConnectionLimit,
+			SessionMaxSeconds:      opts.withSessionMaxSeconds,
 		},
 	}
 	return t, nil
@@ -96,4 +98,8 @@ func (t *TcpTarget) oplog(op oplog.OpType) oplog.Metadata {
 		"scope-id":           []string{t.ScopeId},
 	}
 	return metadata
+}
+
+func (t TcpTarget) GetType() string {
+	return "tcp"
 }

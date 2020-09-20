@@ -6,20 +6,56 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/serve
 
 import "google/protobuf/timestamp.proto";
 import "controller/servers/v1/servers.proto";
-import "controller/api/resources/sessions/v1/session.proto";
+import "controller/api/resources/targets/v1/target.proto";
+import "controller/servers/services/v1/server_coordination_service.proto";
 
 service SessionService {
-	// Validate session allows a worker to retrieve session information from the controller.
-	// This endpoint validates the session
-	rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {}
+	// GetSession allows a worker to retrieve session information from the
+	// controller.
+	rpc LookupSession(LookupSessionRequest) returns (LookupSessionResponse) {}
+	
+	// ActivateSession allows a worker to activate a session on a controller.
+	rpc ActivateSession(ActivateSessionRequest) returns (ActivateSessionResponse) {}
+
+	// AuthorizeConnection allows a worker to activate a session on a controller.
+	rpc AuthorizeConnection(AuthorizeConnectionRequest) returns (AuthorizeConnectionResponse) {}
 }
 
-message GetSessionRequest {
+message LookupSessionRequest {
 	// The session ID from the client
-	string id = 10;
+	string session_id = 10;
 }
 
-// SessionResponse contains information necessary for a client to establish a session
-message GetSessionResponse {
-	api.resources.sessions.v1.Session session = 1;
+// LookupSessionResponse contains information necessary for a client to
+// establish a session.
+message LookupSessionResponse {
+	api.resources.targets.v1.SessionAuthorizationData authorization = 10;
+	string tofu_token = 20;
+	uint32 version = 30;
+	string endpoint = 40;
+	google.protobuf.Timestamp expiration = 50;
+	controller.servers.services.v1.SESSIONSTATUS status = 60;
+}
+
+message ActivateSessionRequest {
+	string session_id = 10;
+	string tofu_token = 20;
+	uint32 version = 30;
+	string worker_id = 40;
+	controller.servers.services.v1.SESSIONSTATUS status = 50;
+}
+
+message ActivateSessionResponse{
+	string session_id = 10;
+	controller.servers.services.v1.SESSIONSTATUS status = 20;
+}
+
+message AuthorizeConnectionRequest{
+	string session_id = 10;
+}
+
+message AuthorizeConnectionResponse{
+	string connection_id = 10;
+	controller.servers.services.v1.CONNECTIONSTATUS status = 20;
+	int32 connections_left = 30;
 }

@@ -45,7 +45,6 @@ func (w *Worker) startListeners() error {
 				Handler:           handler,
 				ReadHeaderTimeout: 10 * time.Second,
 				ReadTimeout:       30 * time.Second,
-				IdleTimeout:       5 * time.Minute,
 				ErrorLog:          w.logger.StandardLogger(nil),
 				BaseContext: func(net.Listener) context.Context {
 					return cancelCtx
@@ -70,7 +69,7 @@ func (w *Worker) startListeners() error {
 			ln.Mux.UnregisterProto(alpnmux.DefaultProto)
 			ln.Mux.UnregisterProto(alpnmux.NoProto)
 			l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
-				GetConfigForClient: w.getJobTls,
+				GetConfigForClient: w.getSessionTls,
 			})
 			if err != nil {
 				return fmt.Errorf("error getting tls listener: %w", err)

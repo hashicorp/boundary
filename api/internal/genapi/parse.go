@@ -87,6 +87,7 @@ var (
 	stringValueName = (&wrapperspb.StringValue{}).ProtoReflect().Descriptor().FullName()
 	boolValueName   = (&wrapperspb.BoolValue{}).ProtoReflect().Descriptor().FullName()
 	uInt32ValueName = (&wrapperspb.UInt32Value{}).ProtoReflect().Descriptor().FullName()
+	int32ValueName  = (&wrapperspb.Int32Value{}).ProtoReflect().Descriptor().FullName()
 	structValueName = (&_struct.Struct{}).ProtoReflect().Descriptor().FullName()
 	timestampName   = (&timestamppb.Timestamp{}).ProtoReflect().Descriptor().FullName()
 )
@@ -99,6 +100,8 @@ func messageKind(fd protoreflect.FieldDescriptor) (ptr, pkg, name string) {
 		return "", "", "bool"
 	case uInt32ValueName:
 		return "", "", "uint32"
+	case int32ValueName:
+		return "", "", "int32"
 	case structValueName:
 		return "", "", "map[string]interface{}"
 	case timestampName:

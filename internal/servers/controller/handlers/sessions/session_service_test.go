@@ -58,6 +58,7 @@ func TestGetSession(t *testing.T) {
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
 		ScopeId:     p.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
 	wireSess := &pb.Session{
@@ -162,7 +163,10 @@ func TestList(t *testing.T) {
 			HostSetId:   hs.GetPublicId(),
 			AuthTokenId: at.GetPublicId(),
 			ScopeId:     pWithSessions.GetPublicId(),
+			Endpoint:    "tcp://127.0.0.1:22",
 		})
+
+		status, states := convertStates(sess.States)
 
 		wantSession = append(wantSession, &pb.Session{
 			Id:             sess.GetPublicId(),
@@ -177,6 +181,8 @@ func TestList(t *testing.T) {
 			CreatedTime:    sess.CreateTime.GetTimestamp(),
 			ExpirationTime: sess.ExpirationTime.GetTimestamp(),
 			Scope:          &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String()},
+			Status:         status,
+			States:         states,
 		})
 	}
 
@@ -209,6 +215,23 @@ func TestList(t *testing.T) {
 			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
+}
+
+func convertStates(in []*session.State) (string, []*pb.SessionState) {
+	out := make([]*pb.SessionState, 0, len(in))
+	for _, s := range in {
+		sessState := &pb.SessionState{
+			Status: s.Status.String(),
+		}
+		if s.StartTime != nil {
+			sessState.StartTime = s.StartTime.GetTimestamp()
+		}
+		if s.EndTime != nil {
+			sessState.EndTime = s.EndTime.GetTimestamp()
+		}
+		out = append(out, sessState)
+	}
+	return out[0].Status, out
 }
 
 func TestCancel(t *testing.T) {
@@ -245,6 +268,7 @@ func TestCancel(t *testing.T) {
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
 		ScopeId:     p.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
 	wireSess := &pb.Session{
@@ -259,7 +283,7 @@ func TestCancel(t *testing.T) {
 		CreatedTime:    sess.CreateTime.GetTimestamp(),
 		ExpirationTime: sess.ExpirationTime.GetTimestamp(),
 		Scope:          &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
-		Status:         session.StatusCanceling.String(),
+		Status:         session.StatusCancelling.String(),
 	}
 
 	version := wireSess.GetVersion()
@@ -321,7 +345,7 @@ func TestCancel(t *testing.T) {
 
 			wantState := []*pb.SessionState{
 				{
-					Status:    session.StatusCanceling.String(),
+					Status:    session.StatusCancelling.String(),
 					StartTime: got.GetItem().GetUpdatedTime(),
 				},
 				{

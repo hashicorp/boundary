@@ -86,7 +86,18 @@ service TargetService {
       summary: "Deletes a Target"
     };
   }
-
+  
+  // AuthorizeSession creates authorization information from a given target.
+  rpc AuthorizeSession(AuthorizeSessionRequest) returns (AuthorizeSessionResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:authorize"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Authorizes a Session"
+    };
+  }
 
   // AddTargetHostSets adds host sets to this target. The provided request must
   // include the scope ID and the target ID to which the host sets will be added.
@@ -213,7 +224,6 @@ message SetTargetHostSetsResponse {
 }
 
 message RemoveTargetHostSetsRequest {
-  // This host set's id.
   string id = 1;
   uint32 version = 2;
 
@@ -224,4 +234,16 @@ message RemoveTargetHostSetsRequest {
 
 message RemoveTargetHostSetsResponse {
   api.resources.targets.v1.Target item = 1;
+}
+
+message AuthorizeSessionRequest {
+  string id = 1;
+
+  // An optional parameter allowing specification of the particular host within
+  // the target's host sets to connect to during this session.
+  string host_id = 2;
+}
+
+message AuthorizeSessionResponse {
+  api.resources.targets.v1.SessionAuthorization item = 1;
 }

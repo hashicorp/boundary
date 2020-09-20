@@ -131,6 +131,9 @@ begin;
     certificate bytea not null,
     -- after this time the connection will be expired, e.g. forcefully terminated
     expiration_time wt_timestamp, -- maybe null
+    -- limit on number of session connections allowed.  default of 0 equals no limit
+    connection_limit int not null default 1
+      check(connection_limit > 0 or connection_limit = -1), 
     -- trust of first use token 
     tofu_token bytea, -- will be null when session is first created
     -- the reason this session ended (null until terminated)
@@ -145,14 +148,15 @@ begin;
       on update cascade,
     version wt_version,
     create_time wt_timestamp,
-    update_time wt_timestamp
+    update_time wt_timestamp,
+    endpoint text -- not part of the warehouse, used to send info to the worker
   );
 
   create trigger 
     immutable_columns
   before
   update on session
-    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time', 'endpoint');
   
   create trigger 
     update_version_column 
@@ -188,6 +192,8 @@ begin;
         raise exception 'auth_token_id is null';
       when new.scope_id is null then
         raise exception 'scope_id is null';
+      when new.endpoint is null then
+        raise exception 'endpoint is null';
     else
     end case;
     return new;
@@ -226,6 +232,7 @@ begin;
   as $$
   begin
     if new.termination_reason is not null then
+      -- check to see if there are any open connections.
       perform from
         session_connection sc,
         session_connection_state scs
@@ -236,6 +243,18 @@ begin;
       if found then 
         raise 'session %s has existing open connections', new.public_id;
       end if;
+      
+      -- check to see if there's a terminated state already, before inserting a
+      -- new one.
+      perform from
+        session_state ss
+      where
+        ss.session_id = new.public_id and 
+        ss.state = 'terminated';
+      if found then 
+        return new;
+      end if;
+
       insert into session_state (session_id, state)
       values
         (new.public_id, 'terminated');
@@ -355,5 +374,35 @@ begin;
   create trigger insert_session_state before insert on session_state
     for each row execute procedure insert_session_state();
 
+  create view session_with_state as
+  select
+    s.public_id,
+    s.user_id,
+    s.host_id,
+    s.server_id,
+    s.server_type,
+    s.target_id,
+    s.host_set_id,
+    s.auth_token_id,
+    s.scope_id,
+    s.certificate,
+    s.expiration_time,
+    s.connection_limit,
+    s.tofu_token,
+    s.key_id,
+    s.termination_reason,
+    s.version,
+    s.create_time,
+    s.update_time,
+    s.endpoint,
+    ss.state,
+    ss.previous_end_time,
+    ss.start_time,
+    ss.end_time
+  from  
+    session s,
+    session_state ss
+  where 
+    s.public_id = ss.session_id;
 
 commit;

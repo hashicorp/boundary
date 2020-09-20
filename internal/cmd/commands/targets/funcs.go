@@ -13,12 +13,14 @@ func generateTargetTableOutput(in *targets.Target) string {
 	var ret []string
 
 	nonAttributeMap := map[string]interface{}{
-		"ID":           in.Id,
-		"Scope ID":     in.Scope.Id,
-		"Version":      in.Version,
-		"Type":         in.Type,
-		"Created Time": in.CreatedTime.Local().Format(time.RFC3339),
-		"Updated Time": in.UpdatedTime.Local().Format(time.RFC3339),
+		"ID":                       in.Id,
+		"Scope ID":                 in.Scope.Id,
+		"Version":                  in.Version,
+		"Type":                     in.Type,
+		"Created Time":             in.CreatedTime.Local().Format(time.RFC3339),
+		"Updated Time":             in.UpdatedTime.Local().Format(time.RFC3339),
+		"Session Connection Limit": in.SessionConnectionLimit,
+		"Session Max Seconds":      in.SessionMaxSeconds,
 	}
 
 	if in.Name != "" {
@@ -90,6 +92,35 @@ func generateTargetTableOutput(in *targets.Target) string {
 			base.WrapMap(4, maxLength, in.Attributes),
 		)
 	}
+
+	return base.WrapForHelpText(ret)
+}
+
+func generateAuthorizationTableOutput(in *targets.SessionAuthorization) string {
+	var ret []string
+
+	nonAttributeMap := map[string]interface{}{
+		"Session ID":          in.SessionId,
+		"Target ID":           in.TargetId,
+		"Scope ID":            in.Scope.Id,
+		"Created Time":        in.CreatedTime.Local().Format(time.RFC3339),
+		"Type":                in.Type,
+		"Authorization Token": in.AuthorizationToken,
+	}
+
+	maxLength := 0
+	for k := range nonAttributeMap {
+		if len(k) > maxLength {
+			maxLength = len(k)
+		}
+	}
+
+	ret = append(ret, "", "Target information:")
+
+	ret = append(ret,
+		// We do +2 because there is another +2 offset for host sets below
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
+	)
 
 	return base.WrapForHelpText(ret)
 }

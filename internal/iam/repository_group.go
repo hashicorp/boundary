@@ -73,6 +73,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 			"description": group.Description,
 		},
 		fieldMaskPaths,
+		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: %w", db.ErrEmptyFieldMask)

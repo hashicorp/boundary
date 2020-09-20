@@ -31,6 +31,7 @@ func (w *Worker) startControllerConnections() error {
 	for _, addr := range w.conf.RawConfig.Worker.Controllers {
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil && strings.Contains(err.Error(), "missing port in address") {
+			w.logger.Trace("missing port in controller address, using port 9201", "address", addr)
 			host, port, err = net.SplitHostPort(fmt.Sprintf("%s:%s", addr, "9201"))
 		}
 		if err != nil {
@@ -111,8 +112,8 @@ func (w *Worker) createClientConn(addr string) error {
 		return fmt.Errorf("error dialing controller for worker auth: %w", err)
 	}
 
-	client := pbs.NewServerCoordinationServiceClient(cc)
-	w.controllerConn.Store(client)
+	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
+	w.controllerSessionConn.Store(pbs.NewSessionServiceClient(cc))
 
 	w.logger.Info("connected to controller", "address", addr)
 	return nil
