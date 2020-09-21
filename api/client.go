@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -738,7 +739,7 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 
 	if checkRetry == nil {
 		checkRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
-			panic("retrying")
+			log.Println("in checkretry", resp.Request.Method, resp.Request.URL.String())
 			return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
 		}
 	}
