@@ -69,11 +69,9 @@ message StatusRequest {
 
 enum CHANGETYPE {
   CHANGETYPE_UNSPECIFIED = 0;
-  // Indicates that the job should be cancelled on the worker; will also update
-  // the state on the worker.
-  CHANGETYPE_CANCEL = 1;
-  // Indicates to the worker to simply update its knowledge of the state.
-  CHANGETYPE_UPDATE_STATE = 2;
+  // Indicates to the worker to update its knowledge of the state, which may
+  // cause action to be taken.
+  CHANGETYPE_UPDATE_STATE = 1;
 }
 
 message JobChangeRequest {

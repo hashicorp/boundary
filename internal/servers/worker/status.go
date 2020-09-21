@@ -109,8 +109,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 
 					for _, request := range result.GetJobsRequests() {
 						switch request.GetRequestType() {
-						case pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
-							pbs.CHANGETYPE_CHANGETYPE_CANCEL:
+						case pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE:
 							switch request.GetJob().GetType() {
 							case pbs.JOBTYPE_JOBTYPE_SESSION:
 								sessInfo := request.GetJob().GetSessionInfo()

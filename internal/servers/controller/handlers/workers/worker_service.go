@@ -100,21 +100,25 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 			// it's in termianted status something went wrong and we're
 			// mismatched, so ensure we cancel it also.
 			currState := sessionInfo.States[0].Status
-			switch currState {
-			case session.StatusCancelling,
-				session.StatusTerminated:
-				ret.JobsRequests = append(ret.JobsRequests, &pbs.JobChangeRequest{
-					Job: &pbs.Job{
-						Type: pbs.JOBTYPE_JOBTYPE_SESSION,
-						JobInfo: &pbs.Job_SessionInfo{
-							SessionInfo: &pbs.SessionJobInfo{
-								SessionId: sessionId,
-								Status:    currState.ProtoVal(),
+			if currState.ProtoVal() != si.Status {
+				switch currState {
+				case session.StatusCancelling,
+					session.StatusTerminated:
+					// If we're here the job is pending or active so we do want
+					// to actually send a change request
+					ret.JobsRequests = append(ret.JobsRequests, &pbs.JobChangeRequest{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_SESSION,
+							JobInfo: &pbs.Job_SessionInfo{
+								SessionInfo: &pbs.SessionJobInfo{
+									SessionId: sessionId,
+									Status:    currState.ProtoVal(),
+								},
 							},
 						},
-					},
-					RequestType: pbs.CHANGETYPE_CHANGETYPE_CANCEL,
-				})
+						RequestType: pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
+					})
+				}
 			}
 		}
 	}
