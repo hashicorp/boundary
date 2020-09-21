@@ -65,7 +65,7 @@ func InitDbInDocker(dialect string) (cleanup func() error, retURL, container str
 	switch dialect {
 	case "postgres":
 		if os.Getenv("PG_URL") != "" {
-			if err := InitStore(dialect, func() error { return nil }, os.Getenv("PG_URL")); err != nil {
+			if _, err := InitStore(dialect, func() error { return nil }, os.Getenv("PG_URL")); err != nil {
 				return func() error { return nil }, os.Getenv("PG_URL"), "", fmt.Errorf("error initializing store: %w", err)
 			}
 			return func() error { return nil }, os.Getenv("PG_URL"), "", nil
@@ -75,7 +75,7 @@ func InitDbInDocker(dialect string) (cleanup func() error, retURL, container str
 	if err != nil {
 		return func() error { return nil }, "", "", fmt.Errorf("could not start docker: %w", err)
 	}
-	if err := InitStore(dialect, c, url); err != nil {
+	if _, err := InitStore(dialect, c, url); err != nil {
 		return func() error { return nil }, "", "", fmt.Errorf("error initializing store: %w", err)
 	}
 	return c, url, container, nil
@@ -132,8 +132,9 @@ func StartDbInDocker(dialect string) (cleanup func() error, retURL, container st
 	return cleanup, url, resource.Container.Name, nil
 }
 
-// InitStore will execute the migrations needed to initialize the store for tests
-func InitStore(dialect string, cleanup func() error, url string) error {
+// InitStore will execute the migrations needed to initialize the store. It
+// returns true if migrations actually ran; false if we were already current.
+func InitStore(dialect string, cleanup func() error, url string) (bool, error) {
 	var mErr *multierror.Error
 	// run migrations
 	source, err := migrations.NewMigrationSource(dialect)
@@ -144,7 +145,7 @@ func InitStore(dialect string, cleanup func() error, url string) error {
 				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating driver: %w", err))
 			}
 		}
-		return mErr.ErrorOrNil()
+		return false, mErr.ErrorOrNil()
 	}
 	m, err := migrate.NewWithSourceInstance("httpfs", source, url)
 	if err != nil {
@@ -154,19 +155,22 @@ func InitStore(dialect string, cleanup func() error, url string) error {
 				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating migrations: %w", err))
 			}
 		}
-		return mErr.ErrorOrNil()
+		return false, mErr.ErrorOrNil()
 
 	}
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+	if err := m.Up(); err != nil {
+		if err == migrate.ErrNoChange {
+			return false, nil
+		}
 		mErr = multierror.Append(mErr, fmt.Errorf("error running migrations: %w", err))
 		if cleanup != nil {
 			if err := cleanup(); err != nil {
 				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from running migrations: %w", err))
 			}
 		}
-		return mErr.ErrorOrNil()
+		return false, mErr.ErrorOrNil()
 	}
-	return mErr.ErrorOrNil()
+	return true, mErr.ErrorOrNil()
 }
 
 // cleanupDockerResource will clean up the dockertest resources (postgres)
