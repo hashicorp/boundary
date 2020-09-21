@@ -742,7 +742,7 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 			if recoveryKmsWrapper != nil {
 				token, err = recovery.GenerateRecoveryToken(ctx, recoveryKmsWrapper)
 				if err != nil {
-					return nil, fmt.Errorf("error generating recovery KMS workflow token: %w", err)
+					return false, fmt.Errorf("error generating recovery KMS workflow token: %w", err)
 				}
 				resp.Request.Header.Set("authorization", "Bearer "+token)
 			}
