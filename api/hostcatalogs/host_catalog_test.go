@@ -137,6 +137,12 @@ func TestErrors(t *testing.T) {
 	assert.Nil(apiErr)
 	assert.NotNil(hc)
 
+	// Updating the wrong version should fail.
+	_, apiErr, err = pc.Update(tc.Context(), hc.Item.Id, 73, hostcatalogs.WithName("anything"))
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+
 	_, apiErr, err = pc.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
 	require.NoError(err)
 	assert.NotNil(apiErr)

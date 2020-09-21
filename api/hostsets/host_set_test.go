@@ -200,6 +200,12 @@ func TestErrors(t *testing.T) {
 	require.Nil(apiErr)
 	assert.NotNil(h)
 
+	// Updating the wrong version should fail.
+	_, apiErr, err = hClient.Update(tc.Context(), h.Item.Id, 73, hostsets.WithName("anything"))
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+
 	h, apiErr, err = hClient.Create(tc.Context(), hc.Item.Id, hostsets.WithName("foo"))
 	require.NoError(err)
 	assert.NotNil(apiErr)

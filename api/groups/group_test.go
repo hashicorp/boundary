@@ -197,6 +197,12 @@ func TestErrors(t *testing.T) {
 			assert.Nil(apiErr)
 			assert.NotNil(g)
 
+			// Updating the wrong version should fail.
+			_, apiErr, err = groupClient.Update(tc.Context(), g.Item.Id, 73, groups.WithName("anything"))
+			require.NoError(err)
+			assert.NotNil(apiErr)
+			assert.EqualValues(http.StatusNotFound, apiErr.Status)
+
 			// Create another resource with the same name.
 			_, apiErr, err = groupClient.Create(tc.Context(), tt.scopeId, groups.WithName("first"))
 			require.NoError(err)
