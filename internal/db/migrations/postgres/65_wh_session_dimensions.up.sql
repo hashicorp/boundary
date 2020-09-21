@@ -5,40 +5,43 @@ begin;
     -- this is done to prevent conflicts with rows in other clusters
     -- which enables warehouse data from multiple clusters to be loaded into a
     -- single database instance
-    id                            wh_dim_id     primary key default wh_dim_id(),
+    id                              wh_dim_id     primary key default wh_dim_id(),
 
-    host_id                       wh_public_id  not null,
-    host_type                     wh_dim_text,
-    host_name                     wh_dim_text,
-    host_description              wh_dim_text,
-    host_address                  wh_dim_text,
+    host_id                         wh_public_id  not null,
+    host_type                       wh_dim_text,
+    host_name                       wh_dim_text,
+    host_description                wh_dim_text,
+    host_address                    wh_dim_text,
 
-    host_set_id                   wh_public_id  not null,
-    host_set_type                 wh_dim_text,
-    host_set_name                 wh_dim_text,
-    host_set_description          wh_dim_text,
+    host_set_id                     wh_public_id  not null,
+    host_set_type                   wh_dim_text,
+    host_set_name                   wh_dim_text,
+    host_set_description            wh_dim_text,
 
-    host_catalog_id               wh_public_id  not null,
-    host_catalog_type             wh_dim_text,
-    host_catalog_name             wh_dim_text,
-    host_catalog_description      wh_dim_text,
+    host_catalog_id                 wh_public_id  not null,
+    host_catalog_type               wh_dim_text,
+    host_catalog_name               wh_dim_text,
+    host_catalog_description        wh_dim_text,
 
-    target_id                     wh_public_id  not null,
-    target_type                   wh_dim_text,
-    target_name                   wh_dim_text,
-    target_description            wh_dim_text,
+    target_id                       wh_public_id  not null,
+    target_type                     wh_dim_text,
+    target_name                     wh_dim_text,
+    target_description              wh_dim_text,
+    target_default_port_number      integer       not null,
+    target_session_max_seconds      integer       not null,
+    target_session_connection_limit integer       not null,
 
-    project_id                    wt_scope_id   not null,
-    project_name                  wh_dim_text,
-    project_description           wh_dim_text,
+    project_id                      wt_scope_id   not null,
+    project_name                    wh_dim_text,
+    project_description             wh_dim_text,
 
-    host_organization_id          wt_scope_id   not null,
-    host_organization_name        wh_dim_text,
-    host_organization_description wh_dim_text,
+    host_organization_id            wt_scope_id   not null,
+    host_organization_name          wh_dim_text,
+    host_organization_description   wh_dim_text,
 
-    current_row_indicator         wh_dim_text,
-    row_effective_time            wh_timestamp,
-    row_expiration_time           wh_timestamp
+    current_row_indicator           wh_dim_text,
+    row_effective_time              wh_timestamp,
+    row_expiration_time             wh_timestamp
   );
 
   -- https://www.postgresql.org/docs/current/indexes-partial.html
@@ -73,6 +76,9 @@ begin;
          'tcp target'                    as target_type,
          coalesce(t.name, 'None')        as target_name,
          coalesce(t.description, 'None') as target_description,
+         coalesce(t.default_port, 0)     as target_default_port_number,
+         t.session_max_seconds           as target_session_max_seconds,
+         t.session_connection_limit      as target_session_connection_limit,
          p.public_id                     as project_id,
          coalesce(p.name, 'None')        as project_name,
          coalesce(p.description, 'None') as project_description,
@@ -119,6 +125,9 @@ begin;
          target_type,
          target_name,
          target_description,
+         target_default_port_number,
+         target_session_max_seconds,
+         target_session_connection_limit,
          project_id,
          project_name,
          project_description,

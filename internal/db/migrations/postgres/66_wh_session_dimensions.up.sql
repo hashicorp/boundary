@@ -33,21 +33,23 @@ begin;
 
       -- insert a new row
       insert into wh_host_dimension (
-             host_id,               host_type,              host_name,                     host_description,         host_address,
-             host_set_id,           host_set_type,          host_set_name,                 host_set_description,
-             host_catalog_id,       host_catalog_type,      host_catalog_name,             host_catalog_description,
-             target_id,             target_type,            target_name,                   target_description,
-             project_id,            project_name,           project_description,
-             host_organization_id,  host_organization_name, host_organization_description,
-             current_row_indicator, row_effective_time,     row_expiration_time
+             host_id,                    host_type,                  host_name,                       host_description,         host_address,
+             host_set_id,                host_set_type,              host_set_name,                   host_set_description,
+             host_catalog_id,            host_catalog_type,          host_catalog_name,               host_catalog_description,
+             target_id,                  target_type,                target_name,                     target_description,
+             target_default_port_number, target_session_max_seconds, target_session_connection_limit,
+             project_id,                 project_name,               project_description,
+             host_organization_id,       host_organization_name,     host_organization_description,
+             current_row_indicator,      row_effective_time,         row_expiration_time
       )
-      select host_id,               host_type,              host_name,                     host_description,         host_address,
-             host_set_id,           host_set_type,          host_set_name,                 host_set_description,
-             host_catalog_id,       host_catalog_type,      host_catalog_name,             host_catalog_description,
-             target_id,             target_type,            target_name,                   target_description,
-             project_id,            project_name,           project_description,
-             host_organization_id,  host_organization_name, host_organization_description,
-             'Current',             current_timestamp,      'infinity'::timestamptz
+      select host_id,                    host_type,                  host_name,                       host_description,         host_address,
+             host_set_id,                host_set_type,              host_set_name,                   host_set_description,
+             host_catalog_id,            host_catalog_type,          host_catalog_name,               host_catalog_description,
+             target_id,                  target_type,                target_name,                     target_description,
+             target_default_port_number, target_session_max_seconds, target_session_connection_limit,
+             project_id,                 project_name,               project_description,
+             host_organization_id,       host_organization_name,     host_organization_description,
+             'Current',                  current_timestamp,          'infinity'::timestamptz
         from whx_host_dimension_source
        where host_id               = p_host_id
          and host_set_id           = p_host_set_id
