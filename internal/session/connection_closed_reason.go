@@ -13,7 +13,7 @@ const (
 	UnknownReason          ClosedReason = "unknown"
 	ConnectionTimedOut     ClosedReason = "timed out"
 	ConnectionClosedByUser ClosedReason = "closed by end-user"
-	ConnectionCancelled    ClosedReason = "cancelled"
+	ConnectionCanceled     ClosedReason = "canceled"
 	ConnectionNetworkError ClosedReason = "network error"
 	ConnectionSystemError  ClosedReason = "system error"
 )
@@ -30,8 +30,8 @@ func convertToClosedReason(s string) (ClosedReason, error) {
 		return ConnectionTimedOut, nil
 	case ConnectionClosedByUser.String():
 		return ConnectionClosedByUser, nil
-	case ConnectionCancelled.String():
-		return ConnectionCancelled, nil
+	case ConnectionCanceled.String():
+		return ConnectionCanceled, nil
 	case ConnectionNetworkError.String():
 		return ConnectionNetworkError, nil
 	case ConnectionSystemError.String():

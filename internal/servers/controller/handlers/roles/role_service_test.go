@@ -273,6 +273,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: or.GetPublicId(),
 			},
+			res:     &pbs.DeleteRoleResponse{},
 			errCode: codes.OK,
 		},
 		{
@@ -282,6 +283,14 @@ func TestDelete(t *testing.T) {
 				Id: iam.RolePrefix + "_doesntexis",
 			},
 			errCode: codes.NotFound,
+		},
+		{
+			name:    "Delete default role",
+			scopeId: "global",
+			req: &pbs.DeleteRoleRequest{
+				Id: "r_default",
+			},
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name:    "Bad Role Id formatting",
@@ -297,6 +306,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: pr.GetPublicId(),
 			},
+			res:     &pbs.DeleteRoleResponse{},
 			errCode: codes.OK,
 		},
 		{

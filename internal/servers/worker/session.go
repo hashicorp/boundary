@@ -228,7 +228,7 @@ func (w *Worker) closeConnection(ctx context.Context, req *pbs.CloseConnectionRe
 }
 
 func (w *Worker) closeConnections(ctx context.Context, closeMap map[string]string) error {
-	w.logger.Trace("marking connections as closed", "session_and_connection_ids", fmt.Sprint("%#v", closeMap))
+	w.logger.Trace("marking connections as closed", "session_and_connection_ids", fmt.Sprintf("%#v", closeMap))
 
 	closeData := make([]*pbs.CloseConnectionRequestData, 0, len(closeMap))
 	for connId := range closeMap {

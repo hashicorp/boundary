@@ -21,7 +21,7 @@ type Status string
 const (
 	StatusPending    Status = "pending"
 	StatusActive     Status = "active"
-	StatusCancelling Status = "canceling"
+	StatusCanceling  Status = "canceling"
 	StatusTerminated Status = "terminated"
 )
 
@@ -37,8 +37,8 @@ func (s Status) ProtoVal() workerpbs.SESSIONSTATUS {
 		return workerpbs.SESSIONSTATUS_SESSIONSTATUS_PENDING
 	case StatusActive:
 		return workerpbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE
-	case StatusCancelling:
-		return workerpbs.SESSIONSTATUS_SESSIONSTATUS_CANCELLING
+	case StatusCanceling:
+		return workerpbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING
 	case StatusTerminated:
 		return workerpbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED
 	}

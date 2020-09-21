@@ -58,7 +58,7 @@ begin;
           'unknown',
           'timed out',
           'closed by end-user',
-          'cancelled',
+          'canceled',
           'network error',
           'system error'
         )
@@ -70,7 +70,7 @@ begin;
     ('unknown'),
     ('timed out'),
     ('closed by end-user'),
-    ('cancelled'),
+    ('canceled'),
     ('network error'),
     ('system error');
 

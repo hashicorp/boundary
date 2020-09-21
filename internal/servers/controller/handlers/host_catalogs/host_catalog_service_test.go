@@ -238,6 +238,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostCatalogRequest{
 				Id: hc.GetPublicId(),
 			},
+			res:     &pbs.DeleteHostCatalogResponse{},
 			errCode: codes.OK,
 		},
 		{
