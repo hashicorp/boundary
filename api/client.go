@@ -615,7 +615,6 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	addr := c.config.Addr
 	srvLookup := c.config.SRVLookup
 	token := c.config.Token
-	recoveryKmsWrapper := c.config.RecoveryKmsWrapper
 	httpClient := c.config.HttpClient
 	headers := copyHeaders(c.config.Headers)
 	c.modifyLock.RUnlock()
@@ -655,13 +654,6 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 		if len(addrs) > 0 {
 			host = fmt.Sprintf("%s:%d", addrs[0].Target, addrs[0].Port)
-		}
-	}
-
-	if recoveryKmsWrapper != nil {
-		token, err = recovery.GenerateRecoveryToken(ctx, recoveryKmsWrapper)
-		if err != nil {
-			return nil, fmt.Errorf("error generating recovery KMS workflow token: %w", err)
 		}
 	}
 
@@ -737,12 +729,20 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 		backoff = retryablehttp.LinearJitterBackoff
 	}
 
+	if recoveryKmsWrapper != nil {
+		token, err := recovery.GenerateRecoveryToken(ctx, recoveryKmsWrapper)
+		if err != nil {
+			return nil, fmt.Errorf("error generating recovery KMS workflow token: %w", err)
+		}
+		r.Header.Set("authorization", "Bearer "+token)
+	}
+
 	if checkRetry == nil {
 		checkRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
 			if recoveryKmsWrapper != nil &&
 				resp != nil &&
 				resp.Request != nil {
-				token, err = recovery.GenerateRecoveryToken(ctx, recoveryKmsWrapper)
+				token, err := recovery.GenerateRecoveryToken(ctx, recoveryKmsWrapper)
 				if err != nil {
 					return false, fmt.Errorf("error generating recovery KMS workflow token: %w", err)
 				}
