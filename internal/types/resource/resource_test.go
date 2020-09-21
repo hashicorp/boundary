@@ -72,6 +72,10 @@ func Test_Resource(t *testing.T) {
 			typeString: "worker",
 			want:       Worker,
 		},
+		{
+			typeString: "session",
+			want:       Session,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.typeString, func(t *testing.T) {

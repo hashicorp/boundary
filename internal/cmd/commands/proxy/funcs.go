@@ -10,6 +10,7 @@ func generateSessionInfoTableOutput(in SessionInfo) string {
 	var ret []string
 
 	nonAttributeMap := map[string]interface{}{
+		"Session ID":       in.SessionId,
 		"Protocol":         in.Protocol,
 		"Address":          in.Address,
 		"Port":             in.Port,

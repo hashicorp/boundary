@@ -1895,6 +1895,14 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.CancelSessionRequest"
+            }
           }
         ],
         "tags": [
@@ -3462,6 +3470,18 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.SessionAuthorization"
+        }
+      }
+    },
+    "controller.api.services.v1.CancelSessionRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64"
         }
       }
     },

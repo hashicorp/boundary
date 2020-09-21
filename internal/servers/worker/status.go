@@ -45,6 +45,8 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 				return
 
 			case <-timer.C:
+				// First send info as-is. We'll perform cleanup duties after we
+				// get cancel/job change info back.
 				var activeJobs []*pbs.JobStatus
 				w.sessionInfoMap.Range(func(key, value interface{}) bool {
 					var jobInfo pbs.SessionJobInfo
@@ -119,24 +121,60 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 									continue
 								}
 								si := siRaw.(*sessionInfo)
-								closeIds := make([]string, 0, len(result.GetJobsRequests()))
 								si.Lock()
 								si.status = sessInfo.GetStatus()
-								if request.GetRequestType() == pbs.CHANGETYPE_CHANGETYPE_CANCEL {
-									for k, v := range si.connInfoMap {
-										v.connCancel()
-										w.logger.Info("terminated connection", "session_id", sessionId, "connection_id", k)
-										closeIds = append(closeIds, k)
-									}
-								}
 								si.Unlock()
-								if err := w.closeConnections(cancelCtx, si, closeIds); err != nil {
-									w.logger.Error("error marking connections closed", "error", err, "connection_ids", closeIds)
-								}
 							}
 						}
 					}
 				}
+
+				// Cleanup: Run through current jobs. Cancel connections for any
+				// canceling session or any session that is expired. Clear out
+				// sessions that are canceled or expired with all connections
+				// marked as closed. Close any that aren't marked as such.
+				closeInfo := make(map[string]string)
+				cleanSessionIds := make([]string, 0)
+				w.sessionInfoMap.Range(func(key, value interface{}) bool {
+					si := value.(*sessionInfo)
+					si.Lock()
+					if time.Until(si.lookupSessionResponse.Expiration.AsTime()) < 0 ||
+						si.status == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELLING {
+						var toClose int
+						for k, v := range si.connInfoMap {
+							if v.closeTime.IsZero() {
+								toClose++
+								v.connCancel()
+								w.logger.Info("terminated connection due to cancelation or expiration", "session_id", si.id, "connection_id", k)
+								closeInfo[k] = si.id
+							}
+						}
+						// closeTime is marked by closeConnections iff the
+						// status is returned for that connection as closed. If
+						// the session is no longer valid and all connections
+						// are marked closed, clean up the session.
+						if toClose == 0 {
+							cleanSessionIds = append(cleanSessionIds, si.id)
+						}
+					}
+					si.Unlock()
+					return true
+				})
+
+				// Note that we won't clean these from the info map until the
+				// next time we run this function
+				if len(closeInfo) > 0 {
+					if err := w.closeConnections(cancelCtx, closeInfo); err != nil {
+						w.logger.Error("error marking connections closed", "error", err)
+					}
+				}
+
+				// Forget sessions where the session is expired/canceled and all
+				// connections are canceled and marked closed
+				for _, v := range cleanSessionIds {
+					w.sessionInfoMap.Delete(v)
+				}
+
 				timer.Reset(getRandomInterval())
 			}
 		}

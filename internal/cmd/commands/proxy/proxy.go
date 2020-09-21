@@ -40,6 +40,7 @@ type SessionInfo struct {
 	Protocol        string    `json:"protocol"`
 	Expiration      time.Time `json:"expiration"`
 	ConnectionLimit int32     `json:"connection_limit"`
+	SessionId       string    `json:"session_id"`
 }
 
 type ConnectionInfo struct {
@@ -348,6 +349,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		Port:            listenerAddr.Port,
 		Expiration:      c.expiration,
 		ConnectionLimit: data.GetConnectionLimit(),
+		SessionId:       data.GetSessionId(),
 	}
 
 	switch base.Format(c.UI) {
@@ -365,7 +367,6 @@ func (c *Command) Run(args []string) (retCode int) {
 	c.connWg = new(sync.WaitGroup)
 
 	c.connWg.Add(1)
-
 	go func() {
 		defer c.connWg.Done()
 		for {
@@ -483,6 +484,13 @@ func (c *Command) handleConnection(
 	}
 	var handshakeResult proxy.HandshakeResult
 	if err := wspb.Read(c.Context, conn, &handshakeResult); err != nil {
+		switch {
+		case strings.Contains(err.Error(), "unable to authorize connection"):
+			// There's no reason to think we'd be able to authorize any more
+			// connections after the first has failed
+			c.connsLeftCh <- 0
+			return errors.New("Unable to authorize connection")
+		}
 		return fmt.Errorf("error reading handshake result: %w", err)
 	}
 

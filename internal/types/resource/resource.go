@@ -39,6 +39,7 @@ func (r Type) String() string {
 		"target",
 		"controller",
 		"worker",
+		"session",
 	}[r]
 }
 
@@ -58,4 +59,5 @@ var Map = map[string]Type{
 	Target.String():      Target,
 	Controller.String():  Controller,
 	Worker.String():      Worker,
+	Session.String():     Session,
 }
