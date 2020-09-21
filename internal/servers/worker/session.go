@@ -173,3 +173,28 @@ func (w *Worker) authorizeConnection(ctx context.Context, sessionId string) (*co
 		status: resp.GetStatus(),
 	}, resp.GetConnectionsLeft(), nil
 }
+
+func (w *Worker) connectSession(ctx context.Context, req *pbs.ConnectSessionRequest) (pbs.CONNECTIONSTATUS, error) {
+	rawConn := w.controllerSessionConn.Load()
+	if rawConn == nil {
+		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, errors.New("could not get a controller client")
+	}
+	conn, ok := rawConn.(pbs.SessionServiceClient)
+	if !ok {
+		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, errors.New("could not cast atomic controller client to the real thing")
+	}
+	if conn == nil {
+		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, errors.New("controller client is nil")
+	}
+
+	resp, err := conn.ConnectSession(ctx, req)
+	if err != nil {
+		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, err
+	}
+
+	if resp.GetStatus() != pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED {
+		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, fmt.Errorf("unexpected state returned: %v", resp.GetStatus().String())
+	}
+
+	return resp.GetStatus(), nil
+}

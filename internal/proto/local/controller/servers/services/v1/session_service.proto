@@ -19,6 +19,9 @@ service SessionService {
 
 	// AuthorizeConnection allows a worker to activate a session on a controller.
 	rpc AuthorizeConnection(AuthorizeConnectionRequest) returns (AuthorizeConnectionResponse) {}
+
+	// ConnectSession updates a connection and causes a state transition
+	rpc ConnectSession(ConnectSessionRequest) returns (ConnectSessionResponse) {}
 }
 
 message LookupSessionRequest {
@@ -47,17 +50,28 @@ message ActivateSessionRequest {
 	controller.servers.services.v1.SESSIONSTATUS status = 50;
 }
 
-message ActivateSessionResponse{
-	string session_id = 10;
-	controller.servers.services.v1.SESSIONSTATUS status = 20;
+message ActivateSessionResponse {
+	controller.servers.services.v1.SESSIONSTATUS status = 10;
 }
 
-message AuthorizeConnectionRequest{
+message AuthorizeConnectionRequest {
 	string session_id = 10;
 }
 
-message AuthorizeConnectionResponse{
+message AuthorizeConnectionResponse {
 	string connection_id = 10;
 	controller.servers.services.v1.CONNECTIONSTATUS status = 20;
 	int32 connections_left = 30;
+}
+
+message ConnectSessionRequest {
+	string connection_id = 10;
+	string client_tcp_address = 20;
+	uint32 client_tcp_port = 30;
+	string endpoint_tcp_address = 40;
+	uint32 endpoint_tcp_port = 50;
+}
+
+message ConnectSessionResponse {
+	controller.servers.services.v1.CONNECTIONSTATUS status = 10;
 }

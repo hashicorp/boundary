@@ -198,8 +198,7 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 	}
 
 	return &pbs.ActivateSessionResponse{
-		SessionId: sessionInfo.GetPublicId(),
-		Status:    sessionStates[0].Status.ProtoVal(),
+		Status: sessionStates[0].Status.ProtoVal(),
 	}, nil
 }
 
@@ -229,6 +228,37 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 	}
 	if ret.ConnectionsLeft != -1 {
 		ret.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
+	}
+
+	ws.logger.Trace("authorized connection", "session_id", req.GetSessionId(), "connection_id", ret.ConnectionId)
+
+	return ret, nil
+}
+
+func (ws *workerServiceServer) ConnectSession(ctx context.Context, req *pbs.ConnectSessionRequest) (*pbs.ConnectSessionResponse, error) {
+	ws.logger.Trace("got connection established information from worker", "connection_id", req.GetConnectionId())
+
+	sessRepo, err := ws.sessionRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
+	}
+
+	connectionInfo, connStates, err := sessRepo.ConnectSession(ctx, session.ConnectWith{
+		ConnectionId:       req.GetConnectionId(),
+		ClientTcpAddress:   req.GetClientTcpAddress(),
+		ClientTcpPort:      req.GetClientTcpPort(),
+		EndpointTcpAddress: req.GetEndpointTcpAddress(),
+		EndpointTcpPort:    req.GetEndpointTcpPort(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if connectionInfo == nil {
+		return nil, status.Error(codes.Internal, "Invalid authorize connection response.")
+	}
+
+	ret := &pbs.ConnectSessionResponse{
+		Status: connStates[0].Status.ProtoVal(),
 	}
 
 	return ret, nil

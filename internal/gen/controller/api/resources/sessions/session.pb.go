@@ -179,11 +179,15 @@ type Session struct {
 	// The id of the token used to authenticate.
 	AuthTokenId string `protobuf:"bytes,90,opt,name=auth_token_id,proto3" json:"auth_token_id,omitempty"`
 	// The ID of the user that requested the session
-	UserId    string `protobuf:"bytes,100,opt,name=user_id,proto3" json:"user_id,omitempty"`
+	UserId string `protobuf:"bytes,100,opt,name=user_id,proto3" json:"user_id,omitempty"`
+	// The host set id used by the session's target
 	HostSetId string `protobuf:"bytes,110,opt,name=host_set_id,proto3" json:"host_set_id,omitempty"`
-	HostId    string `protobuf:"bytes,120,opt,name=host_id,proto3" json:"host_id,omitempty"`
-	ScopeId   string `protobuf:"bytes,130,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
-	Endpoint  string `protobuf:"bytes,140,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// The host id used by the session
+	HostId string `protobuf:"bytes,120,opt,name=host_id,proto3" json:"host_id,omitempty"`
+	// The scope of the session
+	ScopeId string `protobuf:"bytes,130,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
+	// The endpoint of the session
+	Endpoint string `protobuf:"bytes,140,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
 	// The states of this session in descending from the current state to the
 	// first.
 	States []*SessionState `protobuf:"bytes,150,rep,name=states,proto3" json:"states,omitempty"`

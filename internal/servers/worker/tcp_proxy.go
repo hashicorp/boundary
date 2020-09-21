@@ -8,9 +8,15 @@ import (
 	"sync"
 
 	"nhooyr.io/websocket"
+
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
-func (w *Worker) handleTcpProxyV1(connCtx context.Context, conn *websocket.Conn, sessionId, endpoint string) {
+func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAddr, conn *websocket.Conn, si *sessionInfo, connectionId, endpoint string) {
+	si.RLock()
+	sessionId := si.lookupSessionResponse.GetAuthorization().GetSessionId()
+	si.RUnlock()
+
 	sessionUrl, err := url.Parse(endpoint)
 	if err != nil {
 		w.logger.Error("error parsing endpoint information", "error", err, "session_id", sessionId, "endpoint", endpoint)
@@ -25,11 +31,30 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, conn *websocket.Conn,
 	remoteConn, err := net.Dial("tcp", sessionUrl.Host)
 	if err != nil {
 		w.logger.Error("error dialing endpoint", "error", err, "endpoint", endpoint)
-		conn.Close(websocket.StatusInternalError, "endpoint-dialing")
+		conn.Close(websocket.StatusInternalError, "endpoint dialing failed")
 		return
 	}
 	// Assert this for better Go 1.11 splice support
 	tcpRemoteConn := remoteConn.(*net.TCPConn)
+
+	endpointAddr := tcpRemoteConn.RemoteAddr().(*net.TCPAddr)
+	connectionInfo := &pbs.ConnectSessionRequest{
+		ConnectionId:       connectionId,
+		ClientTcpAddress:   clientAddr.IP.String(),
+		ClientTcpPort:      uint32(clientAddr.Port),
+		EndpointTcpAddress: endpointAddr.IP.String(),
+		EndpointTcpPort:    uint32(endpointAddr.Port),
+	}
+
+	connStatus, err := w.connectSession(connCtx, connectionInfo)
+	if err != nil {
+		w.logger.Error("error marking connection as connected", "error", err)
+		conn.Close(websocket.StatusInternalError, "failed to mark connection as connected")
+		return
+	}
+	si.Lock()
+	si.connInfoMap[connectionId].status = connStatus
+	si.Unlock()
 
 	// Get a wrapped net.Conn so we can use io.Copy
 	netConn := websocket.NetConn(connCtx, conn, websocket.MessageBinary)
@@ -47,4 +72,5 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, conn *websocket.Conn,
 		w.logger.Debug("copy from endpoint to client done", "error", err)
 	}()
 	connWg.Wait()
+
 }
