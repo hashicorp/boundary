@@ -100,7 +100,8 @@ create table target_tcp (
   description text,
   default_port int, -- default_port can be null
    -- max duration of the session in seconds.
-  session_max_seconds int not null default 0
+   -- default is 8 hours
+  session_max_seconds int not null default 28800
     check(session_max_seconds > 0),
   -- limit on number of session connections allowed. -1 equals no limit
   session_connection_limit int not null default 1
