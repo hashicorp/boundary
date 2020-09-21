@@ -304,6 +304,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: proj.GetPublicId(),
 			},
+			res:     &pbs.DeleteScopeResponse{},
 			errCode: codes.OK,
 		},
 		{
@@ -328,6 +329,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: org.GetPublicId(),
 			},
+			res:     &pbs.DeleteScopeResponse{},
 			errCode: codes.OK,
 		},
 		{

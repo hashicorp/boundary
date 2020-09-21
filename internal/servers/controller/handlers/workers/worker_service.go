@@ -72,14 +72,14 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 	for _, jobStatus := range req.GetJobs() {
 		switch jobStatus.Job.GetType() {
-		// Check for session cancellation
+		// Check for session cancelation
 		case pbs.JOBTYPE_JOBTYPE_SESSION:
 			si := jobStatus.GetJob().GetSessionInfo()
 			if si == nil {
 				return nil, status.Error(codes.Internal, "Error getting session info at status time")
 			}
 			switch si.Status {
-			case pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELLING,
+			case pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
 				pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED:
 				// No need to see about canceling anything
 				continue
@@ -102,7 +102,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 			currState := sessionInfo.States[0].Status
 			if currState.ProtoVal() != si.Status {
 				switch currState {
-				case session.StatusCancelling,
+				case session.StatusCanceling,
 					session.StatusTerminated:
 					// If we're here the job is pending or active so we do want
 					// to actually send a change request

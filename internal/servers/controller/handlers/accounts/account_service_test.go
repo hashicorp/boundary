@@ -208,6 +208,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAccountRequest{
 				Id: ac.GetPublicId(),
 			},
+			res:     &pbs.DeleteAccountResponse{},
 			errCode: codes.OK,
 		},
 		{

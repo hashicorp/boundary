@@ -297,6 +297,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: og.GetPublicId(),
 			},
+			res:     &pbs.DeleteGroupResponse{},
 			errCode: codes.OK,
 		},
 		{
@@ -321,6 +322,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: pg.GetPublicId(),
 			},
+			res:     &pbs.DeleteGroupResponse{},
 			errCode: codes.OK,
 		},
 		{

@@ -138,7 +138,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 					si := value.(*sessionInfo)
 					si.Lock()
 					if time.Until(si.lookupSessionResponse.Expiration.AsTime()) < 0 ||
-						si.status == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELLING {
+						si.status == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING {
 						var toClose int
 						for k, v := range si.connInfoMap {
 							if v.closeTime.IsZero() {

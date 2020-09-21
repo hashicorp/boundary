@@ -30,7 +30,7 @@ enum SESSIONSTATUS {
   SESSIONSTATUS_UNSPECIFIED = 0;
   SESSIONSTATUS_PENDING = 1;
   SESSIONSTATUS_ACTIVE = 2;
-  SESSIONSTATUS_CANCELLING = 3;
+  SESSIONSTATUS_CANCELING = 3;
   SESSIONSTATUS_TERMINATED = 4;
 }
 
@@ -84,9 +84,10 @@ message StatusResponse {
   // management.
   repeated servers.v1.Server controllers = 10;
 
-  // List of jobs and the expected state changes.  For example, this will include jobs witch
-  // change type of cancelled for jobs which are active on a worker but should be cancelled.
-  // This could also contain a request to start a job such as a worker -> worker proxy for
-  // establishing a session through an enclave.
+  // List of jobs and the expected state changes.  For example, this will
+  // include jobs witch change type of canceled for jobs which are active on a
+  // worker but should be canceled. This could also contain a request to start a
+  // job such as a worker -> worker proxy for establishing a session through an
+  // enclave.
   repeated JobChangeRequest jobs_requests = 20;
 }
