@@ -737,7 +737,10 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 	}
 
 	if checkRetry == nil {
-		checkRetry = retryablehttp.DefaultRetryPolicy
+		checkRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
+			panic("retrying")
+			return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
+		}
 	}
 
 	client := &retryablehttp.Client{
