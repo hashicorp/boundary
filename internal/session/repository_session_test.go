@@ -138,6 +138,24 @@ func TestRepository_ListSession(t *testing.T) {
 		assert.Equal(1, len(got))
 		assert.Equal(got[0].UserId, s.UserId)
 	})
+	t.Run("WithSessionIds", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		testSessions := []*Session{}
+		for i := 0; i < 10; i++ {
+			s := TestSession(t, conn, wrapper, composedOf)
+			_ = TestState(t, conn, s.PublicId, StatusActive)
+			testSessions = append(testSessions, s)
+		}
+		assert.Equal(10, len(testSessions))
+		withIds := []string{testSessions[0].PublicId, testSessions[1].PublicId}
+		conn.LogMode(true)
+		got, err := repo.ListSessions(context.Background(), WithSessionIds(withIds...), WithOrder("create_time asc"))
+		require.NoError(err)
+		assert.Equal(2, len(got))
+		assert.Equal(StatusActive, got[0].States[0].Status)
+		assert.Equal(StatusPending, got[0].States[1].Status)
+	})
 }
 
 func TestRepository_CreateSession(t *testing.T) {
