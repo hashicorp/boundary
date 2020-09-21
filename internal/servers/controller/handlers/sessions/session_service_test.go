@@ -294,7 +294,7 @@ func TestCancel(t *testing.T) {
 		CreatedTime:    sess.CreateTime.GetTimestamp(),
 		ExpirationTime: sess.ExpirationTime.GetTimestamp(),
 		Scope:          &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
-		Status:         session.StatusCancelling.String(),
+		Status:         session.StatusCanceling.String(),
 	}
 
 	version := wireSess.GetVersion()
@@ -350,13 +350,13 @@ func TestCancel(t *testing.T) {
 			}
 			tc.res.GetItem().Version = got.GetItem().Version
 
-			// Compare the new cancelling state and then remove it for the rest of the proto comparison
+			// Compare the new canceling state and then remove it for the rest of the proto comparison
 			assert.True(got.GetItem().GetUpdatedTime().AsTime().After(got.GetItem().GetCreatedTime().AsTime()))
 			assert.Len(got.GetItem().GetStates(), 2)
 
 			wantState := []*pb.SessionState{
 				{
-					Status:    session.StatusCancelling.String(),
+					Status:    session.StatusCanceling.String(),
 					StartTime: got.GetItem().GetUpdatedTime(),
 				},
 				{

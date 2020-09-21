@@ -308,9 +308,9 @@ func TestRepository_updateState(t *testing.T) {
 		wantIsError            error
 	}{
 		{
-			name:         "cancelling",
+			name:         "canceling",
 			session:      TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus:    StatusCancelling,
+			newStatus:    StatusCanceling,
 			wantStateCnt: 2,
 			wantErr:      false,
 		},
@@ -328,7 +328,7 @@ func TestRepository_updateState(t *testing.T) {
 		{
 			name:      "bad-version",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: StatusCancelling,
+			newStatus: StatusCanceling,
 			overrideSessionVersion: func() *uint32 {
 				v := uint32(22)
 				return &v
@@ -338,7 +338,7 @@ func TestRepository_updateState(t *testing.T) {
 		{
 			name:      "empty-version",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: StatusCancelling,
+			newStatus: StatusCanceling,
 			overrideSessionVersion: func() *uint32 {
 				v := uint32(0)
 				return &v
@@ -349,7 +349,7 @@ func TestRepository_updateState(t *testing.T) {
 		{
 			name:      "bad-sessionId",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: StatusCancelling,
+			newStatus: StatusCanceling,
 			overrideSessionId: func() *string {
 				s := "s_thisIsNotValid"
 				return &s
@@ -359,7 +359,7 @@ func TestRepository_updateState(t *testing.T) {
 		{
 			name:      "empty-session",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: StatusCancelling,
+			newStatus: StatusCanceling,
 			overrideSessionId: func() *string {
 				s := ""
 				return &s
@@ -864,7 +864,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(s)
 			require.NotNil(s.States)
-			assert.Equal(StatusCancelling, s.States[0].Status)
+			assert.Equal(StatusCanceling, s.States[0].Status)
 
 			stateCnt := len(s.States)
 			origStartTime := s.States[0].StartTime
@@ -874,7 +874,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			require.NotNil(s2)
 			require.NotNil(s2.States)
 			assert.Equal(stateCnt, len(s2.States))
-			assert.Equal(StatusCancelling, s.States[0].Status)
+			assert.Equal(StatusCanceling, s.States[0].Status)
 			assert.Equal(origStartTime, s2.States[0].StartTime)
 		})
 	}
