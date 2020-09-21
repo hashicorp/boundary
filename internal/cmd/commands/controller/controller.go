@@ -124,7 +124,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:   "dev-auth-method-id",
 		Target: &c.flagDevAuthMethodId,
-		EnvVar: "WATCHTWER_DEV_AUTH_METHOD_ID",
+		EnvVar: "BOUNDARY_DEV_AUTH_METHOD_ID",
 		Usage: "Auto-created auth method ID. This only applies when running in \"dev\" " +
 			"mode.",
 	})
@@ -138,7 +138,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:   "dev-password",
 		Target: &c.flagDevPassword,
-		EnvVar: "WATCHTWER_DEV_PASSWORD",
+		EnvVar: "BOUNDARY_DEV_PASSWORD",
 		Usage: "Initial admin password. This only applies when running in \"dev\" " +
 			"mode.",
 	})
@@ -146,7 +146,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:   "dev-login-name",
 		Target: &c.flagDevLoginName,
-		EnvVar: "WATCHTWER_DEV_LOGIN_NAME",
+		EnvVar: "BOUNDARY_DEV_LOGIN_NAME",
 		Usage: "Initial admin login name. This only applies when running in \"dev\" " +
 			"mode.",
 	})
