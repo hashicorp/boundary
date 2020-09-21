@@ -409,8 +409,8 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 	return info, nil
 }
 
-// ConnectSession updates a connection in the repo with a state of "connected".
-func (r *Repository) ConnectSession(ctx context.Context, c ConnectWith) (*Connection, []*ConnectionState, error) {
+// ConnectConnection updates a connection in the repo with a state of "connected".
+func (r *Repository) ConnectConnection(ctx context.Context, c ConnectWith) (*Connection, []*ConnectionState, error) {
 	// ConnectWith.validate will check all the fields...
 	if err := c.validate(); err != nil {
 		return nil, nil, fmt.Errorf("connect session: %w", err)
@@ -500,7 +500,6 @@ func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith
 					&updateConnection,
 					[]string{"BytesUp", "BytesDown", "ClosedReason"},
 					nil,
-					db.WithVersion(&cw.ConnectionVersion),
 				)
 				if err != nil {
 					return fmt.Errorf("unable to update connection %s: %w", cw.ConnectionId, err)

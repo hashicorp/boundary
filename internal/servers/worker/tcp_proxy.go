@@ -38,7 +38,7 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 	tcpRemoteConn := remoteConn.(*net.TCPConn)
 
 	endpointAddr := tcpRemoteConn.RemoteAddr().(*net.TCPAddr)
-	connectionInfo := &pbs.ConnectSessionRequest{
+	connectionInfo := &pbs.ConnectConnectionRequest{
 		ConnectionId:       connectionId,
 		ClientTcpAddress:   clientAddr.IP.String(),
 		ClientTcpPort:      uint32(clientAddr.Port),
@@ -46,7 +46,7 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 		EndpointTcpPort:    uint32(endpointAddr.Port),
 	}
 
-	connStatus, err := w.connectSession(connCtx, connectionInfo)
+	connStatus, err := w.connectConnection(connCtx, connectionInfo)
 	if err != nil {
 		w.logger.Error("error marking connection as connected", "error", err)
 		conn.Close(websocket.StatusInternalError, "failed to mark connection as connected")

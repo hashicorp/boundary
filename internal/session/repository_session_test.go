@@ -491,7 +491,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 	}
 }
 
-func TestRepository_ConnectSession(t *testing.T) {
+func TestRepository_ConnectConnection(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -581,7 +581,7 @@ func TestRepository_ConnectSession(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			c, cs, err := repo.ConnectSession(context.Background(), tt.connectWith)
+			c, cs, err := repo.ConnectConnection(context.Background(), tt.connectWith)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
@@ -704,11 +704,10 @@ func TestRepository_CloseConnections(t *testing.T) {
 			c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
 			require.NoError(t, err)
 			cw = append(cw, CloseWith{
-				ConnectionId:      c.PublicId,
-				ConnectionVersion: c.Version,
-				BytesUp:           1,
-				BytesDown:         2,
-				ClosedReason:      ConnectionClosedByUser,
+				ConnectionId: c.PublicId,
+				BytesUp:      1,
+				BytesDown:    2,
+				ClosedReason: ConnectionClosedByUser,
 			})
 		}
 		return cw
@@ -737,18 +736,6 @@ func TestRepository_CloseConnections(t *testing.T) {
 			closeWith: func() []CloseWith {
 				cw := setupFn(2)
 				cw[1].ConnectionId = ""
-				return cw
-
-			}(),
-			reason:      ClosedByUser,
-			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
-		},
-		{
-			name: "ConnectionVersion",
-			closeWith: func() []CloseWith {
-				cw := setupFn(2)
-				cw[1].ConnectionVersion = 0
 				return cw
 
 			}(),

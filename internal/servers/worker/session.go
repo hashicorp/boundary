@@ -12,6 +12,7 @@ import (
 	"time"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/session"
 )
 
 const (
@@ -23,6 +24,7 @@ type connInfo struct {
 	connCtx    context.Context
 	connCancel context.CancelFunc
 	status     pbs.CONNECTIONSTATUS
+	closeTime  time.Time
 }
 
 type sessionInfo struct {
@@ -174,7 +176,7 @@ func (w *Worker) authorizeConnection(ctx context.Context, sessionId string) (*co
 	}, resp.GetConnectionsLeft(), nil
 }
 
-func (w *Worker) connectSession(ctx context.Context, req *pbs.ConnectSessionRequest) (pbs.CONNECTIONSTATUS, error) {
+func (w *Worker) connectConnection(ctx context.Context, req *pbs.ConnectConnectionRequest) (pbs.CONNECTIONSTATUS, error) {
 	rawConn := w.controllerSessionConn.Load()
 	if rawConn == nil {
 		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, errors.New("could not get a controller client")
@@ -187,7 +189,7 @@ func (w *Worker) connectSession(ctx context.Context, req *pbs.ConnectSessionRequ
 		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, errors.New("controller client is nil")
 	}
 
-	resp, err := conn.ConnectSession(ctx, req)
+	resp, err := conn.ConnectConnection(ctx, req)
 	if err != nil {
 		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, err
 	}
@@ -197,4 +199,62 @@ func (w *Worker) connectSession(ctx context.Context, req *pbs.ConnectSessionRequ
 	}
 
 	return resp.GetStatus(), nil
+}
+
+func (w *Worker) closeConnection(ctx context.Context, req *pbs.CloseConnectionRequest) (*pbs.CloseConnectionResponse, error) {
+	rawConn := w.controllerSessionConn.Load()
+	if rawConn == nil {
+		return nil, errors.New("could not get a controller client")
+	}
+	conn, ok := rawConn.(pbs.SessionServiceClient)
+	if !ok {
+		return nil, errors.New("could not cast atomic controller client to the real thing")
+	}
+	if conn == nil {
+		return nil, errors.New("controller client is nil")
+	}
+
+	resp, err := conn.CloseConnection(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.GetCloseResponseData()) != len(req.GetCloseRequestData()) {
+		w.logger.Warn("mismatched number of states returned on connection closed", "expected", len(req.GetCloseRequestData()), "got", len(resp.GetCloseResponseData()))
+	}
+
+	return resp, nil
+}
+
+func (w *Worker) closeConnections(ctx context.Context, si *sessionInfo, connectionIds []string) error {
+	w.logger.Trace("marking connection as closed", "connection_ids", connectionIds)
+
+	closeData := make([]*pbs.CloseConnectionRequestData, 0, len(connectionIds))
+	for _, v := range connectionIds {
+		closeData = append(closeData, &pbs.CloseConnectionRequestData{
+			ConnectionId: v,
+			Reason:       session.UnknownReason.String(),
+		})
+	}
+	closeInfo := &pbs.CloseConnectionRequest{
+		CloseRequestData: closeData,
+	}
+
+	connStatus, err := w.closeConnection(ctx, closeInfo)
+	if err != nil {
+		return err
+	}
+	closedIds := make([]string, 0, len(connStatus.GetCloseResponseData()))
+	si.Lock()
+	for _, v := range connStatus.GetCloseResponseData() {
+		closedIds = append(closedIds, v.GetConnectionId())
+		if v.GetStatus() == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
+			delete(si.connInfoMap, v.GetConnectionId())
+		} else {
+			ci := si.connInfoMap[v.GetConnectionId()]
+			ci.status = v.GetStatus()
+		}
+	}
+	si.Unlock()
+	w.logger.Trace("connections successfully marked closed", "connection_ids", closedIds)
+	return nil
 }
