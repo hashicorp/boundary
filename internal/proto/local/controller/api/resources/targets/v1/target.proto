@@ -102,6 +102,12 @@ message SessionAuthorizationData {
 	// Output only.
 	string type = 80;
 
+	// Connection limit. -1 means unlimited. This is not actually enforced on
+	// the client side but it provides for better listener handling by including
+	// it.
+	// Output only.
+	int32 connection_limit = 90;
+
 	// The certificate to use when connecting (or if using custom certs, to
 	// serve as the "login"). Raw DER bytes.
 	// Output only.

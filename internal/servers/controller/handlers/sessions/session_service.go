@@ -96,7 +96,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	if err != nil {
 		return nil, err
 	}
-	sess, err := repo.LookupSession(ctx, id)
+	sess, _, err := repo.LookupSession(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", id)
@@ -165,7 +165,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			res.Error = err
 			return res
 		}
-		t, err := repo.LookupSession(ctx, id)
+		t, _, err := repo.LookupSession(ctx, id)
 		if err != nil {
 			res.Error = err
 			return res

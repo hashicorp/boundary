@@ -10,9 +10,11 @@ func generateSessionInfoTableOutput(in SessionInfo) string {
 	var ret []string
 
 	nonAttributeMap := map[string]interface{}{
-		"Protocol": in.Protocol,
-		"Address":  in.Address,
-		"Port":     in.Port,
+		"Protocol":         in.Protocol,
+		"Address":          in.Address,
+		"Port":             in.Port,
+		"Expiration":       in.Expiration.Local().Format(time.RFC1123),
+		"Connection Limit": in.ConnectionLimit,
 	}
 
 	maxLength := 0
@@ -37,7 +39,6 @@ func generateConnectionInfoTableOutput(in ConnectionInfo) string {
 
 	nonAttributeMap := map[string]interface{}{
 		"Connections Left": in.ConnectionsLeft,
-		"Expiration":       in.Expiration.Local().Format(time.RFC1123),
 	}
 
 	maxLength := 0
@@ -48,6 +49,30 @@ func generateConnectionInfoTableOutput(in ConnectionInfo) string {
 	}
 
 	ret = append(ret, "", "Connection information:")
+
+	ret = append(ret,
+		// We do +2 because there is another +2 offset for host sets below
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
+	)
+
+	return base.WrapForHelpText(ret)
+}
+
+func generateTerminationInfoTableOutput(in TerminationInfo) string {
+	var ret []string
+
+	nonAttributeMap := map[string]interface{}{
+		"Reason": in.Reason,
+	}
+
+	maxLength := 0
+	for k := range nonAttributeMap {
+		if len(k) > maxLength {
+			maxLength = len(k)
+		}
+	}
+
+	ret = append(ret, "", "Termination information:")
 
 	ret = append(ret,
 		// We do +2 because there is another +2 offset for host sets below
