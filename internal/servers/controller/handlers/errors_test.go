@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
 	"github.com/hashicorp/go-hclog"
@@ -118,8 +117,9 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  fmt.Errorf("test error: %w", db.ErrInvalidFieldMask),
 			expected: &pb.Error{
 				Status:  http.StatusBadRequest,
-				Code:    "Internal",
-				Message: "Test",
+				Code:    "InvalidArgument",
+				Message: "Error in provided request",
+				Details: &pb.ErrorDetails{RequestFields: []*pb.FieldError{{Name: "update_mask", Description: "Invalid update mask provided."}}},
 			},
 		},
 		{
@@ -127,8 +127,9 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  fmt.Errorf("test error: %w", db.ErrEmptyFieldMask),
 			expected: &pb.Error{
 				Status:  http.StatusBadRequest,
-				Code:    "Test",
-				Message: "Test",
+				Code:    "InvalidArgument",
+				Message: "Error in provided request",
+				Details: &pb.ErrorDetails{RequestFields: []*pb.FieldError{{Name: "update_mask", Description: "Invalid update mask provided."}}},
 			},
 		},
 		{
@@ -136,41 +137,22 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  fmt.Errorf("test error: %w", db.ErrNotUnique),
 			expected: &pb.Error{
 				Status:  http.StatusBadRequest,
-				Code:    "Test",
-				Message: "test error: unique constraint violation",
+				Code:    "InvalidArgument",
+				Message: genericUniquenessMsg,
 			},
 		},
 		{
 			name: "Db record not found",
 			err:  fmt.Errorf("test error: %w", db.ErrRecordNotFound),
 			expected: &pb.Error{
-				Status:  http.StatusInternalServerError,
-				Code:    "Internal",
-				Message: "Test",
+				Status:  http.StatusNotFound,
+				Code:    "NotFound",
+				Message: genericNotFoundMsg,
 			},
 		},
 		{
 			name: "Db multiple records",
 			err:  fmt.Errorf("test error: %w", db.ErrMultipleRecords),
-			expected: &pb.Error{
-				Status:  http.StatusInternalServerError,
-				Code:    "Internal",
-				Message: "Test",
-			},
-		},
-		// Repo specific errors.
-		{
-			name: "repo passwords equal",
-			err:  fmt.Errorf("test error: %w", password.ErrPasswordsEqual),
-			expected: &pb.Error{
-				Status:  http.StatusInternalServerError,
-				Code:    "Internal",
-				Message: "Test",
-			},
-		},
-		{
-			name: "repo passwords to short",
-			err:  fmt.Errorf("test error: %w", password.ErrTooShort),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
 				Code:    "Internal",

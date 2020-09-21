@@ -17,6 +17,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const (
+	genericUniquenessMsg = "Invalid request.  Request attempted to make second resource with the same field value that must be unique."
+	genericNotFoundMsg   = "Unable to find requested resource."
+)
+
 // NotFoundError returns an ApiError indicating a resource couldn't be found.
 func NotFoundError() error {
 	return status.Error(codes.NotFound, "Resource not found.")
@@ -52,19 +57,17 @@ func InvalidArgumentErrorf(msg string, fields map[string]string) error {
 	return st.Err()
 }
 
-// Converts a db error into an error that can presented to an end user over the API.
-func fromDbError(dbErr error) error {
+// Converts a known errors into an error that can presented to an end user over the API.
+func translateKnownErrors(inErr error) error {
 	switch {
-	case errors.Is(dbErr, db.ErrInvalidFieldMask):
-		return InvalidArgumentErrorf("Invalid request.", map[string]string{"update_mask": "Invalid list of fields provided in mask."})
-	case errors.Is(dbErr, db.ErrInvalidParameter):
-		return InvalidArgumentErrorf("Invalid request.", nil)
-	case db.IsUniqueError(dbErr):
-		return InvalidArgumentErrorf("Invalid request.  Request attempted to make second resource with the same field value that must be unique.", nil)
-	case db.IsCheckConstraintError(dbErr):
-		// return a 500 with a error trace number.
+	case errors.Is(inErr, db.ErrRecordNotFound):
+		return NotFoundErrorf(genericNotFoundMsg)
+	case errors.Is(inErr, db.ErrInvalidFieldMask), errors.Is(inErr, db.ErrEmptyFieldMask):
+		return InvalidArgumentErrorf("Error in provided request", map[string]string{"update_mask": "Invalid update mask provided."})
+	case db.IsUniqueError(inErr), errors.Is(inErr, db.ErrNotUnique):
+		return InvalidArgumentErrorf(genericUniquenessMsg, nil)
 	}
-	return dbErr
+	return inErr
 }
 
 func statusErrorToApiError(s *status.Status) *pb.Error {
@@ -101,6 +104,7 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 			// Overwrite the error to match our expected behavior.
 			inErr = status.Error(codes.NotFound, http.StatusText(http.StatusNotFound))
 		}
+		inErr = translateKnownErrors(inErr)
 		s, ok := status.FromError(inErr)
 		if !ok {
 			s = status.New(codes.Internal, inErr.Error())
