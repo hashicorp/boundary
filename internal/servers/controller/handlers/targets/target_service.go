@@ -310,11 +310,11 @@ HostSetIterationLoop:
 			}
 			for _, host := range hosts {
 				compoundId := compoundHost{hostSetId: hsId, hostId: host.PublicId}
+				hostIds = append(hostIds, compoundId)
 				if host.PublicId == requestedId {
 					chosenId = &compoundId
 					break HostSetIterationLoop
 				}
-				hostIds = append(hostIds, compoundId)
 			}
 		}
 	}
@@ -326,7 +326,13 @@ HostSetIterationLoop:
 				"host_id": "The requested host id is not available.",
 			})
 	}
-	chosenId = &hostIds[rand.Intn(len(hostIds))]
+	if chosenId == nil {
+		if len(hostIds) == 0 {
+			// No hosts were found, error
+			return nil, handlers.NotFoundErrorf("No hosts found from available target host sets.")
+		}
+		chosenId = &hostIds[rand.Intn(len(hostIds))]
+	}
 
 	// Generate the endpoint URL
 	endpointUrl := &url.URL{
