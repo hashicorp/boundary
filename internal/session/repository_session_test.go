@@ -287,7 +287,7 @@ func TestRepository_CreateSession(t *testing.T) {
 	}
 }
 
-func TestRepository_UpdateState(t *testing.T) {
+func TestRepository_updateState(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -849,7 +849,6 @@ func TestRepository_CancelSession(t *testing.T) {
 			default:
 				version = tt.session.Version
 			}
-
 			s, err := repo.CancelSession(context.Background(), id, version)
 			if tt.wantErr {
 				require.Error(err)
@@ -862,6 +861,17 @@ func TestRepository_CancelSession(t *testing.T) {
 			require.NotNil(s)
 			require.NotNil(s.States)
 			assert.Equal(StatusCancelling, s.States[0].Status)
+
+			stateCnt := len(s.States)
+			origStartTime := s.States[0].StartTime
+			// check idempontency
+			s2, err := repo.CancelSession(context.Background(), id, version+1)
+			require.NoError(err)
+			require.NotNil(s2)
+			require.NotNil(s2.States)
+			assert.Equal(stateCnt, len(s2.States))
+			assert.Equal(StatusCancelling, s.States[0].Status)
+			assert.Equal(origStartTime, s2.States[0].StartTime)
 		})
 	}
 }
