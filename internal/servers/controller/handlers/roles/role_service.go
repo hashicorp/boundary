@@ -620,7 +620,14 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
-	return handlers.ValidateDeleteRequest(iam.RolePrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(iam.RolePrefix, req, func() map[string]string {
+		if req.GetId() == "r_default" {
+			return map[string]string{
+				"id": `Deleting "r_default" is not allowed`,
+			}
+		}
+		return nil
+	})
 }
 
 func validateListRequest(req *pbs.ListRolesRequest) error {

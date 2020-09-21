@@ -654,7 +654,6 @@ before
 delete on iam_scope
   for each row execute procedure disallow_global_scope_deletion();
 
-
 create trigger 
   update_time_column 
 before update on iam_scope 
@@ -937,6 +936,24 @@ create trigger
 before
 insert on iam_role_grant
   for each row execute procedure default_create_time();
+
+create or replace function
+  disallow_r_default_deletion()
+  returns trigger
+as $$
+begin
+  if old.public_id = 'r_default' then
+    raise exception 'deletion of r_default not allowed';
+  end if;
+  return old;
+end;
+$$ language plpgsql;
+
+create trigger
+  iam_role_disallow_global_deletion
+before
+delete on iam_role
+  for each row execute procedure disallow_r_default_deletion();
 
 create trigger 
   update_version_column
