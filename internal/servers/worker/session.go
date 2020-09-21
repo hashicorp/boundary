@@ -24,7 +24,6 @@ type connInfo struct {
 	connCtx    context.Context
 	connCancel context.CancelFunc
 	status     pbs.CONNECTIONSTATUS
-	closeTime  time.Time
 }
 
 type sessionInfo struct {
