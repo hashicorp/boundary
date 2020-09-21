@@ -1,7 +1,6 @@
 package authtokens
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
@@ -9,19 +8,29 @@ import (
 )
 
 func generateAuthTokenTableOutput(in *authtokens.AuthToken) string {
-	var ret []string
-	ret = append(ret, []string{
-		"",
-		"Auth Token information:",
-		fmt.Sprintf("  Approximate Last Used Time: %s", in.ApproximateLastUsedTime.Local().Format(time.RFC3339)),
-		fmt.Sprintf("  Auth Method ID:             %s", in.AuthMethodId),
-		fmt.Sprintf("  Created Time:               %s", in.CreatedTime.Local().Format(time.RFC3339)),
-		fmt.Sprintf("  Expiration Time:            %s", in.ExpirationTime.Local().Format(time.RFC3339)),
-		fmt.Sprintf("  ID:                         %s", in.Id),
-		fmt.Sprintf("  Scope ID:                   %s", in.Scope.Id),
-		fmt.Sprintf("  Updated Time:               %s", in.UpdatedTime.Local().Format(time.RFC3339)),
-		fmt.Sprintf("  User ID:                    %s", in.UserId),
-	}...,
+	nonAttributeMap := map[string]interface{}{
+		"ID":                         in.Id,
+		"Scope ID":                   in.Scope.Id,
+		"Auth Method ID":             in.AuthMethodId,
+		"User ID":                    in.UserId,
+		"Created Time":               in.CreatedTime.Local().Format(time.RFC3339),
+		"Updated Time":               in.UpdatedTime.Local().Format(time.RFC3339),
+		"Expiration Time":            in.ExpirationTime.Local().Format(time.RFC3339),
+		"Approximate Last Used Time": in.ApproximateLastUsedTime.Local().Format(time.RFC3339),
+	}
+
+	maxLength := 0
+	for k := range nonAttributeMap {
+		if len(k) > maxLength {
+			maxLength = len(k)
+		}
+	}
+
+	ret := []string{"", "Auth Token information:"}
+
+	ret = append(ret,
+		// We do +2 because there is another +2 offset for host sets below
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
 	)
 
 	return base.WrapForHelpText(ret)

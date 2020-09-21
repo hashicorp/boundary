@@ -2,10 +2,12 @@ package worker
 
 import (
 	"context"
+	"net"
 	"net/http"
+	"strconv"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"nhooyr.io/websocket"
@@ -38,15 +40,39 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		}
 		sessionId := r.TLS.ServerName
 
+		clientIp, clientPort, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			w.logger.Error("unable to understand remote address", "error", err)
+			wr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		numPort, err := strconv.Atoi(clientPort)
+		if err != nil {
+			w.logger.Error("unable to understand remote port", "error", err)
+			wr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		clientAddr := &net.TCPAddr{
+			IP:   net.ParseIP(clientIp),
+			Port: numPort,
+		}
+
 		w.logger.Trace("received TLS connection")
 
-		sessionInfoRaw, valid := w.sessionInfoMap.LoadAndDelete(sessionId)
+		siRaw, valid := w.sessionInfoMap.Load(sessionId)
 		if !valid {
 			w.logger.Error("session not found in info map", "session_id", sessionId)
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		sessionInfo := sessionInfoRaw.(*services.LookupSessionResponse)
+		si := siRaw.(*sessionInfo)
+		si.RLock()
+		expiration := si.lookupSessionResponse.GetExpiration()
+		tofuToken := si.lookupSessionResponse.GetTofuToken()
+		version := si.lookupSessionResponse.GetVersion()
+		endpoint := si.lookupSessionResponse.GetEndpoint()
+		sessStatus := si.status
+		si.RUnlock()
 
 		w.logger.Trace("found session in session info map")
 
@@ -64,15 +90,8 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 
 		w.logger.Trace("websocket upgrade done")
 
-		connCtx, connCancel := context.WithDeadline(r.Context(), sessionInfo.Expiration.AsTime())
-		w.cancellationMap.Store(sessionId, connCancel)
-		defer func() {
-			cancel, loaded := w.cancellationMap.LoadAndDelete(sessionId)
-			if !loaded {
-				return
-			}
-			cancel.(context.CancelFunc)()
-		}()
+		connCtx, connCancel := context.WithDeadline(r.Context(), expiration.AsTime())
+		defer connCancel()
 
 		var handshake proxy.ClientHandshake
 		if err := wspb.Read(connCtx, conn, &handshake); err != nil {
@@ -88,23 +107,59 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 
 		w.logger.Trace("proxy handshake finished")
 
-		if sessionInfo.TofuToken != "" {
-			if sessionInfo.TofuToken != handshake.GetTofuToken() {
+		if tofuToken != "" {
+			if tofuToken != handshake.GetTofuToken() {
 				w.logger.Error("WARNING: mismatched tofu token", "session_id", sessionId)
 				conn.Close(websocket.StatusPolicyViolation, "tofu token not allowed")
 				return
 			}
 		} else {
+			if sessStatus != pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING {
+				w.logger.Error("no tofu token but not in correct session state", "error", err)
+				conn.Close(websocket.StatusInternalError, "refusing to activate session")
+				return
+			}
 			w.logger.Trace("activating session")
-			if err := w.activateSession(r.Context(), handshake.GetTofuToken(), sessionInfo); err != nil {
+			sessStatus, err = w.activateSession(r.Context(), sessionId, handshake.GetTofuToken(), version)
+			if err != nil {
 				w.logger.Error("unable to validate session", "error", err)
 				conn.Close(websocket.StatusInternalError, "unable to activate session")
 				return
 			}
 		}
 
+		var ci *connInfo
+		var connsLeft int32
+		ci, connsLeft, err = w.authorizeConnection(r.Context(), sessionId)
+		if err != nil {
+			w.logger.Error("unable to authorize conneciton", "error", err)
+			conn.Close(websocket.StatusInternalError, "unable to authorize connection")
+			return
+		}
+
+		defer func() {
+			connectionId := ci.id
+			if err := w.closeConnections(r.Context(), map[string]string{
+				connectionId: si.id,
+			}); err != nil {
+				w.logger.Error("error marking connection closed", "error", err, "connection_id", connectionId)
+			}
+		}()
+
+		si.Lock()
+		ci.connCtx = connCtx
+		ci.connCancel = connCancel
+		si.connInfoMap[ci.id] = ci
+		si.status = sessStatus
+		connectionLimit := si.lookupSessionResponse.GetConnectionLimit()
+		si.Unlock()
+
+		w.logger.Trace("authorized connection", "connection_id", ci.id)
+
 		handshakeResult := &proxy.HandshakeResult{
-			Expiration: sessionInfo.GetExpiration(),
+			Expiration:      expiration,
+			ConnectionLimit: connectionLimit,
+			ConnectionsLeft: connsLeft,
 		}
 		if err := wspb.Write(connCtx, conn, handshakeResult); err != nil {
 			w.logger.Error("error sending handshake result to client", "error", err)
@@ -114,7 +169,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 
 		switch conn.Subprotocol() {
 		case globals.TcpProxyV1:
-			w.handleTcpProxyV1(connCtx, conn, sessionInfo)
+			w.handleTcpProxyV1(connCtx, clientAddr, conn, si, ci.id, endpoint)
 		default:
 			conn.Close(websocket.StatusProtocolError, "unsupported-protocol")
 			return

@@ -52,7 +52,7 @@ message TargetView {
 
   // Maximum number of connections in a session
   // @inject_tag: `gorm:"default:null"`
-  uint32 session_connection_limit = 110;
+  int32 session_connection_limit = 110;
 }
 
 message TargetHostSet {
@@ -120,7 +120,7 @@ message TcpTarget {
 
   // Maximum number of connections in a session
   // @inject_tag: `gorm:"default:null"`
-  uint32 session_connection_limit = 110 [(custom_options.v1.mask_mapping) = {
+  int32 session_connection_limit = 110 [(custom_options.v1.mask_mapping) = {
     this: "SessionConnectionLimit"
     that: "session_connection_limit"
   }];

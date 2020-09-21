@@ -9,72 +9,74 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // CreateSession inserts into the repository and returns the new Session with
 // its State of "Pending".  The following fields must be empty when creating a
 // session: ServerId, ServerType, and PublicId.  No options are
 // currently supported.
-func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, opt ...Option) (*Session, *State, ed25519.PrivateKey, error) {
+func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, opt ...Option) (*Session, ed25519.PrivateKey, error) {
 	if newSession == nil {
-		return nil, nil, nil, fmt.Errorf("create session: missing session: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: missing session: %w", db.ErrInvalidParameter)
 	}
 	if newSession.PublicId != "" {
-		return nil, nil, nil, fmt.Errorf("create session: public id is not empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: public id is not empty: %w", db.ErrInvalidParameter)
 	}
 	if len(newSession.Certificate) != 0 {
-		return nil, nil, nil, fmt.Errorf("create session: certificate is not empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: certificate is not empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.TargetId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: target id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: target id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.HostId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.UserId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.HostSetId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: host set id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: host set id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.AuthTokenId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: auth token id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: auth token id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ScopeId == "" {
-		return nil, nil, nil, fmt.Errorf("create session: scope id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: scope id is empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ServerId != "" {
-		return nil, nil, nil, fmt.Errorf("create session: server id must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: server id must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ServerType != "" {
-		return nil, nil, nil, fmt.Errorf("create session: server type must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: server type must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.CtTofuToken != nil {
-		return nil, nil, nil, fmt.Errorf("create session: ct must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: ct must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.TofuToken != nil {
-		return nil, nil, nil, fmt.Errorf("create session: tofu token must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: tofu token must be empty: %w", db.ErrInvalidParameter)
 	}
 	if newSession.ExpirationTime == nil || newSession.ExpirationTime.Timestamp.AsTime().IsZero() {
-		return nil, nil, nil, fmt.Errorf("create session: expiration is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: expiration is empty: %w", db.ErrInvalidParameter)
 	}
 
 	id, err := newId()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("create session: %w", err)
+		return nil, nil, fmt.Errorf("create session: %w", err)
 	}
 
 	privKey, certBytes, err := newCert(sessionWrapper, newSession.UserId, id, newSession.ExpirationTime.Timestamp.AsTime())
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("create session: %w", err)
+		return nil, nil, fmt.Errorf("create session: %w", err)
 	}
 	newSession.Certificate = certBytes
 	newSession.PublicId = id
 
 	var returnedSession *Session
-	var returnedState *State
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -92,30 +94,32 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 			if len(foundStates) != 1 {
 				return fmt.Errorf("%d states found for new session %s", len(foundStates), returnedSession.PublicId)
 			}
-			returnedState = foundStates[0]
-			if returnedState.Status != StatusPending.String() {
-				return fmt.Errorf("new session %s state is not valid: %s", returnedSession.PublicId, returnedState.Status)
+			if len(foundStates) == 0 {
+				return fmt.Errorf("no states found for new session %s", returnedSession.PublicId)
+			}
+			returnedSession.States = foundStates
+			if returnedSession.States[0].Status != StatusPending {
+				return fmt.Errorf("new session %s state is not valid: %s", returnedSession.PublicId, returnedSession.States[0].Status)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("create session: %w", err)
+		return nil, nil, fmt.Errorf("create session: %w", err)
 	}
-	return returnedSession, returnedState, privKey, err
+	return returnedSession, privKey, err
 }
 
 // LookupSession will look up a session in the repository and return the session
 // with its states.  Returned States are ordered by start time descending.  If the
 // session is not found, it will return nil, nil, nil. No options are currently
 // supported.
-func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ...Option) (*Session, []*State, error) {
+func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ...Option) (*Session, *ConnectionAuthzSummary, error) {
 	if sessionId == "" {
 		return nil, nil, fmt.Errorf("lookup session: missing sessionId id: %w", db.ErrInvalidParameter)
 	}
 	session := AllocSession()
 	session.PublicId = sessionId
-	var states []*State
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -124,10 +128,11 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 			if err := read.LookupById(ctx, &session); err != nil {
 				return fmt.Errorf("lookup session: failed %w for %s", err, sessionId)
 			}
-			var err error
-			if states, err = fetchStates(ctx, read, sessionId, db.WithOrder("start_time desc")); err != nil {
+			states, err := fetchStates(ctx, read, sessionId, db.WithOrder("start_time desc"))
+			if err != nil {
 				return err
 			}
+			session.States = states
 			return nil
 		},
 	)
@@ -148,30 +153,73 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 	} else {
 		session.CtTofuToken = nil
 	}
-	return &session, states, nil
+
+	authzSummary, err := r.sessionAuthzSummary(ctx, sessionId)
+	if err != nil {
+		return nil, nil, fmt.Errorf("lookup session: failed to get authz summary: %w", err)
+	}
+
+	return &session, authzSummary, nil
 }
 
-// ListSessions will sessions.  Supports the WithLimit, WithScopeId and WithOrder options.
+// ListSessions will sessions.  Supports the WithLimit, and WithScopeId options.
 func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
 	opts := getOpts(opt...)
 	var where []string
 	var args []interface{}
+
+	inClauseCnt := 0
 	switch {
 	case opts.withScopeId != "":
-		where, args = append(where, "scope_id = ?"), append(args, opts.withScopeId)
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("scope_id = $%d", inClauseCnt)), append(args, opts.withScopeId)
 	case opts.withUserId != "":
-		where, args = append(where, "user_id = ?"), append(args, opts.withUserId)
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("user_id = $%d", inClauseCnt)), append(args, opts.withUserId)
+	}
+	var limit string
+	switch {
+	case opts.withLimit < 0: // any negative number signals unlimited results
+	case opts.withLimit == 0: // zero signals the default value and default limits
+		limit = fmt.Sprintf("limit %d", r.defaultLimit)
+	default:
+		// non-zero signals an override of the default limit for the repo.
+		limit = fmt.Sprintf("limit %d", opts.withLimit)
 	}
 
-	var sessions []*Session
-	err := r.list(ctx, &sessions, strings.Join(where, " and"), args, opt...)
+	if opts.withOrder != "" {
+		opts.withOrder = fmt.Sprintf("order by %s", opts.withOrder)
+	}
+
+	var whereClause string
+	if len(where) > 0 {
+		whereClause = " and " + strings.Join(where, " and")
+	}
+	q := sessionList
+	query := fmt.Sprintf(q, limit, whereClause, opts.withOrder)
+
+	tx, err := r.reader.DB()
+	if err != nil {
+		return nil, fmt.Errorf("list sessions: unable to get DB: %w", err)
+	}
+
+	rows, err := tx.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("changes: query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var sessionsWithState []*sessionView
+	for rows.Next() {
+		var s sessionView
+		if err := r.reader.ScanRows(rows, &s); err != nil {
+			return nil, fmt.Errorf("changes: scan row failed: %w", err)
+		}
+		sessionsWithState = append(sessionsWithState, &s)
+	}
+	sessions, err := r.convertToSessions(ctx, sessionsWithState, withListingConvert(true))
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
-	}
-	for _, s := range sessions {
-		s.CtTofuToken = nil
-		s.TofuToken = nil
-		s.KeyId = ""
 	}
 	return sessions, nil
 }
@@ -216,18 +264,19 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...
 // called when the user cancels a session and the controller wants to update the
 // session state to "cancelling" for the given reason, so the workers can get
 // the "cancelling signal" during their next status heartbeat.
-func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, []*State, error) {
+func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("cancel session: missing session id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("cancel session: missing session id: %w", db.ErrInvalidParameter)
 	}
 	if sessionVersion == 0 {
-		return nil, nil, fmt.Errorf("cancel session: missing session version: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("cancel session: missing session version: %w", db.ErrInvalidParameter)
 	}
 	s, ss, err := r.updateState(ctx, sessionId, sessionVersion, StatusCancelling)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cancel session: %w", err)
+		return nil, fmt.Errorf("cancel session: %w", err)
 	}
-	return s, ss, nil
+	s.States = ss
+	return s, nil
 }
 
 // TerminateSession sets a session's state to "terminated" in the repo.  It's
@@ -235,18 +284,17 @@ func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessio
 // when all of a session's workers have stopped sending heartbeat status for a
 // period of time.  Sessions cannot be terminated which still have connections
 // that are not closed.
-func (r *Repository) TerminateSession(ctx context.Context, sessionId string, sessionVersion uint32, reason TerminationReason) (*Session, []*State, error) {
+func (r *Repository) TerminateSession(ctx context.Context, sessionId string, sessionVersion uint32, reason TerminationReason) (*Session, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("terminate session: missing session id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("terminate session: missing session id: %w", db.ErrInvalidParameter)
 	}
 	if sessionVersion == 0 {
-		return nil, nil, fmt.Errorf("terminate session: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("terminate session: version cannot be zero: %w", db.ErrInvalidParameter)
 	}
 
 	updatedSession := AllocSession()
 	updatedSession.PublicId = sessionId
 	updatedSession.TerminationReason = reason.String()
-	var returnedStates []*State
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -266,33 +314,34 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 			if rowsUpdated != 1 {
 				return fmt.Errorf("update to session %s would have updated %d session", updatedSession.PublicId, rowsUpdated)
 			}
-			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
+			states, err := fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
 			if err != nil {
 				return err
 			}
+			updatedSession.States = states
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("terminate session: %w", err)
+		return nil, fmt.Errorf("terminate session: %w", err)
 	}
-	return &updatedSession, returnedStates, nil
+	return &updatedSession, nil
 }
 
 // AuthorizeConnection will check to see if a connection is allowed.  Currently,
 // that authorization checks:
-//		* the hasn't expired based on the session.Expiration
-//      * number of connections already created is less than session.ConnectionLimit
+// * the hasn't expired based on the session.Expiration
+// * number of connections already created is less than session.ConnectionLimit
 // If authorization is success, it creates/stores a new connection in the repo
 // and returns it, along with it's states.  If the authorization fails, it
 // an error of ErrInvalidStateForOperation.
-func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) (*Connection, []*ConnectionState, error) {
+func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) (*Connection, []*ConnectionState, *ConnectionAuthzSummary, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("authorize connection: missing session id: %w", db.ErrInvalidParameter)
+		return nil, nil, nil, status.Errorf(codes.FailedPrecondition, "authorize connection: missing session id: %v", db.ErrInvalidParameter)
 	}
 	connectionId, err := newConnectionId()
 	if err != nil {
-		return nil, nil, fmt.Errorf("authorize connection: %w", err)
+		return nil, nil, nil, status.Errorf(codes.Internal, "authorize connection: %v", err)
 	}
 
 	connection := AllocConnection()
@@ -305,13 +354,13 @@ func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) 
 		func(reader db.Reader, w db.Writer) error {
 			rowsAffected, err := w.Exec(authorizeConnectionCte, []interface{}{sessionId, connectionId})
 			if err != nil {
-				return fmt.Errorf("unable to authorize connection %s: %w", sessionId, err)
+				return status.Errorf(codes.Internal, "unable to authorize connection %s: %v", sessionId, err)
 			}
 			if rowsAffected == 0 {
-				return fmt.Errorf("session %s is not authorized (not active, expired or connection limit reached): %w", sessionId, ErrInvalidStateForOperation)
+				return status.Errorf(codes.PermissionDenied, "authorize connection: session %s is not authorized (not active, expired or connection limit reached): %v", sessionId, ErrInvalidStateForOperation)
 			}
 			if err := reader.LookupById(ctx, &connection); err != nil {
-				return fmt.Errorf("lookup connection: failed %w for %s", err, sessionId)
+				return status.Errorf(codes.Internal, "authorize connection: failed for session %s: %v", sessionId, err)
 			}
 			connectionStates, err = fetchConnectionStates(ctx, reader, connectionId, db.WithOrder("start_time desc"))
 			if err != nil {
@@ -321,13 +370,47 @@ func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) 
 		},
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("authorize connection: %w", err)
+		return nil, nil, nil, err
 	}
-	return &connection, connectionStates, nil
+	authzSummary, err := r.sessionAuthzSummary(ctx, connection.SessionId)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("authorize connection: %w", err)
+	}
+	return &connection, connectionStates, authzSummary, nil
 }
 
-// ConnectSession updates a connection in the repo with a state of "connected".
-func (r *Repository) ConnectSession(ctx context.Context, c ConnectWith) (*Connection, []*ConnectionState, error) {
+type ConnectionAuthzSummary struct {
+	ExpirationTime         *timestamp.Timestamp
+	ConnectionLimit        int32
+	CurrentConnectionCount uint32
+}
+
+func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) (*ConnectionAuthzSummary, error) {
+	tx, err := r.reader.DB()
+	if err != nil {
+		return nil, fmt.Errorf("session summary: unable to get DB: %w", err)
+	}
+	rows, err := tx.QueryContext(ctx, remainingConnectionsCte, sessionId)
+	if err != nil {
+		return nil, fmt.Errorf("session summary: query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var info *ConnectionAuthzSummary
+	for rows.Next() {
+		if info != nil {
+			return nil, fmt.Errorf("session summary: query returned more than one row")
+		}
+		info = &ConnectionAuthzSummary{}
+		if err := r.reader.ScanRows(rows, info); err != nil {
+			return nil, fmt.Errorf("session summary: scan row failed: %w", err)
+		}
+	}
+	return info, nil
+}
+
+// ConnectConnection updates a connection in the repo with a state of "connected".
+func (r *Repository) ConnectConnection(ctx context.Context, c ConnectWith) (*Connection, []*ConnectionState, error) {
 	// ConnectWith.validate will check all the fields...
 	if err := c.validate(); err != nil {
 		return nil, nil, fmt.Errorf("connect session: %w", err)
@@ -417,7 +500,6 @@ func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith
 					&updateConnection,
 					[]string{"BytesUp", "BytesDown", "ClosedReason"},
 					nil,
-					db.WithVersion(&cw.ConnectionVersion),
 				)
 				if err != nil {
 					return fmt.Errorf("unable to update connection %s: %w", cw.ConnectionId, err)

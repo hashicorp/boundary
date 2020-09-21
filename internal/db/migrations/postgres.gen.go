@@ -3152,12 +3152,12 @@ create table target_tcp (
   name text not null, -- name is not optional for a target subtype
   description text,
   default_port int, -- default_port can be null
-   -- max duration of the session in seconds.  default of 0 equals no limit
+   -- max duration of the session in seconds.
   session_max_seconds int not null default 0
-    check(session_max_seconds >= 0),
-  -- limit on number of session connections allowed.  default of 0 equals no limit
+    check(session_max_seconds > 0),
+  -- limit on number of session connections allowed. -1 equals no limit
   session_connection_limit int not null default 1
-    check(session_connection_limit >= 0),
+    check(session_connection_limit > 0 or session_connection_limit = -1),
   create_time wt_timestamp,
   update_time wt_timestamp,
   version wt_version,
@@ -3405,7 +3405,7 @@ begin;
     expiration_time wt_timestamp, -- maybe null
     -- limit on number of session connections allowed.  default of 0 equals no limit
     connection_limit int not null default 1
-      check(connection_limit >= 0), 
+      check(connection_limit > 0 or connection_limit = -1), 
     -- trust of first use token 
     tofu_token bytea, -- will be null when session is first created
     -- the reason this session ended (null until terminated)
@@ -3646,6 +3646,36 @@ begin;
   create trigger insert_session_state before insert on session_state
     for each row execute procedure insert_session_state();
 
+  create view session_with_state as
+  select
+    s.public_id,
+    s.user_id,
+    s.host_id,
+    s.server_id,
+    s.server_type,
+    s.target_id,
+    s.host_set_id,
+    s.auth_token_id,
+    s.scope_id,
+    s.certificate,
+    s.expiration_time,
+    s.connection_limit,
+    s.tofu_token,
+    s.key_id,
+    s.termination_reason,
+    s.version,
+    s.create_time,
+    s.update_time,
+    s.endpoint,
+    ss.state,
+    ss.previous_end_time,
+    ss.start_time,
+    ss.end_time
+  from  
+    session s,
+    session_state ss
+  where 
+    s.public_id = ss.session_id;
 
 commit;
 

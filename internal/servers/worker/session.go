@@ -8,15 +8,33 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/session"
 )
 
 const (
 	validateSessionTimeout = 90 * time.Second
 )
+
+type connInfo struct {
+	id         string
+	connCtx    context.Context
+	connCancel context.CancelFunc
+	status     pbs.CONNECTIONSTATUS
+	closeTime  time.Time
+}
+
+type sessionInfo struct {
+	sync.RWMutex
+	id                    string
+	sessionTls            *tls.Config
+	status                pbs.SESSIONSTATUS
+	lookupSessionResponse *pbs.LookupSessionResponse
+	connInfoMap           map[string]*connInfo
+}
 
 func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	var sessionId string
@@ -85,37 +103,173 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		MinVersion: tls.VersionTLS13,
 	}
 
+	si := &sessionInfo{
+		id:                    resp.GetAuthorization().GetSessionId(),
+		sessionTls:            tlsConf,
+		lookupSessionResponse: resp,
+		status:                resp.GetStatus(),
+		connInfoMap:           make(map[string]*connInfo),
+	}
 	// TODO: Periodicially clean this up. We can't rely on things in here but
 	// not in cancellation because they could be on the way to being
 	// established. However, since cert lifetimes are short, we can simply range
 	// through and remove values that are expired.
-	w.sessionInfoMap.Store(sessionId, resp)
+	actualSiRaw, loaded := w.sessionInfoMap.LoadOrStore(sessionId, si)
+	if loaded {
+		// Update the response to the latest
+		actualSi := actualSiRaw.(*sessionInfo)
+		actualSi.Lock()
+		actualSi.lookupSessionResponse = resp
+		actualSi.Unlock()
+	}
 
 	w.logger.Trace("returning TLS configuration", "session_id", sessionId)
 	return tlsConf, nil
 }
 
-func (w *Worker) activateSession(ctx context.Context, tofuToken string, sess *services.LookupSessionResponse) error {
+func (w *Worker) activateSession(ctx context.Context, sessionId, tofuToken string, version uint32) (pbs.SESSIONSTATUS, error) {
 	rawConn := w.controllerSessionConn.Load()
 	if rawConn == nil {
-		return errors.New("could not get a controller client")
+		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, errors.New("could not get a controller client")
 	}
 	conn, ok := rawConn.(pbs.SessionServiceClient)
 	if !ok {
-		return errors.New("could not cast atomic controller client to the real thing")
+		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, errors.New("could not cast atomic controller client to the real thing")
 	}
 	if conn == nil {
-		return errors.New("controller client is nil")
+		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, errors.New("controller client is nil")
 	}
 
-	_, err := conn.ActivateSession(ctx, &pbs.ActivateSessionRequest{
-		SessionId: sess.GetAuthorization().GetSessionId(),
+	resp, err := conn.ActivateSession(ctx, &pbs.ActivateSessionRequest{
+		SessionId: sessionId,
 		TofuToken: tofuToken,
-		Version:   sess.GetVersion(),
+		Version:   version,
 		WorkerId:  w.conf.RawConfig.Worker.Name,
 	})
 	if err != nil {
-		return fmt.Errorf("error activating session: %w", err)
+		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, fmt.Errorf("error activating session: %w", err)
 	}
+	return resp.GetStatus(), nil
+}
+
+func (w *Worker) authorizeConnection(ctx context.Context, sessionId string) (*connInfo, int32, error) {
+	rawConn := w.controllerSessionConn.Load()
+	if rawConn == nil {
+		return nil, 0, errors.New("could not get a controller client")
+	}
+	conn, ok := rawConn.(pbs.SessionServiceClient)
+	if !ok {
+		return nil, 0, errors.New("could not cast atomic controller client to the real thing")
+	}
+	if conn == nil {
+		return nil, 0, errors.New("controller client is nil")
+	}
+
+	resp, err := conn.AuthorizeConnection(ctx, &pbs.AuthorizeConnectionRequest{
+		SessionId: sessionId,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("error authorizing connection: %w", err)
+	}
+
+	return &connInfo{
+		id:     resp.ConnectionId,
+		status: resp.GetStatus(),
+	}, resp.GetConnectionsLeft(), nil
+}
+
+func (w *Worker) connectConnection(ctx context.Context, req *pbs.ConnectConnectionRequest) (pbs.CONNECTIONSTATUS, error) {
+	rawConn := w.controllerSessionConn.Load()
+	if rawConn == nil {
+		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, errors.New("could not get a controller client")
+	}
+	conn, ok := rawConn.(pbs.SessionServiceClient)
+	if !ok {
+		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, errors.New("could not cast atomic controller client to the real thing")
+	}
+	if conn == nil {
+		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, errors.New("controller client is nil")
+	}
+
+	resp, err := conn.ConnectConnection(ctx, req)
+	if err != nil {
+		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, err
+	}
+
+	if resp.GetStatus() != pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED {
+		return pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED, fmt.Errorf("unexpected state returned: %v", resp.GetStatus().String())
+	}
+
+	return resp.GetStatus(), nil
+}
+
+func (w *Worker) closeConnection(ctx context.Context, req *pbs.CloseConnectionRequest) (*pbs.CloseConnectionResponse, error) {
+	rawConn := w.controllerSessionConn.Load()
+	if rawConn == nil {
+		return nil, errors.New("could not get a controller client")
+	}
+	conn, ok := rawConn.(pbs.SessionServiceClient)
+	if !ok {
+		return nil, errors.New("could not cast atomic controller client to the real thing")
+	}
+	if conn == nil {
+		return nil, errors.New("controller client is nil")
+	}
+
+	resp, err := conn.CloseConnection(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.GetCloseResponseData()) != len(req.GetCloseRequestData()) {
+		w.logger.Warn("mismatched number of states returned on connection closed", "expected", len(req.GetCloseRequestData()), "got", len(resp.GetCloseResponseData()))
+	}
+
+	return resp, nil
+}
+
+func (w *Worker) closeConnections(ctx context.Context, closeMap map[string]string) error {
+	w.logger.Trace("marking connections as closed", "session_and_connection_ids", fmt.Sprint("%#v", closeMap))
+
+	closeData := make([]*pbs.CloseConnectionRequestData, 0, len(closeMap))
+	for connId := range closeMap {
+		closeData = append(closeData, &pbs.CloseConnectionRequestData{
+			ConnectionId: connId,
+			Reason:       session.UnknownReason.String(),
+		})
+	}
+	closeInfo := &pbs.CloseConnectionRequest{
+		CloseRequestData: closeData,
+	}
+
+	connStatus, err := w.closeConnection(ctx, closeInfo)
+	if err != nil {
+		return err
+	}
+	closedIds := make([]string, 0, len(connStatus.GetCloseResponseData()))
+
+	// Here we build a reverse map from closeMap, that is, session ID to
+	// connection IDs, for more efficient locking
+	revMap := make(map[string][]*pbs.CloseConnectionResponseData)
+	for _, v := range connStatus.GetCloseResponseData() {
+		revMap[closeMap[v.GetConnectionId()]] = append(revMap[closeMap[v.GetConnectionId()]], v)
+	}
+	for k, v := range revMap {
+		siRaw, ok := w.sessionInfoMap.Load(k)
+		if !ok {
+			w.logger.Warn("could not find session ID in info map after closing connections", "session_id", k)
+			continue
+		}
+		si := siRaw.(*sessionInfo)
+		si.Lock()
+		for _, connResult := range v {
+			ci := si.connInfoMap[connResult.GetConnectionId()]
+			ci.status = connResult.GetStatus()
+			if ci.status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
+				ci.closeTime = time.Now()
+			}
+		}
+		si.Unlock()
+	}
+	w.logger.Trace("connections successfully marked closed", "connection_ids", closedIds)
 	return nil
 }

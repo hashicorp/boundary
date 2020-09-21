@@ -93,7 +93,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 
 	for verb, paths := range map[string][]string{
 		"GET": {
-			// new paths
+			"v1/sessions/",
+			"v1/sessions/someid",
 			"v1/scopes",
 			"v1/scopes/someid",
 			"v1/auth-tokens",
@@ -119,7 +120,6 @@ func TestHandleImplementedPaths(t *testing.T) {
 		},
 		"POST": {
 			// Creation end points
-			// new paths
 			"v1/scopes",
 			"v1/groups",
 			"v1/roles",
@@ -132,6 +132,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/targets",
 
 			// custom methods
+			"v1/sessions/someid:cancel",
 			"v1/auth-methods/someid:authenticate",
 			"v1/accounts/someid:set-password",
 			"v1/accounts/someid:change-password",
@@ -146,7 +147,6 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/groups/someid:remove-members",
 		},
 		"DELETE": {
-			// new paths
 			"v1/scopes/someid",
 			"v1/users/someid",
 			"v1/roles/someid",
@@ -160,7 +160,6 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/targets/someid",
 		},
 		"PATCH": {
-			// new paths
 			"v1/scopes/someid",
 			"v1/users/someid",
 			"v1/roles/someid",

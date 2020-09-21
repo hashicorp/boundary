@@ -65,8 +65,12 @@ with active_session as (
 	where
 		-- check that the session hasn't expired.
 		s.expiration_time > now() and
-		-- check that there are still connections available. connection_limit of 0 equals unlimited connections
-		(s.connection_limit = 0 or s.connection_limit > (select count(*) from session_connection sc where sc.session_id = $1)) and
+		-- check that there are still connections available. connection_limit of -1 equals unlimited connections
+		(
+			s.connection_limit = -1
+				or 
+			s.connection_limit > (select count(*) from session_connection sc where sc.session_id = $1)
+		) and
 		-- check that there's a state of active
 		s.public_id in (
 			select 
@@ -75,19 +79,44 @@ with active_session as (
 				session_state ss
 			where 
 				ss.session_id = $1 and 
-				ss.state = 'active'
-		) and 
-		-- check that there are no cancelling or terminated states
-		s.public_id not in(
-			select 
-				ss.session_id 
-			from 
-				session_state ss 
-			where
-				ss.session_id = $1 and 
-				ss.state in('cancelling', 'terminated') 			
+				ss.state = 'active' and
+				-- if there's no end_time, then this is the current state.
+				ss.end_time is null 
 		) 
 )
 select * from active_session;
+`
+
+	remainingConnectionsCte = `
+with
+session_connection_count(current_connection_count) as (
+	select count(*) 
+	from 
+		session_connection sc
+	where
+		sc.session_id = $1
+),
+session_connection_limit(expiration_time, connection_limit) as (
+	select 
+		s.expiration_time,
+		s.connection_limit
+	from
+		session s
+	where 
+		s.public_id = $1
+)
+select expiration_time, connection_limit, current_connection_count 
+from  
+	session_connection_limit, session_connection_count;	
+`
+	sessionList = `
+select * 
+from
+	(select public_id from session %s) s,
+	session_with_state ss
+where 
+	s.public_id = ss.public_id 
+	%s
+%s
 `
 )

@@ -1815,6 +1815,101 @@
         ]
       }
     },
+    "/v1/sessions": {
+      "get": {
+        "summary": "Lists all Sessions",
+        "operationId": "SessionService_ListSessions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListSessionsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionService"
+        ]
+      }
+    },
+    "/v1/sessions/{id}": {
+      "get": {
+        "summary": "Gets a single Session",
+        "operationId": "SessionService_GetSession",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionService"
+        ]
+      }
+    },
+    "/v1/sessions/{id}:cancel": {
+      "post": {
+        "summary": "Cancels a Session",
+        "operationId": "SessionService_CancelSession",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.CancelSessionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionService"
+        ]
+      }
+    },
     "/v1/targets": {
       "get": {
         "summary": "Lists all Targets",
@@ -2897,6 +2992,134 @@
         }
       }
     },
+    "controller.api.resources.sessions.v1.Session": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the resource\nOutput only.",
+          "readOnly": true
+        },
+        "target_id": {
+          "type": "string",
+          "description": "The id of the parent of this resource.  This must be defined for creation\nof this resource, but is otherwise read only."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "expiration_time": {
+          "type": "string",
+          "format": "date-time",
+          "title": "After this time the connection will be expired, e.g. forcefully terminated"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has."
+        },
+        "type": {
+          "type": "string",
+          "title": "Type of the session (e.g. tcp, ssh, etc.)"
+        },
+        "auth_token_id": {
+          "type": "string",
+          "description": "The id of the token used to authenticate."
+        },
+        "user_id": {
+          "type": "string",
+          "title": "The ID of the user that requested the session"
+        },
+        "host_set_id": {
+          "type": "string",
+          "title": "The host set id used by the session's target"
+        },
+        "host_id": {
+          "type": "string",
+          "title": "The host id used by the session"
+        },
+        "scope_id": {
+          "type": "string",
+          "title": "The scope of the session"
+        },
+        "endpoint": {
+          "type": "string",
+          "title": "The endpoint of the session"
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.sessions.v1.SessionState"
+          },
+          "description": "The states of this session in descending from the current state to the\nfirst."
+        },
+        "status": {
+          "type": "string",
+          "description": "The name of the current status of this session."
+        },
+        "worker_info": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.sessions.v1.WorkerInfo"
+          },
+          "description": "Worker information. The first worker in the slice should be prioritized."
+        },
+        "certificate": {
+          "type": "string",
+          "format": "byte",
+          "description": "Deprecated, to be moved to another proto by another PR:\nThe certificate to use when connecting (or if using custom certs, to\nserve as the \"login\"). Raw DER bytes."
+        },
+        "private_key": {
+          "type": "string",
+          "format": "byte",
+          "description": "The private key to use when connecting (or if using custom certs, to pass\nas the \"password\")."
+        }
+      },
+      "title": "Session contains all fields related to a Session resource"
+    },
+    "controller.api.resources.sessions.v1.SessionState": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "This is the status of the session.  For example \"pending\", \"active\",\n\"canceling\", \"terminated\"."
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the session entered this state.\nOutput only.",
+          "readOnly": true
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the session stopped being in this state.\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.sessions.v1.WorkerInfo": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "title": "The address of the worker"
+        }
+      }
+    },
     "controller.api.resources.targets.v1.HostSet": {
       "type": "object",
       "properties": {
@@ -3011,7 +3234,7 @@
         },
         "session_connection_limit": {
           "type": "integer",
-          "format": "int64",
+          "format": "int32",
           "title": "Maximum number of connections in a session"
         },
         "attributes": {
@@ -3247,6 +3470,26 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.SessionAuthorization"
+        }
+      }
+    },
+    "controller.api.services.v1.CancelSessionRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "controller.api.services.v1.CancelSessionResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
         }
       }
     },
@@ -3491,6 +3734,14 @@
         }
       }
     },
+    "controller.api.services.v1.GetSessionResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
+        }
+      }
+    },
     "controller.api.services.v1.GetTargetResponse": {
       "type": "object",
       "properties": {
@@ -3602,6 +3853,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListSessionsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
           }
         }
       }

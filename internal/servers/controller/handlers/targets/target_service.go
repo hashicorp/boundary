@@ -290,7 +290,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		hostId    string
 	}
 
-	var chosenId compoundHost
+	var chosenId *compoundHost
 	requestedId := req.GetHostId()
 	staticHostRepo, err := s.staticHostRepoFn()
 	if err != nil {
@@ -298,6 +298,8 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 
 	hostIds := make([]compoundHost, 0, len(hostSets)*10)
+
+HostSetIterationLoop:
 	for _, tSet := range hostSets {
 		hsId := tSet.PublicId
 		switch host.SubtypeFromId(hsId) {
@@ -308,15 +310,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			}
 			for _, host := range hosts {
 				compoundId := compoundHost{hostSetId: hsId, hostId: host.PublicId}
-				if host.PublicId == requestedId {
-					chosenId = compoundId
-					goto HOST_GATHERING_DONE
-				}
 				hostIds = append(hostIds, compoundId)
+				if host.PublicId == requestedId {
+					chosenId = &compoundId
+					break HostSetIterationLoop
+				}
 			}
 		}
 	}
-	if requestedId != "" {
+	if requestedId != "" && chosenId == nil {
 		// We didn't find it
 		return nil, handlers.InvalidArgumentErrorf(
 			"Errors in provided fields.",
@@ -324,9 +326,14 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 				"host_id": "The requested host id is not available.",
 			})
 	}
-	chosenId = hostIds[rand.Intn(len(hostIds))]
+	if chosenId == nil {
+		if len(hostIds) == 0 {
+			// No hosts were found, error
+			return nil, handlers.NotFoundErrorf("No hosts found from available target host sets.")
+		}
+		chosenId = &hostIds[rand.Intn(len(hostIds))]
+	}
 
-HOST_GATHERING_DONE:
 	// Generate the endpoint URL
 	endpointUrl := &url.URL{
 		Scheme: t.GetType(),
@@ -372,7 +379,7 @@ HOST_GATHERING_DONE:
 	if err != nil {
 		return nil, err
 	}
-	sess, _, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess)
+	sess, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess)
 	if err != nil {
 		return nil, err
 	}
@@ -387,14 +394,15 @@ HOST_GATHERING_DONE:
 	}
 
 	sad := &pb.SessionAuthorizationData{
-		SessionId:   sess.PublicId,
-		TargetId:    t.GetPublicId(),
-		Scope:       authResults.Scope,
-		CreatedTime: sess.CreateTime.GetTimestamp(),
-		Type:        t.GetType(),
-		Certificate: sess.Certificate,
-		PrivateKey:  privKey,
-		WorkerInfo:  workers,
+		SessionId:       sess.PublicId,
+		TargetId:        t.GetPublicId(),
+		Scope:           authResults.Scope,
+		CreatedTime:     sess.CreateTime.GetTimestamp(),
+		Type:            t.GetType(),
+		Certificate:     sess.Certificate,
+		PrivateKey:      privKey,
+		WorkerInfo:      workers,
+		ConnectionLimit: t.GetSessionConnectionLimit(),
 	}
 	marshaledSad, err := proto.Marshal(sad)
 	if err != nil {
@@ -651,8 +659,8 @@ func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 		UpdatedTime:            in.GetUpdateTime().GetTimestamp(),
 		Version:                in.GetVersion(),
 		Type:                   target.TcpTargetType.String(),
-		SessionMaxSeconds:      &wrapperspb.UInt32Value{Value: in.GetSessionMaxSeconds()},
-		SessionConnectionLimit: &wrapperspb.UInt32Value{Value: in.GetSessionConnectionLimit()},
+		SessionMaxSeconds:      wrapperspb.UInt32(in.GetSessionMaxSeconds()),
+		SessionConnectionLimit: wrapperspb.Int32(in.GetSessionConnectionLimit()),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -697,6 +705,18 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 		if req.GetItem().GetName() == nil || req.GetItem().GetName().GetValue() == "" {
 			badFields["name"] = "This field is required."
 		}
+		if req.GetItem().GetSessionConnectionLimit() != nil {
+			val := req.GetItem().GetSessionConnectionLimit().GetValue()
+			switch {
+			case val == -1:
+			case val > 0:
+			default:
+				badFields["session_connection_limit"] = "This must be -1 (unlimited) or greater than zero."
+			}
+		}
+		if req.GetItem().GetSessionMaxSeconds() != nil && req.GetItem().GetSessionMaxSeconds().GetValue() == 0 {
+			badFields["session_max_seconds"] = "This must be greater than zero."
+		}
 		switch target.SubtypeFromType(req.GetItem().GetType()) {
 		case target.TcpSubType:
 			tcpAttrs := &pb.TcpTargetAttributes{}
@@ -723,6 +743,18 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 		badFields := map[string]string{}
 		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "name") && req.GetItem().GetName().GetValue() == "" {
 			badFields["name"] = "This field cannot be set to empty."
+		}
+		if req.GetItem().GetSessionConnectionLimit() != nil {
+			val := req.GetItem().GetSessionConnectionLimit().GetValue()
+			switch {
+			case val == -1:
+			case val > 0:
+			default:
+				badFields["session_connection_limit"] = "This must be -1 (unlimited) or greater than zero."
+			}
+		}
+		if req.GetItem().GetSessionMaxSeconds() != nil && req.GetItem().GetSessionMaxSeconds().GetValue() == 0 {
+			badFields["session_max_seconds"] = "This must be greater than zero."
 		}
 		switch target.SubtypeFromType(req.GetItem().GetType()) {
 		case target.TcpSubType:

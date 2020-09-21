@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,7 +18,6 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcutil/base58"
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -28,15 +28,27 @@ import (
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
+	"go.uber.org/atomic"
+	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wspb"
 )
 
+type SessionInfo struct {
+	Address         string    `json:"address"`
+	Port            int       `json:"port"`
+	Protocol        string    `json:"protocol"`
+	Expiration      time.Time `json:"expiration"`
+	ConnectionLimit int32     `json:"connection_limit"`
+	SessionId       string    `json:"session_id"`
+}
+
 type ConnectionInfo struct {
-	Address    string    `json:"address"`
-	Port       int       `json:"port"`
-	Protocol   string    `json:"protocol"`
-	Expiration time.Time `json:"expiration"`
+	ConnectionsLeft int32 `json:"connections_left"`
+}
+
+type TerminationInfo struct {
+	Reason string `json:"termination_reason"`
 }
 
 var _ cli.Command = (*Command)(nil)
@@ -53,6 +65,13 @@ type Command struct {
 	flagHostId     string
 
 	Func string
+
+	connWg            *sync.WaitGroup
+	listenerCloseOnce sync.Once
+	listener          *net.TCPListener
+	connsLeftCh       chan int32
+	connectionsLeft   atomic.Int32
+	expiration        time.Time
 }
 
 func (c *Command) Synopsis() string {
@@ -157,7 +176,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *Command) Run(args []string) int {
+func (c *Command) Run(args []string) (retCode int) {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
@@ -165,12 +184,13 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	var handshake proxy.ClientHandshake
-	var err error
-	if handshake.TofuToken, err = base62.Random(20); err != nil {
+	tofuToken, err := base62.Random(20)
+	if err != nil {
 		c.UI.Error(fmt.Errorf("Could not derive random bytes for tofu token: %w", err).Error())
 		return 1
 	}
+
+	c.connsLeftCh = make(chan int32)
 
 	if c.flagListenAddr == "" {
 		c.flagListenAddr = "127.0.0.1"
@@ -259,6 +279,9 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
+	c.connectionsLeft.Store(data.ConnectionLimit)
+	workerAddr := data.GetWorkerInfo()[0].GetAddress()
+
 	parsedCert, err := x509.ParseCertificate(data.Certificate)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Unable to decode mTLS certificate: %w", err).Error())
@@ -269,6 +292,8 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Errorf("mTLS certificate has invalid parameters: %w", err).Error())
 		return 1
 	}
+
+	c.expiration = parsedCert.NotAfter
 
 	certPool := x509.NewCertPool()
 	certPool.AddCert(parsedCert)
@@ -293,7 +318,7 @@ func (c *Command) Run(args []string) int {
 	// hijacked, just setting for completeness
 	transport.IdleConnTimeout = 0
 
-	listener, err := net.ListenTCP("tcp", &net.TCPAddr{
+	c.listener, err = net.ListenTCP("tcp", &net.TCPAddr{
 		IP:   listenAddr,
 		Port: c.flagListenPort,
 	})
@@ -302,7 +327,124 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	workerAddr := data.GetWorkerInfo()[0].GetAddress()
+	listenerCloseFunc := func() {
+		// Forces the for loop to exist instead of spinning on errors
+		c.connectionsLeft.Store(0)
+		if err := c.listener.Close(); err != nil {
+			c.UI.Error(fmt.Errorf("Error closing listener on shutdown: %w", err).Error())
+			retCode = 1
+		}
+	}
+
+	// Ensure it runs on any other return condition
+	defer func() {
+		c.listenerCloseOnce.Do(listenerCloseFunc)
+	}()
+
+	listenerAddr := c.listener.Addr().(*net.TCPAddr)
+
+	sessInfo := SessionInfo{
+		Protocol:        "tcp",
+		Address:         listenerAddr.IP.String(),
+		Port:            listenerAddr.Port,
+		Expiration:      c.expiration,
+		ConnectionLimit: data.GetConnectionLimit(),
+		SessionId:       data.GetSessionId(),
+	}
+
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateSessionInfoTableOutput(sessInfo))
+	case "json":
+		out, err := json.Marshal(&sessInfo)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("error marshaling session information: %w", err).Error())
+			return 1
+		}
+		c.UI.Output(string(out))
+	}
+
+	c.connWg = new(sync.WaitGroup)
+
+	c.connWg.Add(1)
+	go func() {
+		defer c.connWg.Done()
+		for {
+			listeningConn, err := c.listener.AcceptTCP()
+			if err != nil {
+				select {
+				case <-c.Context.Done():
+					return
+				default:
+					// When this hits zero we tigger listener close so this
+					// isn't actually an error condition
+					if c.connectionsLeft.Load() == 0 {
+						return
+					}
+					c.UI.Error(fmt.Errorf("Error accepting connection: %w", err).Error())
+					continue
+				}
+			}
+			c.connWg.Add(1)
+			go func() {
+				defer listeningConn.Close()
+				if err := c.handleConnection(
+					listeningConn,
+					workerAddr,
+					tofuToken,
+					transport); err != nil {
+					c.UI.Error(err.Error())
+				}
+			}()
+		}
+	}()
+
+	timer := time.NewTimer(time.Until(c.expiration))
+	var termInfo TerminationInfo
+Wait:
+	for {
+		select {
+		case <-c.Context.Done():
+			termInfo.Reason = "Received shutdown signal"
+			timer.Stop()
+			break Wait
+		case <-timer.C:
+			termInfo.Reason = "Session has expired"
+			break Wait
+		case connsLeft := <-c.connsLeftCh:
+			c.updateConnsLeft(connsLeft)
+			if connsLeft == 0 {
+				termInfo.Reason = "No connections left in session"
+				break Wait
+			}
+		}
+	}
+	c.listenerCloseOnce.Do(listenerCloseFunc)
+
+	c.connWg.Wait()
+
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateTerminationInfoTableOutput(termInfo))
+	case "json":
+		out, err := json.Marshal(&termInfo)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("error marshaling termination information: %w", err).Error())
+			return 1
+		}
+		c.UI.Output(string(out))
+	}
+
+	return 0
+}
+
+func (c *Command) handleConnection(
+	listeningConn *net.TCPConn,
+	workerAddr string,
+	tofuToken string,
+	transport *http.Transport) error {
+
+	defer c.connWg.Done()
 
 	conn, resp, err := websocket.Dial(
 		c.Context,
@@ -317,57 +459,43 @@ func (c *Command) Run(args []string) int {
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "tls: internal error"):
-			c.UI.Error("Session is unauthorized")
+			return errors.New("Session is unauthorized")
 		case strings.Contains(err.Error(), "connect: connection refused"):
-			c.UI.Error(fmt.Sprintf("Unable to connect to worker at %s", workerAddr))
+			return fmt.Errorf("Unable to connect to worker at %s", workerAddr)
 		default:
-			c.UI.Error(fmt.Errorf("Error dialing the worker: %w", err).Error())
+			return fmt.Errorf("Error dialing the worker: %w", err)
 		}
-		return 1
 	}
 
 	if resp == nil {
-		c.UI.Error("Response from worker is nil")
-		return 1
+		return errors.New("Response from worker is nil")
 	}
 	if resp.Header == nil {
-		c.UI.Error("Response header is nil")
-		return 1
+		return errors.New("Response header is nil")
 	}
 	negProto := resp.Header.Get("Sec-WebSocket-Protocol")
 	if negProto != globals.TcpProxyV1 {
-		c.UI.Error(fmt.Sprintf("Unexpected negotiated protocol: %s", negProto))
-		return 1
+		return fmt.Errorf("Unexpected negotiated protocol: %s", negProto)
 	}
 
+	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
 	if err := wspb.Write(c.Context, conn, &handshake); err != nil {
-		c.UI.Error(fmt.Errorf("error sending handshake to worker: %w", err).Error())
-		return 1
+		return fmt.Errorf("error sending handshake to worker: %w", err)
 	}
 	var handshakeResult proxy.HandshakeResult
 	if err := wspb.Read(c.Context, conn, &handshakeResult); err != nil {
-		c.UI.Error(fmt.Errorf("error reading handshake result: %w", err).Error())
-		return 1
-	}
-
-	listenerAddr := listener.Addr().(*net.TCPAddr)
-	connInfo := ConnectionInfo{
-		Protocol:   "tcp",
-		Address:    listenerAddr.IP.String(),
-		Port:       listenerAddr.Port,
-		Expiration: handshakeResult.GetExpiration().AsTime(),
-	}
-
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateConnectionInfoTableOutput(connInfo))
-	case "json":
-		out, err := json.Marshal(&connInfo)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
-			return 1
+		switch {
+		case strings.Contains(err.Error(), "unable to authorize connection"):
+			// There's no reason to think we'd be able to authorize any more
+			// connections after the first has failed
+			c.connsLeftCh <- 0
+			return errors.New("Unable to authorize connection")
 		}
-		c.UI.Output(string(out))
+		return fmt.Errorf("error reading handshake result: %w", err)
+	}
+
+	if handshakeResult.GetConnectionsLeft() != -1 {
+		c.connsLeftCh <- handshakeResult.GetConnectionsLeft()
 	}
 
 	// We don't _rely_ on client-side timeout verification but this prevents us
@@ -379,44 +507,41 @@ func (c *Command) Run(args []string) int {
 	// Get a wrapped net.Conn so we can use io.Copy
 	netConn := websocket.NetConn(expiringCtx, conn, websocket.MessageBinary)
 
-	// Allow closing the listener from Ctrl-C
-	go func() {
-		<-expiringCtx.Done()
-		listener.Close()
-	}()
+	localWg := new(sync.WaitGroup)
+	localWg.Add(2)
 
-	listeningConn, err := listener.AcceptTCP()
-	listener.Close()
-	if err != nil {
-		select {
-		case <-expiringCtx.Done():
-			return 0
-		default:
-			c.UI.Error(fmt.Errorf("Error accepting connection: %w", err).Error())
-			return 1
-		}
+	go func() {
+		defer localWg.Done()
+		io.Copy(netConn, listeningConn)
+		netConn.Close()
+		listeningConn.Close()
+	}()
+	go func() {
+		defer localWg.Done()
+		io.Copy(listeningConn, netConn)
+		listeningConn.Close()
+		netConn.Close()
+	}()
+	localWg.Wait()
+
+	return nil
+}
+
+func (c *Command) updateConnsLeft(connsLeft int32) {
+	c.connectionsLeft.Store(connsLeft)
+
+	connInfo := ConnectionInfo{
+		ConnectionsLeft: connsLeft,
 	}
 
-	connWg := new(sync.WaitGroup)
-	connWg.Add(2)
-	go func() {
-		defer connWg.Done()
-		_, err := io.Copy(netConn, listeningConn)
-		if c.flagVerbose {
-			c.UI.Info(fmt.Sprintf("copy from client to endpoint done, error: %v", err))
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateConnectionInfoTableOutput(connInfo))
+	case "json":
+		out, err := json.Marshal(&connInfo)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
 		}
-		netConn.Close()
-		listeningConn.Close()
-	}()
-	go func() {
-		defer connWg.Done()
-		_, err := io.Copy(listeningConn, netConn)
-		if c.flagVerbose {
-			c.UI.Info(fmt.Sprintf("copy from endpoint to client done, error: %v", err))
-		}
-		listeningConn.Close()
-		netConn.Close()
-	}()
-	connWg.Wait()
-	return 0
+		c.UI.Output(string(out))
+	}
 }

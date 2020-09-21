@@ -60,7 +60,7 @@ message Target {
 	google.protobuf.UInt32Value session_max_seconds = 120 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"session_max_seconds" that: "SessionMaxSeconds"}];
 
 	// Maximum number of connections in a session
-	google.protobuf.UInt32Value session_connection_limit = 130 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"session_connection_limit" that: "SessionConnectionLimit"}];
+	google.protobuf.Int32Value session_connection_limit = 130 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"session_connection_limit" that: "SessionConnectionLimit"}];
 
 	// The attributes that are applied for the specific Target type.
 	google.protobuf.Struct attributes = 200 [(custom_options.v1.generate_sdk_option) = true];
@@ -101,6 +101,12 @@ message SessionAuthorizationData {
 	// Type of the session (e.g. tcp, ssh, etc.)
 	// Output only.
 	string type = 80;
+
+	// Connection limit. -1 means unlimited. This is not actually enforced on
+	// the client side but it provides for better listener handling by including
+	// it.
+	// Output only.
+	int32 connection_limit = 90;
 
 	// The certificate to use when connecting (or if using custom certs, to
 	// serve as the "login"). Raw DER bytes.
