@@ -2,6 +2,7 @@ package sessions_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
@@ -120,6 +121,10 @@ func TestGetSession(t *testing.T) {
 
 			got, gErr := s.GetSession(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.res != nil {
+				assert.True(got.GetItem().GetExpirationTime().AsTime().Sub(tc.res.GetItem().GetExpirationTime().AsTime()) < 10*time.Millisecond)
+				tc.res.GetItem().ExpirationTime = got.GetItem().GetExpirationTime()
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetSession(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 		})
 	}
@@ -212,6 +217,12 @@ func TestList(t *testing.T) {
 
 			got, gErr := s.ListSessions(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
 			assert.Equal(t, tc.errCode, status.Code(gErr), "ListSessions(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.res != nil {
+				for i, wantSess := range tc.res.GetItems() {
+					assert.True(t, got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
+					wantSess.ExpirationTime = got.GetItems()[i].GetExpirationTime()
+				}
+			}
 			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
@@ -357,6 +368,11 @@ func TestCancel(t *testing.T) {
 			assert.Empty(cmp.Diff(got.GetItem().GetStates(), wantState, protocmp.Transform()), "GetSession(%q) states")
 			got.GetItem().States = nil
 			got.GetItem().UpdatedTime = nil
+
+			if tc.res != nil {
+				assert.True(got.GetItem().GetExpirationTime().AsTime().Sub(tc.res.GetItem().GetExpirationTime().AsTime()) < 10*time.Millisecond)
+				tc.res.GetItem().ExpirationTime = got.GetItem().GetExpirationTime()
+			}
 
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetSession(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 

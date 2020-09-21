@@ -484,6 +484,10 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 			require.NotNil(c)
 			require.NotNil(cs)
 			assert.Equal(StatusAuthorized, cs[0].Status)
+
+			assert.True(authzInfo.ExpirationTime.GetTimestamp().AsTime().Sub(tt.wantAuthzInfo.ExpirationTime.GetTimestamp().AsTime()) < 10*time.Millisecond)
+			tt.wantAuthzInfo.ExpirationTime = authzInfo.ExpirationTime
+
 			assert.Equal(tt.wantAuthzInfo.ExpirationTime, authzInfo.ExpirationTime)
 			assert.Equal(tt.wantAuthzInfo.ConnectionLimit, authzInfo.ConnectionLimit)
 			assert.Equal(tt.wantAuthzInfo.CurrentConnectionCount, authzInfo.CurrentConnectionCount)
