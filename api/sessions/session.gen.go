@@ -31,7 +31,6 @@ type Session struct {
 	Status         string            `json:"status,omitempty"`
 	WorkerInfo     []*WorkerInfo     `json:"worker_info,omitempty"`
 	Certificate    []byte            `json:"certificate,omitempty"`
-	PrivateKey     []byte            `json:"private_key,omitempty"`
 
 	responseBody *bytes.Buffer
 	responseMap  map[string]interface{}

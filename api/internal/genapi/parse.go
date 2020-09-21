@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/protooptions"
+	"github.com/hashicorp/boundary/sdk/strutil"
 
 	"github.com/iancoleman/strcase"
 )
@@ -41,6 +42,9 @@ func parsePBs() {
 		in.generatedStructure.name = string(desc.Name())
 		for i := 0; i < desc.Fields().Len(); i++ {
 			fd := desc.Fields().Get(i)
+			if strutil.StrListContains(in.fieldFilter, string(fd.Name())) {
+				continue
+			}
 			fi := fieldInfo{
 				Name:      strcase.ToCamel(string(fd.Name())),
 				ProtoName: string(fd.Name()),

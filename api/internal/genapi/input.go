@@ -85,6 +85,10 @@ type structInfo struct {
 
 	// createResponseTypes controls for which structs response types are created
 	createResponseTypes bool
+
+	// fieldFilter is a set of field names that will not result in generated API
+	// fields
+	fieldFilter []string
 }
 
 var inputStructs = []*structInfo{
@@ -367,6 +371,7 @@ var inputStructs = []*structInfo{
 		},
 		pathArgs:            []string{"session"},
 		createResponseTypes: true,
+		fieldFilter:         []string{"private_key"},
 	},
 	{
 		inProto: &sessions.SessionState{},
