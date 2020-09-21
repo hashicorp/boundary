@@ -269,7 +269,7 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.NotNil(ses.CreateTime)
 			assert.NotNil(ses.States[0].StartTime)
 			assert.Equal(ses.States[0].Status, StatusPending)
-			foundSession, err := repo.LookupSession(context.Background(), ses.PublicId)
+			foundSession, _, err := repo.LookupSession(context.Background(), ses.PublicId)
 			assert.NoError(err)
 
 			// Account for slight offsets in nanos
@@ -1076,7 +1076,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundSession, err := repo.LookupSession(context.Background(), tt.args.session.PublicId)
+			foundSession, _, err := repo.LookupSession(context.Background(), tt.args.session.PublicId)
 			assert.NoError(err)
 			assert.Nil(foundSession)
 

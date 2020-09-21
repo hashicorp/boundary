@@ -3036,16 +3036,20 @@
           "title": "The ID of the user that requested the session"
         },
         "host_set_id": {
-          "type": "string"
+          "type": "string",
+          "title": "The host set id used by the session's target"
         },
         "host_id": {
-          "type": "string"
+          "type": "string",
+          "title": "The host id used by the session"
         },
         "scope_id": {
-          "type": "string"
+          "type": "string",
+          "title": "The scope of the session"
         },
         "endpoint": {
-          "type": "string"
+          "type": "string",
+          "title": "The endpoint of the session"
         },
         "states": {
           "type": "array",

@@ -404,6 +404,7 @@ Wait:
 	for {
 		select {
 		case <-c.Context.Done():
+			termInfo.Reason = "Received shutdown signal"
 			timer.Stop()
 			break Wait
 		case <-timer.C:
@@ -412,7 +413,7 @@ Wait:
 		case connsLeft := <-c.connsLeftCh:
 			c.updateConnsLeft(connsLeft)
 			if connsLeft == 0 {
-				termInfo.Reason = "No connections left"
+				termInfo.Reason = "No connections left in session"
 				break Wait
 			}
 		}

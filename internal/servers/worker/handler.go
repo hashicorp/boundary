@@ -2,7 +2,9 @@ package worker
 
 import (
 	"context"
+	"net"
 	"net/http"
+	"strconv"
 
 	"github.com/hashicorp/boundary/globals"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -37,6 +39,23 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			return
 		}
 		sessionId := r.TLS.ServerName
+
+		clientIp, clientPort, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			w.logger.Error("unable to understand remote address", "error", err)
+			wr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		numPort, err := strconv.Atoi(clientPort)
+		if err != nil {
+			w.logger.Error("unable to understand remote port", "error", err)
+			wr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		clientAddr := &net.TCPAddr{
+			IP:   net.ParseIP(clientIp),
+			Port: numPort,
+		}
 
 		w.logger.Trace("received TLS connection")
 
@@ -141,7 +160,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 
 		switch conn.Subprotocol() {
 		case globals.TcpProxyV1:
-			w.handleTcpProxyV1(connCtx, conn, sessionId, endpoint)
+			w.handleTcpProxyV1(connCtx, clientAddr, conn, si, ci.id, endpoint)
 		default:
 			conn.Close(websocket.StatusProtocolError, "unsupported-protocol")
 			return
