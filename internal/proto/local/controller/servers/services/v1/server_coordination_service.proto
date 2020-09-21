@@ -14,46 +14,52 @@ service ServerCoordinationService {
   rpc Status(StatusRequest) returns (StatusResponse) {}
 }
 
+enum CONNECTIONSTATUS {
+  CONNECTIONSTATUS_UNSPECIFIED = 0;
+  CONNECTIONSTATUS_AUTHORIZED = 1;
+  CONNECTIONSTATUS_CONNECTED = 2;
+  CONNECTIONSTATUS_CLOSED = 3;
+}
+
 message Connection {
-  // TODO: Populate the connection specific info.
-  // byte up/down
-  // duration
-  // etc...
+  string connection_id = 1;
+  CONNECTIONSTATUS status = 2;
+}
+
+enum SESSIONSTATUS {
+  SESSIONSTATUS_UNSPECIFIED = 0;
+  SESSIONSTATUS_PENDING = 1;
+  SESSIONSTATUS_ACTIVE = 2;
+  SESSIONSTATUS_CANCELLING = 3;
+  SESSIONSTATUS_TERMINATED = 4;
 }
 
 message SessionJobInfo {
-  repeated Connection connections = 1;
+  string session_id = 1;
+  SESSIONSTATUS status = 2;
+  repeated Connection connections = 3;
+}
+
+enum JOBTYPE {
+  JOBTYPE_UNSPECIFIED = 0;
+  JOBTYPE_SESSION = 1;
 }
 
 message Job {
-  string job_id = 1;
-  enum JOBTYPE {
-    JOBTYPE_UNSPECIFIED = 0;
-    JOBTYPE_SESSION = 1;
-  }
-  JOBTYPE type = 2;
+  JOBTYPE type = 1;
   oneof job_info {
     // This value is specified when type is JOBTYPE_SESSION.
-    SessionJobInfo session_info = 3;
+    SessionJobInfo session_info = 2;
   }
 }
 
 message JobStatus {
-  enum STATUS {
-    // TODO: Get a better picture of what states general jobs can be in.
-    STATUS_UNSPECIFIED = 0;
-    // Specifies that the job is actively being handled by the worker.
-    STATUS_ACTIVE = 1;
-    STATUS_CANCELLED = 2;
-    STATUS_COMPLETED = 3;
-  }
   Job job = 1;
-  STATUS status = 3;
 }
 
 message StatusRequest {
   // The worker info. We could use information from the TLS connection but this
-  // is easier and going the other route doesn't provide much benefit -- if you
+  // is easier and going the other route doesn't provijde much benefit -- if you
   // get access to the key and spoof the connection, you're already compromised.
   servers.v1.Server worker = 10;
 
@@ -61,12 +67,14 @@ message StatusRequest {
   repeated JobStatus jobs = 20;
 }
 
+enum CHANGETYPE {
+  CHANGETYPE_UNSPECIFIED = 0;
+  // Indicates to the worker to update its knowledge of the state, which may
+  // cause action to be taken.
+  CHANGETYPE_UPDATE_STATE = 1;
+}
+
 message JobChangeRequest {
-  enum CHANGETYPE {
-    CHANGETYPE_UNSPECIFIED = 0;
-    // Indicates that the job should be cancelled on the worker.
-    CHANGETYPE_CANCEL = 1;
-  }
   Job job = 1;
   CHANGETYPE request_type = 2;
 }

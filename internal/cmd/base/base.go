@@ -18,7 +18,6 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
-	"github.com/hashicorp/boundary/sdk/recovery"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
@@ -194,17 +193,19 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		if err := wrapper.Init(c.Context); err != nil {
 			return nil, fmt.Errorf("Error initializing kms: %w", err)
 		}
-		defer func() {
-			if err := wrapper.Finalize(c.Context); err != nil {
-				c.UI.Error(fmt.Errorf("An error was encountered finalizing the kms: %w", err).Error())
-			}
-		}()
-
-		token, err := recovery.GenerateRecoveryToken(c.Context, wrapper)
-		if err != nil {
-			return nil, fmt.Errorf("Error generating recovery config: %w", err)
-		}
-		c.client.SetToken(token)
+		/*
+			// NOTE: ideally we should call this but at the same time we want to
+			give a wrapper to the client, not a token, so it doesn't try to use
+			it for two subsequent calls. This then becomes a question of
+			how/when to finalize the wrapper. Probably it needs to be stored in
+			the base and then at the end of the command run we finalize it if it
+			exists. defer func() {if err := wrapper.Finalize(c.Context); err !=
+			nil {c.UI.Error(fmt.Errorf("An error was encountered finalizing the
+			kms: %w", err).Error())
+			    }
+			}()
+		*/
+		c.client.SetRecoveryKmsWrapper(wrapper)
 
 	case c.FlagToken != "":
 		c.client.SetToken(c.FlagToken)
@@ -362,8 +363,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f.BoolVar(&BoolVar{
 				Name:   "output-curl-string",
 				Target: &c.flagOutputCurlString,
-				Usage: "Instead of executing the request, print an equivalent cURL " +
-					"command string and exit.",
+				Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
 			})
 		}
 
@@ -386,8 +386,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 					Default:    "table",
 					EnvVar:     EnvBoundaryCLIFormat,
 					Completion: complete.PredictSet("table", "json", "yaml"),
-					Usage: "Print the output in the given format. Valid formats " +
-						"are \"table\", \"json\", or \"yaml\".",
+					Usage:      "Print the output in the given format. Valid formats are \"table\" or \"json\".",
 				})
 			}
 		}

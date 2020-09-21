@@ -75,8 +75,8 @@ begin;
     ('system error');
 
   -- A session connection is one connection proxied by a worker from a client to
-  -- a backend for a session. The client initiates the connection to the worker
-  -- and the worker initiates the connection to the backend.
+  -- a endpoint for a session. The client initiates the connection to the worker
+  -- and the worker initiates the connection to the endpoint.
   -- A session can have zero or more session connections.
   create table session_connection (
     public_id wt_public_id primary key,
@@ -86,35 +86,35 @@ begin;
       on update cascade,
     -- the client_tcp_address is the network address of the client which initiated
     -- the connection to a worker
-    client_tcp_address inet not null,
+    client_tcp_address inet,  -- maybe null on insert
     -- the client_tcp_port is the network port at the address of the client the
     -- worker proxied a connection for the user
-    client_tcp_port integer not null
+    client_tcp_port integer  -- maybe null on insert
       check(
         client_tcp_port > 0
         and
         client_tcp_port <= 65535
       ),
-    -- the backend_tcp_address is the network address of the backend which the
+    -- the endpoint_tcp_address is the network address of the endpoint which the
     -- worker initiated the connection to, for the user
-    backend_tcp_address inet not null,
-    -- the backend_tcp_port is the network port at the address of the backend the
+    endpoint_tcp_address inet, -- maybe be null on insert
+    -- the endpoint_tcp_port is the network port at the address of the endpoint the
     -- worker proxied a connection to, for the user
-    backend_tcp_port integer not null
+    endpoint_tcp_port integer -- maybe null on insert
       check(
-        backend_tcp_port > 0
+        endpoint_tcp_port > 0
         and
-        backend_tcp_port <= 65535
+        endpoint_tcp_port <= 65535
       ),
     -- the total number of bytes received by the worker from the client and sent
-    -- to the backend for this connection
+    -- to the endpoint for this connection
     bytes_up bigint -- can be null
       check (
         bytes_up is null
         or
         bytes_up >= 0
       ),
-    -- the total number of bytes received by the worker from the backend and sent
+    -- the total number of bytes received by the worker from the endpoint and sent
     -- to the client for this connection
     bytes_down bigint -- can be null
       check (
@@ -135,7 +135,7 @@ begin;
     immutable_columns
   before
   update on session_connection
-    for each row execute procedure immutable_columns('public_id', 'session_id', 'client_tcp_address', 'client_tcp_port', 'backend_tcp_address', 'backend_tcp_port', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'session_id', 'create_time');
 
   create trigger 
     update_version_column 
@@ -154,7 +154,7 @@ begin;
     for each row execute procedure default_create_time();
 
   -- insert_new_connection_state() is used in an after insert trigger on the
-  -- session_connection table.  it will insert a state of "connected" in
+  -- session_connection table.  it will insert a state of "authorized" in
   -- session_connection_state for the new session connection. 
   create or replace function 
     insert_new_connection_state()
@@ -163,7 +163,7 @@ begin;
   begin
     insert into session_connection_state (connection_id, state)
     values
-      (new.public_id, 'connected');
+      (new.public_id, 'authorized');
     return new;
   end;
   $$ language plpgsql;
@@ -182,11 +182,20 @@ begin;
   as $$
   begin
     if new.closed_reason is not null then
-      insert into session_connection_state (connection_id, state)
-      values
-        (new.public_id, 'closed');
+      -- check to see if there's a closed state already, before inserting a
+      -- new one.
+      perform from
+        session_connection_state cs
+      where
+        cs.connection_id = new.public_id and 
+        cs.state = 'closed';
+      if not found then 
+        insert into session_connection_state (connection_id, state)
+        values
+          (new.public_id, 'closed');
       end if;
-      return new;
+    end if;
+    return new;
   end;
   $$ language plpgsql;
 
@@ -198,12 +207,13 @@ begin;
   create table session_connection_state_enm (
     name text primary key
       check (
-        name in ('connected', 'closed')
+        name in ('authorized', 'connected', 'closed')
       )
   );
 
   insert into session_connection_state_enm (name)
   values
+    ('authorized'),
     ('connected'),
     ('closed');
 

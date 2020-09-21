@@ -54,14 +54,14 @@ func Test_ActionParsingValidation(t *testing.T) {
 		{
 			name: "all valid plus all",
 			input: Grant{
-				actionsBeingParsed: []string{"list", "create", "update", "*", "read", "delete", "authenticate", "connect"},
+				actionsBeingParsed: []string{"list", "create", "update", "*", "read", "delete", "authenticate", "authorize"},
 			},
 			errResult: `"*" cannot be specified with other actions`,
 		},
 		{
 			name: "all valid",
 			input: Grant{
-				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authenticate", "connect"},
+				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authenticate", "authorize"},
 			},
 			result: Grant{
 				actions: map[action.Type]bool{
@@ -71,7 +71,7 @@ func Test_ActionParsingValidation(t *testing.T) {
 					action.Read:         true,
 					action.Delete:       true,
 					action.Authenticate: true,
-					action.Connect:      true,
+					action.Authorize:    true,
 				},
 			},
 		},
@@ -125,7 +125,7 @@ func Test_ValidateType(t *testing.T) {
 	}
 }
 
-func Test_MarshallingAndCloning(t *testing.T) {
+func Test_MarshalingAndCloning(t *testing.T) {
 	t.Parallel()
 
 	type input struct {

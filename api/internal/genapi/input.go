@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	"google.golang.org/protobuf/proto"
@@ -31,6 +32,7 @@ type fieldInfo struct {
 	GenerateSdkOption bool
 	SubtypeName       string
 	Query             bool
+	SkipDefault       bool
 }
 
 type structInfo struct {
@@ -83,6 +85,10 @@ type structInfo struct {
 
 	// createResponseTypes controls for which structs response types are created
 	createResponseTypes bool
+
+	// fieldFilter is a set of field names that will not result in generated API
+	// fields
+	fieldFilter []string
 }
 
 var inputStructs = []*structInfo{
@@ -338,6 +344,14 @@ var inputStructs = []*structInfo{
 		sliceSubTypes: map[string]string{
 			"HostSets": "hostSetIds",
 		},
+		extraOptions: []fieldInfo{
+			{
+				Name:        "HostId",
+				ProtoName:   "host_id",
+				FieldType:   "string",
+				SkipDefault: true,
+			},
+		},
 		versionEnabled:      true,
 		typeOnCreate:        true,
 		createResponseTypes: true,
@@ -346,5 +360,35 @@ var inputStructs = []*structInfo{
 		inProto:     &targets.TcpTargetAttributes{},
 		outFile:     "targets/tcp_target_attributes.gen.go",
 		subtypeName: "TcpTarget",
+	},
+	{
+		inProto: &sessions.Session{},
+		outFile: "sessions/session.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			readTemplate,
+			listTemplate,
+		},
+		pathArgs:            []string{"session"},
+		createResponseTypes: true,
+		fieldFilter:         []string{"private_key"},
+	},
+	{
+		inProto: &sessions.SessionState{},
+		outFile: "sessions/state.gen.go",
+	},
+	{
+		inProto: &sessions.WorkerInfo{},
+		outFile: "sessions/workers.gen.go",
+	},
+	{
+		inProto:     &targets.SessionAuthorization{},
+		outFile:     "targets/session_authorization.gen.go",
+		subtypeName: "SessionAuthorization",
+	},
+	{
+		inProto:     &targets.WorkerInfo{},
+		outFile:     "targets/worker_info.gen.go",
+		subtypeName: "WorkerInfo",
 	},
 }

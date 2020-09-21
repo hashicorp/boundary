@@ -93,6 +93,12 @@ func DefaultDescription() Option {
 	}
 }
 
+func WithHostId(inHostId string) Option {
+	return func(o *options) {
+		o.postMap["host_id"] = inHostId
+	}
+}
+
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.postMap["name"] = inName
@@ -102,5 +108,29 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.postMap["name"] = nil
+	}
+}
+
+func WithSessionConnectionLimit(inSessionConnectionLimit int32) Option {
+	return func(o *options) {
+		o.postMap["session_connection_limit"] = inSessionConnectionLimit
+	}
+}
+
+func DefaultSessionConnectionLimit() Option {
+	return func(o *options) {
+		o.postMap["session_connection_limit"] = nil
+	}
+}
+
+func WithSessionMaxSeconds(inSessionMaxSeconds uint32) Option {
+	return func(o *options) {
+		o.postMap["session_max_seconds"] = inSessionMaxSeconds
+	}
+}
+
+func DefaultSessionMaxSeconds() Option {
+	return func(o *options) {
+		o.postMap["session_max_seconds"] = nil
 	}
 }

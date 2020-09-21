@@ -1815,6 +1815,101 @@
         ]
       }
     },
+    "/v1/sessions": {
+      "get": {
+        "summary": "Lists all Sessions",
+        "operationId": "SessionService_ListSessions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListSessionsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionService"
+        ]
+      }
+    },
+    "/v1/sessions/{id}": {
+      "get": {
+        "summary": "Gets a single Session",
+        "operationId": "SessionService_GetSession",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionService"
+        ]
+      }
+    },
+    "/v1/sessions/{id}:cancel": {
+      "post": {
+        "summary": "Cancels a Session",
+        "operationId": "SessionService_CancelSession",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.CancelSessionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionService"
+        ]
+      }
+    },
     "/v1/targets": {
       "get": {
         "summary": "Lists all Targets",
@@ -1999,6 +2094,39 @@
         ]
       }
     },
+    "/v1/targets/{id}:authorize": {
+      "post": {
+        "summary": "Authorizes a Session",
+        "operationId": "TargetService_AuthorizeSession",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.SessionAuthorization"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AuthorizeSessionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
     "/v1/targets/{id}:remove-host-sets": {
       "post": {
         "summary": "Removes Host Sets from the Target.",
@@ -2014,7 +2142,6 @@
         "parameters": [
           {
             "name": "id",
-            "description": "This host set's id.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2865,6 +2992,134 @@
         }
       }
     },
+    "controller.api.resources.sessions.v1.Session": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the resource\nOutput only.",
+          "readOnly": true
+        },
+        "target_id": {
+          "type": "string",
+          "description": "The id of the parent of this resource.  This must be defined for creation\nof this resource, but is otherwise read only."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "expiration_time": {
+          "type": "string",
+          "format": "date-time",
+          "title": "After this time the connection will be expired, e.g. forcefully terminated"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has."
+        },
+        "type": {
+          "type": "string",
+          "title": "Type of the session (e.g. tcp, ssh, etc.)"
+        },
+        "auth_token_id": {
+          "type": "string",
+          "description": "The id of the token used to authenticate."
+        },
+        "user_id": {
+          "type": "string",
+          "title": "The ID of the user that requested the session"
+        },
+        "host_set_id": {
+          "type": "string",
+          "title": "The host set id used by the session's target"
+        },
+        "host_id": {
+          "type": "string",
+          "title": "The host id used by the session"
+        },
+        "scope_id": {
+          "type": "string",
+          "title": "The scope of the session"
+        },
+        "endpoint": {
+          "type": "string",
+          "title": "The endpoint of the session"
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.sessions.v1.SessionState"
+          },
+          "description": "The states of this session in descending from the current state to the\nfirst."
+        },
+        "status": {
+          "type": "string",
+          "description": "The name of the current status of this session."
+        },
+        "worker_info": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.sessions.v1.WorkerInfo"
+          },
+          "description": "Worker information. The first worker in the slice should be prioritized."
+        },
+        "certificate": {
+          "type": "string",
+          "format": "byte",
+          "description": "Deprecated, to be moved to another proto by another PR:\nThe certificate to use when connecting (or if using custom certs, to\nserve as the \"login\"). Raw DER bytes."
+        },
+        "private_key": {
+          "type": "string",
+          "format": "byte",
+          "description": "The private key to use when connecting (or if using custom certs, to pass\nas the \"password\")."
+        }
+      },
+      "title": "Session contains all fields related to a Session resource"
+    },
+    "controller.api.resources.sessions.v1.SessionState": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "This is the status of the session.  For example \"pending\", \"active\",\n\"canceling\", \"terminated\"."
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the session entered this state.\nOutput only.",
+          "readOnly": true
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the session stopped being in this state.\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.sessions.v1.WorkerInfo": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "title": "The address of the worker"
+        }
+      }
+    },
     "controller.api.resources.targets.v1.HostSet": {
       "type": "object",
       "properties": {
@@ -2873,6 +3128,42 @@
         },
         "host_catalog_id": {
           "type": "string"
+        }
+      }
+    },
+    "controller.api.resources.targets.v1.SessionAuthorization": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "description": "The ID of the session\nOutput only.",
+          "readOnly": true
+        },
+        "target_id": {
+          "type": "string",
+          "description": "The id of the target authorizing this session. This must be defined for\ncreation of this resource, but is otherwise read only.\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of the session (e.g. tcp, ssh, etc.)\nOutput only.",
+          "readOnly": true
+        },
+        "authorization_token": {
+          "type": "string",
+          "description": "The marshaled SessionAuthorizationData message containing all information\nthat the proxy needs.\nOutput only.",
+          "readOnly": true
         }
       }
     },
@@ -2935,6 +3226,16 @@
           },
           "description": "The host sets that make up this target.\nOutput only.",
           "readOnly": true
+        },
+        "session_max_seconds": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Maximum total lifetime of a created session, in seconds"
+        },
+        "session_connection_limit": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Maximum number of connections in a session"
         },
         "attributes": {
           "type": "object",
@@ -3149,6 +3450,46 @@
         "token_type": {
           "type": "string",
           "description": "This can be \"cookie\" or \"token\".  If not present, \"token\" should be assumed."
+        }
+      }
+    },
+    "controller.api.services.v1.AuthorizeSessionRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "host_id": {
+          "type": "string",
+          "description": "An optional parameter allowing specification of the particular host within\nthe target's host sets to connect to during this session."
+        }
+      }
+    },
+    "controller.api.services.v1.AuthorizeSessionResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.SessionAuthorization"
+        }
+      }
+    },
+    "controller.api.services.v1.CancelSessionRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "controller.api.services.v1.CancelSessionResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
         }
       }
     },
@@ -3393,6 +3734,14 @@
         }
       }
     },
+    "controller.api.services.v1.GetSessionResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
+        }
+      }
+    },
     "controller.api.services.v1.GetTargetResponse": {
       "type": "object",
       "properties": {
@@ -3504,6 +3853,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListSessionsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
           }
         }
       }
@@ -3643,8 +4003,7 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "This host set's id."
+          "type": "string"
         },
         "version": {
           "type": "integer",

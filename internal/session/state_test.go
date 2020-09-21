@@ -39,7 +39,7 @@ func TestState_Create(t *testing.T) {
 			},
 			want: &State{
 				SessionId: session.PublicId,
-				Status:    StatusPending.String(),
+				Status:    StatusPending,
 			},
 			create: true,
 		},

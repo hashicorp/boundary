@@ -19,6 +19,7 @@ const (
 	Target      Type = 12
 	Controller  Type = 13
 	Worker      Type = 14
+	Session     Type = 15
 )
 
 func (r Type) String() string {
@@ -38,6 +39,7 @@ func (r Type) String() string {
 		"target",
 		"controller",
 		"worker",
+		"session",
 	}[r]
 }
 
@@ -57,4 +59,5 @@ var Map = map[string]Type{
 	Target.String():      Target,
 	Controller.String():  Controller,
 	Worker.String():      Worker,
+	Session.String():     Session,
 }

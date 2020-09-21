@@ -64,6 +64,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 			"description": user.Description,
 		},
 		fieldMaskPaths,
+		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("update user: %w", db.ErrEmptyFieldMask)

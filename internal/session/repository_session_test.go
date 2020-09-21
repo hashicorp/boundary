@@ -7,17 +7,11 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/hashicorp/boundary/internal/auth/password"
-	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
-	dbassert "github.com/hashicorp/boundary/internal/db/assert"
-	"github.com/hashicorp/boundary/internal/host/static"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/target"
-	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -95,6 +89,7 @@ func TestRepository_ListSession(t *testing.T) {
 			testSessions := []*Session{}
 			for i := 0; i < tt.createCnt; i++ {
 				s := TestSession(t, conn, wrapper, composedOf)
+				_ = TestState(t, conn, s.PublicId, StatusActive)
 				testSessions = append(testSessions, s)
 			}
 			assert.Equal(tt.createCnt, len(testSessions))
@@ -105,6 +100,10 @@ func TestRepository_ListSession(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
+			if tt.wantCnt > 0 {
+				assert.Equal(StatusActive, got[0].States[0].Status)
+				assert.Equal(StatusPending, got[0].States[1].Status)
+			}
 		})
 	}
 	t.Run("withOrder", func(t *testing.T) {
@@ -244,18 +243,20 @@ func TestRepository_CreateSession(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			s := &Session{
-				UserId:      tt.args.composedOf.UserId,
-				HostId:      tt.args.composedOf.HostId,
-				TargetId:    tt.args.composedOf.TargetId,
-				HostSetId:   tt.args.composedOf.HostSetId,
-				AuthTokenId: tt.args.composedOf.AuthTokenId,
-				ScopeId:     tt.args.composedOf.ScopeId,
+				UserId:          tt.args.composedOf.UserId,
+				HostId:          tt.args.composedOf.HostId,
+				TargetId:        tt.args.composedOf.TargetId,
+				HostSetId:       tt.args.composedOf.HostSetId,
+				AuthTokenId:     tt.args.composedOf.AuthTokenId,
+				ScopeId:         tt.args.composedOf.ScopeId,
+				Endpoint:        "tcp://127.0.0.1:22",
+				ExpirationTime:  tt.args.composedOf.ExpirationTime,
+				ConnectionLimit: tt.args.composedOf.ConnectionLimit,
 			}
-			ses, st, privKey, err := repo.CreateSession(context.Background(), wrapper, s)
+			ses, privKey, err := repo.CreateSession(context.Background(), wrapper, s)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(ses)
-				assert.Nil(st)
 				if tt.wantIsError != nil {
 					assert.True(errors.Is(err, tt.wantIsError))
 				}
@@ -264,24 +265,29 @@ func TestRepository_CreateSession(t *testing.T) {
 			require.NoError(err)
 			assert.NotNil(ses)
 			assert.NotNil(privKey)
-			assert.NotNil(st)
+			assert.NotNil(ses.States)
 			assert.NotNil(ses.CreateTime)
-			assert.NotNil(st.StartTime)
-			assert.Equal(st.Status, StatusPending.String())
-			foundSession, foundStates, err := repo.LookupSession(context.Background(), ses.PublicId)
+			assert.NotNil(ses.States[0].StartTime)
+			assert.Equal(ses.States[0].Status, StatusPending)
+			foundSession, _, err := repo.LookupSession(context.Background(), ses.PublicId)
 			assert.NoError(err)
+
+			// Account for slight offsets in nanos
+			assert.True(foundSession.ExpirationTime.Timestamp.AsTime().Sub(ses.ExpirationTime.Timestamp.AsTime()) < time.Second)
+			ses.ExpirationTime = foundSession.ExpirationTime
+
 			assert.Equal(foundSession, ses)
 
 			err = db.TestVerifyOplog(t, rw, ses.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 
-			require.Equal(1, len(foundStates))
-			assert.Equal(foundStates[0].Status, StatusPending.String())
+			require.Equal(1, len(foundSession.States))
+			assert.Equal(foundSession.States[0].Status, StatusPending)
 		})
 	}
 }
 
-func TestRepository_UpdateState(t *testing.T) {
+func TestRepository_updateState(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -304,7 +310,7 @@ func TestRepository_UpdateState(t *testing.T) {
 		{
 			name:         "cancelling",
 			session:      TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus:    StatusCanceling,
+			newStatus:    StatusCancelling,
 			wantStateCnt: 2,
 			wantErr:      false,
 		},
@@ -322,7 +328,7 @@ func TestRepository_UpdateState(t *testing.T) {
 		{
 			name:      "bad-version",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: StatusCanceling,
+			newStatus: StatusCancelling,
 			overrideSessionVersion: func() *uint32 {
 				v := uint32(22)
 				return &v
@@ -332,7 +338,7 @@ func TestRepository_UpdateState(t *testing.T) {
 		{
 			name:      "empty-version",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: StatusCanceling,
+			newStatus: StatusCancelling,
 			overrideSessionVersion: func() *uint32 {
 				v := uint32(0)
 				return &v
@@ -343,7 +349,7 @@ func TestRepository_UpdateState(t *testing.T) {
 		{
 			name:      "bad-sessionId",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: StatusCanceling,
+			newStatus: StatusCancelling,
 			overrideSessionId: func() *string {
 				s := "s_thisIsNotValid"
 				return &s
@@ -353,7 +359,7 @@ func TestRepository_UpdateState(t *testing.T) {
 		{
 			name:      "empty-session",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: StatusCanceling,
+			newStatus: StatusCancelling,
 			overrideSessionId: func() *string {
 				s := ""
 				return &s
@@ -380,7 +386,7 @@ func TestRepository_UpdateState(t *testing.T) {
 				version = tt.session.Version
 			}
 
-			s, ss, err := repo.UpdateState(context.Background(), id, version, tt.newStatus)
+			s, ss, err := repo.updateState(context.Background(), id, version, tt.newStatus)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
@@ -392,12 +398,12 @@ func TestRepository_UpdateState(t *testing.T) {
 			require.NotNil(s)
 			require.NotNil(ss)
 			assert.Equal(tt.wantStateCnt, len(ss))
-			assert.Equal(tt.newStatus.String(), ss[0].Status)
+			assert.Equal(tt.newStatus, ss[0].Status)
 		})
 	}
 }
 
-func TestRepository_ActivateState(t *testing.T) {
+func TestRepository_AuthorizeConnect(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -406,6 +412,479 @@ func TestRepository_ActivateState(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
+
+	setupFn := func(exp *timestamp.Timestamp) *Session {
+		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+		if exp != nil {
+			composedOf.ExpirationTime = exp
+		}
+		s := TestSession(t, conn, wrapper, composedOf)
+		srv := TestWorker(t, conn, wrapper)
+		tofu := TestTofu(t)
+		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		require.NoError(t, err)
+		return s
+	}
+	testSession := setupFn(nil)
+
+	tests := []struct {
+		name          string
+		session       *Session
+		wantErr       bool
+		wantIsError   error
+		wantAuthzInfo ConnectionAuthzSummary
+	}{
+		{
+			name:    "valid",
+			session: testSession,
+			wantAuthzInfo: ConnectionAuthzSummary{
+				ConnectionLimit:        1,
+				CurrentConnectionCount: 1,
+				ExpirationTime:         testSession.ExpirationTime,
+			},
+		},
+		{
+			name: "empty-sessionId",
+			session: func() *Session {
+				s := AllocSession()
+				return &s
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "exceeded-connection-limit",
+			session: func() *Session {
+				session := setupFn(nil)
+				_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+				return session
+			}(),
+			wantErr: true,
+		},
+		{
+			name:    "expired-session",
+			session: setupFn(&timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			c, cs, authzInfo, err := repo.AuthorizeConnection(context.Background(), tt.session.PublicId)
+			if tt.wantErr {
+				require.Error(err)
+				// TODO (jimlambrt 9/2020): add in tests for errorsIs once we
+				// remove the grpc errors from the repo.
+				// if tt.wantIsError != nil {
+				// 	assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+				// }
+				return
+			}
+			require.NoError(err)
+			require.NotNil(c)
+			require.NotNil(cs)
+			assert.Equal(StatusAuthorized, cs[0].Status)
+			assert.Equal(tt.wantAuthzInfo.ExpirationTime, authzInfo.ExpirationTime)
+			assert.Equal(tt.wantAuthzInfo.ConnectionLimit, authzInfo.ConnectionLimit)
+			assert.Equal(tt.wantAuthzInfo.CurrentConnectionCount, authzInfo.CurrentConnectionCount)
+		})
+	}
+}
+
+func TestRepository_ConnectConnection(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	setupFn := func() ConnectWith {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		srv := TestWorker(t, conn, wrapper)
+		tofu := TestTofu(t)
+		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		require.NoError(t, err)
+		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		return ConnectWith{
+			ConnectionId:       c.PublicId,
+			ClientTcpAddress:   "127.0.0.1",
+			ClientTcpPort:      22,
+			EndpointTcpAddress: "127.0.0.1",
+			EndpointTcpPort:    2222,
+		}
+	}
+	tests := []struct {
+		name        string
+		connectWith ConnectWith
+		wantErr     bool
+		wantIsError error
+	}{
+		{
+			name:        "valid",
+			connectWith: setupFn(),
+		},
+		{
+			name: "empty-SessionId",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.ConnectionId = ""
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-ClientTcpAddress",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.ClientTcpAddress = ""
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-ClientTcpPort",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.ClientTcpPort = 0
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-EndpointTcpAddress",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.EndpointTcpAddress = ""
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-EndpointTcpPort",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.EndpointTcpPort = 0
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			c, cs, err := repo.ConnectConnection(context.Background(), tt.connectWith)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantIsError != nil {
+					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(c)
+			require.NotNil(cs)
+			assert.Equal(StatusConnected, cs[0].Status)
+		})
+	}
+}
+
+func TestRepository_TerminateSession(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	setupFn := func() *Session {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		srv := TestWorker(t, conn, wrapper)
+		tofu := TestTofu(t)
+		s, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		require.NoError(t, err)
+		return s
+	}
+	tests := []struct {
+		name        string
+		session     *Session
+		reason      TerminationReason
+		wantErr     bool
+		wantIsError error
+	}{
+		{
+			name:    "valid-active-session",
+			session: setupFn(),
+			reason:  ClosedByUser,
+		},
+		{
+			name:    "valid-pending-session",
+			session: TestDefaultSession(t, conn, wrapper, iamRepo),
+			reason:  ClosedByUser,
+		},
+		{
+			name: "empty-session-id",
+			session: func() *Session {
+				s := setupFn()
+				s.PublicId = ""
+				return s
+			}(),
+			reason:      ClosedByUser,
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "empty-session-version",
+			session: func() *Session {
+				s := setupFn()
+				s.Version = 0
+				return s
+			}(),
+			reason:      ClosedByUser,
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "open-connection",
+			session: func() *Session {
+				s := setupFn()
+				_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222)
+				return s
+			}(),
+			reason:  ClosedByUser,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := repo.TerminateSession(context.Background(), tt.session.PublicId, tt.session.Version, tt.reason)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantIsError != nil {
+					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.reason.String(), s.TerminationReason)
+			assert.Equal(StatusTerminated, s.States[0].Status)
+		})
+	}
+}
+
+func TestRepository_CloseConnections(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	setupFn := func(cnt int) []CloseWith {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		srv := TestWorker(t, conn, wrapper)
+		tofu := TestTofu(t)
+		s, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		require.NoError(t, err)
+		cw := make([]CloseWith, 0, cnt)
+		for i := 0; i < cnt; i++ {
+			c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+			require.NoError(t, err)
+			cw = append(cw, CloseWith{
+				ConnectionId: c.PublicId,
+				BytesUp:      1,
+				BytesDown:    2,
+				ClosedReason: ConnectionClosedByUser,
+			})
+		}
+		return cw
+	}
+	tests := []struct {
+		name        string
+		closeWith   []CloseWith
+		reason      TerminationReason
+		wantErr     bool
+		wantIsError error
+	}{
+		{
+			name:      "valid",
+			closeWith: setupFn(2),
+			reason:    ClosedByUser,
+		},
+		{
+			name:        "empty-closed-with",
+			closeWith:   []CloseWith{},
+			reason:      ClosedByUser,
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "missing-ConnectionId",
+			closeWith: func() []CloseWith {
+				cw := setupFn(2)
+				cw[1].ConnectionId = ""
+				return cw
+
+			}(),
+			reason:      ClosedByUser,
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			resp, err := repo.CloseConnections(context.Background(), tt.closeWith)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantIsError != nil {
+					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(len(tt.closeWith), len(resp))
+			for _, r := range resp {
+				require.NotNil(r.Connection)
+				require.NotNil(r.ConnectionStates)
+				assert.Equal(StatusClosed, r.ConnectionStates[0].Status)
+			}
+		})
+	}
+}
+
+func TestRepository_CancelSession(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	setupFn := func() *Session {
+		session := TestDefaultSession(t, conn, wrapper, iamRepo)
+		_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		return session
+	}
+	tests := []struct {
+		name                   string
+		session                *Session
+		overrideSessionId      *string
+		overrideSessionVersion *uint32
+		wantErr                bool
+		wantIsError            error
+	}{
+		{
+			name:    "valid",
+			session: setupFn(),
+		},
+		{
+			name:    "bad-session-id",
+			session: setupFn(),
+			overrideSessionId: func() *string {
+				id, err := newId()
+				require.NoError(t, err)
+				return &id
+			}(),
+			wantErr: true,
+		},
+		{
+			name:    "missing-session-id",
+			session: setupFn(),
+			overrideSessionId: func() *string {
+				id := ""
+				return &id
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name:    "bad-version-id",
+			session: setupFn(),
+			overrideSessionVersion: func() *uint32 {
+				v := uint32(101)
+				return &v
+			}(),
+			wantErr: true,
+		},
+		{
+			name:    "missing-version-id",
+			session: setupFn(),
+			overrideSessionVersion: func() *uint32 {
+				v := uint32(0)
+				return &v
+			}(),
+			wantErr:     true,
+			wantIsError: db.ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			var id string
+			var version uint32
+			switch {
+			case tt.overrideSessionId != nil:
+				id = *tt.overrideSessionId
+			default:
+				id = tt.session.PublicId
+			}
+			switch {
+			case tt.overrideSessionVersion != nil:
+				version = *tt.overrideSessionVersion
+			default:
+				version = tt.session.Version
+			}
+			s, err := repo.CancelSession(context.Background(), id, version)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantIsError != nil {
+					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(s)
+			require.NotNil(s.States)
+			assert.Equal(StatusCancelling, s.States[0].Status)
+
+			stateCnt := len(s.States)
+			origStartTime := s.States[0].StartTime
+			// check idempontency
+			s2, err := repo.CancelSession(context.Background(), id, version+1)
+			require.NoError(err)
+			require.NotNil(s2)
+			require.NotNil(s2.States)
+			assert.Equal(stateCnt, len(s2.States))
+			assert.Equal(StatusCancelling, s.States[0].Status)
+			assert.Equal(origStartTime, s2.States[0].StartTime)
+		})
+	}
+}
+func TestRepository_ActivateSession(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	worker := TestWorker(t, conn, wrapper)
 
 	tofu := TestTofu(t)
 	tests := []struct {
@@ -425,7 +904,7 @@ func TestRepository_ActivateState(t *testing.T) {
 			name: "already-active",
 			session: func() *Session {
 				s := TestDefaultSession(t, conn, wrapper, iamRepo)
-				activeSession, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, tofu)
+				activeSession, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, worker.PrivateId, worker.Type, tofu)
 				require.NoError(t, err)
 				return activeSession
 			}(),
@@ -488,7 +967,7 @@ func TestRepository_ActivateState(t *testing.T) {
 			default:
 				version = tt.session.Version
 			}
-			s, ss, err := repo.ActivateSession(context.Background(), id, version, tofu)
+			s, ss, err := repo.ActivateSession(context.Background(), id, version, worker.PrivateId, worker.Type, tofu)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
@@ -501,276 +980,25 @@ func TestRepository_ActivateState(t *testing.T) {
 			require.NotNil(ss)
 			assert.Equal(tofu, s.TofuToken)
 			assert.Equal(2, len(ss))
-			assert.Equal(StatusActive.String(), ss[0].Status)
+			assert.Equal(StatusActive, ss[0].Status)
 		})
 		t.Run("already active", func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			session := TestDefaultSession(t, conn, wrapper, iamRepo)
-			s, ss, err := repo.ActivateSession(context.Background(), session.PublicId, 1, tofu)
+			s, ss, err := repo.ActivateSession(context.Background(), session.PublicId, 1, worker.PrivateId, worker.Type, tofu)
 			require.NoError(err)
 			require.NotNil(s)
 			require.NotNil(ss)
 			assert.Equal(2, len(ss))
-			assert.Equal(StatusActive.String(), ss[0].Status)
+			assert.Equal(StatusActive, ss[0].Status)
 
-			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 1, tofu)
+			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 1, worker.PrivateId, worker.Type, tofu)
 			require.Error(err)
 
-			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 2, tofu)
+			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 2, worker.PrivateId, worker.Type, tofu)
 			require.Error(err)
 		})
 	}
-}
-func TestRepository_UpdateSession(t *testing.T) {
-	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
-	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
-	serversRepo, err := servers.NewRepository(rw, rw, kms)
-	require.NoError(t, err)
-
-	newServerFunc := func() string {
-		id, err := uuid.GenerateUUID()
-		require.NoError(t, err)
-		worker := &servers.Server{
-			Name:        "test-session-worker-" + id,
-			Type:        servers.ServerTypeWorker.String(),
-			Description: "Test Session Worker",
-			Address:     "127.0.0.1",
-		}
-		_, _, err = serversRepo.UpsertServer(context.Background(), worker)
-		require.NoError(t, err)
-		return worker.Name
-	}
-
-	type args struct {
-		terminationReason TerminationReason
-		serverId          string
-		serverType        string
-		tofu              []byte
-		fieldMaskPaths    []string
-		opt               []Option
-		publicId          *string // not updateable - db.ErrInvalidFieldMask
-		userId            string  // not updateable - db.ErrInvalidFieldMask
-		hostId            string  // not updateable - db.ErrInvalidFieldMask
-		targetId          string  // not updateable - db.ErrInvalidFieldMask
-		hostSetId         string  // not updateable - db.ErrInvalidFieldMask
-		authTokenId       string  // not updateable - db.ErrInvalidFieldMask
-		scopeId           string  // not updateable - db.ErrInvalidFieldMask
-	}
-	tests := []struct {
-		name           string
-		args           args
-		wantRowsUpdate int
-		wantErr        bool
-		wantIsError    error
-	}{
-		{
-			name: "valid",
-			args: args{
-				terminationReason: Terminated,
-				serverId:          newServerFunc(),
-				serverType:        servers.ServerTypeWorker.String(),
-				tofu:              TestTofu(t),
-				fieldMaskPaths:    []string{"TerminationReason", "ServerId", "ServerType", "TofuToken"},
-			},
-			wantErr:        false,
-			wantRowsUpdate: 1,
-		},
-		{
-			name: "publicId",
-			args: args{
-				publicId: func() *string {
-					id, err := newId()
-					require.NoError(t, err)
-					return &id
-				}(),
-				fieldMaskPaths: []string{"PublicId"},
-			},
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantIsError:    db.ErrInvalidFieldMask,
-		},
-		{
-			name: "userId",
-			args: args{
-				userId: func() string {
-					org, _ := iam.TestScopes(t, iamRepo)
-					u := iam.TestUser(t, iamRepo, org.PublicId)
-					return u.PublicId
-				}(),
-				fieldMaskPaths: []string{"UserId"},
-			},
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantIsError:    db.ErrInvalidFieldMask,
-		},
-		{
-			name: "hostId",
-			args: args{
-				hostId: func() string {
-					_, proj := iam.TestScopes(t, iamRepo)
-					cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
-					hosts := static.TestHosts(t, conn, cats[0].PublicId, 1)
-					return hosts[0].PublicId
-				}(),
-				fieldMaskPaths: []string{"HostId"},
-			},
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantIsError:    db.ErrInvalidFieldMask,
-		},
-		{
-			name: "targetId",
-			args: args{
-				targetId: func() string {
-					_, proj := iam.TestScopes(t, iamRepo)
-					tcpTarget := target.TestTcpTarget(t, conn, proj.PublicId, "test target")
-					return tcpTarget.PublicId
-				}(),
-				fieldMaskPaths: []string{"TargetId"},
-			},
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantIsError:    db.ErrInvalidFieldMask,
-		},
-		{
-			name: "hostSetId",
-			args: args{
-				hostSetId: func() string {
-					_, proj := iam.TestScopes(t, iamRepo)
-					cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
-					sets := static.TestSets(t, conn, cats[0].PublicId, 1)
-					return sets[0].PublicId
-				}(),
-				fieldMaskPaths: []string{"HostSetId"},
-			},
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantIsError:    db.ErrInvalidFieldMask,
-		},
-		{
-			name: "AuthTokenId",
-			args: args{
-				authTokenId: func() string {
-					ctx := context.Background()
-					org, _ := iam.TestScopes(t, iamRepo)
-					authMethod := password.TestAuthMethods(t, conn, org.PublicId, 1)[0]
-					acct := password.TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
-					user, err := iamRepo.LookupUserWithLogin(ctx, acct.GetPublicId(), iam.WithAutoVivify(true))
-					require.NoError(t, err)
-
-					authTokenRepo, err := authtoken.NewRepository(rw, rw, kms)
-					require.NoError(t, err)
-					at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
-					require.NoError(t, err)
-					return at.PublicId
-				}(),
-				fieldMaskPaths: []string{"AuthTokenId"},
-			},
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantIsError:    db.ErrInvalidFieldMask,
-		},
-		{
-			name: "ScopeId",
-			args: args{
-				scopeId: func() string {
-					_, proj := iam.TestScopes(t, iamRepo)
-					return proj.PublicId
-				}(),
-				fieldMaskPaths: []string{"ScopeId"},
-			},
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantIsError:    db.ErrInvalidFieldMask,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-
-			composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
-			s := TestSession(t, conn, wrapper, composedOf)
-
-			updateSession := AllocSession()
-			updateSession.PublicId = s.PublicId
-			if tt.args.publicId != nil {
-				updateSession.PublicId = *tt.args.publicId
-			}
-			updateSession.ServerId = tt.args.serverId
-			updateSession.ServerType = tt.args.serverType
-			updateSession.TerminationReason = tt.args.terminationReason.String()
-			if tt.args.tofu != nil {
-				updateSession.TofuToken = make([]byte, len(tt.args.tofu))
-				copy(updateSession.TofuToken, tt.args.tofu)
-			}
-			updateSession.Version = s.Version
-			afterUpdateSession, afterUpdateState, updatedRows, err := repo.UpdateSession(context.Background(), &updateSession, updateSession.Version, tt.args.fieldMaskPaths, tt.args.opt...)
-
-			if tt.wantErr {
-				require.Error(err)
-				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error: %s", err.Error())
-				}
-				assert.Nil(afterUpdateSession)
-				assert.Nil(afterUpdateState)
-				assert.Equal(0, updatedRows)
-				err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
-				return
-			}
-			require.NoError(err)
-			assert.Equal(tt.wantRowsUpdate, updatedRows)
-			require.NotNil(afterUpdateSession)
-			require.NotNil(afterUpdateState)
-			switch tt.name {
-			case "valid-no-op":
-				assert.Equal(s.UpdateTime, afterUpdateSession.UpdateTime)
-			default:
-				assert.NotEqual(s.UpdateTime, afterUpdateSession.UpdateTime)
-			}
-			foundSession, foundStates, err := repo.LookupSession(context.Background(), s.PublicId)
-			require.NoError(err)
-			assert.Equal(afterUpdateSession, foundSession)
-			dbassrt := dbassert.New(t, rw)
-			if tt.args.serverId == "" {
-				dbassrt.IsNull(foundSession, "ServerId")
-			}
-			if tt.args.serverType == "" {
-				dbassrt.IsNull(foundSession, "ServerType")
-			}
-			if tt.args.tofu == nil {
-				dbassrt.IsNull(foundSession, "CtTofuToken")
-				dbassrt.IsNull(foundSession, "KeyId")
-			} else {
-				dbassrt.NotNull(foundSession, "CtTofuToken")
-				dbassrt.NotNull(foundSession, "KeyId")
-			}
-			assert.Equal(tt.args.terminationReason.String(), foundSession.TerminationReason)
-			assert.Equal(tt.args.serverId, foundSession.ServerId)
-			assert.Equal(tt.args.serverType, foundSession.ServerType)
-
-			err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-			assert.Error(err)
-
-			switch {
-			case tt.args.terminationReason != "":
-				require.Equal(2, len(foundStates))
-				assert.Equal(StatusTerminated.String(), foundStates[0].Status)
-				assert.Equal(StatusPending.String(), foundStates[1].Status)
-			default:
-				require.Equal(1, len(foundStates))
-				assert.Equal(StatusPending.String(), foundStates[0].Status)
-			}
-		})
-	}
-
 }
 
 func TestRepository_DeleteSession(t *testing.T) {

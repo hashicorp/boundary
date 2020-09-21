@@ -3,6 +3,14 @@ syntax = "proto3";
 package worker.proxy.v1;
 option go_package = "github.com/hashicorp/boundary/internal/proxy;proxy";
 
-message Handshake {
+import "google/protobuf/timestamp.proto";
+
+message ClientHandshake {
     string tofu_token = 10;
+}
+
+message HandshakeResult {
+    google.protobuf.Timestamp expiration = 10;
+    int32 connection_limit = 20;
+    int32 connections_left = 30;
 }

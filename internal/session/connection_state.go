@@ -7,6 +7,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	workerpbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
 const (
@@ -17,8 +19,9 @@ const (
 type ConnectionStatus string
 
 const (
-	StatusConnected ConnectionStatus = "connected"
-	StatusClosed    ConnectionStatus = "closed"
+	StatusAuthorized ConnectionStatus = "authorized"
+	StatusConnected  ConnectionStatus = "connected"
+	StatusClosed     ConnectionStatus = "closed"
 )
 
 // String representation of the state's status
@@ -26,12 +29,25 @@ func (s ConnectionStatus) String() string {
 	return string(s)
 }
 
+// ProtoVal returns the enum value corresponding to the state
+func (s ConnectionStatus) ProtoVal() workerpbs.CONNECTIONSTATUS {
+	switch s {
+	case StatusAuthorized:
+		return workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED
+	case StatusConnected:
+		return workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED
+	case StatusClosed:
+		return workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED
+	}
+	return workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED
+}
+
 // ConnectionState of the state of the connection
 type ConnectionState struct {
 	// ConnectionId is used to access the state via an API
 	ConnectionId string `json:"public_id,omitempty" gorm:"primary_key"`
 	// status of the connection
-	Status string `protobuf:"bytes,20,opt,name=status,proto3" json:"status,omitempty" gorm:"column:state"`
+	Status ConnectionStatus `protobuf:"bytes,20,opt,name=status,proto3" json:"status,omitempty" gorm:"column:state"`
 	// PreviousEndTime from the RDBMS
 	PreviousEndTime *timestamp.Timestamp `json:"previous_end_time,omitempty" gorm:"default:current_timestamp"`
 	// StartTime from the RDBMS
@@ -50,7 +66,7 @@ var _ db.VetForWriter = (*ConnectionState)(nil)
 func NewConnectionState(connectionId string, state ConnectionStatus, opt ...Option) (*ConnectionState, error) {
 	s := ConnectionState{
 		ConnectionId: connectionId,
-		Status:       state.String(),
+		Status:       state,
 	}
 	if err := s.validate("new connection state:"); err != nil {
 		return nil, err

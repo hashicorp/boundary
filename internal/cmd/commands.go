@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/proxy"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
+	"github.com/hashicorp/boundary/internal/cmd/commands/sessions"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targets"
 	"github.com/hashicorp/boundary/internal/cmd/commands/users"
 	"github.com/hashicorp/boundary/internal/cmd/commands/worker"
@@ -65,6 +66,13 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"proxy": func() (cli.Command, error) {
 			return &proxy.Command{
 				Command: base.NewCommand(ui),
+				Func:    "proxy",
+			}, nil
+		},
+		"connect": func() (cli.Command, error) {
+			return &proxy.Command{
+				Command: base.NewCommand(ui),
+				Func:    "connect",
 			}, nil
 		},
 
@@ -553,9 +561,39 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
+		"sessions": func() (cli.Command, error) {
+			return &sessions.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"sessions read": func() (cli.Command, error) {
+			return &sessions.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"sessions list": func() (cli.Command, error) {
+			return &sessions.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"sessions cancel": func() (cli.Command, error) {
+			return &sessions.Command{
+				Command: base.NewCommand(ui),
+				Func:    "cancel",
+			}, nil
+		},
+
 		"targets": func() (cli.Command, error) {
 			return &targets.Command{
 				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"targets authorize": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "authorize",
 			}, nil
 		},
 		"targets read": func() (cli.Command, error) {

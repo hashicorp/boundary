@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -35,13 +36,13 @@ type Controller struct {
 
 	// Used for testing
 	workerStatusUpdateTimes *sync.Map
-	jobMap                  *sync.Map
 
 	// Repo factory methods
 	AuthTokenRepoFn    common.AuthTokenRepoFactory
 	IamRepoFn          common.IamRepoFactory
 	PasswordAuthRepoFn common.PasswordAuthRepoFactory
 	ServersRepoFn      common.ServersRepoFactory
+	SessionRepoFn      common.SessionRepoFactory
 	StaticHostRepoFn   common.StaticRepoFactory
 	TargetRepoFn       common.TargetRepoFactory
 
@@ -55,7 +56,6 @@ func New(conf *Config) (*Controller, error) {
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
 		workerStatusUpdateTimes: new(sync.Map),
-		jobMap:                  new(sync.Map),
 	}
 
 	c.started.Store(false)
@@ -124,6 +124,9 @@ func New(conf *Config) (*Controller, error) {
 	}
 	c.TargetRepoFn = func() (*target.Repository, error) {
 		return target.NewRepository(dbase, dbase, c.kms)
+	}
+	c.SessionRepoFn = func() (*session.Repository, error) {
+		return session.NewRepository(dbase, dbase, c.kms)
 	}
 
 	c.workerAuthCache = cache.New(0, 0)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/textproto"
 	"strconv"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
@@ -21,8 +22,10 @@ var _ cli.CommandAutocomplete = (*TcpCommand)(nil)
 type TcpCommand struct {
 	*base.Command
 
-	Func            string
-	flagDefaultPort string
+	Func                       string
+	flagDefaultPort            string
+	flagSessionMaxSeconds      string
+	flagSessionConnectionLimit string
 }
 
 func (c *TcpCommand) Synopsis() string {
@@ -30,8 +33,8 @@ func (c *TcpCommand) Synopsis() string {
 }
 
 var tcpFlagsMap = map[string][]string{
-	"create": {"scope-id", "name", "description", "default-port"},
-	"update": {"id", "name", "description", "version", "default-port"},
+	"create": {"scope-id", "name", "description", "default-port", "session-max-seconds", "session-connection-limit"},
+	"update": {"id", "name", "description", "version", "default-port", "session-max-seconds", "session-connection-limit"},
 }
 
 func (c *TcpCommand) Help() string {
@@ -75,6 +78,18 @@ func (c *TcpCommand) Flags() *base.FlagSets {
 				Name:   "default-port",
 				Target: &c.flagDefaultPort,
 				Usage:  "The default port to set on the target.",
+			})
+		case "session-max-seconds":
+			f.StringVar(&base.StringVar{
+				Name:   "session-max-seconds",
+				Target: &c.flagSessionMaxSeconds,
+				Usage:  `The maximum lifetime of the session, including all connections. Can be specified as an integer number of seconds or a duration string.`,
+			})
+		case "session-connection-limit":
+			f.StringVar(&base.StringVar{
+				Name:   "session-connection-limit",
+				Target: &c.flagSessionConnectionLimit,
+				Usage:  "The maximum number of connections allowed for a session. -1 means unlimited.",
 			})
 		}
 	}
@@ -146,6 +161,39 @@ func (c *TcpCommand) Run(args []string) int {
 			return 1
 		}
 		opts = append(opts, targets.WithTcpTargetDefaultPort(uint32(port)))
+	}
+
+	switch c.flagSessionMaxSeconds {
+	case "":
+	case "null":
+		opts = append(opts, targets.DefaultSessionMaxSeconds())
+	default:
+		var final uint32
+		dur, err := strconv.ParseUint(c.flagSessionMaxSeconds, 10, 32)
+		if err == nil {
+			final = uint32(dur)
+		} else {
+			dur, err := time.ParseDuration(c.flagSessionMaxSeconds)
+			if err != nil {
+				c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagSessionMaxSeconds, err))
+				return 1
+			}
+			final = uint32(dur.Seconds())
+		}
+		opts = append(opts, targets.WithSessionMaxSeconds(final))
+	}
+
+	switch c.flagSessionConnectionLimit {
+	case "":
+	case "null":
+		opts = append(opts, targets.DefaultSessionConnectionLimit())
+	default:
+		limit, err := strconv.ParseInt(c.flagSessionConnectionLimit, 10, 32)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagSessionConnectionLimit, err))
+			return 1
+		}
+		opts = append(opts, targets.WithSessionConnectionLimit(int32(limit)))
 	}
 
 	targetClient := targets.NewClient(client)

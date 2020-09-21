@@ -29,6 +29,12 @@ func ValidateCreateRequest(i ApiResource, fn CustomValidatorFunc) error {
 	if i.GetId() != "" {
 		badFields["id"] = "This is a read only field."
 	}
+	if i.GetName() != nil {
+		i.GetName().Value = strings.TrimSpace(i.GetName().GetValue())
+	}
+	if i.GetDescription() != nil {
+		i.GetDescription().Value = strings.TrimSpace(i.GetDescription().GetValue())
+	}
 	if i.GetCreatedTime() != nil {
 		badFields["created_time"] = "This is a read only field."
 	}
@@ -65,6 +71,22 @@ func ValidateUpdateRequest(prefix string, r UpdateRequest, i ApiResource, fn Cus
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
 		return nil
+	}
+	if i.GetName() != nil {
+		trimmed := strings.TrimSpace(i.GetName().GetValue())
+		if trimmed == "" {
+			badFields["name"] = "Cannot set empty string as name"
+		} else {
+			i.GetName().Value = trimmed
+		}
+	}
+	if i.GetDescription() != nil {
+		trimmed := strings.TrimSpace(i.GetDescription().GetValue())
+		if trimmed == "" {
+			badFields["name"] = "Cannot set empty string as description"
+		} else {
+			i.GetDescription().Value = trimmed
+		}
 	}
 	if i.GetVersion() == 0 {
 		badFields["version"] = "Existing resource version is required for an update."

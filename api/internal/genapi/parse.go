@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/protooptions"
+	"github.com/hashicorp/boundary/sdk/strutil"
 
 	"github.com/iancoleman/strcase"
 )
@@ -41,6 +42,9 @@ func parsePBs() {
 		in.generatedStructure.name = string(desc.Name())
 		for i := 0; i < desc.Fields().Len(); i++ {
 			fd := desc.Fields().Get(i)
+			if strutil.StrListContains(in.fieldFilter, string(fd.Name())) {
+				continue
+			}
 			fi := fieldInfo{
 				Name:      strcase.ToCamel(string(fd.Name())),
 				ProtoName: string(fd.Name()),
@@ -62,6 +66,8 @@ func parsePBs() {
 					name = fmt.Sprintf("%s.%s", pkg, name)
 				}
 				fi.FieldType = sliceText + ptr + name
+			case protoreflect.BytesKind:
+				fi.FieldType = "[]byte"
 			default:
 				fi.FieldType = sliceText + k.String()
 			}
@@ -85,6 +91,7 @@ var (
 	stringValueName = (&wrapperspb.StringValue{}).ProtoReflect().Descriptor().FullName()
 	boolValueName   = (&wrapperspb.BoolValue{}).ProtoReflect().Descriptor().FullName()
 	uInt32ValueName = (&wrapperspb.UInt32Value{}).ProtoReflect().Descriptor().FullName()
+	int32ValueName  = (&wrapperspb.Int32Value{}).ProtoReflect().Descriptor().FullName()
 	structValueName = (&_struct.Struct{}).ProtoReflect().Descriptor().FullName()
 	timestampName   = (&timestamppb.Timestamp{}).ProtoReflect().Descriptor().FullName()
 )
@@ -97,6 +104,8 @@ func messageKind(fd protoreflect.FieldDescriptor) (ptr, pkg, name string) {
 		return "", "", "bool"
 	case uInt32ValueName:
 		return "", "", "uint32"
+	case int32ValueName:
+		return "", "", "int32"
 	case structValueName:
 		return "", "", "map[string]interface{}"
 	case timestampName:

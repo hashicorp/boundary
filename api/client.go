@@ -58,11 +58,12 @@ type Config struct {
 	// per-call, regardless of any value set in Token.
 	RecoveryKmsWrapper wrapping.Wrapper
 
-	// HttpClient is the HTTP client to use. Boundary sets sane defaults for
-	// the http.Client and its associated http.Transport created in
-	// DefaultConfig. If you must modify Boundary's defaults, it is
-	// suggested that you start with that client and modify as needed rather
-	// than start with an empty client (or http.DefaultClient).
+	// HttpClient is the HTTP client to use. Boundary sets sane defaults for the
+	// http.Client and its associated http.Transport created in DefaultConfig.
+	// If you must modify Boundary's defaults, it is suggested that you start
+	// with that client and modify as needed rather than start with an empty
+	// client (or http.DefaultClient). Currently if the client is cloned the
+	// same HttpClient is used.
 	HttpClient *http.Client
 
 	// TLSConfig contains TLS configuration information. After modifying these
@@ -86,19 +87,16 @@ type Config struct {
 	// The CheckRetry function to use; a default is used if not provided
 	CheckRetry retryablehttp.CheckRetry
 
-	// Limiter is the rate limiter used by the client.
-	// If this pointer is nil, then there will be no limit set.
-	// In contrast, if this pointer is set, even to an empty struct,
-	// then that limiter will be used. Note that an empty Limiter
-	// is equivalent blocking all events.
+	// Limiter is the rate limiter used by the client. If this pointer is nil,
+	// then there will be no limit set. In contrast, if this pointer is set,
+	// even to an empty struct, then that limiter will be used. Note that an
+	// empty Limiter is equivalent blocking all events. Currently if the client
+	// is cloned the same limiter is used.
 	Limiter *rate.Limiter
 
 	// OutputCurlString causes the actual request to return an error of type
 	// *OutputStringError. Type asserting the error message will allow
 	// fetching a cURL-compatible string for the operation.
-	//
-	// Note: It is not thread-safe to set this and make concurrent requests
-	// with the same client. Cloning a client will not clone this value.
 	OutputCurlString bool
 
 	// SRVLookup enables the client to lookup the host through DNS SRV lookup
@@ -561,6 +559,7 @@ func (c *Client) Clone() *Client {
 		Backoff:            config.Backoff,
 		CheckRetry:         config.CheckRetry,
 		Limiter:            config.Limiter,
+		OutputCurlString:   config.OutputCurlString,
 		SRVLookup:          config.SRVLookup,
 	}
 	if config.TLSConfig != nil {
@@ -616,7 +615,6 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	addr := c.config.Addr
 	srvLookup := c.config.SRVLookup
 	token := c.config.Token
-	recoveryKmsWrapper := c.config.RecoveryKmsWrapper
 	httpClient := c.config.HttpClient
 	headers := copyHeaders(c.config.Headers)
 	c.modifyLock.RUnlock()
@@ -659,13 +657,6 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 	}
 
-	if recoveryKmsWrapper != nil {
-		token, err = recovery.GenerateRecoveryToken(ctx, recoveryKmsWrapper)
-		if err != nil {
-			return nil, fmt.Errorf("error generating recovery KMS workflow token: %w", err)
-		}
-	}
-
 	req := &http.Request{
 		Method: method,
 		URL: &url.URL{
@@ -677,7 +668,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		Host: u.Host,
 	}
 	req.Header = headers
-	req.Header.Add("authorization", "Bearer "+token)
+	req.Header.Set("authorization", "Bearer "+token)
 	req.Header.Set("content-type", "application/json")
 	if ctx != nil {
 		req = req.WithContext(ctx)
@@ -702,6 +693,7 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 	httpClient := c.config.HttpClient
 	timeout := c.config.Timeout
 	token := c.config.Token
+	recoveryKmsWrapper := c.config.RecoveryKmsWrapper
 	outputCurlString := c.config.OutputCurlString
 	c.modifyLock.RUnlock()
 
@@ -737,8 +729,30 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 		backoff = retryablehttp.LinearJitterBackoff
 	}
 
+	if recoveryKmsWrapper != nil {
+		token, err := recovery.GenerateRecoveryToken(ctx, recoveryKmsWrapper)
+		if err != nil {
+			return nil, fmt.Errorf("error generating recovery KMS workflow token: %w", err)
+		}
+		r.Header.Set("authorization", "Bearer "+token)
+	}
+
 	if checkRetry == nil {
-		checkRetry = retryablehttp.DefaultRetryPolicy
+		checkRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
+			if recoveryKmsWrapper != nil &&
+				resp != nil &&
+				resp.Request != nil {
+				token, err := recovery.GenerateRecoveryToken(ctx, recoveryKmsWrapper)
+				if err != nil {
+					return false, fmt.Errorf("error generating recovery KMS workflow token: %w", err)
+				}
+				if resp.Request.Header == nil {
+					resp.Request.Header = make(http.Header)
+				}
+				resp.Request.Header.Set("authorization", "Bearer "+token)
+			}
+			return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
+		}
 	}
 
 	client := &retryablehttp.Client{

@@ -3,6 +3,7 @@ package hosts
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
@@ -356,6 +357,15 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 				len(attrs.GetAddress().GetValue()) < static.MinHostAddressLength ||
 				len(attrs.GetAddress().GetValue()) > static.MaxHostAddressLength {
 				badFields["attributes.address"] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+			}
+			_, _, err := net.SplitHostPort(attrs.GetAddress().GetValue())
+			switch {
+			case err == nil:
+				badFields["attributes.address"] = "Address for static hosts does not support a port."
+			case strings.Contains(err.Error(), "missing port in address"):
+				// Bare hostname, which we want
+			default:
+				badFields["attributes.address"] = fmt.Sprintf("Error parsing address: %v.", err)
 			}
 		}
 		return badFields

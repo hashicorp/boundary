@@ -6,20 +6,95 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/serve
 
 import "google/protobuf/timestamp.proto";
 import "controller/servers/v1/servers.proto";
-import "controller/api/resources/sessions/v1/session.proto";
+import "controller/api/resources/targets/v1/target.proto";
+import "controller/servers/services/v1/server_coordination_service.proto";
 
 service SessionService {
-	// Validate session allows a worker to retrieve session information from the controller.
-	// This endpoint validates the session
-	rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {}
+	// GetSession allows a worker to retrieve session information from the
+	// controller.
+	rpc LookupSession(LookupSessionRequest) returns (LookupSessionResponse) {}
+	
+	// ActivateSession allows a worker to activate a session on a controller.
+	rpc ActivateSession(ActivateSessionRequest) returns (ActivateSessionResponse) {}
+
+	// AuthorizeConnection allows a worker to activate a session on a controller.
+	rpc AuthorizeConnection(AuthorizeConnectionRequest) returns (AuthorizeConnectionResponse) {}
+
+	// ConnectConnection updates a connection to set it to connected
+	rpc ConnectConnection(ConnectConnectionRequest) returns (ConnectConnectionResponse) {}
+
+	// CloseConnections updates a connection to set it to closed
+	rpc CloseConnection(CloseConnectionRequest) returns (CloseConnectionResponse) {}
 }
 
-message GetSessionRequest {
+message LookupSessionRequest {
 	// The session ID from the client
-	string id = 10;
+	string session_id = 10;
 }
 
-// SessionResponse contains information necessary for a client to establish a session
-message GetSessionResponse {
-	api.resources.sessions.v1.Session session = 1;
+// LookupSessionResponse contains information necessary for a client to
+// establish a session.
+message LookupSessionResponse {
+	api.resources.targets.v1.SessionAuthorizationData authorization = 10;
+	string tofu_token = 20;
+	uint32 version = 30;
+	string endpoint = 40;
+	google.protobuf.Timestamp expiration = 50;
+	controller.servers.services.v1.SESSIONSTATUS status = 60;
+	int32 connection_limit = 70;
+	int32 connections_left = 80;
+}
+
+message ActivateSessionRequest {
+	string session_id = 10;
+	string tofu_token = 20;
+	uint32 version = 30;
+	string worker_id = 40;
+	controller.servers.services.v1.SESSIONSTATUS status = 50;
+}
+
+message ActivateSessionResponse {
+	controller.servers.services.v1.SESSIONSTATUS status = 10;
+}
+
+message AuthorizeConnectionRequest {
+	string session_id = 10;
+}
+
+message AuthorizeConnectionResponse {
+	string connection_id = 10;
+	controller.servers.services.v1.CONNECTIONSTATUS status = 20;
+	int32 connections_left = 30;
+}
+
+message ConnectConnectionRequest {
+	string connection_id = 10;
+	string client_tcp_address = 20;
+	uint32 client_tcp_port = 30;
+	string endpoint_tcp_address = 40;
+	uint32 endpoint_tcp_port = 50;
+}
+
+message ConnectConnectionResponse {
+	controller.servers.services.v1.CONNECTIONSTATUS status = 10;
+}
+
+message CloseConnectionRequestData {
+	string connection_id = 10;
+	uint64 bytes_up = 20;
+	uint64 bytes_down = 30;
+	string reason = 40;
+}
+
+message CloseConnectionRequest {
+	repeated CloseConnectionRequestData close_request_data = 10;
+}
+
+message CloseConnectionResponseData {
+	string connection_id = 10;
+	controller.servers.services.v1.CONNECTIONSTATUS status = 20;
+}
+
+message CloseConnectionResponse {
+	repeated CloseConnectionResponseData close_response_data = 10;
 }

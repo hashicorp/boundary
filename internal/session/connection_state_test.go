@@ -40,7 +40,7 @@ func TestConnectionState_Create(t *testing.T) {
 			},
 			want: &ConnectionState{
 				ConnectionId: connection.PublicId,
-				Status:       StatusClosed.String(),
+				Status:       StatusClosed,
 			},
 			create: true,
 		},
