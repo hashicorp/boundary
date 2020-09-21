@@ -296,14 +296,14 @@ func TestCancel(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name:    "Get a session",
+			name:    "Cancel a session",
 			scopeId: sess.ScopeId,
 			req:     &pbs.CancelSessionRequest{Id: sess.GetPublicId()},
 			res:     &pbs.CancelSessionResponse{Item: wireSess},
 			errCode: codes.OK,
 		},
 		{
-			name:    "Get a non existing Session",
+			name:    "Cancel a non existing Session",
 			req:     &pbs.CancelSessionRequest{Id: session.SessionPrefix + "_DoesntExis"},
 			res:     nil,
 			errCode: codes.NotFound,
