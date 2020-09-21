@@ -69,12 +69,16 @@ message Session {
   // The ID of the user that requested the session
   string user_id = 100 [json_name = "user_id"];
 
+  // The host set id used by the session's target
   string host_set_id = 110 [json_name = "host_set_id"];
 
+  // The host id used by the session
   string host_id = 120 [json_name = "host_id"];
 
+  // The scope of the session
   string scope_id = 130 [json_name = "scope_id"];
 
+  // The endpoint of the session
   string endpoint = 140;
 
   // The states of this session in descending from the current state to the
