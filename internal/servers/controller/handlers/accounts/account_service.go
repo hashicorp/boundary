@@ -252,6 +252,11 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id strin
 	}
 	out, rowsUpdated, err := repo.UpdateAccount(ctx, scopeId, u, version, dbMask)
 	if err != nil {
+		switch {
+		case errors.Is(err, password.ErrTooShort):
+			return nil, handlers.InvalidArgumentErrorf("Error in provided request",
+				map[string]string{"attributes.login_name": "Length too short."})
+		}
 		return nil, status.Errorf(codes.Internal, "Unable to update auth method: %v.", err)
 	}
 	if rowsUpdated == 0 {
@@ -308,6 +313,9 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 		case errors.Is(err, password.ErrTooShort):
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"new_password": "Password is too short."})
+		case errors.Is(err, password.ErrPasswordsEqual):
+			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+				map[string]string{"new_password": "New password equal to current password."})
 		}
 		return nil, status.Errorf(codes.Internal, "Unable to change password: %v.", err)
 	}
@@ -317,13 +325,20 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 	return toProto(out)
 }
 
-func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, version uint32, password string) (*pb.Account, error) {
+func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, version uint32, pw string) (*pb.Account, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.SetPassword(ctx, scopeId, id, password, version)
+	out, err := repo.SetPassword(ctx, scopeId, id, pw, version)
 	if err != nil {
+		switch {
+		case errors.Is(err, db.ErrRecordNotFound):
+			return nil, handlers.NotFoundErrorf("Account not found.")
+		case errors.Is(err, password.ErrTooShort):
+			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+				map[string]string{"password": "Password is too short."})
+		}
 		return nil, status.Errorf(codes.Internal, "Unable to set password: %v.", err)
 	}
 	return toProto(out)

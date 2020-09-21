@@ -92,7 +92,7 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  errors.New("Some random error"),
 			expected: &pb.Error{
 				Status: http.StatusInternalServerError,
-				Code:   "Unknown",
+				Code:   "Internal",
 			},
 		},
 		{
@@ -100,7 +100,7 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  fmt.Errorf("test error: %w", db.ErrInvalidPublicId),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
-				Code:    "Unknown",
+				Code:    "Internal",
 				Message: "Test",
 			},
 		},
@@ -109,7 +109,7 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  fmt.Errorf("test error: %w", db.ErrInvalidParameter),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
-				Code:    "Unknown",
+				Code:    "Internal",
 				Message: "Test",
 			},
 		},
@@ -118,7 +118,7 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  fmt.Errorf("test error: %w", db.ErrInvalidFieldMask),
 			expected: &pb.Error{
 				Status:  http.StatusBadRequest,
-				Code:    "Unknown",
+				Code:    "Internal",
 				Message: "Test",
 			},
 		},
@@ -127,7 +127,7 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  fmt.Errorf("test error: %w", db.ErrEmptyFieldMask),
 			expected: &pb.Error{
 				Status:  http.StatusBadRequest,
-				Code:    "Unknown",
+				Code:    "Test",
 				Message: "Test",
 			},
 		},
@@ -136,8 +136,8 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  fmt.Errorf("test error: %w", db.ErrNotUnique),
 			expected: &pb.Error{
 				Status:  http.StatusBadRequest,
-				Code:    "Unknown",
-				Message: "Test",
+				Code:    "Test",
+				Message: "test error: unique constraint violation",
 			},
 		},
 		{
@@ -145,7 +145,7 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  fmt.Errorf("test error: %w", db.ErrRecordNotFound),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
-				Code:    "Unknown",
+				Code:    "Internal",
 				Message: "Test",
 			},
 		},
@@ -154,7 +154,7 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  fmt.Errorf("test error: %w", db.ErrMultipleRecords),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
-				Code:    "Unknown",
+				Code:    "Internal",
 				Message: "Test",
 			},
 		},
@@ -164,7 +164,7 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  fmt.Errorf("test error: %w", password.ErrPasswordsEqual),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
-				Code:    "Unknown",
+				Code:    "Internal",
 				Message: "Test",
 			},
 		},
@@ -173,7 +173,7 @@ func TestApiErrorHandler(t *testing.T) {
 			err:  fmt.Errorf("test error: %w", password.ErrTooShort),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
-				Code:    "Unknown",
+				Code:    "Internal",
 				Message: "Test",
 			},
 		},
