@@ -47,12 +47,12 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.getFromRepo(ctx, req.GetId())
+	ses, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	return &pbs.GetSessionResponse{Item: u}, nil
+	ses.Scope = authResults.Scope
+	return &pbs.GetSessionResponse{Item: ses}, nil
 }
 
 // ListSessions implements the interface pbs.SessionServiceServer.
@@ -64,14 +64,14 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+	seslist, err := s.listFromRepo(ctx, authResults.Scope.GetId())
 	if err != nil {
 		return nil, err
 	}
-	for _, item := range ul {
+	for _, item := range seslist {
 		item.Scope = authResults.Scope
 	}
-	return &pbs.ListSessionsResponse{Items: ul}, nil
+	return &pbs.ListSessionsResponse{Items: seslist}, nil
 }
 
 // CancelSession implements the interface pbs.SessionServiceServer.
@@ -83,12 +83,12 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.cancelInRepo(ctx, req.GetId(), req.GetVersion())
+	ses, err := s.cancelInRepo(ctx, req.GetId(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	return &pbs.CancelSessionResponse{Item: u}, nil
+	ses.Scope = authResults.Scope
+	return &pbs.CancelSessionResponse{Item: ses}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error) {
@@ -114,15 +114,15 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Sessio
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListSessions(ctx, session.WithScopeId(scopeId))
+	seslist, err := repo.ListSessions(ctx, session.WithScopeId(scopeId))
 	if err != nil {
 		return nil, err
 	}
-	var outUl []*pb.Session
-	for _, u := range ul {
-		outUl = append(outUl, toProto(u))
+	var outSl []*pb.Session
+	for _, ses := range seslist {
+		outSl = append(outSl, toProto(ses))
 	}
-	return outUl, nil
+	return outSl, nil
 }
 
 func (s Service) cancelInRepo(ctx context.Context, id string, version uint32) (*pb.Session, error) {
