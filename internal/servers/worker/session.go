@@ -24,10 +24,12 @@ type connInfo struct {
 	connCtx    context.Context
 	connCancel context.CancelFunc
 	status     pbs.CONNECTIONSTATUS
+	closeTime  time.Time
 }
 
 type sessionInfo struct {
 	sync.RWMutex
+	id                    string
 	sessionTls            *tls.Config
 	status                pbs.SESSIONSTATUS
 	lookupSessionResponse *pbs.LookupSessionResponse
@@ -102,6 +104,7 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	}
 
 	si := &sessionInfo{
+		id:                    resp.GetAuthorization().GetSessionId(),
 		sessionTls:            tlsConf,
 		lookupSessionResponse: resp,
 		status:                resp.GetStatus(),
@@ -224,13 +227,13 @@ func (w *Worker) closeConnection(ctx context.Context, req *pbs.CloseConnectionRe
 	return resp, nil
 }
 
-func (w *Worker) closeConnections(ctx context.Context, si *sessionInfo, connectionIds []string) error {
-	w.logger.Trace("marking connection as closed", "connection_ids", connectionIds)
+func (w *Worker) closeConnections(ctx context.Context, closeMap map[string]string) error {
+	w.logger.Trace("marking connections as closed", "session_and_connection_ids", fmt.Sprint("%#v", closeMap))
 
-	closeData := make([]*pbs.CloseConnectionRequestData, 0, len(connectionIds))
-	for _, v := range connectionIds {
+	closeData := make([]*pbs.CloseConnectionRequestData, 0, len(closeMap))
+	for connId := range closeMap {
 		closeData = append(closeData, &pbs.CloseConnectionRequestData{
-			ConnectionId: v,
+			ConnectionId: connId,
 			Reason:       session.UnknownReason.String(),
 		})
 	}
@@ -243,17 +246,29 @@ func (w *Worker) closeConnections(ctx context.Context, si *sessionInfo, connecti
 		return err
 	}
 	closedIds := make([]string, 0, len(connStatus.GetCloseResponseData()))
-	si.Lock()
+
+	// Here we build a reverse map from closeMap, that is, session ID to
+	// connection IDs, for more efficient locking
+	revMap := make(map[string][]*pbs.CloseConnectionResponseData)
 	for _, v := range connStatus.GetCloseResponseData() {
-		closedIds = append(closedIds, v.GetConnectionId())
-		if v.GetStatus() == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
-			delete(si.connInfoMap, v.GetConnectionId())
-		} else {
-			ci := si.connInfoMap[v.GetConnectionId()]
-			ci.status = v.GetStatus()
-		}
+		revMap[closeMap[v.GetConnectionId()]] = append(revMap[closeMap[v.GetConnectionId()]], v)
 	}
-	si.Unlock()
+	for k, v := range revMap {
+		siRaw, ok := w.sessionInfoMap.Load(k)
+		if !ok {
+			w.logger.Warn("could not find session ID in info map after closing connections", "session_id", k)
+		}
+		si := siRaw.(*sessionInfo)
+		si.Lock()
+		for _, connResult := range v {
+			ci := si.connInfoMap[connResult.GetConnectionId()]
+			ci.status = connResult.GetStatus()
+			if ci.status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
+				ci.closeTime = time.Now()
+			}
+		}
+		si.Unlock()
+	}
 	w.logger.Trace("connections successfully marked closed", "connection_ids", closedIds)
 	return nil
 }

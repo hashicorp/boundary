@@ -128,7 +128,7 @@ func ParseArbitraryKeyValues(input string, out map[string]string, sep string) er
 	// metadata was supplied as JSON input.
 	err = json.Unmarshal([]byte(input), &out)
 	if err != nil {
-		// If JSON unmarshalling fails, consider that the input was
+		// If JSON unmarshaling fails, consider that the input was
 		// supplied as a comma separated string of 'key=value' pairs.
 		if err = ParseKeyValues(input, out, sep); err != nil {
 			return errwrap.Wrapf("failed to parse the input: {{err}}", err)
@@ -194,7 +194,7 @@ func ParseArbitraryStringSlice(input string, sep string) []string {
 	// metadata was supplied as JSON input.
 	err = json.Unmarshal([]byte(input), &ret)
 	if err != nil {
-		// If JSON unmarshalling fails, consider that the input was
+		// If JSON unmarshaling fails, consider that the input was
 		// supplied as a separated string of values.
 		return ParseStringSlice(input, sep)
 	}

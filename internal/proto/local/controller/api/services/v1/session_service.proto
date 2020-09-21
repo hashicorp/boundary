@@ -16,12 +16,12 @@ service SessionService {
 	// resource an error is returned.
 	rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {
 		option (google.api.http) = {
-      get: "/v1/sessions/{id}"
-      response_body: "item"
-    };
+			get: "/v1/sessions/{id}"
+			response_body: "item"
+		};
 		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Session"
-    };
+			summary: "Gets a single Session"
+		};
 	}
 
 	// ListSessions returns a list of stored sessions which exist inside the project
@@ -30,11 +30,11 @@ service SessionService {
 	// reference a non existing scope, an error is returned.
 	rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
 		option (google.api.http) = {
-      get: "/v1/sessions"
-    };
+			get: "/v1/sessions"
+    	};
 		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Sessions"
-    };
+			summary: "Lists all Sessions"
+		};
 	}
 
 	// CancelSession cancels an existing session in boundary.  An error
@@ -42,12 +42,13 @@ service SessionService {
 	// not exist.
 	rpc CancelSession(CancelSessionRequest) returns (CancelSessionResponse) {
 		option (google.api.http) = {
-      post: "/v1/sessions/{id}:cancel"
-      response_body: "item"
-    };
+			post: "/v1/sessions/{id}:cancel"
+			body: "*"
+			response_body: "item"
+		};
 		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Cancels a Session"
-    };
+			summary: "Cancels a Session"
+		};
 	}
 }
 

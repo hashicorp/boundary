@@ -125,7 +125,7 @@ func Test_ValidateType(t *testing.T) {
 	}
 }
 
-func Test_MarshallingAndCloning(t *testing.T) {
+func Test_MarshalingAndCloning(t *testing.T) {
 	t.Parallel()
 
 	type input struct {
