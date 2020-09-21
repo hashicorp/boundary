@@ -257,6 +257,7 @@ func (w *Worker) closeConnections(ctx context.Context, closeMap map[string]strin
 		siRaw, ok := w.sessionInfoMap.Load(k)
 		if !ok {
 			w.logger.Warn("could not find session ID in info map after closing connections", "session_id", k)
+			continue
 		}
 		si := siRaw.(*sessionInfo)
 		si.Lock()
