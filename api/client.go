@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -677,7 +676,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		Host: u.Host,
 	}
 	req.Header = headers
-	req.Header.Add("authorization", "Bearer "+token)
+	req.Header.Set("authorization", "Bearer "+token)
 	req.Header.Set("content-type", "application/json")
 	if ctx != nil {
 		req = req.WithContext(ctx)
@@ -702,6 +701,7 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 	httpClient := c.config.HttpClient
 	timeout := c.config.Timeout
 	token := c.config.Token
+	recoveryKmsWrapper := c.config.RecoveryKmsWrapper
 	outputCurlString := c.config.OutputCurlString
 	c.modifyLock.RUnlock()
 
@@ -739,7 +739,13 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 
 	if checkRetry == nil {
 		checkRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
-			log.Println("in checkretry", resp.Request.Method, resp.Request.URL.String())
+			if recoveryKmsWrapper != nil {
+				token, err = recovery.GenerateRecoveryToken(ctx, recoveryKmsWrapper)
+				if err != nil {
+					return nil, fmt.Errorf("error generating recovery KMS workflow token: %w", err)
+				}
+				resp.Request.Header.Set("authorization", "Bearer "+token)
+			}
 			return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
 		}
 	}
