@@ -123,6 +123,12 @@ func TestErrors(t *testing.T) {
 	assert.NotNil(createdProj)
 	assert.Nil(apiErr)
 
+	// Updating the wrong version should fail.
+	_, apiErr, err = scps.Update(tc.Context(), createdProj.Item.Id, 73, scopes.WithName("anything"))
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+
 	_, apiErr, err = scps.Read(tc.Context(), "p_doesntexis")
 	require.NoError(err)
 	// TODO: Should this be nil instead of just a Project that has no values set

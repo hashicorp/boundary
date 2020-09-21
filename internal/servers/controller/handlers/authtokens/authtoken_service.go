@@ -87,7 +87,7 @@ func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRe
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return &pbs.DeleteAuthTokenResponse{}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthToken, error) {
