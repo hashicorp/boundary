@@ -235,7 +235,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 	return ret, nil
 }
 
-func (ws *workerServiceServer) ConnectSession(ctx context.Context, req *pbs.ConnectSessionRequest) (*pbs.ConnectSessionResponse, error) {
+func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.ConnectConnectionRequest) (*pbs.ConnectConnectionResponse, error) {
 	ws.logger.Trace("got connection established information from worker", "connection_id", req.GetConnectionId())
 
 	sessRepo, err := ws.sessionRepoFn()
@@ -243,7 +243,7 @@ func (ws *workerServiceServer) ConnectSession(ctx context.Context, req *pbs.Conn
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	connectionInfo, connStates, err := sessRepo.ConnectSession(ctx, session.ConnectWith{
+	connectionInfo, connStates, err := sessRepo.ConnectConnection(ctx, session.ConnectWith{
 		ConnectionId:       req.GetConnectionId(),
 		ClientTcpAddress:   req.GetClientTcpAddress(),
 		ClientTcpPort:      req.GetClientTcpPort(),
@@ -254,11 +254,65 @@ func (ws *workerServiceServer) ConnectSession(ctx context.Context, req *pbs.Conn
 		return nil, err
 	}
 	if connectionInfo == nil {
-		return nil, status.Error(codes.Internal, "Invalid authorize connection response.")
+		return nil, status.Error(codes.Internal, "Invalid connect connection response.")
 	}
 
-	ret := &pbs.ConnectSessionResponse{
+	ret := &pbs.ConnectConnectionResponse{
 		Status: connStates[0].Status.ProtoVal(),
+	}
+
+	return ret, nil
+}
+
+func (ws *workerServiceServer) CloseConnection(ctx context.Context, req *pbs.CloseConnectionRequest) (*pbs.CloseConnectionResponse, error) {
+	numCloses := len(req.GetCloseRequestData())
+	if numCloses == 0 {
+		return &pbs.CloseConnectionResponse{}, nil
+	}
+
+	closeWiths := make([]session.CloseWith, 0, numCloses)
+	closeIds := make([]string, 0, numCloses)
+
+	for _, v := range req.GetCloseRequestData() {
+		closeIds = append(closeIds, v.GetConnectionId())
+		closeWiths = append(closeWiths, session.CloseWith{
+			ConnectionId: v.GetConnectionId(),
+			BytesUp:      v.GetBytesUp(),
+			BytesDown:    v.GetBytesDown(),
+			ClosedReason: session.ClosedReason(v.GetReason()),
+		})
+	}
+	ws.logger.Trace("got connection close information from worker", "connection_ids", closeIds)
+
+	sessRepo, err := ws.sessionRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
+	}
+
+	closeInfos, err := sessRepo.CloseConnections(ctx, closeWiths)
+	if err != nil {
+		return nil, err
+	}
+	if closeInfos == nil {
+		return nil, status.Error(codes.Internal, "Invalid close connection response.")
+	}
+
+	closeData := make([]*pbs.CloseConnectionResponseData, 0, numCloses)
+	for _, v := range closeInfos {
+		if v.Connection == nil {
+			return nil, status.Errorf(codes.Internal, "No connection found while closing one of the connection IDs: %v", closeIds)
+		}
+		if len(v.ConnectionStates) == 0 {
+			return nil, status.Errorf(codes.Internal, "No connection states found while closing one of the connection IDs: %v", closeIds)
+		}
+		closeData = append(closeData, &pbs.CloseConnectionResponseData{
+			ConnectionId: v.Connection.GetPublicId(),
+			Status:       v.ConnectionStates[0].Status.ProtoVal(),
+		})
+	}
+
+	ret := &pbs.CloseConnectionResponse{
+		CloseResponseData: closeData,
 	}
 
 	return ret, nil

@@ -119,16 +119,20 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 									continue
 								}
 								si := siRaw.(*sessionInfo)
+								closeIds := make([]string, 0, len(result.GetJobsRequests()))
 								si.Lock()
 								si.status = sessInfo.GetStatus()
 								if request.GetRequestType() == pbs.CHANGETYPE_CHANGETYPE_CANCEL {
 									for k, v := range si.connInfoMap {
 										v.connCancel()
 										w.logger.Info("terminated connection", "session_id", sessionId, "connection_id", k)
-										v.status = pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED
+										closeIds = append(closeIds, k)
 									}
 								}
 								si.Unlock()
+								if err := w.closeConnections(cancelCtx, si, closeIds); err != nil {
+									w.logger.Error("error marking connections closed", "error", err, "connection_ids", closeIds)
+								}
 							}
 						}
 					}

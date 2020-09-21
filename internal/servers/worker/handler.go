@@ -137,6 +137,13 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			return
 		}
 
+		defer func() {
+			connectionId := ci.id
+			if err := w.closeConnections(r.Context(), si, []string{connectionId}); err != nil {
+				w.logger.Error("error marking connection closed", "error", err, "connection_id", connectionId)
+			}
+		}()
+
 		si.Lock()
 		ci.connCtx = connCtx
 		ci.connCancel = connCancel

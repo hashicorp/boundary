@@ -20,8 +20,11 @@ service SessionService {
 	// AuthorizeConnection allows a worker to activate a session on a controller.
 	rpc AuthorizeConnection(AuthorizeConnectionRequest) returns (AuthorizeConnectionResponse) {}
 
-	// ConnectSession updates a connection and causes a state transition
-	rpc ConnectSession(ConnectSessionRequest) returns (ConnectSessionResponse) {}
+	// ConnectConnection updates a connection to set it to connected
+	rpc ConnectConnection(ConnectConnectionRequest) returns (ConnectConnectionResponse) {}
+
+	// CloseConnections updates a connection to set it to closed
+	rpc CloseConnection(CloseConnectionRequest) returns (CloseConnectionResponse) {}
 }
 
 message LookupSessionRequest {
@@ -64,7 +67,7 @@ message AuthorizeConnectionResponse {
 	int32 connections_left = 30;
 }
 
-message ConnectSessionRequest {
+message ConnectConnectionRequest {
 	string connection_id = 10;
 	string client_tcp_address = 20;
 	uint32 client_tcp_port = 30;
@@ -72,6 +75,26 @@ message ConnectSessionRequest {
 	uint32 endpoint_tcp_port = 50;
 }
 
-message ConnectSessionResponse {
+message ConnectConnectionResponse {
 	controller.servers.services.v1.CONNECTIONSTATUS status = 10;
+}
+
+message CloseConnectionRequestData {
+	string connection_id = 10;
+	uint64 bytes_up = 20;
+	uint64 bytes_down = 30;
+	string reason = 40;
+}
+
+message CloseConnectionRequest {
+	repeated CloseConnectionRequestData close_request_data = 10;
+}
+
+message CloseConnectionResponseData {
+	string connection_id = 10;
+	controller.servers.services.v1.CONNECTIONSTATUS status = 20;
+}
+
+message CloseConnectionResponse {
+	repeated CloseConnectionResponseData close_response_data = 10;
 }

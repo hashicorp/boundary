@@ -14,11 +14,10 @@ func TestClosedWith_validate(t *testing.T) {
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
 	sessionConnection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
 	type fields struct {
-		ConnectionId      string
-		ConnectionVersion uint32
-		BytesUp           uint64
-		BytesDown         uint64
-		ClosedReason      ClosedReason
+		ConnectionId string
+		BytesUp      uint64
+		BytesDown    uint64
+		ClosedReason ClosedReason
 	}
 	tests := []struct {
 		name    string
@@ -28,27 +27,15 @@ func TestClosedWith_validate(t *testing.T) {
 		{
 			name: "valid",
 			fields: fields{
-				ConnectionId:      sessionConnection.PublicId,
-				ConnectionVersion: sessionConnection.Version,
-				BytesUp:           1,
-				BytesDown:         2,
-				ClosedReason:      ConnectionClosedByUser,
+				ConnectionId: sessionConnection.PublicId,
+				BytesUp:      1,
+				BytesDown:    2,
+				ClosedReason: ConnectionClosedByUser,
 			},
 		},
 		{
 			name: "missing-ConnectionId",
 			fields: fields{
-				ConnectionVersion: sessionConnection.Version,
-				BytesUp:           1,
-				BytesDown:         2,
-				ClosedReason:      ConnectionClosedByUser,
-			},
-			wantErr: true,
-		},
-		{
-			name: "missing-ConnectionVersion",
-			fields: fields{
-				ConnectionId: sessionConnection.PublicId,
 				BytesUp:      1,
 				BytesDown:    2,
 				ClosedReason: ConnectionClosedByUser,
@@ -58,10 +45,9 @@ func TestClosedWith_validate(t *testing.T) {
 		{
 			name: "missing-ClosedReason",
 			fields: fields{
-				ConnectionId:      sessionConnection.PublicId,
-				ConnectionVersion: sessionConnection.Version,
-				BytesUp:           1,
-				BytesDown:         2,
+				ConnectionId: sessionConnection.PublicId,
+				BytesUp:      1,
+				BytesDown:    2,
 			},
 			wantErr: true,
 		},
@@ -69,11 +55,10 @@ func TestClosedWith_validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := CloseWith{
-				ConnectionId:      tt.fields.ConnectionId,
-				ConnectionVersion: tt.fields.ConnectionVersion,
-				BytesUp:           tt.fields.BytesUp,
-				BytesDown:         tt.fields.BytesDown,
-				ClosedReason:      tt.fields.ClosedReason,
+				ConnectionId: tt.fields.ConnectionId,
+				BytesUp:      tt.fields.BytesUp,
+				BytesDown:    tt.fields.BytesDown,
+				ClosedReason: tt.fields.ClosedReason,
 			}
 			if err := c.validate(); (err != nil) != tt.wantErr {
 				t.Errorf("ClosedWith.validate() error = %v, wantErr %v", err, tt.wantErr)
