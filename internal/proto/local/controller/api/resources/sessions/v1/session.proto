@@ -11,55 +11,92 @@ import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/api/resources/targets/v1/target.proto";
 import "controller/custom_options/v1/options.proto";
 
+message WorkerInfo {
+  // The address of the worker
+  string address = 10;
+}
+
+message SessionState {
+  // This is the status of the session.  For example "pending", "active",
+  // "canceling", "terminated".
+  string status = 10;
+
+  // The time the session entered this state.
+  // Output only.
+  google.protobuf.Timestamp start_time = 20 [json_name = "start_time"];
+
+  // The time the session stopped being in this state.
+  // Output only.
+  google.protobuf.Timestamp end_time = 30 [json_name = "end_time"];
+}
+
 // Session contains all fields related to a Session resource
 message Session {
-	// The ID of the resource
-	// Output only.
-	string id = 10;
+  // The ID of the resource
+  // Output only.
+  string id = 10;
 
-	// The id of the parent of this resource.  This must be defined for creation of this resource, but is otherwise
-	// read only.
-	string target_id = 20 [json_name="target_id"];
+  // The id of the parent of this resource.  This must be defined for creation
+  // of this resource, but is otherwise read only.
+  string target_id = 20 [json_name = "target_id"];
 
-	// Scope information for this resource
-	// Output only.
-	resources.scopes.v1.ScopeInfo scope = 30;
+  // Scope information for this resource
+  // Output only.
+  resources.scopes.v1.ScopeInfo scope = 30;
 
-	// The time this resource was created
-	// Output only.
-	google.protobuf.Timestamp created_time = 40 [json_name="created_time"];
+  // The time this resource was created
+  // Output only.
+  google.protobuf.Timestamp created_time = 40 [json_name = "created_time"];
 
-	// The time this resource was last updated.
-	// Output only.
-	google.protobuf.Timestamp updated_time = 50 [json_name="updated_time"];
+  // The time this resource was last updated.
+  // Output only.
+  google.protobuf.Timestamp updated_time = 50 [json_name = "updated_time"];
 
-	// After this time the connection will be expired, e.g. forcefully terminated
-	google.protobuf.Timestamp expiration_time = 60 [json_name="expiration_time"];
+  // After this time the connection will be expired, e.g. forcefully terminated
+  google.protobuf.Timestamp expiration_time = 60
+      [json_name = "expiration_time"];
 
-	// The version can be used in subsequent write requests to ensure this
-	// resource has not changed and to fail the write if it has.
-	uint32 version = 70;
+  // The version can be used in subsequent write requests to ensure this
+  // resource has not changed and to fail the write if it has.
+  uint32 version = 70;
 
-	// Type of the session (e.g. tcp, ssh, etc.)
-	string type = 80;
+  // Type of the session (e.g. tcp, ssh, etc.)
+  string type = 80;
 
-	// The ID of the user that requested the session
-	string user_id = 90 [json_name="user_id"];
+  // The id of the token used to authenticate.
+  string auth_token_id = 90 [json_name = "auth_token_id"];
 
-	string host_id = 100 [json_name="host_id"];
+  // The ID of the user that requested the session
+  string user_id = 100 [json_name = "user_id"];
 
-	string scope_id = 110 [json_name="scope_id"];
+  // The host set id used by the session's target
+  string host_set_id = 110 [json_name = "host_set_id"];
 
-	// The certificate to use when connecting (or if using custom certs, to
-	// serve as the "login"). Raw DER bytes.
-	bytes certificate = 120;
+  // The host id used by the session
+  string host_id = 120 [json_name = "host_id"];
 
-	// The private key to use when connecting (or if using custom certs, to pass
-	// as the "password").
-	bytes private_key = 130 [json_name="private_key"];
+  // The scope of the session
+  string scope_id = 130 [json_name = "scope_id"];
 
-	string endpoint = 140;
+  // The endpoint of the session
+  string endpoint = 140;
 
-	// Worker information. The first worker in the slice should be prioritized.
-	repeated resources.targets.v1.WorkerInfo worker_info = 150 [json_name="worker_info"];
+  // The states of this session in descending from the current state to the
+  // first.
+  repeated SessionState states = 150;
+
+  // The name of the current status of this session.
+  string status = 160;
+
+  // Worker information. The first worker in the slice should be prioritized.
+  repeated WorkerInfo worker_info = 170 [json_name = "worker_info"];
+
+  // Deprecated, to be moved to another proto by another PR:
+  // The certificate to use when connecting (or if using custom certs, to
+  // serve as the "login"). Raw DER bytes.
+  bytes certificate = 220;
+
+  // The private key to use when connecting (or if using custom certs, to pass
+  // as the "password").
+  bytes private_key = 230 [json_name = "private_key"];
 }

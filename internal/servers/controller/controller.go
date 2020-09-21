@@ -42,9 +42,9 @@ type Controller struct {
 	IamRepoFn          common.IamRepoFactory
 	PasswordAuthRepoFn common.PasswordAuthRepoFactory
 	ServersRepoFn      common.ServersRepoFactory
+	SessionRepoFn      common.SessionRepoFactory
 	StaticHostRepoFn   common.StaticRepoFactory
 	TargetRepoFn       common.TargetRepoFactory
-	SessionRepoFn      common.SessionRepoFactory
 
 	kms *kms.Kms
 
