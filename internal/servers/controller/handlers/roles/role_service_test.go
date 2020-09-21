@@ -273,6 +273,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: or.GetPublicId(),
 			},
+			res:     &pbs.DeleteRoleResponse{},
 			errCode: codes.OK,
 		},
 		{
@@ -297,6 +298,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: pr.GetPublicId(),
 			},
+			res:     &pbs.DeleteRoleResponse{},
 			errCode: codes.OK,
 		},
 		{
