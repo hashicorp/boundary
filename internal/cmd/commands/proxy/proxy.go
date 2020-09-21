@@ -35,21 +35,23 @@ import (
 )
 
 type SessionInfo struct {
-	Address  string `json:"address"`
-	Port     int    `json:"port"`
-	Protocol string `json:"protocol"`
+	Address         string    `json:"address"`
+	Port            int       `json:"port"`
+	Protocol        string    `json:"protocol"`
+	Expiration      time.Time `json:"expiration"`
+	ConnectionLimit int32     `json:"connection_limit"`
 }
 
 type ConnectionInfo struct {
-	Expiration      time.Time `json:"expiration"`
-	ConnectionsLeft int32     `json:"connections_left"`
+	ConnectionsLeft int32 `json:"connections_left"`
+}
+
+type TerminationInfo struct {
+	Reason string `json:"termination_reason"`
 }
 
 var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
-
-var connectionsLeft atomic.Int32
-var expiration time.Time
 
 type Command struct {
 	*base.Command
@@ -63,7 +65,12 @@ type Command struct {
 
 	Func string
 
-	listenerCloseFunc sync.Once
+	connWg            *sync.WaitGroup
+	listenerCloseOnce sync.Once
+	listener          *net.TCPListener
+	connsLeftCh       chan int32
+	connectionsLeft   atomic.Int32
+	expiration        time.Time
 }
 
 func (c *Command) Synopsis() string {
@@ -182,6 +189,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		return 1
 	}
 
+	c.connsLeftCh = make(chan int32)
+
 	if c.flagListenAddr == "" {
 		c.flagListenAddr = "127.0.0.1"
 	}
@@ -269,6 +278,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		return 1
 	}
 
+	c.connectionsLeft.Store(data.ConnectionLimit)
 	workerAddr := data.GetWorkerInfo()[0].GetAddress()
 
 	parsedCert, err := x509.ParseCertificate(data.Certificate)
@@ -282,7 +292,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	expiration = parsedCert.NotAfter
+	c.expiration = parsedCert.NotAfter
 
 	certPool := x509.NewCertPool()
 	certPool.AddCert(parsedCert)
@@ -307,7 +317,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	// hijacked, just setting for completeness
 	transport.IdleConnTimeout = 0
 
-	listener, err := net.ListenTCP("tcp", &net.TCPAddr{
+	c.listener, err = net.ListenTCP("tcp", &net.TCPAddr{
 		IP:   listenAddr,
 		Port: c.flagListenPort,
 	})
@@ -317,29 +327,27 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 
 	listenerCloseFunc := func() {
-		if err := listener.Close(); err != nil {
+		// Forces the for loop to exist instead of spinning on errors
+		c.connectionsLeft.Store(0)
+		if err := c.listener.Close(); err != nil {
 			c.UI.Error(fmt.Errorf("Error closing listener on shutdown: %w", err).Error())
 			retCode = 1
 		}
 	}
 
-	// Allow closing the listener from Ctrl-C
-	go func() {
-		<-c.Context.Done()
-		c.listenerCloseFunc.Do(listenerCloseFunc)
-	}()
-
 	// Ensure it runs on any other return condition
 	defer func() {
-		c.listenerCloseFunc.Do(listenerCloseFunc)
+		c.listenerCloseOnce.Do(listenerCloseFunc)
 	}()
 
-	listenerAddr := listener.Addr().(*net.TCPAddr)
+	listenerAddr := c.listener.Addr().(*net.TCPAddr)
 
 	sessInfo := SessionInfo{
-		Protocol: "tcp",
-		Address:  listenerAddr.IP.String(),
-		Port:     listenerAddr.Port,
+		Protocol:        "tcp",
+		Address:         listenerAddr.IP.String(),
+		Port:            listenerAddr.Port,
+		Expiration:      c.expiration,
+		ConnectionLimit: data.GetConnectionLimit(),
 	}
 
 	switch base.Format(c.UI) {
@@ -354,55 +362,90 @@ func (c *Command) Run(args []string) (retCode int) {
 		c.UI.Output(string(out))
 	}
 
-	connWg := new(sync.WaitGroup)
-	connWg.Add(1)
+	c.connWg = new(sync.WaitGroup)
 
-AcceptLoop:
+	c.connWg.Add(1)
+
+	go func() {
+		defer c.connWg.Done()
+		for {
+			listeningConn, err := c.listener.AcceptTCP()
+			if err != nil {
+				select {
+				case <-c.Context.Done():
+					return
+				default:
+					// When this hits zero we tigger listener close so this
+					// isn't actually an error condition
+					if c.connectionsLeft.Load() == 0 {
+						return
+					}
+					c.UI.Error(fmt.Errorf("Error accepting connection: %w", err).Error())
+					continue
+				}
+			}
+			c.connWg.Add(1)
+			go func() {
+				defer listeningConn.Close()
+				if err := c.handleConnection(
+					listeningConn,
+					workerAddr,
+					tofuToken,
+					transport); err != nil {
+					c.UI.Error(err.Error())
+				}
+			}()
+		}
+	}()
+
+	timer := time.NewTimer(time.Until(c.expiration))
+	var termInfo TerminationInfo
+Wait:
 	for {
-		listeningConn, err := listener.AcceptTCP()
-		if err != nil {
-			select {
-			case <-c.Context.Done():
-				connWg.Done()
-				break AcceptLoop
-			default:
-				c.UI.Error(fmt.Errorf("Error accepting connection: %w", err).Error())
-				continue
+		select {
+		case <-c.Context.Done():
+			timer.Stop()
+			break Wait
+		case <-timer.C:
+			termInfo.Reason = "Session has expired"
+			break Wait
+		case connsLeft := <-c.connsLeftCh:
+			c.updateConnsLeft(connsLeft)
+			if connsLeft == 0 {
+				termInfo.Reason = "No connections left"
+				break Wait
 			}
 		}
-		connWg.Add(1)
-		go func() {
-			defer listeningConn.Close()
-			if err := handleConnection(
-				c.Context,
-				c.UI,
-				connWg,
-				listeningConn,
-				workerAddr,
-				tofuToken,
-				transport); err != nil {
-				c.UI.Error(err.Error())
-			}
-		}()
+	}
+	c.listenerCloseOnce.Do(listenerCloseFunc)
+
+	c.connWg.Wait()
+
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateTerminationInfoTableOutput(termInfo))
+	case "json":
+		out, err := json.Marshal(&termInfo)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("error marshaling termination information: %w", err).Error())
+			return 1
+		}
+		c.UI.Output(string(out))
 	}
 
-	connWg.Wait()
 	return 0
 }
 
-func handleConnection(
-	ctx context.Context,
-	ui cli.Ui,
-	connWg *sync.WaitGroup,
+func (c *Command) handleConnection(
 	listeningConn *net.TCPConn,
 	workerAddr string,
 	tofuToken string,
 	transport *http.Transport) error {
 
-	defer connWg.Done()
+	defer c.connWg.Done()
 
 	conn, resp, err := websocket.Dial(
-		ctx,
+		c.Context,
 		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
 		&websocket.DialOptions{
 			HTTPClient: &http.Client{
@@ -434,35 +477,22 @@ func handleConnection(
 	}
 
 	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
-	if err := wspb.Write(ctx, conn, &handshake); err != nil {
+	if err := wspb.Write(c.Context, conn, &handshake); err != nil {
 		return fmt.Errorf("error sending handshake to worker: %w", err)
 	}
 	var handshakeResult proxy.HandshakeResult
-	if err := wspb.Read(ctx, conn, &handshakeResult); err != nil {
+	if err := wspb.Read(c.Context, conn, &handshakeResult); err != nil {
 		return fmt.Errorf("error reading handshake result: %w", err)
 	}
-	connectionsLeft.Store(handshakeResult.ConnectionsLeft)
 
-	connInfo := ConnectionInfo{
-		Expiration:      expiration,
-		ConnectionsLeft: handshakeResult.GetConnectionsLeft(),
-	}
-
-	switch base.Format(ui) {
-	case "table":
-		ui.Output(generateConnectionInfoTableOutput(connInfo))
-	case "json":
-		out, err := json.Marshal(&connInfo)
-		if err != nil {
-			ui.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
-		}
-		ui.Output(string(out))
+	if handshakeResult.GetConnectionsLeft() != -1 {
+		c.connsLeftCh <- handshakeResult.GetConnectionsLeft()
 	}
 
 	// We don't _rely_ on client-side timeout verification but this prevents us
 	// seeming to be ready for a connection that will immediately fail when we
 	// try to actually make it
-	expiringCtx, cancel := context.WithDeadline(ctx, handshakeResult.GetExpiration().AsTime())
+	expiringCtx, cancel := context.WithDeadline(c.Context, handshakeResult.GetExpiration().AsTime())
 	defer cancel()
 
 	// Get a wrapped net.Conn so we can use io.Copy
@@ -486,4 +516,23 @@ func handleConnection(
 	localWg.Wait()
 
 	return nil
+}
+
+func (c *Command) updateConnsLeft(connsLeft int32) {
+	c.connectionsLeft.Store(connsLeft)
+
+	connInfo := ConnectionInfo{
+		ConnectionsLeft: connsLeft,
+	}
+
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateConnectionInfoTableOutput(connInfo))
+	case "json":
+		out, err := json.Marshal(&connInfo)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
+		}
+		c.UI.Output(string(out))
+	}
 }

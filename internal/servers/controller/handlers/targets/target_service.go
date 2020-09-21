@@ -388,14 +388,15 @@ HostSetIterationLoop:
 	}
 
 	sad := &pb.SessionAuthorizationData{
-		SessionId:   sess.PublicId,
-		TargetId:    t.GetPublicId(),
-		Scope:       authResults.Scope,
-		CreatedTime: sess.CreateTime.GetTimestamp(),
-		Type:        t.GetType(),
-		Certificate: sess.Certificate,
-		PrivateKey:  privKey,
-		WorkerInfo:  workers,
+		SessionId:       sess.PublicId,
+		TargetId:        t.GetPublicId(),
+		Scope:           authResults.Scope,
+		CreatedTime:     sess.CreateTime.GetTimestamp(),
+		Type:            t.GetType(),
+		Certificate:     sess.Certificate,
+		PrivateKey:      privKey,
+		WorkerInfo:      workers,
+		ConnectionLimit: t.GetSessionConnectionLimit(),
 	}
 	marshaledSad, err := proto.Marshal(sad)
 	if err != nil {

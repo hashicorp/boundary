@@ -114,9 +114,9 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 // with its states.  Returned States are ordered by start time descending.  If the
 // session is not found, it will return nil, nil, nil. No options are currently
 // supported.
-func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ...Option) (*Session, error) {
+func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ...Option) (*Session, *ConnectionAuthzSummary, error) {
 	if sessionId == "" {
-		return nil, fmt.Errorf("lookup session: missing sessionId id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("lookup session: missing sessionId id: %w", db.ErrInvalidParameter)
 	}
 	session := AllocSession()
 	session.PublicId = sessionId
@@ -138,23 +138,28 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 	)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, nil
+			return nil, nil, nil
 		}
-		return nil, fmt.Errorf("lookup session: %w", err)
+		return nil, nil, fmt.Errorf("lookup session: %w", err)
 	}
 	if len(session.CtTofuToken) > 0 {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, session.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(session.KeyId))
 		if err != nil {
-			return nil, fmt.Errorf("lookup session: unable to get database wrapper: %w", err)
+			return nil, nil, fmt.Errorf("lookup session: unable to get database wrapper: %w", err)
 		}
 		if err := session.decrypt(ctx, databaseWrapper); err != nil {
-			return nil, fmt.Errorf("lookup session: cannot decrypt session value: %w", err)
+			return nil, nil, fmt.Errorf("lookup session: cannot decrypt session value: %w", err)
 		}
 	} else {
 		session.CtTofuToken = nil
 	}
 
-	return &session, nil
+	authzSummary, err := r.sessionAuthzSummary(ctx, sessionId)
+	if err != nil {
+		return nil, nil, fmt.Errorf("lookup session: failed to get authz summary: %w", err)
+	}
+
+	return &session, authzSummary, nil
 }
 
 // ListSessions will sessions.  Supports the WithLimit, and WithScopeId options.

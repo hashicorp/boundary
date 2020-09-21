@@ -35,6 +35,8 @@ message LookupSessionResponse {
 	string endpoint = 40;
 	google.protobuf.Timestamp expiration = 50;
 	controller.servers.services.v1.SESSIONSTATUS status = 60;
+	int32 connection_limit = 70;
+	int32 connections_left = 80;
 }
 
 message ActivateSessionRequest {

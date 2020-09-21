@@ -85,7 +85,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 				continue
 			}
 			sessionId := si.GetSessionId()
-			sessionInfo, err := sessRepo.LookupSession(ctx, sessionId)
+			sessionInfo, _, err := sessRepo.LookupSession(ctx, sessionId)
 			if err != nil {
 				return nil, status.Errorf(codes.Internal, "Error looking up session with id %s: %v", sessionId, err)
 			}
@@ -129,7 +129,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		return nil, status.Errorf(codes.Internal, "Error getting session repo: %v", err)
 	}
 
-	sessionInfo, err := sessRepo.LookupSession(ctx, req.GetSessionId())
+	sessionInfo, authzSummary, err := sessRepo.LookupSession(ctx, req.GetSessionId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error looking up session: %v", err)
 	}
@@ -145,11 +145,16 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			SessionId:   sessionInfo.GetPublicId(),
 			Certificate: sessionInfo.Certificate,
 		},
-		Status:     sessionInfo.States[0].Status.ProtoVal(),
-		Version:    sessionInfo.Version,
-		TofuToken:  string(sessionInfo.TofuToken),
-		Endpoint:   sessionInfo.Endpoint,
-		Expiration: sessionInfo.ExpirationTime.Timestamp,
+		Status:          sessionInfo.States[0].Status.ProtoVal(),
+		Version:         sessionInfo.Version,
+		TofuToken:       string(sessionInfo.TofuToken),
+		Endpoint:        sessionInfo.Endpoint,
+		Expiration:      sessionInfo.ExpirationTime.Timestamp,
+		ConnectionLimit: sessionInfo.ConnectionLimit,
+		ConnectionsLeft: authzSummary.ConnectionLimit,
+	}
+	if resp.ConnectionsLeft != -1 {
+		resp.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
 	}
 
 	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ScopeId, kms.KeyPurposeSessions)

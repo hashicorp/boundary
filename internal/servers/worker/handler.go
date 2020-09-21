@@ -123,12 +123,14 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		ci.connCancel = connCancel
 		si.connInfoMap[ci.id] = ci
 		si.status = sessStatus
+		connectionLimit := si.lookupSessionResponse.GetConnectionLimit()
 		si.Unlock()
 
 		w.logger.Trace("authorized connection", "connection_id", ci.id)
 
 		handshakeResult := &proxy.HandshakeResult{
 			Expiration:      expiration,
+			ConnectionLimit: connectionLimit,
 			ConnectionsLeft: connsLeft,
 		}
 		if err := wspb.Write(connCtx, conn, handshakeResult); err != nil {
