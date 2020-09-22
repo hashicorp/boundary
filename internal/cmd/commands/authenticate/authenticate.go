@@ -24,7 +24,7 @@ func (c *Command) Help() string {
 		"",
 		"    Authenticate with password auth method:",
 		"",
-		"      $ boundary authenticate password -name foo -password bar",
+		"      $ boundary authenticate password -auth-method-id ampw_1234567890 -login-name foo -password \"bar\"",
 		"",
 		"  Please see the auth method subcommand help for detailed usage information.",
 	})
