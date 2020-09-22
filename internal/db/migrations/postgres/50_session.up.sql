@@ -303,7 +303,7 @@ begin;
   end;
   $$ language plpgsql;
 
-  -- cancel_session_with_null_fk is intended to be a before insert trigger that
+  -- cancel_session_with_null_fk is intended to be a before update trigger that
   -- sets the session's state to cancel if a FK is set to null.
   create or replace function 
     cancel_session_with_null_fk()
@@ -323,7 +323,6 @@ begin;
         perform cancel_session(new.public_id);
       when new.scope_id is null then
         perform cancel_session(new.public_id);
-    else
     end case;
     return new;
   end;
