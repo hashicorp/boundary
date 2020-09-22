@@ -930,25 +930,21 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 		name     string
 		cancelFk cancelFk
 	}{
-		// TODO (jimlambrt 9/2020) - enable this test for the deletion of users
-		// triggering the session to be canceled.  It can be turned on once
-		// mgaffney's PR for fixing the auth_account scope issue is merged.
-
-		// {
-		// 	name: "UserId",
-		// 	cancelFk: func() cancelFk {
-		// 		s := setupFn()
-		// 		t := &iam.User{
-		// 			User: &iamStore.User{
-		// 				PublicId: s.UserId,
-		// 			},
-		// 		}
-		// 		return cancelFk{
-		// 			s:      s,
-		// 			fkType: t,
-		// 		}
-		// 	}(),
-		// },
+		{
+			name: "UserId",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+				t := &iam.User{
+					User: &iamStore.User{
+						PublicId: s.UserId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
 		{
 			name: "Host",
 			cancelFk: func() cancelFk {
@@ -1039,7 +1035,7 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 				var err error
 				s, err = repo.CancelSession(context.Background(), s.PublicId, s.Version)
 				require.NoError(t, err)
-				require.Equal(t, StatusCancelling, s.States[0].Status)
+				require.Equal(t, StatusCanceling, s.States[0].Status)
 
 				t := &static.Host{
 					Host: &staticStore.Host{
@@ -1079,10 +1075,10 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(s)
 			require.NotNil(s.States)
-			assert.Equal(StatusCancelling, s.States[0].Status)
+			assert.Equal(StatusCanceling, s.States[0].Status)
 			canceledCnt := 0
 			for _, ss := range s.States {
-				if ss.Status == StatusCancelling {
+				if ss.Status == StatusCanceling {
 					canceledCnt += 1
 				}
 			}
