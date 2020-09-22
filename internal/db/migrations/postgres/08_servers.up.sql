@@ -8,6 +8,7 @@ create table server (
     private_id text,
     type text,
     name text not null unique
+      constraint server_name_must_not_be_empty
       check(length(trim(name)) > 0),
     description text,
     address text,

@@ -1,7 +1,9 @@
 begin;
 
 create table iam_scope_type_enm (
-  string text not null primary key check(string in ('unknown', 'global', 'org', 'project'))
+  string text not null primary key
+    constraint only_predefined_scope_types_allowed
+    check(string in ('unknown', 'global', 'org', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
@@ -23,21 +25,24 @@ create table iam_scope (
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
-    type text not null references iam_scope_type_enm(string) check(
-      (
-        type = 'global'
-        and parent_id is null
-      )
-      or (
-        type = 'org'
-        and parent_id = 'global'
-      )
-      or (
-        type = 'project'
-        and parent_id is not null
-        and parent_id != 'global'
-      )
-    ),
+    type text not null
+      references iam_scope_type_enm(string)
+      constraint only_known_scope_types_allowed
+      check(
+        (
+          type = 'global'
+          and parent_id is null
+        )
+        or (
+          type = 'org'
+          and parent_id = 'global'
+        )
+        or (
+          type = 'project'
+          and parent_id is not null
+          and parent_id != 'global'
+        )
+      ),
     description text,
     parent_id text references iam_scope(public_id) on delete cascade on update cascade,
 
@@ -51,6 +56,7 @@ create table iam_scope_global (
       references iam_scope(public_id)
       on delete cascade
       on update cascade
+      constraint only_one_global_scope_allowed
       check(
         scope_id = 'global'
       ),
@@ -135,7 +141,6 @@ create trigger
 before
 delete on iam_scope
   for each row execute procedure disallow_global_scope_deletion();
-
 
 create trigger 
   update_time_column 
@@ -389,10 +394,12 @@ create table iam_role (
       on delete cascade
       on update cascade,
     canonical_grant text -- pk
+      constraint canonical_grant_must_not_be_empty
       check(
         length(trim(canonical_grant)) > 0
       ),
     raw_grant text not null
+      constraint raw_grant_must_not_be_empty
       check(
         length(trim(raw_grant)) > 0
       ),
@@ -419,6 +426,24 @@ create trigger
 before
 insert on iam_role_grant
   for each row execute procedure default_create_time();
+
+create or replace function
+  disallow_r_default_deletion()
+  returns trigger
+as $$
+begin
+  if old.public_id = 'r_default' then
+    raise exception 'deletion of r_default not allowed';
+  end if;
+  return old;
+end;
+$$ language plpgsql;
+
+create trigger
+  iam_role_disallow_global_deletion
+before
+delete on iam_role
+  for each row execute procedure disallow_r_default_deletion();
 
 create trigger 
   update_version_column

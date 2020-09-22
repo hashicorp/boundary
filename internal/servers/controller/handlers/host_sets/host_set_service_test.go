@@ -196,15 +196,16 @@ func TestDelete(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name:    "Delete an Existing Host",
+			name:    "Delete an Existing Host Set",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
 				Id: h.GetPublicId(),
 			},
+			res:     &pbs.DeleteHostSetResponse{},
 			errCode: codes.OK,
 		},
 		{
-			name:    "Delete bad id Host",
+			name:    "Delete bad id Host Set",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
 				Id: static.HostSetPrefix + "_doesntexis",
@@ -212,7 +213,7 @@ func TestDelete(t *testing.T) {
 			errCode: codes.NotFound,
 		},
 		{
-			name:    "Delete bad host catalog id in Host",
+			name:    "Delete bad host catalog id in Host Set",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
 				Id: h.GetPublicId(),

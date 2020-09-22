@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"sort"
 	"strconv"
@@ -461,7 +462,7 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 
 	b.Database.LogMode(true)
 
-	if err := b.CreateGlobalKmsKeys(); err != nil {
+	if err := b.CreateGlobalKmsKeys(context.Background()); err != nil {
 		return err
 	}
 
@@ -472,7 +473,7 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		return nil
 	}
 
-	if err := b.CreateInitialAuthMethod(); err != nil {
+	if err := b.CreateInitialAuthMethod(context.Background()); err != nil {
 		return err
 	}
 
@@ -482,7 +483,7 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 	return nil
 }
 
-func (b *Server) CreateGlobalKmsKeys() error {
+func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 	rw := db.New(b.Database)
 
 	kmsRepo, err := kms.NewRepository(rw, rw)
@@ -499,13 +500,13 @@ func (b *Server) CreateGlobalKmsKeys() error {
 		return fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	cancelCtx, cancel := context.WithCancel(ctx)
 	go func() {
 		<-b.ShutdownCh
 		cancel()
 	}()
 
-	_, err = kms.CreateKeysTx(ctx, rw, rw, b.RootKms, b.SecureRandomReader, scope.Global.String())
+	_, err = kms.CreateKeysTx(cancelCtx, rw, rw, b.RootKms, b.SecureRandomReader, scope.Global.String())
 	if err != nil {
 		return fmt.Errorf("error creating global scope kms keys: %w", err)
 	}
@@ -513,7 +514,7 @@ func (b *Server) CreateGlobalKmsKeys() error {
 	return nil
 }
 
-func (b *Server) CreateInitialAuthMethod() error {
+func (b *Server) CreateInitialAuthMethod(ctx context.Context) error {
 	rw := db.New(b.Database)
 
 	kmsRepo, err := kms.NewRepository(rw, rw)
@@ -546,13 +547,13 @@ func (b *Server) CreateInitialAuthMethod() error {
 		}
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	cancelCtx, cancel := context.WithCancel(ctx)
 	go func() {
 		<-b.ShutdownCh
 		cancel()
 	}()
 
-	_, err = pwRepo.CreateAuthMethod(ctx, authMethod, password.WithPublicId(b.DevAuthMethodId))
+	_, err = pwRepo.CreateAuthMethod(cancelCtx, authMethod, password.WithPublicId(b.DevAuthMethodId))
 	if err != nil {
 		return fmt.Errorf("error saving auth method to the db: %w", err)
 	}
@@ -580,7 +581,7 @@ func (b *Server) CreateInitialAuthMethod() error {
 	if err != nil {
 		return fmt.Errorf("error creating new in memory auth account: %w", err)
 	}
-	acct, err = pwRepo.CreateAccount(ctx, scope.Global.String(), acct, password.WithPassword(b.DevPassword))
+	acct, err = pwRepo.CreateAccount(cancelCtx, scope.Global.String(), acct, password.WithPassword(b.DevPassword))
 	if err != nil {
 		return fmt.Errorf("error saving auth account to the db: %w", err)
 	}
@@ -598,14 +599,14 @@ func (b *Server) CreateInitialAuthMethod() error {
 	}
 	pr.Name = "Generated Global Scope Admin Role"
 	pr.Description = `Provides admin grants to all authenticated users within the "global" scope`
-	defPermsRole, err := iamRepo.CreateRole(ctx, pr)
+	defPermsRole, err := iamRepo.CreateRole(cancelCtx, pr)
 	if err != nil {
 		return fmt.Errorf("error creating role for default generated grants: %w", err)
 	}
-	if _, err := iamRepo.AddRoleGrants(ctx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;actions=*"}); err != nil {
+	if _, err := iamRepo.AddRoleGrants(cancelCtx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;actions=*"}); err != nil {
 		return fmt.Errorf("error creating grant for default generated grants: %w", err)
 	}
-	if _, err := iamRepo.AddPrincipalRoles(ctx, defPermsRole.PublicId, defPermsRole.Version+1, []string{"u_auth"}, nil); err != nil {
+	if _, err := iamRepo.AddPrincipalRoles(cancelCtx, defPermsRole.PublicId, defPermsRole.Version+1, []string{"u_auth"}, nil); err != nil {
 		return fmt.Errorf("error adding principal to role for default generated grants: %w", err)
 	}
 
@@ -619,5 +620,36 @@ func (b *Server) DestroyDevDatabase() error {
 	if b.DevDatabaseCleanupFunc != nil {
 		return b.DevDatabaseCleanupFunc()
 	}
+	return nil
+}
+
+func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string) error {
+	if conf.Worker == nil {
+		conf.Worker = new(config.Worker)
+	}
+	if flagValue != "" {
+		conf.Worker.PublicAddr = flagValue
+	}
+	if conf.Worker.PublicAddr == "" {
+	FindAddr:
+		for _, listener := range conf.Listeners {
+			for _, purpose := range listener.Purpose {
+				if purpose == "proxy" {
+					conf.Worker.PublicAddr = listener.Address
+					break FindAddr
+				}
+			}
+		}
+	}
+	host, port, err := net.SplitHostPort(conf.Worker.PublicAddr)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing port") {
+			port = "9202"
+			host = conf.Worker.PublicAddr
+		} else {
+			return fmt.Errorf("Error splitting public adddress host/port: %w", err)
+		}
+	}
+	conf.Worker.PublicAddr = fmt.Sprintf("%s:%s", host, port)
 	return nil
 }

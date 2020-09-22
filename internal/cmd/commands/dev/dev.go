@@ -34,6 +34,8 @@ type Command struct {
 	flagDevAuthMethodId                string
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
+	flagDevWorkerProxyListenAddr       string
+	flagDevWorkerPublicAddr            string
 	flagDevSkipAuthMethodCreation      bool
 	flagDevDisableDatabaseDestruction  bool
 }
@@ -117,6 +119,20 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagDevControllerClusterListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for controller \"cluster\" purpose.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "dev-proxy-listen-address",
+		Target: &c.flagDevWorkerProxyListenAddr,
+		EnvVar: "BOUNDARY_DEV_WORKER_PROXY_LISTEN_ADDRESS",
+		Usage:  "Address to bind to for worker \"proxy\" purpose.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "dev-worker-public-address",
+		Target: &c.flagDevWorkerPublicAddr,
+		EnvVar: "BOUNDARY_DEV_WORKER_PUBLIC_ADDRESS",
+		Usage:  "Public address at which the worker is reachable for session proxying.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -204,6 +220,11 @@ func (c *Command) Run(args []string) int {
 			if c.flagDevControllerClusterListenAddr != "" {
 				l.Address = c.flagDevControllerClusterListenAddr
 			}
+
+		case "proxy":
+			if c.flagDevWorkerProxyListenAddr != "" {
+				l.Address = c.flagDevWorkerProxyListenAddr
+			}
 		}
 	}
 
@@ -246,6 +267,13 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return 1
 	}
+
+	if err := c.SetupWorkerPublicAddress(devConfig, c.flagDevWorkerPublicAddr); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+	c.InfoKeys = append(c.InfoKeys, "worker public addr")
+	c.Info["worker public addr"] = devConfig.Worker.PublicAddr
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.StorePidFile(devConfig.PidFile); err != nil {

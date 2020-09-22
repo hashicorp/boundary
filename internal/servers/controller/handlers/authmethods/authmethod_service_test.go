@@ -235,6 +235,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthMethodRequest{
 				Id: am.GetPublicId(),
 			},
+			res:     &pbs.DeleteAuthMethodResponse{},
 			errCode: codes.OK,
 		},
 		{

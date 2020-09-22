@@ -7,9 +7,19 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/boundary/internal/authtoken"
+	authtokenStore "github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/host/static"
+	staticStore "github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/target"
+	targetStore "github.com/hashicorp/boundary/internal/target/store"
+	"github.com/lib/pq"
+
 	"github.com/hashicorp/boundary/internal/iam"
+	iamStore "github.com/hashicorp/boundary/internal/iam/store"
+
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
@@ -137,6 +147,24 @@ func TestRepository_ListSession(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(1, len(got))
 		assert.Equal(got[0].UserId, s.UserId)
+	})
+	t.Run("WithSessionIds", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		testSessions := []*Session{}
+		for i := 0; i < 10; i++ {
+			s := TestSession(t, conn, wrapper, composedOf)
+			_ = TestState(t, conn, s.PublicId, StatusActive)
+			testSessions = append(testSessions, s)
+		}
+		assert.Equal(10, len(testSessions))
+		withIds := []string{testSessions[0].PublicId, testSessions[1].PublicId}
+		conn.LogMode(true)
+		got, err := repo.ListSessions(context.Background(), WithSessionIds(withIds...), WithOrder("create_time asc"))
+		require.NoError(err)
+		assert.Equal(2, len(got))
+		assert.Equal(StatusActive, got[0].States[0].Status)
+		assert.Equal(StatusPending, got[0].States[1].Status)
 	})
 }
 
@@ -308,9 +336,9 @@ func TestRepository_updateState(t *testing.T) {
 		wantIsError            error
 	}{
 		{
-			name:         "cancelling",
+			name:         "canceling",
 			session:      TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus:    StatusCancelling,
+			newStatus:    StatusCanceling,
 			wantStateCnt: 2,
 			wantErr:      false,
 		},
@@ -328,7 +356,7 @@ func TestRepository_updateState(t *testing.T) {
 		{
 			name:      "bad-version",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: StatusCancelling,
+			newStatus: StatusCanceling,
 			overrideSessionVersion: func() *uint32 {
 				v := uint32(22)
 				return &v
@@ -338,7 +366,7 @@ func TestRepository_updateState(t *testing.T) {
 		{
 			name:      "empty-version",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: StatusCancelling,
+			newStatus: StatusCanceling,
 			overrideSessionVersion: func() *uint32 {
 				v := uint32(0)
 				return &v
@@ -349,7 +377,7 @@ func TestRepository_updateState(t *testing.T) {
 		{
 			name:      "bad-sessionId",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: StatusCancelling,
+			newStatus: StatusCanceling,
 			overrideSessionId: func() *string {
 				s := "s_thisIsNotValid"
 				return &s
@@ -359,7 +387,7 @@ func TestRepository_updateState(t *testing.T) {
 		{
 			name:      "empty-session",
 			session:   TestDefaultSession(t, conn, wrapper, iamRepo),
-			newStatus: StatusCancelling,
+			newStatus: StatusCanceling,
 			overrideSessionId: func() *string {
 				s := ""
 				return &s
@@ -484,6 +512,10 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 			require.NotNil(c)
 			require.NotNil(cs)
 			assert.Equal(StatusAuthorized, cs[0].Status)
+
+			assert.True(authzInfo.ExpirationTime.GetTimestamp().AsTime().Sub(tt.wantAuthzInfo.ExpirationTime.GetTimestamp().AsTime()) < 10*time.Millisecond)
+			tt.wantAuthzInfo.ExpirationTime = authzInfo.ExpirationTime
+
 			assert.Equal(tt.wantAuthzInfo.ExpirationTime, authzInfo.ExpirationTime)
 			assert.Equal(tt.wantAuthzInfo.ConnectionLimit, authzInfo.ConnectionLimit)
 			assert.Equal(tt.wantAuthzInfo.CurrentConnectionCount, authzInfo.CurrentConnectionCount)
@@ -860,7 +892,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(s)
 			require.NotNil(s.States)
-			assert.Equal(StatusCancelling, s.States[0].Status)
+			assert.Equal(StatusCanceling, s.States[0].Status)
 
 			stateCnt := len(s.States)
 			origStartTime := s.States[0].StartTime
@@ -870,11 +902,191 @@ func TestRepository_CancelSession(t *testing.T) {
 			require.NotNil(s2)
 			require.NotNil(s2.States)
 			assert.Equal(stateCnt, len(s2.States))
-			assert.Equal(StatusCancelling, s.States[0].Status)
+			assert.Equal(StatusCanceling, s.States[0].Status)
 			assert.Equal(origStartTime, s2.States[0].StartTime)
 		})
 	}
 }
+
+func TestRepository_CancelSessionViaFKNull(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	setupFn := func() *Session {
+		session := TestDefaultSession(t, conn, wrapper, iamRepo)
+		_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		return session
+	}
+	type cancelFk struct {
+		s      *Session
+		fkType interface{}
+	}
+	tests := []struct {
+		name     string
+		cancelFk cancelFk
+	}{
+		{
+			name: "UserId",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+				t := &iam.User{
+					User: &iamStore.User{
+						PublicId: s.UserId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
+			name: "Host",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+
+				t := &static.Host{
+					Host: &staticStore.Host{
+						PublicId: s.HostId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
+			name: "Target",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+
+				t := &target.TcpTarget{
+					TcpTarget: &targetStore.TcpTarget{
+						PublicId: s.TargetId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
+			name: "HostSet",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+
+				t := &static.HostSet{
+					HostSet: &staticStore.HostSet{
+						PublicId: s.HostSetId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
+			name: "AuthToken",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+
+				t := &authtoken.AuthToken{
+					AuthToken: &authtokenStore.AuthToken{
+						PublicId: s.AuthTokenId,
+					},
+				}
+				// override the table name so we can delete this thing, since
+				// it's default table name is a non-writable view.
+				t.SetTableName("auth_token")
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
+			name: "Scope",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+
+				t := &iam.Scope{
+					Scope: &iamStore.Scope{
+						PublicId: s.ScopeId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
+			name: "canceled-only-once",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+				var err error
+				s, err = repo.CancelSession(context.Background(), s.PublicId, s.Version)
+				require.NoError(t, err)
+				require.Equal(t, StatusCanceling, s.States[0].Status)
+
+				t := &static.Host{
+					Host: &staticStore.Host{
+						PublicId: s.HostId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, _, err := repo.LookupSession(context.Background(), tt.cancelFk.s.PublicId)
+			require.NoError(err)
+			require.NotNil(s)
+			require.NotNil(s.States)
+
+			rowsDeleted, err := rw.Delete(context.Background(), tt.cancelFk.fkType)
+			if err != nil {
+				var pqError *pq.Error
+				if errors.As(err, &pqError) {
+					t.Log(pqError.Message)
+					t.Log(pqError.Detail)
+					t.Log(pqError.Where)
+					t.Log(pqError.Constraint)
+					t.Log(pqError.Table)
+				}
+			}
+			require.NoError(err)
+			require.Equal(1, rowsDeleted)
+
+			s, _, err = repo.LookupSession(context.Background(), tt.cancelFk.s.PublicId)
+			require.NoError(err)
+			require.NotNil(s)
+			require.NotNil(s.States)
+			assert.Equal(StatusCanceling, s.States[0].Status)
+			canceledCnt := 0
+			for _, ss := range s.States {
+				if ss.Status == StatusCanceling {
+					canceledCnt += 1
+				}
+			}
+			assert.Equal(1, canceledCnt)
+		})
+	}
+}
+
 func TestRepository_ActivateSession(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")

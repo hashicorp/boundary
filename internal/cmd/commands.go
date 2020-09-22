@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
 	"github.com/hashicorp/boundary/internal/cmd/commands/controller"
+	"github.com/hashicorp/boundary/internal/cmd/commands/database"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groups"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogs"
@@ -234,6 +235,17 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &config.EncryptDecryptCommand{
 				Command: base.NewCommand(ui),
 				Func:    "decrypt",
+			}, nil
+		},
+
+		"database": func() (cli.Command, error) {
+			return &database.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"database init": func() (cli.Command, error) {
+			return &database.InitCommand{
+				Command: base.NewCommand(ui),
 			}, nil
 		},
 

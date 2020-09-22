@@ -36,10 +36,34 @@ var flagsMap = map[string][]string{
 
 func (c *Command) Help() string {
 	helpMap := common.HelpMap("session")
-	if c.Func == "" {
-		return helpMap["base"]()
+	var helpStr string
+	switch c.Func {
+	case "":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary sessions [sub command] [options] [args]",
+			"",
+			"  This command allows operations on Boundary sessions.",
+			"",
+			"    Read a session:",
+			"",
+			`      $ boundary sessions read -id s_1234567890`,
+			"",
+			"  Please see the sessions subcommand help for detailed usage information.",
+		})
+	case "cancel":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary sessions cancel [options] [args]",
+			"",
+			"  Cancel the session specified by ID. Example:",
+			"",
+			`    $ boundary sessions cancel -id s_1234567890`,
+			"",
+			"",
+		})
+	default:
+		helpStr = helpMap[c.Func]()
 	}
-	return helpMap[c.Func]() + c.Flags().Help()
+	return helpStr + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {

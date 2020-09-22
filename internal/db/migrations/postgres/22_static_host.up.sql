@@ -83,11 +83,10 @@ begin;
     name text,
     description text,
     address text not null
-      check(
-        length(trim(address)) > 2
-        and
-        length(trim(address)) < 256
-      ),
+      constraint address_must_be_more_than_2_characters
+      check(length(trim(address)) > 2)
+      constraint address_must_be_less_than_256_characters
+      check(length(trim(address)) < 256),
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,

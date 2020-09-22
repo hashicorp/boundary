@@ -354,19 +354,19 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	if opts.DatabaseUrl != "" {
 		tc.b.DatabaseUrl = opts.DatabaseUrl
-		if err := db.InitStore("postgres", nil, tc.b.DatabaseUrl); err != nil {
+		if _, err := db.InitStore("postgres", nil, tc.b.DatabaseUrl); err != nil {
 			t.Fatal(err)
 		}
 		if err := tc.b.ConnectToDatabase("postgres"); err != nil {
 			t.Fatal(err)
 		}
 		if !opts.DisableKmsKeyCreation {
-			if err := tc.b.CreateGlobalKmsKeys(); err != nil {
+			if err := tc.b.CreateGlobalKmsKeys(ctx); err != nil {
 				t.Fatal(err)
 			}
 		}
 		if !opts.DisableAuthMethodCreation {
-			if err := tc.b.CreateInitialAuthMethod(); err != nil {
+			if err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
 				t.Fatal(err)
 			}
 		}

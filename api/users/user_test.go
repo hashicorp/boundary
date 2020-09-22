@@ -134,6 +134,12 @@ func TestErrors(t *testing.T) {
 	assert.Nil(apiErr)
 	assert.NotNil(u)
 
+	// Updating the wrong version should fail.
+	_, apiErr, err = userClient.Update(tc.Context(), u.Item.Id, 73, users.WithName("anything"))
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+
 	// Create another resource with the same name.
 	_, apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
 	require.NoError(err)
