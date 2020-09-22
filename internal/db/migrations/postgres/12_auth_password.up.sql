@@ -19,11 +19,12 @@ begin;
   ┌──────────────────────────┐          ┌──────────────────────────┐          ┌───────────────────────────────┐
   │       auth_account       │          │  auth_password_account   │          │   auth_password_credential    │
   ├──────────────────────────┤          ├──────────────────────────┤          ├───────────────────────────────┤
-  │ public_id      (pk)      │          │ public_id      (pk,fk2)  │          │ private_id          (pk)      │
-  │ scope_id       (fk1,fk2) │   ◀fk2   │ scope_id       (fk1,fk2) │   ◀fk2   │ password_method_id  (fk1,fk2) │
-  │ auth_method_id (fk1)     │┼┼──────○┼│ auth_method_id (fk1,fk2) │┼┼──────○┼│ password_conf_id    (fk1)     │
-  │ iam_user_id    (fk2)     │          │ ...                      │          │ password_account_id (fk2)     │
-  └──────────────────────────┘          └──────────────────────────┘          └───────────────────────────────┘
+  │ public_id         (pk)   │          │ public_id      (pk,fk2)  │          │ private_id          (pk)      │
+  │ scope_id          (fk1)  │   ◀fk2   │ scope_id       (fk1,fk2) │   ◀fk2   │ password_method_id  (fk1,fk2) │
+  │ auth_method_id    (fk1)  │┼┼──────○┼│ auth_method_id (fk1,fk2) │┼┼──────○┼│ password_conf_id    (fk1)     │
+  │ iam_user_scope_id (fk2)  │          │ ...                      │          │ password_account_id (fk2)     │
+  │ iam_user_id       (fk2)  │          └──────────────────────────┘          └───────────────────────────────┘
+  └──────────────────────────┘
 
   An auth_method is a base type. An auth_password_method is an auth_method
   subtype. For every row in auth_password_method there is one row in auth_method
