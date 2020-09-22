@@ -87,7 +87,7 @@ func TestRepository_CreateUser(t *testing.T) {
 				assert.Nil(u)
 				switch tt.name {
 				case "dup-name":
-					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
+					assert.Contains(err.Error(), fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId))
 				default:
 					assert.True(strings.HasPrefix(err.Error(), tt.wantErrMsg))
 				}
