@@ -162,7 +162,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 	return &session, authzSummary, nil
 }
 
-// ListSessions will sessions.  Supports the WithLimit, and WithScopeId options.
+// ListSessions will sessions.  Supports the WithLimit, WithScopeId and WithSessionIds options.
 func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
 	opts := getOpts(opt...)
 	var where []string
@@ -177,6 +177,15 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		inClauseCnt += 1
 		where, args = append(where, fmt.Sprintf("user_id = $%d", inClauseCnt)), append(args, opts.withUserId)
 	}
+	if len(opts.withSessionIds) > 0 {
+		idsInClause := make([]string, 0, len(opts.withSessionIds))
+		for _, id := range opts.withSessionIds {
+			inClauseCnt += 1
+			idsInClause, args = append(idsInClause, fmt.Sprintf("$%d", inClauseCnt)), append(args, id)
+		}
+		where = append(where, fmt.Sprintf("s.public_id in(%s)", strings.Join(idsInClause, ",")))
+	}
+
 	var limit string
 	switch {
 	case opts.withLimit < 0: // any negative number signals unlimited results
@@ -260,10 +269,10 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...
 	return rowsDeleted, nil
 }
 
-// CancelSession sets a session's state to "cancelling" in the repo.  It's
-// called when the user cancels a session and the controller wants to update the
-// session state to "cancelling" for the given reason, so the workers can get
-// the "cancelling signal" during their next status heartbeat. CancelSession is
+// CancelSession sets a session's state to "canceling" in the repo.  It's called
+// when the user cancels a session and the controller wants to update the
+// session state to "canceling" for the given reason, so the workers can get the
+// "canceling signal" during their next status heartbeat. CancelSession is
 // idempotent.
 func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, error) {
 	if sessionId == "" {
@@ -272,7 +281,7 @@ func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessio
 	if sessionVersion == 0 {
 		return nil, fmt.Errorf("cancel session: missing session version: %w", db.ErrInvalidParameter)
 	}
-	s, ss, err := r.updateState(ctx, sessionId, sessionVersion, StatusCancelling)
+	s, ss, err := r.updateState(ctx, sessionId, sessionVersion, StatusCanceling)
 	if err != nil {
 		return nil, fmt.Errorf("cancel session: %w", err)
 	}
@@ -531,7 +540,7 @@ func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith
 // authenticating the session. The session must be in a "pending" state to be
 // activated. States are ordered by start time descending. Returns an
 // ErrSessionNotPending error if a connection cannot be made because the session
-// was cancelled or terminated.
+// was canceled or terminated.
 func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, serverId, serverType string, tofuToken []byte) (*Session, []*State, error) {
 	if sessionId == "" {
 		return nil, nil, fmt.Errorf("activate session: missing session id: %w", db.ErrInvalidParameter)

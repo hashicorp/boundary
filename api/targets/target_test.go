@@ -170,7 +170,6 @@ func TestCrud(t *testing.T) {
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
 
-// TODO: Get better coverage for expected errors and error formats.
 func TestSet_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
@@ -187,6 +186,13 @@ func TestSet_Errors(t *testing.T) {
 	require.NoError(err)
 	require.Nil(apiErr)
 	assert.NotNil(tar)
+
+	// Updating the wrong version should fail.
+	_, apiErr, err = tarClient.Update(tc.Context(), tar.Item.Id, 73, targets.WithName("anything"))
+	require.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+
 	tar, apiErr, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
 	require.NoError(err)
 	assert.NotNil(apiErr)
