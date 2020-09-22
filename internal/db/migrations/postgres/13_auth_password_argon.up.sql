@@ -8,18 +8,23 @@ begin;
     password_method_id wt_public_id not null,
     create_time wt_timestamp,
     iterations int not null default 3
+      constraint iterations_must_be_greater_than_0
       check(iterations > 0),
     memory int not null default 65536
+      constraint memory_must_be_greater_than_0
       check(memory > 0),
     threads int not null default 1
+      constraint threads_must_be_greater_than_0
       check(threads > 0),
     -- salt_length unit is bytes
     salt_length int not null default 32
     -- minimum of 16 bytes (128 bits)
+      constraint salt_must_be_at_least_16_bytes
       check(salt_length >= 16),
     -- key_length unit is bytes
     key_length int not null default 32
     -- minimum of 16 bytes (128 bits)
+      constraint key_length_must_be_at_least_16_bytes
       check(key_length >= 16),
     unique(password_method_id, iterations, memory, threads, salt_length, key_length),
     unique (password_method_id, private_id),
@@ -64,11 +69,14 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     salt bytea not null -- cannot be changed unless derived_key is changed too
+      constraint salt_must_not_be_empty
       check(length(salt) > 0),
     derived_key bytea not null
+      constraint derived_key_must_not_be_empty
       check(length(derived_key) > 0),
     -- TODO: Make key_id a foreign key once we have DEKs
     key_id text not null
+      constraint key_id_must_not_be_empty
       check(length(trim(key_id)) > 0),
     foreign key (password_method_id, password_conf_id)
       references auth_password_argon2_conf (password_method_id, private_id)

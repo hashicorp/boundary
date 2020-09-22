@@ -105,11 +105,10 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     login_name text not null
-      check(
-        lower(trim(login_name)) = login_name
-        and
-        length(login_name) > 0
-      ),
+      constraint login_name_must_be_lowercase
+      check(lower(trim(login_name)) = login_name)
+      constraint login_name_must_not_be_empty
+      check(length(trim(login_name)) > 0),
     version wt_version,
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)
