@@ -432,6 +432,9 @@ func (f *FlagSets) NewFlagSet(name string) *FlagSet {
 
 // Completions returns the completions for this flag set.
 func (f *FlagSets) Completions() complete.Flags {
+	if f == nil {
+		return nil
+	}
 	return f.completions
 }
 
