@@ -70,4 +70,11 @@ func Test_GetOpts(t *testing.T) {
 		copy(testOpts.withTestTofu, tofu)
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithSessionIds", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithSessionIds("s_1", "s_2", "s_3"))
+		testOpts := getDefaultOptions()
+		testOpts.withSessionIds = []string{"s_1", "s_2", "s_3"}
+		assert.Equal(opts, testOpts)
+	})
 }

@@ -25,6 +25,7 @@ type options struct {
 	withExpirationTime *timestamp.Timestamp
 	withTestTofu       []byte
 	withListingConvert bool
+	withSessionIds     []string
 }
 
 func getDefaultOptions() options {
@@ -72,6 +73,14 @@ func WithExpirationTime(exp *timestamp.Timestamp) Option {
 func WithTestTofu(tofu []byte) Option {
 	return func(o *options) {
 		o.withTestTofu = tofu
+	}
+}
+
+// WithSessionIds allows the specification of the session ids to use for the
+// operation.
+func WithSessionIds(ids ...string) Option {
+	return func(o *options) {
+		o.withSessionIds = ids
 	}
 }
 
