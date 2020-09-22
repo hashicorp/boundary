@@ -519,7 +519,9 @@ COMMIT;
 begin;
 
 create table iam_scope_type_enm (
-  string text not null primary key check(string in ('unknown', 'global', 'org', 'project'))
+  string text not null primary key
+    constraint only_predefined_scope_types_allowed
+    check(string in ('unknown', 'global', 'org', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
@@ -541,21 +543,24 @@ create table iam_scope (
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
-    type text not null references iam_scope_type_enm(string) check(
-      (
-        type = 'global'
-        and parent_id is null
-      )
-      or (
-        type = 'org'
-        and parent_id = 'global'
-      )
-      or (
-        type = 'project'
-        and parent_id is not null
-        and parent_id != 'global'
-      )
-    ),
+    type text not null
+      references iam_scope_type_enm(string)
+      constraint only_known_scope_types_allowed
+      check(
+        (
+          type = 'global'
+          and parent_id is null
+        )
+        or (
+          type = 'org'
+          and parent_id = 'global'
+        )
+        or (
+          type = 'project'
+          and parent_id is not null
+          and parent_id != 'global'
+        )
+      ),
     description text,
     parent_id text references iam_scope(public_id) on delete cascade on update cascade,
 
@@ -569,6 +574,7 @@ create table iam_scope_global (
       references iam_scope(public_id)
       on delete cascade
       on update cascade
+      constraint only_one_global_scope_allowed
       check(
         scope_id = 'global'
       ),
@@ -906,10 +912,12 @@ create table iam_role (
       on delete cascade
       on update cascade,
     canonical_grant text -- pk
+      constraint canonical_grant_must_not_be_empty
       check(
         length(trim(canonical_grant)) > 0
       ),
     raw_grant text not null
+      constraint raw_grant_must_not_be_empty
       check(
         length(trim(raw_grant)) > 0
       ),
@@ -1459,6 +1467,7 @@ create table server (
     private_id text,
     type text,
     name text not null unique
+      constraint server_name_must_not_be_empty
       check(length(trim(name)) > 0),
     description text,
     address text,
@@ -1529,6 +1538,7 @@ begin;
     token bytea not null unique,
     -- TODO: Make key_id a foreign key once we have DEKs
     key_id text not null
+      constraint key_id_must_not_be_empty
       check(length(trim(key_id)) > 0),
     auth_account_id wt_public_id not null
       references auth_account(public_id)
@@ -1540,10 +1550,12 @@ begin;
     -- It is updated after X minutes from the last time it was updated on
     -- a per row basis.
     approximate_last_access_time wt_timestamp
+      constraint last_access_time_must_not_be_after_expiration_time
       check(
         approximate_last_access_time <= expiration_time
       ),
     expiration_time wt_timestamp
+      constraint create_time_must_not_be_after_expiration_time
       check(
         create_time <= expiration_time
       )
@@ -1784,11 +1796,10 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     login_name text not null
-      check(
-        lower(trim(login_name)) = login_name
-        and
-        length(login_name) > 0
-      ),
+      constraint login_name_must_be_lowercase
+      check(lower(trim(login_name)) = login_name)
+      constraint login_name_must_not_be_empty
+      check(length(trim(login_name)) > 0),
     version wt_version,
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)
@@ -2001,18 +2012,23 @@ begin;
     password_method_id wt_public_id not null,
     create_time wt_timestamp,
     iterations int not null default 3
+      constraint iterations_must_be_greater_than_0
       check(iterations > 0),
     memory int not null default 65536
+      constraint memory_must_be_greater_than_0
       check(memory > 0),
     threads int not null default 1
+      constraint threads_must_be_greater_than_0
       check(threads > 0),
     -- salt_length unit is bytes
     salt_length int not null default 32
     -- minimum of 16 bytes (128 bits)
+      constraint salt_must_be_at_least_16_bytes
       check(salt_length >= 16),
     -- key_length unit is bytes
     key_length int not null default 32
     -- minimum of 16 bytes (128 bits)
+      constraint key_length_must_be_at_least_16_bytes
       check(key_length >= 16),
     unique(password_method_id, iterations, memory, threads, salt_length, key_length),
     unique (password_method_id, private_id),
@@ -2057,11 +2073,14 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     salt bytea not null -- cannot be changed unless derived_key is changed too
+      constraint salt_must_not_be_empty
       check(length(salt) > 0),
     derived_key bytea not null
+      constraint derived_key_must_not_be_empty
       check(length(derived_key) > 0),
     -- TODO: Make key_id a foreign key once we have DEKs
     key_id text not null
+      constraint key_id_must_not_be_empty
       check(length(trim(key_id)) > 0),
     foreign key (password_method_id, password_conf_id)
       references auth_password_argon2_conf (password_method_id, private_id)
@@ -2488,11 +2507,10 @@ begin;
     name text,
     description text,
     address text not null
-      check(
-        length(trim(address)) > 2
-        and
-        length(trim(address)) < 256
-      ),
+      constraint address_must_be_more_than_2_characters
+      check(length(trim(address)) > 2)
+      constraint address_must_be_less_than_256_characters
+      check(length(trim(address)) < 256),
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
@@ -3218,9 +3236,11 @@ create table target_tcp (
    -- max duration of the session in seconds.
    -- default is 8 hours
   session_max_seconds int not null default 28800
+    constraint session_max_seconds_must_be_greater_than_0
     check(session_max_seconds > 0),
   -- limit on number of session connections allowed. -1 equals no limit
   session_connection_limit int not null default 1
+    constraint session_connection_limit_must_be_greater_than_0_or_negative_1
     check(session_connection_limit > 0 or session_connection_limit = -1),
   create_time wt_timestamp,
   update_time wt_timestamp,
@@ -3399,6 +3419,7 @@ begin;
 
   create table session_termination_reason_enm (
     name text primary key
+      constraint only_predefined_session_termination_reasons_allowed
       check (
         name in (
           'unknown',
@@ -3469,6 +3490,7 @@ begin;
     expiration_time wt_timestamp, -- maybe null
     -- limit on number of session connections allowed.  default of 0 equals no limit
     connection_limit int not null default 1
+      constraint connection_limit_must_be_greater_than_0_or_negative_1
       check(connection_limit > 0 or connection_limit = -1), 
     -- trust of first use token 
     tofu_token bytea, -- will be null when session is first created
@@ -3671,6 +3693,7 @@ begin;
 
   create table session_state_enm (
     name text primary key
+      constraint only_predefined_session_states_allowed
       check (
         name in ('pending', 'active', 'canceling', 'terminated')
       )
@@ -3882,6 +3905,7 @@ begin;
 
   create table session_connection_closed_reason_enm (
     name text primary key
+      constraint only_predefined_session_connection_closed_reasons_allowed
       check (
         name in (
           'unknown',
@@ -3919,25 +3943,24 @@ begin;
     -- the client_tcp_port is the network port at the address of the client the
     -- worker proxied a connection for the user
     client_tcp_port integer  -- maybe null on insert
-      check(
-        client_tcp_port > 0
-        and
-        client_tcp_port <= 65535
-      ),
+      constraint client_tcp_port_must_be_greater_than_0
+      check(client_tcp_port > 0)
+      constraint client_tcp_port_must_less_than_or_equal_to_65535
+      check(client_tcp_port <= 65535),
     -- the endpoint_tcp_address is the network address of the endpoint which the
     -- worker initiated the connection to, for the user
     endpoint_tcp_address inet, -- maybe be null on insert
     -- the endpoint_tcp_port is the network port at the address of the endpoint the
     -- worker proxied a connection to, for the user
     endpoint_tcp_port integer -- maybe null on insert
-      check(
-        endpoint_tcp_port > 0
-        and
-        endpoint_tcp_port <= 65535
-      ),
+      constraint endpoint_tcp_port_must_be_greater_than_0
+      check(endpoint_tcp_port > 0)
+      constraint endpoint_tcp_port_must_less_than_or_equal_to_65535
+      check(endpoint_tcp_port <= 65535),
     -- the total number of bytes received by the worker from the client and sent
     -- to the endpoint for this connection
     bytes_up bigint -- can be null
+      constraint bytes_up_must_be_null_or_a_non_negative_number
       check (
         bytes_up is null
         or
@@ -3946,6 +3969,7 @@ begin;
     -- the total number of bytes received by the worker from the endpoint and sent
     -- to the client for this connection
     bytes_down bigint -- can be null
+      constraint bytes_down_must_be_null_or_a_non_negative_number
       check (
         bytes_down is null
         or
@@ -4035,6 +4059,7 @@ begin;
 
   create table session_connection_state_enm (
     name text primary key
+      constraint only_predefined_session_connection_states_allowed
       check (
         name in ('authorized', 'connected', 'closed')
       )

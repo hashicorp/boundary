@@ -102,9 +102,11 @@ create table target_tcp (
    -- max duration of the session in seconds.
    -- default is 8 hours
   session_max_seconds int not null default 28800
+    constraint session_max_seconds_must_be_greater_than_0
     check(session_max_seconds > 0),
   -- limit on number of session connections allowed. -1 equals no limit
   session_connection_limit int not null default 1
+    constraint session_connection_limit_must_be_greater_than_0_or_negative_1
     check(session_connection_limit > 0 or session_connection_limit = -1),
   create_time wt_timestamp,
   update_time wt_timestamp,

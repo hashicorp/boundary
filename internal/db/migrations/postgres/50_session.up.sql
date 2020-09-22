@@ -63,6 +63,7 @@ begin;
 
   create table session_termination_reason_enm (
     name text primary key
+      constraint only_predefined_session_termination_reasons_allowed
       check (
         name in (
           'unknown',
@@ -133,6 +134,7 @@ begin;
     expiration_time wt_timestamp, -- maybe null
     -- limit on number of session connections allowed.  default of 0 equals no limit
     connection_limit int not null default 1
+      constraint connection_limit_must_be_greater_than_0_or_negative_1
       check(connection_limit > 0 or connection_limit = -1), 
     -- trust of first use token 
     tofu_token bytea, -- will be null when session is first created
@@ -335,6 +337,7 @@ begin;
 
   create table session_state_enm (
     name text primary key
+      constraint only_predefined_session_states_allowed
       check (
         name in ('pending', 'active', 'canceling', 'terminated')
       )
