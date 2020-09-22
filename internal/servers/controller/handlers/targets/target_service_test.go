@@ -453,13 +453,14 @@ func TestUpdate(t *testing.T) {
 			name: "Update an Existing Target",
 			req: &pbs.UpdateTargetRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description", "session_max_seconds", "session_connection_limit"},
+					Paths: []string{"name", "description", "session_max_seconds", "session_connection_limit", "type"},
 				},
 				Item: &pb.Target{
 					Name:                   wrapperspb.String("name"),
 					Description:            wrapperspb.String("desc"),
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
+					Type: target.TcpSubType.String(),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -486,11 +487,12 @@ func TestUpdate(t *testing.T) {
 			name: "Multiple Paths in single string",
 			req: &pbs.UpdateTargetRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name,description"},
+					Paths: []string{"name,description,type"},
 				},
 				Item: &pb.Target{
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
+					Type: target.TcpSubType.String(),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -712,19 +714,6 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Target{
 					UpdatedTime: ptypes.TimestampNow(),
-				},
-			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Valid mask, cant specify type",
-			req: &pbs.UpdateTargetRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name"},
-				},
-				Item: &pb.Target{
-					Type: "Unknown",
 				},
 			},
 			res:     nil,
