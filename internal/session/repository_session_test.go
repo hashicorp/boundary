@@ -7,9 +7,19 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/boundary/internal/authtoken"
+	authtokenStore "github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/host/static"
+	staticStore "github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/target"
+	targetStore "github.com/hashicorp/boundary/internal/target/store"
+	"github.com/lib/pq"
+
 	"github.com/hashicorp/boundary/internal/iam"
+	iamStore "github.com/hashicorp/boundary/internal/iam/store"
+
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
@@ -875,6 +885,190 @@ func TestRepository_CancelSession(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_CancelSessionViaFKNull(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	setupFn := func() *Session {
+		session := TestDefaultSession(t, conn, wrapper, iamRepo)
+		_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		return session
+	}
+	type cancelFk struct {
+		s      *Session
+		fkType interface{}
+	}
+	tests := []struct {
+		name     string
+		cancelFk cancelFk
+	}{
+		// TODO (jimlambrt 9/2020) - enable this test for the deletion of users
+		// triggering the session to be canceled.  It can be turned on once
+		// mgaffney's PR for fixing the auth_account scope issue is merged.
+
+		// {
+		// 	name: "UserId",
+		// 	cancelFk: func() cancelFk {
+		// 		s := setupFn()
+		// 		t := &iam.User{
+		// 			User: &iamStore.User{
+		// 				PublicId: s.UserId,
+		// 			},
+		// 		}
+		// 		return cancelFk{
+		// 			s:      s,
+		// 			fkType: t,
+		// 		}
+		// 	}(),
+		// },
+		{
+			name: "Host",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+
+				t := &static.Host{
+					Host: &staticStore.Host{
+						PublicId: s.HostId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
+			name: "Target",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+
+				t := &target.TcpTarget{
+					TcpTarget: &targetStore.TcpTarget{
+						PublicId: s.TargetId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
+			name: "HostSet",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+
+				t := &static.HostSet{
+					HostSet: &staticStore.HostSet{
+						PublicId: s.HostSetId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
+			name: "AuthToken",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+
+				t := &authtoken.AuthToken{
+					AuthToken: &authtokenStore.AuthToken{
+						PublicId: s.AuthTokenId,
+					},
+				}
+				// override the table name so we can delete this thing, since
+				// it's default table name is a non-writable view.
+				t.SetTableName("auth_token")
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
+			name: "Scope",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+
+				t := &iam.Scope{
+					Scope: &iamStore.Scope{
+						PublicId: s.ScopeId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
+			name: "canceled-only-once",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+				var err error
+				s, err = repo.CancelSession(context.Background(), s.PublicId, s.Version)
+				require.NoError(t, err)
+				require.Equal(t, StatusCancelling, s.States[0].Status)
+
+				t := &static.Host{
+					Host: &staticStore.Host{
+						PublicId: s.HostId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, _, err := repo.LookupSession(context.Background(), tt.cancelFk.s.PublicId)
+			require.NoError(err)
+			require.NotNil(s)
+			require.NotNil(s.States)
+
+			rowsDeleted, err := rw.Delete(context.Background(), tt.cancelFk.fkType)
+			if err != nil {
+				var pqError *pq.Error
+				if errors.As(err, &pqError) {
+					t.Log(pqError.Message)
+					t.Log(pqError.Detail)
+					t.Log(pqError.Where)
+					t.Log(pqError.Constraint)
+					t.Log(pqError.Table)
+				}
+			}
+			require.NoError(err)
+			require.Equal(1, rowsDeleted)
+
+			s, _, err = repo.LookupSession(context.Background(), tt.cancelFk.s.PublicId)
+			require.NoError(err)
+			require.NotNil(s)
+			require.NotNil(s.States)
+			assert.Equal(StatusCancelling, s.States[0].Status)
+			canceledCnt := 0
+			for _, ss := range s.States {
+				if ss.Status == StatusCancelling {
+					canceledCnt += 1
+				}
+			}
+			assert.Equal(1, canceledCnt)
+		})
+	}
+}
+
 func TestRepository_ActivateSession(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
