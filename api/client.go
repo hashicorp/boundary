@@ -21,10 +21,10 @@ import (
 
 	"github.com/hashicorp/boundary/sdk/parseutil"
 	"github.com/hashicorp/boundary/sdk/recovery"
-	"github.com/hashicorp/go-cleanhttp"
+	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-retryablehttp"
-	"github.com/hashicorp/go-rootcerts"
+	retryablehttp "github.com/hashicorp/go-retryablehttp"
+	rootcerts "github.com/hashicorp/go-rootcerts"
 	"golang.org/x/time/rate"
 )
 
