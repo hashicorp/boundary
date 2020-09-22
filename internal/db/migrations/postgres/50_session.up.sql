@@ -158,9 +158,11 @@ begin;
   update on session
     for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time', 'endpoint');
   
+  -- session table has some cascades of FK to null, so we need to be careful
+  -- which columns trigger an update of the version column
   create trigger 
     update_version_column 
-  after update on session
+  after update of version, termination_reason, key_id, tofu_token, server_id, server_type on session
     for each row execute procedure update_version_column();
     
   create trigger 
@@ -269,6 +271,68 @@ begin;
   after update of termination_reason on session
     for each row execute procedure update_session_state_on_termination_reason();
  
+
+  -- cancel_session will insert a cancel state for the session, if there's isn't
+  -- a canceled state already.  It's used by cancel_session_with_null_fk.
+  create or replace function
+    cancel_session(in sessionId text) returns void 
+  as $$
+  declare
+    rows_affected numeric;
+  begin 
+    insert into session_state(session_id, state) 
+    select 
+	    sessionId::text, 'canceling' 
+    from
+      session s
+    where 
+      s.public_id = sessionId::text and
+      s.public_id not in (
+        select 
+          session_id 
+        from 
+          session_state 
+        where 
+          session_id = sessionId::text and 
+          state = 'canceling'
+      ) limit 1;
+      get diagnostics rows_affected = row_count;
+      if rows_affected > 1 then
+          raise exception 'cancel session: more than one row affected: %', rows_affected; 
+      end if;
+  end;
+  $$ language plpgsql;
+
+  -- cancel_session_with_null_fk is intended to be a before insert trigger that
+  -- sets the session's state to cancel if a FK is set to null.
+  create or replace function 
+    cancel_session_with_null_fk()
+    returns trigger
+  as $$
+  begin
+   case 
+      when new.user_id is null then
+        perform cancel_session(new.public_id);
+      when new.host_id is null then
+        perform cancel_session(new.public_id);
+      when new.target_id is null then
+        perform cancel_session(new.public_id);
+      when new.host_set_id is null then
+        perform cancel_session(new.public_id);
+      when new.auth_token_id is null then
+        perform cancel_session(new.public_id);
+      when new.scope_id is null then
+        perform cancel_session(new.public_id);
+    else
+    end case;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger 
+    cancel_session_with_null_fk
+  before update of user_id, host_id, target_id, host_set_id, auth_token_id, scope_id on session
+    for each row execute procedure cancel_session_with_null_fk();
 
   create table session_state_enm (
     name text primary key
