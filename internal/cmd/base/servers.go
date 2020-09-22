@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"sort"
 	"strconv"
@@ -619,5 +620,36 @@ func (b *Server) DestroyDevDatabase() error {
 	if b.DevDatabaseCleanupFunc != nil {
 		return b.DevDatabaseCleanupFunc()
 	}
+	return nil
+}
+
+func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string) error {
+	if conf.Worker == nil {
+		conf.Worker = new(config.Worker)
+	}
+	if flagValue != "" {
+		conf.Worker.PublicAddr = flagValue
+	}
+	if conf.Worker.PublicAddr == "" {
+	FindAddr:
+		for _, listener := range conf.Listeners {
+			for _, purpose := range listener.Purpose {
+				if purpose == "proxy" {
+					conf.Worker.PublicAddr = listener.Address
+					break FindAddr
+				}
+			}
+		}
+	}
+	host, port, err := net.SplitHostPort(conf.Worker.PublicAddr)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing port") {
+			port = "9202"
+			host = conf.Worker.PublicAddr
+		} else {
+			return fmt.Errorf("Error splitting public adddress host/port: %w", err)
+		}
+	}
+	conf.Worker.PublicAddr = fmt.Sprintf("%s:%s", host, port)
 	return nil
 }
