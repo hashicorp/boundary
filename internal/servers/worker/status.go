@@ -85,7 +85,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 						Name:        w.conf.RawConfig.Worker.Name,
 						Type:        resource.Worker.String(),
 						Description: w.conf.RawConfig.Worker.Description,
-						Address:     w.listeningAddress,
+						Address:     w.conf.RawConfig.Worker.PublicAddr,
 					},
 				})
 				if err != nil {

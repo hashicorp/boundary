@@ -36,13 +36,14 @@ type Command struct {
 
 	configWrapper wrapping.Wrapper
 
-	flagConfig              string
-	flagConfigKms           string
-	flagLogLevel            string
-	flagLogFormat           string
-	flagDev                 bool
-	flagDevWorkerListenAddr string
-	flagCombineLogs         bool
+	flagConfig                   string
+	flagConfigKms                string
+	flagLogLevel                 string
+	flagLogFormat                string
+	flagDev                      bool
+	flagDevWorkerProxyListenAddr string
+	flagDevWorkerPublicAddr      string
+	flagCombineLogs              bool
 }
 
 func (c *Command) Synopsis() string {
@@ -116,10 +117,17 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-listen-address",
-		Target: &c.flagDevWorkerListenAddr,
-		EnvVar: "BOUNDARY_DEV_WORKER_LISTEN_ADDRESS",
+		Name:   "dev-proxy-listen-address",
+		Target: &c.flagDevWorkerProxyListenAddr,
+		EnvVar: "BOUNDARY_DEV_WORKER_PROXY_LISTEN_ADDRESS",
 		Usage:  "Address to bind the worker to in \"dev\" mode.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "dev-worker-public-address",
+		Target: &c.flagDevWorkerPublicAddr,
+		EnvVar: "BOUNDARY_DEV_WORKER_PUBLIC_ADDRESS",
+		Usage:  "Public address at which the worker is reachable for session proxying.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -192,6 +200,16 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return 1
 	}
+
+	if !c.flagDev {
+		c.flagDevWorkerPublicAddr = ""
+	}
+	if err := c.SetupWorkerPublicAddress(c.Config, c.flagDevWorkerPublicAddr); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+	c.InfoKeys = append(c.InfoKeys, "public addr")
+	c.Info["public addr"] = c.Config.Worker.PublicAddr
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.StorePidFile(c.Config.PidFile); err != nil {
@@ -266,8 +284,8 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 			return 1
 		}
 
-		if c.flagDevWorkerListenAddr != "" {
-			c.Config.Listeners[0].Address = c.flagDevWorkerListenAddr
+		if c.flagDevWorkerProxyListenAddr != "" {
+			c.Config.Listeners[0].Address = c.flagDevWorkerProxyListenAddr
 		}
 	}
 

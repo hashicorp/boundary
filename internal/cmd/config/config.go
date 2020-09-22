@@ -110,6 +110,7 @@ type Worker struct {
 	Name        string   `hcl:"name"`
 	Description string   `hcl:"description"`
 	Controllers []string `hcl:"controllers"`
+	PublicAddr  string   `hcl:"public_addr"`
 }
 
 type Database struct {
