@@ -14,7 +14,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/mattn/go-colorable"
+	colorable "github.com/mattn/go-colorable"
 	"github.com/mitchellh/cli"
 )
 

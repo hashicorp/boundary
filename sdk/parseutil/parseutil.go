@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-sockaddr"
+	sockaddr "github.com/hashicorp/go-sockaddr"
 	"github.com/mitchellh/mapstructure"
 )
 

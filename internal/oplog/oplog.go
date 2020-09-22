@@ -8,7 +8,7 @@ import (
 	"io"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/structwrapping"
+	structwrapping "github.com/hashicorp/go-kms-wrapping/structwrapping"
 
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	_ "github.com/lib/pq"

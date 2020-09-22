@@ -181,14 +181,14 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					Description:  "test-description-repo",
+					Description:  ("test-description-repo"),
 					LoginName:    "kazmierczak2",
 				},
 			},
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					Description:  "test-description-repo",
+					Description:  ("test-description-repo"),
 					LoginName:    "kazmierczak2",
 				},
 			},

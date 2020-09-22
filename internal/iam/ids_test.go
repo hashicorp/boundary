@@ -1,9 +1,10 @@
 package iam
 
 import (
-	"errors"
 	"strings"
 	"testing"
+
+	"errors"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/types/scope"

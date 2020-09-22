@@ -62,12 +62,12 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "valid-with-description",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					Description: "test-description-repo",
+					Description: ("test-description-repo"),
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					Description: "test-description-repo",
+					Description: ("test-description-repo"),
 				},
 			},
 		},

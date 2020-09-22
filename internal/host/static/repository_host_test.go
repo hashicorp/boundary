@@ -99,14 +99,14 @@ func TestRepository_CreateHost(t *testing.T) {
 			in: &Host{
 				Host: &store.Host{
 					CatalogId:   catalog.PublicId,
-					Description: "test-description-repo",
+					Description: ("test-description-repo"),
 					Address:     "127.0.0.1",
 				},
 			},
 			want: &Host{
 				Host: &store.Host{
 					CatalogId:   catalog.PublicId,
-					Description: "test-description-repo",
+					Description: ("test-description-repo"),
 					Address:     "127.0.0.1",
 				},
 			},

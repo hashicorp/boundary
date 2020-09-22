@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/ryanuber/go-glob"
+	glob "github.com/ryanuber/go-glob"
 )
 
 // StrListContainsGlob looks for a string in a list of strings and allows

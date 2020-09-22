@@ -2,7 +2,7 @@ package oplog
 
 import (
 	"errors"
-	"fmt"
+	fmt "fmt"
 	"reflect"
 )
 

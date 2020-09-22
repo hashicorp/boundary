@@ -94,13 +94,13 @@ func TestRepository_CreateSet(t *testing.T) {
 			in: &HostSet{
 				HostSet: &store.HostSet{
 					CatalogId:   catalog.PublicId,
-					Description: "test-description-repo",
+					Description: ("test-description-repo"),
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
 					CatalogId:   catalog.PublicId,
-					Description: "test-description-repo",
+					Description: ("test-description-repo"),
 				},
 			},
 		},

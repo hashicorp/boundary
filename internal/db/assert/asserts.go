@@ -1,7 +1,7 @@
 package dbassert
 
 import (
-	"github.com/hashicorp/dbassert"
+	dbassert "github.com/hashicorp/dbassert"
 
 	"github.com/hashicorp/boundary/internal/db"
 	gormAssert "github.com/hashicorp/dbassert/gorm"
