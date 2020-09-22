@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -444,14 +443,14 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
 	}
 	if tcpAttrs.GetDefaultPort().GetValue() != 0 {
 		opts = append(opts, target.WithDefaultPort(tcpAttrs.GetDefaultPort().GetValue()))
 	}
 	u, err := target.NewTcpTarget(item.GetScopeId(), opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build target for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for creation: %v.", err)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -459,10 +458,10 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	}
 	out, m, err := repo.CreateTcpTarget(ctx, u)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create target: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create target but no error returned from repository.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target but no error returned from repository.")
 	}
 	return toProto(out, m)
 }
@@ -483,7 +482,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
 	}
 	if tcpAttrs.GetDefaultPort().GetValue() != 0 {
 		opts = append(opts, target.WithDefaultPort(tcpAttrs.GetDefaultPort().GetValue()))
@@ -491,7 +490,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	version := item.GetVersion()
 	u, err := target.NewTcpTarget(scopeId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build target for update: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for update: %v.", err)
 	}
 	u.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -504,7 +503,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, m, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update target: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update target: %v.", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Target %q not found or incorrect version provided.", id)
@@ -522,7 +521,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
 		}
-		return false, status.Errorf(codes.Internal, "Unable to delete target: %v.", err)
+		return false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to delete target: %v.", err)
 	}
 	return rows > 0, nil
 }
@@ -540,7 +539,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Target
 	for _, u := range ul {
 		o, err := toProto(u, nil)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "Unable to convert value to proto: %v.", err)
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to convert value to proto: %v.", err)
 		}
 		outUl = append(outUl, o)
 	}
@@ -554,10 +553,10 @@ func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []str
 	}
 	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, hostSetId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to add host sets to target: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sets to target: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup target after adding host sets to it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding host sets to it.")
 	}
 	return toProto(out, m)
 }
@@ -569,15 +568,15 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 	}
 	_, _, err = repo.SetTargetHostSets(ctx, targetId, version, hostSetIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to set host sets in target: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set host sets in target: %v.", err)
 	}
 
 	out, m, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up target: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to look up target: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup target after setting host sets for it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sets for it.")
 	}
 	return toProto(out, m)
 }
@@ -589,14 +588,14 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	}
 	_, err = repo.DeleteTargeHostSets(ctx, targetId, version, hostSetIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to remove host sets from target: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove host sets from target: %v.", err)
 	}
 	out, m, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up target: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to look up target: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup target after removing host sets from it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing host sets from it.")
 	}
 	return toProto(out, m)
 }
@@ -668,7 +667,7 @@ func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 	}
 	st, err := handlers.ProtoToStruct(attrs)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
 	}
 	out.Attributes = st
 	for _, hs := range m {

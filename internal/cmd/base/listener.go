@@ -1,6 +1,9 @@
 package base
 
 import (
+	// We must import sha512 so that it registers with the runtime so that
+	// certificates that use it can be parsed.
+	_ "crypto/sha512"
 	"errors"
 	"fmt"
 	"net"
@@ -8,10 +11,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	// We must import sha512 so that it registers with the runtime so that
-	// certificates that use it can be parsed.
-	_ "crypto/sha512"
 
 	"github.com/hashicorp/go-alpnmux"
 	"github.com/hashicorp/go-hclog"

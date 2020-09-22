@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	retryablehttp "github.com/hashicorp/go-retryablehttp"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 const (

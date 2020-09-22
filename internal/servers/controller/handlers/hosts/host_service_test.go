@@ -2,6 +2,7 @@ package hosts_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -18,13 +19,13 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -58,44 +59,46 @@ func TestGet(t *testing.T) {
 	}
 
 	cases := []struct {
-		name    string
-		req     *pbs.GetHostRequest
-		res     *pbs.GetHostResponse
-		errCode codes.Code
+		name string
+		req  *pbs.GetHostRequest
+		res  *pbs.GetHostResponse
+		err  error
 	}{
 		{
-			name:    "Get an Existing Host",
-			req:     &pbs.GetHostRequest{Id: h.GetPublicId()},
-			res:     &pbs.GetHostResponse{Item: pHost},
-			errCode: codes.OK,
+			name: "Get an Existing Host",
+			req:  &pbs.GetHostRequest{Id: h.GetPublicId()},
+			res:  &pbs.GetHostResponse{Item: pHost},
 		},
 		{
-			name:    "Get a non existing Host Set",
-			req:     &pbs.GetHostRequest{Id: static.HostPrefix + "_DoesntExis"},
-			res:     nil,
-			errCode: codes.NotFound,
+			name: "Get a non existing Host Set",
+			req:  &pbs.GetHostRequest{Id: static.HostPrefix + "_DoesntExis"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name:    "Wrong id prefix",
-			req:     &pbs.GetHostRequest{Id: "j_1234567890"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			name: "Wrong id prefix",
+			req:  &pbs.GetHostRequest{Id: "j_1234567890"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:    "space in id",
-			req:     &pbs.GetHostRequest{Id: static.HostPrefix + "_1 23456789"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			name: "space in id",
+			req:  &pbs.GetHostRequest{Id: static.HostPrefix + "_1 23456789"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			s, err := hosts.NewService(repoFn)
-			require.NoError(t, err, "Couldn't create a new host set service.")
+			require.NoError(err, "Couldn't create a new host set service.")
 
 			got, gErr := s.GetHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "GetHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 
 			if tc.res != nil {
 				tc.res.Item.Version = 1
@@ -138,19 +141,17 @@ func TestList(t *testing.T) {
 		name          string
 		hostCatalogId string
 		res           *pbs.ListHostsResponse
-		errCode       codes.Code
+		err           error
 	}{
 		{
 			name:          "List Many Hosts",
 			hostCatalogId: hc.GetPublicId(),
 			res:           &pbs.ListHostsResponse{Items: wantHs},
-			errCode:       codes.OK,
 		},
 		{
 			name:          "List No Hosts",
 			hostCatalogId: hcNoHosts.GetPublicId(),
 			res:           &pbs.ListHostsResponse{},
-			errCode:       codes.OK,
 		},
 	}
 	for _, tc := range cases {
@@ -160,7 +161,10 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new host set service.")
 
 			got, gErr := s.ListHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), &pbs.ListHostsRequest{HostCatalogId: tc.hostCatalogId})
-			assert.Equal(tc.errCode, status.Code(gErr), "ListHosts(%q) got error %v, wanted %v", tc.hostCatalogId, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListHosts(%q) got error %v, wanted %v", tc.hostCatalogId, gErr, tc.err)
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHosts(%q) got response %q, wanted %q", tc.hostCatalogId, got, tc.res)
 		})
 	}
@@ -189,7 +193,7 @@ func TestDelete(t *testing.T) {
 		scopeId string
 		req     *pbs.DeleteHostRequest
 		res     *pbs.DeleteHostResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "Delete an Existing Host",
@@ -197,8 +201,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostRequest{
 				Id: h.GetPublicId(),
 			},
-			res:     &pbs.DeleteHostResponse{},
-			errCode: codes.OK,
+			res: &pbs.DeleteHostResponse{},
 		},
 		{
 			name:    "Delete bad id Host",
@@ -206,7 +209,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostRequest{
 				Id: static.HostPrefix + "_doesntexis",
 			},
-			errCode: codes.NotFound,
+			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name:    "Bad Host Id formatting",
@@ -214,14 +217,17 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostRequest{
 				Id: static.HostPrefix + "_bad_format",
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			got, gErr := s.DeleteHost(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "DeleteHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "DeleteHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
@@ -229,7 +235,7 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
+	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -244,7 +250,7 @@ func TestDelete_twice(t *testing.T) {
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 
 	s, err := hosts.NewService(repoFn)
-	require.NoError(t, err, "Couldn't create a new host set service.")
+	require.NoError(err, "Couldn't create a new host set service.")
 	req := &pbs.DeleteHostRequest{
 		Id: h.GetPublicId(),
 	}
@@ -253,7 +259,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteHost(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -274,10 +280,10 @@ func TestCreate(t *testing.T) {
 	require.NoError(t, err)
 
 	cases := []struct {
-		name    string
-		req     *pbs.CreateHostRequest
-		res     *pbs.CreateHostResponse
-		errCode codes.Code
+		name string
+		req  *pbs.CreateHostRequest
+		res  *pbs.CreateHostResponse
+		err  error
 	}{
 		{
 			name: "Create a valid Host",
@@ -303,7 +309,6 @@ func TestCreate(t *testing.T) {
 					}},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Create with empty address",
@@ -316,7 +321,7 @@ func TestCreate(t *testing.T) {
 					"address": structpb.NewStringValue(""),
 				}},
 			}},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Create without address",
@@ -327,7 +332,7 @@ func TestCreate(t *testing.T) {
 				Type:          "static",
 				Attributes:    &structpb.Struct{Fields: map[string]*structpb.Value{}},
 			}},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Create with unknown type",
@@ -337,7 +342,7 @@ func TestCreate(t *testing.T) {
 				Description:   &wrappers.StringValue{Value: "desc"},
 				Type:          "ThisIsMadeUp",
 			}},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Create with no type",
@@ -362,7 +367,6 @@ func TestCreate(t *testing.T) {
 					}},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Can't specify Id",
@@ -370,8 +374,8 @@ func TestCreate(t *testing.T) {
 				HostCatalogId: hc.GetPublicId(),
 				Id:            "not allowed to be set",
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Created Time",
@@ -379,16 +383,16 @@ func TestCreate(t *testing.T) {
 				HostCatalogId: hc.GetPublicId(),
 				CreatedTime:   ptypes.TimestampNow(),
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateHostRequest{Item: &pb.Host{
 				UpdatedTime: ptypes.TimestampNow(),
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -398,7 +402,10 @@ func TestCreate(t *testing.T) {
 			require.NoError(err, "Failed to create a new host set service.")
 
 			got, gErr := s.CreateHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "CreateHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "CreateHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostPrefix))
@@ -464,10 +471,10 @@ func TestUpdate(t *testing.T) {
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	cases := []struct {
-		name    string
-		req     *pbs.UpdateHostRequest
-		res     *pbs.UpdateHostResponse
-		errCode codes.Code
+		name string
+		req  *pbs.UpdateHostRequest
+		res  *pbs.UpdateHostResponse
+		err  error
 	}{
 		{
 			name: "Update an Existing Host",
@@ -495,7 +502,6 @@ func TestUpdate(t *testing.T) {
 					}},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Multiple Paths in single string",
@@ -523,7 +529,6 @@ func TestUpdate(t *testing.T) {
 					}},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "No Update Mask",
@@ -533,7 +538,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "updated desc"},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "No Update Mask",
@@ -546,7 +551,7 @@ func TestUpdate(t *testing.T) {
 					Type: "ec2",
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Empty Path",
@@ -557,7 +562,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "updated desc"},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Only non-existant paths in Mask",
@@ -568,7 +573,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "updated desc"},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Unset Name",
@@ -593,7 +598,6 @@ func TestUpdate(t *testing.T) {
 					}},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Unset Description",
@@ -618,7 +622,6 @@ func TestUpdate(t *testing.T) {
 					}},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Update Only Name",
@@ -645,7 +648,6 @@ func TestUpdate(t *testing.T) {
 					}},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Update Only Description",
@@ -672,7 +674,6 @@ func TestUpdate(t *testing.T) {
 					}},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Update a Non Existing Host",
@@ -687,7 +688,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.NotFound,
+			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Cant change Id",
@@ -702,8 +703,8 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "new desc"},
 				}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Cant unset address",
@@ -717,8 +718,8 @@ func TestUpdate(t *testing.T) {
 						"address": structpb.NewNullValue(),
 					}},
 				}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Cant set address to empty string",
@@ -732,8 +733,8 @@ func TestUpdate(t *testing.T) {
 						"address": structpb.NewStringValue(""),
 					}},
 				}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Cant specify Created Time",
@@ -745,8 +746,8 @@ func TestUpdate(t *testing.T) {
 					CreatedTime: ptypes.TimestampNow(),
 				},
 			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Cant specify Updated Time",
@@ -758,8 +759,8 @@ func TestUpdate(t *testing.T) {
 					UpdatedTime: ptypes.TimestampNow(),
 				},
 			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Valid mask, cant specify type",
@@ -771,8 +772,8 @@ func TestUpdate(t *testing.T) {
 					Type: "Unknown",
 				},
 			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -793,9 +794,12 @@ func TestUpdate(t *testing.T) {
 			req.Item.Version = version
 
 			got, gErr := tested.UpdateHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "UpdateHost(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "UpdateHost(%+v) got error %v, wanted %v", req, gErr, tc.err)
+			}
 
-			if tc.errCode == codes.OK {
+			if tc.err == nil {
 				defer resetHost()
 			}
 

@@ -94,13 +94,13 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			in: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
 					ScopeId:     org.PublicId,
-					Description: ("test-description-repo"),
+					Description: "test-description-repo",
 				},
 			},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
 					ScopeId:     org.PublicId,
-					Description: ("test-description-repo"),
+					Description: "test-description-repo",
 				},
 			},
 		},

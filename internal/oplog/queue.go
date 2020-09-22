@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	common "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/db/common"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/protobuf/proto"
 )

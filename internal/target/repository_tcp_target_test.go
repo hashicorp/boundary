@@ -409,7 +409,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			}
 			foundTarget, _, err := repo.LookupTarget(context.Background(), target.PublicId)
 			assert.NoError(err)
-			assert.True(proto.Equal(targetAfterUpdate.((*TcpTarget)), foundTarget.((*TcpTarget))))
+			assert.True(proto.Equal(targetAfterUpdate.(*TcpTarget), foundTarget.(*TcpTarget)))
 			dbassert := dbassert.New(t, rw)
 			if tt.args.description == "" {
 				assert.Equal(foundTarget.GetDescription(), "")

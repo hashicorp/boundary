@@ -90,8 +90,9 @@ func TestApiErrorHandler(t *testing.T) {
 			name: "Unknown error",
 			err:  errors.New("Some random error"),
 			expected: &pb.Error{
-				Status: http.StatusInternalServerError,
-				Code:   "Internal",
+				Status:  http.StatusInternalServerError,
+				Code:    "Internal",
+				Details: &pb.ErrorDetails{ErrorId: ""},
 			},
 		},
 		{
@@ -100,7 +101,7 @@ func TestApiErrorHandler(t *testing.T) {
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
 				Code:    "Internal",
-				Message: "Test",
+				Details: &pb.ErrorDetails{ErrorId: ""},
 			},
 		},
 		{
@@ -109,7 +110,7 @@ func TestApiErrorHandler(t *testing.T) {
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
 				Code:    "Internal",
-				Message: "Test",
+				Details: &pb.ErrorDetails{ErrorId: ""},
 			},
 		},
 		{
@@ -156,7 +157,7 @@ func TestApiErrorHandler(t *testing.T) {
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
 				Code:    "Internal",
-				Message: "Test",
+				Details: &pb.ErrorDetails{ErrorId: ""},
 			},
 		},
 	}
@@ -176,8 +177,8 @@ func TestApiErrorHandler(t *testing.T) {
 			require.NoError(err)
 
 			if tc.expected.Status == http.StatusInternalServerError {
-				assert.Contains(gotErr.Message, "Error Id: ")
-				tc.expected.Message = gotErr.Message
+				require.NotNil(tc.expected.GetDetails())
+				tc.expected.GetDetails().ErrorId = gotErr.GetDetails().GetErrorId()
 			}
 
 			assert.Empty(cmp.Diff(tc.expected, gotErr, protocmp.Transform()))
