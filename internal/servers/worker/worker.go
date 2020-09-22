@@ -27,8 +27,6 @@ type Worker struct {
 	controllerStatusConn *atomic.Value
 	lastStatusSuccess    *atomic.Value
 
-	listeningAddress string
-
 	controllerResolver        *atomic.Value
 	controllerResolverCleanup *atomic.Value
 
@@ -128,7 +126,6 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 			return fmt.Errorf("error stopping worker listeners: %w", err)
 		}
 	}
-	w.listeningAddress = ""
 	w.started.Store(false)
 	return nil
 }

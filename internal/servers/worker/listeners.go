@@ -31,10 +31,6 @@ func (w *Worker) startListeners() error {
 				return fmt.Errorf("unknown listener purpose %q", purpose)
 			}
 
-			if w.listeningAddress != "" {
-				return errors.New("more than one listening address found")
-			}
-
 			handler := w.handler(HandlerProperties{
 				ListenerConfig: ln.Config,
 			})
@@ -81,11 +77,6 @@ func (w *Worker) startListeners() error {
 			servers = append(servers, func() {
 				go server.Serve(l)
 			})
-
-			if w.listeningAddress == "" {
-				w.listeningAddress = l.Addr().String()
-				w.logger.Info("reporting listening address to controllers", "address", w.listeningAddress)
-			}
 		}
 	}
 

@@ -7,6 +7,7 @@ begin;
     token bytea not null unique,
     -- TODO: Make key_id a foreign key once we have DEKs
     key_id text not null
+      constraint key_id_must_not_be_empty
       check(length(trim(key_id)) > 0),
     auth_account_id wt_public_id not null
       references auth_account(public_id)
@@ -18,10 +19,12 @@ begin;
     -- It is updated after X minutes from the last time it was updated on
     -- a per row basis.
     approximate_last_access_time wt_timestamp
+      constraint last_access_time_must_not_be_after_expiration_time
       check(
         approximate_last_access_time <= expiration_time
       ),
     expiration_time wt_timestamp
+      constraint create_time_must_not_be_after_expiration_time
       check(
         create_time <= expiration_time
       )

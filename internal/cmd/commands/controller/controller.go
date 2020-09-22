@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/boundary/sdk/wrapper"
@@ -219,7 +218,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 	if c.RootKms == nil {
-		c.UI.Error("Controller KMS not found after parsing KMS blocks")
+		c.UI.Error("Root KMS not found after parsing KMS blocks")
 		return 1
 	}
 	if c.WorkerAuthKms == nil {
@@ -320,10 +319,6 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		c.DatabaseUrl = strings.TrimSpace(dbaseUrl)
-		if err := db.InitStore("postgres", nil, c.DatabaseUrl); err != nil {
-			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
-			return 1
-		}
 		if err := c.ConnectToDatabase("postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return 1

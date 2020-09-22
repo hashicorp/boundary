@@ -519,7 +519,9 @@ COMMIT;
 begin;
 
 create table iam_scope_type_enm (
-  string text not null primary key check(string in ('unknown', 'global', 'org', 'project'))
+  string text not null primary key
+    constraint only_predefined_scope_types_allowed
+    check(string in ('unknown', 'global', 'org', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
@@ -541,21 +543,24 @@ create table iam_scope (
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
-    type text not null references iam_scope_type_enm(string) check(
-      (
-        type = 'global'
-        and parent_id is null
-      )
-      or (
-        type = 'org'
-        and parent_id = 'global'
-      )
-      or (
-        type = 'project'
-        and parent_id is not null
-        and parent_id != 'global'
-      )
-    ),
+    type text not null
+      references iam_scope_type_enm(string)
+      constraint only_known_scope_types_allowed
+      check(
+        (
+          type = 'global'
+          and parent_id is null
+        )
+        or (
+          type = 'org'
+          and parent_id = 'global'
+        )
+        or (
+          type = 'project'
+          and parent_id is not null
+          and parent_id != 'global'
+        )
+      ),
     description text,
     parent_id text references iam_scope(public_id) on delete cascade on update cascade,
 
@@ -569,6 +574,7 @@ create table iam_scope_global (
       references iam_scope(public_id)
       on delete cascade
       on update cascade
+      constraint only_one_global_scope_allowed
       check(
         scope_id = 'global'
       ),
@@ -906,10 +912,12 @@ create table iam_role (
       on delete cascade
       on update cascade,
     canonical_grant text -- pk
+      constraint canonical_grant_must_not_be_empty
       check(
         length(trim(canonical_grant)) > 0
       ),
     raw_grant text not null
+      constraint raw_grant_must_not_be_empty
       check(
         length(trim(raw_grant)) > 0
       ),
@@ -1252,6 +1260,7 @@ commit;
 		bytes: []byte(`
 begin;
 
+  drop function update_iam_user_auth_account;
   drop function insert_auth_account_subtype;
   drop function insert_auth_method_subtype;
 
@@ -1286,11 +1295,12 @@ begin;
   ┌────────────────┐          ┌──────────────────────────┐
   │    iam_user    │          │       auth_account       │
   ├────────────────┤          ├──────────────────────────┤
-  │ public_id (pk) │          │ public_id      (pk)      │
-  │ scope_id  (fk) │   ◀fk2   │ scope_id       (fk1,fk2) │
-  │                │┼○──────○┼│ auth_method_id (fk1)     │
-  │                │          │ iam_user_id    (fk2)     │
-  └────────────────┘          └──────────────────────────┘
+  │ public_id (pk) │          │ public_id         (pk)   │
+  │ scope_id  (fk) │   ◀fk2   │ scope_id          (fk1)  │
+  │                │┼○──────○┼│ auth_method_id    (fk1)  │
+  │                │          │ iam_user_scope_id (fk2)  │
+  └────────────────┘          │ iam_user_id       (fk2)  │
+                              └──────────────────────────┘
 
   An iam_scope can have 0 to many iam_users.
   An iam_scope can have 0 to many auth_methods.
@@ -1339,13 +1349,26 @@ begin;
     scope_id wt_scope_id
       not null,
     iam_user_id wt_public_id,
+    -- The auth_account can only be assigned to an iam_user in the same scope as
+    -- the auth_method the auth_account belongs to. A separate column for
+    -- iam_user's scope id is needed because using the scope_id column in the
+    -- foreign key constraint causes an error when the iam_user is deleted but
+    -- the auth_account still exists. This is a valid scenario since the
+    -- lifetime of the auth_account is tied to the auth_method not the iam_user.
+    iam_user_scope_id wt_scope_id,
+      constraint user_and_auth_account_in_same_scope
+      check(
+        (iam_user_id is null and iam_user_scope_id is null)
+        or
+        (iam_user_id is not null and (iam_user_scope_id = scope_id))
+      ),
     -- including scope_id in fk1 and fk2 ensures the scope_id of the owning
     -- auth_method and the scope_id of the owning iam_user are the same
     foreign key (scope_id, auth_method_id) -- fk1
       references auth_method (scope_id, public_id)
       on delete cascade
       on update cascade,
-    foreign key (scope_id, iam_user_id) -- fk2
+    foreign key (iam_user_scope_id, iam_user_id) -- fk2
       references iam_user (scope_id, public_id)
       on delete set null
       on update cascade,
@@ -1386,6 +1409,36 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- update_iam_user_auth_account is a before update trigger on the auth_account
+  -- table. If the new.iam_user_id column is different from the old.iam_user_id
+  -- column, update_iam_user_auth_account retrieves the scope id of the iam user
+  -- and sets new.iam_user_scope_id to that value. If the new.iam_user_id column
+  -- is null and the old.iam_user_id column is not null,
+  -- update_iam_user_auth_account sets the iam_user_scope_id to null.
+  create or replace function
+    update_iam_user_auth_account()
+    returns trigger
+  as $$
+  begin
+    if new.iam_user_id is distinct from old.iam_user_id then
+      if new.iam_user_id is null then
+        new.iam_user_scope_id = null;
+      else
+        select iam_user.scope_id into new.iam_user_scope_id
+          from iam_user
+         where iam_user.public_id = new.iam_user_id;
+      end if;
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+
+
+  create trigger update_iam_user_auth_account
+    before update of iam_user_id on auth_account
+    for each row
+    execute procedure update_iam_user_auth_account();
+
 commit;
 
 `),
@@ -1414,6 +1467,7 @@ create table server (
     private_id text,
     type text,
     name text not null unique
+      constraint server_name_must_not_be_empty
       check(length(trim(name)) > 0),
     description text,
     address text,
@@ -1484,6 +1538,7 @@ begin;
     token bytea not null unique,
     -- TODO: Make key_id a foreign key once we have DEKs
     key_id text not null
+      constraint key_id_must_not_be_empty
       check(length(trim(key_id)) > 0),
     auth_account_id wt_public_id not null
       references auth_account(public_id)
@@ -1495,10 +1550,12 @@ begin;
     -- It is updated after X minutes from the last time it was updated on
     -- a per row basis.
     approximate_last_access_time wt_timestamp
+      constraint last_access_time_must_not_be_after_expiration_time
       check(
         approximate_last_access_time <= expiration_time
       ),
     expiration_time wt_timestamp
+      constraint create_time_must_not_be_after_expiration_time
       check(
         create_time <= expiration_time
       )
@@ -1652,11 +1709,12 @@ begin;
   ┌──────────────────────────┐          ┌──────────────────────────┐          ┌───────────────────────────────┐
   │       auth_account       │          │  auth_password_account   │          │   auth_password_credential    │
   ├──────────────────────────┤          ├──────────────────────────┤          ├───────────────────────────────┤
-  │ public_id      (pk)      │          │ public_id      (pk,fk2)  │          │ private_id          (pk)      │
-  │ scope_id       (fk1,fk2) │   ◀fk2   │ scope_id       (fk1,fk2) │   ◀fk2   │ password_method_id  (fk1,fk2) │
-  │ auth_method_id (fk1)     │┼┼──────○┼│ auth_method_id (fk1,fk2) │┼┼──────○┼│ password_conf_id    (fk1)     │
-  │ iam_user_id    (fk2)     │          │ ...                      │          │ password_account_id (fk2)     │
-  └──────────────────────────┘          └──────────────────────────┘          └───────────────────────────────┘
+  │ public_id         (pk)   │          │ public_id      (pk,fk2)  │          │ private_id          (pk)      │
+  │ scope_id          (fk1)  │   ◀fk2   │ scope_id       (fk1,fk2) │   ◀fk2   │ password_method_id  (fk1,fk2) │
+  │ auth_method_id    (fk1)  │┼┼──────○┼│ auth_method_id (fk1,fk2) │┼┼──────○┼│ password_conf_id    (fk1)     │
+  │ iam_user_scope_id (fk2)  │          │ ...                      │          │ password_account_id (fk2)     │
+  │ iam_user_id       (fk2)  │          └──────────────────────────┘          └───────────────────────────────┘
+  └──────────────────────────┘
 
   An auth_method is a base type. An auth_password_method is an auth_method
   subtype. For every row in auth_password_method there is one row in auth_method
@@ -1738,11 +1796,10 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     login_name text not null
-      check(
-        lower(trim(login_name)) = login_name
-        and
-        length(login_name) > 0
-      ),
+      constraint login_name_must_be_lowercase
+      check(lower(trim(login_name)) = login_name)
+      constraint login_name_must_not_be_empty
+      check(length(trim(login_name)) > 0),
     version wt_version,
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)
@@ -1955,18 +2012,23 @@ begin;
     password_method_id wt_public_id not null,
     create_time wt_timestamp,
     iterations int not null default 3
+      constraint iterations_must_be_greater_than_0
       check(iterations > 0),
     memory int not null default 65536
+      constraint memory_must_be_greater_than_0
       check(memory > 0),
     threads int not null default 1
+      constraint threads_must_be_greater_than_0
       check(threads > 0),
     -- salt_length unit is bytes
     salt_length int not null default 32
     -- minimum of 16 bytes (128 bits)
+      constraint salt_must_be_at_least_16_bytes
       check(salt_length >= 16),
     -- key_length unit is bytes
     key_length int not null default 32
     -- minimum of 16 bytes (128 bits)
+      constraint key_length_must_be_at_least_16_bytes
       check(key_length >= 16),
     unique(password_method_id, iterations, memory, threads, salt_length, key_length),
     unique (password_method_id, private_id),
@@ -2011,11 +2073,14 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     salt bytea not null -- cannot be changed unless derived_key is changed too
+      constraint salt_must_not_be_empty
       check(length(salt) > 0),
     derived_key bytea not null
+      constraint derived_key_must_not_be_empty
       check(length(derived_key) > 0),
     -- TODO: Make key_id a foreign key once we have DEKs
     key_id text not null
+      constraint key_id_must_not_be_empty
       check(length(trim(key_id)) > 0),
     foreign key (password_method_id, password_conf_id)
       references auth_password_argon2_conf (password_method_id, private_id)
@@ -2442,11 +2507,10 @@ begin;
     name text,
     description text,
     address text not null
-      check(
-        length(trim(address)) > 2
-        and
-        length(trim(address)) < 256
-      ),
+      constraint address_must_be_more_than_2_characters
+      check(length(trim(address)) > 2)
+      constraint address_must_be_less_than_256_characters
+      check(length(trim(address)) < 256),
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
@@ -3172,9 +3236,11 @@ create table target_tcp (
    -- max duration of the session in seconds.
    -- default is 8 hours
   session_max_seconds int not null default 28800
+    constraint session_max_seconds_must_be_greater_than_0
     check(session_max_seconds > 0),
   -- limit on number of session connections allowed. -1 equals no limit
   session_connection_limit int not null default 1
+    constraint session_connection_limit_must_be_greater_than_0_or_negative_1
     check(session_connection_limit > 0 or session_connection_limit = -1),
   create_time wt_timestamp,
   update_time wt_timestamp,
@@ -3353,6 +3419,7 @@ begin;
 
   create table session_termination_reason_enm (
     name text primary key
+      constraint only_predefined_session_termination_reasons_allowed
       check (
         name in (
           'unknown',
@@ -3423,6 +3490,7 @@ begin;
     expiration_time wt_timestamp, -- maybe null
     -- limit on number of session connections allowed.  default of 0 equals no limit
     connection_limit int not null default 1
+      constraint connection_limit_must_be_greater_than_0_or_negative_1
       check(connection_limit > 0 or connection_limit = -1), 
     -- trust of first use token 
     tofu_token bytea, -- will be null when session is first created
@@ -3448,9 +3516,11 @@ begin;
   update on session
     for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time', 'endpoint');
   
+  -- session table has some cascades of FK to null, so we need to be careful
+  -- which columns trigger an update of the version column
   create trigger 
     update_version_column 
-  after update on session
+  after update of version, termination_reason, key_id, tofu_token, server_id, server_type on session
     for each row execute procedure update_version_column();
     
   create trigger 
@@ -3560,8 +3630,70 @@ begin;
     for each row execute procedure update_session_state_on_termination_reason();
  
 
+  -- cancel_session will insert a cancel state for the session, if there's isn't
+  -- a canceled state already.  It's used by cancel_session_with_null_fk.
+  create or replace function
+    cancel_session(in sessionId text) returns void 
+  as $$
+  declare
+    rows_affected numeric;
+  begin 
+    insert into session_state(session_id, state) 
+    select 
+	    sessionId::text, 'canceling' 
+    from
+      session s
+    where 
+      s.public_id = sessionId::text and
+      s.public_id not in (
+        select 
+          session_id 
+        from 
+          session_state 
+        where 
+          session_id = sessionId::text and 
+          state = 'canceling'
+      ) limit 1;
+      get diagnostics rows_affected = row_count;
+      if rows_affected > 1 then
+          raise exception 'cancel session: more than one row affected: %', rows_affected; 
+      end if;
+  end;
+  $$ language plpgsql;
+
+  -- cancel_session_with_null_fk is intended to be a before update trigger that
+  -- sets the session's state to cancel if a FK is set to null.
+  create or replace function 
+    cancel_session_with_null_fk()
+    returns trigger
+  as $$
+  begin
+   case 
+      when new.user_id is null then
+        perform cancel_session(new.public_id);
+      when new.host_id is null then
+        perform cancel_session(new.public_id);
+      when new.target_id is null then
+        perform cancel_session(new.public_id);
+      when new.host_set_id is null then
+        perform cancel_session(new.public_id);
+      when new.auth_token_id is null then
+        perform cancel_session(new.public_id);
+      when new.scope_id is null then
+        perform cancel_session(new.public_id);
+    end case;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger 
+    cancel_session_with_null_fk
+  before update of user_id, host_id, target_id, host_set_id, auth_token_id, scope_id on session
+    for each row execute procedure cancel_session_with_null_fk();
+
   create table session_state_enm (
     name text primary key
+      constraint only_predefined_session_states_allowed
       check (
         name in ('pending', 'active', 'canceling', 'terminated')
       )
@@ -3773,6 +3905,7 @@ begin;
 
   create table session_connection_closed_reason_enm (
     name text primary key
+      constraint only_predefined_session_connection_closed_reasons_allowed
       check (
         name in (
           'unknown',
@@ -3810,25 +3943,24 @@ begin;
     -- the client_tcp_port is the network port at the address of the client the
     -- worker proxied a connection for the user
     client_tcp_port integer  -- maybe null on insert
-      check(
-        client_tcp_port > 0
-        and
-        client_tcp_port <= 65535
-      ),
+      constraint client_tcp_port_must_be_greater_than_0
+      check(client_tcp_port > 0)
+      constraint client_tcp_port_must_less_than_or_equal_to_65535
+      check(client_tcp_port <= 65535),
     -- the endpoint_tcp_address is the network address of the endpoint which the
     -- worker initiated the connection to, for the user
     endpoint_tcp_address inet, -- maybe be null on insert
     -- the endpoint_tcp_port is the network port at the address of the endpoint the
     -- worker proxied a connection to, for the user
     endpoint_tcp_port integer -- maybe null on insert
-      check(
-        endpoint_tcp_port > 0
-        and
-        endpoint_tcp_port <= 65535
-      ),
+      constraint endpoint_tcp_port_must_be_greater_than_0
+      check(endpoint_tcp_port > 0)
+      constraint endpoint_tcp_port_must_less_than_or_equal_to_65535
+      check(endpoint_tcp_port <= 65535),
     -- the total number of bytes received by the worker from the client and sent
     -- to the endpoint for this connection
     bytes_up bigint -- can be null
+      constraint bytes_up_must_be_null_or_a_non_negative_number
       check (
         bytes_up is null
         or
@@ -3837,6 +3969,7 @@ begin;
     -- the total number of bytes received by the worker from the endpoint and sent
     -- to the client for this connection
     bytes_down bigint -- can be null
+      constraint bytes_down_must_be_null_or_a_non_negative_number
       check (
         bytes_down is null
         or
@@ -3926,6 +4059,7 @@ begin;
 
   create table session_connection_state_enm (
     name text primary key
+      constraint only_predefined_session_connection_states_allowed
       check (
         name in ('authorized', 'connected', 'closed')
       )

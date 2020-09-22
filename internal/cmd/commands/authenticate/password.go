@@ -145,6 +145,14 @@ func (c *PasswordCommand) Run(args []string) int {
 			fmt.Sprintf("  Token:           %s", token.Token),
 			fmt.Sprintf("  User ID:         %s", token.UserId),
 		}))
+
+	case "json":
+		jsonOut, err := base.JsonFormatter{}.Format(result)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
+			return 1
+		}
+		c.UI.Output(string(jsonOut))
 	}
 
 	tokenName := "default"

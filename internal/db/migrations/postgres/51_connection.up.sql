@@ -53,6 +53,7 @@ begin;
 
   create table session_connection_closed_reason_enm (
     name text primary key
+      constraint only_predefined_session_connection_closed_reasons_allowed
       check (
         name in (
           'unknown',
@@ -90,25 +91,24 @@ begin;
     -- the client_tcp_port is the network port at the address of the client the
     -- worker proxied a connection for the user
     client_tcp_port integer  -- maybe null on insert
-      check(
-        client_tcp_port > 0
-        and
-        client_tcp_port <= 65535
-      ),
+      constraint client_tcp_port_must_be_greater_than_0
+      check(client_tcp_port > 0)
+      constraint client_tcp_port_must_less_than_or_equal_to_65535
+      check(client_tcp_port <= 65535),
     -- the endpoint_tcp_address is the network address of the endpoint which the
     -- worker initiated the connection to, for the user
     endpoint_tcp_address inet, -- maybe be null on insert
     -- the endpoint_tcp_port is the network port at the address of the endpoint the
     -- worker proxied a connection to, for the user
     endpoint_tcp_port integer -- maybe null on insert
-      check(
-        endpoint_tcp_port > 0
-        and
-        endpoint_tcp_port <= 65535
-      ),
+      constraint endpoint_tcp_port_must_be_greater_than_0
+      check(endpoint_tcp_port > 0)
+      constraint endpoint_tcp_port_must_less_than_or_equal_to_65535
+      check(endpoint_tcp_port <= 65535),
     -- the total number of bytes received by the worker from the client and sent
     -- to the endpoint for this connection
     bytes_up bigint -- can be null
+      constraint bytes_up_must_be_null_or_a_non_negative_number
       check (
         bytes_up is null
         or
@@ -117,6 +117,7 @@ begin;
     -- the total number of bytes received by the worker from the endpoint and sent
     -- to the client for this connection
     bytes_down bigint -- can be null
+      constraint bytes_down_must_be_null_or_a_non_negative_number
       check (
         bytes_down is null
         or
@@ -206,6 +207,7 @@ begin;
 
   create table session_connection_state_enm (
     name text primary key
+      constraint only_predefined_session_connection_states_allowed
       check (
         name in ('authorized', 'connected', 'closed')
       )

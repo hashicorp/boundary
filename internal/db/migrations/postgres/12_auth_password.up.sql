@@ -19,11 +19,12 @@ begin;
   ┌──────────────────────────┐          ┌──────────────────────────┐          ┌───────────────────────────────┐
   │       auth_account       │          │  auth_password_account   │          │   auth_password_credential    │
   ├──────────────────────────┤          ├──────────────────────────┤          ├───────────────────────────────┤
-  │ public_id      (pk)      │          │ public_id      (pk,fk2)  │          │ private_id          (pk)      │
-  │ scope_id       (fk1,fk2) │   ◀fk2   │ scope_id       (fk1,fk2) │   ◀fk2   │ password_method_id  (fk1,fk2) │
-  │ auth_method_id (fk1)     │┼┼──────○┼│ auth_method_id (fk1,fk2) │┼┼──────○┼│ password_conf_id    (fk1)     │
-  │ iam_user_id    (fk2)     │          │ ...                      │          │ password_account_id (fk2)     │
-  └──────────────────────────┘          └──────────────────────────┘          └───────────────────────────────┘
+  │ public_id         (pk)   │          │ public_id      (pk,fk2)  │          │ private_id          (pk)      │
+  │ scope_id          (fk1)  │   ◀fk2   │ scope_id       (fk1,fk2) │   ◀fk2   │ password_method_id  (fk1,fk2) │
+  │ auth_method_id    (fk1)  │┼┼──────○┼│ auth_method_id (fk1,fk2) │┼┼──────○┼│ password_conf_id    (fk1)     │
+  │ iam_user_scope_id (fk2)  │          │ ...                      │          │ password_account_id (fk2)     │
+  │ iam_user_id       (fk2)  │          └──────────────────────────┘          └───────────────────────────────┘
+  └──────────────────────────┘
 
   An auth_method is a base type. An auth_password_method is an auth_method
   subtype. For every row in auth_password_method there is one row in auth_method
@@ -105,11 +106,10 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     login_name text not null
-      check(
-        lower(trim(login_name)) = login_name
-        and
-        length(login_name) > 0
-      ),
+      constraint login_name_must_be_lowercase
+      check(lower(trim(login_name)) = login_name)
+      constraint login_name_must_not_be_empty
+      check(length(trim(login_name)) > 0),
     version wt_version,
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)

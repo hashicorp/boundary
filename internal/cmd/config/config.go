@@ -110,10 +110,12 @@ type Worker struct {
 	Name        string   `hcl:"name"`
 	Description string   `hcl:"description"`
 	Controllers []string `hcl:"controllers"`
+	PublicAddr  string   `hcl:"public_addr"`
 }
 
 type Database struct {
-	Url string `hcl:"url"`
+	Url          string `hcl:"url"`
+	MigrationUrl string `hcl:"migration_url"`
 }
 
 // DevWorker is a Config that is used for dev mode of Boundary

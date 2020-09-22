@@ -59,17 +59,44 @@ func NewListener(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnm
 }
 
 func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
+	var purpose string
+	if len(l.Purpose) == 1 {
+		purpose = l.Purpose[0]
+	}
+
 	if l.Address == "" {
-		if len(l.Purpose) == 1 {
-			switch l.Purpose[0] {
-			case "cluster":
-				l.Address = "127.0.0.1:9201"
-			case "proxy":
-				l.Address = "127.0.0.1:9202"
-			default:
-				l.Address = "127.0.0.1:9200"
-			}
+		switch purpose {
+		case "cluster":
+			l.Address = "127.0.0.1:9201"
+		case "proxy":
+			l.Address = "127.0.0.1:9202"
+		default:
+			l.Address = "127.0.0.1:9200"
 		}
+	}
+
+	host, port, err := net.SplitHostPort(l.Address)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing port") {
+			switch purpose {
+			case "cluster":
+				port = "9201"
+			case "proxy":
+				port = "9202"
+			default:
+				port = "9200"
+			}
+			host = l.Address
+		} else {
+			return nil, nil, nil, fmt.Errorf("error splitting host/port: %w", err)
+		}
+	}
+
+	if host == "" {
+		return nil, nil, nil, errors.New("could not determine host")
+	}
+	if port == "" {
+		return nil, nil, nil, errors.New("could not determine port")
 	}
 
 	bindProto := "tcp"
@@ -81,15 +108,12 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 	}
 
 	if l.RandomPort {
-		colon := strings.Index(l.Address, ":")
-		if colon != -1 {
-			// colon+1 because it needs to end in a colon to be automatically
-			// assigned by Go
-			l.Address = l.Address[0 : colon+1]
-		}
+		port = ""
 	}
 
-	ln, err := net.Listen(bindProto, l.Address)
+	finalListenAddr := fmt.Sprintf("%s:%s", host, port)
+
+	ln, err := net.Listen(bindProto, finalListenAddr)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -102,7 +126,7 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 	}
 
 	props := map[string]string{
-		"addr": l.Address,
+		"addr": finalListenAddr,
 	}
 
 	if _, ok := os.LookupEnv("BOUNDARY_LOG_CONNECTION_MUXING"); !ok {
