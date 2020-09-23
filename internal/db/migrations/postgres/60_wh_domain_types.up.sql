@@ -51,16 +51,28 @@ begin;
   comment on domain wh_dim_text is
   'Text fields in dimension tables are always not null and always not empty strings';
 
+  create or replace function wh_date_id(ts wh_timestamp)
+    returns integer
+  as $$
+    select to_char(ts, 'YYYYMMDD')::integer;
+  $$ language sql;
+
+  create or replace function wh_time_id(ts wh_timestamp)
+    returns integer
+  as $$
+    select to_char(ts, 'SSSS')::integer;
+  $$ language sql;
+
   create or replace function wh_current_date_id()
     returns integer
   as $$
-    select to_char(current_timestamp, 'YYYYMMDD')::integer;
+    select wh_date_id(current_timestamp);
   $$ language sql;
 
   create or replace function wh_current_time_id()
     returns integer
   as $$
-    select to_char(current_timestamp, 'SSSS')::integer;
+    select wh_time_id(current_timestamp);
   $$ language sql;
 
 commit;

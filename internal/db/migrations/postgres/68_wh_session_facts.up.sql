@@ -26,15 +26,15 @@ begin;
       on update cascade,
 
     -- date and time foreign keys
-    session_pending_date_id integer default wh_current_date_id() not null
+    session_pending_date_id integer not null
       references wh_date_dimension (id)
       on delete restrict
       on update cascade,
-    session_pending_time_id integer default wh_current_time_id() not null
+    session_pending_time_id integer not null
       references wh_time_of_day_dimension (id)
       on delete restrict
       on update cascade,
-    session_pending_time wh_timestamp default current_timestamp,
+    session_pending_time wh_timestamp,
 
     session_active_date_id integer default -1 not null
       references wh_date_dimension (id)
