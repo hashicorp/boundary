@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -36,18 +35,11 @@ type Command struct {
 
 	configWrapper wrapping.Wrapper
 
-	flagConfig                         string
-	flagConfigKms                      string
-	flagLogLevel                       string
-	flagLogFormat                      string
-	flagCombineLogs                    bool
-	flagDev                            bool
-	flagDevLoginName                   string
-	flagDevPassword                    string
-	flagDevControllerAPIListenAddr     string
-	flagDevControllerClusterListenAddr string
-	flagDevAuthMethodId                string
-	flagDevSkipAuthMethodCreation      bool
+	flagConfig      string
+	flagConfigKms   string
+	flagLogLevel    string
+	flagLogFormat   string
+	flagCombineLogs bool
 }
 
 func (c *Command) Synopsis() string {
@@ -69,7 +61,7 @@ Usage: boundary controller [options]
 }
 
 func (c *Command) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP)
+	set := c.FlagSet(base.FlagSetNone)
 
 	f := set.NewFlagSet("Command Options")
 
@@ -110,67 +102,6 @@ func (c *Command) Flags() *base.FlagSets {
 		Completion: complete.PredictSet("standard", "json"),
 		Usage:      `Log format. Supported values are "standard" and "json".`,
 	})
-
-	f = set.NewFlagSet("Dev Options")
-
-	f.BoolVar(&base.BoolVar{
-		Name:   "dev",
-		Target: &c.flagDev,
-		Usage: "Enable development mode. As the name implies, do not run \"dev\" mode in " +
-			"production.",
-	})
-
-	f.StringVar(&base.StringVar{
-		Name:   "dev-auth-method-id",
-		Target: &c.flagDevAuthMethodId,
-		EnvVar: "BOUNDARY_DEV_AUTH_METHOD_ID",
-		Usage: "Auto-created auth method ID. This only applies when running in \"dev\" " +
-			"mode.",
-	})
-
-	f.BoolVar(&base.BoolVar{
-		Name:   "dev-skip-auth-method-creation",
-		Target: &c.flagDevSkipAuthMethodCreation,
-		Usage:  "If set, an auth method will not be created as part of the dev instance. The recovery KMS will be needed to perform any actions.",
-	})
-
-	f.StringVar(&base.StringVar{
-		Name:   "dev-password",
-		Target: &c.flagDevPassword,
-		EnvVar: "BOUNDARY_DEV_PASSWORD",
-		Usage: "Initial admin password. This only applies when running in \"dev\" " +
-			"mode.",
-	})
-
-	f.StringVar(&base.StringVar{
-		Name:   "dev-login-name",
-		Target: &c.flagDevLoginName,
-		EnvVar: "BOUNDARY_DEV_LOGIN_NAME",
-		Usage: "Initial admin login name. This only applies when running in \"dev\" " +
-			"mode.",
-	})
-
-	f.StringVar(&base.StringVar{
-		Name:   "dev-api-listen-address",
-		Target: &c.flagDevControllerAPIListenAddr,
-		EnvVar: "BOUNDARY_DEV_CONTROLLER_API_LISTEN_ADDRESS",
-		Usage:  "Address to bind the controller to in \"dev\" mode for \"api\" purpose.",
-	})
-
-	f.StringVar(&base.StringVar{
-		Name:   "dev-cluster-listen-address",
-		Target: &c.flagDevControllerClusterListenAddr,
-		EnvVar: "BOUNDARY_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
-		Usage:  "Address to bind the controller to in \"dev\" mode for \"cluster\" purpose.",
-	})
-
-	f.BoolVar(&base.BoolVar{
-		Name:   "combine-logs",
-		Target: &c.flagCombineLogs,
-		Usage:  "If set, both startup information and logs will be sent to stdout. If not set (the default), startup information will go to stdout and logs will be sent to stderr.",
-	})
-
-	base.DevOnlyControllerFlags(c.Command, f)
 
 	return set
 }
@@ -233,7 +164,7 @@ func (c *Command) Run(args []string) int {
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
 	// because it is quite scary to see when first using Boundary. We also disable
 	// this if the user has explicitly disabled mlock in configuration.
-	if !c.flagDev && !c.Config.DisableMlock && !mlock.Supported() {
+	if !c.Config.DisableMlock && !mlock.Supported() {
 		c.UI.Warn(base.WrapAtLength(
 			"WARNING! mlock is not supported on this system! An mlockall(2)-like " +
 				"syscall to prevent memory from being swapped to disk is not " +
@@ -292,37 +223,19 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if c.flagDev {
-		var opts []base.Option
-		if c.flagDevSkipAuthMethodCreation {
-			opts = append(opts, base.WithSkipAuthMethodCreation())
-			switch {
-			case c.flagDevAuthMethodId != "",
-				c.flagDevLoginName != "",
-				c.flagDevPassword != "":
-				c.UI.Warn("-dev-skip-auth-method-creation set, skipping any auth-method related flags")
-			}
-		}
-		if err := c.CreateDevDatabase("postgres", opts...); err != nil {
-			c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
-			return 1
-		}
-		c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
-	} else {
-		if c.Config.Database == nil || c.Config.Database.Url == "" {
-			c.UI.Error(`"url" not specified in "database" config block"`)
-			return 1
-		}
-		dbaseUrl, err := config.ParseAddress(c.Config.Database.Url)
-		if err != nil && err != config.ErrNotAUrl {
-			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
-			return 1
-		}
-		c.DatabaseUrl = strings.TrimSpace(dbaseUrl)
-		if err := c.ConnectToDatabase("postgres"); err != nil {
-			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
-			return 1
-		}
+	if c.Config.Database == nil || c.Config.Database.Url == "" {
+		c.UI.Error(`"url" not specified in "database" config block"`)
+		return 1
+	}
+	dbaseUrl, err := config.ParseAddress(c.Config.Database.Url)
+	if err != nil && err != config.ErrNotAUrl {
+		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
+		return 1
+	}
+	c.DatabaseUrl = strings.TrimSpace(dbaseUrl)
+	if err := c.ConnectToDatabase("postgres"); err != nil {
+		c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
+		return 1
 	}
 
 	defer func() {
@@ -369,78 +282,15 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		}
 	}
 
-	// Validation
-	if !c.flagDev {
-		switch {
-		case len(c.flagConfig) == 0:
-			c.UI.Error("Must specify a config file using -config")
-			return 1
-		case c.flagDevPassword != "":
-			c.UI.Warn(base.WrapAtLength(
-				"You cannot specify a custom admin password outside of \"dev\" mode. " +
-					"Your request has been ignored."))
-			c.flagDevPassword = ""
-		case c.flagDevLoginName != "":
-			c.UI.Warn(base.WrapAtLength(
-				"You cannot specify a custom admin login name outside of \"dev\" mode. " +
-					"Your request has been ignored."))
-			c.flagDevLoginName = ""
-		}
+	if len(c.flagConfig) == 0 {
+		c.UI.Error("Must specify a config file using -config")
+		return 1
+	}
 
-		c.Config, err = config.LoadFile(c.flagConfig, wrapper)
-		if err != nil {
-			c.UI.Error("Error parsing config: " + err.Error())
-			return 1
-		}
-
-	} else {
-		if len(c.flagConfig) == 0 {
-			c.Config, err = config.DevController()
-		} else {
-			c.Config, err = config.LoadFile(c.flagConfig, wrapper)
-		}
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error creating dev config: %w", err).Error())
-			return 1
-		}
-
-		if c.flagDevAuthMethodId != "" {
-			prefix := password.AuthMethodPrefix + "_"
-			if !strings.HasPrefix(c.flagDevAuthMethodId, prefix) {
-				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", prefix))
-				return 1
-			}
-			if len(c.flagDevAuthMethodId) != 15 {
-				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", prefix))
-				return 1
-			}
-			c.DevAuthMethodId = c.flagDevAuthMethodId
-		}
-		if c.flagDevLoginName != "" {
-			c.DevLoginName = c.flagDevLoginName
-		}
-		if c.flagDevPassword != "" {
-			c.DevPassword = c.flagDevPassword
-		}
-
-		c.Config.PassthroughDirectory = c.FlagDevPassthroughDirectory
-
-		for _, l := range c.Config.Listeners {
-			if len(l.Purpose) != 1 {
-				continue
-			}
-			switch l.Purpose[0] {
-			case "api":
-				if c.flagDevControllerAPIListenAddr != "" {
-					l.Address = c.flagDevControllerAPIListenAddr
-				}
-
-			case "cluster":
-				if c.flagDevControllerClusterListenAddr != "" {
-					l.Address = c.flagDevControllerClusterListenAddr
-				}
-			}
-		}
+	c.Config, err = config.LoadFile(c.flagConfig, wrapper)
+	if err != nil {
+		c.UI.Error("Error parsing config: " + err.Error())
+		return 1
 	}
 
 	return 0
