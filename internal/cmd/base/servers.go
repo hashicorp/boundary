@@ -68,9 +68,15 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DevAuthMethodId string
-	DevLoginName    string
-	DevPassword     string
+	DevAuthMethodId  string
+	DevLoginName     string
+	DevPassword      string
+	DevOrgId         string
+	DevProjectId     string
+	DevHostCatalogId string
+	DevHostSetId     string
+	DevHostId        string
+	DevTargetId      string
 
 	DatabaseUrl            string
 	DevDatabaseCleanupFunc func() error
@@ -198,7 +204,7 @@ func (b *Server) SetupMetrics(ui cli.Ui, telemetry *configutil.Telemetry) error 
 	return nil
 }
 
-func (b *Server) PrintInfo(ui cli.Ui, mode string) {
+func (b *Server) PrintInfo(ui cli.Ui) {
 	b.InfoKeys = append(b.InfoKeys, "version")
 	verInfo := version.Get()
 	b.Info["version"] = verInfo.FullVersionNumber(false)
@@ -221,7 +227,7 @@ func (b *Server) PrintInfo(ui cli.Ui, mode string) {
 		}
 	}
 	sort.Strings(b.InfoKeys)
-	ui.Output(fmt.Sprintf("==> Boundary %s configuration:\n", mode))
+	ui.Output(fmt.Sprintf("==> Boundary server configuration:\n"))
 	for _, k := range b.InfoKeys {
 		ui.Output(fmt.Sprintf(
 			"%s%s: %s",
@@ -233,7 +239,7 @@ func (b *Server) PrintInfo(ui cli.Ui, mode string) {
 
 	// Output the header that the server has started
 	if !b.CombineLogs {
-		ui.Output(fmt.Sprintf("==> Boundary %s started! Log data will stream in below:\n", mode))
+		ui.Output(fmt.Sprintf("==> Boundary server started! Log data will stream in below:\n"))
 	}
 }
 
@@ -341,8 +347,8 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 				return errors.New("KMS block missing 'purpose'")
 			case "root", "worker-auth", "config":
 			case "recovery":
-				if config.Controller != nil && config.Controller.DevRecoveryKey != "" {
-					kms.Config["key"] = config.Controller.DevRecoveryKey
+				if config.Controller != nil && config.DevRecoveryKey != "" {
+					kms.Config["key"] = config.DevRecoveryKey
 				}
 			default:
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)

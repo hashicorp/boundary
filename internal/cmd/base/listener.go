@@ -100,6 +100,15 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 		return nil, nil, nil, errors.New("could not determine port")
 	}
 
+	switch purpose {
+	case "cluster":
+		l.TLSDisable = true
+	case "proxy":
+		// TODO: Eventually we'll support bringing your own cert, and we'd only
+		// want to disable if you aren't actually bringing your own
+		l.TLSDisable = true
+	}
+
 	bindProto := "tcp"
 
 	// If they've passed 0.0.0.0, we only want to bind on IPv4

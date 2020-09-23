@@ -1,7 +1,6 @@
 package targets
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/hashicorp/boundary/api/scopes"
@@ -10,15 +9,12 @@ import (
 )
 
 func generateTargetTableOutput(in *targets.Target) string {
-	var ret []string
-
 	nonAttributeMap := map[string]interface{}{
 		"ID":                       in.Id,
-		"Scope ID":                 in.Scope.Id,
 		"Version":                  in.Version,
 		"Type":                     in.Type,
-		"Created Time":             in.CreatedTime.Local().Format(time.RFC3339),
-		"Updated Time":             in.UpdatedTime.Local().Format(time.RFC3339),
+		"Created Time":             in.CreatedTime.Local().Format(time.RFC1123),
+		"Updated Time":             in.UpdatedTime.Local().Format(time.RFC1123),
 		"Session Connection Limit": in.SessionConnectionLimit,
 		"Session Max Seconds":      in.SessionMaxSeconds,
 	}
@@ -30,25 +26,7 @@ func generateTargetTableOutput(in *targets.Target) string {
 		nonAttributeMap["Description"] = in.Description
 	}
 
-	maxLength := 0
-	for k := range nonAttributeMap {
-		if len(k) > maxLength {
-			maxLength = len(k)
-		}
-	}
-	if len(in.Attributes) > 0 {
-		for k, v := range in.Attributes {
-			if attributeMap[k] != "" {
-				in.Attributes[attributeMap[k]] = v
-				delete(in.Attributes, k)
-			}
-		}
-		for k := range in.Attributes {
-			if len(k) > maxLength {
-				maxLength = len(k)
-			}
-		}
-	}
+	maxLength := base.MaxAttributesLength(nonAttributeMap, in.Attributes, keySubstMap)
 
 	var hostSetMaps []map[string]interface{}
 	if len(in.HostSets) > 0 {
@@ -63,16 +41,20 @@ func generateTargetTableOutput(in *targets.Target) string {
 			maxLength = l
 		}
 	}
-	ret = append(ret, "", "Target information:")
 
-	ret = append(ret,
-		// We do +2 because there is another +2 offset for host sets below
+	ret := []string{
+		"",
+		"Target information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-	)
+		"",
+		"  Scope:",
+		base.ScopeInfoForOutput(in.Scope, maxLength),
+	}
 
 	if len(in.HostSets) > 0 {
 		ret = append(ret,
-			fmt.Sprintf("  Host Sets:   %s", ""),
+			"",
+			"  Host Sets:",
 		)
 		for _, m := range hostSetMaps {
 			ret = append(ret,
@@ -83,12 +65,9 @@ func generateTargetTableOutput(in *targets.Target) string {
 	}
 
 	if len(in.Attributes) > 0 {
-		if true {
-			ret = append(ret,
-				fmt.Sprintf("  Attributes:   %s", ""),
-			)
-		}
 		ret = append(ret,
+			"",
+			"  Attributes:",
 			base.WrapMap(4, maxLength, in.Attributes),
 		)
 	}
@@ -125,7 +104,7 @@ func generateAuthorizationTableOutput(in *targets.SessionAuthorization) string {
 	return base.WrapForHelpText(ret)
 }
 
-var attributeMap = map[string]string{
+var keySubstMap = map[string]string{
 	"default_port": "Default Port",
 }
 
