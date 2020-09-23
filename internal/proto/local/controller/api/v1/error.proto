@@ -7,7 +7,8 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api;a
 message ErrorDetails {
 	string TraceId = 1 [json_name="TraceId"];
 	string request_id = 2 [json_name="request_id"];
-	repeated FieldError request_fields = 3 [json_name="request_fields"];
+	string error_id = 3 [json_name="error_id"];
+	repeated FieldError request_fields = 4 [json_name="request_fields"];
 }
 
 // FieldErrors contains error information on a per field basis.

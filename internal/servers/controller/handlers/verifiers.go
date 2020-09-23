@@ -48,7 +48,7 @@ func ValidateCreateRequest(i ApiResource, fn CustomValidatorFunc) error {
 		badFields[k] = v
 	}
 	if len(badFields) > 0 {
-		return InvalidArgumentErrorf("Argument errors found in the request.", badFields)
+		return InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
 }
@@ -106,7 +106,7 @@ func ValidateUpdateRequest(prefix string, r UpdateRequest, i ApiResource, fn Cus
 	}
 
 	if len(badFields) > 0 {
-		return InvalidArgumentErrorf("Errors in provided fields.", badFields)
+		return InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
 }
@@ -124,7 +124,7 @@ func ValidateGetRequest(prefix string, r GetRequest, fn CustomValidatorFunc) err
 		badFields[k] = v
 	}
 	if len(badFields) > 0 {
-		return InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+		return InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
 }
@@ -142,7 +142,7 @@ func ValidateDeleteRequest(prefix string, r DeleteRequest, fn CustomValidatorFun
 		badFields[k] = v
 	}
 	if len(badFields) > 0 {
-		return InvalidArgumentErrorf("Errors in provided fields.", badFields)
+		return InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
 }

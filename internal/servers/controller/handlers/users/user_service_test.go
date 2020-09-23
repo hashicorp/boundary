@@ -2,6 +2,7 @@ package users_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -14,11 +15,11 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -41,8 +42,7 @@ func createDefaultUserAndRepo(t *testing.T) (*iam.User, func() (*iam.Repository,
 }
 
 func TestGet(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	assert, require := assert.New(t), require.New(t)
 	u, repoFn := createDefaultUserAndRepo(t)
 	toMerge := &pbs.GetUserRequest{
 		Id: u.GetPublicId(),
@@ -60,34 +60,33 @@ func TestGet(t *testing.T) {
 	}
 
 	cases := []struct {
-		name    string
-		req     *pbs.GetUserRequest
-		res     *pbs.GetUserResponse
-		errCode codes.Code
+		name string
+		req  *pbs.GetUserRequest
+		res  *pbs.GetUserResponse
+		err  error
 	}{
 		{
-			name:    "Get an Existing User",
-			req:     &pbs.GetUserRequest{Id: u.GetPublicId()},
-			res:     &pbs.GetUserResponse{Item: wantU},
-			errCode: codes.OK,
+			name: "Get an Existing User",
+			req:  &pbs.GetUserRequest{Id: u.GetPublicId()},
+			res:  &pbs.GetUserResponse{Item: wantU},
 		},
 		{
-			name:    "Get a non existant User",
-			req:     &pbs.GetUserRequest{Id: iam.UserPrefix + "_DoesntExis"},
-			res:     nil,
-			errCode: codes.NotFound,
+			name: "Get a non existant User",
+			req:  &pbs.GetUserRequest{Id: iam.UserPrefix + "_DoesntExis"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name:    "Wrong id prefix",
-			req:     &pbs.GetUserRequest{Id: "j_1234567890"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			name: "Wrong id prefix",
+			req:  &pbs.GetUserRequest{Id: "j_1234567890"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:    "space in id",
-			req:     &pbs.GetUserRequest{Id: iam.UserPrefix + "_1 23456789"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			name: "space in id",
+			req:  &pbs.GetUserRequest{Id: iam.UserPrefix + "_1 23456789"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -99,7 +98,10 @@ func TestGet(t *testing.T) {
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.GetUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "GetUser(%+v) got error %v, wanted %v", req, gErr, tc.err)
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetUser(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
@@ -136,22 +138,20 @@ func TestList(t *testing.T) {
 	}
 
 	cases := []struct {
-		name    string
-		req     *pbs.ListUsersRequest
-		res     *pbs.ListUsersResponse
-		errCode codes.Code
+		name string
+		req  *pbs.ListUsersRequest
+		res  *pbs.ListUsersResponse
+		err  error
 	}{
 		{
-			name:    "List Many Users",
-			req:     &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId()},
-			res:     &pbs.ListUsersResponse{Items: wantUsers},
-			errCode: codes.OK,
+			name: "List Many Users",
+			req:  &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId()},
+			res:  &pbs.ListUsersResponse{Items: wantUsers},
 		},
 		{
-			name:    "List No Users",
-			req:     &pbs.ListUsersRequest{ScopeId: oNoUsers.GetPublicId()},
-			res:     &pbs.ListUsersResponse{},
-			errCode: codes.OK,
+			name: "List No Users",
+			req:  &pbs.ListUsersRequest{ScopeId: oNoUsers.GetPublicId()},
+			res:  &pbs.ListUsersResponse{},
 		},
 	}
 	for _, tc := range cases {
@@ -160,60 +160,63 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestDelete(t *testing.T) {
-	require := require.New(t)
 	u, repo := createDefaultUserAndRepo(t)
 
 	s, err := users.NewService(repo)
-	require.NoError(err, "Error when getting new user service.")
+	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
-		name    string
-		req     *pbs.DeleteUserRequest
-		res     *pbs.DeleteUserResponse
-		errCode codes.Code
+		name string
+		req  *pbs.DeleteUserRequest
+		res  *pbs.DeleteUserResponse
+		err  error
 	}{
 		{
 			name: "Delete an Existing User",
 			req: &pbs.DeleteUserRequest{
 				Id: u.GetPublicId(),
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Delete bad user id",
 			req: &pbs.DeleteUserRequest{
 				Id: iam.UserPrefix + "_doesntexis",
 			},
-			errCode: codes.NotFound,
+			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Bad User Id formatting",
 			req: &pbs.DeleteUserRequest{
 				Id: "bad_format",
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			got, gErr := s.DeleteUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "DeleteUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "DeleteUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 			assert.EqualValuesf(tc.res, got, "DeleteUser(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestDelete_twice(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	assert, require := assert.New(t), require.New(t)
 	u, repo := createDefaultUserAndRepo(t)
 
 	s, err := users.NewService(repo)
@@ -226,20 +229,19 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteUser(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
-	require := require.New(t)
 	defaultUser, repo := createDefaultUserAndRepo(t)
 	defaultCreated, err := ptypes.Timestamp(defaultUser.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Error converting proto to timestamp.")
+	require.NoError(t, err, "Error converting proto to timestamp.")
 
 	cases := []struct {
-		name    string
-		req     *pbs.CreateUserRequest
-		res     *pbs.CreateUserResponse
-		errCode codes.Code
+		name string
+		req  *pbs.CreateUserRequest
+		res  *pbs.CreateUserResponse
+		err  error
 	}{
 		{
 			name: "Create a valid User",
@@ -258,7 +260,6 @@ func TestCreate(t *testing.T) {
 					Version:     1,
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Create a valid Global User",
@@ -277,7 +278,6 @@ func TestCreate(t *testing.T) {
 					Version:     1,
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Can't specify Id",
@@ -285,8 +285,8 @@ func TestCreate(t *testing.T) {
 				ScopeId: defaultUser.GetScopeId(),
 				Id:      iam.UserPrefix + "_notallowed",
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Created Time",
@@ -294,8 +294,8 @@ func TestCreate(t *testing.T) {
 				ScopeId:     defaultUser.GetScopeId(),
 				CreatedTime: ptypes.TimestampNow(),
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Update Time",
@@ -303,18 +303,21 @@ func TestCreate(t *testing.T) {
 				ScopeId:     defaultUser.GetScopeId(),
 				UpdatedTime: ptypes.TimestampNow(),
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			s, err := users.NewService(repo)
 			require.NoError(err, "Error when getting new user service.")
 
 			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetItem().GetScopeId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "CreateUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "CreateUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.UserPrefix+"_"))
@@ -359,10 +362,10 @@ func TestUpdate(t *testing.T) {
 	}
 
 	cases := []struct {
-		name    string
-		req     *pbs.UpdateUserRequest
-		res     *pbs.UpdateUserResponse
-		errCode codes.Code
+		name string
+		req  *pbs.UpdateUserRequest
+		res  *pbs.UpdateUserResponse
+		err  error
 	}{
 		{
 			name: "Update an Existing User",
@@ -385,7 +388,6 @@ func TestUpdate(t *testing.T) {
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Multiple Paths in single string",
@@ -408,7 +410,6 @@ func TestUpdate(t *testing.T) {
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "No Update Mask",
@@ -418,7 +419,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "No Paths in Mask",
@@ -429,7 +430,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Only non-existant paths in Mask",
@@ -440,7 +441,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Unset Name",
@@ -461,7 +462,6 @@ func TestUpdate(t *testing.T) {
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Update Only Name",
@@ -484,7 +484,6 @@ func TestUpdate(t *testing.T) {
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Update Only Description",
@@ -507,7 +506,6 @@ func TestUpdate(t *testing.T) {
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Update a Non Existing User",
@@ -521,7 +519,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.NotFound,
+			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Cant change Id",
@@ -535,8 +533,8 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Cant specify Created Time",
@@ -548,8 +546,8 @@ func TestUpdate(t *testing.T) {
 					CreatedTime: ptypes.TimestampNow(),
 				},
 			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Cant specify Updated Time",
@@ -561,8 +559,8 @@ func TestUpdate(t *testing.T) {
 					UpdatedTime: ptypes.TimestampNow(),
 				},
 			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -583,9 +581,10 @@ func TestUpdate(t *testing.T) {
 			req.Item.Version = version
 
 			got, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
-			require.Equal(tc.errCode, status.Code(gErr), "UpdateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
-
-			if tc.errCode == codes.OK {
+			if tc.err != nil {
+				require.Error(gErr)
+				require.True(errors.Is(gErr, tc.err), "UpdateUser(%+v) got error %v, wanted %v", req, gErr, tc.err)
+			} else {
 				defer resetUser()
 			}
 
