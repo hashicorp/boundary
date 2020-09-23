@@ -1,5 +1,6 @@
 .root {
-  min-height: calc(100vh - 62px);
+  /* 100% height - nav - footer */
+  min-height: calc(100vh - (64px + 77px));
   width: 100%;
   padding: 150px 0;
   background-repeat: no-repeat;
