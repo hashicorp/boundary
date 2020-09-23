@@ -1,0 +1,17 @@
+.signInWrapper {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loadingIconSpin {
+  transform: translateY(-100px);
+}
+
+.loginLockup {
+  display: flex;
+  width: 50vw;
+  justify-content: space-around;
+}
