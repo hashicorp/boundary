@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
-	"sync"
 
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	controllercmd "github.com/hashicorp/boundary/internal/cmd/commands/controller"
-	workercmd "github.com/hashicorp/boundary/internal/cmd/commands/worker"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/host/static"
+	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/worker"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -26,6 +27,10 @@ type Command struct {
 	childSighupCh []chan struct{}
 	ReloadedCh    chan struct{}
 	SigUSR2Ch     chan struct{}
+
+	Config     *config.Config
+	controller *controller.Controller
+	worker     *worker.Worker
 
 	flagLogLevel                    string
 	flagLogFormat                   string
@@ -181,9 +186,9 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	childShutdownCh := make(chan struct{})
+	//childShutdownCh := make(chan struct{})
 
-	devConfig, err := config.DevCombined()
+	c.Config, err = config.DevCombined()
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
 		return 1
@@ -198,6 +203,11 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		c.DevAuthMethodId = fmt.Sprintf("%s_%s", password.AuthMethodPrefix, c.flagIdSuffix)
+		c.DevOrgId = fmt.Sprintf("%s_%s", scope.Org.Prefix(), c.flagIdSuffix)
+		c.DevProjectId = fmt.Sprintf("%s_%s", scope.Project.Prefix(), c.flagIdSuffix)
+		c.DevHostCatalogId = fmt.Sprintf("%s_%s", static.HostCatalogPrefix, c.flagIdSuffix)
+		c.DevHostSetId = fmt.Sprintf("%s_%s", static.HostSetPrefix, c.flagIdSuffix)
+		c.DevHostId = fmt.Sprintf("%s_%s", static.HostPrefix, c.flagIdSuffix)
 	}
 	if c.flagLoginName != "" {
 		c.DevLoginName = c.flagLoginName
@@ -206,11 +216,12 @@ func (c *Command) Run(args []string) int {
 		c.DevPassword = c.flagPassword
 	}
 
-	devConfig.PassthroughDirectory = c.FlagDevPassthroughDirectory
+	c.Config.PassthroughDirectory = c.flagPassthroughDirectory
 
-	for _, l := range devConfig.Listeners {
+	for _, l := range c.Config.Listeners {
 		if len(l.Purpose) != 1 {
-			continue
+			c.UI.Error("Only one purpose supported for each listener")
+			return 1
 		}
 		switch l.Purpose[0] {
 		case "api":
@@ -237,15 +248,15 @@ func (c *Command) Run(args []string) int {
 
 	base.StartMemProfiler(c.Logger)
 
-	if err := c.SetupMetrics(c.UI, devConfig.Telemetry); err != nil {
+	if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
 
-	if c.FlagDevRecoveryKey != "" {
-		devConfig.Controller.DevRecoveryKey = c.FlagDevRecoveryKey
+	if c.flagRecoveryKey != "" {
+		c.Config.DevRecoveryKey = c.flagRecoveryKey
 	}
-	if err := c.SetupKMSes(c.UI, devConfig); err != nil {
+	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
@@ -258,27 +269,27 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 	c.InfoKeys = append(c.InfoKeys, "[Controller] AEAD Key Bytes")
-	c.Info["[Controller] AEAD Key Bytes"] = devConfig.Controller.DevControllerKey
+	c.Info["[Controller] AEAD Key Bytes"] = c.Config.DevControllerKey
 	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
-	c.Info["[Worker-Auth] AEAD Key Bytes"] = devConfig.Controller.DevWorkerAuthKey
+	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 	c.InfoKeys = append(c.InfoKeys, "[Recovery] AEAD Key Bytes")
-	c.Info["[Recovery] AEAD Key Bytes"] = devConfig.Controller.DevRecoveryKey
+	c.Info["[Recovery] AEAD Key Bytes"] = c.Config.DevRecoveryKey
 
 	// Initialize the listeners
-	if err := c.SetupListeners(c.UI, devConfig.SharedConfig, []string{"api", "cluster", "proxy"}); err != nil {
+	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
 
-	if err := c.SetupWorkerPublicAddress(devConfig, c.flagWorkerPublicAddr); err != nil {
+	if err := c.SetupWorkerPublicAddress(c.Config, c.flagWorkerPublicAddr); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
 	c.InfoKeys = append(c.InfoKeys, "worker public addr")
-	c.Info["worker public addr"] = devConfig.Worker.PublicAddr
+	c.Info["worker public addr"] = c.Config.Worker.PublicAddr
 
 	// Write out the PID to the file now that server has successfully started
-	if err := c.StorePidFile(devConfig.PidFile); err != nil {
+	if err := c.StorePidFile(c.Config.PidFile); err != nil {
 		c.UI.Error(fmt.Errorf("Error storing PID: %w", err).Error())
 		return 1
 	}
@@ -298,47 +309,97 @@ func (c *Command) Run(args []string) int {
 		c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
 	}
 
-	c.PrintInfo(c.UI, "dev mode")
+	c.PrintInfo(c.UI)
 	c.ReleaseLogGate()
 
-	// Instantiate the wait group
-	shutdownWg := &sync.WaitGroup{}
-	shutdownWg.Add(2)
-	controllerSighupCh := make(chan struct{})
-	c.childSighupCh = append(c.childSighupCh, controllerSighupCh)
+	{
+		conf := &controller.Config{
+			RawConfig: c.Config,
+			Server:    c.Server,
+		}
 
-	devController := &controllercmd.Command{
-		Server:        c.Server,
-		ExtShutdownCh: childShutdownCh,
-		SighupCh:      controllerSighupCh,
-		Config:        devConfig,
-	}
-	if err := devController.Start(); err != nil {
-		c.UI.Error(err.Error())
-		return 1
-	}
+		var err error
+		c.controller, err = controller.New(conf)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
+			return 1
+		}
 
-	workerSighupCh := make(chan struct{})
-	c.childSighupCh = append(c.childSighupCh, workerSighupCh)
-	devWorker := &workercmd.Command{
-		Server:        c.Server,
-		ExtShutdownCh: childShutdownCh,
-		SighupCh:      workerSighupCh,
-		Config:        devConfig,
+		if err := c.controller.Start(); err != nil {
+			retErr := fmt.Errorf("Error starting controller: %w", err)
+			if err := c.controller.Shutdown(false); err != nil {
+				c.UI.Error(retErr.Error())
+				retErr = fmt.Errorf("Error shutting down controller: %w", err)
+			}
+			c.UI.Error(retErr.Error())
+			return 1
+		}
 	}
-	if err := devWorker.Start(); err != nil {
-		c.UI.Error(err.Error())
-		return 1
-	}
+	{
+		conf := &worker.Config{
+			RawConfig: c.Config,
+			Server:    c.Server,
+		}
 
-	go func() {
-		defer shutdownWg.Done()
-		devController.WaitForInterrupt()
-	}()
-	go func() {
-		defer shutdownWg.Done()
-		devWorker.WaitForInterrupt()
-	}()
+		var err error
+		c.worker, err = worker.New(conf)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
+			return 1
+		}
+
+		if err := c.worker.Start(); err != nil {
+			retErr := fmt.Errorf("Error starting worker: %w", err)
+			if err := c.worker.Shutdown(false); err != nil {
+				c.UI.Error(retErr.Error())
+				retErr = fmt.Errorf("Error shutting down worker: %w", err)
+			}
+			c.UI.Error(retErr.Error())
+			if err := c.controller.Shutdown(false); err != nil {
+				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+			}
+			return 1
+		}
+	}
+	/*
+		shutdownWg := &sync.WaitGroup{}
+		shutdownWg.Add(2)
+		controllerSighupCh := make(chan struct{})
+		c.childSighupCh = append(c.childSighupCh, controllerSighupCh)
+
+		devController := &controllercmd.Command{
+			Server:        c.Server,
+			ExtShutdownCh: childShutdownCh,
+			SighupCh:      controllerSighupCh,
+			Config:        c.Config,
+		}
+		if err := devController.Start(); err != nil {
+			c.UI.Error(err.Error())
+			return 1
+		}
+
+		workerSighupCh := make(chan struct{})
+		c.childSighupCh = append(c.childSighupCh, workerSighupCh)
+		devWorker := &workercmd.Command{
+			Server:        c.Server,
+			ExtShutdownCh: childShutdownCh,
+			SighupCh:      workerSighupCh,
+			Config:        c.Config,
+		}
+		if err := devWorker.Start(); err != nil {
+			c.UI.Error(err.Error())
+			return 1
+		}
+
+		go func() {
+			defer shutdownWg.Done()
+			devController.WaitForInterrupt()
+		}()
+		go func() {
+			defer shutdownWg.Done()
+			devWorker.WaitForInterrupt()
+		}()
+	*/
 
 	// Wait for shutdown
 	shutdownTriggered := false
@@ -348,16 +409,27 @@ func (c *Command) Run(args []string) int {
 		case <-c.ShutdownCh:
 			c.UI.Output("==> Boundary dev environment shutdown triggered")
 
-			childShutdownCh <- struct{}{}
-			childShutdownCh <- struct{}{}
+			/*
+				childShutdownCh <- struct{}{}
+				childShutdownCh <- struct{}{}
+			*/
+			if err := c.worker.Shutdown(false); err != nil {
+				c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+			}
+
+			if err := c.controller.Shutdown(false); err != nil {
+				c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
+			}
 
 			shutdownTriggered = true
 
-		case <-c.SighupCh:
-			c.UI.Output("==> Boundary dev environment reload triggered")
-			for _, v := range c.childSighupCh {
-				v <- struct{}{}
-			}
+			/*
+				case <-c.SighupCh:
+					c.UI.Output("==> Boundary dev environment reload triggered")
+					for _, v := range c.childSighupCh {
+						v <- struct{}{}
+					}
+			*/
 
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
@@ -366,7 +438,7 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	shutdownWg.Wait()
+	//shutdownWg.Wait()
 
 	return 0
 }

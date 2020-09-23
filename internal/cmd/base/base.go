@@ -73,9 +73,6 @@ type Command struct {
 	FlagDescription string
 	FlagVersion     int
 
-	FlagDevPassthroughDirectory string
-	FlagDevRecoveryKey          string
-
 	client *api.Client
 }
 

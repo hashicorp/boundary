@@ -1,13 +1,14 @@
-package worker
+package server
 
 import (
 	"fmt"
 	"runtime"
 	"strings"
-	"sync"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
@@ -29,10 +30,9 @@ type Command struct {
 	ReloadedCh    chan struct{}
 	SigUSR2Ch     chan struct{}
 
-	cleanupGuard sync.Once
-
-	Config *config.Config
-	worker *worker.Worker
+	Config     *config.Config
+	controller *controller.Controller
+	worker     *worker.Worker
 
 	configWrapper wrapping.Wrapper
 
@@ -44,16 +44,16 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return "Start a Boundary worker"
+	return "Start a Boundary server"
 }
 
 func (c *Command) Help() string {
 	helpText := `
-Usage: boundary worker [options]
+Usage: boundary server [options]
 
-  Start a worker with a configuration file:
+  Start a server (controller, worker, or both) with a configuration file:
 
-      $ boundary worker -config=/etc/boundary/worker.hcl
+      $ boundary server -config=/etc/boundary/controller.hcl
 
   For a full list of examples, please see the documentation.
 
@@ -73,7 +73,7 @@ func (c *Command) Flags() *base.FlagSets {
 			complete.PredictFiles("*.hcl"),
 			complete.PredictFiles("*.json"),
 		),
-		Usage: "Path to a configuration file.",
+		Usage: "Path to the configuration file.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -102,13 +102,6 @@ func (c *Command) Flags() *base.FlagSets {
 		Default:    base.NotSetValue,
 		Completion: complete.PredictSet("standard", "json"),
 		Usage:      `Log format. Supported values are "standard" and "json".`,
-	})
-
-	f.BoolVar(&base.BoolVar{
-		Name:    "combine-logs",
-		Target:  &c.flagCombineLogs,
-		Default: false,
-		Usage:   "If set, both startup information and logs will be sent to stdout. If not set (the default), startup information will go to stdout and logs will be sent to stderr.",
 	})
 
 	return set
@@ -153,9 +146,19 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return 1
 	}
+	if c.Config.Controller != nil {
+		if c.RootKms == nil {
+			c.UI.Error("Root KMS not found after parsing KMS blocks")
+			return 1
+		}
+	}
 	if c.WorkerAuthKms == nil {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 		return 1
+	}
+
+	if c.Config.DefaultMaxRequestDuration != 0 {
+		globals.DefaultMaxRequestDuration = c.Config.DefaultMaxRequestDuration
 	}
 
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
@@ -170,22 +173,86 @@ func (c *Command) Run(args []string) int {
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 
-	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"proxy"}); err != nil {
+	// Perform controller-specific listener checks here before setup
+	var foundCluster bool
+	var foundApi bool
+	var foundProxy bool
+	for _, lnConfig := range c.Config.Listeners {
+		switch len(lnConfig.Purpose) {
+		case 0:
+			c.UI.Error("Listener specified without a purpose")
+			return 1
+
+		case 1:
+			purpose := lnConfig.Purpose[0]
+			switch purpose {
+			case "cluster":
+				foundCluster = true
+			case "api":
+				foundApi = true
+			case "proxy":
+				foundProxy = true
+			default:
+				c.UI.Error(fmt.Sprintf("Unknown listener purpose %q", lnConfig.Purpose[0]))
+				return 1
+			}
+
+		default:
+			c.UI.Error("Specifying a listener with more than one purpose is not supported")
+			return 1
+		}
+	}
+	if c.Config.Controller != nil {
+		if !foundApi {
+			c.UI.Error(`Config activates controller but no listener with "api" purpose found`)
+			return 1
+		}
+		if !foundCluster {
+			c.UI.Error(`Config activates controller but no listener with "cluster" purpose found`)
+			return 1
+		}
+	}
+	if c.Config.Worker != nil {
+		if !foundProxy {
+			c.UI.Error(`Config activates worker but no listener with "proxy" purpose found`)
+			return 1
+		}
+	}
+	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
 
-	if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
-		c.UI.Error(err.Error())
-		return 1
+	if c.Config.Worker != nil {
+		if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
+			c.UI.Error(err.Error())
+			return 1
+		}
+		c.InfoKeys = append(c.InfoKeys, "public addr")
+		c.Info["public addr"] = c.Config.Worker.PublicAddr
 	}
-	c.InfoKeys = append(c.InfoKeys, "public addr")
-	c.Info["public addr"] = c.Config.Worker.PublicAddr
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.StorePidFile(c.Config.PidFile); err != nil {
 		c.UI.Error(fmt.Errorf("Error storing PID: %w", err).Error())
 		return 1
+	}
+
+	if c.Config.Controller != nil {
+		if c.Config.Controller.Database == nil || c.Config.Controller.Database.Url == "" {
+			c.UI.Error(`"url" not specified in "controller.database" config block"`)
+			return 1
+		}
+		dbaseUrl, err := config.ParseAddress(c.Config.Controller.Database.Url)
+		if err != nil && err != config.ErrNotAUrl {
+			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
+			return 1
+		}
+		c.DatabaseUrl = strings.TrimSpace(dbaseUrl)
+		if err := c.ConnectToDatabase("postgres"); err != nil {
+			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
+			return 1
+		}
 	}
 
 	defer func() {
@@ -194,12 +261,24 @@ func (c *Command) Run(args []string) int {
 		}
 	}()
 
-	c.PrintInfo(c.UI, "worker")
+	c.PrintInfo(c.UI)
 	c.ReleaseLogGate()
 
-	if err := c.Start(); err != nil {
-		c.UI.Error(err.Error())
-		return 1
+	if c.Config.Controller != nil {
+		if err := c.StartController(); err != nil {
+			c.UI.Error(err.Error())
+			return 1
+		}
+	}
+
+	if c.Config.Worker != nil {
+		if err := c.StartWorker(); err != nil {
+			c.UI.Error(err.Error())
+			if err := c.controller.Shutdown(false); err != nil {
+				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+			}
+			return 1
+		}
 	}
 
 	return c.WaitForInterrupt()
@@ -232,28 +311,63 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		}
 	}
 
-	// Validation
 	if len(c.flagConfig) == 0 {
-		c.UI.Error("Must supply a config file with -config")
+		c.UI.Error("Must specify a config file using -config")
 		return 1
 	}
+
 	c.Config, err = config.LoadFile(c.flagConfig, wrapper)
 	if err != nil {
 		c.UI.Error("Error parsing config: " + err.Error())
 		return 1
 	}
 
+	if c.Config.Controller == nil && c.Config.Worker == nil {
+		c.UI.Error("Neither worker nor controller specified in configuration file.")
+		return 1
+	}
+	if c.Config.Controller != nil && c.Config.Controller.Name == "" {
+		c.UI.Error("Controller has no name set. It must be the unique name of this instance.")
+		return 1
+	}
+	if c.Config.Worker != nil && c.Config.Worker.Name == "" {
+		c.UI.Error("Worker has no name set. It must be the unique name of this instance.")
+		return 1
+	}
+
 	return 0
 }
 
-func (c *Command) Start() error {
-	// Instantiate the wait group
+func (c *Command) StartController() error {
+	conf := &controller.Config{
+		RawConfig: c.Config,
+		Server:    c.Server,
+	}
+
+	var err error
+	c.controller, err = controller.New(conf)
+	if err != nil {
+		return fmt.Errorf("Error initializing controller: %w", err)
+	}
+
+	if err := c.controller.Start(); err != nil {
+		retErr := fmt.Errorf("Error starting controller: %w", err)
+		if err := c.controller.Shutdown(false); err != nil {
+			c.UI.Error(retErr.Error())
+			retErr = fmt.Errorf("Error shutting down controller: %w", err)
+		}
+		return retErr
+	}
+
+	return nil
+}
+
+func (c *Command) StartWorker() error {
 	conf := &worker.Config{
 		RawConfig: c.Config,
 		Server:    c.Server,
 	}
 
-	// Initialize the core
 	var err error
 	c.worker, err = worker.New(conf)
 	if err != nil {
@@ -264,7 +378,7 @@ func (c *Command) Start() error {
 		retErr := fmt.Errorf("Error starting worker: %w", err)
 		if err := c.worker.Shutdown(false); err != nil {
 			c.UI.Error(retErr.Error())
-			retErr = fmt.Errorf("Error with worker shutdown: %w", err)
+			retErr = fmt.Errorf("Error shutting down worker: %w", err)
 		}
 		return retErr
 	}
@@ -284,16 +398,24 @@ func (c *Command) WaitForInterrupt() int {
 	for !shutdownTriggered {
 		select {
 		case <-shutdownCh:
-			c.UI.Output("==> Boundary worker shutdown triggered")
+			c.UI.Output("==> Boundary server shutdown triggered")
 
-			if err := c.worker.Shutdown(false); err != nil {
-				c.UI.Error(fmt.Errorf("Error with worker shutdown: %w", err).Error())
+			if c.Config.Worker != nil {
+				if err := c.worker.Shutdown(false); err != nil {
+					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+				}
+			}
+
+			if c.Config.Controller != nil {
+				if err := c.controller.Shutdown(c.Config.Worker != nil); err != nil {
+					c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
+				}
 			}
 
 			shutdownTriggered = true
 
 		case <-c.SighupCh:
-			c.UI.Output("==> Boundary worker reload triggered")
+			c.UI.Output("==> Boundary controller reload triggered")
 
 			// Check for new log level
 			var level hclog.Level
@@ -338,7 +460,7 @@ func (c *Command) WaitForInterrupt() int {
 
 		RUNRELOADFUNCS:
 			if err := c.Reload(); err != nil {
-				c.UI.Error(fmt.Errorf("Error(s) were encountered during worker reload: %w", err).Error())
+				c.UI.Error(fmt.Errorf("Error(s) were encountered during controller reload: %w", err).Error())
 			}
 
 		case <-c.SigUSR2Ch:
