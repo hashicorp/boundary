@@ -101,8 +101,9 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 // the stored password. The account for the accountId is returned with a
 // new CredentialId if password is successfully changed.
 //
-// Returns nil if old does not match the stored password for accountId.
-// Returns ErrPasswordsEqual if old and new are equal.
+// Returns nil, db.ErrorRecordNotFound if the account doesn't exist.
+// Returns nil, nil if old does not match the stored password for accountId.
+// Returns nil, ErrPasswordsEqual if old and new are equal.
 func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old, new string, version uint32) (*Account, error) {
 	if accountId == "" {
 		return nil, fmt.Errorf("change password: no account id: %w", db.ErrInvalidParameter)

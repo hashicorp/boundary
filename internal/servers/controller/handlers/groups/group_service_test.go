@@ -2,6 +2,7 @@ package groups_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -129,60 +131,58 @@ func TestGet(t *testing.T) {
 		scopeId string
 		req     *pbs.GetGroupRequest
 		res     *pbs.GetGroupResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "Get an Existing Group",
 			scopeId: og.GetScopeId(),
 			req:     &pbs.GetGroupRequest{Id: og.GetPublicId()},
 			res:     &pbs.GetGroupResponse{Item: wantOrgGroup},
-			errCode: codes.OK,
 		},
 		{
-			name:    "Get a non existant Group",
-			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_DoesntExis"},
-			res:     nil,
-			errCode: codes.NotFound,
+			name: "Get a non existant Group",
+			req:  &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_DoesntExis"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name:    "Wrong id prefix",
-			req:     &pbs.GetGroupRequest{Id: "j_1234567890"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			name: "Wrong id prefix",
+			req:  &pbs.GetGroupRequest{Id: "j_1234567890"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:    "space in id",
-			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_1 23456789"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			name: "space in id",
+			req:  &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_1 23456789"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Project Scoped Get an Existing Group",
 			scopeId: pg.GetScopeId(),
 			req:     &pbs.GetGroupRequest{Id: pg.GetPublicId()},
 			res:     &pbs.GetGroupResponse{Item: wantProjGroup},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Project Scoped Get a non existant Group",
 			scopeId: pg.GetScopeId(),
 			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_DoesntExis"},
 			res:     nil,
-			errCode: codes.NotFound,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name:    "Project Scoped Wrong id prefix",
 			scopeId: pg.GetScopeId(),
 			req:     &pbs.GetGroupRequest{Id: "j_1234567890"},
 			res:     nil,
-			errCode: codes.InvalidArgument,
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Project Scoped space in id",
 			scopeId: pg.GetScopeId(),
 			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_1 23456789"},
 			res:     nil,
-			errCode: codes.InvalidArgument,
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -195,7 +195,10 @@ func TestGet(t *testing.T) {
 			require.NoError(err, "Couldn't create new group service.")
 
 			got, gErr := s.GetGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "GetGroup(%+v) got error %v, wanted %v", req, gErr, tc.err)
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetGroup(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
 	}
@@ -237,31 +240,27 @@ func TestList(t *testing.T) {
 		name    string
 		scopeId string
 		res     *pbs.ListGroupsResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "List Many Group",
 			scopeId: oWithGroups.GetPublicId(),
 			res:     &pbs.ListGroupsResponse{Items: wantOrgGroups},
-			errCode: codes.OK,
 		},
 		{
 			name:    "List No Groups",
 			scopeId: oNoGroups.GetPublicId(),
 			res:     &pbs.ListGroupsResponse{},
-			errCode: codes.OK,
 		},
 		{
 			name:    "List Many Project Group",
 			scopeId: pWithGroups.GetPublicId(),
 			res:     &pbs.ListGroupsResponse{Items: wantProjGroups},
-			errCode: codes.OK,
 		},
 		{
 			name:    "List No Project Groups",
 			scopeId: pNoGroups.GetPublicId(),
 			res:     &pbs.ListGroupsResponse{},
-			errCode: codes.OK,
 		},
 	}
 	for _, tc := range cases {
@@ -271,25 +270,27 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new group service.")
 
 			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListGroupsRequest{ScopeId: tc.scopeId})
-			assert.Equal(tc.errCode, status.Code(gErr), "ListGroups(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListGroups(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.err)
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListGroups(%q) got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
 	}
 }
 
 func TestDelete(t *testing.T) {
-	require := require.New(t)
 	og, pg, repo := createDefaultGroupsAndRepo(t)
 
 	s, err := groups.NewService(repo)
-	require.NoError(err, "Error when getting new group service.")
+	require.NoError(t, err, "Error when getting new group service.")
 
 	cases := []struct {
 		name    string
 		scopeId string
 		req     *pbs.DeleteGroupRequest
 		res     *pbs.DeleteGroupResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "Delete an Existing Group",
@@ -297,8 +298,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: og.GetPublicId(),
 			},
-			res:     &pbs.DeleteGroupResponse{},
-			errCode: codes.OK,
+			res: &pbs.DeleteGroupResponse{},
 		},
 		{
 			name:    "Delete bad group id",
@@ -306,7 +306,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: iam.GroupPrefix + "_doesntexis",
 			},
-			errCode: codes.NotFound,
+			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name:    "Bad Group Id formatting",
@@ -314,7 +314,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: "bad_format",
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Project Scoped Delete an Existing Group",
@@ -322,8 +322,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: pg.GetPublicId(),
 			},
-			res:     &pbs.DeleteGroupResponse{},
-			errCode: codes.OK,
+			res: &pbs.DeleteGroupResponse{},
 		},
 		{
 			name:    "Project Scoped Delete bad group id",
@@ -331,22 +330,24 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: iam.GroupPrefix + "_doesntexis",
 			},
-			errCode: codes.NotFound,
+			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			got, gErr := s.DeleteGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "DeleteGroup(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "DeleteGroup(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 			assert.EqualValuesf(tc.res, got, "DeleteGroup(%+v) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestDelete_twice(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	assert, require := assert.New(t), require.New(t)
 	og, pg, repo := createDefaultGroupsAndRepo(t)
 
 	s, err := groups.NewService(repo)
@@ -360,7 +361,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteGroup(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 
 	scopeId = pg.GetScopeId()
 	projReq := &pbs.DeleteGroupRequest{
@@ -371,21 +372,20 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteGroup(ctx, projReq)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
-	require := require.New(t)
 	defaultOGroup, defaultPGroup, repo := createDefaultGroupsAndRepo(t)
 	defaultCreated, err := ptypes.Timestamp(defaultOGroup.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Error converting proto to timestamp.")
+	require.NoError(t, err, "Error converting proto to timestamp.")
 	toMerge := &pbs.CreateGroupRequest{}
 
 	cases := []struct {
-		name    string
-		req     *pbs.CreateGroupRequest
-		res     *pbs.CreateGroupResponse
-		errCode codes.Code
+		name string
+		req  *pbs.CreateGroupRequest
+		res  *pbs.CreateGroupResponse
+		err  error
 	}{
 		{
 			name: "Create a valid Group",
@@ -404,7 +404,6 @@ func TestCreate(t *testing.T) {
 					Version:     1,
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Create a global Group",
@@ -423,7 +422,6 @@ func TestCreate(t *testing.T) {
 					Version:     1,
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Create a valid Project Scoped Group",
@@ -444,36 +442,35 @@ func TestCreate(t *testing.T) {
 					Version:     1,
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateGroupRequest{Item: &pb.Group{
 				Id: iam.GroupPrefix + "_notallowed",
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateGroupRequest{Item: &pb.Group{
 				CreatedTime: ptypes.TimestampNow(),
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateGroupRequest{Item: &pb.Group{
 				UpdatedTime: ptypes.TimestampNow(),
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.CreateGroupRequest)
 			proto.Merge(req, tc.req)
 
@@ -481,7 +478,10 @@ func TestCreate(t *testing.T) {
 			require.NoError(err, "Error when getting new group service.")
 
 			got, gErr := s.CreateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(req.GetItem().GetScopeId())), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "CreateGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "CreateGroup(%+v) got error %v, wanted %v", req, gErr, tc.err)
+			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.GroupPrefix+"_"))
@@ -504,7 +504,6 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -526,22 +525,22 @@ func TestUpdate(t *testing.T) {
 
 	resetGroups := func(proj bool) {
 		repo, err := repoFn()
-		require.NoError(err, "Couldn't get a new repo")
+		require.NoError(t, err, "Couldn't get a new repo")
 		if proj {
 			pgVersion++
 			pg, _, _, err = repo.UpdateGroup(context.Background(), pg, pgVersion, []string{"Name", "Description"})
-			require.NoError(err, "Failed to reset the group")
+			require.NoError(t, err, "Failed to reset the group")
 			pgVersion++
 		} else {
 			ogVersion++
 			og, _, _, err = repo.UpdateGroup(context.Background(), og, ogVersion, []string{"Name", "Description"})
-			require.NoError(err, "Failed to reset the group")
+			require.NoError(t, err, "Failed to reset the group")
 			ogVersion++
 		}
 	}
 
 	created, err := ptypes.Timestamp(og.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Error converting proto to timestamp")
+	require.NoError(t, err, "Error converting proto to timestamp")
 	toMerge := &pbs.UpdateGroupRequest{
 		Id: og.GetPublicId(),
 	}
@@ -552,7 +551,7 @@ func TestUpdate(t *testing.T) {
 		scopeId string
 		req     *pbs.UpdateGroupRequest
 		res     *pbs.UpdateGroupResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "Update an Existing Group",
@@ -583,7 +582,6 @@ func TestUpdate(t *testing.T) {
 					},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Multiple Paths in single string",
@@ -614,7 +612,6 @@ func TestUpdate(t *testing.T) {
 					},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Update an Existing Project Scoped Group",
@@ -646,7 +643,6 @@ func TestUpdate(t *testing.T) {
 					},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Multiple Paths in single string",
@@ -678,7 +674,6 @@ func TestUpdate(t *testing.T) {
 					},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "No Update Mask",
@@ -688,7 +683,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "No Paths in Mask",
@@ -700,7 +695,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Only non-existant paths in Mask",
@@ -712,7 +707,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Unset Name",
@@ -741,7 +736,6 @@ func TestUpdate(t *testing.T) {
 					},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Update Only Name",
@@ -772,7 +766,6 @@ func TestUpdate(t *testing.T) {
 					},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Update Only Description",
@@ -803,7 +796,6 @@ func TestUpdate(t *testing.T) {
 					},
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Update a Non Existing Group",
@@ -817,7 +809,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.NotFound,
+			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Cant change Id",
@@ -831,8 +823,8 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Cant specify Created Time",
@@ -844,8 +836,8 @@ func TestUpdate(t *testing.T) {
 					CreatedTime: ptypes.TimestampNow(),
 				},
 			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Cant specify Updated Time",
@@ -857,8 +849,8 @@ func TestUpdate(t *testing.T) {
 					UpdatedTime: ptypes.TimestampNow(),
 				},
 			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -869,7 +861,7 @@ func TestUpdate(t *testing.T) {
 			}
 			tc.req.Item.Version = ver
 
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateGroupRequest)
 			proto.Merge(req, tc.req)
 
@@ -883,9 +875,12 @@ func TestUpdate(t *testing.T) {
 			req.Item.Version = ver
 
 			got, gErr := tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "UpdateGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "UpdateGroup(%+v) got error %v, wanted %v", req, gErr, tc.err)
+			}
 
-			if tc.errCode == codes.OK {
+			if tc.err == nil {
 				defer resetGroups(req.Id == pg.PublicId)
 			}
 
@@ -991,9 +986,9 @@ func TestAddMember(t *testing.T) {
 	grp := iam.TestGroup(t, conn, p.GetPublicId())
 
 	failCases := []struct {
-		name    string
-		req     *pbs.AddGroupMembersRequest
-		errCode codes.Code
+		name string
+		req  *pbs.AddGroupMembersRequest
+		err  error
 	}{
 		{
 			name: "Bad Group Id",
@@ -1001,14 +996,17 @@ func TestAddMember(t *testing.T) {
 				Id:      "bad id",
 				Version: grp.GetVersion(),
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			_, gErr := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(grp.GetScopeId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 		})
 	}
 }
@@ -1092,9 +1090,9 @@ func TestSetMember(t *testing.T) {
 	grp := iam.TestGroup(t, conn, p.GetPublicId())
 
 	failCases := []struct {
-		name    string
-		req     *pbs.SetGroupMembersRequest
-		errCode codes.Code
+		name string
+		req  *pbs.SetGroupMembersRequest
+		err  error
 	}{
 		{
 			name: "Bad Group Id",
@@ -1102,14 +1100,17 @@ func TestSetMember(t *testing.T) {
 				Id:      "bad id",
 				Version: grp.GetVersion(),
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			_, gErr := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(grp.GetScopeId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "SetGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "SetGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 		})
 	}
 }
@@ -1201,9 +1202,9 @@ func TestRemoveMember(t *testing.T) {
 	grp := iam.TestGroup(t, conn, p.GetPublicId())
 
 	failCases := []struct {
-		name    string
-		req     *pbs.AddGroupMembersRequest
-		errCode codes.Code
+		name string
+		req  *pbs.AddGroupMembersRequest
+		err  error
 	}{
 		{
 			name: "Bad Group Id",
@@ -1211,14 +1212,17 @@ func TestRemoveMember(t *testing.T) {
 				Id:      "bad id",
 				Version: grp.GetVersion(),
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			_, gErr := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(grp.GetScopeId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 		})
 	}
 }
