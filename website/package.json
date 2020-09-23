@@ -1,6 +1,6 @@
 {
-  "name": "example-docs",
-  "description": "Documentation website for <product name>",
+  "name": "boundary-docs",
+  "description": "Documentation website for Boundary",
   "version": "1.0.0",
   "author": "HashiCorp",
   "dependencies": {
