@@ -67,6 +67,9 @@ type VerifyResults struct {
 	AuthTokenId string
 	Error       error
 	Scope       *scopes.ScopeInfo
+
+	// Used for additional verification
+	v *verifier
 }
 
 type verifier struct {
@@ -79,6 +82,7 @@ type verifier struct {
 	res             *perms.Resource
 	act             action.Type
 	ctx             context.Context
+	acl             perms.ACL
 }
 
 // NewVerifierContext creates a context that carries a verifier object from the
@@ -115,6 +119,8 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		// context we won't catch in tests
 		panic("no verifier information found in context")
 	}
+	ret.v = v
+
 	v.ctx = ctx
 
 	opts := getOpts(opt...)
@@ -163,6 +169,101 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	}
 	ret.AuthTokenId = v.requestInfo.PublicId
 	if !authResults.Allowed {
+		if v.requestInfo.DisableAuthzFailures {
+			ret.Error = nil
+			// TODO: Decide whether to remove this
+			v.logger.Info("failed authz info for request", "resource", pretty.Sprint(v.res), "user_id", ret.UserId, "action", v.act.String())
+		} else {
+			// If the anon user was used (either no token, or invalid (perhaps
+			// expired) token), return a 401. That way if it's an authn'd user
+			// that is not authz'd we'll return 403 to be explicit.
+			if ret.UserId == "u_anon" {
+				ret.Error = handlers.UnauthenticatedError()
+			}
+			return
+		}
+	}
+
+	ret.Error = nil
+	return
+}
+
+// AdditionalVerification is used to perform checks of additional resources for
+// actions that need to touch more than one.
+func (r VerifyResults) AdditionalVerification(ctx context.Context, opt ...Option) (ret VerifyResults) {
+	v := r.v
+
+	ret.Error = handlers.ForbiddenError()
+
+	// Set other parameters the same to start with
+	ret.Scope = r.Scope
+	ret.UserId = r.UserId
+	ret.AuthTokenId = r.AuthTokenId
+	ret.v = r.v
+
+	opts := getOpts(opt...)
+
+	act := opts.withAction
+	res := perms.Resource{
+		ScopeId: opts.withScopeId,
+		Id:      opts.withId,
+		Pin:     opts.withPin,
+		Type:    opts.withType,
+	}
+	// Global scope has no parent ID; account for this
+	if opts.withId == scope.Global.String() && opts.withType == resource.Scope {
+		res.ScopeId = scope.Global.String()
+	}
+
+	// Only perform lookup if it's actually different, otherwise use cached info
+	if res.ScopeId != r.Scope.Id {
+		iamRepo, err := v.iamRepoFn()
+		if err != nil {
+			v.logger.Error("additional verification: failed to get iam repo", "error", err)
+			return
+		}
+
+		// Look up scope details to return. We can skip a lookup when using the
+		// global scope
+		switch res.ScopeId {
+		case "global":
+			ret.Scope = &scopes.ScopeInfo{
+				Id:            scope.Global.String(),
+				Type:          scope.Global.String(),
+				Name:          scope.Global.String(),
+				Description:   "Global Scope",
+				ParentScopeId: "",
+			}
+
+		default:
+			scp, err := iamRepo.LookupScope(v.ctx, v.res.ScopeId)
+			if err != nil {
+				v.logger.Error("additional verification: failed to get look up scope", "error", err)
+				return
+			}
+			if scp == nil {
+				v.logger.Error("additional verification: non-existent scope", "error", err)
+				return
+			}
+			ret.Scope = &scopes.ScopeInfo{
+				Id:            scp.GetPublicId(),
+				Type:          scp.GetType(),
+				Name:          scp.GetName(),
+				Description:   scp.GetDescription(),
+				ParentScopeId: scp.GetParentId(),
+			}
+		}
+	}
+
+	// Always allowed
+	if v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms {
+		ret.Error = nil
+		return
+	}
+
+	aclResults := v.acl.Allowed(res, act)
+
+	if !aclResults.Allowed {
 		if v.requestInfo.DisableAuthzFailures {
 			ret.Error = nil
 			// TODO: Decide whether to remove this
@@ -286,8 +387,8 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		parsedGrants = append(parsedGrants, parsed)
 	}
 
-	acl := perms.NewACL(parsedGrants...)
-	allowed := acl.Allowed(*v.res, v.act)
+	v.acl = perms.NewACL(parsedGrants...)
+	allowed := v.acl.Allowed(*v.res, v.act)
 
 	aclResults = &allowed
 	retErr = nil
