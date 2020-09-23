@@ -86,7 +86,10 @@ begin;
 
     connection_id wt_public_id primary key,
     -- session_id is a degenerate dimension
-    session_id wt_public_id not null,
+    session_id wt_public_id not null
+      references wh_session_accumulating_fact (session_id)
+      on delete cascade
+      on update cascade,
     -- auth_token_id is a degenerate dimension
     auth_token_id wt_public_id not null,
 
