@@ -36,7 +36,35 @@ export default [
   },
   {
     category: 'installing',
-    content: ['dev-mode'],
+    content: ['dev-mode', 'production'],
+  },
+  {
+    category: 'configuration',
+    content: [
+      {
+        category: 'listener',
+        content: ['tcp'],
+      },
+      {
+        category: 'kms',
+        content: [
+          'aead',
+          'awskms',
+          'alicloudkms',
+          'azurekeyvault',
+          'gcpckms',
+          'ocikms',
+          'transit',
+        ],
+      },
+      {
+        category: 'controller',
+      },
+      {
+        category: 'worker',
+      },
+      'telemetry',
+    ],
   },
   {
     category: 'admin-console',
