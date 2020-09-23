@@ -449,7 +449,7 @@ func (v *verifier) decryptToken() {
 		// verified is before the current time, with a minute of fudging), and
 		// it's before now, it's expired and might be a replay.
 		if info.CreationTime.Add(globals.RecoveryTokenValidityPeriod).Before(time.Now()) {
-			v.logger.Warn("WARNING: decrypt recovery token: recovery token has expired (possible replay attack)")
+			v.logger.Warn("decrypt recovery token: recovery token has expired (possible replay attack)")
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
@@ -460,10 +460,10 @@ func (v *verifier) decryptToken() {
 			return
 		}
 		if err := repo.AddRecoveryNonce(v.ctx, info.Nonce); err != nil {
-			v.logger.Warn("WARNING: decrypt recovery token: error adding nonce to database (possible replay attack)", "error", err)
+			v.logger.Warn("decrypt recovery token: error adding nonce to database (possible replay attack)", "error", err)
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
-		v.logger.Info("NOTE: recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
+		v.logger.Warn("recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
 	}
 }

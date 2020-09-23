@@ -12,10 +12,9 @@ func generateSessionTableOutput(in *sessions.Session) string {
 	nonAttributeMap := map[string]interface{}{
 		"ID":              in.Id,
 		"Target ID":       in.TargetId,
-		"Scope ID":        in.Scope.Id,
-		"Created Time":    in.CreatedTime.Local().Format(time.RFC3339),
-		"Updated Time":    in.UpdatedTime.Local().Format(time.RFC3339),
-		"Expiration Time": in.ExpirationTime.Local().Format(time.RFC3339),
+		"Created Time":    in.CreatedTime.Local().Format(time.RFC1123),
+		"Updated Time":    in.UpdatedTime.Local().Format(time.RFC1123),
+		"Expiration Time": in.ExpirationTime.Local().Format(time.RFC1123),
 		"Version":         in.Version,
 		"Type":            in.Type,
 		"Auth Token ID":   in.AuthTokenId,
@@ -26,20 +25,15 @@ func generateSessionTableOutput(in *sessions.Session) string {
 		"Status":          in.Status,
 	}
 
-	maxLength := 0
-	for k := range nonAttributeMap {
-		if len(k) > maxLength {
-			maxLength = len(k)
-		}
-	}
+	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
 	var statesMaps []map[string]interface{}
 	if len(in.States) > 0 {
 		for _, state := range in.States {
 			m := map[string]interface{}{
 				"Status":     state.Status,
-				"Start Time": state.StartTime.Local().Format(time.RFC3339),
-				"End Time":   state.EndTime.Local().Format(time.RFC3339),
+				"Start Time": state.StartTime.Local().Format(time.RFC1123),
+				"End Time":   state.EndTime.Local().Format(time.RFC1123),
 			}
 			statesMaps = append(statesMaps, m)
 		}
@@ -61,16 +55,19 @@ func generateSessionTableOutput(in *sessions.Session) string {
 		}
 	}
 
-	ret := []string{"", "Session information:"}
-
-	ret = append(ret,
-		// We do +2 because there is another +2 offset for host sets below
+	ret := []string{
+		"",
+		"Session information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-	)
+		"",
+		"  Scope:",
+		base.ScopeInfoForOutput(in.Scope, maxLength),
+	}
 
 	if len(in.States) > 0 {
 		ret = append(ret,
-			fmt.Sprintf("  States:   %s", ""),
+			"",
+			"  States:",
 		)
 		for _, m := range statesMaps {
 			ret = append(ret,
