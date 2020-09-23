@@ -1,16 +1,18 @@
 ---
 layout: docs
-page_title: Development Mode
-sidebar_title: Dev Mode
+page_title: Run and Login
+sidebar_title: Run and Login
 description: |-
-  How to install Boundary in development mode
+  How to run Boundary services in dev mode and login for the first time.
 ---
 
-# Development Mode
+# Run and Login to Boundary
+
+Before you can do anything with Boundary, you need to get the Boundary services up and running for the first time. To do this, we're going to run Boundary in `dev` mode.
 
 Dev mode is an all-in-one installation method for getting started with Boundary quickly. As the name implies,
 dev mode is not a production installation method, but instead a way to get Boundary running with a Postgres
-database easily. Do not use dev mode in a production environment, see our "Production Installation" section for
+database easily. Do not use dev mode in a production environment, see [Poduction Installation](/docs/installing/production) section for
 production ready deployment methods.
 
 Dev mode brings up a fully functioning instance of Boundary, including:
@@ -23,19 +25,19 @@ These components should all be considered ephemeral - no data persistence occurs
 strongly recommended that users leverage our [Terraform Provider for Boundary](https://github.com/hashicorp/terraform-provider-boundary) for managing configuration
 of Boundary. This will simplify starting up and shutting down your Boundary dev instance.
 
-## Assumptions
+## Requiements
 
 There are a few requirements for running dev mode:
 
 1. Docker is installed
 2. A route to download the [Postgres Docker image](https://hub.docker.com/_/postgres) is available or a local image cache is available
 
-## Run
+## Start Boundary Services
 
 To start Boundary in dev mode:
 
 ```bash
-./boundary dev
+boundary dev
 ```
 
 The above is the most simple way to start the Boundary server in dev mode. However, there are likely some overrides you'll want to configure when
@@ -48,13 +50,31 @@ doing so, these include:
 To use these overrides, set the following flags:
 
 ```bash
-./boundary dev -dev-auth-method-id=ampw_0000000000 -dev-password=foofoofoo -dev-login-name=foo
+boundary dev -dev-auth-method-id=ampw_0000000000 -dev-password=foofoofoo -dev-login-name=foo
 ```
 
 Setting these allows you to configure hardcoded auth method ID, password, and login name. You can then use these hardcoded values when configuring clients
 such as the Terraform Provider, or when logging into the admin console.
 
-An example using these values to configure your Terraform provider instance for Boundary:
+## Login to Boundary
+
+You can use the values from the above example to authenticate.
+
+For CLI users, you can override using flags:
+
+```
+# Boundary uses http not https in dev mode
+export BOUNDARY_ADDR=http://127.0.0.1:9200
+boundary authenticate password -login-name=foo -password foofoofoo -auth-method-id=ampw_0000000000
+```
+
+The authenticate to the Admin UI, open [http://127.0.0.1:9200](http://127.0.0.1:9200) in a browser and enter the hard coded login name and password:
+
+![](/img/login-dev-mode.png)
+
+Note: Opening `127.0.0.1:9200` will redirect you to the auth method set in the global scope, which is shown in the image above.
+
+And of course, you can also use these overrides to configure the [Terraform provider for Boundary](https://github.com/hashicorp/terraform-provider-boundary):
 
 ```hcl
  provider "boundary" {
@@ -69,12 +89,14 @@ Note in the example above we're setting `base_url` to `http` and not `https` as 
 
 ## User Interface
 
+If you want to develop the Admin UI locally:
+
 The UI is normally compiled into the Boundary binary at build time.
 However, it would be impractical to rebuild the binary on every change when
-actively developing the UI.  To make UI development more convenient, the binary
-supports a _passthrough directory_.  This is an arbitrary local
-directory from which UI assets are served.  Note this option is only available
-in dev mode.  For example:
+actively developing the UI. To make UI development more convenient, the binary
+supports a _passthrough directory_. This is an arbitrary local
+directory from which UI assets are served. Note this option is only available
+in dev mode. For example:
 
 ```bash
 BOUNDARY_DEV_PASSTHROUGH_DIRECTORY=../boundary-ui/ui/core/dist ./boundary dev
