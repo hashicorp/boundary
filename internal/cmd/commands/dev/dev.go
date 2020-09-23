@@ -11,6 +11,7 @@ import (
 	controllercmd "github.com/hashicorp/boundary/internal/cmd/commands/controller"
 	workercmd "github.com/hashicorp/boundary/internal/cmd/commands/worker"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -26,18 +27,19 @@ type Command struct {
 	ReloadedCh    chan struct{}
 	SigUSR2Ch     chan struct{}
 
-	flagLogLevel                       string
-	flagLogFormat                      string
-	flagCombineLogs                    bool
-	flagDevLoginName                   string
-	flagDevPassword                    string
-	flagDevAuthMethodId                string
-	flagDevControllerAPIListenAddr     string
-	flagDevControllerClusterListenAddr string
-	flagDevWorkerProxyListenAddr       string
-	flagDevWorkerPublicAddr            string
-	flagDevSkipAuthMethodCreation      bool
-	flagDevDisableDatabaseDestruction  bool
+	flagLogLevel                    string
+	flagLogFormat                   string
+	flagCombineLogs                 bool
+	flagLoginName                   string
+	flagPassword                    string
+	flagIdSuffix                    string
+	flagControllerAPIListenAddr     string
+	flagControllerClusterListenAddr string
+	flagWorkerProxyListenAddr       string
+	flagWorkerPublicAddr            string
+	flagPassthroughDirectory        string
+	flagRecoveryKey                 string
+	flagDisableDatabaseDestruction  bool
 }
 
 func (c *Command) Synopsis() string {
@@ -81,69 +83,58 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:      `Log format. Supported values are "standard" and "json".`,
 	})
 
-	f = set.NewFlagSet("Dev Options")
-
 	f.StringVar(&base.StringVar{
-		Name:   "dev-auth-method-id",
-		Target: &c.flagDevAuthMethodId,
-		EnvVar: "BOUNDARY_DEV_AUTH_METHOD_ID",
-		Usage: "Auto-created auth method ID. This only applies when running in \"dev\" " +
-			"mode.",
+		Name:   "id-suffix",
+		Target: &c.flagIdSuffix,
+		EnvVar: "BOUNDARY_DEV_ID_SUFFIX",
+		Usage:  `If set, auto-created resources will use this value for their identifier (along with their resource-specific prefix). Must be 10 alphanumeric characters. As an example, if this is set to "1234567890", the generated password auth method ID will be "ampw_1234567890", the generated TCP target ID will be "ttcp_1234567890", and so on.`,
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-password",
-		Target: &c.flagDevPassword,
+		Name:   "password",
+		Target: &c.flagPassword,
 		EnvVar: "BOUNDARY_DEV_PASSWORD",
-		Usage: "Initial admin password. This only applies when running in \"dev\" " +
-			"mode.",
+		Usage:  "Initial login password.",
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-login-name",
-		Target: &c.flagDevLoginName,
+		Name:   "login-name",
+		Target: &c.flagLoginName,
 		EnvVar: "BOUNDARY_DEV_LOGIN_NAME",
-		Usage: "Initial admin login name. This only applies when running in \"dev\" " +
-			"mode.",
+		Usage:  "Initial admin login name.",
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-api-listen-address",
-		Target: &c.flagDevControllerAPIListenAddr,
+		Name:   "api-listen-address",
+		Target: &c.flagControllerAPIListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_API_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for controller \"api\" purpose.",
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-cluster-listen-address",
-		Target: &c.flagDevControllerClusterListenAddr,
+		Name:   "cluster-listen-address",
+		Target: &c.flagControllerClusterListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for controller \"cluster\" purpose.",
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-proxy-listen-address",
-		Target: &c.flagDevWorkerProxyListenAddr,
+		Name:   "proxy-listen-address",
+		Target: &c.flagWorkerProxyListenAddr,
 		EnvVar: "BOUNDARY_DEV_WORKER_PROXY_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for worker \"proxy\" purpose.",
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-worker-public-address",
-		Target: &c.flagDevWorkerPublicAddr,
+		Name:   "worker-public-address",
+		Target: &c.flagWorkerPublicAddr,
 		EnvVar: "BOUNDARY_DEV_WORKER_PUBLIC_ADDRESS",
 		Usage:  "Public address at which the worker is reachable for session proxying.",
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "dev-skip-auth-method-creation",
-		Target: &c.flagDevSkipAuthMethodCreation,
-		Usage:  "If set, an auth method will not be created as part of the dev instance. The recovery KMS will be needed to perform any actions.",
-	})
-
-	f.BoolVar(&base.BoolVar{
-		Name:   "dev-disable-database-destruction",
-		Target: &c.flagDevDisableDatabaseDestruction,
+		Name:   "disable-database-destruction",
+		Target: &c.flagDisableDatabaseDestruction,
 		Usage:  "If set, if a database is created automatically in Docker, it will not be removed when the dev server is shut down.",
 	})
 
@@ -153,7 +144,19 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  "If set, both startup information and logs will be sent to stdout. If not set (the default), startup information will go to stdout and logs will be sent to stderr.",
 	})
 
-	base.DevOnlyControllerFlags(c.Command, f)
+	f.StringVar(&base.StringVar{
+		Name:   "passthrough-directory",
+		Target: &c.flagPassthroughDirectory,
+		EnvVar: "BOUNDARY_DEV_PASSTHROUGH_DIRECTORY",
+		Usage:  "Enables a passthrough directory in the webserver at /",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "recovery-key",
+		Target: &c.flagRecoveryKey,
+		EnvVar: "BOUNDARY_DEV_RECOVERY_KEY",
+		Usage:  "Specifies the base64'd 256-bit AES key to use for recovery operations",
+	})
 
 	return set
 }
@@ -185,23 +188,22 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
 		return 1
 	}
-	if c.flagDevAuthMethodId != "" {
-		prefix := password.AuthMethodPrefix + "_"
-		if !strings.HasPrefix(c.flagDevAuthMethodId, prefix) {
-			c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", prefix))
+	if c.flagIdSuffix != "" {
+		if len(c.flagIdSuffix) != 10 {
+			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
 			return 1
 		}
-		if len(c.flagDevAuthMethodId) != 15 {
-			c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", prefix))
+		if !handlers.ValidId("abc", "abc_"+c.flagIdSuffix) {
+			c.UI.Error("Invalid ID suffix, must be in the set A-Za-z0-9")
 			return 1
 		}
-		c.DevAuthMethodId = c.flagDevAuthMethodId
+		c.DevAuthMethodId = fmt.Sprintf("%s_%s", password.AuthMethodPrefix, c.flagIdSuffix)
 	}
-	if c.flagDevLoginName != "" {
-		c.DevLoginName = c.flagDevLoginName
+	if c.flagLoginName != "" {
+		c.DevLoginName = c.flagLoginName
 	}
-	if c.flagDevPassword != "" {
-		c.DevPassword = c.flagDevPassword
+	if c.flagPassword != "" {
+		c.DevPassword = c.flagPassword
 	}
 
 	devConfig.PassthroughDirectory = c.FlagDevPassthroughDirectory
@@ -212,18 +214,18 @@ func (c *Command) Run(args []string) int {
 		}
 		switch l.Purpose[0] {
 		case "api":
-			if c.flagDevControllerAPIListenAddr != "" {
-				l.Address = c.flagDevControllerAPIListenAddr
+			if c.flagControllerAPIListenAddr != "" {
+				l.Address = c.flagControllerAPIListenAddr
 			}
 
 		case "cluster":
-			if c.flagDevControllerClusterListenAddr != "" {
-				l.Address = c.flagDevControllerClusterListenAddr
+			if c.flagControllerClusterListenAddr != "" {
+				l.Address = c.flagControllerClusterListenAddr
 			}
 
 		case "proxy":
-			if c.flagDevWorkerProxyListenAddr != "" {
-				l.Address = c.flagDevWorkerProxyListenAddr
+			if c.flagWorkerProxyListenAddr != "" {
+				l.Address = c.flagWorkerProxyListenAddr
 			}
 		}
 	}
@@ -268,7 +270,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.SetupWorkerPublicAddress(devConfig, c.flagDevWorkerPublicAddr); err != nil {
+	if err := c.SetupWorkerPublicAddress(devConfig, c.flagWorkerPublicAddr); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
@@ -288,20 +290,11 @@ func (c *Command) Run(args []string) int {
 	}()
 
 	var opts []base.Option
-	if c.flagDevSkipAuthMethodCreation {
-		opts = append(opts, base.WithSkipAuthMethodCreation())
-		switch {
-		case c.flagDevAuthMethodId != "",
-			c.flagDevLoginName != "",
-			c.flagDevPassword != "":
-			c.UI.Warn("-dev-skip-auth-method-creation set, skipping any auth-method related flags")
-		}
-	}
 	if err := c.CreateDevDatabase("postgres", opts...); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 		return 1
 	}
-	if !c.flagDevDisableDatabaseDestruction {
+	if !c.flagDisableDatabaseDestruction {
 		c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
 	}
 

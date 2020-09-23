@@ -36,14 +36,11 @@ type Command struct {
 
 	configWrapper wrapping.Wrapper
 
-	flagConfig                   string
-	flagConfigKms                string
-	flagLogLevel                 string
-	flagLogFormat                string
-	flagDev                      bool
-	flagDevWorkerProxyListenAddr string
-	flagDevWorkerPublicAddr      string
-	flagCombineLogs              bool
+	flagConfig      string
+	flagConfigKms   string
+	flagLogLevel    string
+	flagLogFormat   string
+	flagCombineLogs bool
 }
 
 func (c *Command) Synopsis() string {
@@ -65,7 +62,7 @@ Usage: boundary worker [options]
 }
 
 func (c *Command) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP)
+	set := c.FlagSet(base.FlagSetNone)
 
 	f := set.NewFlagSet("Command Options")
 
@@ -105,29 +102,6 @@ func (c *Command) Flags() *base.FlagSets {
 		Default:    base.NotSetValue,
 		Completion: complete.PredictSet("standard", "json"),
 		Usage:      `Log format. Supported values are "standard" and "json".`,
-	})
-
-	f = set.NewFlagSet("Dev Options")
-
-	f.BoolVar(&base.BoolVar{
-		Name:   "dev",
-		Target: &c.flagDev,
-		Usage: "Enable development mode. As the name implies, do not run \"dev\" mode in " +
-			"production.",
-	})
-
-	f.StringVar(&base.StringVar{
-		Name:   "dev-proxy-listen-address",
-		Target: &c.flagDevWorkerProxyListenAddr,
-		EnvVar: "BOUNDARY_DEV_WORKER_PROXY_LISTEN_ADDRESS",
-		Usage:  "Address to bind the worker to in \"dev\" mode.",
-	})
-
-	f.StringVar(&base.StringVar{
-		Name:   "dev-worker-public-address",
-		Target: &c.flagDevWorkerPublicAddr,
-		EnvVar: "BOUNDARY_DEV_WORKER_PUBLIC_ADDRESS",
-		Usage:  "Public address at which the worker is reachable for session proxying.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -187,7 +161,7 @@ func (c *Command) Run(args []string) int {
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
 	// because it is quite scary to see when first using Boundary. We also disable
 	// this if the user has explicitly disabled mlock in configuration.
-	if !c.flagDev && !c.Config.DisableMlock && !mlock.Supported() {
+	if !c.Config.DisableMlock && !mlock.Supported() {
 		c.UI.Warn(base.WrapAtLength(
 			"WARNING! mlock is not supported on this system! An mlockall(2)-like " +
 				"syscall to prevent memory from being swapped to disk is not " +
@@ -201,10 +175,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if !c.flagDev {
-		c.flagDevWorkerPublicAddr = ""
-	}
-	if err := c.SetupWorkerPublicAddress(c.Config, c.flagDevWorkerPublicAddr); err != nil {
+	if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
@@ -262,31 +233,14 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	}
 
 	// Validation
-	if !c.flagDev {
-		if len(c.flagConfig) == 0 {
-			c.UI.Error("Must supply a config file with -config")
-			return 1
-		}
-		c.Config, err = config.LoadFile(c.flagConfig, wrapper)
-		if err != nil {
-			c.UI.Error("Error parsing config: " + err.Error())
-			return 1
-		}
-
-	} else {
-		if len(c.flagConfig) == 0 {
-			c.Config, err = config.DevWorker()
-		} else {
-			c.Config, err = config.LoadFile(c.flagConfig, wrapper)
-		}
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error creating dev config: %s", err).Error())
-			return 1
-		}
-
-		if c.flagDevWorkerProxyListenAddr != "" {
-			c.Config.Listeners[0].Address = c.flagDevWorkerProxyListenAddr
-		}
+	if len(c.flagConfig) == 0 {
+		c.UI.Error("Must supply a config file with -config")
+		return 1
+	}
+	c.Config, err = config.LoadFile(c.flagConfig, wrapper)
+	if err != nil {
+		c.UI.Error("Error parsing config: " + err.Error())
+		return 1
 	}
 
 	return 0
