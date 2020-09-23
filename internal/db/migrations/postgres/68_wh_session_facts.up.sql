@@ -5,6 +5,80 @@ begin;
   -- certain data analysis tools.
   -- https://help.tableau.com/current/pro/desktop/en-us/data_clean_adm.htm
 
+  -- The wh_session_accumulating_fact table is an accumulating snapshot.
+  -- The table wh_session_accumulating_fact is an accumulating fact table.
+  -- The grain of the fact table is one row per session.
+  create table wh_session_accumulating_fact (
+    -- TODO(mgaffney) 09/2020: partition table
+
+    session_id wt_public_id primary key,
+    -- auth token id is a degenerate dimension
+    auth_token_id wt_public_id not null,
+
+    -- foreign keys to the dimension tables
+    host_id wh_dim_id not null
+      references wh_host_dimension (id)
+      on delete restrict
+      on update cascade,
+    user_id wh_dim_id not null
+      references wh_user_dimension (id)
+      on delete restrict
+      on update cascade,
+
+    -- date and time foreign keys
+    session_pending_date_id integer default wh_current_date_id() not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_pending_time_id integer default wh_current_time_id() not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_pending_time wh_timestamp default current_timestamp,
+
+    session_active_date_id integer default -1 not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_active_time_id integer default -1 not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_active_time wh_timestamp default 'infinity'::timestamptz,
+
+    session_canceling_date_id integer default -1 not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_canceling_time_id integer default -1 not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_canceling_time wh_timestamp default 'infinity'::timestamptz,
+
+    session_closed_date_id integer default -1 not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_closed_time_id integer default -1 not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_closed_time wh_timestamp default 'infinity'::timestamptz,
+
+    -- The total number of connections made during the session.
+    total_connection_count bigint, -- will be null until the first connection is created
+
+    -- The total number of bytes received by workers from the client and sent
+    -- to the endpoint for this session.
+    -- total_bytes_up is a fully additive measurement.
+    total_bytes_up wh_bytes_transmitted, -- will be null until the first connection is closed
+    -- The total number of bytes received by workers from the endpoint and sent
+    -- to the client for this session.
+    -- total_bytes_down is a fully additive measurement.
+    total_bytes_down wh_bytes_transmitted -- will be null until the first connection is closed
+  );
+
   -- The wh_session_connection_accumulating_fact table is an accumulating fact table.
   -- The grain of the fact table is one row per session connection.
   create table wh_session_connection_accumulating_fact  (
@@ -99,78 +173,5 @@ begin;
     'endpoint and sent to the client for this connection. Bytes Down is a fully '
     'additive measurement.';
 
-  -- The wh_session_accumulating_fact table is an accumulating snapshot.
-  -- The table wh_session_accumulating_fact is an accumulating fact table.
-  -- The grain of the fact table is one row per session.
-  create table wh_session_accumulating_fact (
-    -- TODO(mgaffney) 09/2020: partition table
-
-    session_id wt_public_id primary key,
-    -- auth token id is a degenerate dimension
-    auth_token_id wt_public_id not null,
-
-    -- foreign keys to the dimension tables
-    host_id wh_dim_id not null
-      references wh_host_dimension (id)
-      on delete restrict
-      on update cascade,
-    user_id wh_dim_id not null
-      references wh_user_dimension (id)
-      on delete restrict
-      on update cascade,
-
-    -- date and time foreign keys
-    session_pending_date_id integer default wh_current_date_id() not null
-      references wh_date_dimension (id)
-      on delete restrict
-      on update cascade,
-    session_pending_time_id integer default wh_current_time_id() not null
-      references wh_time_of_day_dimension (id)
-      on delete restrict
-      on update cascade,
-    session_pending_time wh_timestamp default current_timestamp,
-
-    session_active_date_id integer default -1 not null
-      references wh_date_dimension (id)
-      on delete restrict
-      on update cascade,
-    session_active_time_id integer default -1 not null
-      references wh_time_of_day_dimension (id)
-      on delete restrict
-      on update cascade,
-    session_active_time wh_timestamp default 'infinity'::timestamptz,
-
-    session_canceling_date_id integer default -1 not null
-      references wh_date_dimension (id)
-      on delete restrict
-      on update cascade,
-    session_canceling_time_id integer default -1 not null
-      references wh_time_of_day_dimension (id)
-      on delete restrict
-      on update cascade,
-    session_canceling_time wh_timestamp default 'infinity'::timestamptz,
-
-    session_closed_date_id integer default -1 not null
-      references wh_date_dimension (id)
-      on delete restrict
-      on update cascade,
-    session_closed_time_id integer default -1 not null
-      references wh_time_of_day_dimension (id)
-      on delete restrict
-      on update cascade,
-    session_closed_time wh_timestamp default 'infinity'::timestamptz,
-
-    -- The total number of connections made during the session.
-    total_connection_count bigint, -- will be null until the first connection is created
-
-    -- The total number of bytes received by workers from the client and sent
-    -- to the endpoint for this session.
-    -- total_bytes_up is a fully additive measurement.
-    total_bytes_up wh_bytes_transmitted, -- will be null until the first connection is closed
-    -- The total number of bytes received by workers from the endpoint and sent
-    -- to the client for this session.
-    -- total_bytes_down is a fully additive measurement.
-    total_bytes_down wh_bytes_transmitted -- will be null until the first connection is closed
-  );
 
 commit;
