@@ -170,17 +170,17 @@ input/knowledge.
 
 Next, let's actually make a connection to your local SSH daemon via Boundary:
 
-3. Start the desktop client and point it at the local Boundary `dev` session.
+1. Start the desktop client and point it at the local Boundary `dev` session.
    Log in with the generated login name and password.
-4. You can now select the Target that grants access to the local machine and
+2. You can now select the Target that grants access to the local machine and
    hit "Request Session". Doing so will cause Boundary to check whether this
    action is allowed, and if so, send session information back to the client,
    allowing it to start a local authenticated proxy to the Worker. You will be
    shown a CLI command that can be copied and pasted into the CLI to connect to
    the local machine via Boundary.
-5. Paste the CLI command into your terminal, or use the given address and port
+3. Paste the CLI command into your terminal, or use the given address and port
    in the SSH client of your choice, and connect!
-6. When the session has ended, look in the given temporary directory to see
+4. When the session has ended, look in the given temporary directory to see
    session information; or navigate to the Sessions page in the web UI to see
    the same information
 
