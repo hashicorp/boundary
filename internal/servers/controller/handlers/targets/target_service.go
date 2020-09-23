@@ -749,8 +749,11 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 		if req.GetItem().GetSessionMaxSeconds() != nil && req.GetItem().GetSessionMaxSeconds().GetValue() == 0 {
 			badFields["session_max_seconds"] = "This must be greater than zero."
 		}
-		switch target.SubtypeFromType(req.GetItem().GetType()) {
+		switch target.SubtypeFromId(req.GetItem().GetType()) {
 		case target.TcpSubType:
+			if req.GetItem().GetType() != "" && target.SubtypeFromType(req.GetItem().GetType()) != target.TcpSubType {
+				badFields["type"] = "Cannot modify the resource type."
+			}
 			tcpAttrs := &pb.TcpTargetAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), tcpAttrs); err != nil {
 				badFields["attributes"] = "Attribute fields do not match the expected format."
@@ -758,9 +761,6 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			if tcpAttrs.GetDefaultPort() != nil && tcpAttrs.GetDefaultPort().GetValue() == 0 {
 				badFields["attributes.default_port"] = "This optional field cannot be set to 0."
 			}
-		}
-		if req.GetItem().GetType() != "" {
-			badFields["type"] = "This field cannot be updated."
 		}
 		return badFields
 	})

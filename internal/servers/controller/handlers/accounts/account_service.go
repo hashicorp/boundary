@@ -448,7 +448,7 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 		switch auth.SubtypeFromId(req.GetId()) {
 		case auth.PasswordSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.PasswordSubtype.String() {
-				badFields["type"] = "Cannot modify resource type."
+				badFields["type"] = "Cannot modify the resource type."
 			}
 			pwAttrs := &pb.PasswordAccountAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {
