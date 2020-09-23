@@ -87,14 +87,11 @@ func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
 }
 
 func generateRoleTableOutput(in *roles.Role) string {
-	var ret []string
-
 	nonAttributeMap := map[string]interface{}{
 		"ID":           in.Id,
-		"Scope ID":     in.Scope.Id,
 		"Version":      in.Version,
-		"Created Time": in.CreatedTime.Local().Format(time.RFC3339),
-		"Updated Time": in.UpdatedTime.Local().Format(time.RFC3339),
+		"Created Time": in.CreatedTime.Local().Format(time.RFC1123),
+		"Updated Time": in.UpdatedTime.Local().Format(time.RFC1123),
 	}
 
 	if in.Name != "" {
@@ -107,11 +104,16 @@ func generateRoleTableOutput(in *roles.Role) string {
 		nonAttributeMap["Grant Scope ID"] = in.GrantScopeId
 	}
 
-	ret = append(ret, "", "Role information:")
+	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
-	ret = append(ret,
-		base.WrapMap(2, 0, nonAttributeMap),
-	)
+	ret := []string{
+		"",
+		"Role information:",
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
+		"",
+		"  Scope:",
+		base.ScopeInfoForOutput(in.Scope, maxLength),
+	}
 
 	if len(in.Principals) > 0 {
 		ret = append(ret,

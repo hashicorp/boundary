@@ -8,14 +8,11 @@ import (
 )
 
 func generateScopeTableOutput(in *scopes.Scope) string {
-	var ret []string
-
 	nonAttributeMap := map[string]interface{}{
 		"ID":           in.Id,
-		"Scope ID":     in.Scope.Id,
 		"Version":      in.Version,
-		"Created Time": in.CreatedTime.Local().Format(time.RFC3339),
-		"Updated Time": in.UpdatedTime.Local().Format(time.RFC3339),
+		"Created Time": in.CreatedTime.Local().Format(time.RFC1123),
+		"Updated Time": in.UpdatedTime.Local().Format(time.RFC1123),
 	}
 
 	if in.Name != "" {
@@ -25,11 +22,16 @@ func generateScopeTableOutput(in *scopes.Scope) string {
 		nonAttributeMap["Description"] = in.Description
 	}
 
-	ret = append(ret, "", "Scope information:")
+	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
-	ret = append(ret,
-		base.WrapMap(2, 0, nonAttributeMap),
-	)
+	ret := []string{
+		"",
+		"Scope information:",
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
+		"",
+		"  Scope (parent):",
+		base.ScopeInfoForOutput(in.Scope, maxLength),
+	}
 
 	return base.WrapForHelpText(ret)
 }
