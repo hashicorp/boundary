@@ -13,8 +13,11 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/btcsuite/btcutil/base58"
@@ -60,18 +63,23 @@ type Command struct {
 	flagAuthz      string
 	flagListenAddr string
 	flagListenPort int
-	flagVerbose    bool
 	flagTargetId   string
 	flagHostId     string
+	flagExec       string
+
+	// SSH
+	flagSshStyle string
 
 	Func string
 
-	connWg            *sync.WaitGroup
-	listenerCloseOnce sync.Once
-	listener          *net.TCPListener
-	connsLeftCh       chan int32
-	connectionsLeft   atomic.Int32
-	expiration        time.Time
+	connWg             *sync.WaitGroup
+	listenerCloseOnce  sync.Once
+	listener           *net.TCPListener
+	listenerAddr       *net.TCPAddr
+	connsLeftCh        chan int32
+	connectionsLeft    atomic.Int32
+	expiration         time.Time
+	execCmdReturnValue atomic.Int32
 }
 
 func (c *Command) Synopsis() string {
@@ -80,6 +88,8 @@ func (c *Command) Synopsis() string {
 		return "Launch the Boundary CLI in proxy mode"
 	case "connect":
 		return "Authorize a session against a target and launch a proxied connection"
+	case "ssh":
+		return "Authorize a session against a target and invoke SSH to connect"
 	}
 	return ""
 }
@@ -118,10 +128,10 @@ func (c *Command) Flags() *base.FlagSets {
 	}
 	set := c.FlagSet(bits)
 
-	f := set.NewFlagSet("Proxy Options")
-
 	switch c.Func {
 	case "proxy":
+		f := set.NewFlagSet("Proxy Options")
+
 		f.StringVar(&base.StringVar{
 			Name:       "authz",
 			Target:     &c.flagAuthz,
@@ -129,7 +139,26 @@ func (c *Command) Flags() *base.FlagSets {
 			Completion: complete.PredictAnything,
 			Usage:      `The authorization string returned from the Boundary controller. If set to "-", the command will attempt to read in the authorization string from standard input.`,
 		})
-	case "connect":
+
+		f.StringVar(&base.StringVar{
+			Name:       "listen-addr",
+			Target:     &c.flagListenAddr,
+			EnvVar:     "BOUNDARY_PROXY_LISTEN_ADDR",
+			Completion: complete.PredictAnything,
+			Usage:      `If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot, the command will error. If not set, defaults to the most common IPv4 loopback address (127.0.0.1).`,
+		})
+
+		f.IntVar(&base.IntVar{
+			Name:       "listen-port",
+			Target:     &c.flagListenPort,
+			EnvVar:     "BOUNDARY_PROXY_LISTEN_PORT",
+			Completion: complete.PredictAnything,
+			Usage:      `If set, the CLI will attempt to bind its listening port to the given value. If it cannot, the command will error.`,
+		})
+
+	case "connect", "ssh":
+		f := set.NewFlagSet("Connect Options")
+
 		f.StringVar(&base.StringVar{
 			Name:   "target-id",
 			Target: &c.flagTargetId,
@@ -140,30 +169,53 @@ func (c *Command) Flags() *base.FlagSets {
 			Target: &c.flagHostId,
 			Usage:  "The ID of a specific host to connect to out of the hosts from the target's host sets. If not specified, one is chosen at random.",
 		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "listen-addr",
+			Target:     &c.flagListenAddr,
+			EnvVar:     "BOUNDARY_CONNECT_LISTEN_ADDR",
+			Completion: complete.PredictAnything,
+			Usage:      `If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot, the command will error. If not set, defaults to the most common IPv4 loopback address (127.0.0.1).`,
+		})
+
+		f.IntVar(&base.IntVar{
+			Name:       "listen-port",
+			Target:     &c.flagListenPort,
+			EnvVar:     "BOUNDARY_CONNECT_LISTEN_PORT",
+			Completion: complete.PredictAnything,
+			Usage:      `If set, the CLI will attempt to bind its listening port to the given value. If it cannot, the command will error.`,
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "exec",
+			Target:     &c.flagExec,
+			EnvVar:     "BOUNDARY_CONNECT_EXEC",
+			Completion: complete.PredictAnything,
+			Usage:      `If set, after connecting to the worker, the given binary will be executed. This should be a binary on your path, or an absolute path. If all command flags are followed by " -- " (space, two hyphens, space), then any arguments after that will be sent directly to the binary.`,
+		})
 	}
 
-	f.StringVar(&base.StringVar{
-		Name:       "listen-addr",
-		Target:     &c.flagListenAddr,
-		EnvVar:     "BOUNDARY_PROXY_LISTEN_ADDR",
-		Completion: complete.PredictAnything,
-		Usage:      `If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot, the command will error. If not set, defaults to the most common IPv4 loopback address (127.0.0.1)."`,
-	})
+	if c.Func == "ssh" {
+		f := set.NewFlagSet("SSH Options")
 
-	f.IntVar(&base.IntVar{
-		Name:       "listen-port",
-		Target:     &c.flagListenPort,
-		EnvVar:     "BOUNDARY_PROXY_LISTEN_PORT",
-		Completion: complete.PredictAnything,
-		Usage:      `If set, the CLI will attempt to bind its listening port to the given value. If it cannot, the command will error."`,
-	})
+		f.StringVar(&base.StringVar{
+			Name:       "style",
+			Target:     &c.flagSshStyle,
+			EnvVar:     "BOUNDARY_CONNECT_SSH_STYLE",
+			Completion: complete.PredictAnything,
+			Default:    "ssh",
+			Usage:      `Specifies how the CLI will attempt to invoke the SSH binary. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "ssh" and "putty".`,
+		})
+	}
 
-	f.BoolVar(&base.BoolVar{
-		Name:       "verbose",
-		Target:     &c.flagVerbose,
-		Completion: complete.PredictAnything,
-		Usage:      "Turns on some extra verbosity in the command output.",
-	})
+	/*
+		f.BoolVar(&base.BoolVar{
+			Name:       "verbose",
+			Target:     &c.flagVerbose,
+			Completion: complete.PredictAnything,
+			Usage:      "Turns on some extra verbosity in the command output.",
+		})
+	*/
 
 	return set
 }
@@ -177,11 +229,28 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) (retCode int) {
+	c.execCmdReturnValue.Store(-1)
+
+	var passthroughArgs []string
+	for i, v := range args {
+		if v == "--" {
+			passthroughArgs = args[i+1:]
+			args = args[:i]
+		}
+	}
+
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
 		return 1
+	}
+
+	switch c.Func {
+	case "ssh":
+		if c.flagExec == "" {
+			c.flagExec = strings.ToLower(c.flagSshStyle)
+		}
 	}
 
 	tofuToken, err := base62.Random(20)
@@ -341,27 +410,29 @@ func (c *Command) Run(args []string) (retCode int) {
 		c.listenerCloseOnce.Do(listenerCloseFunc)
 	}()
 
-	listenerAddr := c.listener.Addr().(*net.TCPAddr)
+	c.listenerAddr = c.listener.Addr().(*net.TCPAddr)
 
-	sessInfo := SessionInfo{
-		Protocol:        "tcp",
-		Address:         listenerAddr.IP.String(),
-		Port:            listenerAddr.Port,
-		Expiration:      c.expiration,
-		ConnectionLimit: data.GetConnectionLimit(),
-		SessionId:       data.GetSessionId(),
-	}
-
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateSessionInfoTableOutput(sessInfo))
-	case "json":
-		out, err := json.Marshal(&sessInfo)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("error marshaling session information: %w", err).Error())
-			return 1
+	if c.flagExec == "" {
+		sessInfo := SessionInfo{
+			Protocol:        "tcp",
+			Address:         c.listenerAddr.IP.String(),
+			Port:            c.listenerAddr.Port,
+			Expiration:      c.expiration,
+			ConnectionLimit: data.GetConnectionLimit(),
+			SessionId:       data.GetSessionId(),
 		}
-		c.UI.Output(string(out))
+
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateSessionInfoTableOutput(sessInfo))
+		case "json":
+			out, err := json.Marshal(&sessInfo)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("error marshaling session information: %w", err).Error())
+				return 1
+			}
+			c.UI.Output(string(out))
+		}
 	}
 
 	c.connWg = new(sync.WaitGroup)
@@ -399,27 +470,35 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	}()
 
-	timer := time.NewTimer(time.Until(c.expiration))
 	var termInfo TerminationInfo
-Wait:
-	for {
-		select {
-		case <-c.Context.Done():
-			termInfo.Reason = "Received shutdown signal"
-			timer.Stop()
-			break Wait
-		case <-timer.C:
-			termInfo.Reason = "Session has expired"
-			break Wait
-		case connsLeft := <-c.connsLeftCh:
-			c.updateConnsLeft(connsLeft)
-			if connsLeft == 0 {
-				termInfo.Reason = "No connections left in session"
-				break Wait
+	c.connWg.Add(1)
+	go func() {
+		defer c.connWg.Done()
+		defer c.listenerCloseOnce.Do(listenerCloseFunc)
+		timer := time.NewTimer(time.Until(c.expiration))
+		for {
+			select {
+			case <-c.Context.Done():
+				timer.Stop()
+				termInfo.Reason = "Received shutdown signal"
+				return
+			case <-timer.C:
+				termInfo.Reason = "Session has expired"
+				return
+			case connsLeft := <-c.connsLeftCh:
+				c.updateConnsLeft(connsLeft)
+				if connsLeft == 0 {
+					termInfo.Reason = "No connections left in session"
+					return
+				}
 			}
 		}
+	}()
+
+	if c.flagExec != "" {
+		c.connWg.Add(1)
+		go c.handleExec(passthroughArgs)
 	}
-	c.listenerCloseOnce.Do(listenerCloseFunc)
 
 	c.connWg.Wait()
 
@@ -534,14 +613,64 @@ func (c *Command) updateConnsLeft(connsLeft int32) {
 		ConnectionsLeft: connsLeft,
 	}
 
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateConnectionInfoTableOutput(connInfo))
-	case "json":
-		out, err := json.Marshal(&connInfo)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
+	if c.flagExec != "" {
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateConnectionInfoTableOutput(connInfo))
+		case "json":
+			out, err := json.Marshal(&connInfo)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
+			}
+			c.UI.Output(string(out))
 		}
-		c.UI.Output(string(out))
 	}
+}
+
+func (c Command) handleExec(passthroughArgs []string) {
+	defer c.connWg.Done()
+
+	var args []string
+
+	switch c.Func {
+	case "ssh":
+		switch c.flagSshStyle {
+		case "ssh":
+			args = append(args, "-p", strconv.Itoa(c.listenerAddr.Port), c.listenerAddr.IP.String())
+		case "putty":
+			args = append(args, "-P", strconv.Itoa(c.listenerAddr.Port), c.listenerAddr.IP.String())
+		}
+	}
+
+	args = append(passthroughArgs, args...)
+
+	cmd := exec.Command(c.flagExec)
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%d", c.listenerAddr.Port),
+		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", c.listenerAddr.IP.String()),
+	)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		exitCode := 2
+
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if exitError.Success() {
+				c.execCmdReturnValue.Store(0)
+				return
+			}
+			if ws, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				c.execCmdReturnValue.Store(int32(ws.ExitStatus()))
+				return
+			}
+		}
+
+		c.UI.Error(fmt.Sprintf("Failed to run command: %s", err))
+		c.execCmdReturnValue.Store(int32(exitCode))
+		return
+	}
+	c.execCmdReturnValue.Store(0)
+	// Might want -t for ssh or -tt
 }
