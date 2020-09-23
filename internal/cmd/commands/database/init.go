@@ -171,20 +171,20 @@ func (c *InitCommand) Run(args []string) int {
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 
-	if c.Config.Database == nil {
-		c.UI.Error(`"database" config block not found`)
+	if c.Config.Controller.Database == nil {
+		c.UI.Error(`"controller.database" config block not found`)
 		return 1
 	}
 
-	urlToParse := c.Config.Database.Url
+	urlToParse := c.Config.Controller.Database.Url
 	if urlToParse == "" {
 		c.UI.Error(`"url" not specified in "database" config block"`)
 		return 1
 	}
 
 	var migrationUrlToParse string
-	if c.Config.Database.MigrationUrl != "" {
-		migrationUrlToParse = c.Config.Database.MigrationUrl
+	if c.Config.Controller.Database.MigrationUrl != "" {
+		migrationUrlToParse = c.Config.Controller.Database.MigrationUrl
 	}
 	if c.flagMigrationUrl != "" && c.flagMigrationUrl != base.NotSetValue {
 		migrationUrlToParse = c.flagMigrationUrl
