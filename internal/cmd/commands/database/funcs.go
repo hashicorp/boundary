@@ -63,3 +63,71 @@ func generateInitialScopeTableOutput(in *ScopeInfo) string {
 
 	return base.WrapForHelpText(ret)
 }
+
+type HostInfo struct {
+	HostCatalogId string `json:"host_catalog_id"`
+	HostSetId     string `json:"host_set_id"`
+	HostId        string `json:"host_id"`
+	Type          string `json:"type"`
+	ScopeId       string `json:"scope_id"`
+}
+
+func generateInitialHostResourcesTableOutput(in *HostInfo) string {
+	nonAttributeMap := map[string]interface{}{
+		"Host Catalog ID": in.HostCatalogId,
+		"Host Set ID":     in.HostSetId,
+		"Host ID":         in.HostId,
+		"Type":            in.Type,
+		"Scope ID":        in.ScopeId,
+	}
+
+	maxLength := 0
+	for k := range nonAttributeMap {
+		if len(k) > maxLength {
+			maxLength = len(k)
+		}
+	}
+
+	ret := []string{
+		"",
+		"Initial host resources information:",
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
+	}
+
+	return base.WrapForHelpText(ret)
+}
+
+type TargetInfo struct {
+	TargetId               string `json:"target_id"`
+	DefaultPort            uint32 `json:"default_port"`
+	SessionMaxSeconds      uint32 `json:"session_max_seconds"`
+	SessionConnectionLimit int32  `json:"session_connection_limit"`
+	Type                   string `json:"type"`
+	ScopeId                string `json:"scope_id"`
+}
+
+func generateInitialTargetTableOutput(in *TargetInfo) string {
+	nonAttributeMap := map[string]interface{}{
+		"Target ID":                in.TargetId,
+		"Default Port":             in.DefaultPort,
+		"Session Max Seconds":      in.SessionMaxSeconds,
+		"Session Connection Limit": in.SessionConnectionLimit,
+		"Type":                     in.Type,
+		"Scope ID":                 in.ScopeId,
+	}
+
+	maxLength := 0
+	for k := range nonAttributeMap {
+		if len(k) > maxLength {
+			maxLength = len(k)
+		}
+	}
+
+	ret := []string{
+		"",
+		"Initial target information:",
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
+	}
+
+	return base.WrapForHelpText(ret)
+}

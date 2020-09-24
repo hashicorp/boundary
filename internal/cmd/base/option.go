@@ -14,13 +14,13 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
-	withNoTokenScope            bool
-	withNoTokenValue            bool
-	withSkipDatabaseDestruction bool
-	withSkipAuthMethodCreation  bool
-	withSkipScopesCreation      bool
-	withSkipHostCatalogCreation bool
-	withSkipTargetCreation      bool
+	withNoTokenScope              bool
+	withNoTokenValue              bool
+	withSkipDatabaseDestruction   bool
+	withSkipAuthMethodCreation    bool
+	withSkipScopesCreation        bool
+	withSkipHostResourcesCreation bool
+	withSkipTargetCreation        bool
 }
 
 func getDefaultOptions() Options {
@@ -68,11 +68,11 @@ func WithSkipScopesCreation() Option {
 	}
 }
 
-// WithSkipHostCatalogCreation tells the command not to instantiate a host
+// WithSkipHostResourcesCreation tells the command not to instantiate a host
 // catalog and related resources on first run.
-func WithSkipHostCatalogCreation() Option {
+func WithSkipHostResourcesCreation() Option {
 	return func(o *Options) {
-		o.withSkipHostCatalogCreation = true
+		o.withSkipHostResourcesCreation = true
 	}
 }
 

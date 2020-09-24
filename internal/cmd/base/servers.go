@@ -65,16 +65,18 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DevAuthMethodId  string
-	DevLoginName     string
-	DevPassword      string
-	DevUserId        string
-	DevOrgId         string
-	DevProjectId     string
-	DevHostCatalogId string
-	DevHostSetId     string
-	DevHostId        string
-	DevTargetId      string
+	DevAuthMethodId      string
+	DevLoginName         string
+	DevPassword          string
+	DevUserId            string
+	DevOrgId             string
+	DevProjectId         string
+	DevHostCatalogId     string
+	DevHostSetId         string
+	DevHostId            string
+	DevTargetId          string
+	DevHostAddress       string
+	DevTargetDefaultPort int
 
 	DatabaseUrl            string
 	DevDatabaseCleanupFunc func() error
@@ -491,6 +493,28 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 	}
 
 	if err := b.CreateInitialScopes(context.Background()); err != nil {
+		return err
+	}
+
+	if opts.withSkipHostResourcesCreation {
+		// now that we have passed all the error cases, reset c to be a noop so the
+		// defer doesn't do anything.
+		c = func() error { return nil }
+		return nil
+	}
+
+	if err := b.CreateInitialHostResources(context.Background()); err != nil {
+		return err
+	}
+
+	if opts.withSkipTargetCreation {
+		// now that we have passed all the error cases, reset c to be a noop so the
+		// defer doesn't do anything.
+		c = func() error { return nil }
+		return nil
+	}
+
+	if _, err := b.CreateInitialTarget(context.Background()); err != nil {
 		return err
 	}
 

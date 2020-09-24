@@ -7,8 +7,10 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 )
@@ -96,14 +98,16 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) error {
 	}
 
 	// Create a new user and associate it with the account
-	u, err := iam.NewUser(scope.Global.String(),
+	opts := []iam.Option{
 		iam.WithName("admin"),
 		iam.WithDescription(`Initial admin user within the "global" scope`),
-	)
+		iam.WithPublicId(b.DevUserId),
+	}
+	u, err := iam.NewUser(scope.Global.String(), opts...)
 	if err != nil {
 		return fmt.Errorf("error creating in memory user: %w", err)
 	}
-	if u, err = iamRepo.CreateUser(cancelCtx, u, iam.WithPublicId(b.DevUserId)); err != nil {
+	if u, err = iamRepo.CreateUser(cancelCtx, u, opts...); err != nil {
 		return fmt.Errorf("error creating initial admin user: %w", err)
 	}
 	if u, err = iamRepo.AssociateUserWithAccount(cancelCtx, u.GetPublicId(), acct.GetPublicId()); err != nil {
@@ -155,15 +159,16 @@ func (b *Server) CreateInitialScopes(ctx context.Context) error {
 		cancel()
 	}()
 
-	// Create the org scope
+	// Create the scopes
 	iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
 	if err != nil {
-		return fmt.Errorf("error creating scopes: %w", err)
+		return fmt.Errorf("error creating scopes repository: %w", err)
 	}
 	opts := []iam.Option{
 		iam.WithName("Generated org scope"),
 		iam.WithDescription("Provides an initial org scope in Boundary"),
 		iam.WithRandomReader(b.SecureRandomReader),
+		iam.WithPublicId(b.DevOrgId),
 	}
 	orgScope, err := iam.NewOrg(opts...)
 	if err != nil {
@@ -175,7 +180,6 @@ func (b *Server) CreateInitialScopes(ctx context.Context) error {
 			return fmt.Errorf("error generating initial org id: %w", err)
 		}
 	}
-	opts = []iam.Option{iam.WithPublicId(b.DevOrgId)}
 	_, err = iamRepo.CreateScope(cancelCtx, orgScope, b.DevUserId, opts...)
 	if err != nil {
 		return fmt.Errorf("error saving org scope to the db: %w", err)
@@ -187,6 +191,7 @@ func (b *Server) CreateInitialScopes(ctx context.Context) error {
 		iam.WithName("Generated project scope"),
 		iam.WithDescription("Provides an initial project scope in Boundary"),
 		iam.WithRandomReader(b.SecureRandomReader),
+		iam.WithPublicId(b.DevProjectId),
 	}
 	projScope, err := iam.NewProject(b.DevOrgId, opts...)
 	if err != nil {
@@ -198,63 +203,171 @@ func (b *Server) CreateInitialScopes(ctx context.Context) error {
 			return fmt.Errorf("error generating initial project id: %w", err)
 		}
 	}
-	opts = []iam.Option{iam.WithPublicId(b.DevProjectId)}
 	_, err = iamRepo.CreateScope(cancelCtx, projScope, b.DevUserId, opts...)
 	if err != nil {
 		return fmt.Errorf("error saving project scope to the db: %w", err)
 	}
 	b.InfoKeys = append(b.InfoKeys, "generated project scope id")
 	b.Info["generated project scope id"] = b.DevProjectId
-	/*
-		// Create the dev user
-		if b.DevLoginName == "" {
-			b.DevLoginName, err = base62.Random(10)
-			if err != nil {
-				return fmt.Errorf("unable to generate login name: %w", err)
-			}
-			b.DevLoginName = strings.ToLower(b.DevLoginName)
-		}
-		if b.DevPassword == "" {
-			b.DevPassword, err = base62.Random(20)
-			if err != nil {
-				return fmt.Errorf("unable to generate password: %w", err)
-			}
-		}
-		b.InfoKeys = append(b.InfoKeys, "generated password")
-		b.Info["generated password"] = b.DevPassword
 
-		acct, err := password.NewAccount(b.DevAuthMethodId, password.WithLoginName(b.DevLoginName))
-		if err != nil {
-			return fmt.Errorf("error creating new in memory auth account: %w", err)
-		}
-		acct, err = pwRepo.CreateAccount(cancelCtx, scope.Global.String(), acct, password.WithPassword(b.DevPassword))
-		if err != nil {
-			return fmt.Errorf("error saving auth account to the db: %w", err)
-		}
-		b.InfoKeys = append(b.InfoKeys, "generated login name")
-		b.Info["generated login name"] = acct.GetLoginName()
-
-		// Create a role tying them together
-		iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
-		if err != nil {
-			return fmt.Errorf("unable to create repo for org id: %w", err)
-		}
-		pr, err := iam.NewRole(scope.Global.String())
-		if err != nil {
-			return fmt.Errorf("error creating in memory role for generated grants: %w", err)
-		}
-		pr.Name = "Generated Global Scope Admin Role"
-		pr.Description = `Provides admin grants to all authenticated users within the "global" scope`
-		defPermsRole, err := iamRepo.CreateRole(cancelCtx, pr)
-		if err != nil {
-			return fmt.Errorf("error creating role for default generated grants: %w", err)
-		}
-		if _, err := iamRepo.AddRoleGrants(cancelCtx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;actions=*"}); err != nil {
-			return fmt.Errorf("error creating grant for default generated grants: %w", err)
-		}
-		if _, err := iamRepo.AddPrincipalRoles(cancelCtx, defPermsRole.PublicId, defPermsRole.Version+1, []string{"u_auth"}, nil); err != nil {
-			return fmt.Errorf("error adding principal to role for default generated grants: %w", err)
-		}
-	*/
 	return nil
+}
+
+func (b *Server) CreateInitialHostResources(ctx context.Context) error {
+	rw := db.New(b.Database)
+
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return fmt.Errorf("error creating kms repository: %w", err)
+	}
+	kmsCache, err := kms.NewKms(kmsRepo, kms.WithLogger(b.Logger.Named("kms")))
+	if err != nil {
+		return fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		kms.WithRootWrapper(b.RootKms),
+	); err != nil {
+		return fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+
+	cancelCtx, cancel := context.WithCancel(ctx)
+	go func() {
+		<-b.ShutdownCh
+		cancel()
+	}()
+
+	staticRepo, err := static.NewRepository(rw, rw, kmsCache)
+	if err != nil {
+		return fmt.Errorf("error creating static repository: %w", err)
+	}
+
+	// Host Catalog
+	opts := []static.Option{
+		static.WithName("Generated host catalog"),
+		static.WithDescription("Provides an initial host catalog in Boundary"),
+		static.WithPublicId(b.DevHostCatalogId),
+	}
+	if b.DevHostCatalogId == "" {
+		b.DevHostCatalogId, err = db.NewPublicId(static.HostCatalogPrefix)
+		if err != nil {
+			return fmt.Errorf("error generating initial host catalog id: %w", err)
+		}
+	}
+	hc, err := static.NewHostCatalog(b.DevProjectId, opts...)
+	if err != nil {
+		return fmt.Errorf("error creating in memory host catalog: %w", err)
+	}
+	if hc, err = staticRepo.CreateCatalog(cancelCtx, hc, opts...); err != nil {
+		return fmt.Errorf("error saving host catalog to the db: %w", err)
+	}
+	b.InfoKeys = append(b.InfoKeys, "generated host catalog id")
+	b.Info["generated host catalog id"] = b.DevHostCatalogId
+
+	// Host
+	opts = []static.Option{
+		static.WithName("Generated host"),
+		static.WithDescription("Provides an initial host in Boundary"),
+		static.WithAddress(b.DevHostAddress),
+		static.WithPublicId(b.DevHostId),
+	}
+	if b.DevHostId == "" {
+		b.DevHostId, err = db.NewPublicId(static.HostPrefix)
+		if err != nil {
+			return fmt.Errorf("error generating initial host id: %w", err)
+		}
+	}
+	h, err := static.NewHost(hc.PublicId, opts...)
+	if err != nil {
+		return fmt.Errorf("error creating in memory host: %w", err)
+	}
+	if h, err = staticRepo.CreateHost(cancelCtx, b.DevProjectId, h, opts...); err != nil {
+		return fmt.Errorf("error saving host to the db: %w", err)
+	}
+	b.InfoKeys = append(b.InfoKeys, "generated host id")
+	b.Info["generated host id"] = b.DevHostId
+
+	// Host Set
+	opts = []static.Option{
+		static.WithName("Generated host set"),
+		static.WithDescription("Provides an initial host set in Boundary"),
+		static.WithPublicId(b.DevHostSetId),
+	}
+	if b.DevHostSetId == "" {
+		b.DevHostSetId, err = db.NewPublicId(static.HostSetPrefix)
+		if err != nil {
+			return fmt.Errorf("error generating initial host set id: %w", err)
+		}
+	}
+	hs, err := static.NewHostSet(hc.PublicId, opts...)
+	if err != nil {
+		return fmt.Errorf("error creating in memory host set: %w", err)
+	}
+	if hs, err = staticRepo.CreateSet(cancelCtx, b.DevProjectId, hs, opts...); err != nil {
+		return fmt.Errorf("error saving host set to the db: %w", err)
+	}
+	b.InfoKeys = append(b.InfoKeys, "generated host set id")
+	b.Info["generated host set id"] = b.DevHostSetId
+
+	// Associate members
+	if _, err := staticRepo.AddSetMembers(cancelCtx, b.DevProjectId, b.DevHostSetId, hs.GetVersion(), []string{h.GetPublicId()}); err != nil {
+		return fmt.Errorf("error associating host set to host in the db: %w", err)
+	}
+
+	return nil
+}
+
+func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error) {
+	rw := db.New(b.Database)
+
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms repository: %w", err)
+	}
+	kmsCache, err := kms.NewKms(kmsRepo, kms.WithLogger(b.Logger.Named("kms")))
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		kms.WithRootWrapper(b.RootKms),
+	); err != nil {
+		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+
+	cancelCtx, cancel := context.WithCancel(ctx)
+	go func() {
+		<-b.ShutdownCh
+		cancel()
+	}()
+
+	targetRepo, err := target.NewRepository(rw, rw, kmsCache)
+	if err != nil {
+		return nil, fmt.Errorf("error creating target repository: %w", err)
+	}
+
+	// Host Catalog
+	opts := []target.Option{
+		target.WithName("Generated target"),
+		target.WithDescription("Provides an initial target in Boundary"),
+		target.WithDefaultPort(uint32(b.DevTargetDefaultPort)),
+		target.WithHostSets([]string{b.DevHostSetId}),
+		target.WithPublicId(b.DevTargetId),
+	}
+	if b.DevTargetId == "" {
+		b.DevTargetId, err = db.NewPublicId(target.TcpTargetPrefix)
+		if err != nil {
+			return nil, fmt.Errorf("error generating initial target id: %w", err)
+		}
+	}
+	t, err := target.NewTcpTarget(b.DevProjectId, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating in memory target: %w", err)
+	}
+	tt, _, err := targetRepo.CreateTcpTarget(cancelCtx, t, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("error saving target to the db: %w", err)
+	}
+	b.InfoKeys = append(b.InfoKeys, "generated target id")
+	b.Info["generated target id"] = b.DevTargetId
+
+	return tt, nil
 }

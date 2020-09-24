@@ -2,6 +2,7 @@ package dev
 
 import (
 	"fmt"
+	"net"
 	"runtime"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/worker"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -39,6 +41,8 @@ type Command struct {
 	flagLoginName                   string
 	flagPassword                    string
 	flagIdSuffix                    string
+	flagHostAddress                 string
+	flagTargetDefaultPort           int
 	flagControllerAPIListenAddr     string
 	flagControllerClusterListenAddr string
 	flagWorkerProxyListenAddr       string
@@ -116,6 +120,22 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagControllerAPIListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_API_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for controller \"api\" purpose.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:    "host-address",
+		Default: "localhost",
+		Target:  &c.flagHostAddress,
+		EnvVar:  "BOUNDARY_DEV_HOST_ADDRESS",
+		Usage:   "Address to use for the default host that is created. Must be a bare host or IP address, no port.",
+	})
+
+	f.IntVar(&base.IntVar{
+		Name:    "target-default-port",
+		Default: 22,
+		Target:  &c.flagTargetDefaultPort,
+		EnvVar:  "BOUNDARY_DEV_TARGET_DEFAULT_PORT",
+		Usage:   "Default port to use for the default target that is created.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -211,6 +231,7 @@ func (c *Command) Run(args []string) int {
 		c.DevHostCatalogId = fmt.Sprintf("%s_%s", static.HostCatalogPrefix, c.flagIdSuffix)
 		c.DevHostSetId = fmt.Sprintf("%s_%s", static.HostSetPrefix, c.flagIdSuffix)
 		c.DevHostId = fmt.Sprintf("%s_%s", static.HostPrefix, c.flagIdSuffix)
+		c.DevTargetId = fmt.Sprintf("%s_%s", target.TcpTargetPrefix, c.flagIdSuffix)
 	}
 	if c.flagLoginName != "" {
 		c.DevLoginName = c.flagLoginName
@@ -218,6 +239,20 @@ func (c *Command) Run(args []string) int {
 	if c.flagPassword != "" {
 		c.DevPassword = c.flagPassword
 	}
+	c.DevTargetDefaultPort = c.flagTargetDefaultPort
+	host, port, err := net.SplitHostPort(c.flagHostAddress)
+	if err != nil {
+		if !strings.Contains(err.Error(), "missing port") {
+			c.UI.Error(fmt.Errorf("Invalid host address specified: %w", err).Error())
+			return 1
+		}
+		host = c.flagHostAddress
+	}
+	if port != "" {
+		c.UI.Error(`Port must not be specified as part of the dev host address`)
+		return 1
+	}
+	c.DevHostAddress = host
 
 	c.Config.PassthroughDirectory = c.flagPassthroughDirectory
 

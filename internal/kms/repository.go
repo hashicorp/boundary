@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/hashicorp/boundary/internal/db"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -78,7 +77,6 @@ type Keys map[KeyType]KeyIder
 // This function encapsulates all the work required within a db.TxHandler and
 // allows this capability to be shared with the iam repo.
 func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string) (Keys, error) {
-	log.Println("CREATE KEYS TX", scopeId)
 	if dbReader == nil {
 		return nil, fmt.Errorf("create keys: missing db reader: %w", db.ErrInvalidParameter)
 	}
@@ -161,7 +159,6 @@ func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, r
 		KeyTypeTokenKey:           tokenKey,
 		KeyTypeTokenKeyVersion:    tokenKeyVersion,
 	}
-	log.Println("RETURNING SUCCESS", scopeId)
 	return keys, nil
 }
 
