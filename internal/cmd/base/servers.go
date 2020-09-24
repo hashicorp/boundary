@@ -68,6 +68,7 @@ type Server struct {
 	DevAuthMethodId  string
 	DevLoginName     string
 	DevPassword      string
+	DevUserId        string
 	DevOrgId         string
 	DevProjectId     string
 	DevHostCatalogId string
@@ -440,8 +441,10 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 	// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
 	// function before returning from this method
 	defer func() {
-		if err := c(); err != nil {
-			b.Logger.Error("error cleaning up docker container", "error", err)
+		if !opts.withSkipDatabaseDestruction {
+			if err := c(); err != nil {
+				b.Logger.Error("error cleaning up docker container", "error", err)
+			}
 		}
 	}()
 
@@ -477,6 +480,17 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 	}
 
 	if err := b.CreateInitialAuthMethod(context.Background()); err != nil {
+		return err
+	}
+
+	if opts.withSkipScopesCreation {
+		// now that we have passed all the error cases, reset c to be a noop so the
+		// defer doesn't do anything.
+		c = func() error { return nil }
+		return nil
+	}
+
+	if err := b.CreateInitialScopes(context.Background()); err != nil {
 		return err
 	}
 

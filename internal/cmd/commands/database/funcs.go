@@ -1,6 +1,8 @@
 package database
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
@@ -26,12 +28,38 @@ func generateInitialAuthMethodTableOutput(in *AuthMethodInfo) string {
 		}
 	}
 
-	ret := []string{"", "Initial auth method information:"}
-
-	ret = append(ret,
-		// We do +2 because there is another +2 offset for host sets below
+	ret := []string{
+		"",
+		"Initial auth method information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-	)
+	}
+
+	return base.WrapForHelpText(ret)
+}
+
+type ScopeInfo struct {
+	ScopeId string `json:"scope_id"`
+	Type    string `json:"type"`
+}
+
+func generateInitialScopeTableOutput(in *ScopeInfo) string {
+	nonAttributeMap := map[string]interface{}{
+		"Scope ID": in.ScopeId,
+		"Type":     in.Type,
+	}
+
+	maxLength := 0
+	for k := range nonAttributeMap {
+		if len(k) > maxLength {
+			maxLength = len(k)
+		}
+	}
+
+	ret := []string{
+		"",
+		fmt.Sprintf("Initial %s scope information:", in.Type),
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
+	}
 
 	return base.WrapForHelpText(ret)
 }

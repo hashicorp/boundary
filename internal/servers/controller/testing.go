@@ -221,6 +221,10 @@ type TestControllerOpts struct {
 	// method automatically.
 	DisableAuthMethodCreation bool
 
+	// DisableAuthMethodCreation can be set true to disable creating scopes
+	// automatically.
+	DisableScopesCreation bool
+
 	// DisableDatabaseCreation can be set true to disable creating a dev
 	// database
 	DisableDatabaseCreation bool
@@ -367,6 +371,11 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		}
 		if !opts.DisableAuthMethodCreation {
 			if err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if !opts.DisableScopesCreation {
+			if err := tc.b.CreateInitialScopes(ctx); err != nil {
 				t.Fatal(err)
 			}
 		}

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/host/static"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/worker"
@@ -89,10 +90,11 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "id-suffix",
-		Target: &c.flagIdSuffix,
-		EnvVar: "BOUNDARY_DEV_ID_SUFFIX",
-		Usage:  `If set, auto-created resources will use this value for their identifier (along with their resource-specific prefix). Must be 10 alphanumeric characters. As an example, if this is set to "1234567890", the generated password auth method ID will be "ampw_1234567890", the generated TCP target ID will be "ttcp_1234567890", and so on.`,
+		Name:    "id-suffix",
+		Target:  &c.flagIdSuffix,
+		Default: "1234567890",
+		EnvVar:  "BOUNDARY_DEV_ID_SUFFIX",
+		Usage:   `If set, auto-created resources will use this value for their identifier (along with their resource-specific prefix). Must be 10 alphanumeric characters. As an example, if this is set to "1234567890", the generated password auth method ID will be "ampw_1234567890", the generated TCP target ID will be "ttcp_1234567890", and so on.`,
 	})
 
 	f.StringVar(&base.StringVar{
@@ -203,6 +205,7 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		c.DevAuthMethodId = fmt.Sprintf("%s_%s", password.AuthMethodPrefix, c.flagIdSuffix)
+		c.DevUserId = fmt.Sprintf("%s_%s", iam.UserPrefix, c.flagIdSuffix)
 		c.DevOrgId = fmt.Sprintf("%s_%s", scope.Org.Prefix(), c.flagIdSuffix)
 		c.DevProjectId = fmt.Sprintf("%s_%s", scope.Project.Prefix(), c.flagIdSuffix)
 		c.DevHostCatalogId = fmt.Sprintf("%s_%s", static.HostCatalogPrefix, c.flagIdSuffix)
@@ -301,6 +304,9 @@ func (c *Command) Run(args []string) int {
 	}()
 
 	var opts []base.Option
+	if c.flagDisableDatabaseDestruction {
+		opts = append(opts, base.WithSkipDatabaseDestruction())
+	}
 	if err := c.CreateDevDatabase("postgres", opts...); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 		return 1
@@ -361,45 +367,6 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 	}
-	/*
-		shutdownWg := &sync.WaitGroup{}
-		shutdownWg.Add(2)
-		controllerSighupCh := make(chan struct{})
-		c.childSighupCh = append(c.childSighupCh, controllerSighupCh)
-
-		devController := &controllercmd.Command{
-			Server:        c.Server,
-			ExtShutdownCh: childShutdownCh,
-			SighupCh:      controllerSighupCh,
-			Config:        c.Config,
-		}
-		if err := devController.Start(); err != nil {
-			c.UI.Error(err.Error())
-			return 1
-		}
-
-		workerSighupCh := make(chan struct{})
-		c.childSighupCh = append(c.childSighupCh, workerSighupCh)
-		devWorker := &workercmd.Command{
-			Server:        c.Server,
-			ExtShutdownCh: childShutdownCh,
-			SighupCh:      workerSighupCh,
-			Config:        c.Config,
-		}
-		if err := devWorker.Start(); err != nil {
-			c.UI.Error(err.Error())
-			return 1
-		}
-
-		go func() {
-			defer shutdownWg.Done()
-			devController.WaitForInterrupt()
-		}()
-		go func() {
-			defer shutdownWg.Done()
-			devWorker.WaitForInterrupt()
-		}()
-	*/
 
 	// Wait for shutdown
 	shutdownTriggered := false
@@ -409,10 +376,6 @@ func (c *Command) Run(args []string) int {
 		case <-c.ShutdownCh:
 			c.UI.Output("==> Boundary dev environment shutdown triggered")
 
-			/*
-				childShutdownCh <- struct{}{}
-				childShutdownCh <- struct{}{}
-			*/
 			if err := c.worker.Shutdown(false); err != nil {
 				c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 			}
@@ -423,22 +386,12 @@ func (c *Command) Run(args []string) int {
 
 			shutdownTriggered = true
 
-			/*
-				case <-c.SighupCh:
-					c.UI.Output("==> Boundary dev environment reload triggered")
-					for _, v := range c.childSighupCh {
-						v <- struct{}{}
-					}
-			*/
-
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
 			c.Logger.Info("goroutine trace", "stack", string(buf[:n]))
 		}
 	}
-
-	//shutdownWg.Wait()
 
 	return 0
 }

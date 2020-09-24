@@ -40,6 +40,7 @@ type InitCommand struct {
 	flagLogFormat              string
 	flagMigrationUrl           string
 	flagSkipAuthMethodCreation bool
+	flagSkipScopesCreation     bool
 }
 
 func (c *InitCommand) Synopsis() string {
@@ -47,17 +48,27 @@ func (c *InitCommand) Synopsis() string {
 }
 
 func (c *InitCommand) Help() string {
-	helpText := `
-Usage: boundary database init [options]
-
-  Initialize Boundary's database:
-
-      $ boundary database init -config=/etc/boundary/controller.hcl
-
-  For a full list of examples, please see the documentation.
-
-` + c.Flags().Help()
-	return strings.TrimSpace(helpText)
+	return base.WrapForHelpText([]string{
+		"Usage: boundary database init [options]",
+		"",
+		"  Initialize Boundary's database:",
+		"",
+		"    $ boundary database init -config=/etc/boundary/controller.hcl",
+		"",
+		"  Unless told not to via flags, some initial resources will be created, in the following order and in the indicated scopes:",
+		"",
+		"    Password-Type Auth Method (global)",
+		"    Org Scope (global)",
+		"      Project Scope (org)",
+		"        Static-Type Host Catalog (project)",
+		"          Static-Type Host Set",
+		"          Static-Type Host",
+		"        Target (project)",
+		"",
+		"  If flags are used to skip any of these resources, any resources that would be created afterwards are also skipped.",
+		"",
+		"  For a full list of examples, please see the documentation.",
+	}) + c.Flags().Help()
 }
 
 func (c *InitCommand) Flags() *base.FlagSets {
@@ -111,6 +122,12 @@ func (c *InitCommand) Flags() *base.FlagSets {
 		Usage:  "If not set, an auth method will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
 	})
 
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-scopes-creation",
+		Target: &c.flagSkipScopesCreation,
+		Usage:  "If not set, scopes will not be created as part of initialization.",
+	})
+
 	f.StringVar(&base.StringVar{
 		Name:    "migration-url",
 		Target:  &c.flagMigrationUrl,
@@ -129,7 +146,7 @@ func (c *InitCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *InitCommand) Run(args []string) int {
+func (c *InitCommand) Run(args []string) (retCode int) {
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
 		return result
 	}
@@ -262,6 +279,20 @@ func (c *InitCommand) Run(args []string) int {
 		return 0
 	}
 
+	var jsonMap map[string]interface{}
+	if base.Format(c.UI) == "json" {
+		jsonMap = make(map[string]interface{})
+		defer func() {
+			b, err := base.JsonFormatter{}.Format(jsonMap)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
+				retCode = 1
+				return
+			}
+			c.UI.Output(string(b))
+		}()
+	}
+
 	// Use an easy name, at least
 	c.srv.DevLoginName = "admin"
 	if err := c.srv.CreateInitialAuthMethod(c.Context); err != nil {
@@ -279,12 +310,38 @@ func (c *InitCommand) Run(args []string) int {
 	case "table":
 		c.UI.Output(generateInitialAuthMethodTableOutput(authMethodInfo))
 	case "json":
-		b, err := base.JsonFormatter{}.Format(authMethodInfo)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
-			return 1
-		}
-		c.UI.Output(string(b))
+		jsonMap["auth_method"] = authMethodInfo
+	}
+
+	if c.flagSkipScopesCreation {
+		return 0
+	}
+
+	if err := c.srv.CreateInitialScopes(c.Context); err != nil {
+		c.UI.Error(fmt.Errorf("Error creating initial auth method and user: %w", err).Error())
+		return 1
+	}
+
+	orgScopeInfo := &ScopeInfo{
+		ScopeId: c.srv.DevOrgId,
+		Type:    scope.Org.String(),
+	}
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateInitialScopeTableOutput(orgScopeInfo))
+	case "json":
+		jsonMap["org_scope"] = orgScopeInfo
+	}
+
+	projScopeInfo := &ScopeInfo{
+		ScopeId: c.srv.DevProjectId,
+		Type:    scope.Project.String(),
+	}
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateInitialScopeTableOutput(projScopeInfo))
+	case "json":
+		jsonMap["proj_scope"] = projScopeInfo
 	}
 
 	return 0
