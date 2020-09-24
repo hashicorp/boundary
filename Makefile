@@ -121,7 +121,7 @@ ci-config:
 ci-verify:
 	@$(MAKE) -C .circleci ci-verify
 
-# Tell packagespec where to write its CircleCI config.
 PACKAGESPEC_CIRCLECI_CONFIG := .circleci/config/@build-release.yml
+PACKAGESPEC_HOOK_POST_CI_CONFIG := $(MAKE) ci-config
 
 -include packagespec.mk
