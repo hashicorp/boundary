@@ -156,6 +156,10 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		Expiration:      sessionInfo.ExpirationTime.Timestamp,
 		ConnectionLimit: sessionInfo.ConnectionLimit,
 		ConnectionsLeft: authzSummary.ConnectionLimit,
+		HostId:          sessionInfo.HostId,
+		HostSetId:       sessionInfo.HostSetId,
+		TargetId:        sessionInfo.TargetId,
+		UserId:          sessionInfo.UserId,
 	}
 	if resp.ConnectionsLeft != -1 {
 		resp.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
@@ -201,6 +205,13 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 		return nil, status.Error(codes.Internal, "Invalid session state in activate response.")
 	}
 
+	ws.logger.Info("session activated",
+		"session_id", sessionInfo.PublicId,
+		"target_id", sessionInfo.TargetId,
+		"user_id", sessionInfo.UserId,
+		"host_set_id", sessionInfo.HostSetId,
+		"host_id", sessionInfo.HostId)
+
 	return &pbs.ActivateSessionResponse{
 		Status: sessionStates[0].Status.ProtoVal(),
 	}, nil
@@ -234,7 +245,10 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		ret.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
 	}
 
-	ws.logger.Trace("authorized connection", "session_id", req.GetSessionId(), "connection_id", ret.ConnectionId)
+	ws.logger.Info("authorized connection",
+		"session_id", req.GetSessionId(),
+		"connection_id", ret.ConnectionId,
+		"connections_left", ret.ConnectionsLeft)
 
 	return ret, nil
 }
@@ -264,6 +278,22 @@ func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.C
 	ret := &pbs.ConnectConnectionResponse{
 		Status: connStates[0].Status.ProtoVal(),
 	}
+
+	loggerPairs := []interface{}{
+		"session_id", connectionInfo.SessionId,
+		"connection_id", req.ConnectionId,
+		"client_tcp_address", req.ClientTcpAddress,
+		"client_tcp_port", req.ClientTcpPort,
+	}
+	switch req.GetType() {
+	case "tcp":
+		loggerPairs = append(loggerPairs,
+			"endpoint_tcp_address", connectionInfo.EndpointTcpAddress,
+			"endpoint_tcp_port", connectionInfo.EndpointTcpPort,
+		)
+	}
+
+	ws.logger.Info("connection established", loggerPairs...)
 
 	return ret, nil
 }
@@ -313,6 +343,10 @@ func (ws *workerServiceServer) CloseConnection(ctx context.Context, req *pbs.Clo
 			ConnectionId: v.Connection.GetPublicId(),
 			Status:       v.ConnectionStates[0].Status.ProtoVal(),
 		})
+	}
+
+	for _, v := range req.GetCloseRequestData() {
+		ws.logger.Info("connection closed", "connection_id", v.ConnectionId)
 	}
 
 	ret := &pbs.CloseConnectionResponse{
