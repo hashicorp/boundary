@@ -31,6 +31,10 @@ jobs:
     steps:
       - setup_remote_docker:
           version: 19.03.12
+      - add_ssh_keys:
+          fingerprints:
+            # hashicorp-ci github user. TODO: Make this configurable.
+            - "c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98"
 
       - checkout
       - write-build-layer-cache-keys
@@ -78,6 +82,10 @@ jobs:
     steps:
       - setup_remote_docker:
           version: 19.03.12
+      - add_ssh_keys:
+          fingerprints:
+            # hashicorp-ci github user. TODO: Make this configurable.
+            - "c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98"
 
       - checkout
 
@@ -124,6 +132,10 @@ jobs:
     steps:
       - setup_remote_docker:
           version: 19.03.12
+      - add_ssh_keys:
+          fingerprints:
+            # hashicorp-ci github user. TODO: Make this configurable.
+            - "c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98"
 
       - checkout
 

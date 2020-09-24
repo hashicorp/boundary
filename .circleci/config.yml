@@ -12,6 +12,9 @@ jobs:
     steps:
     - setup_remote_docker:
         version: 19.03.12
+    - add_ssh_keys:
+        fingerprints:
+        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
     - checkout
     - run:
         command: make -C packages*.lock write-builder-cache-keys
@@ -73,6 +76,9 @@ jobs:
     steps:
     - setup_remote_docker:
         version: 19.03.12
+    - add_ssh_keys:
+        fingerprints:
+        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
     - checkout
     - run:
         command: make -C packages*.lock write-package-cache-key
@@ -120,6 +126,9 @@ jobs:
     steps:
     - setup_remote_docker:
         version: 19.03.12
+    - add_ssh_keys:
+        fingerprints:
+        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
     - checkout
     - run:
         command: make -C packages*.lock write-package-cache-key
