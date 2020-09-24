@@ -79,6 +79,15 @@ func TestAdditionalVerification(t *testing.T) {
 					allowed: true,
 				},
 				{
+					name: "no pin off from base",
+					opts: []auth.Option{
+						auth.WithId("hsst_1234567890"),
+						auth.WithAction(action.Create),
+						auth.WithScopeId(proj.PublicId),
+						auth.WithType(resource.HostSet),
+					},
+				},
+				{
 					name: "good target",
 					opts: []auth.Option{
 						auth.WithId("ttcp_1234567890"),
@@ -87,6 +96,25 @@ func TestAdditionalVerification(t *testing.T) {
 						auth.WithType(resource.Target),
 					},
 					allowed: true,
+				},
+				{
+					name: "cross scope",
+					opts: []auth.Option{
+						auth.WithId("ampw_1234567890"),
+						auth.WithAction(action.List),
+						auth.WithScopeId(org.PublicId),
+						auth.WithType(resource.AuthMethod),
+					},
+					allowed: true,
+				},
+				{
+					name: "cross scope, bad action",
+					opts: []auth.Option{
+						auth.WithId("ampw_1234567890"),
+						auth.WithAction(action.Update),
+						auth.WithScopeId(org.PublicId),
+						auth.WithType(resource.AuthMethod),
+					},
 				},
 			},
 		},
