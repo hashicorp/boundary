@@ -12,6 +12,7 @@ executors:
     environment:
       PRODUCT_REVISION: ""
       AUTO_INSTALL_TOOLS: 'YES'
+      BUILDKIT_PROGRESS: plain
     shell: /usr/bin/env bash -euo pipefail -c
 
 workflows:
@@ -35,6 +36,7 @@ jobs:
           fingerprints:
             # hashicorp-ci github user. TODO: Make this configurable.
             - "c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98"
+      - run: ls -lah ~/.ssh
 
       - checkout
       - write-build-layer-cache-keys
@@ -86,6 +88,7 @@ jobs:
           fingerprints:
             # hashicorp-ci github user. TODO: Make this configurable.
             - "c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98"
+      - run: ls -lah ~/.ssh
 
       - checkout
 
@@ -136,6 +139,7 @@ jobs:
           fingerprints:
             # hashicorp-ci github user. TODO: Make this configurable.
             - "c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98"
+      - run: ls -lah ~/.ssh
 
       - checkout
 
