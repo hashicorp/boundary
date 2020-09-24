@@ -277,6 +277,9 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) error {
 			return fmt.Errorf("error generating initial host id: %w", err)
 		}
 	}
+	if b.DevHostAddress == "" {
+		b.DevHostAddress = "localhost"
+	}
 	opts = []static.Option{
 		static.WithName("Generated host"),
 		static.WithDescription("Provides an initial host in Boundary"),
@@ -357,6 +360,9 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		if err != nil {
 			return nil, fmt.Errorf("error generating initial target id: %w", err)
 		}
+	}
+	if b.DevTargetDefaultPort == 0 {
+		b.DevTargetDefaultPort = 22
 	}
 	opts := []target.Option{
 		target.WithName("Generated target"),

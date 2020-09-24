@@ -360,9 +360,6 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return 0
 	}
 
-	// Can't create a host without an address
-	c.srv.DevHostAddress = "localhost"
-	c.srv.DevTargetDefaultPort = 22
 	if err := c.srv.CreateInitialHostResources(c.Context); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial host resources: %w", err).Error())
 		return 1
