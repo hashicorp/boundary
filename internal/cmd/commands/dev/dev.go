@@ -35,22 +35,23 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	flagLogLevel                    string
-	flagLogFormat                   string
-	flagCombineLogs                 bool
-	flagLoginName                   string
-	flagPassword                    string
-	flagIdSuffix                    string
-	flagHostAddress                 string
-	flagTargetDefaultPort           int
-	flagTargetSessionMaxSeconds     int
-	flagControllerAPIListenAddr     string
-	flagControllerClusterListenAddr string
-	flagWorkerProxyListenAddr       string
-	flagWorkerPublicAddr            string
-	flagPassthroughDirectory        string
-	flagRecoveryKey                 string
-	flagDisableDatabaseDestruction  bool
+	flagLogLevel                     string
+	flagLogFormat                    string
+	flagCombineLogs                  bool
+	flagLoginName                    string
+	flagPassword                     string
+	flagIdSuffix                     string
+	flagHostAddress                  string
+	flagTargetDefaultPort            int
+	flagTargetSessionMaxSeconds      int
+	flagTargetSessionConnectionLimit int
+	flagControllerAPIListenAddr      string
+	flagControllerClusterListenAddr  string
+	flagWorkerProxyListenAddr        string
+	flagWorkerPublicAddr             string
+	flagPassthroughDirectory         string
+	flagRecoveryKey                  string
+	flagDisableDatabaseDestruction   bool
 }
 
 func (c *Command) Synopsis() string {
@@ -135,6 +136,13 @@ func (c *Command) Flags() *base.FlagSets {
 		Target:  &c.flagTargetDefaultPort,
 		EnvVar:  "BOUNDARY_DEV_TARGET_DEFAULT_PORT",
 		Usage:   "Default port to use for the default target that is created.",
+	})
+
+	f.IntVar(&base.IntVar{
+		Name:   "target-session-connection-limit",
+		Target: &c.flagTargetSessionConnectionLimit,
+		EnvVar: "BOUNDARY_DEV_TARGET_SESSION_CONNECTION_LIMIT",
+		Usage:  "Maximum number of connections per session to set on the default target. -1 means unlimited.",
 	})
 
 	f.IntVar(&base.IntVar{
@@ -263,6 +271,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 	c.DevTargetSessionMaxSeconds = c.flagTargetSessionMaxSeconds
+	c.DevTargetSessionConnectionLimit = c.flagTargetSessionConnectionLimit
 	c.DevHostAddress = host
 
 	c.Config.PassthroughDirectory = c.flagPassthroughDirectory

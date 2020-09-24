@@ -66,7 +66,6 @@ func generateTargetTableOutput(in *targets.Target) string {
 
 	if len(in.Attributes) > 0 {
 		ret = append(ret,
-			"",
 			"  Attributes:",
 			base.WrapMap(4, maxLength, in.Attributes),
 		)

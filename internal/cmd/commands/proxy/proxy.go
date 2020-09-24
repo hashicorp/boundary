@@ -147,7 +147,7 @@ func (c *Command) Flags() *base.FlagSets {
 			Target:     &c.flagListenAddr,
 			EnvVar:     "BOUNDARY_PROXY_LISTEN_ADDR",
 			Completion: complete.PredictAnything,
-			Usage:      `If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot, the command will error. If not set, defaults to the most common IPv4 loopback address (127.0.0.1).`,
+			Usage:      `If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot, the command will error. If not set, defaults to the IPv4 loopback address (127.0.0.1).`,
 		})
 
 		f.IntVar(&base.IntVar{

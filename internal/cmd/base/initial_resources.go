@@ -371,6 +371,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		target.WithDefaultPort(uint32(b.DevTargetDefaultPort)),
 		target.WithHostSets([]string{b.DevHostSetId}),
 		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
+		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevTargetId),
 	}
 	t, err := target.NewTcpTarget(b.DevProjectId, opts...)
