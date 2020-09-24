@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -24,22 +23,23 @@ type InitCommand struct {
 	*base.Command
 	srv *base.Server
 
-	SighupCh      chan struct{}
-	childSighupCh []chan struct{}
-	ReloadedCh    chan struct{}
-	SigUSR2Ch     chan struct{}
+	SighupCh   chan struct{}
+	ReloadedCh chan struct{}
+	SigUSR2Ch  chan struct{}
 
-	Config     *config.Config
-	controller *controller.Controller
+	Config *config.Config
 
 	configWrapper wrapping.Wrapper
 
-	flagConfig                 string
-	flagConfigKms              string
-	flagLogLevel               string
-	flagLogFormat              string
-	flagMigrationUrl           string
-	flagSkipAuthMethodCreation bool
+	flagConfig                    string
+	flagConfigKms                 string
+	flagLogLevel                  string
+	flagLogFormat                 string
+	flagMigrationUrl              string
+	flagSkipAuthMethodCreation    bool
+	flagSkipScopesCreation        bool
+	flagSkipHostResourcesCreation bool
+	flagSkipTargetCreation        bool
 }
 
 func (c *InitCommand) Synopsis() string {
@@ -47,17 +47,27 @@ func (c *InitCommand) Synopsis() string {
 }
 
 func (c *InitCommand) Help() string {
-	helpText := `
-Usage: boundary database init [options]
-
-  Initialize Boundary's database:
-
-      $ boundary database init -config=/etc/boundary/controller.hcl
-
-  For a full list of examples, please see the documentation.
-
-` + c.Flags().Help()
-	return strings.TrimSpace(helpText)
+	return base.WrapForHelpText([]string{
+		"Usage: boundary database init [options]",
+		"",
+		"  Initialize Boundary's database:",
+		"",
+		"    $ boundary database init -config=/etc/boundary/controller.hcl",
+		"",
+		"  Unless told not to via flags, some initial resources will be created, in the following order and in the indicated scopes:",
+		"",
+		"    Password-Type Auth Method (global)",
+		"    Org Scope (global)",
+		"      Project Scope (org)",
+		"        Static-Type Host Catalog (project)",
+		"          Static-Type Host Set",
+		"          Static-Type Host",
+		"        Target (project)",
+		"",
+		"  If flags are used to skip any of these resources, any resources that would be created afterwards are also skipped.",
+		"",
+		"  For a full list of examples, please see the documentation.",
+	}) + c.Flags().Help()
 }
 
 func (c *InitCommand) Flags() *base.FlagSets {
@@ -111,6 +121,24 @@ func (c *InitCommand) Flags() *base.FlagSets {
 		Usage:  "If not set, an auth method will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
 	})
 
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-scopes-creation",
+		Target: &c.flagSkipScopesCreation,
+		Usage:  "If not set, scopes will not be created as part of initialization.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-host-resources-creation",
+		Target: &c.flagSkipHostResourcesCreation,
+		Usage:  "If not set, host resources (host catalog, host set, host) will not be created as part of initialization.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-target-creation",
+		Target: &c.flagSkipTargetCreation,
+		Usage:  "If not set, a target will not be created as part of initialization.",
+	})
+
 	f.StringVar(&base.StringVar{
 		Name:    "migration-url",
 		Target:  &c.flagMigrationUrl,
@@ -129,7 +157,7 @@ func (c *InitCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *InitCommand) Run(args []string) int {
+func (c *InitCommand) Run(args []string) (retCode int) {
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
 		return result
 	}
@@ -262,6 +290,20 @@ func (c *InitCommand) Run(args []string) int {
 		return 0
 	}
 
+	var jsonMap map[string]interface{}
+	if base.Format(c.UI) == "json" {
+		jsonMap = make(map[string]interface{})
+		defer func() {
+			b, err := base.JsonFormatter{}.Format(jsonMap)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
+				retCode = 1
+				return
+			}
+			c.UI.Output(string(b))
+		}()
+	}
+
 	// Use an easy name, at least
 	c.srv.DevLoginName = "admin"
 	if err := c.srv.CreateInitialAuthMethod(c.Context); err != nil {
@@ -274,17 +316,92 @@ func (c *InitCommand) Run(args []string) int {
 		LoginName:    c.srv.DevLoginName,
 		Password:     c.srv.DevPassword,
 		ScopeId:      scope.Global.String(),
+		UserId:       c.srv.DevUserId,
 	}
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(generateInitialAuthMethodTableOutput(authMethodInfo))
 	case "json":
-		b, err := base.JsonFormatter{}.Format(authMethodInfo)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
-			return 1
-		}
-		c.UI.Output(string(b))
+		jsonMap["auth_method"] = authMethodInfo
+	}
+
+	if c.flagSkipScopesCreation {
+		return 0
+	}
+
+	if err := c.srv.CreateInitialScopes(c.Context); err != nil {
+		c.UI.Error(fmt.Errorf("Error creating initial scopes: %w", err).Error())
+		return 1
+	}
+
+	orgScopeInfo := &ScopeInfo{
+		ScopeId: c.srv.DevOrgId,
+		Type:    scope.Org.String(),
+	}
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateInitialScopeTableOutput(orgScopeInfo))
+	case "json":
+		jsonMap["org_scope"] = orgScopeInfo
+	}
+
+	projScopeInfo := &ScopeInfo{
+		ScopeId: c.srv.DevProjectId,
+		Type:    scope.Project.String(),
+	}
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateInitialScopeTableOutput(projScopeInfo))
+	case "json":
+		jsonMap["proj_scope"] = projScopeInfo
+	}
+
+	if c.flagSkipHostResourcesCreation {
+		return 0
+	}
+
+	if err := c.srv.CreateInitialHostResources(c.Context); err != nil {
+		c.UI.Error(fmt.Errorf("Error creating initial host resources: %w", err).Error())
+		return 1
+	}
+
+	hostInfo := &HostInfo{
+		HostCatalogId: c.srv.DevHostCatalogId,
+		HostSetId:     c.srv.DevHostSetId,
+		HostId:        c.srv.DevHostId,
+		Type:          "static",
+		ScopeId:       c.srv.DevProjectId,
+	}
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateInitialHostResourcesTableOutput(hostInfo))
+	case "json":
+		jsonMap["host_resources"] = hostInfo
+	}
+
+	if c.flagSkipTargetCreation {
+		return 0
+	}
+
+	t, err := c.srv.CreateInitialTarget(c.Context)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error creating initial target: %w", err).Error())
+		return 1
+	}
+
+	targetInfo := &TargetInfo{
+		TargetId:               c.srv.DevTargetId,
+		DefaultPort:            t.GetDefaultPort(),
+		SessionMaxSeconds:      t.GetSessionMaxSeconds(),
+		SessionConnectionLimit: t.GetSessionConnectionLimit(),
+		Type:                   "tcp",
+		ScopeId:                c.srv.DevProjectId,
+	}
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateInitialTargetTableOutput(targetInfo))
+	case "json":
+		jsonMap["target"] = targetInfo
 	}
 
 	return 0

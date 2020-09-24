@@ -31,17 +31,27 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 	if target.PublicId != "" {
 		return nil, nil, fmt.Errorf("create tcp target: public id not empty: %w", db.ErrInvalidParameter)
 	}
-	id, err := newTcpTargetId()
-	if err != nil {
-		return nil, nil, fmt.Errorf("create tcp target: %w", err)
+
+	t := target.Clone().(*TcpTarget)
+
+	if opts.withPublicId != "" {
+		if !strings.HasPrefix(opts.withPublicId, TcpTargetPrefix+"_") {
+			return nil, nil, fmt.Errorf("create tcp target: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, TcpTargetPrefix, db.ErrInvalidPublicId)
+		}
+		t.PublicId = opts.withPublicId
+	} else {
+
+		id, err := newTcpTargetId()
+		if err != nil {
+			return nil, nil, fmt.Errorf("create tcp target: %w", err)
+		}
+		t.PublicId = id
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, target.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, fmt.Errorf("create tcp target: unable to get oplog wrapper: %w", err)
 	}
-	t := target.Clone().(*TcpTarget)
-	t.PublicId = id
 
 	newHostSets := make([]interface{}, 0, len(opts.withHostSets))
 	for _, hsId := range opts.withHostSets {
