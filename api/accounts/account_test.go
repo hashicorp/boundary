@@ -1,7 +1,6 @@
 package accounts_test
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -161,30 +160,34 @@ func TestErrors(t *testing.T) {
 	require.NoError(err)
 	assert.NotNil(u)
 
-	var apiErr *api.Error
 	// Updating the wrong version should fail.
 	_, err = accountClient.Update(tc.Context(), u.Item.Id, 73, accounts.WithName("anything"))
 	require.Error(err)
-	require.True(errors.As(err, &apiErr), "Got original error: %v", err)
+	apiErr := api.AsServerError(err)
+	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 	// Create another resource with the same name.
 	_, err = accountClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName("first"))
 	require.Error(err)
-	require.True(errors.As(err, &apiErr), "Got original error: %v", err)
+	apiErr = api.AsServerError(err)
+	require.NotNil(apiErr)
 
 	_, err = accountClient.Read(tc.Context(), password.AccountPrefix+"_doesntexis")
 	require.Error(err)
-	require.True(errors.As(err, &apiErr), "Got original error: %v", err)
+	apiErr = api.AsServerError(err)
+	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 	_, err = accountClient.Read(tc.Context(), "invalid id")
 	require.Error(err)
-	require.True(errors.As(err, &apiErr), "Got original error: %v", err)
+	apiErr = api.AsServerError(err)
+	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
 	_, err = accountClient.Update(tc.Context(), u.Item.Id, u.Item.Version)
 	require.Error(err)
-	require.True(errors.As(err, &apiErr), "Got original error: %v", err)
+	apiErr = api.AsServerError(err)
+	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 }
