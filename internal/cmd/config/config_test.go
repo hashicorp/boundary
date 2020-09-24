@@ -38,7 +38,6 @@ func TestDevController(t *testing.T) {
 				{
 					Type:                  "tcp",
 					Purpose:               []string{"cluster"},
-					TLSDisable:            true,
 					ProxyProtocolBehavior: "allow_authorized",
 					ProxyProtocolAuthorizedAddrs: []*sockaddr.SockAddrMarshaler{
 						{SockAddr: addr},
@@ -114,7 +113,6 @@ func TestDevWorker(t *testing.T) {
 			Listeners: []*configutil.Listener{
 				{
 					Type:                  "tcp",
-					TLSDisable:            true,
 					Purpose:               []string{"proxy"},
 					ProxyProtocolBehavior: "allow_authorized",
 					ProxyProtocolAuthorizedAddrs: []*sockaddr.SockAddrMarshaler{

@@ -612,7 +612,7 @@ func TestCreate(t *testing.T) {
 						require.Len(roles, 1)
 						role := roles[0]
 						assert.Equal("on-scope-creation", role.GetName())
-						assert.Equal(fmt.Sprintf("Role created for administration of scope %s at its creation time", got.GetItem().GetId()), role.GetDescription())
+						assert.Equal(fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", got.GetItem().GetId(), userId), role.GetDescription())
 					}
 
 					// Clear all values which are hard to compare against.

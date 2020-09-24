@@ -14,7 +14,7 @@ func ProcessLogLevelAndFormat(flagLogLevel, flagLogFormat, configLogLevel, confi
 
 	// If the flag wasn't set, check config; if not set use info
 	logLevel := strings.ToLower(strings.TrimSpace(flagLogLevel))
-	if logLevel == NotSetValue {
+	if logLevel == "" {
 		logLevel = strings.ToLower(strings.TrimSpace(configLogLevel))
 		if logLevel == "" {
 			logLevel = "info"
@@ -38,7 +38,7 @@ func ProcessLogLevelAndFormat(flagLogLevel, flagLogFormat, configLogLevel, confi
 		return level, logFormat, fmt.Errorf("unknown log level: %s", logLevel)
 	}
 
-	if flagLogFormat != NotSetValue {
+	if flagLogFormat != "" {
 		var err error
 		logFormat, err = logging.ParseLogFormat(flagLogFormat)
 		if err != nil {
