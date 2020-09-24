@@ -30,13 +30,13 @@ jobs:
   cache-builder-images:
     executor: releaser
     steps:
+      
       - setup_remote_docker:
           version: 19.03.12
       - add_ssh_keys:
           fingerprints:
             # hashicorp-ci github user. TODO: Make this configurable.
             - "c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98"
-      - run: ls -lah ~/.ssh
 
       - checkout
       - write-build-layer-cache-keys
@@ -59,9 +59,27 @@ jobs:
           no_output_timeout: 30m
           command: |
             LAYER_SPEC_ID=02-copy-source-0f2f67537f81b566bf36ede6b6d539dacf74a2a5 make -C packages*.lock load-builder-cache
-      - run: make -f packages*.lock/layer.mk 00-install-deps-2d16c6b83793b47aad77bb2e6ebb2ff70b64c1e9-image
-      - run: make -f packages*.lock/layer.mk 01-download-modules-b298c74274cbe268d6b4c7826a0dd425f3138e62-image
-      - run: make -f packages*.lock/layer.mk 02-copy-source-0f2f67537f81b566bf36ede6b6d539dacf74a2a5-image
+      - run:
+          command: |
+            
+            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+            eval $(ssh-agent)
+
+            make -f packages*.lock/layer.mk 00-install-deps-2d16c6b83793b47aad77bb2e6ebb2ff70b64c1e9-image
+      - run:
+          command: |
+            
+            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+            eval $(ssh-agent)
+
+            make -f packages*.lock/layer.mk 01-download-modules-b298c74274cbe268d6b4c7826a0dd425f3138e62-image
+      - run:
+          command: |
+            
+            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+            eval $(ssh-agent)
+
+            make -f packages*.lock/layer.mk 02-copy-source-0f2f67537f81b566bf36ede6b6d539dacf74a2a5-image
       - run: make -f packages*.lock/layer.mk 02-copy-source-0f2f67537f81b566bf36ede6b6d539dacf74a2a5-save
       - save_cache:
           key: cache001-copy-source_0f2f_{{checksum ".buildcache/cache-keys/copy-source-0f2f67537f81b566bf36ede6b6d539dacf74a2a5"}}
@@ -82,13 +100,13 @@ jobs:
     environment:
       - PACKAGE_SPEC_ID: 6c6c1ed6a95bf40cd3440ca629be711e52983cd1
     steps:
+      
       - setup_remote_docker:
           version: 19.03.12
       - add_ssh_keys:
           fingerprints:
             # hashicorp-ci github user. TODO: Make this configurable.
             - "c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98"
-      - run: ls -lah ~/.ssh
 
       - checkout
 
@@ -118,7 +136,16 @@ jobs:
           no_output_timeout: 30m
           command: |
             make -C packages*.lock load-builder-cache
-      - run: make -C packages*.lock package
+
+      - run:
+          name: Compile Package
+          command: |
+            
+            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+            eval $(ssh-agent)
+
+            make -C packages*.lock package
+
       - run: ls -lahR .buildcache/packages
       # Save package cache.
       - save_cache:
@@ -133,13 +160,13 @@ jobs:
     environment:
       - PACKAGE_SPEC_ID: 69eebe797eef586c6713cc32c1ad0186a5268f51
     steps:
+      
       - setup_remote_docker:
           version: 19.03.12
       - add_ssh_keys:
           fingerprints:
             # hashicorp-ci github user. TODO: Make this configurable.
             - "c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98"
-      - run: ls -lah ~/.ssh
 
       - checkout
 
@@ -169,7 +196,16 @@ jobs:
           no_output_timeout: 30m
           command: |
             make -C packages*.lock load-builder-cache
-      - run: make -C packages*.lock package
+
+      - run:
+          name: Compile Package
+          command: |
+            
+            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+            eval $(ssh-agent)
+
+            make -C packages*.lock package
+
       - run: ls -lahR .buildcache/packages
       # Save package cache.
       - save_cache:

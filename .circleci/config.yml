@@ -15,8 +15,6 @@ jobs:
     - add_ssh_keys:
         fingerprints:
         - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
-    - run:
-        command: ls -lah ~/.ssh
     - checkout
     - run:
         command: make -C packages*.lock write-builder-cache-keys
@@ -41,11 +39,26 @@ jobs:
         name: Load whatever builder cache we have (if any) into the Docker daemon
         no_output_timeout: 30m
     - run:
-        command: make -f packages*.lock/layer.mk 00-install-deps-2d16c6b83793b47aad77bb2e6ebb2ff70b64c1e9-image
+        command: |2
+
+          ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+          eval $(ssh-agent)
+
+          make -f packages*.lock/layer.mk 00-install-deps-2d16c6b83793b47aad77bb2e6ebb2ff70b64c1e9-image
     - run:
-        command: make -f packages*.lock/layer.mk 01-download-modules-b298c74274cbe268d6b4c7826a0dd425f3138e62-image
+        command: |2
+
+          ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+          eval $(ssh-agent)
+
+          make -f packages*.lock/layer.mk 01-download-modules-b298c74274cbe268d6b4c7826a0dd425f3138e62-image
     - run:
-        command: make -f packages*.lock/layer.mk 02-copy-source-0f2f67537f81b566bf36ede6b6d539dacf74a2a5-image
+        command: |2
+
+          ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+          eval $(ssh-agent)
+
+          make -f packages*.lock/layer.mk 02-copy-source-0f2f67537f81b566bf36ede6b6d539dacf74a2a5-image
     - run:
         command: make -f packages*.lock/layer.mk 02-copy-source-0f2f67537f81b566bf36ede6b6d539dacf74a2a5-save
     - save_cache:
@@ -83,8 +96,6 @@ jobs:
     - add_ssh_keys:
         fingerprints:
         - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
-    - run:
-        command: ls -lah ~/.ssh
     - checkout
     - run:
         command: make -C packages*.lock write-package-cache-key
@@ -114,7 +125,13 @@ jobs:
         name: Load whatever builder cache we have (if any) into the Docker daemon
         no_output_timeout: 30m
     - run:
-        command: make -C packages*.lock package
+        command: |2
+
+          ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+          eval $(ssh-agent)
+
+          make -C packages*.lock package
+        name: Compile Package
     - run:
         command: ls -lahR .buildcache/packages
     - save_cache:
@@ -136,8 +153,6 @@ jobs:
     - add_ssh_keys:
         fingerprints:
         - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
-    - run:
-        command: ls -lah ~/.ssh
     - checkout
     - run:
         command: make -C packages*.lock write-package-cache-key
@@ -167,7 +182,13 @@ jobs:
         name: Load whatever builder cache we have (if any) into the Docker daemon
         no_output_timeout: 30m
     - run:
-        command: make -C packages*.lock package
+        command: |2
+
+          ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+          eval $(ssh-agent)
+
+          make -C packages*.lock package
+        name: Compile Package
     - run:
         command: ls -lahR .buildcache/packages
     - save_cache:
