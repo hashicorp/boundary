@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
-	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,9 +39,8 @@ func TestCustom(t *testing.T) {
 		},
 	}
 
-	user, apiErr, err := users.NewClient(client).Create(tc.Context(), org.GetPublicId())
+	user, err := users.NewClient(client).Create(tc.Context(), org.GetPublicId())
 	require.NoError(err)
-	require.Nil(apiErr)
 
 	hasPrincipal := func(role *roles.Role, principalId string) bool {
 		var foundInPrincipals bool
@@ -62,59 +60,51 @@ func TestCustom(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			g, apiErr, err := groups.NewClient(client).Create(tc.Context(), tt.scopeId)
+			g, err := groups.NewClient(client).Create(tc.Context(), tt.scopeId)
 			require.NoError(err)
-			require.Nil(apiErr)
 			require.NotNil(g)
 
 			rc := roles.NewClient(client)
 			var version uint32 = 1
 
-			r, apiErr, err := rc.Create(tc.Context(), tt.scopeId, roles.WithName("foo"))
+			r, err := rc.Create(tc.Context(), tt.scopeId, roles.WithName("foo"))
 			require.NoError(err)
-			require.Nil(apiErr)
 			require.NotNil(r)
 			require.EqualValues(r.Item.Version, version)
 			version++
 
-			updatedRole, apiErr, err := rc.AddPrincipals(tc.Context(), r.Item.Id, r.Item.Version, []string{g.Item.Id})
+			updatedRole, err := rc.AddPrincipals(tc.Context(), r.Item.Id, r.Item.Version, []string{g.Item.Id})
 			require.NoError(err)
-			require.Nil(apiErr, "Got error ", pretty.Sprint(apiErr))
 			assert.EqualValues(updatedRole.Item.Version, version)
 			assert.True(hasPrincipal(updatedRole.Item, g.Item.Id))
 			version++
 
-			updatedRole, apiErr, err = rc.SetPrincipals(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{user.Item.Id})
+			updatedRole, err = rc.SetPrincipals(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{user.Item.Id})
 			require.NoError(err)
-			require.Nil(apiErr, "Got error ", apiErr)
 			assert.EqualValues(updatedRole.Item.Version, version)
 			assert.True(hasPrincipal(updatedRole.Item, user.Item.Id))
 			version++
 
-			updatedRole, apiErr, err = rc.RemovePrincipals(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{user.Item.Id})
+			updatedRole, err = rc.RemovePrincipals(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{user.Item.Id})
 			require.NoError(err)
-			require.Nil(apiErr, "Got error ", apiErr)
 			assert.EqualValues(updatedRole.Item.Version, version)
 			assert.Empty(updatedRole.Item.Principals)
 			version++
 
-			updatedRole, apiErr, err = rc.AddGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=read"})
+			updatedRole, err = rc.AddGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=read"})
 			require.NoError(err)
-			require.Nil(apiErr, "Got error ", apiErr)
 			assert.EqualValues(updatedRole.Item.Version, version)
 			assert.Contains(updatedRole.Item.GrantStrings, "id=*;actions=read")
 			version++
 
-			updatedRole, apiErr, err = rc.SetGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=*"})
+			updatedRole, err = rc.SetGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=*"})
 			require.NoError(err)
-			require.Nil(apiErr, "Got error ", apiErr)
 			assert.EqualValues(updatedRole.Item.Version, version)
 			assert.Contains(updatedRole.Item.GrantStrings, "id=*;actions=*")
 			version++
 
-			updatedRole, apiErr, err = rc.RemoveGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=*"})
+			updatedRole, err = rc.RemoveGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=*"})
 			require.NoError(err)
-			require.Nil(apiErr, "Got error ", apiErr)
 			assert.EqualValues(updatedRole.Item.Version, version)
 			assert.Empty(updatedRole.Item.Grants)
 			version++
@@ -151,9 +141,8 @@ func TestList(t *testing.T) {
 			var expected []*roles.Role
 
 			roleClient := roles.NewClient(client)
-			p1, apiErr, err := roleClient.List(tc.Context(), tt.scopeId)
+			p1, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
-			assert.Nil(apiErr)
 			require.Len(p1.Items, 1)
 			expected = append(expected, p1.Items[0])
 
@@ -161,25 +150,21 @@ func TestList(t *testing.T) {
 				expected = append(expected, &roles.Role{Name: fmt.Sprint(i)})
 			}
 
-			rcr, apiErr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[1].Name))
+			rcr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[1].Name))
 			require.NoError(err)
-			require.Nil(apiErr)
 			expected[1] = rcr.Item
 
-			p2, apiErr, err := roleClient.List(tc.Context(), tt.scopeId)
+			p2, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
-			require.Nil(apiErr)
 			assert.ElementsMatch(comparableSlice(expected[0:2]), comparableSlice(p2.Items))
 
 			for i := 2; i < 11; i++ {
-				rcr, apiErr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[i].Name))
+				rcr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[i].Name))
 				assert.NoError(err)
-				assert.Nil(apiErr)
 				expected[i] = rcr.Item
 			}
-			p3, apiErr, err := roleClient.List(tc.Context(), tt.scopeId)
+			p3, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
-			require.Nil(apiErr)
 			assert.ElementsMatch(comparableSlice(expected), comparableSlice(p3.Items))
 		})
 	}
@@ -224,11 +209,8 @@ func TestCrud(t *testing.T) {
 		},
 	}
 
-	checkRole := func(step string, g *roles.Role, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
+	checkRole := func(step string, g *roles.Role, err error, wantedName string, wantedVersion uint32) {
 		assert.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
-			t.Errorf("ApiError message: %q", apiErr.Message)
-		}
 		assert.NotNil(g, "returned no resource", step)
 		gotName := ""
 		if g.Name != "" {
@@ -241,27 +223,25 @@ func TestCrud(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			roleClient := roles.NewClient(client)
-			g, apiErr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("foo"))
-			checkRole("create", g.Item, apiErr, err, "foo", 1)
+			g, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("foo"))
+			checkRole("create", g.Item, err, "foo", 1)
 
-			g, apiErr, err = roleClient.Read(tc.Context(), g.Item.Id)
-			checkRole("read", g.Item, apiErr, err, "foo", 1)
+			g, err = roleClient.Read(tc.Context(), g.Item.Id)
+			checkRole("read", g.Item, err, "foo", 1)
 
-			g, apiErr, err = roleClient.Update(tc.Context(), g.Item.Id, g.Item.Version, roles.WithName("bar"))
-			checkRole("update", g.Item, apiErr, err, "bar", 2)
+			g, err = roleClient.Update(tc.Context(), g.Item.Id, g.Item.Version, roles.WithName("bar"))
+			checkRole("update", g.Item, err, "bar", 2)
 
-			g, apiErr, err = roleClient.Update(tc.Context(), g.Item.Id, g.Item.Version, roles.DefaultName())
-			checkRole("update", g.Item, apiErr, err, "", 3)
+			g, err = roleClient.Update(tc.Context(), g.Item.Id, g.Item.Version, roles.DefaultName())
+			checkRole("update", g.Item, err, "", 3)
 
-			_, apiErr, err = roleClient.Delete(tc.Context(), g.Item.Id)
+			_, err = roleClient.Delete(tc.Context(), g.Item.Id)
 			require.NoError(err)
-			assert.Nil(apiErr)
 		})
 	}
 }
 
 func TestErrors(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
@@ -286,35 +266,40 @@ func TestErrors(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			roleClient := roles.NewClient(client)
-			u, apiErr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("first"))
+			u, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("first"))
 			require.NoError(err)
-			assert.Nil(apiErr)
 			assert.NotNil(u)
 
 			// Updating the wrong version should fail.
-			_, apiErr, err = roleClient.Update(tc.Context(), u.Item.Id, 73, roles.WithName("anything"))
-			require.NoError(err)
+			_, err = roleClient.Update(tc.Context(), u.Item.Id, 73, roles.WithName("anything"))
+			require.Error(err)
+			apiErr := api.AsServerError(err)
 			assert.NotNil(apiErr)
 			assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 			// Create another resource with the same name.
-			_, apiErr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("first"))
-			require.NoError(err)
+			_, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("first"))
+			require.Error(err)
+			apiErr = api.AsServerError(err)
 			assert.NotNil(apiErr)
 
-			_, apiErr, err = roleClient.Read(tc.Context(), iam.RolePrefix+"_doesntexis")
-			require.NoError(err)
+			_, err = roleClient.Read(tc.Context(), iam.RolePrefix+"_doesntexis")
+			require.Error(err)
+			apiErr = api.AsServerError(err)
 			assert.NotNil(apiErr)
 			assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
-			_, apiErr, err = roleClient.Read(tc.Context(), "invalid id")
-			require.NoError(err)
+			_, err = roleClient.Read(tc.Context(), "invalid id")
+			require.Error(err)
+			apiErr = api.AsServerError(err)
 			assert.NotNil(apiErr)
 			assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
-			_, apiErr, err = roleClient.Update(tc.Context(), u.Item.Id, u.Item.Version)
-			require.NoError(err)
+			_, err = roleClient.Update(tc.Context(), u.Item.Id, u.Item.Version)
+			require.Error(err)
+			apiErr = api.AsServerError(err)
 			assert.NotNil(apiErr)
 			assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 		})

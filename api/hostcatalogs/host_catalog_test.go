@@ -25,9 +25,8 @@ func TestList(t *testing.T) {
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	catalogClient := hostcatalogs.NewClient(client)
 
-	ul, apiErr, err := catalogClient.List(tc.Context(), proj.GetPublicId())
+	ul, err := catalogClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
-	require.Nil(apiErr)
 	assert.Empty(ul.Items)
 
 	var expected []*hostcatalogs.HostCatalog
@@ -35,25 +34,21 @@ func TestList(t *testing.T) {
 		expected = append(expected, &hostcatalogs.HostCatalog{Name: fmt.Sprint(i)})
 	}
 
-	cr, apiErr, err := catalogClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName(expected[0].Name))
+	cr, err := catalogClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName(expected[0].Name))
 	require.NoError(err)
-	require.Nil(apiErr)
 	expected[0] = cr.Item
 
-	ul, apiErr, err = catalogClient.List(tc.Context(), proj.GetPublicId())
+	ul, err = catalogClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
-	require.Nil(apiErr)
 	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		cr, apiErr, err = catalogClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName(expected[i].Name))
+		cr, err = catalogClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName(expected[i].Name))
 		require.NoError(err)
-		require.Nil(apiErr)
 		expected[i] = cr.Item
 	}
-	ul, apiErr, err = catalogClient.List(tc.Context(), proj.GetPublicId())
+	ul, err = catalogClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
-	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableCatalogSlice(expected), comparableCatalogSlice(ul.Items))
 }
 
@@ -82,11 +77,8 @@ func TestCrud(t *testing.T) {
 	client.SetToken(token.Token)
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
-	checkCatalog := func(step string, hc *hostcatalogs.HostCatalog, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
+	checkCatalog := func(step string, hc *hostcatalogs.HostCatalog, err error, wantedName string, wantVersion uint32) {
 		require.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
-			t.Errorf("ApiError message: %q", apiErr.Message)
-		}
 		assert.NotNil(hc, "returned no resource", step)
 		gotName := ""
 		if hc.Name != "" {
@@ -98,29 +90,28 @@ func TestCrud(t *testing.T) {
 
 	hcClient := hostcatalogs.NewClient(client)
 
-	hc, apiErr, err := hcClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
-	checkCatalog("create", hc.Item, apiErr, err, "foo", 1)
+	hc, err := hcClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
+	checkCatalog("create", hc.Item, err, "foo", 1)
 
-	hc, apiErr, err = hcClient.Read(tc.Context(), hc.Item.Id)
-	checkCatalog("read", hc.Item, apiErr, err, "foo", 1)
+	hc, err = hcClient.Read(tc.Context(), hc.Item.Id)
+	checkCatalog("read", hc.Item, err, "foo", 1)
 
-	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("bar"))
-	checkCatalog("update", hc.Item, apiErr, err, "bar", 2)
+	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("bar"))
+	checkCatalog("update", hc.Item, err, "bar", 2)
 
-	hc, apiErr, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.DefaultName())
-	checkCatalog("update", hc.Item, apiErr, err, "", 3)
+	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.DefaultName())
+	checkCatalog("update", hc.Item, err, "", 3)
 
-	_, apiErr, err = hcClient.Delete(tc.Context(), hc.Item.Id)
+	_, err = hcClient.Delete(tc.Context(), hc.Item.Id)
 	assert.NoError(err)
-	assert.Nil(apiErr)
 
-	_, apiErr, err = hcClient.Delete(tc.Context(), hc.Item.Id)
-	require.NoError(err)
+	_, err = hcClient.Delete(tc.Context(), hc.Item.Id)
+	require.Error(err)
+	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
 
-// TODO: Get better coverage for expected errors and error formats.
 func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
@@ -132,29 +123,33 @@ func TestErrors(t *testing.T) {
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	pc := hostcatalogs.NewClient(client)
 
-	hc, apiErr, err := pc.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
+	hc, err := pc.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
 	require.NoError(err)
+	apiErr := api.AsServerError(err)
 	assert.Nil(apiErr)
 	assert.NotNil(hc)
 
 	// Updating the wrong version should fail.
-	_, apiErr, err = pc.Update(tc.Context(), hc.Item.Id, 73, hostcatalogs.WithName("anything"))
-	require.NoError(err)
+	_, err = pc.Update(tc.Context(), hc.Item.Id, 73, hostcatalogs.WithName("anything"))
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
-	_, apiErr, err = pc.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
-	require.NoError(err)
+	_, err = pc.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 
-	_, apiErr, err = pc.Read(tc.Context(), static.HostCatalogPrefix+"_doesntexis")
-	require.NoError(err)
-	// TODO: Should this be nil instead of just a catalog that has no values set
+	_, err = pc.Read(tc.Context(), static.HostCatalogPrefix+"_doesntexis")
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
-	_, apiErr, err = pc.Read(tc.Context(), "invalid id")
-	require.NoError(err)
+	_, err = pc.Read(tc.Context(), "invalid id")
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 }

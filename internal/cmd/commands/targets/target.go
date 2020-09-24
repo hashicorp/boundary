@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -264,28 +263,27 @@ func (c *Command) Run(args []string) int {
 	existed := true
 	var result api.GenericResult
 	var listResult api.GenericListResult
-	var apiErr *api.Error
 	var sar *targets.SessionAuthorizationResult
 
 	switch c.Func {
 	case "read":
-		result, apiErr, err = targetClient.Read(c.Context, c.FlagId, opts...)
+		result, err = targetClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		_, apiErr, err = targetClient.Delete(c.Context, c.FlagId, opts...)
-		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+		_, err = targetClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
 			existed = false
-			apiErr = nil
+			err = nil
 		}
 	case "list":
-		listResult, apiErr, err = targetClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, err = targetClient.List(c.Context, c.FlagScopeId, opts...)
 	case "add-host-sets":
-		result, apiErr, err = targetClient.AddHostSets(c.Context, c.FlagId, version, hostSets, opts...)
+		result, err = targetClient.AddHostSets(c.Context, c.FlagId, version, hostSets, opts...)
 	case "remove-host-sets":
-		result, apiErr, err = targetClient.RemoveHostSets(c.Context, c.FlagId, version, hostSets, opts...)
+		result, err = targetClient.RemoveHostSets(c.Context, c.FlagId, version, hostSets, opts...)
 	case "set-host-sets":
-		result, apiErr, err = targetClient.SetHostSets(c.Context, c.FlagId, version, hostSets, opts...)
+		result, err = targetClient.SetHostSets(c.Context, c.FlagId, version, hostSets, opts...)
 	case "authorize":
-		sar, apiErr, err = targetClient.Authorize(c.Context, c.FlagId, opts...)
+		sar, err = targetClient.Authorize(c.Context, c.FlagId, opts...)
 	}
 
 	plural := "target"
@@ -296,12 +294,12 @@ func (c *Command) Run(args []string) int {
 		plural = "a session against target"
 	}
 	if err != nil {
+		if api.AsServerError(err) != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
+			return 1
+		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
 		return 2
-	}
-	if apiErr != nil {
-		c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, pretty.Sprint(apiErr)))
-		return 1
 	}
 
 	switch c.Func {

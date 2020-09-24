@@ -36,17 +36,15 @@ func TestAuthenticationMulti(t *testing.T) {
 	defer c2.Shutdown()
 
 	auth := authmethods.NewClient(c1.Client())
-	token1Result, apiErr, err := auth.Authenticate(c1.Context(), amId, map[string]interface{}{"login_name": user, "password": password})
+	token1Result, err := auth.Authenticate(c1.Context(), amId, map[string]interface{}{"login_name": user, "password": password})
 	require.Nil(err)
-	require.Nil(apiErr)
 	token1 := token1Result.Item
 	require.NotNil(token1)
 
 	time.Sleep(5 * time.Second)
 	auth = authmethods.NewClient(c2.Client())
-	token2Result, apiErr, err := auth.Authenticate(c2.Context(), amId, map[string]interface{}{"login_name": user, "password": password})
+	token2Result, err := auth.Authenticate(c2.Context(), amId, map[string]interface{}{"login_name": user, "password": password})
 	require.Nil(err)
-	require.Nil(apiErr)
 	token2 := token2Result.Item
 	require.NotNil(token2)
 
@@ -56,13 +54,11 @@ func TestAuthenticationMulti(t *testing.T) {
 	c2.Client().SetToken(token1.Token) // Same token, as it should work on both
 
 	// Create a project, read from the other
-	org, apiErr, err := scopes.NewClient(c1.Client()).Create(c1.Context(), scope.Global.String())
+	org, err := scopes.NewClient(c1.Client()).Create(c1.Context(), scope.Global.String())
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(org.Item)
 
-	proj, apiErr, err := scopes.NewClient(c2.Client()).Read(c2.Context(), org.Item.Id)
+	proj, err := scopes.NewClient(c2.Client()).Read(c2.Context(), org.Item.Id)
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(proj.Item)
 }

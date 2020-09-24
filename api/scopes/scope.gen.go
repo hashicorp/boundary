@@ -9,8 +9,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/kr/pretty"
-
 	"github.com/hashicorp/boundary/api"
 )
 
@@ -107,22 +105,22 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*ScopeCreateResult, *api.Error, error) {
+func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*ScopeCreateResult, error) {
 	if scopeId == "" {
-		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
+		return nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts.postMap["scope_id"] = scopeId
 
 	req, err := c.client.NewRequest(ctx, "POST", "scopes", opts.postMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+		return nil, fmt.Errorf("error creating Create request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -135,36 +133,36 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Sc
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Create call: %w", err)
 	}
 
 	target := new(ScopeCreateResult)
 	target.Item = new(Scope)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+		return nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, scopeId string, opt ...Option) (*ScopeReadResult, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, scopeId string, opt ...Option) (*ScopeReadResult, error) {
 	if scopeId == "" {
-		return nil, nil, fmt.Errorf("empty scopeId value passed into Read request")
+		return nil, fmt.Errorf("empty scopeId value passed into Read request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes/%s", scopeId), nil, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -177,49 +175,49 @@ func (c *Client) Read(ctx context.Context, scopeId string, opt ...Option) (*Scop
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
 
 	target := new(ScopeReadResult)
 	target.Item = new(Scope)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
+		return nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, scopeId string, version uint32, opt ...Option) (*ScopeUpdateResult, *api.Error, error) {
+func (c *Client) Update(ctx context.Context, scopeId string, version uint32, opt ...Option) (*ScopeUpdateResult, error) {
 	if scopeId == "" {
-		return nil, nil, fmt.Errorf("empty scopeId value passed into Update request")
+		return nil, fmt.Errorf("empty scopeId value passed into Update request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
-			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
+			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, scopeId, opt...)
+		existingTarget, existingErr := c.Read(ctx, scopeId, opt...)
 		if existingErr != nil {
-			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingTarget == nil {
-			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
 		}
 		if existingTarget.Item == nil {
-			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
 		version = existingTarget.Item.Version
 	}
@@ -228,7 +226,7 @@ func (c *Client) Update(ctx context.Context, scopeId string, version uint32, opt
 
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("scopes/%s", scopeId), opts.postMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -241,36 +239,36 @@ func (c *Client) Update(ctx context.Context, scopeId string, version uint32, opt
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Update call: %w", err)
 	}
 
 	target := new(ScopeUpdateResult)
 	target.Item = new(Scope)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
+		return nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, scopeId string, opt ...Option) (*ScopeDeleteResult, *api.Error, error) {
+func (c *Client) Delete(ctx context.Context, scopeId string, opt ...Option) (*ScopeDeleteResult, error) {
 	if scopeId == "" {
-		return nil, nil, fmt.Errorf("empty scopeId value passed into Delete request")
+		return nil, fmt.Errorf("empty scopeId value passed into Delete request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("scopes/%s", scopeId), nil, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Delete request: %w", err)
+		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -283,30 +281,30 @@ func (c *Client) Delete(ctx context.Context, scopeId string, opt ...Option) (*Sc
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Delete call: %w", err)
 	}
 
 	apiErr, err := resp.Decode(nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Delete response: %w", err)
+		return nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 
 	target := &ScopeDeleteResult{
 		responseBody: resp.Body,
 		responseMap:  resp.Map,
 	}
-	return target, nil, nil
+	return target, nil
 }
 
-func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*ScopeListResult, *api.Error, error) {
+func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*ScopeListResult, error) {
 	if scopeId == "" {
-		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
+		return nil, fmt.Errorf("empty scopeId value passed into List request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -314,7 +312,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Scop
 
 	req, err := c.client.NewRequest(ctx, "GET", "scopes", nil, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -327,18 +325,18 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Scop
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
+		return nil, fmt.Errorf("error performing client request during List call: %w", err)
 	}
 
 	target := new(ScopeListResult)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
+		return nil, fmt.Errorf("error decoding List response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }

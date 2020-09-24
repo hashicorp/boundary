@@ -20,7 +20,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/jinzhu/gorm"
-	"github.com/kr/pretty"
 )
 
 const (
@@ -119,7 +118,7 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.t.Error("no default auth method ID configured")
 		return nil
 	}
-	token, apiErr, err := authmethods.NewClient(tc.Client()).Authenticate(
+	token, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
 		tc.b.DevAuthMethodId,
 		map[string]interface{}{
@@ -129,10 +128,6 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 	)
 	if err != nil {
 		tc.t.Error(fmt.Errorf("error logging in: %w", err))
-		return nil
-	}
-	if apiErr != nil {
-		tc.t.Error(fmt.Errorf("api err from logging in: %s", pretty.Sprint(apiErr)))
 		return nil
 	}
 	return token.Item
