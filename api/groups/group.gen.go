@@ -210,7 +210,7 @@ func (c *Client) Update(ctx context.Context, groupId string, version uint32, opt
 		}
 		existingTarget, existingErr := c.Read(ctx, groupId, opt...)
 		if existingErr != nil {
-			if api.IsServerError(existingErr) {
+			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
 			}
 			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
@@ -362,8 +362,8 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 		}
 		existingTarget, existingErr := c.Read(ctx, groupId, opt...)
 		if existingErr != nil {
-			if api.IsServerError(existingErr) {
-				return nil, api.ServerError(fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr))
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
 			}
 			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
@@ -428,8 +428,8 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 		}
 		existingTarget, existingErr := c.Read(ctx, groupId, opt...)
 		if existingErr != nil {
-			if api.IsServerError(existingErr) {
-				return nil, api.ServerError(fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr))
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
 			}
 			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
@@ -496,8 +496,8 @@ func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint
 		}
 		existingTarget, existingErr := c.Read(ctx, groupId, opt...)
 		if existingErr != nil {
-			if api.IsServerError(existingErr) {
-				return nil, api.ServerError(fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr))
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
 			}
 			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}

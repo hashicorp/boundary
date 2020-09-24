@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller"
-	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,13 +24,13 @@ func TestAuthenticate(t *testing.T) {
 	client := tc.Client()
 	methods := authmethods.NewClient(client)
 
-	tok, apiErr, err := methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
+	tok, err := methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
-	assert.Nil(apiErr, pretty.Sprint(apiErr))
 	assert.NotNil(tok)
 
-	_, apiErr, err = methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "wrong"})
-	require.NoError(err)
-	require.NotNil(t, apiErr)
+	_, err = methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "wrong"})
+	require.Error(err)
+	apiErr := api.AsServerError(err)
+	require.NotNil(apiErr)
 	assert.EqualValuesf(http.StatusUnauthorized, apiErr.Status, "Expected unauthorized, got %q", apiErr.Message)
 }

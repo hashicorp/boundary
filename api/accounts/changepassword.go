@@ -24,7 +24,7 @@ func (c *Client) ChangePassword(ctx context.Context, accountId, currentPassword,
 		}
 		existingTarget, existingErr := c.Read(ctx, accountId, opt...)
 		if existingErr != nil {
-			if api.IsServerError(existingErr) {
+			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
 			}
 			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
@@ -58,5 +58,9 @@ func (c *Client) ChangePassword(ctx context.Context, accountId, currentPassword,
 		return nil, fmt.Errorf("error decoding ChangePassword response: %w", err)
 	}
 
-	return target, apiErr
+	if apiErr != nil {
+		return nil, apiErr
+	}
+
+	return target, nil
 }

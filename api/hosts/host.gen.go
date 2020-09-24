@@ -211,7 +211,7 @@ func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt 
 		}
 		existingTarget, existingErr := c.Read(ctx, hostId, opt...)
 		if existingErr != nil {
-			if api.IsServerError(existingErr) {
+			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
 			}
 			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)

@@ -56,6 +56,9 @@ func (c *Client) SetPassword(ctx context.Context, accountId, password string, ve
 	if err != nil {
 		return nil, fmt.Errorf("error decoding SetPassword response: %w", err)
 	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
 
-	return target, apiErr
+	return target, nil
 }

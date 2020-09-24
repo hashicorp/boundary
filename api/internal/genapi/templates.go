@@ -391,7 +391,7 @@ func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 		}
 		existingTarget, existingErr := c.Read(ctx, {{ .ResourceFunctionArg }}, opt...)
 		if existingErr != nil {
-			if api.IsServerError(existingErr) {
+			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
 			}
 			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
@@ -475,8 +475,8 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 		}
 		existingTarget, existingErr := c.Read(ctx, {{ $input.ResourceFunctionArg }}, opt...)
 		if existingErr != nil {
-			if api.IsServerError(existingErr) {
-				return nil, api.ServerError(fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr))
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
 			}
 			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
