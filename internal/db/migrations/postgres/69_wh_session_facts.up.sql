@@ -25,7 +25,7 @@ begin;
     select new.public_id,
            new.auth_token_id,
            wh_upsert_host(new.host_id, new.host_set_id, new.target_id),
-           wh_upsert_user(new.user_id),
+           wh_upsert_user(new.user_id, new.auth_token_id),
            pending_timestamp.date_dim_id,
            pending_timestamp.time_dim_id,
            pending_timestamp.ts

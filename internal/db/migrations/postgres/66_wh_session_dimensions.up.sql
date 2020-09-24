@@ -63,21 +63,28 @@ begin;
   end;
   $$ language plpgsql;
 
-  create or replace function wh_upsert_user(p_user_id wt_user_id)
+  create or replace function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id)
     returns wh_dim_id
   as $$
   declare
     src     whx_user_dimension_target%rowtype;
     target  whx_user_dimension_target%rowtype;
     new_row wh_user_dimension%rowtype;
+    acct_id wt_public_id;
   begin
+    select auth_account_id into strict acct_id
+      from auth_token
+     where public_id = p_auth_token_id;
+
     select * into target
       from whx_user_dimension_target as t
-     where t.user_id               = p_user_id;
+     where t.user_id               = p_user_id
+       and t.auth_account_id       = acct_id;
 
     select target.id, t.* into src
       from whx_user_dimension_source as t
-     where t.user_id               = p_user_id;
+     where t.user_id               = p_user_id
+       and t.auth_account_id       = acct_id;
 
     if src is distinct from target then
 
@@ -86,6 +93,7 @@ begin;
          set current_row_indicator = 'Expired',
              row_expiration_time   = current_timestamp
        where user_id               = p_user_id
+         and auth_account_id       = acct_id
          and current_row_indicator = 'Current';
 
       -- insert a new row
@@ -103,6 +111,7 @@ begin;
              'Current',             current_timestamp,      'infinity'::timestamptz
         from whx_user_dimension_source
        where user_id               = p_user_id
+         and auth_account_id       = acct_id
       returning * into new_row;
 
       return new_row.id;
