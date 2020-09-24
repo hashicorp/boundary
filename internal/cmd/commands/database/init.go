@@ -303,17 +303,20 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	// Use an easy name, at least
 	c.srv.DevLoginName = "admin"
-	if err := c.srv.CreateInitialAuthMethod(c.Context); err != nil {
+	am, user, err := c.srv.CreateInitialAuthMethod(c.Context)
+	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial auth method and user: %w", err).Error())
 		return 1
 	}
 
 	authMethodInfo := &AuthMethodInfo{
-		AuthMethodId: c.srv.DevAuthMethodId,
-		LoginName:    c.srv.DevLoginName,
-		Password:     c.srv.DevPassword,
-		ScopeId:      scope.Global.String(),
-		UserId:       c.srv.DevUserId,
+		AuthMethodId:   c.srv.DevAuthMethodId,
+		AuthMethodName: am.Name,
+		LoginName:      c.srv.DevLoginName,
+		Password:       c.srv.DevPassword,
+		ScopeId:        scope.Global.String(),
+		UserId:         c.srv.DevUserId,
+		UserName:       user.Name,
 	}
 	switch base.Format(c.UI) {
 	case "table":
@@ -326,7 +329,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return 0
 	}
 
-	if err := c.srv.CreateInitialScopes(c.Context); err != nil {
+	orgScope, projScope, err := c.srv.CreateInitialScopes(c.Context)
+	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial scopes: %w", err).Error())
 		return 1
 	}
@@ -334,6 +338,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	orgScopeInfo := &ScopeInfo{
 		ScopeId: c.srv.DevOrgId,
 		Type:    scope.Org.String(),
+		Name:    orgScope.Name,
 	}
 	switch base.Format(c.UI) {
 	case "table":
@@ -345,6 +350,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	projScopeInfo := &ScopeInfo{
 		ScopeId: c.srv.DevProjectId,
 		Type:    scope.Project.String(),
+		Name:    projScope.Name,
 	}
 	switch base.Format(c.UI) {
 	case "table":
@@ -357,17 +363,21 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return 0
 	}
 
-	if err := c.srv.CreateInitialHostResources(c.Context); err != nil {
+	hc, hs, h, err := c.srv.CreateInitialHostResources(c.Context)
+	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial host resources: %w", err).Error())
 		return 1
 	}
 
 	hostInfo := &HostInfo{
-		HostCatalogId: c.srv.DevHostCatalogId,
-		HostSetId:     c.srv.DevHostSetId,
-		HostId:        c.srv.DevHostId,
-		Type:          "static",
-		ScopeId:       c.srv.DevProjectId,
+		HostCatalogId:   c.srv.DevHostCatalogId,
+		HostCatalogName: hc.GetName(),
+		HostSetId:       c.srv.DevHostSetId,
+		HostSetName:     hs.GetName(),
+		HostId:          c.srv.DevHostId,
+		HostName:        h.GetName(),
+		Type:            "static",
+		ScopeId:         c.srv.DevProjectId,
 	}
 	switch base.Format(c.UI) {
 	case "table":
@@ -393,6 +403,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		SessionConnectionLimit: t.GetSessionConnectionLimit(),
 		Type:                   "tcp",
 		ScopeId:                c.srv.DevProjectId,
+		Name:                   t.GetName(),
 	}
 	switch base.Format(c.UI) {
 	case "table":

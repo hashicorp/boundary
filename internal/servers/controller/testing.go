@@ -395,15 +395,15 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 				t.Fatal(err)
 			}
 			if !opts.DisableAuthMethodCreation {
-				if err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
+				if _, _, err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
 					t.Fatal(err)
 				}
 				if !opts.DisableScopesCreation {
-					if err := tc.b.CreateInitialScopes(ctx); err != nil {
+					if _, _, err := tc.b.CreateInitialScopes(ctx); err != nil {
 						t.Fatal(err)
 					}
 					if !opts.DisableHostResourcesCreation {
-						if err := tc.b.CreateInitialHostResources(ctx); err != nil {
+						if _, _, _, err := tc.b.CreateInitialHostResources(ctx); err != nil {
 							t.Fatal(err)
 						}
 						if !opts.DisableTargetCreation {
