@@ -408,6 +408,9 @@ HostSetIterationLoop:
 		CreatedTime:        sess.CreateTime.GetTimestamp(),
 		Type:               t.GetType(),
 		AuthorizationToken: base58.Encode(marshaledSad),
+		UserId:             authResults.UserId,
+		HostId:             chosenId.hostId,
+		HostSetId:          chosenId.hostSetId,
 	}
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
 }

@@ -66,7 +66,6 @@ func generateTargetTableOutput(in *targets.Target) string {
 
 	if len(in.Attributes) > 0 {
 		ret = append(ret,
-			"",
 			"  Attributes:",
 			base.WrapMap(4, maxLength, in.Attributes),
 		)
@@ -82,6 +81,8 @@ func generateAuthorizationTableOutput(in *targets.SessionAuthorization) string {
 		"Session ID":          in.SessionId,
 		"Target ID":           in.TargetId,
 		"Scope ID":            in.Scope.Id,
+		"User ID":             in.UserId,
+		"Host ID":             in.HostId,
 		"Created Time":        in.CreatedTime.Local().Format(time.RFC3339),
 		"Type":                in.Type,
 		"Authorization Token": in.AuthorizationToken,
