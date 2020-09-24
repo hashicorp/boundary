@@ -481,7 +481,7 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		return nil
 	}
 
-	if err := b.CreateInitialAuthMethod(context.Background()); err != nil {
+	if _, _, err := b.CreateInitialAuthMethod(context.Background()); err != nil {
 		return err
 	}
 
@@ -492,7 +492,7 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		return nil
 	}
 
-	if err := b.CreateInitialScopes(context.Background()); err != nil {
+	if _, _, err := b.CreateInitialScopes(context.Background()); err != nil {
 		return err
 	}
 
@@ -503,7 +503,7 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		return nil
 	}
 
-	if err := b.CreateInitialHostResources(context.Background()); err != nil {
+	if _, _, _, err := b.CreateInitialHostResources(context.Background()); err != nil {
 		return err
 	}
 
