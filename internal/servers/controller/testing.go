@@ -394,25 +394,25 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 			if err := tc.b.CreateGlobalKmsKeys(ctx); err != nil {
 				t.Fatal(err)
 			}
-		}
-		if !opts.DisableAuthMethodCreation {
-			if err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
-				t.Fatal(err)
-			}
-		}
-		if !opts.DisableScopesCreation {
-			if err := tc.b.CreateInitialScopes(ctx); err != nil {
-				t.Fatal(err)
-			}
-		}
-		if !opts.DisableHostResourcesCreation {
-			if err := tc.b.CreateInitialHostResources(ctx); err != nil {
-				t.Fatal(err)
-			}
-		}
-		if !opts.DisableTargetCreation {
-			if _, err := tc.b.CreateInitialTarget(ctx); err != nil {
-				t.Fatal(err)
+			if !opts.DisableAuthMethodCreation {
+				if err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
+					t.Fatal(err)
+				}
+				if !opts.DisableScopesCreation {
+					if err := tc.b.CreateInitialScopes(ctx); err != nil {
+						t.Fatal(err)
+					}
+					if !opts.DisableHostResourcesCreation {
+						if err := tc.b.CreateInitialHostResources(ctx); err != nil {
+							t.Fatal(err)
+						}
+						if !opts.DisableTargetCreation {
+							if _, err := tc.b.CreateInitialTarget(ctx); err != nil {
+								t.Fatal(err)
+							}
+						}
+					}
+				}
 			}
 		}
 	} else if !opts.DisableDatabaseCreation {
