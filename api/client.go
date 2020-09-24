@@ -767,7 +767,10 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 
 	result, err := client.Do(r)
 	if result != nil && err == nil && result.StatusCode == http.StatusTemporaryRedirect {
-		loc, err := result.Location()
+		// Declare loc here to reuse previous error
+		var loc *url.URL
+
+		loc, err = result.Location()
 		if err != nil {
 			return nil, fmt.Errorf("error getting new location during redirect: %w", err)
 		}
