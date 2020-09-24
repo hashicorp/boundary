@@ -19,6 +19,6 @@ const (
 	whereValidAuthMethod = `select count(*) from auth_method where public_id = $1 and scope_id = $2`
 
 	// insertAuthMethod - insert a row directly into auth_method (TODO - this
-	// should be replaced with calls to the auth method repo)
+	// should be replaced with calls to the auth method repo).
 	insertAuthMethod = `insert into auth_method (public_id, scope_id) values ($1, $2)`
 )
