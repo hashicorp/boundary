@@ -627,7 +627,7 @@ func (c *Command) updateConnsLeft(connsLeft int32) {
 	}
 }
 
-func (c Command) handleExec(passthroughArgs []string) {
+func (c *Command) handleExec(passthroughArgs []string) {
 	defer c.connWg.Done()
 
 	var args []string
@@ -644,7 +644,7 @@ func (c Command) handleExec(passthroughArgs []string) {
 
 	args = append(passthroughArgs, args...)
 
-	cmd := exec.Command(c.flagExec)
+	cmd := exec.Command(c.flagExec, args...)
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%d", c.listenerAddr.Port),
 		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", c.listenerAddr.IP.String()),
