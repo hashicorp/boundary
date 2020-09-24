@@ -16,7 +16,7 @@ export default function ProductSubnav() {
           text: 'GitHub',
           url: `https://www.github.com/hashicorp/${productSlug}`,
         },
-        { text: 'Download', url: '#' },
+        { text: 'Download', url: '/docs/getting-started/building' },
       ]}
       currentPath={router.pathname}
       menuItemsAlign="right"

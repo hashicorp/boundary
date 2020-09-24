@@ -9,12 +9,12 @@ export default function HomePage() {
         links={[
           {
             text: 'Download',
-            url: '#',
+            url: '/docs/getting-started/building',
             type: 'download',
           },
           {
             text: 'Get Started',
-            url: '/docs/introduction',
+            url: '/docs/getting-started',
             type: 'inbound',
           },
         ]}
