@@ -65,6 +65,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "connect",
 			}, nil
 		},
+		"connect ssh": func() (cli.Command, error) {
+			return &proxy.Command{
+				Command: base.NewCommand(ui),
+				Func:    "ssh",
+			}, nil
+		},
 
 		"authenticate": func() (cli.Command, error) {
 			return &authenticate.Command{

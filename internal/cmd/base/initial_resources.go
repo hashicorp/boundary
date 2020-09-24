@@ -370,6 +370,8 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		target.WithDescription("Provides an initial target in Boundary"),
 		target.WithDefaultPort(uint32(b.DevTargetDefaultPort)),
 		target.WithHostSets([]string{b.DevHostSetId}),
+		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
+		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevTargetId),
 	}
 	t, err := target.NewTcpTarget(b.DevProjectId, opts...)
