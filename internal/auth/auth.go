@@ -82,7 +82,7 @@ type verifier struct {
 	res             *perms.Resource
 	act             action.Type
 	ctx             context.Context
-	acl             *perms.ACL
+	acl             perms.ACL
 }
 
 // NewVerifierContext creates a context that carries a verifier object from the
@@ -285,7 +285,7 @@ func (r *VerifyResults) AdditionalVerification(ctx context.Context, opt ...Optio
 	return
 }
 
-func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string, scopeInfo *scopes.ScopeInfo, retAcl *perms.ACL, retErr error) {
+func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string, scopeInfo *scopes.ScopeInfo, retAcl perms.ACL, retErr error) {
 	// Ensure we return an error by default if we forget to set this somewhere
 	retErr = errors.New("unknown")
 	// Make the linter happy

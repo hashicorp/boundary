@@ -57,7 +57,7 @@ type Resource struct {
 }
 
 // NewACL creates an ACL from the grants provided.
-func NewACL(grants ...Grant) *ACL {
+func NewACL(grants ...Grant) ACL {
 	ret := ACL{
 		scopeMap: make(map[string][]Grant, len(grants)),
 	}
@@ -66,7 +66,7 @@ func NewACL(grants ...Grant) *ACL {
 		ret.scopeMap[grant.scope.Id] = append(ret.scopeMap[grant.scope.Id], grant)
 	}
 
-	return &ret
+	return ret
 }
 
 // Allowed determines if the grants for an ACL allow an action for a resource.
