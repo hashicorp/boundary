@@ -83,7 +83,12 @@ export default [
   },
   {
     category: 'releases',
-    content: ['release-notes', 'downloads'],
+    content: [
+      {
+        category: 'release-notes',
+        content: ['0_0_1'],
+      },
+    ],
   },
 
   '---',
