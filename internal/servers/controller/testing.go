@@ -9,10 +9,12 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -60,8 +62,20 @@ func (tc *TestController) Context() context.Context {
 	return tc.ctx
 }
 
+func (tc *TestController) Kms() *kms.Kms {
+	return tc.c.kms
+}
+
 func (tc *TestController) IamRepo() *iam.Repository {
 	repo, err := tc.c.IamRepoFn()
+	if err != nil {
+		tc.t.Fatal(err)
+	}
+	return repo
+}
+
+func (tc *TestController) AuthTokenRepo() *authtoken.Repository {
+	repo, err := tc.c.AuthTokenRepoFn()
 	if err != nil {
 		tc.t.Fatal(err)
 	}
@@ -94,6 +108,10 @@ func (tc *TestController) ClusterAddrs() []string {
 
 func (tc *TestController) DbConn() *gorm.DB {
 	return tc.b.Database
+}
+
+func (tc *TestController) Logger() hclog.Logger {
+	return tc.b.Logger
 }
 
 func (tc *TestController) Token() *authtokens.AuthToken {
