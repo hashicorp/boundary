@@ -136,18 +136,19 @@ begin;
     -- connection? If so, what should the units of the duration be?
 
     -- The client address and port are degenerate dimensions
-    client_address inet, -- can be null
-    client_port_number wh_inet_port, -- can be null
+    client_tcp_address inet, -- can be null
+    client_tcp_port_number wh_inet_port, -- can be null
 
     -- The endpoint address and port are degenerate dimensions
-    endpoint_address inet, -- can be null
-    endpoint_port_number wh_inet_port, -- can be null
+    endpoint_tcp_address inet, -- can be null
+    endpoint_tcp_port_number wh_inet_port, -- can be null
 
     -- the connection_count must always be 1
     -- this is a common pattern in data warehouse models
     -- See The Data Warehouse Toolkit, Third Edition
     -- by Ralph Kimball and Margy Ross for more information
     connection_count smallint default 1 not null
+      constraint connection_count_must_be_1
       check(connection_count = 1),
 
     -- The total number of bytes received by the worker from the client and sent
