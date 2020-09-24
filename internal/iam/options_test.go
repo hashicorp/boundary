@@ -63,15 +63,17 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithDisassociate", func(t *testing.T) {
 		assert := assert.New(t)
-		// test default of false
-		opts := getOpts()
+		opts := getOpts(WithDisassociate("act_1"))
 		testOpts := getDefaultOptions()
-		testOpts.withDisassociate = false
+		testOpts.withDisassociateAccountId = "act_1"
 		assert.Equal(opts, testOpts)
-
-		opts = getOpts(WithDisassociate(true))
-		testOpts = getDefaultOptions()
-		testOpts.withDisassociate = true
+	})
+	t.Run("WithAssociate", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithAssociate("act_1", true))
+		testOpts := getDefaultOptions()
+		testOpts.withAssociateAccountId = "act_1"
+		testOpts.associateWithDisassociate = true
 		assert.Equal(opts, testOpts)
 	})
 }

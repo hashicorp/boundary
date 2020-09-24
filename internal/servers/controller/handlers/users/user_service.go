@@ -199,7 +199,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateUser(ctx, u, version, dbMask)
+	out, _, rowsUpdated, err := repo.UpdateUser(ctx, u, version, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update user: %v.", err)
 	}

@@ -15,6 +15,7 @@ import (
 
 // CreateUser will create a user in the repository and return the written user
 func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) (*User, error) {
+	opts := getOpts(opt...)
 	if user == nil {
 		return nil, fmt.Errorf("create user: missing user %w", db.ErrInvalidParameter)
 	}
@@ -25,16 +26,54 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 	if err != nil {
 		return nil, fmt.Errorf("create user: %w", err)
 	}
-	u := user.Clone()
-	u.(*User).PublicId = id
-	resource, err := r.create(ctx, u.(*User))
+	u := user.Clone().(*User)
+	u.PublicId = id
+
+	metadata, err := r.stdMetadata(ctx, u)
+	if err != nil {
+		return nil, fmt.Errorf("create user: error getting metadata for create: %w", err)
+	}
+	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_CREATE.String()}
+
+	scope, err := u.GetScope(ctx, r.reader)
+	if err != nil {
+		return nil, fmt.Errorf("create user: unable to get scope: %w", err)
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, fmt.Errorf("create user: unable to get oplog wrapper: %w", err)
+	}
+
+	var returnedResource interface{}
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			returnedResource = u.Clone()
+			err := w.Create(
+				ctx,
+				returnedResource,
+				db.WithOplog(oplogWrapper, metadata),
+			)
+			if err != nil {
+				return err
+			}
+			if opts.withAssociateAccountId != "" {
+				if err := r.associateUserWithAccount(ctx, w, u.PublicId, opts.withAssociateAccountId, opts.associateWithDisassociate); err != nil {
+					return fmt.Errorf("create: associate issue: %w", err)
+				}
+			}
+			return nil
+		},
+	)
 	if err != nil {
 		if db.IsUniqueError(err) {
 			return nil, fmt.Errorf("create user: user %s already exists in org %s", user.Name, user.ScopeId)
 		}
-		return nil, fmt.Errorf("create user: %w for %s", err, u.(*User).PublicId)
+		return nil, fmt.Errorf("create user: %w for %s", err, u.PublicId)
 	}
-	return resource.(*User), err
+	return returnedResource.(*User), err
 }
 
 // UpdateUser will update a user in the repository and return the written user.
@@ -42,19 +81,20 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 // be updated.  Fields will be set to NULL if the field is a zero value and
 // included in fieldMask. Name and Description are the only updatable fields,
 // If no updatable fields are included in the fieldMaskPaths, then an error is returned.
-func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32, fieldMaskPaths []string, opt ...Option) (*User, int, error) {
+func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32, fieldMaskPaths []string, opt ...Option) (*User, string, int, error) {
+	opts := getOpts(opt...)
 	if user == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update user: missing user %w", db.ErrInvalidParameter)
+		return nil, "", db.NoRowsAffected, fmt.Errorf("update user: missing user %w", db.ErrInvalidParameter)
 	}
 	if user.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update user: missing user public id %w", db.ErrInvalidParameter)
+		return nil, "", db.NoRowsAffected, fmt.Errorf("update user: missing user public id %w", db.ErrInvalidParameter)
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
 		default:
-			return nil, db.NoRowsAffected, fmt.Errorf("update user: field: %s: %w", f, db.ErrInvalidFieldMask)
+			return nil, "", db.NoRowsAffected, fmt.Errorf("update user: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
 	}
 	var dbMask, nullFields []string
@@ -66,19 +106,80 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 		fieldMaskPaths,
 		nil,
 	)
-	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update user: %w", db.ErrEmptyFieldMask)
+	if len(dbMask) == 0 && len(nullFields) == 0 && opts.withAssociateAccountId == "" && opts.withDisassociateAccountId == "" {
+		return nil, "", db.NoRowsAffected, fmt.Errorf("update user: %w", db.ErrEmptyFieldMask)
 	}
 
-	u := user.Clone()
-	resource, rowsUpdated, err := r.update(ctx, u.(*User), version, dbMask, nullFields, opt...)
+	u := user.Clone().(*User)
+
+	metadata, err := r.stdMetadata(ctx, u)
+	if err != nil {
+		return nil, "", db.NoRowsAffected, fmt.Errorf("error getting metadata for update: %w", err)
+	}
+	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_UPDATE.String()}
+
+	dbOpts := []db.Option{
+		db.WithVersion(&version),
+	}
+	if opts.withSkipVetForWrite {
+		dbOpts = append(dbOpts, db.WithSkipVetForWrite(true))
+	}
+
+	scope, err := u.GetScope(ctx, r.reader)
+	if err != nil {
+		return nil, "", db.NoRowsAffected, fmt.Errorf("unable to get scope: %w", err)
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, "", db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
+	}
+	dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
+
+	var rowsUpdated int
+	var returnedUser *User
+	var returnedAccountId string
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			if len(dbMask) != 0 || len(nullFields) != 0 {
+				returnedUser = u.Clone().(*User)
+				rowsUpdated, err = w.Update(
+					ctx,
+					returnedUser,
+					dbMask,
+					nullFields,
+					dbOpts...,
+				)
+				if err == nil && rowsUpdated > 1 {
+					// return err, which will result in a rollback of the update
+					return errors.New("error more than 1 resource would have been updated ")
+				}
+			}
+			switch {
+			case opts.withAssociateAccountId != "":
+				if err := r.associateUserWithAccount(ctx, w, u.PublicId, opts.withAssociateAccountId, opts.associateWithDisassociate); err != nil {
+					return fmt.Errorf("update: associate issue: %w", err)
+				}
+				returnedAccountId = opts.withAssociateAccountId
+			case opts.withDisassociateAccountId != "":
+				if err := r.dissociateUserWithAccount(ctx, w, u.PublicId, opts.withDisassociateAccountId); err != nil {
+					return fmt.Errorf("update: disassociate issue: %w", err)
+				}
+				returnedAccountId = "" // not needed, but clear for the reader that it's now empty
+			}
+			return err
+		},
+	)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update user: user %s already exists in org %s", user.Name, user.ScopeId)
+			return nil, "", db.NoRowsAffected, fmt.Errorf("update user: user %s already exists in org %s", user.Name, user.ScopeId)
 		}
-		return nil, db.NoRowsAffected, fmt.Errorf("update user: %w for %s", err, user.PublicId)
+		return nil, "", db.NoRowsAffected, fmt.Errorf("update user: %w for %s", err, user.PublicId)
 	}
-	return resource.(*User), rowsUpdated, err
+	return returnedUser, returnedAccountId, rowsUpdated, err
 }
 
 // LookupUser will look up a user in the repository.  If the user is not
@@ -140,7 +241,7 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 	if accountId == "" {
 		return nil, fmt.Errorf("lookup user with login: missing account id %w", db.ErrInvalidParameter)
 	}
-	u, err := r.getUserWithAccount(ctx, accountId)
+	u, err := r.LookupUserWithAccount(ctx, accountId)
 	if err != nil {
 		return nil, fmt.Errorf("lookup user with login: %w", err)
 	}
@@ -222,7 +323,9 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 	return obtainedUser, nil
 }
 
-func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId string, opt ...Option) (*User, error) {
+// LookupUserWithAccount will lookup the user in the repo that's associated with
+// the account id.  No options are currently supported.
+func (r *Repository) LookupUserWithAccount(ctx context.Context, withAccountId string, opt ...Option) (*User, error) {
 	if withAccountId == "" {
 		return nil, fmt.Errorf("missing account id %w", db.ErrInvalidParameter)
 	}
@@ -253,158 +356,127 @@ func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId strin
 	return &u, nil
 }
 
-// AssociateUserWithAccount will associate a user with an existing account.
-// The account must not already be associated with a different user.  No
-// options are currently supported.
-func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId, accountId string, opt ...Option) (*User, error) {
-	opts := getOpts(opt...)
+// associateUserWithAccount will associate a user with an existing account.
+// The account must not already be associated with a different user.
+// opts.withDisassociate is supported.
+func (r *Repository) associateUserWithAccount(ctx context.Context, w db.Writer, userPublicId, accountId string, withDisassociate bool) error {
 	if userPublicId == "" {
-		return nil, fmt.Errorf("associate user with account: missing user public id %w", db.ErrInvalidParameter)
+		return fmt.Errorf("associate user with account: missing user %w", db.ErrInvalidParameter)
 	}
 	if accountId == "" {
-		return nil, fmt.Errorf("associate user with account: missing account id %w", db.ErrInvalidParameter)
-	}
-
-	user := allocUser()
-	user.PublicId = userPublicId
-
-	err := r.reader.LookupById(ctx, &user)
-	if err != nil {
-		return nil, fmt.Errorf("associate user with account: unable to lookup user %s: %w", userPublicId, err)
+		return fmt.Errorf("associate user with account: missing account id %w", db.ErrInvalidParameter)
 	}
 
 	acct := allocAccount()
 	acct.PublicId = accountId
-	err = r.reader.LookupByPublicId(context.Background(), &acct)
+	err := r.reader.LookupByPublicId(context.Background(), &acct)
 	if err != nil {
-		return nil, fmt.Errorf("associate user with account: unable to lookup account %s: %w", accountId, err)
+		return fmt.Errorf("associate user with account: unable to lookup account %s: %w", accountId, err)
 	}
 	// first, let's handle the case where the account is already
 	// associated with the user, so we're done!
 	if acct.IamUserId == userPublicId {
-		return &user, nil
+		return nil
 	}
 
-	if !opts.withDisassociate {
+	if !withDisassociate {
 		if acct.IamUserId != "" && acct.IamUserId != userPublicId {
-			return nil, fmt.Errorf("associate user with account: %s account is already associated with a user: %w", accountId, db.ErrInvalidParameter)
+			return fmt.Errorf("associate user with account: %s account is already associated with a user: %w", accountId, db.ErrInvalidParameter)
 		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, acct.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("associate user with account: unable to get oplog wrapper: %w", err)
+		return fmt.Errorf("associate user with account: unable to get oplog wrapper: %w", err)
 	}
 
-	// validate, associated the user with the account, and then read the
-	// user back in the same tx for consistency.
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(txReader db.Reader, w db.Writer) error {
-			metadata := oplog.Metadata{
-				"resource-public-id": []string{accountId},
-				"scope-id":           []string{acct.ScopeId},
-				"scope-type":         []string{scope.Org.String()},
-				"resource-type":      []string{"auth-account"},
-			}
-			var updatedRows int
-			updatedAcct := acct.Clone().(*authAccount)
-			updatedAcct.IamUserId = userPublicId
-			// we are using WithWhere to make sure the account is not
-			// associated with a user (handling race conditions with concurrent
-			// transactions)
-			switch {
-			case opts.withDisassociate:
-				updatedRows, err = w.Update(ctx, updatedAcct, []string{"IamUserId"}, nil, db.WithOplog(oplogWrapper, metadata), db.WithWhere("iam_user_id = ?", acct.IamUserId))
-			default:
-				updatedRows, err = w.Update(ctx, updatedAcct, []string{"IamUserId"}, nil, db.WithOplog(oplogWrapper, metadata), db.WithWhere("iam_user_id is NULL"))
-			}
-			if err != nil {
-				return err
-			}
-			if updatedRows != 1 {
-				return fmt.Errorf("account update affected %d rows", updatedRows)
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("associate user with account: %w", err)
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{accountId},
+		"scope-id":           []string{acct.ScopeId},
+		"scope-type":         []string{scope.Org.String()},
+		"resource-type":      []string{"auth-account"},
+		"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
 	}
-	return &user, nil
+	var updatedRows int
+	updatedAcct := acct.Clone().(*authAccount)
+	updatedAcct.IamUserId = userPublicId
+	// we are using WithWhere to make sure the account is not
+	// associated with a user (handling race conditions with concurrent
+	// transactions)
+	switch {
+	case withDisassociate:
+		updatedRows, err = w.Update(ctx, updatedAcct, []string{"IamUserId"}, nil, db.WithOplog(oplogWrapper, metadata), db.WithWhere("iam_user_id = ?", acct.IamUserId))
+	default:
+		updatedRows, err = w.Update(ctx, updatedAcct, []string{"IamUserId"}, nil, db.WithOplog(oplogWrapper, metadata), db.WithWhere("iam_user_id is NULL"))
+	}
+	if err != nil {
+		return fmt.Errorf("associate user with account: %w", err)
+	}
+	if updatedRows != 1 {
+		return fmt.Errorf("account update affected %d rows", updatedRows)
+	}
+	return nil
 }
 
-// DissociateUserWithAccount will dissociate a user with its existing account.
-// An error is returned if account is associated with a different user.  No
-// options are currently supported.
-func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId, accountId string, opt ...Option) (*User, error) {
+// dissociateUserWithAccount will dissociate a user with its existing account.
+// An error is returned if account is associated with a different user.
+func (r *Repository) dissociateUserWithAccount(ctx context.Context, w db.Writer, userPublicId, accountId string) error {
 	if userPublicId == "" {
-		return nil, fmt.Errorf("dissociate user with account: missing user public id %w", db.ErrInvalidParameter)
+		return fmt.Errorf("dissociate user with account: missing user public id %w", db.ErrInvalidParameter)
 	}
 	if accountId == "" {
-		return nil, fmt.Errorf("dissociate user with account: missing account id %w", db.ErrInvalidParameter)
-	}
-
-	user := allocUser()
-	user.PublicId = userPublicId
-	err := r.reader.LookupById(ctx, &user)
-	if err != nil {
-		return nil, fmt.Errorf("dissociate user with account: unable to lookup user %s: %w", userPublicId, err)
+		return fmt.Errorf("dissociate user with account: missing account id %w", db.ErrInvalidParameter)
 	}
 
 	acct := allocAccount()
 	acct.PublicId = accountId
-	err = r.reader.LookupByPublicId(ctx, &acct)
+	err := r.reader.LookupByPublicId(ctx, &acct)
 	if err != nil {
-		return nil, fmt.Errorf("dissociate user with account: unable to lookup account %s: %w", accountId, err)
+		return fmt.Errorf("dissociate user with account: unable to lookup account %s: %w", accountId, err)
 	}
 	// first, let's handle the case where the account is not associated
 	// with any user, so we're done!
 	if acct.IamUserId == "" {
-		return &user, nil
+		return nil
 	}
 	// before proceeding with an update, is the account associated with the different user?
 	if acct.IamUserId != userPublicId {
-		return nil, fmt.Errorf("dissociate user with account: %s account is not associated with a user: %w", accountId, db.ErrInvalidParameter)
+		return fmt.Errorf("dissociate user with account: %s account is not associated with user %s: %w", accountId, userPublicId, db.ErrInvalidParameter)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, acct.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("disassociate user with account: unable to get oplog wrapper: %w", err)
+		return fmt.Errorf("disassociate user with account: unable to get oplog wrapper: %w", err)
 	}
 
 	// validate, dissociate the user with the account and then read the user back in
 	// the same tx for consistency.
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(txReader db.Reader, w db.Writer) error {
-			metadata := oplog.Metadata{
-				"resource-public-id": []string{accountId},
-				"scope-id":           []string{acct.ScopeId},
-				"scope-type":         []string{scope.Org.String()},
-				"resource-type":      []string{"auth-account"},
-			}
-			updatedAcct := acct.Clone().(*authAccount)
-			updatedAcct.IamUserId = ""
-			// set the user id to null and use WithWhere to ensure that the auth
-			// account is associated with the user (handling race conditions
-			// with other concurrent transactions)
-			updatedRows, err := w.Update(ctx, updatedAcct, nil, []string{"IamUserId"}, db.WithOplog(oplogWrapper, metadata), db.WithWhere("iam_user_id = ?", userPublicId))
-			if err != nil {
-				return err
-			}
-			if updatedRows != 1 {
-				return fmt.Errorf("account update affected %d rows", updatedRows)
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("dissociate user with account: %w", err)
+
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{accountId},
+		"scope-id":           []string{acct.ScopeId},
+		"scope-type":         []string{scope.Org.String()},
+		"resource-type":      []string{"auth-account"},
+		"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
 	}
-	return &user, nil
+	updatedAcct := acct.Clone().(*authAccount)
+	updatedAcct.IamUserId = ""
+	// set the user id to null and use WithWhere to ensure that the auth
+	// account is associated with the user (handling race conditions
+	// with other concurrent transactions)
+	updatedRows, err := w.Update(ctx, updatedAcct, nil, []string{"IamUserId"}, db.WithOplog(oplogWrapper, metadata), db.WithWhere("iam_user_id = ?", userPublicId))
+	if err != nil {
+		return fmt.Errorf("dissociate user with account: %w", err)
+	}
+	if updatedRows != 1 {
+		return fmt.Errorf("account update affected %d rows", updatedRows)
+	}
+	return nil
 }
+
+// func lookupAccountId(ctx context.Context, reader db.Reader, userPublicId string) (string, error) {
+// 	var acct authAccount
+
+// 	reader.LookupWhere(ctx, &acct, "")
+
+// }

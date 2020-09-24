@@ -16,18 +16,20 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withPublicId         string
-	withName             string
-	withDescription      string
-	withGroupGrants      bool
-	withLimit            int
-	withAutoVivify       bool
-	withGrantScopeId     string
-	withSkipVetForWrite  bool
-	withDisassociate     bool
-	withSkipRoleCreation bool
-	withUserId           string
-	withRandomReader     io.Reader
+	withPublicId              string
+	withName                  string
+	withDescription           string
+	withGroupGrants           bool
+	withLimit                 int
+	withAutoVivify            bool
+	withGrantScopeId          string
+	withSkipVetForWrite       bool
+	associateWithDisassociate bool
+	withAssociateAccountId    string
+	withDisassociateAccountId string
+	withSkipRoleCreation      bool
+	withUserId                string
+	withRandomReader          io.Reader
 }
 
 func getDefaultOptions() options {
@@ -104,11 +106,20 @@ func WithSkipVetForWrite(enable bool) Option {
 	}
 }
 
-// WithDisassociate provides an option to allow the combining of disassociating
-// and associating a user in one operation.
-func WithDisassociate(enable bool) Option {
+// WithAssociateAccountId provides an option to allow the associating a user with an
+// auth account.
+func WithAssociate(id string, withDisassociate bool) Option {
 	return func(o *options) {
-		o.withDisassociate = enable
+		o.withAssociateAccountId = id
+		o.associateWithDisassociate = withDisassociate
+	}
+}
+
+// WithAssociate provides an option to allow the disassociation a user with an
+// auth account.
+func WithDisassociate(id string) Option {
+	return func(o *options) {
+		o.withDisassociateAccountId = id
 	}
 }
 

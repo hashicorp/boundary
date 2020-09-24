@@ -57,7 +57,7 @@ func TestRepository_CreateUser(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create user: error getting metadata for create: unable to get scope for standard metadata: record not found for",
+			wantErrMsg: "create user: error getting metadata for create: unable to get scope for standard metadata: record not found",
 		},
 		{
 			name: "dup-name",
@@ -89,7 +89,7 @@ func TestRepository_CreateUser(t *testing.T) {
 				case "dup-name":
 					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
 				default:
-					assert.True(strings.HasPrefix(err.Error(), tt.wantErrMsg))
+					assert.Truef(strings.HasPrefix(err.Error(), tt.wantErrMsg), "unexpected error: %s", err.Error())
 				}
 				return
 			}
@@ -105,6 +105,69 @@ func TestRepository_CreateUser(t *testing.T) {
 			assert.NoError(err)
 		})
 	}
+	t.Run("WithAssociate", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo := TestRepo(t, conn, wrapper)
+		authMethodId := testAuthMethod(t, conn, org.PublicId)
+		newAuthAcct := testAccount(t, conn, org.PublicId, authMethodId, "")
+		newUser, err := NewUser(org.PublicId)
+		require.NoError(err)
+		u, err := repo.CreateUser(context.Background(), newUser, WithAssociate(newAuthAcct.PublicId, false))
+		require.NoError(err)
+		assert.NotNil(u.CreateTime)
+		assert.NotNil(u.UpdateTime)
+
+		err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+		assert.NoError(err)
+		err = db.TestVerifyOplog(t, rw, newAuthAcct.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+		assert.NoError(err)
+
+		foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
+		require.NoError(err)
+		assert.True(proto.Equal(foundUser, u))
+
+		foundAcct := allocAccount()
+		foundAcct.PublicId = newAuthAcct.PublicId
+		err = rw.LookupByPublicId(context.Background(), &foundAcct)
+		require.NoError(err)
+		assert.Equal(u.PublicId, foundAcct.IamUserId)
+	})
+	t.Run("WithAssociate-withDisassociate", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo := TestRepo(t, conn, wrapper)
+		authMethodId := testAuthMethod(t, conn, org.PublicId)
+		tmpUser := TestUser(t, repo, org.PublicId)
+		newAuthAcct := testAccount(t, conn, org.PublicId, authMethodId, tmpUser.PublicId)
+		require.Equal(tmpUser.PublicId, newAuthAcct.IamUserId)
+		newUser, err := NewUser(org.PublicId)
+		require.NoError(err)
+
+		// should fail with false for disassociate
+		u, err := repo.CreateUser(context.Background(), newUser, WithAssociate(newAuthAcct.PublicId, false))
+		require.Error(err)
+		assert.Nil(u)
+
+		// should succeed with true for disassociate
+		u, err = repo.CreateUser(context.Background(), newUser, WithAssociate(newAuthAcct.PublicId, true))
+		require.NoError(err)
+		assert.NotNil(u.CreateTime)
+		assert.NotNil(u.UpdateTime)
+
+		err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+		assert.NoError(err)
+		err = db.TestVerifyOplog(t, rw, newAuthAcct.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+		assert.NoError(err)
+
+		foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
+		require.NoError(err)
+		assert.True(proto.Equal(foundUser, u))
+
+		fountAcct := allocAccount()
+		fountAcct.PublicId = newAuthAcct.PublicId
+		err = rw.LookupByPublicId(context.Background(), &fountAcct)
+		require.NoError(err)
+		assert.Equal(u.PublicId, fountAcct.IamUserId)
+	})
 }
 
 func TestRepository_UpdateUser(t *testing.T) {
@@ -298,7 +361,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			if tt.wantDup {
 				u := TestUser(t, repo, org.PublicId, tt.newUserOpts...)
 				u.Name = tt.args.name
-				_, _, err := repo.UpdateUser(context.Background(), u, 1, tt.args.fieldMaskPaths, tt.args.opt...)
+				_, _, _, err := repo.UpdateUser(context.Background(), u, 1, tt.args.fieldMaskPaths, tt.args.opt...)
 				require.NoError(err)
 			}
 
@@ -324,7 +387,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 					userAfterUpdate = resource.(*User)
 				}
 			} else {
-				userAfterUpdate, updatedRows, err = repo.UpdateUser(context.Background(), &updateUser, 1, tt.args.fieldMaskPaths, tt.args.opt...)
+				userAfterUpdate, _, updatedRows, err = repo.UpdateUser(context.Background(), &updateUser, 1, tt.args.fieldMaskPaths, tt.args.opt...)
 			}
 			if tt.wantErr {
 				require.Error(err)
@@ -363,6 +426,34 @@ func TestRepository_UpdateUser(t *testing.T) {
 			assert.NoError(err)
 		})
 	}
+	t.Run("WithAssociate", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo := TestRepo(t, conn, wrapper)
+		authMethodId := testAuthMethod(t, conn, org.PublicId)
+		tmpUser := TestUser(t, repo, org.PublicId)
+		newAuthAcct := testAccount(t, conn, org.PublicId, authMethodId, tmpUser.PublicId)
+		require.Equal(tmpUser.PublicId, newAuthAcct.IamUserId)
+		u := TestUser(t, repo, org.PublicId)
+		u.Name = testId(t)
+		_, _, _, err := repo.UpdateUser(context.Background(), u, u.Version, []string{"Name"}, WithAssociate(newAuthAcct.PublicId, false))
+		require.Error(err)
+
+		updatedUser, acctId, rowsAffected, err := repo.UpdateUser(context.Background(), u, u.Version, []string{"Name"}, WithAssociate(newAuthAcct.PublicId, true))
+		require.NoError(err)
+		assert.Equal(1, rowsAffected)
+		assert.Equal(newAuthAcct.PublicId, acctId)
+		assert.Equal(u.Name, updatedUser.Name)
+		err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+		assert.NoError(err)
+		err = db.TestVerifyOplog(t, rw, newAuthAcct.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+		assert.NoError(err)
+
+		fountAcct := allocAccount()
+		fountAcct.PublicId = newAuthAcct.PublicId
+		err = rw.LookupByPublicId(context.Background(), &fountAcct)
+		require.NoError(err)
+		assert.Equal(u.PublicId, fountAcct.IamUserId)
+	})
 }
 
 func TestRepository_DeleteUser(t *testing.T) {
@@ -664,7 +755,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 	}
 }
 
-func TestRepository_AssociateUserWithAccount(t *testing.T) {
+func TestRepository_associateUserWithAccount(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -678,8 +769,8 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 		acct string
 	}
 	type args struct {
-		Ids Ids
-		opt []Option
+		Ids              Ids
+		withDisassociate bool
 	}
 	tests := []struct {
 		name      string
@@ -704,9 +795,8 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 			name: "missing-acctId",
 			args: args{
 				Ids: func() Ids {
-					id := testId(t)
-
-					return Ids{user: id}
+					u := TestUser(t, repo, org.PublicId)
+					return Ids{user: u.PublicId}
 				}(),
 			},
 			wantErr:   true,
@@ -731,7 +821,7 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 					a := testAccount(t, conn, org.PublicId, authMethodId, u.PublicId)
 					return Ids{user: u.PublicId, acct: a.PublicId}
 				}(),
-				opt: []Option{WithDisassociate(true)},
+				withDisassociate: true,
 			},
 		},
 		{
@@ -773,32 +863,29 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 			wantErrIs: db.ErrRecordNotFound,
 		},
 		{
-			name: "bad-user-id",
+			name: "empty-user-id",
 			args: args{
 				Ids: func() Ids {
-					id := testId(t)
 					a := testAccount(t, conn, org.PublicId, authMethodId, "")
-					return Ids{user: id, acct: a.PublicId}
+					return Ids{user: "", acct: a.PublicId}
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrRecordNotFound,
+			wantErrIs: db.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			u, err := repo.AssociateUserWithAccount(context.Background(), tt.args.Ids.user, tt.args.Ids.acct, tt.args.opt...)
+			err := repo.associateUserWithAccount(context.Background(), rw, tt.args.Ids.user, tt.args.Ids.acct, tt.args.withDisassociate)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Empty(u)
 				if tt.wantErrIs != nil {
 					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
 			require.NoError(err)
-			assert.Equal(tt.args.Ids.user, u.PublicId)
 			acct := allocAccount()
 			acct.PublicId = tt.args.Ids.acct
 			err = rw.LookupByPublicId(context.Background(), &acct)
@@ -823,7 +910,6 @@ func TestRepository_DissociateUserWithAccount(t *testing.T) {
 	}
 	type args struct {
 		Ids Ids
-		opt []Option
 	}
 	tests := []struct {
 		name      string
@@ -906,29 +992,28 @@ func TestRepository_DissociateUserWithAccount(t *testing.T) {
 			args: args{
 				Ids: func() Ids {
 					id := testId(t)
-					a := testAccount(t, conn, org.PublicId, authMethodId, "")
+					u := TestUser(t, repo, org.PublicId)
+					a := testAccount(t, conn, org.PublicId, authMethodId, u.PublicId)
 					return Ids{user: id, acct: a.PublicId}
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrRecordNotFound,
+			wantErrIs: db.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			dbassert := dbassert.New(t, rw)
-			u, err := repo.DissociateUserWithAccount(context.Background(), tt.args.Ids.user, tt.args.Ids.acct, tt.args.opt...)
+			err := repo.dissociateUserWithAccount(context.Background(), rw, tt.args.Ids.user, tt.args.Ids.acct)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Empty(u)
 				if tt.wantErrIs != nil {
 					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
 			require.NoError(err)
-			assert.Equal(tt.args.Ids.user, u.PublicId)
 
 			acct := allocAccount()
 			acct.PublicId = tt.args.Ids.acct

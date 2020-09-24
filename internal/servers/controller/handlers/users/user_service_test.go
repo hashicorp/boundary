@@ -353,7 +353,7 @@ func TestUpdate(t *testing.T) {
 		repo, err := repoFn()
 		require.NoError(t, err, "Couldn't get a new repo")
 		version++ // From the test case that resulted in calling this
-		u, _, err = repo.UpdateUser(context.Background(), u, version, []string{"Name", "Description"})
+		u, _, _, err = repo.UpdateUser(context.Background(), u, version, []string{"Name", "Description"})
 		require.NoError(t, err, "Failed to reset the user")
 		version++
 	}
