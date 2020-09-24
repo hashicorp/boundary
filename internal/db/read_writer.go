@@ -46,6 +46,12 @@ type Reader interface {
 	// default limits are used for results.
 	SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error
 
+	// Query will run the raw query and return the *sql.Rows results. Query will
+	// operate within the context of any ongoing transaction for the db.Reader.  The
+	// caller must close the returned *sql.Rows. Query can/should be used in
+	// combination with ScanRows.
+	Query(sql string, values []interface{}, opt ...Option) (*sql.Rows, error)
+
 	// ScanRows will scan sql rows into the interface provided
 	ScanRows(rows *sql.Rows, result interface{}) error
 
@@ -204,6 +210,21 @@ func (rw *Db) Exec(sql string, values []interface{}, opt ...Option) (int, error)
 		return NoRowsAffected, fmt.Errorf("exec: failed: %w", gormDb.Error)
 	}
 	return int(gormDb.RowsAffected), nil
+}
+
+// Query will run the raw query and return the *sql.Rows results. Query will
+// operate within the context of any ongoing transaction for the db.Reader.  The
+// caller must close the returned *sql.Rows. Query can/should be used in
+// combination with ScanRows.
+func (rw *Db) Query(sql string, values []interface{}, opt ...Option) (*sql.Rows, error) {
+	if sql == "" {
+		return nil, fmt.Errorf("raw missing sql: %w", ErrInvalidParameter)
+	}
+	gormDb := rw.underlying.Raw(sql, values...)
+	if gormDb.Error != nil {
+		return nil, fmt.Errorf("exec: failed: %w", gormDb.Error)
+	}
+	return gormDb.Rows()
 }
 
 // Scan rows will scan the rows into the interface
