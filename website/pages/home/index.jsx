@@ -1,4 +1,44 @@
 import HomepageHero from 'components/homepage-hero'
+import ProductFeaturesList from '@hashicorp/react-product-features-list'
+
+const boundaryFeatures = [
+  {
+    title: 'Identity-based access',
+    description:
+      'Enables privileged sessions for users and  applications based on user identity and role.',
+    icon: '',
+  },
+  {
+    title: 'Identity-based access',
+    description:
+      'Enables privileged sessions for users and  applications based on user identity and role.',
+    icon: '',
+  },
+  {
+    title: 'Identity-based access',
+    description:
+      'Enables privileged sessions for users and  applications based on user identity and role.',
+    icon: '',
+  },
+  {
+    title: 'Identity-based access',
+    description:
+      'Enables privileged sessions for users and  applications based on user identity and role.',
+    icon: '',
+  },
+  {
+    title: 'Identity-based access',
+    description:
+      'Enables privileged sessions for users and  applications based on user identity and role.',
+    icon: '',
+  },
+  {
+    title: 'Identity-based access',
+    description:
+      'Enables privileged sessions for users and  applications based on user identity and role.',
+    icon: '',
+  },
+]
 
 export default function HomePage() {
   return (
@@ -18,6 +58,10 @@ export default function HomePage() {
             type: 'inbound',
           },
         ]}
+      />
+      <ProductFeaturesList
+        heading="Boundary Features"
+        features={boundaryFeatures}
       />
     </div>
   )
