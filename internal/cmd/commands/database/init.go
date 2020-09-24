@@ -316,6 +316,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		LoginName:    c.srv.DevLoginName,
 		Password:     c.srv.DevPassword,
 		ScopeId:      scope.Global.String(),
+		UserId:       c.srv.DevUserId,
 	}
 	switch base.Format(c.UI) {
 	case "table":
@@ -361,6 +362,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	// Can't create a host without an address
 	c.srv.DevHostAddress = "localhost"
+	c.srv.DevTargetDefaultPort = 22
 	if err := c.srv.CreateInitialHostResources(c.Context); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial host resources: %w", err).Error())
 		return 1

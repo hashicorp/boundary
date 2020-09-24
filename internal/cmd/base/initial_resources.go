@@ -98,6 +98,12 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) error {
 	}
 
 	// Create a new user and associate it with the account
+	if b.DevUserId == "" {
+		b.DevUserId, err = db.NewPublicId(iam.UserPrefix)
+		if err != nil {
+			return fmt.Errorf("error generating initial user id: %w", err)
+		}
+	}
 	opts := []iam.Option{
 		iam.WithName("admin"),
 		iam.WithDescription(`Initial admin user within the "global" scope`),
@@ -159,10 +165,17 @@ func (b *Server) CreateInitialScopes(ctx context.Context) error {
 		cancel()
 	}()
 
-	// Create the scopes
 	iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
 	if err != nil {
 		return fmt.Errorf("error creating scopes repository: %w", err)
+	}
+
+	// Create the scopes
+	if b.DevOrgId == "" {
+		b.DevOrgId, err = db.NewPublicId(scope.Org.Prefix())
+		if err != nil {
+			return fmt.Errorf("error generating initial org id: %w", err)
+		}
 	}
 	opts := []iam.Option{
 		iam.WithName("Generated org scope"),
@@ -174,12 +187,6 @@ func (b *Server) CreateInitialScopes(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("error creating new in memory org scope: %w", err)
 	}
-	if b.DevOrgId == "" {
-		b.DevOrgId, err = db.NewPublicId(scope.Org.Prefix())
-		if err != nil {
-			return fmt.Errorf("error generating initial org id: %w", err)
-		}
-	}
 	_, err = iamRepo.CreateScope(cancelCtx, orgScope, b.DevUserId, opts...)
 	if err != nil {
 		return fmt.Errorf("error saving org scope to the db: %w", err)
@@ -187,6 +194,12 @@ func (b *Server) CreateInitialScopes(ctx context.Context) error {
 	b.InfoKeys = append(b.InfoKeys, "generated org scope id")
 	b.Info["generated org scope id"] = b.DevOrgId
 
+	if b.DevProjectId == "" {
+		b.DevProjectId, err = db.NewPublicId(scope.Project.Prefix())
+		if err != nil {
+			return fmt.Errorf("error generating initial project id: %w", err)
+		}
+	}
 	opts = []iam.Option{
 		iam.WithName("Generated project scope"),
 		iam.WithDescription("Provides an initial project scope in Boundary"),
@@ -196,12 +209,6 @@ func (b *Server) CreateInitialScopes(ctx context.Context) error {
 	projScope, err := iam.NewProject(b.DevOrgId, opts...)
 	if err != nil {
 		return fmt.Errorf("error creating new in memory project scope: %w", err)
-	}
-	if b.DevProjectId == "" {
-		b.DevProjectId, err = db.NewPublicId(scope.Project.Prefix())
-		if err != nil {
-			return fmt.Errorf("error generating initial project id: %w", err)
-		}
 	}
 	_, err = iamRepo.CreateScope(cancelCtx, projScope, b.DevUserId, opts...)
 	if err != nil {
@@ -242,16 +249,16 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) error {
 	}
 
 	// Host Catalog
-	opts := []static.Option{
-		static.WithName("Generated host catalog"),
-		static.WithDescription("Provides an initial host catalog in Boundary"),
-		static.WithPublicId(b.DevHostCatalogId),
-	}
 	if b.DevHostCatalogId == "" {
 		b.DevHostCatalogId, err = db.NewPublicId(static.HostCatalogPrefix)
 		if err != nil {
 			return fmt.Errorf("error generating initial host catalog id: %w", err)
 		}
+	}
+	opts := []static.Option{
+		static.WithName("Generated host catalog"),
+		static.WithDescription("Provides an initial host catalog in Boundary"),
+		static.WithPublicId(b.DevHostCatalogId),
 	}
 	hc, err := static.NewHostCatalog(b.DevProjectId, opts...)
 	if err != nil {
@@ -264,17 +271,17 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) error {
 	b.Info["generated host catalog id"] = b.DevHostCatalogId
 
 	// Host
-	opts = []static.Option{
-		static.WithName("Generated host"),
-		static.WithDescription("Provides an initial host in Boundary"),
-		static.WithAddress(b.DevHostAddress),
-		static.WithPublicId(b.DevHostId),
-	}
 	if b.DevHostId == "" {
 		b.DevHostId, err = db.NewPublicId(static.HostPrefix)
 		if err != nil {
 			return fmt.Errorf("error generating initial host id: %w", err)
 		}
+	}
+	opts = []static.Option{
+		static.WithName("Generated host"),
+		static.WithDescription("Provides an initial host in Boundary"),
+		static.WithAddress(b.DevHostAddress),
+		static.WithPublicId(b.DevHostId),
 	}
 	h, err := static.NewHost(hc.PublicId, opts...)
 	if err != nil {
@@ -287,16 +294,16 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) error {
 	b.Info["generated host id"] = b.DevHostId
 
 	// Host Set
-	opts = []static.Option{
-		static.WithName("Generated host set"),
-		static.WithDescription("Provides an initial host set in Boundary"),
-		static.WithPublicId(b.DevHostSetId),
-	}
 	if b.DevHostSetId == "" {
 		b.DevHostSetId, err = db.NewPublicId(static.HostSetPrefix)
 		if err != nil {
 			return fmt.Errorf("error generating initial host set id: %w", err)
 		}
+	}
+	opts = []static.Option{
+		static.WithName("Generated host set"),
+		static.WithDescription("Provides an initial host set in Boundary"),
+		static.WithPublicId(b.DevHostSetId),
 	}
 	hs, err := static.NewHostSet(hc.PublicId, opts...)
 	if err != nil {
@@ -345,18 +352,18 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	}
 
 	// Host Catalog
+	if b.DevTargetId == "" {
+		b.DevTargetId, err = db.NewPublicId(target.TcpTargetPrefix)
+		if err != nil {
+			return nil, fmt.Errorf("error generating initial target id: %w", err)
+		}
+	}
 	opts := []target.Option{
 		target.WithName("Generated target"),
 		target.WithDescription("Provides an initial target in Boundary"),
 		target.WithDefaultPort(uint32(b.DevTargetDefaultPort)),
 		target.WithHostSets([]string{b.DevHostSetId}),
 		target.WithPublicId(b.DevTargetId),
-	}
-	if b.DevTargetId == "" {
-		b.DevTargetId, err = db.NewPublicId(target.TcpTargetPrefix)
-		if err != nil {
-			return nil, fmt.Errorf("error generating initial target id: %w", err)
-		}
 	}
 	t, err := target.NewTcpTarget(b.DevProjectId, opts...)
 	if err != nil {

@@ -11,6 +11,7 @@ type AuthMethodInfo struct {
 	LoginName    string `json:"login_name"`
 	Password     string `json:"password"`
 	ScopeId      string `json:"scope_id"`
+	UserId       string `json:"user_id"`
 }
 
 func generateInitialAuthMethodTableOutput(in *AuthMethodInfo) string {
@@ -19,6 +20,7 @@ func generateInitialAuthMethodTableOutput(in *AuthMethodInfo) string {
 		"Auth Method ID": in.AuthMethodId,
 		"Login Name":     in.LoginName,
 		"Password":       in.Password,
+		"User ID":        in.UserId,
 	}
 
 	maxLength := 0
