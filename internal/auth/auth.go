@@ -82,7 +82,7 @@ type verifier struct {
 	res             *perms.Resource
 	act             action.Type
 	ctx             context.Context
-	acl             perms.ACL
+	acl             *perms.ACL
 }
 
 // NewVerifierContext creates a context that carries a verifier object from the
@@ -119,6 +119,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		// context we won't catch in tests
 		panic("no verifier information found in context")
 	}
+
 	ret.v = v
 
 	v.ctx = ctx
@@ -160,13 +161,14 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		v.decryptToken()
 	}
 
-	var authResults *perms.ACLResults
+	var authResults perms.ACLResults
 	var err error
-	authResults, ret.UserId, ret.Scope, err = v.performAuthCheck()
+	authResults, ret.UserId, ret.Scope, v.acl, err = v.performAuthCheck()
 	if err != nil {
 		v.logger.Error("error performing authn/authz check", "error", err)
 		return
 	}
+
 	ret.AuthTokenId = v.requestInfo.PublicId
 	if !authResults.Allowed {
 		if v.requestInfo.DisableAuthzFailures {
@@ -190,7 +192,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 
 // AdditionalVerification is used to perform checks of additional resources for
 // actions that need to touch more than one.
-func (r VerifyResults) AdditionalVerification(ctx context.Context, opt ...Option) (ret VerifyResults) {
+func (r *VerifyResults) AdditionalVerification(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	v := r.v
 
 	ret.Error = handlers.ForbiddenError()
@@ -283,7 +285,7 @@ func (r VerifyResults) AdditionalVerification(ctx context.Context, opt ...Option
 	return
 }
 
-func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId string, scopeInfo *scopes.ScopeInfo, retErr error) {
+func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string, scopeInfo *scopes.ScopeInfo, retAcl *perms.ACL, retErr error) {
 	// Ensure we return an error by default if we forget to set this somewhere
 	retErr = errors.New("unknown")
 	// Make the linter happy
@@ -362,7 +364,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 
 	// At this point we don't need to look up grants since it's automatically allowed
 	if v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms {
-		aclResults = &perms.ACLResults{Allowed: true}
+		aclResults.Allowed = true
 		retErr = nil
 		return
 	}
@@ -387,10 +389,8 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		parsedGrants = append(parsedGrants, parsed)
 	}
 
-	v.acl = perms.NewACL(parsedGrants...)
-	allowed := v.acl.Allowed(*v.res, v.act)
-
-	aclResults = &allowed
+	retAcl = perms.NewACL(parsedGrants...)
+	aclResults = retAcl.Allowed(*v.res, v.act)
 	retErr = nil
 	return
 }
