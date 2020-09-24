@@ -78,7 +78,6 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:       "log-level",
 		Target:     &c.flagLogLevel,
-		Default:    base.NotSetValue,
 		EnvVar:     "BOUNDARY_LOG_LEVEL",
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "err"),
 		Usage: "Log verbosity level. Supported values (in order of more detail to less) are " +
@@ -88,7 +87,6 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:       "log-format",
 		Target:     &c.flagLogFormat,
-		Default:    base.NotSetValue,
 		Completion: complete.PredictSet("standard", "json"),
 		Usage:      `Log format. Supported values are "standard" and "json".`,
 	})

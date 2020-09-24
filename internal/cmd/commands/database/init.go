@@ -98,7 +98,6 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:       "log-level",
 		Target:     &c.flagLogLevel,
-		Default:    base.NotSetValue,
 		EnvVar:     "BOUNDARY_LOG_LEVEL",
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "err"),
 		Usage: "Log verbosity level. Supported values (in order of more detail to less) are " +
@@ -108,7 +107,6 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:       "log-format",
 		Target:     &c.flagLogFormat,
-		Default:    base.NotSetValue,
 		Completion: complete.PredictSet("standard", "json"),
 		Usage:      `Log format. Supported values are "standard" and "json".`,
 	})
@@ -140,10 +138,9 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:    "migration-url",
-		Target:  &c.flagMigrationUrl,
-		Default: base.NotSetValue,
-		Usage:   `If set, overrides a migration URL set in config, and specifies the URL used to connect to the database for initialization. This can allow different permissions for the user running initialization vs. normal operation. This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
+		Name:   "migration-url",
+		Target: &c.flagMigrationUrl,
+		Usage:  `If set, overrides a migration URL set in config, and specifies the URL used to connect to the database for initialization. This can allow different permissions for the user running initialization vs. normal operation. This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
 	})
 
 	return set
@@ -214,7 +211,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	if c.Config.Controller.Database.MigrationUrl != "" {
 		migrationUrlToParse = c.Config.Controller.Database.MigrationUrl
 	}
-	if c.flagMigrationUrl != "" && c.flagMigrationUrl != base.NotSetValue {
+	if c.flagMigrationUrl != "" {
 		migrationUrlToParse = c.flagMigrationUrl
 	}
 	// Fallback to using database URL for everything
