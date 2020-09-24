@@ -300,7 +300,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			}
 		}
 
-	case "connect":
+	case "connect", "ssh":
 		if c.flagTargetId == "" {
 			c.UI.Error("Target ID must be provided")
 			return 1
