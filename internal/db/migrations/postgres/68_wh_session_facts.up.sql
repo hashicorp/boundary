@@ -90,8 +90,6 @@ begin;
       references wh_session_accumulating_fact (session_id)
       on delete cascade
       on update cascade,
-    -- auth_token_id is a degenerate dimension
-    auth_token_id wt_public_id not null,
 
     -- foreign keys to the dimension tables
     host_id wh_dim_id not null
@@ -104,15 +102,15 @@ begin;
       on update cascade,
 
     -- date and time foreign keys and timestamps
-    connection_authorized_date_id integer default wh_current_date_id() not null
+    connection_authorized_date_id integer not null
       references wh_date_dimension (id)
       on delete restrict
       on update cascade,
-    connection_authorized_time_id integer default wh_current_time_id() not null
+    connection_authorized_time_id integer not null
       references wh_time_of_day_dimension (id)
       on delete restrict
       on update cascade,
-    connection_authorized_time wh_timestamp default current_timestamp,
+    connection_authorized_time wh_timestamp,
 
     connection_connected_date_id integer default -1 not null
       references wh_date_dimension (id)
