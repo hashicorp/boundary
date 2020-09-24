@@ -364,6 +364,12 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	c.expiration = parsedCert.NotAfter
 
+	// We don't _rely_ on client-side timeout verification but this prevents us
+	// seeming to be ready for a connection that will immediately fail when we
+	// try to actually make it
+	expiringCtx, cancel := context.WithDeadline(c.Context, c.expiration)
+	defer cancel()
+
 	certPool := x509.NewCertPool()
 	certPool.AddCert(parsedCert)
 
@@ -460,6 +466,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			go func() {
 				defer listeningConn.Close()
 				if err := c.handleConnection(
+					expiringCtx,
 					listeningConn,
 					workerAddr,
 					tofuToken,
@@ -470,25 +477,22 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	}()
 
-	var termInfo TerminationInfo
+	timer := time.NewTimer(time.Until(c.expiration))
 	c.connWg.Add(1)
 	go func() {
 		defer c.connWg.Done()
 		defer c.listenerCloseOnce.Do(listenerCloseFunc)
-		timer := time.NewTimer(time.Until(c.expiration))
+
 		for {
 			select {
 			case <-c.Context.Done():
 				timer.Stop()
-				termInfo.Reason = "Received shutdown signal"
 				return
 			case <-timer.C:
-				termInfo.Reason = "Session has expired"
 				return
 			case connsLeft := <-c.connsLeftCh:
 				c.updateConnsLeft(connsLeft)
 				if connsLeft == 0 {
-					termInfo.Reason = "No connections left in session"
 					return
 				}
 			}
@@ -501,6 +505,18 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 
 	c.connWg.Wait()
+
+	termInfo := TerminationInfo{Reason: "Unknown"}
+	select {
+	case <-c.Context.Done():
+		termInfo.Reason = "Received shutdown signal"
+	case <-timer.C:
+		termInfo.Reason = "Session has expired"
+	default:
+		if c.connectionsLeft.Load() == 0 {
+			termInfo.Reason = "No connections left in session"
+		}
+	}
 
 	switch base.Format(c.UI) {
 	case "table":
@@ -518,6 +534,7 @@ func (c *Command) Run(args []string) (retCode int) {
 }
 
 func (c *Command) handleConnection(
+	ctx context.Context,
 	listeningConn *net.TCPConn,
 	workerAddr string,
 	tofuToken string,
@@ -526,7 +543,7 @@ func (c *Command) handleConnection(
 	defer c.connWg.Done()
 
 	conn, resp, err := websocket.Dial(
-		c.Context,
+		ctx,
 		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
 		&websocket.DialOptions{
 			HTTPClient: &http.Client{
@@ -558,11 +575,11 @@ func (c *Command) handleConnection(
 	}
 
 	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
-	if err := wspb.Write(c.Context, conn, &handshake); err != nil {
+	if err := wspb.Write(ctx, conn, &handshake); err != nil {
 		return fmt.Errorf("error sending handshake to worker: %w", err)
 	}
 	var handshakeResult proxy.HandshakeResult
-	if err := wspb.Read(c.Context, conn, &handshakeResult); err != nil {
+	if err := wspb.Read(ctx, conn, &handshakeResult); err != nil {
 		switch {
 		case strings.Contains(err.Error(), "unable to authorize connection"):
 			// There's no reason to think we'd be able to authorize any more
@@ -577,14 +594,8 @@ func (c *Command) handleConnection(
 		c.connsLeftCh <- handshakeResult.GetConnectionsLeft()
 	}
 
-	// We don't _rely_ on client-side timeout verification but this prevents us
-	// seeming to be ready for a connection that will immediately fail when we
-	// try to actually make it
-	expiringCtx, cancel := context.WithDeadline(c.Context, handshakeResult.GetExpiration().AsTime())
-	defer cancel()
-
 	// Get a wrapped net.Conn so we can use io.Copy
-	netConn := websocket.NetConn(expiringCtx, conn, websocket.MessageBinary)
+	netConn := websocket.NetConn(ctx, conn, websocket.MessageBinary)
 
 	localWg := new(sync.WaitGroup)
 	localWg.Add(2)
@@ -613,7 +624,7 @@ func (c *Command) updateConnsLeft(connsLeft int32) {
 		ConnectionsLeft: connsLeft,
 	}
 
-	if c.flagExec != "" {
+	if c.flagExec == "" {
 		switch base.Format(c.UI) {
 		case "table":
 			c.UI.Output(generateConnectionInfoTableOutput(connInfo))
@@ -644,6 +655,9 @@ func (c *Command) handleExec(passthroughArgs []string) {
 
 	args = append(passthroughArgs, args...)
 
+	// NOTE: exec.CommandContext is a hard kill, so if used it leaves the
+	// terminal in a weird state. It suffices to simply close the connection,
+	// which already happens, so we don't need/want CommandContext here.
 	cmd := exec.Command(c.flagExec, args...)
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%d", c.listenerAddr.Port),

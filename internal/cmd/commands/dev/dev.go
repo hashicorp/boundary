@@ -43,6 +43,7 @@ type Command struct {
 	flagIdSuffix                    string
 	flagHostAddress                 string
 	flagTargetDefaultPort           int
+	flagTargetSessionMaxSeconds     int
 	flagControllerAPIListenAddr     string
 	flagControllerClusterListenAddr string
 	flagWorkerProxyListenAddr       string
@@ -134,6 +135,13 @@ func (c *Command) Flags() *base.FlagSets {
 		Target:  &c.flagTargetDefaultPort,
 		EnvVar:  "BOUNDARY_DEV_TARGET_DEFAULT_PORT",
 		Usage:   "Default port to use for the default target that is created.",
+	})
+
+	f.IntVar(&base.IntVar{
+		Name:   "target-session-max-seconds",
+		Target: &c.flagTargetSessionMaxSeconds,
+		EnvVar: "BOUNDARY_DEV_TARGET_SESSION_MAX_SECONDS",
+		Usage:  "Max seconds to use for sessions on the default target.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -250,6 +258,11 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(`Port must not be specified as part of the dev host address`)
 		return 1
 	}
+	if c.flagTargetSessionMaxSeconds < 0 {
+		c.UI.Error(`Specified target session max sessions cannot be negative`)
+		return 1
+	}
+	c.DevTargetSessionMaxSeconds = c.flagTargetSessionMaxSeconds
 	c.DevHostAddress = host
 
 	c.Config.PassthroughDirectory = c.flagPassthroughDirectory

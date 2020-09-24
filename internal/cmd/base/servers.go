@@ -65,18 +65,19 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DevAuthMethodId      string
-	DevLoginName         string
-	DevPassword          string
-	DevUserId            string
-	DevOrgId             string
-	DevProjectId         string
-	DevHostCatalogId     string
-	DevHostSetId         string
-	DevHostId            string
-	DevTargetId          string
-	DevHostAddress       string
-	DevTargetDefaultPort int
+	DevAuthMethodId            string
+	DevLoginName               string
+	DevPassword                string
+	DevUserId                  string
+	DevOrgId                   string
+	DevProjectId               string
+	DevHostCatalogId           string
+	DevHostSetId               string
+	DevHostId                  string
+	DevTargetId                string
+	DevHostAddress             string
+	DevTargetDefaultPort       int
+	DevTargetSessionMaxSeconds int
 
 	DatabaseUrl            string
 	DevDatabaseCleanupFunc func() error
