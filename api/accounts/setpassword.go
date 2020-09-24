@@ -24,7 +24,7 @@ func (c *Client) SetPassword(ctx context.Context, accountId, password string, ve
 		}
 		existingTarget, existingErr := c.Read(ctx, accountId, opt...)
 		if existingErr != nil {
-			if api.IsServerError(existingErr) {
+			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
 			}
 			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
