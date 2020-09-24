@@ -1,0 +1,25 @@
+---
+layout: docs
+page_title: Worker - Configuration
+sidebar_title: <code>worker</code>
+description: |-
+  The worker stanza configures worker-specifc parameters.
+---
+
+# `worker` Stanza
+
+The `worker` stanza configures Boundary worker-specific parameters.
+
+```hcl
+worker {
+  name = "example-worker"
+  description = "An example worker"
+  public_addr = "5.1.23.198"
+}
+```
+
+- `name` - Specifies a unique name of this worker within the Boundary worker cluster.
+
+- `description` - Specifies a friendly description of this worker.
+
+- `public_addr` - Specifies the public IP address for the worker to be reached on. This is useful for cloud environemnts that do not bind a publically accessible IP to a NIC on the host directly, such as an Amazon EIP.

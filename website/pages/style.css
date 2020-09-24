@@ -25,7 +25,6 @@
 
 /* Local Pages */
 @import './downloads/style.css';
-@import './community/style.css';
 @import './home/style.css';
 
 /* Print Styles */
@@ -55,7 +54,10 @@
 
 /* Sticky Footer */
 .content {
-  min-height: calc(100vh - 260px);
+  overflow-y: auto;
+
+  /* 100% height - nav - footer */
+  min-height: calc(100vh - (64px + 77px));
 }
 
 /* Web Fonts */
@@ -140,4 +142,43 @@
     url('/fonts/dejavu/mono.woff') format('woff');
   font-style: normal;
   font-weight: 400;
+}
+
+/*
+ * TODO, eventually remove:
+ * Temporary Boundary Branding
+ */
+:root {
+  --boundary: #f04e54;
+}
+.g-docs-sidenav {
+  --highlight-color: var(--boundary);
+}
+
+.g-subnav {
+  & a.variant-primary {
+    border-color: var(--boundary);
+    background-color: var(--boundary);
+  }
+  & .g-subnav-inner {
+    & .style-menu-item {
+      & .text::after {
+        background: var(--boundary);
+      }
+    }
+  }
+}
+
+.g-content {
+  --highlight-color: var(--boundary);
+}
+
+.g-vertical-text-block-list {
+  & .list {
+    & .body-text {
+      & a {
+        color: var(--boundary) !important;
+      }
+    }
+  }
 }

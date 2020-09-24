@@ -1,0 +1,22 @@
+---
+layout: docs
+page_title: Controller - Configuration
+sidebar_title: <code>controller</code>
+description: |-
+  The controller stanza configures controller-specifc parameters.
+---
+
+# `controller` Stanza
+
+The `controller` stanza configures Boundary controller-specific parameters.
+
+```hcl
+controller {
+  name = "example-controller"
+  description = "An example controller"
+}
+```
+
+- `name` - Specifies a unique name of this controller within the Boundary controller cluster.
+
+- `description` - Specifies a friendly description of this controller.
