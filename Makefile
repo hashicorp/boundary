@@ -114,3 +114,5 @@ install-go:
 .PHONY: api tools gen migrations proto website
 
 .NOTPARALLEL:
+
+-include packagespec.mk
