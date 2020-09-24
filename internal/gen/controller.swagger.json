@@ -3155,6 +3155,21 @@
           "description": "The time this resource was created\nOutput only.",
           "readOnly": true
         },
+        "user_id": {
+          "type": "string",
+          "description": "The user ID associated with the resource\nOutput only.",
+          "readOnly": true
+        },
+        "host_set_id": {
+          "type": "string",
+          "description": "The host set ID associated with the resource\nOutput only.",
+          "readOnly": true
+        },
+        "host_id": {
+          "type": "string",
+          "description": "The host ID associated with the resource.\nOutput only.",
+          "readOnly": true
+        },
         "type": {
           "type": "string",
           "description": "Type of the session (e.g. tcp, ssh, etc.)\nOutput only.",
