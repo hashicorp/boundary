@@ -49,7 +49,12 @@ layers:
     source-include: go.mod go.sum
     dockerfile: |
       ENV GOPATH=
-      RUN go mod download
+      ENV GOPRIVATE=github.com/hashicorp/*
+      RUN mkdir -m 700 /root/.ssh; \
+        touch -m 600 /root/.ssh/known_hosts; \
+        ssh-keyscan github.com > /root/.ssh/known_hosts
+      RUN git config --global url."git@github.com:".insteadOf https://github.com/
+      RUN --mount=type=ssh go mod download -x
   - name: copy-source
     source-include: "*.go"
 
