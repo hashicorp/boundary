@@ -79,7 +79,9 @@ type Command struct {
 	connsLeftCh        chan int32
 	connectionsLeft    atomic.Int32
 	expiration         time.Time
-	execCmdReturnValue atomic.Int32
+	execCmdReturnValue *atomic.Int32
+	proxyCtx           context.Context
+	proxyCancel        context.CancelFunc
 }
 
 func (c *Command) Synopsis() string {
@@ -229,8 +231,6 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) (retCode int) {
-	c.execCmdReturnValue.Store(-1)
-
 	var passthroughArgs []string
 	for i, v := range args {
 		if v == "--" {
@@ -367,8 +367,8 @@ func (c *Command) Run(args []string) (retCode int) {
 	// We don't _rely_ on client-side timeout verification but this prevents us
 	// seeming to be ready for a connection that will immediately fail when we
 	// try to actually make it
-	expiringCtx, cancel := context.WithDeadline(c.Context, c.expiration)
-	defer cancel()
+	c.proxyCtx, c.proxyCancel = context.WithDeadline(c.Context, c.expiration)
+	defer c.proxyCancel()
 
 	certPool := x509.NewCertPool()
 	certPool.AddCert(parsedCert)
@@ -450,6 +450,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			listeningConn, err := c.listener.AcceptTCP()
 			if err != nil {
 				select {
+				case <-c.proxyCtx.Done():
+					return
 				case <-c.Context.Done():
 					return
 				default:
@@ -466,7 +468,6 @@ func (c *Command) Run(args []string) (retCode int) {
 			go func() {
 				defer listeningConn.Close()
 				if err := c.handleConnection(
-					expiringCtx,
 					listeningConn,
 					workerAddr,
 					tofuToken,
@@ -485,6 +486,9 @@ func (c *Command) Run(args []string) (retCode int) {
 
 		for {
 			select {
+			case <-c.proxyCtx.Done():
+				timer.Stop()
+				return
 			case <-c.Context.Done():
 				timer.Stop()
 				return
@@ -501,10 +505,15 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	if c.flagExec != "" {
 		c.connWg.Add(1)
+		c.execCmdReturnValue = new(atomic.Int32)
 		go c.handleExec(passthroughArgs)
 	}
 
 	c.connWg.Wait()
+
+	if c.execCmdReturnValue != nil {
+		retCode = int(c.execCmdReturnValue.Load())
+	}
 
 	termInfo := TerminationInfo{Reason: "Unknown"}
 	select {
@@ -513,8 +522,18 @@ func (c *Command) Run(args []string) (retCode int) {
 	case <-timer.C:
 		termInfo.Reason = "Session has expired"
 	default:
-		if c.connectionsLeft.Load() == 0 {
-			termInfo.Reason = "No connections left in session"
+		if c.execCmdReturnValue != nil {
+			r := c.execCmdReturnValue.Load()
+			switch r {
+			case 0:
+				termInfo.Reason = "Executed command has completed successfully"
+			default:
+				termInfo.Reason = fmt.Sprintf("Executed command exited with code %d", r)
+			}
+		} else {
+			if c.connectionsLeft.Load() == 0 {
+				termInfo.Reason = "No connections left in session"
+			}
 		}
 	}
 
@@ -530,11 +549,10 @@ func (c *Command) Run(args []string) (retCode int) {
 		c.UI.Output(string(out))
 	}
 
-	return 0
+	return
 }
 
 func (c *Command) handleConnection(
-	ctx context.Context,
 	listeningConn *net.TCPConn,
 	workerAddr string,
 	tofuToken string,
@@ -543,7 +561,7 @@ func (c *Command) handleConnection(
 	defer c.connWg.Done()
 
 	conn, resp, err := websocket.Dial(
-		ctx,
+		c.proxyCtx,
 		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
 		&websocket.DialOptions{
 			HTTPClient: &http.Client{
@@ -575,11 +593,11 @@ func (c *Command) handleConnection(
 	}
 
 	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
-	if err := wspb.Write(ctx, conn, &handshake); err != nil {
+	if err := wspb.Write(c.proxyCtx, conn, &handshake); err != nil {
 		return fmt.Errorf("error sending handshake to worker: %w", err)
 	}
 	var handshakeResult proxy.HandshakeResult
-	if err := wspb.Read(ctx, conn, &handshakeResult); err != nil {
+	if err := wspb.Read(c.proxyCtx, conn, &handshakeResult); err != nil {
 		switch {
 		case strings.Contains(err.Error(), "unable to authorize connection"):
 			// There's no reason to think we'd be able to authorize any more
@@ -595,7 +613,7 @@ func (c *Command) handleConnection(
 	}
 
 	// Get a wrapped net.Conn so we can use io.Copy
-	netConn := websocket.NetConn(ctx, conn, websocket.MessageBinary)
+	netConn := websocket.NetConn(c.proxyCtx, conn, websocket.MessageBinary)
 
 	localWg := new(sync.WaitGroup)
 	localWg.Add(2)
@@ -640,6 +658,7 @@ func (c *Command) updateConnsLeft(connsLeft int32) {
 
 func (c *Command) handleExec(passthroughArgs []string) {
 	defer c.connWg.Done()
+	defer c.proxyCancel()
 
 	var args []string
 
@@ -655,6 +674,8 @@ func (c *Command) handleExec(passthroughArgs []string) {
 
 	args = append(passthroughArgs, args...)
 
+	// Might want -t for ssh or -tt but seems fine without it for now...
+
 	// NOTE: exec.CommandContext is a hard kill, so if used it leaves the
 	// terminal in a weird state. It suffices to simply close the connection,
 	// which already happens, so we don't need/want CommandContext here.
@@ -662,6 +683,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%d", c.listenerAddr.Port),
 		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", c.listenerAddr.IP.String()),
+		fmt.Sprintf("BOUNDARY_PROXIED_ADDR=%s", c.listenerAddr.String()),
 	)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -686,5 +708,4 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		return
 	}
 	c.execCmdReturnValue.Store(0)
-	// Might want -t for ssh or -tt
 }
