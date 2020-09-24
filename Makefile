@@ -115,4 +115,7 @@ install-go:
 
 .NOTPARALLEL:
 
+# Tell packagespec where to write its CircleCI config.
+PACKAGESPEC_CIRCLECI_CONFIG := .circleci/config/@build-release.yml
+
 -include packagespec.mk
