@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcutil/base58"
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -25,7 +26,6 @@ import (
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -249,14 +249,14 @@ func (c *Command) Run(args []string) (retCode int) {
 			opts = append(opts, targets.WithHostId(c.flagHostId))
 		}
 
-		sar, apiErr, err := targetClient.Authorize(c.Context, c.flagTargetId, opts...)
+		sar, err := targetClient.Authorize(c.Context, c.flagTargetId, opts...)
 		if err != nil {
+			if api.AsServerError(err) != nil {
+				c.UI.Error(fmt.Sprintf("Error from controller when performing authorize on a session against target: %s", err.Error()))
+				return 1
+			}
 			c.UI.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))
 			return 2
-		}
-		if apiErr != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing authorize on a session against target: %s", pretty.Sprint(apiErr)))
-			return 1
 		}
 		sa := sar.GetItem().(*targets.SessionAuthorization)
 		authzString = sa.AuthorizationToken

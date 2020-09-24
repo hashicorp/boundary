@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/vault/sdk/helper/password"
-	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -207,23 +206,22 @@ func (c *PasswordCommand) Run(args []string) int {
 	}
 
 	var result api.GenericResult
-	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		result, apiErr, err = accountClient.Create(c.Context, c.flagAuthMethodId, opts...)
+		result, err = accountClient.Create(c.Context, c.flagAuthMethodId, opts...)
 	case "update":
-		result, apiErr, err = accountClient.Update(c.Context, c.FlagId, version, opts...)
+		result, err = accountClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
 	plural := "password-type account"
 	if err != nil {
+		if api.AsServerError(err) != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
+			return 1
+		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
 		return 2
-	}
-	if apiErr != nil {
-		c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, pretty.Sprint(apiErr)))
-		return 1
 	}
 
 	account := result.GetItem().(*accounts.Account)

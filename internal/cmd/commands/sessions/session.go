@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -116,15 +115,14 @@ func (c *Command) Run(args []string) int {
 
 	var result api.GenericResult
 	var listResult api.GenericListResult
-	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		result, apiErr, err = sessionClient.Read(c.Context, c.FlagId)
+		result, err = sessionClient.Read(c.Context, c.FlagId)
 	case "cancel":
-		result, apiErr, err = sessionClient.Cancel(c.Context, c.FlagId, 0, sessions.WithAutomaticVersioning(true))
+		result, err = sessionClient.Cancel(c.Context, c.FlagId, 0, sessions.WithAutomaticVersioning(true))
 	case "list":
-		listResult, apiErr, err = sessionClient.List(c.Context, c.FlagScopeId)
+		listResult, err = sessionClient.List(c.Context, c.FlagScopeId)
 	}
 
 	plural := "session"
@@ -132,12 +130,12 @@ func (c *Command) Run(args []string) int {
 		plural = "sessions"
 	}
 	if err != nil {
+		if api.AsServerError(err) != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
+			return 1
+		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
 		return 2
-	}
-	if apiErr != nil {
-		c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, pretty.Sprint(apiErr)))
-		return 1
 	}
 
 	switch c.Func {
