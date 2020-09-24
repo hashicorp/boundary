@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -960,6 +961,137 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				acct.PublicId = id
 				dbassert.IsNull(&acct, "IamUserId")
 			}
+		})
+	}
+}
+
+func TestRepository_AssociateAccounts(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, _ := TestScopes(t, repo)
+	authMethodId := testAuthMethod(t, conn, org.PublicId)
+	user := TestUser(t, repo, org.PublicId)
+
+	createAccountsFn := func(orgId string) []string {
+		require.NoError(t, conn.Where("1=1").Delete(allocAccount()).Error)
+		results := []string{}
+		for i := 0; i < 5; i++ {
+			a := testAccount(t, conn, orgId, authMethodId, "")
+			results = append(results, a.PublicId)
+		}
+		return results
+	}
+	type args struct {
+		accountIds  []string
+		userId      string
+		userVersion uint32
+		opt         []Option
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantErr   bool
+		wantErrIs error
+	}{
+		{
+			name: "valid-both-users-and-groups",
+			args: args{
+				userVersion: 1,
+				userId:      user.PublicId,
+				accountIds:  createAccountsFn(org.PublicId),
+			},
+			wantErr: false,
+		},
+		// {
+		// 	name: "valid-just-groups",
+		// 	args: args{
+		// 		userVersion:  2,
+		// 		wantGroupIds: true,
+		// 	},
+		// 	wantErr: false,
+		// },
+		// {
+		// 	name: "valid-just-users",
+		// 	args: args{
+		// 		userVersion:    3,
+		// 		wantAccountIds: true,
+		// 	},
+		// 	wantErr: false,
+		// },
+		// {
+		// 	name: "bad-version",
+		// 	args: args{
+		// 		userVersion:    1000,
+		// 		wantAccountIds: true,
+		// 		wantGroupIds:   true,
+		// 	},
+		// 	wantErr: true,
+		// },
+		// {
+		// 	name: "zero-version",
+		// 	args: args{
+		// 		userVersion:    0,
+		// 		wantAccountIds: true,
+		// 		wantGroupIds:   true,
+		// 	},
+		// 	wantErr: true,
+		// },
+		// {
+		// 	name: "no-principals",
+		// 	args: args{
+		// 		userVersion: 1,
+		// 	},
+		// 	wantErr: true,
+		// },
+		// {
+		// 	name: "recovery-user",
+		// 	args: args{
+		// 		userVersion:     1,
+		// 		specificUserIds: []string{"u_recovery"},
+		// 	},
+		// 	wantErr: true,
+		// },
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			accountIds := tt.args.accountIds
+			sort.Strings(accountIds)
+
+			origUser, err := repo.LookupUser(context.Background(), user.PublicId)
+			require.NoError(err)
+
+			got, err := repo.AssociateAccounts(context.Background(), tt.args.userId, tt.args.userVersion, accountIds, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			err = db.TestVerifyOplog(t, rw, tt.args.userId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+			for _, id := range got {
+				err = db.TestVerifyOplog(t, rw, id, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				assert.NoError(err)
+			}
+
+			sort.Strings(got)
+			assert.Equal(accountIds, got)
+
+			foundIds, err := repo.ListAssociatedAccountIds(context.Background(), tt.args.userId)
+			require.NoError(err)
+			sort.Strings(foundIds)
+			assert.Equal(accountIds, foundIds)
+
+			u, err := repo.LookupUser(context.Background(), tt.args.userId)
+			require.NoError(err)
+			assert.Equal(tt.args.userVersion+1, u.Version)
+			assert.Equal(origUser.Version, u.Version-1)
 		})
 	}
 }
