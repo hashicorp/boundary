@@ -118,7 +118,7 @@ Sessionx.vim
 main
 /pkg/
 /bin/
-internal/ui/assets.go
+internal/ui/assets_dev.go
 update-ui-assets*
 
 # Test config file

@@ -34,7 +34,7 @@ build-ui:
 	@scripts/uigen.sh
 
 build-ui-ifne:
-ifeq (,$(wildcard internal/ui/assets.go))
+ifeq (,$(wildcard internal/ui/assets_dev.go))
 	@echo "==> No UI assets found, building..."
 	@scripts/uigen.sh
 else
