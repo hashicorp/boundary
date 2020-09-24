@@ -660,15 +660,19 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	defer c.connWg.Done()
 	defer c.proxyCancel()
 
+	port := strconv.Itoa(c.listenerAddr.Port)
+	ip := c.listenerAddr.IP.String()
+	addr := c.listenerAddr.String()
+
 	var args []string
 
 	switch c.Func {
 	case "ssh":
 		switch c.flagSshStyle {
 		case "ssh":
-			args = append(args, "-p", strconv.Itoa(c.listenerAddr.Port), c.listenerAddr.IP.String())
+			args = append(args, "-p", port, ip)
 		case "putty":
-			args = append(args, "-P", strconv.Itoa(c.listenerAddr.Port), c.listenerAddr.IP.String())
+			args = append(args, "-P", port, ip)
 		}
 	}
 
@@ -676,14 +680,32 @@ func (c *Command) handleExec(passthroughArgs []string) {
 
 	// Might want -t for ssh or -tt but seems fine without it for now...
 
+	stringReplacer := func(in, typ, replacer string) string {
+		for _, style := range []string{
+			fmt.Sprintf("{{boundary.%s}}", typ),
+			fmt.Sprintf("{{ boundary.%s}}", typ),
+			fmt.Sprintf("{{boundary.%s }}", typ),
+			fmt.Sprintf("{{ boundary.%s }}", typ),
+		} {
+			in = strings.Replace(in, style, replacer, -1)
+		}
+		return in
+	}
+
+	for i := range args {
+		args[i] = stringReplacer(args[i], "port", port)
+		args[i] = stringReplacer(args[i], "ip", ip)
+		args[i] = stringReplacer(args[i], "addr", addr)
+	}
+
 	// NOTE: exec.CommandContext is a hard kill, so if used it leaves the
 	// terminal in a weird state. It suffices to simply close the connection,
 	// which already happens, so we don't need/want CommandContext here.
 	cmd := exec.Command(c.flagExec, args...)
 	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%d", c.listenerAddr.Port),
-		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", c.listenerAddr.IP.String()),
-		fmt.Sprintf("BOUNDARY_PROXIED_ADDR=%s", c.listenerAddr.String()),
+		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%s", port),
+		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", ip),
+		fmt.Sprintf("BOUNDARY_PROXIED_ADDR=%s", addr),
 	)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
