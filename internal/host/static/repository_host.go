@@ -43,11 +43,20 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 	}
 	h = h.clone()
 
-	id, err := newHostId()
-	if err != nil {
-		return nil, fmt.Errorf("create: static host: %w", err)
+	opts := getOpts(opt...)
+
+	if opts.withPublicId != "" {
+		if !strings.HasPrefix(opts.withPublicId, HostPrefix+"_") {
+			return nil, fmt.Errorf("create: static host: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, HostPrefix, db.ErrInvalidPublicId)
+		}
+		h.PublicId = opts.withPublicId
+	} else {
+		id, err := newHostId()
+		if err != nil {
+			return nil, fmt.Errorf("create: static host: %w", err)
+		}
+		h.PublicId = id
 	}
-	h.PublicId = id
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {

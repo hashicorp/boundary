@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -140,23 +139,22 @@ func (c *Command) Run(args []string) int {
 	existed := true
 	var result api.GenericResult
 	var listResult api.GenericListResult
-	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		result, apiErr, err = scopeClient.Create(c.Context, c.FlagScopeId, opts...)
+		result, err = scopeClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
-		result, apiErr, err = scopeClient.Update(c.Context, c.FlagId, version, opts...)
+		result, err = scopeClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		result, apiErr, err = scopeClient.Read(c.Context, c.FlagId, opts...)
+		result, err = scopeClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		_, apiErr, err = scopeClient.Delete(c.Context, c.FlagId, opts...)
-		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+		_, err = scopeClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
 			existed = false
-			apiErr = nil
+			err = nil
 		}
 	case "list":
-		listResult, apiErr, err = scopeClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, err = scopeClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "scope"
@@ -164,12 +162,12 @@ func (c *Command) Run(args []string) int {
 		plural = "scopes"
 	}
 	if err != nil {
+		if api.AsServerError(err) != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
+			return 1
+		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
 		return 2
-	}
-	if apiErr != nil {
-		c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, pretty.Sprint(apiErr)))
-		return 1
 	}
 
 	switch c.Func {

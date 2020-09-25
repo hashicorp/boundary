@@ -26,6 +26,7 @@ type options struct {
 	withHostSets               []string
 	withSessionMaxSeconds      uint32
 	withSessionConnectionLimit int32
+	withPublicId               string
 }
 
 func getDefaultOptions() options {
@@ -40,6 +41,7 @@ func getDefaultOptions() options {
 		withHostSets:               nil,
 		withSessionMaxSeconds:      uint32((8 * time.Hour).Seconds()),
 		withSessionConnectionLimit: 1,
+		withPublicId:               "",
 	}
 }
 
@@ -110,5 +112,12 @@ func WithSessionMaxSeconds(dur uint32) Option {
 func WithSessionConnectionLimit(limit int32) Option {
 	return func(o *options) {
 		o.withSessionConnectionLimit = limit
+	}
+}
+
+// WithPublicId provides an optional public id
+func WithPublicId(id string) Option {
+	return func(o *options) {
+		o.withPublicId = id
 	}
 }

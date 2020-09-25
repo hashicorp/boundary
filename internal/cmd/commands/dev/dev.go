@@ -2,6 +2,7 @@ package dev
 
 import (
 	"fmt"
+	"net"
 	"runtime"
 	"strings"
 
@@ -9,9 +10,11 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/host/static"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/worker"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -32,19 +35,23 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	flagLogLevel                    string
-	flagLogFormat                   string
-	flagCombineLogs                 bool
-	flagLoginName                   string
-	flagPassword                    string
-	flagIdSuffix                    string
-	flagControllerAPIListenAddr     string
-	flagControllerClusterListenAddr string
-	flagWorkerProxyListenAddr       string
-	flagWorkerPublicAddr            string
-	flagPassthroughDirectory        string
-	flagRecoveryKey                 string
-	flagDisableDatabaseDestruction  bool
+	flagLogLevel                     string
+	flagLogFormat                    string
+	flagCombineLogs                  bool
+	flagLoginName                    string
+	flagPassword                     string
+	flagIdSuffix                     string
+	flagHostAddress                  string
+	flagTargetDefaultPort            int
+	flagTargetSessionMaxSeconds      int
+	flagTargetSessionConnectionLimit int
+	flagControllerAPIListenAddr      string
+	flagControllerClusterListenAddr  string
+	flagWorkerProxyListenAddr        string
+	flagWorkerPublicAddr             string
+	flagPassthroughDirectory         string
+	flagRecoveryKey                  string
+	flagDisableDatabaseDestruction   bool
 }
 
 func (c *Command) Synopsis() string {
@@ -73,7 +80,6 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:       "log-level",
 		Target:     &c.flagLogLevel,
-		Default:    base.NotSetValue,
 		EnvVar:     "BOUNDARY_LOG_LEVEL",
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "err"),
 		Usage: "Log verbosity level. Supported values (in order of more detail to less) are " +
@@ -83,16 +89,16 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:       "log-format",
 		Target:     &c.flagLogFormat,
-		Default:    base.NotSetValue,
 		Completion: complete.PredictSet("standard", "json"),
 		Usage:      `Log format. Supported values are "standard" and "json".`,
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "id-suffix",
-		Target: &c.flagIdSuffix,
-		EnvVar: "BOUNDARY_DEV_ID_SUFFIX",
-		Usage:  `If set, auto-created resources will use this value for their identifier (along with their resource-specific prefix). Must be 10 alphanumeric characters. As an example, if this is set to "1234567890", the generated password auth method ID will be "ampw_1234567890", the generated TCP target ID will be "ttcp_1234567890", and so on.`,
+		Name:    "id-suffix",
+		Target:  &c.flagIdSuffix,
+		Default: "1234567890",
+		EnvVar:  "BOUNDARY_DEV_ID_SUFFIX",
+		Usage:   `If set, auto-created resources will use this value for their identifier (along with their resource-specific prefix). Must be 10 alphanumeric characters. As an example, if this is set to "1234567890", the generated password auth method ID will be "ampw_1234567890", the generated TCP target ID will be "ttcp_1234567890", and so on.`,
 	})
 
 	f.StringVar(&base.StringVar{
@@ -114,6 +120,36 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagControllerAPIListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_API_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for controller \"api\" purpose.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:    "host-address",
+		Default: "localhost",
+		Target:  &c.flagHostAddress,
+		EnvVar:  "BOUNDARY_DEV_HOST_ADDRESS",
+		Usage:   "Address to use for the default host that is created. Must be a bare host or IP address, no port.",
+	})
+
+	f.IntVar(&base.IntVar{
+		Name:    "target-default-port",
+		Default: 22,
+		Target:  &c.flagTargetDefaultPort,
+		EnvVar:  "BOUNDARY_DEV_TARGET_DEFAULT_PORT",
+		Usage:   "Default port to use for the default target that is created.",
+	})
+
+	f.IntVar(&base.IntVar{
+		Name:   "target-session-connection-limit",
+		Target: &c.flagTargetSessionConnectionLimit,
+		EnvVar: "BOUNDARY_DEV_TARGET_SESSION_CONNECTION_LIMIT",
+		Usage:  "Maximum number of connections per session to set on the default target. -1 means unlimited.",
+	})
+
+	f.IntVar(&base.IntVar{
+		Name:   "target-session-max-seconds",
+		Target: &c.flagTargetSessionMaxSeconds,
+		EnvVar: "BOUNDARY_DEV_TARGET_SESSION_MAX_SECONDS",
+		Usage:  "Max seconds to use for sessions on the default target.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -203,11 +239,13 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		c.DevAuthMethodId = fmt.Sprintf("%s_%s", password.AuthMethodPrefix, c.flagIdSuffix)
+		c.DevUserId = fmt.Sprintf("%s_%s", iam.UserPrefix, c.flagIdSuffix)
 		c.DevOrgId = fmt.Sprintf("%s_%s", scope.Org.Prefix(), c.flagIdSuffix)
 		c.DevProjectId = fmt.Sprintf("%s_%s", scope.Project.Prefix(), c.flagIdSuffix)
 		c.DevHostCatalogId = fmt.Sprintf("%s_%s", static.HostCatalogPrefix, c.flagIdSuffix)
 		c.DevHostSetId = fmt.Sprintf("%s_%s", static.HostSetPrefix, c.flagIdSuffix)
 		c.DevHostId = fmt.Sprintf("%s_%s", static.HostPrefix, c.flagIdSuffix)
+		c.DevTargetId = fmt.Sprintf("%s_%s", target.TcpTargetPrefix, c.flagIdSuffix)
 	}
 	if c.flagLoginName != "" {
 		c.DevLoginName = c.flagLoginName
@@ -215,6 +253,26 @@ func (c *Command) Run(args []string) int {
 	if c.flagPassword != "" {
 		c.DevPassword = c.flagPassword
 	}
+	c.DevTargetDefaultPort = c.flagTargetDefaultPort
+	host, port, err := net.SplitHostPort(c.flagHostAddress)
+	if err != nil {
+		if !strings.Contains(err.Error(), "missing port") {
+			c.UI.Error(fmt.Errorf("Invalid host address specified: %w", err).Error())
+			return 1
+		}
+		host = c.flagHostAddress
+	}
+	if port != "" {
+		c.UI.Error(`Port must not be specified as part of the dev host address`)
+		return 1
+	}
+	if c.flagTargetSessionMaxSeconds < 0 {
+		c.UI.Error(`Specified target session max sessions cannot be negative`)
+		return 1
+	}
+	c.DevTargetSessionMaxSeconds = c.flagTargetSessionMaxSeconds
+	c.DevTargetSessionConnectionLimit = c.flagTargetSessionConnectionLimit
+	c.DevHostAddress = host
 
 	c.Config.PassthroughDirectory = c.flagPassthroughDirectory
 
@@ -301,6 +359,9 @@ func (c *Command) Run(args []string) int {
 	}()
 
 	var opts []base.Option
+	if c.flagDisableDatabaseDestruction {
+		opts = append(opts, base.WithSkipDatabaseDestruction())
+	}
 	if err := c.CreateDevDatabase("postgres", opts...); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 		return 1
@@ -361,45 +422,6 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 	}
-	/*
-		shutdownWg := &sync.WaitGroup{}
-		shutdownWg.Add(2)
-		controllerSighupCh := make(chan struct{})
-		c.childSighupCh = append(c.childSighupCh, controllerSighupCh)
-
-		devController := &controllercmd.Command{
-			Server:        c.Server,
-			ExtShutdownCh: childShutdownCh,
-			SighupCh:      controllerSighupCh,
-			Config:        c.Config,
-		}
-		if err := devController.Start(); err != nil {
-			c.UI.Error(err.Error())
-			return 1
-		}
-
-		workerSighupCh := make(chan struct{})
-		c.childSighupCh = append(c.childSighupCh, workerSighupCh)
-		devWorker := &workercmd.Command{
-			Server:        c.Server,
-			ExtShutdownCh: childShutdownCh,
-			SighupCh:      workerSighupCh,
-			Config:        c.Config,
-		}
-		if err := devWorker.Start(); err != nil {
-			c.UI.Error(err.Error())
-			return 1
-		}
-
-		go func() {
-			defer shutdownWg.Done()
-			devController.WaitForInterrupt()
-		}()
-		go func() {
-			defer shutdownWg.Done()
-			devWorker.WaitForInterrupt()
-		}()
-	*/
 
 	// Wait for shutdown
 	shutdownTriggered := false
@@ -409,10 +431,6 @@ func (c *Command) Run(args []string) int {
 		case <-c.ShutdownCh:
 			c.UI.Output("==> Boundary dev environment shutdown triggered")
 
-			/*
-				childShutdownCh <- struct{}{}
-				childShutdownCh <- struct{}{}
-			*/
 			if err := c.worker.Shutdown(false); err != nil {
 				c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 			}
@@ -423,22 +441,12 @@ func (c *Command) Run(args []string) int {
 
 			shutdownTriggered = true
 
-			/*
-				case <-c.SighupCh:
-					c.UI.Output("==> Boundary dev environment reload triggered")
-					for _, v := range c.childSighupCh {
-						v <- struct{}{}
-					}
-			*/
-
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
 			c.Logger.Info("goroutine trace", "stack", string(buf[:n]))
 		}
 	}
-
-	//shutdownWg.Wait()
 
 	return 0
 }

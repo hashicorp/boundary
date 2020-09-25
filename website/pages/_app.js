@@ -30,26 +30,8 @@ function App({ Component, pageProps }) {
           title={`${productName} by HashiCorp`}
           siteName={`${productName} by HashiCorp`}
           description="Write your description here"
-          image="https://www.example.com/img/og-image.png"
-          stylesheet={[
-            {
-              href:
-                'https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700&display=swap',
-            },
-          ]}
+          image="https://www.boundaryproject.io/img/og-image.png"
           icon={[{ href: '/favicon.ico' }]}
-          preload={[
-            { href: '/fonts/klavika/medium.woff2', as: 'font' },
-            { href: '/fonts/gilmer/light.woff2', as: 'font' },
-            { href: '/fonts/gilmer/regular.woff2', as: 'font' },
-            { href: '/fonts/gilmer/medium.woff2', as: 'font' },
-            { href: '/fonts/gilmer/bold.woff2', as: 'font' },
-            { href: '/fonts/metro-sans/book.woff2', as: 'font' },
-            { href: '/fonts/metro-sans/regular.woff2', as: 'font' },
-            { href: '/fonts/metro-sans/semi-bold.woff2', as: 'font' },
-            { href: '/fonts/metro-sans/bold.woff2', as: 'font' },
-            { href: '/fonts/dejavu/mono.woff2', as: 'font' },
-          ]}
         />
         <MegaNav product={productName} />
         <ProductSubnav />

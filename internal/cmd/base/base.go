@@ -29,9 +29,6 @@ const (
 	// maxLineLength is the maximum width of any line.
 	maxLineLength int = 78
 
-	// NotSetValue is a flag value for a not-set value
-	NotSetValue = "(not set)"
-
 	envToken          = "BOUNDARY_TOKEN"
 	envTokenName      = "BOUNDARY_TOKEN_NAME"
 	envRecoveryConfig = "BOUNDARY_RECOVERY_CONFIG"
@@ -131,8 +128,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	if c.flagAddr != NotSetValue {
+	if c.flagAddr != "" {
 		if err := c.client.SetAddr(c.flagAddr); err != nil {
 			return nil, fmt.Errorf("error setting address on client: %w", err)
 		}
@@ -141,23 +137,23 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	// If we need custom TLS configuration, then set it
 	var modifiedTLS bool
 	tlsConfig := config.TLSConfig
-	if c.flagTLSCACert != NotSetValue {
+	if c.flagTLSCACert != "" {
 		tlsConfig.CACert = c.flagTLSCACert
 		modifiedTLS = true
 	}
-	if c.flagTLSCAPath != NotSetValue {
+	if c.flagTLSCAPath != "" {
 		tlsConfig.CAPath = c.flagTLSCAPath
 		modifiedTLS = true
 	}
-	if c.flagTLSClientCert != NotSetValue {
+	if c.flagTLSClientCert != "" {
 		tlsConfig.ClientCert = c.flagTLSClientCert
 		modifiedTLS = true
 	}
-	if c.flagTLSClientKey != NotSetValue {
+	if c.flagTLSClientKey != "" {
 		tlsConfig.ClientKey = c.flagTLSClientKey
 		modifiedTLS = true
 	}
-	if c.flagTLSServerName != NotSetValue {
+	if c.flagTLSServerName != "" {
 		tlsConfig.ServerName = c.flagTLSServerName
 		modifiedTLS = true
 	}
@@ -265,7 +261,6 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f.StringVar(&StringVar{
 				Name:       FlagNameAddr,
 				Target:     &c.flagAddr,
-				Default:    NotSetValue,
 				EnvVar:     api.EnvBoundaryAddr,
 				Completion: complete.PredictAnything,
 				Usage:      "Addr of the Boundary controller, as a complete URL (e.g. https://boundary.example.com:9200).",
@@ -274,7 +269,6 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f.StringVar(&StringVar{
 				Name:       FlagNameCACert,
 				Target:     &c.flagTLSCACert,
-				Default:    NotSetValue,
 				EnvVar:     api.EnvBoundaryCACert,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded CA " +
@@ -285,7 +279,6 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f.StringVar(&StringVar{
 				Name:       FlagNameCAPath,
 				Target:     &c.flagTLSCAPath,
-				Default:    NotSetValue,
 				EnvVar:     api.EnvBoundaryCAPath,
 				Completion: complete.PredictDirs("*"),
 				Usage: "Path on the local disk to a directory of PEM-encoded CA " +
@@ -295,7 +288,6 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f.StringVar(&StringVar{
 				Name:       FlagNameClientCert,
 				Target:     &c.flagTLSClientCert,
-				Default:    NotSetValue,
 				EnvVar:     api.EnvBoundaryClientCert,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded CA " +
@@ -306,7 +298,6 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f.StringVar(&StringVar{
 				Name:       FlagNameClientKey,
 				Target:     &c.flagTLSClientKey,
-				Default:    NotSetValue,
 				EnvVar:     api.EnvBoundaryClientKey,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded private key " +
@@ -316,7 +307,6 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f.StringVar(&StringVar{
 				Name:       FlagTLSServerName,
 				Target:     &c.flagTLSServerName,
-				Default:    NotSetValue,
 				EnvVar:     api.EnvBoundaryTLSServerName,
 				Completion: complete.PredictAnything,
 				Usage: "Name to use as the SNI host when connecting to the Boundary " +

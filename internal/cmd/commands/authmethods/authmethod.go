@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -157,19 +156,18 @@ func (c *Command) Run(args []string) int {
 	existed := true
 	var result api.GenericResult
 	var listResult api.GenericListResult
-	var apiErr *api.Error
 
 	switch c.Func {
 	case "read":
-		result, apiErr, err = authmethodClient.Read(c.Context, c.FlagId, opts...)
+		result, err = authmethodClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		_, apiErr, err = authmethodClient.Delete(c.Context, c.FlagId, opts...)
-		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+		_, err = authmethodClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
 			existed = false
-			apiErr = nil
+			err = nil
 		}
 	case "list":
-		listResult, apiErr, err = authmethodClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, err = authmethodClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "auth method"
@@ -177,12 +175,12 @@ func (c *Command) Run(args []string) int {
 		plural = "auth methods"
 	}
 	if err != nil {
+		if api.AsServerError(err) != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
+			return 1
+		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
 		return 2
-	}
-	if apiErr != nil {
-		c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, pretty.Sprint(apiErr)))
-		return 1
 	}
 
 	switch c.Func {

@@ -26,42 +26,35 @@ func TestCustom(t *testing.T) {
 	client := tc.Client().Clone()
 	client.SetToken(token.Token)
 
-	hc, apiErr, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
+	hc, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
 	require.NoError(err)
-	require.Nil(apiErr)
 
 	hSetClient := hostsets.NewClient(client)
-	hSet, apiErr, err := hSetClient.Create(tc.Context(), hc.Item.Id)
+	hSet, err := hSetClient.Create(tc.Context(), hc.Item.Id)
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(hSet)
-	hSet2, apiErr, err := hSetClient.Create(tc.Context(), hc.Item.Id)
+	hSet2, err := hSetClient.Create(tc.Context(), hc.Item.Id)
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(hSet2)
 
 	tarClient := targets.NewClient(client)
-	tar, apiErr, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
+	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(tar)
 	assert.Empty(tar.Item.HostSetIds)
 
-	tar, apiErr, err = tarClient.AddHostSets(tc.Context(), tar.Item.Id, tar.Item.Version, []string{hSet.Item.Id})
+	tar, err = tarClient.AddHostSets(tc.Context(), tar.Item.Id, tar.Item.Version, []string{hSet.Item.Id})
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(tar)
 	assert.ElementsMatch(tar.Item.HostSetIds, []string{hSet.Item.Id})
 
-	tar, apiErr, err = tarClient.SetHostSets(tc.Context(), tar.Item.Id, tar.Item.Version, []string{hSet2.Item.Id})
+	tar, err = tarClient.SetHostSets(tc.Context(), tar.Item.Id, tar.Item.Version, []string{hSet2.Item.Id})
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(tar)
 	assert.ElementsMatch(tar.Item.HostSetIds, []string{hSet2.Item.Id})
 
-	tar, apiErr, err = tarClient.RemoveHostSets(tc.Context(), tar.Item.Id, tar.Item.Version, []string{hSet2.Item.Id})
+	tar, err = tarClient.RemoveHostSets(tc.Context(), tar.Item.Id, tar.Item.Version, []string{hSet2.Item.Id})
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(tar)
 	assert.Empty(tar.Item.HostSetIds)
 }
@@ -77,9 +70,8 @@ func TestList(t *testing.T) {
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	tarClient := targets.NewClient(client)
-	ul, apiErr, err := tarClient.List(tc.Context(), proj.GetPublicId())
+	ul, err := tarClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
-	require.Nil(apiErr)
 	assert.Empty(ul.Items)
 
 	var expected []*targets.Target
@@ -87,25 +79,21 @@ func TestList(t *testing.T) {
 		expected = append(expected, &targets.Target{Name: fmt.Sprint(i)})
 	}
 
-	tcr, apiErr, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName(expected[0].Name))
+	tcr, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName(expected[0].Name))
 	require.NoError(err)
-	require.Nil(apiErr)
 	expected[0] = tcr.Item
 
-	ul, apiErr, err = tarClient.List(tc.Context(), proj.GetPublicId())
+	ul, err = tarClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
-	require.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		tcr, apiErr, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName(expected[i].Name))
+		tcr, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName(expected[i].Name))
 		require.NoError(err)
-		require.Nil(apiErr)
 		expected[i] = tcr.Item
 	}
-	ul, apiErr, err = tarClient.List(tc.Context(), proj.GetPublicId())
+	ul, err = tarClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
-	require.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul.Items))
 }
 
@@ -134,12 +122,9 @@ func TestCrud(t *testing.T) {
 	client.SetToken(token.Token)
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
-	checkResource := func(t *testing.T, step string, h *targets.Target, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
+	checkResource := func(t *testing.T, step string, h *targets.Target, err error, wantedName string, wantVersion uint32) {
 		t.Helper()
 		require.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
-			t.Errorf("ApiError message: %q", apiErr.Message)
-		}
 		assert.NotNil(h, "returned no resource", step)
 		gotName := ""
 		if h.Name != "" {
@@ -151,21 +136,21 @@ func TestCrud(t *testing.T) {
 
 	tarClient := targets.NewClient(client)
 
-	tar, apiErr, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
-	checkResource(t, "create", tar.Item, apiErr, err, "foo", 1)
+	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
+	checkResource(t, "create", tar.Item, err, "foo", 1)
 
-	tar, apiErr, err = tarClient.Read(tc.Context(), tar.Item.Id)
-	checkResource(t, "read", tar.Item, apiErr, err, "foo", 1)
+	tar, err = tarClient.Read(tc.Context(), tar.Item.Id)
+	checkResource(t, "read", tar.Item, err, "foo", 1)
 
-	tar, apiErr, err = tarClient.Update(tc.Context(), tar.Item.Id, tar.Item.Version, targets.WithName("bar"))
-	checkResource(t, "update", tar.Item, apiErr, err, "bar", 2)
+	tar, err = tarClient.Update(tc.Context(), tar.Item.Id, tar.Item.Version, targets.WithName("bar"))
+	checkResource(t, "update", tar.Item, err, "bar", 2)
 
-	_, apiErr, err = tarClient.Delete(tc.Context(), tar.Item.Id)
+	_, err = tarClient.Delete(tc.Context(), tar.Item.Id)
 	assert.NoError(err)
-	assert.Nil(apiErr)
 
-	_, apiErr, err = tarClient.Delete(tc.Context(), tar.Item.Id)
-	assert.NoError(err)
+	_, err = tarClient.Delete(tc.Context(), tar.Item.Id)
+	assert.Error(err)
+	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
@@ -182,29 +167,32 @@ func TestSet_Errors(t *testing.T) {
 
 	tarClient := targets.NewClient(client)
 
-	tar, apiErr, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
+	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
 	require.NoError(err)
-	require.Nil(apiErr)
 	assert.NotNil(tar)
 
 	// Updating the wrong version should fail.
-	_, apiErr, err = tarClient.Update(tc.Context(), tar.Item.Id, 73, targets.WithName("anything"))
-	require.NoError(err)
+	_, err = tarClient.Update(tc.Context(), tar.Item.Id, 73, targets.WithName("anything"))
+	require.Error(err)
+	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
-	tar, apiErr, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
-	require.NoError(err)
+	tar, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.Nil(tar)
 
-	_, apiErr, err = tarClient.Read(tc.Context(), target.TcpTargetPrefix+"_doesntexis")
-	require.NoError(err)
+	_, err = tarClient.Read(tc.Context(), target.TcpTargetPrefix+"_doesntexis")
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
-	_, apiErr, err = tarClient.Read(tc.Context(), "invalid id")
-	require.NoError(err)
+	_, err = tarClient.Read(tc.Context(), "invalid id")
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 }

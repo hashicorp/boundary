@@ -89,7 +89,6 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:       "log-level",
 		Target:     &c.flagLogLevel,
-		Default:    base.NotSetValue,
 		EnvVar:     "BOUNDARY_LOG_LEVEL",
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "err"),
 		Usage: "Log verbosity level. Supported values (in order of more detail to less) are " +
@@ -99,7 +98,6 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:       "log-format",
 		Target:     &c.flagLogFormat,
-		Default:    base.NotSetValue,
 		Completion: complete.PredictSet("standard", "json"),
 		Usage:      `Log format. Supported values are "standard" and "json".`,
 	})
@@ -174,7 +172,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	// Perform controller-specific listener checks here before setup
-	var foundCluster bool
+	var clusterAddr string
 	var foundApi bool
 	var foundProxy bool
 	for _, lnConfig := range c.Config.Listeners {
@@ -187,7 +185,10 @@ func (c *Command) Run(args []string) int {
 			purpose := lnConfig.Purpose[0]
 			switch purpose {
 			case "cluster":
-				foundCluster = true
+				clusterAddr = lnConfig.Address
+				if clusterAddr == "" {
+					clusterAddr = "127.0.0.1:9201"
+				}
 			case "api":
 				foundApi = true
 			case "proxy":
@@ -207,7 +208,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`Config activates controller but no listener with "api" purpose found`)
 			return 1
 		}
-		if !foundCluster {
+		if clusterAddr == "" {
 			c.UI.Error(`Config activates controller but no listener with "cluster" purpose found`)
 			return 1
 		}
@@ -216,6 +217,20 @@ func (c *Command) Run(args []string) int {
 		if !foundProxy {
 			c.UI.Error(`Config activates worker but no listener with "proxy" purpose found`)
 			return 1
+		}
+		if c.Config.Controller != nil {
+			switch len(c.Config.Worker.Controllers) {
+			case 0:
+			case 1:
+				if c.Config.Worker.Controllers[0] == clusterAddr {
+					break
+				}
+				fallthrough
+			default:
+				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "controllers" key in the worker block with any value other than the controller cluster address`)
+				return 1
+			}
+			c.Config.Worker.Controllers = []string{clusterAddr}
 		}
 	}
 	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy"}); err != nil {

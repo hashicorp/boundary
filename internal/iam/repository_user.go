@@ -21,18 +21,29 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 	if user.PublicId != "" {
 		return nil, fmt.Errorf("create user: public id is not empty %w", db.ErrInvalidParameter)
 	}
-	id, err := newUserId()
-	if err != nil {
-		return nil, fmt.Errorf("create user: %w", err)
+	u := user.Clone().(*User)
+
+	opts := getOpts(opt...)
+
+	if opts.withPublicId != "" {
+		if !strings.HasPrefix(opts.withPublicId, UserPrefix+"_") {
+			return nil, fmt.Errorf("create user: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, UserPrefix, db.ErrInvalidPublicId)
+		}
+		u.PublicId = opts.withPublicId
+	} else {
+		id, err := newUserId()
+		if err != nil {
+			return nil, fmt.Errorf("create user: %w", err)
+		}
+		u.PublicId = id
 	}
-	u := user.Clone()
-	u.(*User).PublicId = id
-	resource, err := r.create(ctx, u.(*User))
+
+	resource, err := r.create(ctx, u)
 	if err != nil {
 		if db.IsUniqueError(err) {
 			return nil, fmt.Errorf("create user: user %s already exists in org %s: %w", user.Name, user.ScopeId, err)
 		}
-		return nil, fmt.Errorf("create user: %w for %s", err, u.(*User).PublicId)
+		return nil, fmt.Errorf("create user: %w for %s", err, u.PublicId)
 	}
 	return resource.(*User), err
 }

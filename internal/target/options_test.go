@@ -68,6 +68,13 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withScopeId = "testId"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithPublicId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithPublicId("testId"))
+		testOpts := getDefaultOptions()
+		testOpts.withPublicId = "testId"
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithTargetType", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithTargetType(TcpTargetType))

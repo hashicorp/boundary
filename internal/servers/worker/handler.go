@@ -19,7 +19,7 @@ type HandlerProperties struct {
 }
 
 // Handler returns an http.Handler for the API. This can be used on
-// its own to mount the Vault API within another web server.
+// its own to mount the Worker API within another web server.
 func (w *Worker) handler(props HandlerProperties) http.Handler {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
@@ -71,6 +71,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		tofuToken := si.lookupSessionResponse.GetTofuToken()
 		version := si.lookupSessionResponse.GetVersion()
 		endpoint := si.lookupSessionResponse.GetEndpoint()
+		//userId := si.lookupSessionResponse.GetAuthorization()
 		sessStatus := si.status
 		si.RUnlock()
 
@@ -132,7 +133,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		var connsLeft int32
 		ci, connsLeft, err = w.authorizeConnection(r.Context(), sessionId)
 		if err != nil {
-			w.logger.Error("unable to authorize conneciton", "error", err)
+			w.logger.Error("unable to authorize connection", "error", err)
 			conn.Close(websocket.StatusInternalError, "unable to authorize connection")
 			return
 		}

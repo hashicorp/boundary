@@ -407,7 +407,8 @@ func TestArgon2Credential_New(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(got)
 
-			got.encrypt(context.Background(), wrapper)
+			err = got.encrypt(context.Background(), wrapper)
+			require.NoError(err)
 			err = rw.Create(context.Background(), got)
 			assert.NoError(err)
 

@@ -5,6 +5,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
@@ -32,61 +33,51 @@ func TestList(t *testing.T) {
 
 	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	amClient := authmethods.NewClient(client)
-	amResult, apiErr, err := amClient.Create(tc.Context(), "password", org.GetPublicId())
+	amResult, err := amClient.Create(tc.Context(), "password", org.GetPublicId())
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(amResult)
 	amId = amResult.Item.Id
 
 	rolesClient := roles.NewClient(client)
-	role, apiErr, err := rolesClient.Create(tc.Context(), org.GetPublicId())
+	role, err := rolesClient.Create(tc.Context(), org.GetPublicId())
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(role)
-	role, apiErr, err = rolesClient.AddPrincipals(tc.Context(), role.Item.Id, 0, []string{"u_anon"}, roles.WithAutomaticVersioning(true))
+	role, err = rolesClient.AddPrincipals(tc.Context(), role.Item.Id, 0, []string{"u_anon"}, roles.WithAutomaticVersioning(true))
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(role)
-	role, apiErr, err = rolesClient.AddGrants(tc.Context(), role.Item.Id, 0, []string{"type=auth-method;actions=authenticate"}, roles.WithAutomaticVersioning(true))
+	role, err = rolesClient.AddGrants(tc.Context(), role.Item.Id, 0, []string{"type=auth-method;actions=authenticate"}, roles.WithAutomaticVersioning(true))
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(role)
 
 	acctClient := accounts.NewClient(client)
-	acct, apiErr, err := acctClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName("user"), accounts.WithPasswordAccountPassword("passpass"))
+	acct, err := acctClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName("user"), accounts.WithPasswordAccountPassword("passpass"))
 	require.NoError(err)
-	require.Nil(apiErr)
 	require.NotNil(acct)
 
 	tokens := authtokens.NewClient(client)
 
-	atl, apiErr, err := tokens.List(tc.Context(), org.GetPublicId())
+	atl, err := tokens.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
-	assert.Nil(apiErr)
 	assert.Empty(atl.Items)
 
 	var expected []*authtokens.AuthToken
 	methods := authmethods.NewClient(client)
 
-	at, apiErr, err := methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
+	at, err := methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
-	assert.Nil(apiErr)
 	expected = append(expected, at.Item)
 
-	atl, apiErr, err = tokens.List(tc.Context(), org.GetPublicId())
+	atl, err = tokens.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
-	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(atl.Items))
 
 	for i := 1; i < 10; i++ {
-		at, apiErr, err = methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
+		at, err = methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
 		require.NoError(err)
-		assert.Nil(apiErr)
 		expected = append(expected, at.Item)
 	}
-	atl, apiErr, err = tokens.List(tc.Context(), org.GetPublicId())
+	atl, err = tokens.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
-	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(atl.Items))
 }
 
@@ -129,18 +120,15 @@ func TestCrud(t *testing.T) {
 	tokens := authtokens.NewClient(client)
 	methods := authmethods.NewClient(client)
 
-	want, apiErr, err := methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
+	want, err := methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
-	assert.Empty(apiErr)
 
-	at, apiErr, err := tokens.Read(tc.Context(), want.Item.Id)
+	at, err := tokens.Read(tc.Context(), want.Item.Id)
 	require.NoError(err)
-	assert.Nil(apiErr)
 	assert.EqualValues(comparableResource(want.Item), comparableResource(at.Item))
 
-	_, _, err = tokens.Delete(tc.Context(), at.Item.Id)
+	_, err = tokens.Delete(tc.Context(), at.Item.Id)
 	require.NoError(err)
-	assert.Nil(apiErr)
 }
 
 func TestErrors(t *testing.T) {
@@ -153,13 +141,15 @@ func TestErrors(t *testing.T) {
 	client.SetToken(token.Token)
 	tokens := authtokens.NewClient(client)
 
-	_, apiErr, err := tokens.Read(tc.Context(), authtoken.AuthTokenPrefix+"_doesntexis")
-	require.NoError(err)
-	assert.NotNil(apiErr)
+	_, err := tokens.Read(tc.Context(), authtoken.AuthTokenPrefix+"_doesntexis")
+	require.Error(err)
+	apiErr := api.AsServerError(err)
+	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
-	_, apiErr, err = tokens.Read(tc.Context(), "invalid id")
-	require.NoError(err)
-	assert.NotNil(apiErr)
+	_, err = tokens.Read(tc.Context(), "invalid id")
+	require.Error(err)
+	apiErr = api.AsServerError(err)
+	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 }
