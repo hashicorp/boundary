@@ -31,7 +31,7 @@ export default function BrandedCta(props) {
                   linkType={linkType}
                   theme={{
                     variant: buttonVariant,
-                    brand: 'neutral',
+                    brand: 'red',
                     background: 'light',
                   }}
                   title={link.text}
