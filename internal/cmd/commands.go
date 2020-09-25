@@ -244,6 +244,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "decrypt",
 			}, nil
 		},
+		"config get-token": func() (cli.Command, error) {
+			return &config.TokenCommand{
+				Command: base.NewCommand(ui),
+				Func:    "get-token",
+			}, nil
+		},
 
 		"database": func() (cli.Command, error) {
 			return &database.Command{
