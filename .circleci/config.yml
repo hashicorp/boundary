@@ -4,7 +4,7 @@ orbs:
 jobs:
   build:
     machine:
-      image: 'cimg/go:1.15.2'
+      image: 'ubuntu-1604:201903-01'
     working_directory: ~/boundary
     steps:
     - add_ssh_keys:

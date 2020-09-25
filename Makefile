@@ -105,9 +105,8 @@ website-install:
 website-start:
 	@npm start --prefix website/
 
-#test-ci: install-go
-test-ci:
-	go test ./... -v $(TESTARGS) -timeout 120m
+test-ci: install-go
+	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
 install-go:
 	./ci/goinstall.sh
