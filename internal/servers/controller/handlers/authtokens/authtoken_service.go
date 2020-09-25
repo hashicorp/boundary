@@ -15,8 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // Service handles request as described by the pbs.AuthTokenServiceServer interface.
@@ -100,7 +98,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthToken, err
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
 		}
-		return nil, err
+		return nil, fmt.Errorf("unable to list auth tokens: %w", err)
 	}
 	if u == nil {
 		return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
@@ -118,7 +116,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
 		}
-		return false, status.Errorf(codes.Internal, "Unable to delete user: %v.", err)
+		return false, fmt.Errorf("unable to delete user: %w", err)
 	}
 	return rows > 0, nil
 }

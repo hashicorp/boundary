@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
@@ -47,7 +48,15 @@ func (d *OutputStringError) parseRequest() {
 	for k, v := range d.Request.Header {
 		for _, h := range v {
 			if strings.ToLower(k) == "authorization" {
-				h = `Bearer <token>`
+				env := os.Getenv("BOUNDARY_TOKEN_NAME")
+				switch env {
+				case "none":
+					h = `Bearer <token>`
+				case "":
+					h = `Bearer $(boundary config get-token)`
+				default:
+					h = fmt.Sprintf("Bearer $(boundary config get-token -token-name %s)", env)
+				}
 			}
 			d.parsedCurlString = fmt.Sprintf("%s-H \"%s: %s\" ", d.parsedCurlString, k, h)
 		}

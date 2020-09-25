@@ -3764,7 +3764,8 @@ begin;
     immutable_columns
   before
   update on session_state
-    for each row execute procedure immutable_columns('session_id', 'start_time', 'previous_end_time');
+    for each row execute procedure immutable_columns('session_id', 'state', 'start_time', 'previous_end_time');
+
     
   create or replace function
     insert_session_state()
@@ -4101,7 +4102,7 @@ begin;
     immutable_columns
   before
   update on session_connection_state
-    for each row execute procedure immutable_columns('connection_id', 'state', 'start_time');
+    for each row execute procedure immutable_columns('connection_id', 'state', 'start_time', 'previous_end_time');
 
   create or replace function
     insert_session_connection_state()

@@ -2,9 +2,11 @@ package host_sets
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
@@ -15,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -206,7 +207,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	h, err := static.NewHostSet(catalogId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build host set for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host set for creation: %v.", err)
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
@@ -214,10 +215,14 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	out, err := repo.CreateSet(ctx, scopeId, h)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create host set: %v.", err)
+		if db.IsUniqueError(err) || errors.Is(err, db.ErrNotUnique) {
+			// Push this error through so the error interceptor can interpret it correctly.
+			return nil, err
+		}
+		return nil, fmt.Errorf("unable to create host set: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create host set but no error returned from repository.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host set but no error returned from repository.")
 	}
 	return toProto(out, nil), nil
 }
@@ -232,7 +237,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	h, err := static.NewHostSet(catalogId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build host set for update: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host set for update: %v.", err)
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -245,10 +250,10 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	out, m, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update host set: %v.", err)
+		return nil, fmt.Errorf("unable to update host set: %w.", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Host set %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Host set %q doesn't exist or incorrect version provided.", id)
 	}
 	return toProto(out, m), nil
 }
@@ -260,7 +265,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	}
 	rows, err := repo.DeleteSet(ctx, scopeId, id)
 	if err != nil {
-		return false, status.Errorf(codes.Internal, "Unable to delete host: %v.", err)
+		return false, fmt.Errorf("unable to delete host: %w", err)
 	}
 	return rows > 0, nil
 }
@@ -288,14 +293,15 @@ func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	}
 	_, err = repo.AddSetMembers(ctx, scopeId, setId, version, hostIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to add hosts to host set: %v.", err)
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add hosts to host set: %v.", err)
 	}
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up host set: %v.", err)
+		return nil, fmt.Errorf("unable to look up host set after adding hosts: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup host set after adding hosts to it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after adding hosts to it.")
 	}
 	return toProto(out, m), nil
 }
@@ -307,15 +313,16 @@ func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	}
 	_, _, err = repo.SetSetMembers(ctx, scopeId, setId, version, hostIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to set hosts in host set: %v.", err)
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set hosts in host set: %v.", err)
 	}
 
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up host set: %v.", err)
+		return nil, fmt.Errorf("unable to look up host set after setting hosts: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup host set after setting hosts for it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after setting hosts for it.")
 	}
 	return toProto(out, m), nil
 }
@@ -327,14 +334,15 @@ func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostId
 	}
 	_, err = repo.DeleteSetMembers(ctx, scopeId, setId, version, hostIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to remove hosts from host set: %v.", err)
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove hosts from host set: %v.", err)
 	}
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up host set: %v.", err)
+		return nil, fmt.Errorf("unable to look up host set: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup host set after removing hosts from it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after removing hosts from it.")
 	}
 	return toProto(out, m), nil
 }

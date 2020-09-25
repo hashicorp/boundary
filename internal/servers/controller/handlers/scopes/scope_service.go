@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -175,7 +174,7 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 		iamScope, err = iam.NewProject(parentScope.GetId(), opts...)
 	}
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build new scope for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build new scope for creation: %v.", err)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -183,10 +182,10 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 	}
 	out, err := repo.CreateScope(ctx, iamScope, authResults.UserId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create scope: %v.", err)
+		return nil, fmt.Errorf("unable to create scope: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create scope but no error returned from repository.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create scope but no error returned from repository.")
 	}
 	return ToProto(out), nil
 }
@@ -210,7 +209,7 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 		iamScope, err = iam.NewProject(parentScope.GetId(), opts...)
 	}
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build scope for update: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build scope for update: %v.", err)
 	}
 	iamScope.PublicId = scopeId
 	dbMask := maskManager.Translate(mask)
@@ -223,10 +222,10 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	}
 	out, rowsUpdated, err := repo.UpdateScope(ctx, iamScope, version, dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update project: %v.", err)
+		return nil, fmt.Errorf("unable to update project: %w", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Scope %q doesn't exist.", scopeId)
+		return nil, handlers.NotFoundErrorf("Scope %q doesn't exist or incorrect version provided.", scopeId)
 	}
 	return ToProto(out), nil
 }
@@ -238,7 +237,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, erro
 	}
 	rows, err := repo.DeleteScope(ctx, scopeId)
 	if err != nil {
-		return false, status.Errorf(codes.Internal, "Unable to delete scope: %v.", err)
+		return false, fmt.Errorf("unable to delete scope: %w", err)
 	}
 	return rows > 0, nil
 }
@@ -264,10 +263,11 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope,
 	case strings.HasPrefix(scopeId, scope.Org.Prefix()):
 		scps, err = repo.ListProjects(ctx, scopeId)
 	default:
-		return nil, status.Errorf(codes.InvalidArgument, "Invalid scope ID given for listing")
+		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+			map[string]string{"scope_id": "Invalid id for listing."})
 	}
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to list scopes: %v", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to list scopes: %v", err)
 	}
 
 	var outPl []*pb.Scope
@@ -357,7 +357,7 @@ func validateGetRequest(req *pbs.GetScopeRequest) error {
 		badFields["id"] = "Invalidly formatted scope id."
 	}
 	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
 }
@@ -393,7 +393,7 @@ func validateCreateRequest(req *pbs.CreateScopeRequest) error {
 		badFields["version"] = "This cannot be specified at create time."
 	}
 	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
 }
@@ -427,7 +427,7 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	item := req.GetItem()
 	if item == nil {
 		if len(badFields) > 0 {
-			return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+			return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 		}
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
@@ -446,7 +446,7 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 
 	return nil
@@ -470,7 +470,7 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 		badFields["id"] = "Invalidly formatted scope id."
 	}
 	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
 }
@@ -478,7 +478,7 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 func validateListRequest(req *pbs.ListScopesRequest) error {
 	badFields := map[string]string{}
 	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
 }

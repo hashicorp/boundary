@@ -9,11 +9,15 @@
 export default [
   {
     category: 'getting-started',
-    content: ['building', 'run-and-login', 'connect-to-target'],
+    content: ['run-and-login', 'connect-to-target'],
   },
   {
     category: 'installing',
     content: ['production'],
+  },
+  {
+    category: 'developing',
+    content: ['building'],
   },
   {
     category: 'concepts',
