@@ -6,6 +6,13 @@
 version: 2.1
 
 executors:
+  builder:
+    machine:
+      image: "ubuntu-1604:202007-01"
+    environment:
+      PRODUCT_REVISION: ""
+      AUTO_INSTALL_TOOLS: 'YES'
+      BUILDKIT_PROGRESS: plain
   releaser:
     docker:
       - image: circleci/buildpack-deps
@@ -28,11 +35,9 @@ workflows:
             - linux_amd64_package
 jobs:
   cache-builder-images:
-    executor: releaser
+    executor: builder
     steps:
       
-      - setup_remote_docker:
-          version: 19.03.12
       - add_ssh_keys:
           fingerprints:
             # hashicorp-ci github user. TODO: Make this configurable.
@@ -99,13 +104,11 @@ jobs:
           paths:
             - .buildcache/archives/00-install-deps-2d16c6b83793b47aad77bb2e6ebb2ff70b64c1e9.tar.gz
   darwin_amd64_package:
-    executor: releaser
+    executor: builder
     environment:
       - PACKAGE_SPEC_ID: 6c6c1ed6a95bf40cd3440ca629be711e52983cd1
     steps:
       
-      - setup_remote_docker:
-          version: 19.03.12
       - add_ssh_keys:
           fingerprints:
             # hashicorp-ci github user. TODO: Make this configurable.
@@ -159,13 +162,11 @@ jobs:
       # The range should only iterate over a single layer.
 
   linux_amd64_package:
-    executor: releaser
+    executor: builder
     environment:
       - PACKAGE_SPEC_ID: 69eebe797eef586c6713cc32c1ad0186a5268f51
     steps:
       
-      - setup_remote_docker:
-          version: 19.03.12
       - add_ssh_keys:
           fingerprints:
             # hashicorp-ci github user. TODO: Make this configurable.
