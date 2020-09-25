@@ -148,6 +148,9 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
+		sliceSubTypes: map[string]string{
+			"Accounts": "accountIds",
+		},
 		pathArgs:            []string{"user"},
 		versionEnabled:      true,
 		createResponseTypes: true,
