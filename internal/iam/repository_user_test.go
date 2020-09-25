@@ -1382,12 +1382,12 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "no-accounts",
+			name: "no-accounts-no-changes",
 			args: args{
 				userId:       user.PublicId,
 				accountIdsFn: func() ([]string, []string) { return nil, nil },
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
