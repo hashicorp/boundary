@@ -1,6 +1,6 @@
 begin;
 
-  create or replace function rollup_connections(p_session_id wt_public_id)
+  create or replace function wh_rollup_connections(p_session_id wt_public_id)
     returns void
   as $$
   declare
@@ -26,7 +26,11 @@ begin;
   end;
   $$ language plpgsql;
 
-  create or replace function insert_wh_session_fact()
+  --
+  -- Session triggers
+  --
+
+  create or replace function wh_insert_session()
     returns trigger
   as $$
   declare
@@ -61,12 +65,16 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger
-    insert_wh_session_fact
-  after insert on session
-    for each row execute function insert_wh_session_fact();
+  create trigger wh_insert_session
+    after insert on session
+    for each row
+    execute function wh_insert_session();
 
-  create or replace function insert_wh_session_connection_fact()
+  --
+  -- Session Connection triggers
+  --
+
+  create or replace function wh_insert_session_connection()
     returns trigger
   as $$
   declare
@@ -115,17 +123,17 @@ begin;
       from authorized_timestamp,
            session_dimension
       returning * into strict new_row;
-    perform rollup_connections(new.session_id);
+    perform wh_rollup_connections(new.session_id);
     return null;
   end;
   $$ language plpgsql;
 
-  create trigger
-    insert_wh_session_connection_fact
-  after insert on session_connection
-    for each row execute function insert_wh_session_connection_fact();
+  create trigger wh_insert_session_connection
+    after insert on session_connection
+    for each row
+    execute function wh_insert_session_connection();
 
-  create or replace function update_wh_session_connection_fact()
+  create or replace function wh_update_session_connection()
     returns trigger
   as $$
   declare
@@ -140,15 +148,14 @@ begin;
                bytes_down               = new.bytes_down
          where connection_id = new.public_id
      returning * into strict updated_row;
-    perform rollup_connections(new.session_id);
+    perform wh_rollup_connections(new.session_id);
     return null;
   end;
   $$ language plpgsql;
 
-  create trigger
-    update_wh_session_connection_fact
-  after update on session_connection
-    for each row execute function update_wh_session_connection_fact();
-
+  create trigger wh_update_session_connection
+    after update on session_connection
+    for each row
+    execute function wh_update_session_connection();
 
 commit;

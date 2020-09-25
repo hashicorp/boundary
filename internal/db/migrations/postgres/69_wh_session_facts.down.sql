@@ -1,14 +1,14 @@
 begin;
 
-  drop trigger update_wh_session_connection_fact on session_connection;
-  drop function update_wh_session_connection_fact;
+  drop trigger wh_update_session_connection on session_connection;
+  drop function wh_update_session_connection;
 
-  drop trigger insert_wh_session_connection_fact on session_connection;
-  drop function insert_wh_session_connection_fact;
+  drop trigger wh_insert_session_connection on session_connection;
+  drop function wh_insert_session_connection;
 
-  drop trigger insert_wh_session_fact on session;
-  drop function insert_wh_session_fact;
+  drop trigger wh_insert_session on session;
+  drop function wh_insert_session;
 
-  drop function rollup_connections;
+  drop function wh_rollup_connections;
 
 commit;
