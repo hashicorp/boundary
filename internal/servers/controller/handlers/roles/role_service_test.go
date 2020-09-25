@@ -1426,6 +1426,15 @@ func TestAddGrants(t *testing.T) {
 		err  error
 	}{
 		{
+			name: "Bad Version",
+			req: &pbs.AddRoleGrantsRequest{
+				Id:           role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      role.GetVersion() + 2,
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
 			name: "Bad Role Id",
 			req: &pbs.AddRoleGrantsRequest{
 				Id:           "bad id",
@@ -1529,6 +1538,15 @@ func TestSetGrants(t *testing.T) {
 		err  error
 	}{
 		{
+			name: "Bad Version",
+			req: &pbs.SetRoleGrantsRequest{
+				Id:           role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      role.GetVersion() + 2,
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
 			name: "Bad Role Id",
 			req: &pbs.SetRoleGrantsRequest{
 				Id:           "bad id",
@@ -1631,6 +1649,15 @@ func TestRemoveGrants(t *testing.T) {
 
 		err error
 	}{
+		{
+			name: "Bad Version",
+			req: &pbs.RemoveRoleGrantsRequest{
+				Id:           role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      role.GetVersion() + 2,
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
 		{
 			name: "Bad Role Id",
 			req: &pbs.RemoveRoleGrantsRequest{

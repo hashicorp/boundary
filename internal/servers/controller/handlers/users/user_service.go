@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -161,7 +160,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 	}
 	u, err := iam.NewUser(orgId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build user for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -169,10 +168,10 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 	}
 	out, err := repo.CreateUser(ctx, u)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create user: %v.", err)
+		return nil, fmt.Errorf("unable to create user: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create user but no error returned from repository.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create user but no error returned from repository.")
 	}
 	return toProto(out), nil
 }
@@ -188,7 +187,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	version := item.GetVersion()
 	u, err := iam.NewUser(orgId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build user for update: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for update: %v.", err)
 	}
 	u.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -201,10 +200,10 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	}
 	out, _, rowsUpdated, err := repo.UpdateUser(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update user: %v.", err)
+		return nil, fmt.Errorf("unable to update user: %w", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("User %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("User %q doesn't exist or incorrect version provided.", id)
 	}
 	return toProto(out), nil
 }
@@ -219,7 +218,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
 		}
-		return false, status.Errorf(codes.Internal, "Unable to delete user: %v.", err)
+		return false, fmt.Errorf("unable to delete user: %w", err)
 	}
 	return rows > 0, nil
 }

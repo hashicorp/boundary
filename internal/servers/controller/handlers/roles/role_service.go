@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -267,7 +266,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	}
 	u, err := iam.NewRole(scopeId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build role for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build role for creation: %v.", err)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -275,10 +274,10 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	}
 	out, err := repo.CreateRole(ctx, u)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create role: %v.", err)
+		return nil, fmt.Errorf("unable to create role: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create role but no error returned from repository.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create role but no error returned from repository.")
 	}
 	return toProto(out, nil, nil), nil
 }
@@ -298,7 +297,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 
 	u, err := iam.NewRole(scopeId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build role for update: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build role for update: %v.", err)
 	}
 	u.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -311,12 +310,11 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, pr, gr, rowsUpdated, err := repo.UpdateRole(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update role: %v.", err)
+		return nil, fmt.Errorf("unable to update role: %w", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Role %q doesn't exist or incorrect version provided.", id)
 	}
-	// TODO: Attach principals and grants to UpdateRole response
 	return toProto(out, pr, gr), nil
 }
 
@@ -330,7 +328,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
 		}
-		return false, status.Errorf(codes.Internal, "Unable to delete role: %v.", err)
+		return false, fmt.Errorf("unable to delete role: %w", err)
 	}
 	return rows > 0, nil
 }
@@ -359,14 +357,15 @@ func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, princip
 	}
 	_, err = repo.AddPrincipalRoles(ctx, roleId, version, principalIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to add principals to role: %v.", err)
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add principals to role: %v.", err)
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up role: %v.", err)
+		return nil, fmt.Errorf("unable to look up role after adding principals: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after adding principals to it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after adding principals to it.")
 	}
 	return toProto(out, pr, roleGrants), nil
 }
@@ -378,14 +377,15 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, princip
 	}
 	_, _, err = repo.SetPrincipalRoles(ctx, roleId, version, principalIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to set principals on role: %v.", err)
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set principals on role: %v.", err)
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up role: %v.", err)
+		return nil, fmt.Errorf("unable to look up role after setting principals: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after setting principals for it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after setting principals for it.")
 	}
 	return toProto(out, pr, roleGrants), nil
 }
@@ -397,14 +397,15 @@ func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, prin
 	}
 	_, err = repo.DeletePrincipalRoles(ctx, roleId, version, principalIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to remove principals from role: %v.", err)
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove principals from role: %v.", err)
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up role: %v.", err)
+		return nil, fmt.Errorf("unable to look up role after removing principals: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after removing principals from it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after removing principals from it.")
 	}
 	return toProto(out, pr, roleGrants), nil
 }
@@ -416,14 +417,15 @@ func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []st
 	}
 	_, err = repo.AddRoleGrants(ctx, roleId, version, grants)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to add grants to role: %v.", err)
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add grants to role: %v.", err)
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "Error looking up role after adding grants to it.")
+		return nil, fmt.Errorf("unable to look up role after adding grants: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after adding grants to it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after adding grants to it.")
 	}
 	return toProto(out, pr, roleGrants), nil
 }
@@ -439,14 +441,15 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 	}
 	_, _, err = repo.SetRoleGrants(ctx, roleId, version, grants)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to set grants on role: %v.", err)
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set grants on role: %v.", err)
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "Error looking up role after setting grants on it.")
+		return nil, fmt.Errorf("unable to look up role after setting grants: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after setting grants on it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after setting grants on it.")
 	}
 	return toProto(out, pr, roleGrants), nil
 }
@@ -458,14 +461,15 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 	}
 	_, err = repo.DeleteRoleGrants(ctx, roleId, version, grants)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to remove grants from role: %v.", err)
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove grants from role: %v", err)
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "Error looking up role after removing grants from it.")
+		return nil, fmt.Errorf("unable to look up role after removing grants: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after removing grants from it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after removing grants from it.")
 	}
 	return toProto(out, pr, roleGrants), nil
 }

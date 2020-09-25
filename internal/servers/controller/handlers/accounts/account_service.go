@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -187,7 +186,8 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*pb.Account, error) {
 	pwAttrs := &pb.PasswordAccountAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
+		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+			map[string]string{"attributes": "Attribute fields do not match the expected format."})
 	}
 	opts := []password.Option{password.WithLoginName(pwAttrs.GetLoginName())}
 	if item.GetName() != nil {
@@ -198,7 +198,7 @@ func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string,
 	}
 	a, err := password.NewAccount(authMethodId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build user for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -211,10 +211,10 @@ func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string,
 	}
 	out, err := repo.CreateAccount(ctx, scopeId, a, createOpts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create user: %v.", err)
+		return nil, fmt.Errorf("unable to create user: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create user but no error returned from repository.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create user but no error returned from repository.")
 	}
 	return toProto(out)
 }
@@ -229,13 +229,13 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id strin
 	}
 	u, err := password.NewAccount(authMethId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build auth method for update: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method for update: %v.", err)
 	}
 	u.PublicId = id
 
 	pwAttrs := &pb.PasswordAccountAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
 	}
 	if pwAttrs.GetLoginName() != "" {
 		u.LoginName = pwAttrs.GetLoginName()
@@ -254,13 +254,13 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id strin
 	if err != nil {
 		switch {
 		case errors.Is(err, password.ErrTooShort):
-			return nil, handlers.InvalidArgumentErrorf("Error in provided request",
+			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"attributes.login_name": "Length too short."})
 		}
-		return nil, status.Errorf(codes.Internal, "Unable to update auth method: %v.", err)
+		return nil, fmt.Errorf("unable to update auth method: %w", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", id)
 	}
 	return toProto(out)
 }
@@ -275,7 +275,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
 		}
-		return false, status.Errorf(codes.Internal, "Unable to delete account: %v.", err)
+		return false, fmt.Errorf("unable to delete account: %w", err)
 	}
 	return rows > 0, nil
 }
@@ -317,10 +317,10 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"new_password": "New password equal to current password."})
 		}
-		return nil, status.Errorf(codes.Internal, "Unable to change password: %v.", err)
+		return nil, fmt.Errorf( "unable to change password: %w", err)
 	}
 	if out == nil {
-		return nil, status.Errorf(codes.PermissionDenied, "Failed to change password.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "Failed to change password.")
 	}
 	return toProto(out)
 }
@@ -339,7 +339,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"password": "Password is too short."})
 		}
-		return nil, status.Errorf(codes.Internal, "Unable to set password: %v.", err)
+		return nil, fmt.Errorf("unable to set password: %w", err)
 	}
 	return toProto(out)
 }
@@ -403,7 +403,7 @@ func toProto(in *password.Account) (*pb.Account, error) {
 	if st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: in.GetLoginName()}); err == nil {
 		out.Attributes = st
 	} else {
-		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
 	}
 	return &out, nil
 }
