@@ -41,26 +41,23 @@ func TestRecoveryNonces(t *testing.T) {
 	// Token 1, try 1
 	client.SetToken(token1)
 	roleClient := roles.NewClient(client)
-	_, apiErr, err := roleClient.Create(tc.Context(), scope.Global.String())
+	_, err = roleClient.Create(tc.Context(), scope.Global.String())
 	require.NoError(err)
-	assert.Nil(apiErr)
 	nonces, err := repo.ListNonces(tc.Context())
 	require.NoError(err)
 	assert.Len(nonces, 1)
 
 	// Token 1, try 2
-	_, apiErr, err = roleClient.Create(tc.Context(), scope.Global.String())
-	require.NoError(err)
-	assert.NotNil(apiErr)
+	_, err = roleClient.Create(tc.Context(), scope.Global.String())
+	require.Error(err)
 	nonces, err = repo.ListNonces(tc.Context())
 	require.NoError(err)
 	assert.Len(nonces, 1)
 
 	// Token 2
 	roleClient.ApiClient().SetToken(token2)
-	_, apiErr, err = roleClient.Create(tc.Context(), scope.Global.String())
+	_, err = roleClient.Create(tc.Context(), scope.Global.String())
 	require.NoError(err)
-	assert.Nil(apiErr)
 	nonces, err = repo.ListNonces(tc.Context())
 	require.NoError(err)
 	assert.Len(nonces, 2)
@@ -74,9 +71,8 @@ func TestRecoveryNonces(t *testing.T) {
 	// And finally, make sure they still can't be used
 	for _, token := range []string{token1, token2} {
 		roleClient.ApiClient().SetToken(token)
-		_, apiErr, err = roleClient.Create(tc.Context(), scope.Global.String())
-		require.NoError(err)
-		assert.NotNil(apiErr)
+		_, err = roleClient.Create(tc.Context(), scope.Global.String())
+		require.Error(err)
 		nonces, err = repo.ListNonces(tc.Context())
 		require.NoError(err)
 		assert.Len(nonces, 0)

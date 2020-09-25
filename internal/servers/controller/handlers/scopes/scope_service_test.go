@@ -2,6 +2,7 @@ package scopes_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -14,11 +15,11 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -89,55 +90,52 @@ func TestGet(t *testing.T) {
 		scopeId string
 		req     *pbs.GetScopeRequest
 		res     *pbs.GetScopeResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "Get an existing org",
 			scopeId: "global",
 			req:     &pbs.GetScopeRequest{Id: org.GetPublicId()},
 			res:     &pbs.GetScopeResponse{Item: oScope},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Get a non existing org",
 			scopeId: "global",
 			req:     &pbs.GetScopeRequest{Id: "o_DoesntExis"},
 			res:     nil,
-			errCode: codes.NotFound,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name:    "Get an existing project",
 			scopeId: org.GetPublicId(),
 			req:     &pbs.GetScopeRequest{Id: proj.GetPublicId()},
 			res:     &pbs.GetScopeResponse{Item: pScope},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Get a non existing project",
 			scopeId: org.GetPublicId(),
 			req:     &pbs.GetScopeRequest{Id: "p_DoesntExis"},
 			res:     nil,
-			errCode: codes.NotFound,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name:    "Wrong id prefix",
 			scopeId: org.GetPublicId(),
 			req:     &pbs.GetScopeRequest{Id: "j_1234567890"},
 			res:     nil,
-			errCode: codes.InvalidArgument,
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "space in id",
 			scopeId: org.GetPublicId(),
 			req:     &pbs.GetScopeRequest{Id: "p_1 23456789"},
 			res:     nil,
-			errCode: codes.InvalidArgument,
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
-			require := require.New(t)
+			assert, require := assert.New(t), require.New(t)
 
 			req := proto.Clone(toMerge).(*pbs.GetScopeRequest)
 			proto.Merge(req, tc.req)
@@ -146,7 +144,10 @@ func TestGet(t *testing.T) {
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.GetScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "GetScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.err)
+			}
 			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "GetScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
 	}
@@ -183,21 +184,19 @@ func TestList(t *testing.T) {
 		scopeId string
 		req     *pbs.ListScopesRequest
 		res     *pbs.ListScopesResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "List initial orgs",
 			scopeId: scope.Global.String(),
 			req:     &pbs.ListScopesRequest{ScopeId: "global"},
 			res:     &pbs.ListScopesResponse{Items: initialOrgs},
-			errCode: codes.OK,
 		},
 		{
 			name:    "List No Projects",
 			scopeId: oNoProjects.GetPublicId(),
 			req:     &pbs.ListScopesRequest{ScopeId: oNoProjects.GetPublicId()},
 			res:     &pbs.ListScopesResponse{},
-			errCode: codes.OK,
 		},
 	}
 	for _, tc := range cases {
@@ -207,7 +206,10 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new role service.")
 
 			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q\nwanted\n%q", tc.req, got, tc.res)
 		})
 	}
@@ -254,21 +256,19 @@ func TestList(t *testing.T) {
 		scopeId string
 		req     *pbs.ListScopesRequest
 		res     *pbs.ListScopesResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "List Many Orgs",
 			scopeId: scope.Global.String(),
 			req:     &pbs.ListScopesRequest{ScopeId: "global"},
 			res:     &pbs.ListScopesResponse{Items: wantOrgs},
-			errCode: codes.OK,
 		},
 		{
 			name:    "List Many Projects",
 			scopeId: oWithProjects.GetPublicId(),
 			req:     &pbs.ListScopesRequest{ScopeId: oWithProjects.GetPublicId()},
 			res:     &pbs.ListScopesResponse{Items: wantProjects},
-			errCode: codes.OK,
 		},
 	}
 	for _, tc := range cases {
@@ -278,25 +278,27 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new role service.")
 
 			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestDelete(t *testing.T) {
-	require := require.New(t)
 	org, proj, repo := createDefaultScopesAndRepo(t)
 
 	s, err := scopes.NewService(repo)
-	require.NoError(err, "Error when getting new project service.")
+	require.NoError(t, err, "Error when getting new project service.")
 
 	cases := []struct {
 		name    string
 		scopeId string
 		req     *pbs.DeleteScopeRequest
 		res     *pbs.DeleteScopeResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "Delete an Existing Project",
@@ -304,8 +306,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: proj.GetPublicId(),
 			},
-			res:     &pbs.DeleteScopeResponse{},
-			errCode: codes.OK,
+			res: &pbs.DeleteScopeResponse{},
 		},
 		{
 			name:    "Delete bad project id Project",
@@ -313,7 +314,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: "p_doesntexis",
 			},
-			errCode: codes.NotFound,
+			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name:    "Bad Project Id formatting",
@@ -321,7 +322,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: "bad_format",
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Delete an Existing Org",
@@ -329,8 +330,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: org.GetPublicId(),
 			},
-			res:     &pbs.DeleteScopeResponse{},
-			errCode: codes.OK,
+			res: &pbs.DeleteScopeResponse{},
 		},
 		{
 			name:    "Delete bad org id Org",
@@ -338,7 +338,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: "p_doesntexis",
 			},
-			errCode: codes.NotFound,
+			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name:    "Bad Org Id formatting",
@@ -346,22 +346,24 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: "bad_format",
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			got, gErr := s.DeleteScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "DeleteScope(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "DeleteScope(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 			assert.EqualValuesf(tc.res, got, "DeleteScope(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestDelete_twice(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	assert, require := assert.New(t), require.New(t)
 	org, proj, repo := createDefaultScopesAndRepo(t)
 
 	s, err := scopes.NewService(repo)
@@ -374,7 +376,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteScope(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.NotFound, status.Code(gErr), "Expected not found for the second delete.")
+	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected not found for the second delete.")
 
 	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(scope.Global.String()))
 	req = &pbs.DeleteScopeRequest{
@@ -384,7 +386,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteScope(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.NotFound, status.Code(gErr), "Expected not found for the second delete.")
+	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected not found for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -410,7 +412,7 @@ func TestCreate(t *testing.T) {
 		scopeId string
 		req     *pbs.CreateScopeRequest
 		res     *pbs.CreateScopeResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "Create a valid Project",
@@ -433,7 +435,6 @@ func TestCreate(t *testing.T) {
 					Type:        scope.Project.String(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Create a valid Org",
@@ -456,7 +457,6 @@ func TestCreate(t *testing.T) {
 					Type:        scope.Org.String(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Create a valid Project with type specified",
@@ -478,7 +478,6 @@ func TestCreate(t *testing.T) {
 					Type:        scope.Project.String(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Create a valid Org with type specified",
@@ -500,7 +499,6 @@ func TestCreate(t *testing.T) {
 					Type:        scope.Org.String(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Project with bad type specified",
@@ -512,7 +510,7 @@ func TestCreate(t *testing.T) {
 					Type:        scope.Org.String(),
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Org with bad type specified",
@@ -524,7 +522,7 @@ func TestCreate(t *testing.T) {
 					Type:        scope.Project.String(),
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Can't specify Id",
@@ -532,8 +530,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateScopeRequest{Item: &pb.Scope{
 				Id: "not allowed to be set",
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Can't specify Created Time",
@@ -541,8 +539,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateScopeRequest{Item: &pb.Scope{
 				CreatedTime: ptypes.TimestampNow(),
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Can't specify Update Time",
@@ -550,8 +548,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateScopeRequest{Item: &pb.Scope{
 				UpdatedTime: ptypes.TimestampNow(),
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -586,7 +584,10 @@ func TestCreate(t *testing.T) {
 					assert.NotEmpty(userId)
 				}
 				got, gErr := s.CreateScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId), auth.WithUserId(userId)), req)
-				assert.Equal(tc.errCode, status.Code(gErr), "CreateScope(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+				if tc.err != nil {
+					require.Error(gErr)
+					assert.True(errors.Is(gErr, tc.err), "CreateScope(%+v) got error %v, wanted %v", req, gErr, tc.err)
+				}
 				if got != nil {
 					assert.Contains(got.GetUri(), tc.res.Uri)
 					switch tc.scopeId {
@@ -611,7 +612,7 @@ func TestCreate(t *testing.T) {
 						require.Len(roles, 1)
 						role := roles[0]
 						assert.Equal("on-scope-creation", role.GetName())
-						assert.Equal(fmt.Sprintf("Role created for administration of scope %s at its creation time", got.GetItem().GetId()), role.GetDescription())
+						assert.Equal(fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", got.GetItem().GetId(), userId), role.GetDescription())
 					}
 
 					// Clear all values which are hard to compare against.
@@ -668,7 +669,7 @@ func TestUpdate(t *testing.T) {
 		scopeId string
 		req     *pbs.UpdateScopeRequest
 		res     *pbs.UpdateScopeResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "Update an Existing Project",
@@ -694,7 +695,6 @@ func TestUpdate(t *testing.T) {
 					Type:        scope.Project.String(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Update an Existing Org",
@@ -720,7 +720,6 @@ func TestUpdate(t *testing.T) {
 					Type:        scope.Org.String(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Multiple Paths in single string",
@@ -745,7 +744,6 @@ func TestUpdate(t *testing.T) {
 					Type:        scope.Project.String(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "No Update Mask",
@@ -756,7 +754,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Cant modify type",
@@ -770,7 +768,7 @@ func TestUpdate(t *testing.T) {
 					Type: scope.Org.String(),
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "No Paths in Mask",
@@ -782,7 +780,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Only non-existant paths in Mask",
@@ -794,7 +792,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Unset Name",
@@ -817,7 +815,6 @@ func TestUpdate(t *testing.T) {
 					Type:        scope.Project.String(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Unset Description",
@@ -840,7 +837,6 @@ func TestUpdate(t *testing.T) {
 					Type:        scope.Project.String(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Update Only Name",
@@ -865,7 +861,6 @@ func TestUpdate(t *testing.T) {
 					Type:        scope.Project.String(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Update Only Description",
@@ -890,7 +885,6 @@ func TestUpdate(t *testing.T) {
 					Type:        scope.Project.String(),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name:    "Update a Non Existing Project",
@@ -905,7 +899,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.NotFound,
+			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name:    "Cant change Id",
@@ -921,8 +915,8 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Cant specify Created Time",
@@ -935,8 +929,8 @@ func TestUpdate(t *testing.T) {
 					CreatedTime: ptypes.TimestampNow(),
 				},
 			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Cant specify Updated Time",
@@ -949,8 +943,8 @@ func TestUpdate(t *testing.T) {
 					UpdatedTime: ptypes.TimestampNow(),
 				},
 			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -966,21 +960,24 @@ func TestUpdate(t *testing.T) {
 			switch tc.scopeId {
 			case scope.Global.String():
 				req = proto.Clone(orgToMerge).(*pbs.UpdateScopeRequest)
-				if tc.errCode == codes.OK {
+				if tc.err == nil {
 					defer resetOrg()
 				}
 			default:
 				ver = projVersion
 				tc.req.Item.Version = ver
 				req = proto.Clone(projToMerge).(*pbs.UpdateScopeRequest)
-				if tc.errCode == codes.OK {
+				if tc.err == nil {
 					defer resetProject()
 				}
 			}
 			proto.Merge(req, tc.req)
 
 			got, gErr := tested.UpdateScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "UpdateScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "UpdateScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.err)
+			}
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateScope response to be nil, but was %v", got)

@@ -8,12 +8,19 @@
 
 export default [
   {
-    category: 'introduction',
+    category: 'getting-started',
+    content: ['building', 'run-and-login', 'connect-to-target'],
+  },
+  {
+    category: 'installing',
+    content: ['production'],
+  },
+  {
+    category: 'concepts',
     content: [
       'security-model',
-      'reference-architecture',
       {
-        category: 'concepts',
+        category: 'domain-model',
         content: [
           'actions',
           'auth-methods',
@@ -35,8 +42,28 @@ export default [
     ],
   },
   {
-    category: 'installing',
-    content: ['dev-mode'],
+    category: 'configuration',
+    content: [
+      {
+        category: 'listener',
+        content: ['tcp'],
+      },
+      {
+        category: 'kms',
+        content: [
+          'aead',
+          'awskms',
+          'alicloudkms',
+          'azurekeyvault',
+          'gcpckms',
+          'ocikms',
+          'transit',
+        ],
+      },
+      'controller',
+      'worker',
+      'telemetry',
+    ],
   },
   {
     category: 'admin-console',
@@ -52,7 +79,12 @@ export default [
   },
   {
     category: 'releases',
-    content: ['release-notes', 'downloads'],
+    content: [
+      {
+        category: 'release-notes',
+        content: ['0_0_1'],
+      },
+    ],
   },
 
   '---',

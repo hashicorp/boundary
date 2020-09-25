@@ -32,4 +32,10 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withAddress = "test"
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithPublicId", func(t *testing.T) {
+		opts := getOpts(WithPublicId("test"))
+		testOpts := getDefaultOptions()
+		testOpts.withPublicId = "test"
+		assert.Equal(t, opts, testOpts)
+	})
 }

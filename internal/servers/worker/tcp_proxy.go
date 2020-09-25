@@ -44,6 +44,7 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 		ClientTcpPort:      uint32(clientAddr.Port),
 		EndpointTcpAddress: endpointAddr.IP.String(),
 		EndpointTcpPort:    uint32(endpointAddr.Port),
+		Type:               "tcp",
 	}
 
 	connStatus, err := w.connectConnection(connCtx, connectionInfo)

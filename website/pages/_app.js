@@ -1,6 +1,5 @@
 import './style.css'
 import '@hashicorp/nextjs-scripts/lib/nprogress/style.css'
-
 import NProgress from '@hashicorp/nextjs-scripts/lib/nprogress'
 import createConsentManager from '@hashicorp/nextjs-scripts/lib/consent-manager'
 import useAnchorLinkAnalytics from '@hashicorp/nextjs-scripts/lib/anchor-link-analytics'
@@ -8,6 +7,7 @@ import Router from 'next/router'
 import HashiHead from '@hashicorp/react-head'
 import Head from 'next/head'
 import { ErrorBoundary } from '@hashicorp/nextjs-scripts/lib/bugsnag'
+import ConditionalAuthProvider from 'components/conditional-auth-provider'
 import MegaNav from '@hashicorp/react-mega-nav'
 import ProductSubnav from '../components/subnav'
 import Footer from 'components/footer'
@@ -24,39 +24,23 @@ function App({ Component, pageProps }) {
 
   return (
     <ErrorBoundary FallbackComponent={Error}>
-      <HashiHead
-        is={Head}
-        title={`${productName} by HashiCorp`}
-        siteName={`${productName} by HashiCorp`}
-        description="Write your description here"
-        image="https://www.example.com/img/og-image.png"
-        stylesheet={[
-          {
-            href:
-              'https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700&display=swap',
-          },
-        ]}
-        icon={[{ href: '/favicon.ico' }]}
-        preload={[
-          { href: '/fonts/klavika/medium.woff2', as: 'font' },
-          { href: '/fonts/gilmer/light.woff2', as: 'font' },
-          { href: '/fonts/gilmer/regular.woff2', as: 'font' },
-          { href: '/fonts/gilmer/medium.woff2', as: 'font' },
-          { href: '/fonts/gilmer/bold.woff2', as: 'font' },
-          { href: '/fonts/metro-sans/book.woff2', as: 'font' },
-          { href: '/fonts/metro-sans/regular.woff2', as: 'font' },
-          { href: '/fonts/metro-sans/semi-bold.woff2', as: 'font' },
-          { href: '/fonts/metro-sans/bold.woff2', as: 'font' },
-          { href: '/fonts/dejavu/mono.woff2', as: 'font' },
-        ]}
-      />
-      <MegaNav product={productName} />
-      <ProductSubnav />
-      <div className="content">
-        <Component {...pageProps} />
-      </div>
-      <Footer openConsentManager={openConsentManager} />
-      <ConsentManager />
+      <ConditionalAuthProvider session={pageProps.session}>
+        <HashiHead
+          is={Head}
+          title={`${productName} by HashiCorp`}
+          siteName={`${productName} by HashiCorp`}
+          description="Write your description here"
+          image="https://www.boundaryproject.io/img/og-image.png"
+          icon={[{ href: '/favicon.ico' }]}
+        />
+        <MegaNav product={productName} />
+        <ProductSubnav />
+        <div className="content">
+          <Component {...pageProps} />
+        </div>
+        <Footer openConsentManager={openConsentManager} />
+        <ConsentManager />
+      </ConditionalAuthProvider>
     </ErrorBoundary>
   )
 }

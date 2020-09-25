@@ -65,7 +65,6 @@ listener "tcp" {
 
 listener "tcp" {
 	purpose = "cluster"
-	tls_disable = true
 	proxy_protocol_behavior = "allow_authorized"
 	proxy_protocol_authorized_addrs = "127.0.0.1"
 }
@@ -74,7 +73,6 @@ listener "tcp" {
 	devWorkerExtraConfig = `
 listener "tcp" {
 	purpose = "proxy"
-	tls_disable = true
 	proxy_protocol_behavior = "allow_authorized"
 	proxy_protocol_authorized_addrs = "127.0.0.1"
 }
@@ -91,19 +89,21 @@ worker {
 type Config struct {
 	*configutil.SharedConfig `hcl:"-"`
 
-	DevController        bool        `hcl:"-"`
-	PassthroughDirectory string      `hcl:"-"`
-	Worker               *Worker     `hcl:"worker"`
-	Controller           *Controller `hcl:"controller"`
-	Database             *Database   `hcl:"database"`
+	Worker     *Worker     `hcl:"worker"`
+	Controller *Controller `hcl:"controller"`
+
+	// Dev-related options
+	DevController        bool   `hcl:"-"`
+	PassthroughDirectory string `hcl:"-"`
+	DevControllerKey     string `hcl:"-"`
+	DevWorkerAuthKey     string `hcl:"-"`
+	DevRecoveryKey       string `hcl:"-"`
 }
 
 type Controller struct {
-	Name             string `hcl:"name"`
-	Description      string `hcl:"description"`
-	DevControllerKey string `hcl:"-"`
-	DevWorkerAuthKey string `hcl:"-"`
-	DevRecoveryKey   string `hcl:"-"`
+	Name        string    `hcl:"name"`
+	Description string    `hcl:"description"`
+	Database    *Database `hcl:"database"`
 }
 
 type Worker struct {
@@ -159,9 +159,9 @@ func DevController() (*Config, error) {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
 	parsed.DevController = true
-	parsed.Controller.DevControllerKey = controllerKey
-	parsed.Controller.DevWorkerAuthKey = workerAuthKey
-	parsed.Controller.DevRecoveryKey = recoveryKey
+	parsed.DevControllerKey = controllerKey
+	parsed.DevWorkerAuthKey = workerAuthKey
+	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }
 
@@ -173,9 +173,9 @@ func DevCombined() (*Config, error) {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
 	parsed.DevController = true
-	parsed.Controller.DevControllerKey = controllerKey
-	parsed.Controller.DevWorkerAuthKey = workerAuthKey
-	parsed.Controller.DevRecoveryKey = recoveryKey
+	parsed.DevControllerKey = controllerKey
+	parsed.DevWorkerAuthKey = workerAuthKey
+	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }
 

@@ -12,6 +12,9 @@ type SessionAuthorization struct {
 	TargetId           string            `json:"target_id,omitempty"`
 	Scope              *scopes.ScopeInfo `json:"scope,omitempty"`
 	CreatedTime        time.Time         `json:"created_time,omitempty"`
+	UserId             string            `json:"user_id,omitempty"`
+	HostSetId          string            `json:"host_set_id,omitempty"`
+	HostId             string            `json:"host_id,omitempty"`
 	Type               string            `json:"type,omitempty"`
 	AuthorizationToken string            `json:"authorization_token,omitempty"`
 }

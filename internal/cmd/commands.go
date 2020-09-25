@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
-	"github.com/hashicorp/boundary/internal/cmd/commands/controller"
 	"github.com/hashicorp/boundary/internal/cmd/commands/database"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groups"
@@ -21,10 +20,10 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/proxy"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
+	"github.com/hashicorp/boundary/internal/cmd/commands/server"
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessions"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targets"
 	"github.com/hashicorp/boundary/internal/cmd/commands/users"
-	"github.com/hashicorp/boundary/internal/cmd/commands/worker"
 
 	"github.com/mitchellh/cli"
 )
@@ -34,18 +33,8 @@ var Commands map[string]cli.CommandFactory
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 	Commands = map[string]cli.CommandFactory{
-		"controller": func() (cli.Command, error) {
-			return &controller.Command{
-				Server: base.NewServer(&base.Command{
-					UI:         serverCmdUi,
-					ShutdownCh: base.MakeShutdownCh(),
-				}),
-				SighupCh:  MakeSighupCh(),
-				SigUSR2Ch: MakeSigUSR2Ch(),
-			}, nil
-		},
-		"worker": func() (cli.Command, error) {
-			return &worker.Command{
+		"server": func() (cli.Command, error) {
+			return &server.Command{
 				Server: base.NewServer(&base.Command{
 					UI:         serverCmdUi,
 					ShutdownCh: base.MakeShutdownCh(),
@@ -74,6 +63,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &proxy.Command{
 				Command: base.NewCommand(ui),
 				Func:    "connect",
+			}, nil
+		},
+		"connect ssh": func() (cli.Command, error) {
+			return &proxy.Command{
+				Command: base.NewCommand(ui),
+				Func:    "ssh",
+			}, nil
+		},
+		"connect rdp": func() (cli.Command, error) {
+			return &proxy.Command{
+				Command: base.NewCommand(ui),
+				Func:    "rdp",
+			}, nil
+		},
+		"connect postgres": func() (cli.Command, error) {
+			return &proxy.Command{
+				Command: base.NewCommand(ui),
+				Func:    "postgres",
 			}, nil
 		},
 
