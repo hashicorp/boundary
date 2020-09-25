@@ -70,6 +70,13 @@ type Command struct {
 	// SSH
 	flagSshStyle string
 
+	// Postgres
+	flagPostgresStyle    string
+	flagPostgresUsername string
+
+	// RDP
+	flagRdpStyle string
+
 	Func string
 
 	connWg             *sync.WaitGroup
@@ -91,7 +98,11 @@ func (c *Command) Synopsis() string {
 	case "connect":
 		return "Authorize a session against a target and launch a proxied connection"
 	case "ssh":
-		return "Authorize a session against a target and invoke SSH to connect"
+		return "Authorize a session against a target and invoke an SSH client to connect"
+	case "postgres":
+		return "Authorize a session against a target and invoke a Postgres client (by default psql) to connect"
+	case "rdp":
+		return "Authorize a session against a target and invoke an RDP client to connect"
 	}
 	return ""
 }
@@ -158,7 +169,7 @@ func (c *Command) Flags() *base.FlagSets {
 			Usage:      `If set, the CLI will attempt to bind its listening port to the given value. If it cannot, the command will error.`,
 		})
 
-	case "connect", "ssh":
+	case "connect", "ssh", "rdp", "postgres":
 		f := set.NewFlagSet("Connect Options")
 
 		f.StringVar(&base.StringVar{
@@ -197,16 +208,49 @@ func (c *Command) Flags() *base.FlagSets {
 		})
 	}
 
-	if c.Func == "ssh" {
+	switch c.Func {
+	case "ssh":
 		f := set.NewFlagSet("SSH Options")
 
 		f.StringVar(&base.StringVar{
 			Name:       "style",
 			Target:     &c.flagSshStyle,
 			EnvVar:     "BOUNDARY_CONNECT_SSH_STYLE",
-			Completion: complete.PredictAnything,
+			Completion: complete.PredictSet("ssh", "putty"),
 			Default:    "ssh",
-			Usage:      `Specifies how the CLI will attempt to invoke the SSH binary. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "ssh" and "putty".`,
+			Usage:      `Specifies how the CLI will attempt to invoke an SSH client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "ssh" and "putty".`,
+		})
+
+	case "postgres":
+		f := set.NewFlagSet("Postgres Options")
+
+		f.StringVar(&base.StringVar{
+			Name:       "style",
+			Target:     &c.flagPostgresStyle,
+			EnvVar:     "BOUNDARY_CONNECT_POSTGRES_STYLE",
+			Completion: complete.PredictSet("psql"),
+			Default:    "psql",
+			Usage:      `Specifies how the CLI will attempt to invoke a Postgres client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "psql".`,
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "username",
+			Target:     &c.flagPostgresUsername,
+			EnvVar:     "BOUNDARY_CONNECT_POSTGRES_USERNAME",
+			Completion: complete.PredictNothing,
+			Usage:      `Specifies the username to pass through to the Postgres client.`,
+		})
+
+	case "rdp":
+		f := set.NewFlagSet("RDP Options")
+
+		f.StringVar(&base.StringVar{
+			Name:       "style",
+			Target:     &c.flagRdpStyle,
+			EnvVar:     "BOUNDARY_CONNECT_RDP_STYLE",
+			Completion: complete.PredictSet("mstsc"),
+			Default:    "mstsc",
+			Usage:      `Specifies how the CLI will attempt to invoke an RDP client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "mstsc".`,
 		})
 	}
 
@@ -250,6 +294,14 @@ func (c *Command) Run(args []string) (retCode int) {
 	case "ssh":
 		if c.flagExec == "" {
 			c.flagExec = strings.ToLower(c.flagSshStyle)
+		}
+	case "postgres":
+		if c.flagExec == "" {
+			c.flagExec = strings.ToLower(c.flagPostgresStyle)
+		}
+	case "rdp":
+		if c.flagExec == "" {
+			c.flagExec = strings.ToLower(c.flagRdpStyle)
 		}
 	}
 
@@ -300,7 +352,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			}
 		}
 
-	case "connect", "ssh":
+	case "connect", "ssh", "postgres", "rdp":
 		if c.flagTargetId == "" {
 			c.UI.Error("Target ID must be provided")
 			return 1
@@ -673,6 +725,21 @@ func (c *Command) handleExec(passthroughArgs []string) {
 			args = append(args, "-p", port, ip)
 		case "putty":
 			args = append(args, "-P", port, ip)
+		}
+
+	case "postgres":
+		switch c.flagPostgresStyle {
+		case "psql":
+			args = append(args, "-p", port, "-h", ip)
+			if c.flagPostgresUsername != "" {
+				args = append(args, "-U", c.flagPostgresUsername)
+			}
+		}
+
+	case "rdp":
+		switch c.flagRdpStyle {
+		case "mstsc":
+			args = append(args, "/v", addr)
 		}
 	}
 
