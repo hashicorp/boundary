@@ -2,6 +2,7 @@ import Subnav from '@hashicorp/react-subnav'
 import { useRouter } from 'next/router'
 import subnavItems from 'data/navigation'
 import { productSlug } from 'data/metadata'
+import Link from 'next/link'
 
 export default function ProductSubnav() {
   const router = useRouter()
@@ -22,6 +23,7 @@ export default function ProductSubnav() {
       menuItemsAlign="right"
       menuItems={subnavItems}
       constrainWidth
+      Link={Link}
     />
   )
 }
