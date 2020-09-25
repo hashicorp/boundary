@@ -65,7 +65,13 @@ begin;
            user_id,
            connection_authorized_date_id,
            connection_authorized_time_id,
-           connection_authorized_time
+           connection_authorized_time,
+           client_tcp_address,
+           client_tcp_port_number,
+           endpoint_tcp_address,
+           endpoint_tcp_port_number,
+           bytes_up,
+           bytes_down
     )
     select new.public_id,
            new.session_id,
@@ -73,7 +79,13 @@ begin;
            session_dimension.user_dim_id,
            authorized_timestamp.date_dim_id,
            authorized_timestamp.time_dim_id,
-           authorized_timestamp.ts
+           authorized_timestamp.ts,
+           new.client_tcp_address,
+           new.client_tcp_port,
+           new.endpoint_tcp_address,
+           new.endpoint_tcp_port,
+           new.bytes_up,
+           new.bytes_down
       from authorized_timestamp,
            session_dimension
       returning * into strict new_row;
