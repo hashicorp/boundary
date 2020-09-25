@@ -62,38 +62,40 @@ export default function HomePage() {
           },
         ]}
       />
-      <UseCases
-        // theme={{}}
-        items={[
-          {
-            title: 'Example',
-            description: 'Example desc',
-            image: {
-              url:
-                'https://www.datocms-assets.com/2885/1592632185-hcp-social-share.jpg',
+      <div className="use-cases-section g-grid-container">
+        <UseCases
+          // TODO Move images to Dato
+          items={[
+            {
+              title: 'Identity-based access',
+              description:
+                'Securely connect trusted identities to applications, systems, and data.',
+              image: {
+                url: require('./img/red-usecase-accessprivileges.png?url'),
+              },
+              link: { title: 'Learn more', url: 'https://hashicorp.com' },
             },
-            link: { title: 'HashiCorp', url: 'https://hashicorp.com' },
-          },
-          {
-            title: 'Example',
-            description: 'Example desc',
-            image: {
-              url:
-                'https://www.datocms-assets.com/2885/1592632185-hcp-social-share.jpg',
+            {
+              title: 'Automate access',
+              description:
+                'Enables secure access across dynamic infrastructure.',
+              image: {
+                url: require('./img/red-usecase-accessmgmt.png?url'),
+              },
+              link: { title: 'Learn more', url: 'https://hashicorp.com' },
             },
-            link: { title: 'HashiCorp', url: 'https://hashicorp.com' },
-          },
-          {
-            title: 'Example',
-            description: 'Example desc',
-            image: {
-              url:
-                'https://www.datocms-assets.com/2885/1592632185-hcp-social-share.jpg',
+            {
+              title: 'Session visibility',
+              description:
+                'Monitor user sessions created with Boundary with your preferred analytics tool.',
+              image: {
+                url: require('./img/red-usecase-sessionvisibility.png?url'),
+              },
+              link: { title: 'Learn more', url: 'https://hashicorp.com' },
             },
-            link: { title: 'HashiCorp', url: 'https://hashicorp.com' },
-          },
-        ]}
-      />
+          ]}
+        />
+      </div>
     </div>
   )
 }
