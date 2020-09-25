@@ -1711,8 +1711,7 @@
             "name": "skip_role_creation",
             "in": "query",
             "required": false,
-            "type": "boolean",
-            "format": "boolean"
+            "type": "boolean"
           }
         ],
         "tags": [
