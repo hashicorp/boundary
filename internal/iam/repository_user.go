@@ -321,7 +321,7 @@ func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId strin
 }
 
 // ListAssociatedAccountIds returns the account ids for the userId and supports the
-// WithLimit option.
+// WithLimit option. Returns nil, nil when no associated accounts are found.
 func (r *Repository) ListAssociatedAccountIds(ctx context.Context, userId string, opt ...Option) ([]string, error) {
 	if userId == "" {
 		return nil, fmt.Errorf("list auth account ids: missing user id: %w", db.ErrInvalidParameter)
@@ -329,6 +329,9 @@ func (r *Repository) ListAssociatedAccountIds(ctx context.Context, userId string
 	var accounts []*authAccount
 	if err := r.list(ctx, &accounts, "iam_user_id = ?", []interface{}{userId}, opt...); err != nil {
 		return nil, fmt.Errorf("list auth account ids: %w", err)
+	}
+	if len(accounts) == 0 {
+		return nil, nil
 	}
 	ids := make([]string, 0, len(accounts))
 	for _, aa := range accounts {
@@ -509,9 +512,6 @@ func (r *Repository) SetAssociatedAccounts(ctx context.Context, userId string, u
 	if userVersion == 0 {
 		return nil, fmt.Errorf("set associated accounts: missing user version %w", db.ErrInvalidParameter)
 	}
-	if len(accountIds) == 0 {
-		return nil, fmt.Errorf("set associated accounts: missing account id %w", db.ErrInvalidParameter)
-	}
 
 	user := allocUser()
 	user.PublicId = userId
@@ -557,8 +557,8 @@ func (r *Repository) SetAssociatedAccounts(ctx context.Context, userId string, u
 			updatedUser := allocUser()
 			updatedUser.PublicId = userId
 			updatedUser.Version = userVersion + 1
-			var userOplogMsg *oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedUser, []string{"Version"}, nil, db.NewOplogMsg(userOplogMsg), db.WithVersion(&userVersion))
+			var userOplogMsg oplog.Message
+			rowsUpdated, err := w.Update(ctx, &updatedUser, []string{"Version"}, nil, db.NewOplogMsg(&userOplogMsg), db.WithVersion(&userVersion))
 			if err != nil {
 				return fmt.Errorf("set associated accounts: unable to update user version: %w", err)
 			}
@@ -584,7 +584,7 @@ func (r *Repository) SetAssociatedAccounts(ctx context.Context, userId string, u
 				"scope-type":         []string{scope.Org.String()},
 				"resource-public-id": []string{userId},
 			}
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, userTicket, metadata, []*oplog.Message{userOplogMsg}); err != nil {
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, userTicket, metadata, []*oplog.Message{&userOplogMsg}); err != nil {
 				return fmt.Errorf("set associated accounts: unable to write oplog: %w", err)
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
