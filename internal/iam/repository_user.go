@@ -37,11 +37,12 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 	return resource.(*User), err
 }
 
-// UpdateUser will update a user in the repository and return the written user.
-// fieldMaskPaths provides field_mask.proto paths for fields that should
-// be updated.  Fields will be set to NULL if the field is a zero value and
-// included in fieldMask. Name and Description are the only updatable fields,
-// If no updatable fields are included in the fieldMaskPaths, then an error is returned.
+// UpdateUser will update a user in the repository and return the written user
+// plus its associated account ids. fieldMaskPaths provides field_mask.proto
+// paths for fields that should be updated.  Fields will be set to NULL if the
+// field is a zero value and included in fieldMask. Name and Description are the
+// only updatable fields, if no updatable fields are included in the
+// fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32, fieldMaskPaths []string, opt ...Option) (*User, []string, int, error) {
 	if user == nil {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: missing user %w", db.ErrInvalidParameter)
