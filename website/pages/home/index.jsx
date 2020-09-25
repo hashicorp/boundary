@@ -1,5 +1,6 @@
 import HomepageHero from 'components/homepage-hero'
 import ProductFeaturesList from '@hashicorp/react-product-features-list'
+import UseCases from '@hashicorp/react-use-cases'
 
 export default function HomePage() {
   return (
@@ -58,6 +59,38 @@ export default function HomePage() {
             content:
               'Secure access to dynamic systems and applications with automated controls.',
             icon: require('./img/boundary-managingdynamicenvironments.jpg?url'),
+          },
+        ]}
+      />
+      <UseCases
+        // theme={{}}
+        items={[
+          {
+            title: 'Example',
+            description: 'Example desc',
+            image: {
+              url:
+                'https://www.datocms-assets.com/2885/1592632185-hcp-social-share.jpg',
+            },
+            link: { title: 'HashiCorp', url: 'https://hashicorp.com' },
+          },
+          {
+            title: 'Example',
+            description: 'Example desc',
+            image: {
+              url:
+                'https://www.datocms-assets.com/2885/1592632185-hcp-social-share.jpg',
+            },
+            link: { title: 'HashiCorp', url: 'https://hashicorp.com' },
+          },
+          {
+            title: 'Example',
+            description: 'Example desc',
+            image: {
+              url:
+                'https://www.datocms-assets.com/2885/1592632185-hcp-social-share.jpg',
+            },
+            link: { title: 'HashiCorp', url: 'https://hashicorp.com' },
           },
         ]}
       />
