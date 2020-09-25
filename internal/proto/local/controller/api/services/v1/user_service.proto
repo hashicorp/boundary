@@ -99,7 +99,7 @@ service UserService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Associates an account to a User."
+      summary: "Associates an Account to a User."
     };
   }
 
