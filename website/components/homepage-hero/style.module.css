@@ -1,12 +1,10 @@
 .root {
-  /* 100% height - nav - footer */
-  min-height: calc(100vh - (64px + 77px));
   width: 100%;
   padding: 150px 0;
   background-repeat: no-repeat;
   background-color: var(--gray-7);
   background-image: url(/img/hero-pattern.svg);
-  background-size: contain;
+  background-size: cover;
 
   @media (max-width: 758px) {
     padding: 64px 0;
