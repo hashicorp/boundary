@@ -1432,7 +1432,12 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 
 			u, _, err := repo.LookupUser(context.Background(), tt.args.userId)
 			require.NoError(err)
-			assert.Equal(version+1, u.Version)
+			switch tt.name {
+			case "no-accounts-no-changes":
+				assert.Equal(version, u.Version)
+			default:
+				assert.Equal(version+1, u.Version)
+			}
 		})
 	}
 }
