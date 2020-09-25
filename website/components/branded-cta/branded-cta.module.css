@@ -1,5 +1,9 @@
 .brandedCta {
-  padding: 48px 0;
+  padding: 88px 0;
+  background-color: var(--red-l3);
+  background-image: url('./img/bg-pattern.svg');
+  background-position: bottom right;
+  background-repeat: no-repeat;
 }
 
 .contentContainer {
@@ -13,12 +17,12 @@
       padding-right: 32px;
     }
 
-  & + .content-and-links .g-type-body-large {
-    margin-top: 16px;
-    @media (--medium-up) {
-      margin: 0;
+    & + .content-and-links .g-type-body-large {
+      margin-top: 16px;
+      @media (--medium-up) {
+        margin: 0;
+      }
     }
-  }
   }
 }
 
