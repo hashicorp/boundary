@@ -1,7 +1,7 @@
 export default [
   {
     text: 'Docs',
-    url: '/docs',
+    url: '/docs/getting-started',
     type: 'inbound',
   },
 ]
