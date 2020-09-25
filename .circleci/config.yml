@@ -6,9 +6,11 @@
 version: 2
 jobs:
   cache-builder-images:
-    machine:
-      image: ubuntu-1604:202007-01
+    docker:
+    - image: circleci/buildpack-deps
     steps:
+    - setup_remote_docker:
+        version: 19.03.12
     - add_ssh_keys:
         fingerprints:
         - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
@@ -85,14 +87,16 @@ jobs:
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
   darwin_amd64_package:
-    machine:
-      image: ubuntu-1604:202007-01
+    docker:
+    - image: circleci/buildpack-deps
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
     - PACKAGE_SPEC_ID: 6c6c1ed6a95bf40cd3440ca629be711e52983cd1
     steps:
+    - setup_remote_docker:
+        version: 19.03.12
     - add_ssh_keys:
         fingerprints:
         - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
@@ -140,14 +144,16 @@ jobs:
         paths:
         - .buildcache/packages/store
   linux_amd64_package:
-    machine:
-      image: ubuntu-1604:202007-01
+    docker:
+    - image: circleci/buildpack-deps
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
     - PACKAGE_SPEC_ID: 69eebe797eef586c6713cc32c1ad0186a5268f51
     steps:
+    - setup_remote_docker:
+        version: 19.03.12
     - add_ssh_keys:
         fingerprints:
         - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
