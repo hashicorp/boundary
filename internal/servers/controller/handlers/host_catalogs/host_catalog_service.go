@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -179,7 +178,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	}
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host catalog for creation: %v.", err)
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
@@ -187,10 +186,10 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	}
 	out, err := repo.CreateCatalog(ctx, h)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create host catalog: %v.", err)
+		return nil, fmt.Errorf("unable to create host catalog: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create host catalog but no error returned from repository.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host catalog but no error returned from repository.")
 	}
 	return toProto(out), nil
 }
@@ -206,7 +205,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	version := item.GetVersion()
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for update: %v.", err)
+		return nil, fmt.Errorf("unable to build host catalog for update: %w", err)
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -219,10 +218,10 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	}
 	out, rowsUpdated, err := repo.UpdateCatalog(ctx, h, version, dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update host catalog: %v.", err)
+		return nil, fmt.Errorf("unable to update host catalog: %w", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Host catalog %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Host catalog %q doesn't exist or incorrect version provided.", id)
 	}
 	return toProto(out), nil
 }
@@ -234,7 +233,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	}
 	rows, err := repo.DeleteCatalog(ctx, id)
 	if err != nil {
-		return false, status.Errorf(codes.Internal, "Unable to delete host: %v.", err)
+		return false, fmt.Errorf("unable to delete host: %w", err)
 	}
 	return rows > 0, nil
 }

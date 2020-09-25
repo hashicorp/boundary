@@ -761,6 +761,43 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+func TestUpdate_BadVersion(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	rw := db.New(conn)
+	repoFn := func() (*target.Repository, error) {
+		return target.NewRepository(rw, rw, kms)
+	}
+	repo, err := repoFn()
+	require.NoError(t, err, "Couldn't create new target repo.")
+
+	tar, err := target.NewTcpTarget(proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
+	tar.DefaultPort = 2
+	require.NoError(t, err)
+	gtar, _, err := repo.CreateTcpTarget(context.Background(), tar)
+	require.NoError(t, err)
+
+	tested, err := testService(t, conn, kms, wrapper)
+	require.NoError(t, err, "Failed to create a new host set service.")
+
+	upTar, err := tested.UpdateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), &pbs.UpdateTargetRequest{
+		Id:         gtar.GetPublicId(),
+		Item:       &pb.Target{
+			Description:            wrapperspb.String("updated"),
+			Version:                72,
+		},
+		UpdateMask: &field_mask.FieldMask{Paths: []string{"description"}},
+	})
+	assert.Nil(t, upTar)
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, handlers.NotFoundError()), "Got %v, wanted not found error.", err)
+}
+
 func TestAddTargetHostSets(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)

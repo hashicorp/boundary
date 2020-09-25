@@ -461,7 +461,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	}
 	out, m, err := repo.CreateTcpTarget(ctx, u)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target: %v.", err)
+		return nil, fmt.Errorf("unable to create target: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target but no error returned from repository.")
@@ -506,7 +506,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, m, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update target: %v.", err)
+		return nil, fmt.Errorf("unable to update target: %w", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Target %q not found or incorrect version provided.", id)
@@ -524,7 +524,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
 		}
-		return false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to delete target: %v.", err)
+		return false, fmt.Errorf("unable to delete target: %w", err)
 	}
 	return rows > 0, nil
 }
@@ -556,6 +556,7 @@ func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []str
 	}
 	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, hostSetId)
 	if err != nil {
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sets to target: %v.", err)
 	}
 	if out == nil {
@@ -571,12 +572,13 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 	}
 	_, _, err = repo.SetTargetHostSets(ctx, targetId, version, hostSetIds)
 	if err != nil {
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set host sets in target: %v.", err)
 	}
 
 	out, m, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to look up target: %v.", err)
+		return nil, fmt.Errorf("unable to look up target after setting host sets: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sets for it.")
@@ -591,11 +593,12 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	}
 	_, err = repo.DeleteTargeHostSets(ctx, targetId, version, hostSetIds)
 	if err != nil {
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove host sets from target: %v.", err)
 	}
 	out, m, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to look up target: %v.", err)
+		return nil, fmt.Errorf("unable to look up target after removing host sets: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing host sets from it.")
