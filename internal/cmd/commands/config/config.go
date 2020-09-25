@@ -12,7 +12,7 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return "Manage sensitive values in Boundary's configuration files"
+	return "Manage resources related to Boundary's local configuration"
 }
 
 func (c *Command) Help() string {
@@ -28,6 +28,10 @@ func (c *Command) Help() string {
 		"    Decrypt sensitive values in a config file:",
 		"",
 		"      $ boundary config decrypt config.hcl",
+		"",
+		"    Read a stored token out:",
+		"",
+		"      $ boundary config get-token",
 		"",
 		"  Please see the individual subcommand help for detailed usage information.",
 	})

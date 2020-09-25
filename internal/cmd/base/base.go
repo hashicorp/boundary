@@ -30,7 +30,7 @@ const (
 	maxLineLength int = 78
 
 	envToken          = "BOUNDARY_TOKEN"
-	envTokenName      = "BOUNDARY_TOKEN_NAME"
+	EnvTokenName      = "BOUNDARY_TOKEN_NAME"
 	envRecoveryConfig = "BOUNDARY_RECOVERY_CONFIG"
 )
 
@@ -207,6 +207,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		if c.FlagTokenName != "" {
 			tokenName = c.FlagTokenName
 		}
+		os.Setenv(EnvTokenName, tokenName)
 		if tokenName != "none" {
 			token, err := keyring.Get("HashiCorp Boundary Auth Token", tokenName)
 			if err != nil {
@@ -329,7 +330,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f.StringVar(&StringVar{
 				Name:   "token-name",
 				Target: &c.FlagTokenName,
-				EnvVar: envTokenName,
+				EnvVar: EnvTokenName,
 				Usage:  `If specified, the given value will be used as the name when storing the token in the system credential store. This can allow switching user identities for different commands. Set to "none" to disable storing the token.`,
 			})
 
