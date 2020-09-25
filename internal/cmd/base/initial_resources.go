@@ -117,10 +117,9 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 	if u, err = iamRepo.CreateUser(cancelCtx, u, opts...); err != nil {
 		return nil, nil, fmt.Errorf("error creating initial admin user: %w", err)
 	}
-	if u, err = iamRepo.AssociateUserWithAccount(cancelCtx, u.GetPublicId(), acct.GetPublicId()); err != nil {
+	if _, err = iamRepo.AssociateAccounts(cancelCtx, u.GetPublicId(), u.GetVersion(), []string{acct.GetPublicId()}); err != nil {
 		return nil, nil, fmt.Errorf("error associating initial admin user with account: %w", err)
 	}
-
 	// Create a role tying them together
 	pr, err := iam.NewRole(scope.Global.String(),
 		iam.WithName("Generated global scope admin role"),

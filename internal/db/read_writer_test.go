@@ -1525,6 +1525,35 @@ func TestDb_ScanRows(t *testing.T) {
 	})
 }
 
+func TestDb_Query(t *testing.T) {
+	t.Parallel()
+	db, _ := TestSetup(t, "postgres")
+	t.Run("valid", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		rw := Db{underlying: db}
+		user, err := db_test.NewTestUser()
+		user.Name = "alice"
+		require.NoError(err)
+		err = rw.Create(context.Background(), user)
+		require.NoError(err)
+		assert.NotEmpty(user.Id)
+		assert.Equal("alice", user.Name)
+
+		where := "select * from db_test_user where name in ($1, $2)"
+		rows, err := rw.Query(where, []interface{}{"alice", "bob"})
+		require.NoError(err)
+		defer func() { err := rows.Close(); assert.NoError(err) }()
+		for rows.Next() {
+			u, err := db_test.NewTestUser()
+			require.NoError(err)
+			// scan the row into your Gorm struct
+			err = rw.ScanRows(rows, &u)
+			require.NoError(err)
+			assert.Equal(user.PublicId, u.PublicId)
+		}
+	})
+}
+
 func TestDb_CreateItems(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
 	testOplogResourceId := testId(t)

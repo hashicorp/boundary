@@ -138,7 +138,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	u, err := repo.LookupUser(ctx, id)
+	u, _, err := repo.LookupUser(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("User %q doesn't exist.", id)
@@ -199,7 +199,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateUser(ctx, u, version, dbMask)
+	out, _, rowsUpdated, err := repo.UpdateUser(ctx, u, version, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update user: %v.", err)
 	}
@@ -263,7 +263,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 	default:
-		u, err := repo.LookupUser(ctx, id)
+		u, _, err := repo.LookupUser(ctx, id)
 		if err != nil {
 			res.Error = err
 			return res
