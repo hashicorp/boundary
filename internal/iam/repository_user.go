@@ -23,9 +23,6 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 		return nil, fmt.Errorf("create user: public id is not empty %w", db.ErrInvalidParameter)
 	}
 	u := user.Clone().(*User)
-
-	opts := getOpts(opt...)
-
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, UserPrefix+"_") {
 			return nil, fmt.Errorf("create user: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, UserPrefix, db.ErrInvalidPublicId)
@@ -38,9 +35,6 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 		}
 		u.PublicId = id
 	}
-	u := user.Clone().(*User)
-	u.PublicId = id
-
 	metadata, err := r.stdMetadata(ctx, u)
 	if err != nil {
 		return nil, fmt.Errorf("create user: error getting metadata for create: %w", err)
