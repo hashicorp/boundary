@@ -5,7 +5,8 @@ p {
 .p-home {
   & .use-cases-section {
     padding-top: 128px;
-    padding-bottom: 64px;
+    padding-bottom: 128px;
+    background-color: var(--gray-7);
 
     @media (max-width: 800px) {
       padding-top: 88px;
