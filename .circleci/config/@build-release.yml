@@ -13,28 +13,21 @@ executors:
       PRODUCT_REVISION: ""
       AUTO_INSTALL_TOOLS: 'YES'
       BUILDKIT_PROGRESS: plain
-  releaser:
-    docker:
-      - image: circleci/buildpack-deps
-    environment:
-      PRODUCT_REVISION: ""
-      AUTO_INSTALL_TOOLS: 'YES'
-      BUILDKIT_PROGRESS: plain
     shell: /usr/bin/env bash -euo pipefail -c
 
 workflows:
   version: 2
   build-standalone:
     jobs:
-      - cache-builder-images
-      - darwin_amd64_package: { requires: [ cache-builder-images ] }
-      - linux_amd64_package: { requires: [ cache-builder-images ] }
+      - build-common-layers
+      - darwin_amd64_package: { requires: [ build-common-layers ] }
+      - linux_amd64_package: { requires: [ build-common-layers ] }
       - bundle-releases:
           requires:
             - darwin_amd64_package
             - linux_amd64_package
 jobs:
-  cache-builder-images:
+  build-common-layers:
     executor: builder
     steps:
       
@@ -72,7 +65,6 @@ jobs:
             
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-            ssh-add -l -E md5
 
             make -f packages*.lock/layer.mk 00-install-deps-96bbfeaab51d40cfb3c45afc0035516c11d6d737-image
       - run:
@@ -81,7 +73,6 @@ jobs:
             
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-            ssh-add -l -E md5
 
             make -f packages*.lock/layer.mk 01-download-modules-eb80c020d26fa5a44b8e8bf9cc6a41d328e82f4c-image
       - run:
@@ -90,7 +81,6 @@ jobs:
             
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-            ssh-add -l -E md5
 
             make -f packages*.lock/layer.mk 02-copy-source-cb2d5919f5b68088a1068bd1bc610eb63dc06def-image
       - run: make -f packages*.lock/layer.mk 02-copy-source-cb2d5919f5b68088a1068bd1bc610eb63dc06def-save
@@ -156,7 +146,6 @@ jobs:
             
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-            ssh-add -l -E md5
 
             make -C packages*.lock package
 
@@ -217,7 +206,6 @@ jobs:
             
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-            ssh-add -l -E md5
 
             make -C packages*.lock package
 
@@ -232,7 +220,7 @@ jobs:
 
 
   bundle-releases:
-    executor: releaser
+    executor: builder
     steps:
       - checkout
       - write-all-package-cache-keys

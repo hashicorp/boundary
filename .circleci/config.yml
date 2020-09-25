@@ -5,9 +5,10 @@
 # Orb 'circleci/slack@3.4.2' resolved to 'circleci/slack@3.4.2'
 version: 2
 jobs:
-  cache-builder-images:
+  build-common-layers:
     docker:
     - image: circleci/buildpack-deps
+    shell: /usr/bin/env bash -euo pipefail -c
     steps:
     - setup_remote_docker:
         version: 19.03.12
@@ -42,7 +43,6 @@ jobs:
 
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-          ssh-add -l -E md5
 
           make -f packages*.lock/layer.mk 00-install-deps-96bbfeaab51d40cfb3c45afc0035516c11d6d737-image
         name: Build layer 00-install-deps-96bbfeaab51d40cfb3c45afc0035516c11d6d737
@@ -51,7 +51,6 @@ jobs:
 
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-          ssh-add -l -E md5
 
           make -f packages*.lock/layer.mk 01-download-modules-eb80c020d26fa5a44b8e8bf9cc6a41d328e82f4c-image
         name: Build layer 01-download-modules-eb80c020d26fa5a44b8e8bf9cc6a41d328e82f4c
@@ -60,7 +59,6 @@ jobs:
 
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-          ssh-add -l -E md5
 
           make -f packages*.lock/layer.mk 02-copy-source-cb2d5919f5b68088a1068bd1bc610eb63dc06def-image
         name: Build layer 02-copy-source-cb2d5919f5b68088a1068bd1bc610eb63dc06def
@@ -89,6 +87,7 @@ jobs:
   darwin_amd64_package:
     docker:
     - image: circleci/buildpack-deps
+    shell: /usr/bin/env bash -euo pipefail -c
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
@@ -133,7 +132,6 @@ jobs:
 
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-          ssh-add -l -E md5
 
           make -C packages*.lock package
         name: Compile Package
@@ -146,6 +144,7 @@ jobs:
   linux_amd64_package:
     docker:
     - image: circleci/buildpack-deps
+    shell: /usr/bin/env bash -euo pipefail -c
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
@@ -190,7 +189,6 @@ jobs:
 
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-          ssh-add -l -E md5
 
           make -C packages*.lock package
         name: Compile Package
@@ -396,13 +394,13 @@ jobs:
 workflows:
   build-standalone:
     jobs:
-    - cache-builder-images
+    - build-common-layers
     - darwin_amd64_package:
         requires:
-        - cache-builder-images
+        - build-common-layers
     - linux_amd64_package:
         requires:
-        - cache-builder-images
+        - build-common-layers
     - bundle-releases:
         requires:
         - darwin_amd64_package
