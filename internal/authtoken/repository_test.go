@@ -427,7 +427,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 	aAcct := allocAuthAccount()
 	aAcct.PublicId = baseAT.GetAuthAccountId()
 	require.NoError(t, rw.LookupByPublicId(context.Background(), aAcct))
-	iamUser, err := iamRepo.LookupUser(context.Background(), aAcct.GetIamUserId())
+	iamUser, _, err := iamRepo.LookupUser(context.Background(), aAcct.GetIamUserId())
 	require.NoError(t, err)
 	require.NotNil(t, iamUser)
 
