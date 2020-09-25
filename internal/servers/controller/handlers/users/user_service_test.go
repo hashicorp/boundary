@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
@@ -42,7 +43,6 @@ func createDefaultUserAndRepo(t *testing.T) (*iam.User, func() (*iam.Repository,
 }
 
 func TestGet(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
 	u, repoFn := createDefaultUserAndRepo(t)
 	toMerge := &pbs.GetUserRequest{
 		Id: u.GetPublicId(),
@@ -91,6 +91,7 @@ func TestGet(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.GetUserRequest)
 			proto.Merge(req, tc.req)
 
@@ -108,7 +109,6 @@ func TestGet(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -116,7 +116,7 @@ func TestList(t *testing.T) {
 		return iamRepo, nil
 	}
 	repo, err := repoFn()
-	require.NoError(err)
+	require.NoError(t, err)
 
 	oNoUsers, _ := iam.TestScopes(t, repo)
 	oWithUsers, _ := iam.TestScopes(t, repo)
@@ -124,9 +124,9 @@ func TestList(t *testing.T) {
 	var wantUsers []*pb.User
 	for i := 0; i < 10; i++ {
 		newU, err := iam.NewUser(oWithUsers.GetPublicId())
-		require.NoError(err)
+		require.NoError(t, err)
 		u, err := repo.CreateUser(context.Background(), newU)
-		require.NoError(err)
+		require.NoError(t, err)
 		wantUsers = append(wantUsers, &pb.User{
 			Id:          u.GetPublicId(),
 			ScopeId:     u.GetScopeId(),
@@ -156,6 +156,7 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			s, err := users.NewService(repoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
@@ -601,6 +602,324 @@ func TestUpdate(t *testing.T) {
 				tc.res.Item.Version = version + 1
 			}
 			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "UpdateUser(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestAddAccount(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := users.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new user service.")
+
+	o, _ := iam.TestScopes(t, iamRepo)
+	amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
+	accts := password.TestAccounts(t, conn, amId, 3)
+
+	addCases := []struct {
+		name         string
+		setup        func(*iam.User)
+		addAccounts  []string
+		resultAccounts  []string
+		wantErr      bool
+	}{
+		{
+			name:        "Add account on empty user",
+			setup:       func(u *iam.User) {},
+			addAccounts: []string{accts[1].GetPublicId()},
+			resultAccounts: []string{accts[1].GetPublicId()},
+		},
+		{
+			name: "Add account on populated user",
+			setup: func(u *iam.User) {
+				_, err := iamRepo.SetAssociatedAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			addAccounts: []string{accts[1].GetPublicId()},
+			resultAccounts: []string{accts[0].GetPublicId(), accts[1].GetPublicId()},
+		},
+		{
+			name: "Add empty on populated user",
+			setup: func(u *iam.User) {
+				iamRepo.SetAssociatedAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId(), accts[1].GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range addCases {
+		t.Run(tc.name, func(t *testing.T) {
+			usr := iam.TestUser(t, iamRepo, o.GetPublicId())
+			defer func() {
+				_, err := iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				require.NoError(t, err)
+			}()
+			tc.setup(usr)
+			req := &pbs.AddUserAccountsRequest{
+				Id:         usr.GetPublicId(),
+				Version:    usr.GetVersion(),
+				AccountIds: tc.addAccounts,
+			}
+
+			got, err := s.AddUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err, "Got error: %v", err)
+			assert.ElementsMatch(t, got.GetItem().GetAccountIds(), tc.resultAccounts)
+		})
+	}
+
+	usr := iam.TestUser(t, iamRepo, o.GetPublicId())
+
+	failCases := []struct {
+		name string
+		req  *pbs.AddUserAccountsRequest
+		err  error
+	}{
+		{
+			name: "Bad user Id",
+			req: &pbs.AddUserAccountsRequest{
+				Id:      "bad id",
+				Version: usr.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.AddUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(usr.GetScopeId())), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "AddUserAccounts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestSetAccount(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := users.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new user service.")
+
+	o, _ := iam.TestScopes(t, iamRepo)
+	amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
+	accts := password.TestAccounts(t, conn, amId, 3)
+
+	setCases := []struct {
+		name         string
+		setup        func(*iam.User)
+		setAccounts     []string
+		resultAccounts []string
+		wantErr      bool
+	}{
+		{
+			name:        "Set account on empty user",
+			setup:       func(u *iam.User) {},
+			setAccounts:    []string{accts[1].GetPublicId()},
+			resultAccounts: []string{accts[1].GetPublicId()},
+		},
+		{
+			name: "Set account on populated user",
+			setup: func(u *iam.User) {
+				iamRepo.AssociateAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			setAccounts:    []string{accts[1].GetPublicId()},
+			resultAccounts: []string{accts[1].GetPublicId()},
+		},
+		{
+			name: "Set empty on populated user",
+			setup: func(u *iam.User) {
+				iamRepo.AssociateAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId(), accts[1].GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			setAccounts:    []string{},
+			resultAccounts: nil,
+		},
+	}
+
+	for _, tc := range setCases {
+			t.Run(tc.name, func(t *testing.T) {
+				usr := iam.TestUser(t, iamRepo, o.GetPublicId())
+				defer func() {
+					iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				}()
+
+				tc.setup(usr)
+				req := &pbs.SetUserAccountsRequest{
+					Id:         usr.GetPublicId(),
+					Version:    usr.GetVersion(),
+					AccountIds: tc.setAccounts,
+				}
+
+				got, err := s.SetUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+				if tc.wantErr {
+					assert.Error(t, err)
+					return
+				}
+				require.NoError(t, err, "Got error: %v", err)
+				assert.ElementsMatch(t, got.GetItem().GetAccountIds(), tc.resultAccounts)
+			})
+	}
+
+	usr := iam.TestUser(t, iamRepo, o.GetPublicId())
+
+	failCases := []struct {
+		name string
+		req  *pbs.SetUserAccountsRequest
+		err  error
+	}{
+		{
+			name: "Bad User Id",
+			req: &pbs.SetUserAccountsRequest{
+				Id:      "bad id",
+				Version: usr.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.SetUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(usr.GetScopeId())), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "SetUserAccounts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestRemoveAccount(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := users.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new user service.")
+
+	o, _ := iam.TestScopes(t, iamRepo)
+	amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
+	accts := password.TestAccounts(t, conn, amId, 3)
+
+	addCases := []struct {
+		name         string
+		setup        func(*iam.User)
+		removeAccounts []string
+		resultAccounts []string
+		wantErr      bool
+	}{
+		{
+			name:        "Remove account on empty user",
+			setup:       func(*iam.User) {},
+			removeAccounts: []string{accts[1].GetPublicId()},
+			wantErr:     true,
+		},
+		{
+			name: "Remove 1 of 2 accounts from user",
+			setup: func(u *iam.User) {
+				_, err := iamRepo.SetAssociatedAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId(), accts[1].GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			removeAccounts: []string{accts[1].GetPublicId()},
+			resultAccounts: []string{accts[0].GetPublicId()},
+		},
+		{
+			name: "Remove all accounts from user",
+			setup: func(u *iam.User) {
+				_, err := iamRepo.SetAssociatedAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId(), accts[1].GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			removeAccounts: []string{accts[0].GetPublicId(), accts[1].GetPublicId()},
+			resultAccounts: []string{},
+		},
+		{
+			name: "Remove empty on populated user",
+			setup: func(u *iam.User) {
+				_, err := iamRepo.SetAssociatedAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range addCases {
+			t.Run(tc.name, func(t *testing.T) {
+				usr := iam.TestUser(t, iamRepo, o.GetPublicId())
+				defer func() {
+					iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				}()
+				tc.setup(usr)
+				req := &pbs.RemoveUserAccountsRequest{
+					Id:         usr.GetPublicId(),
+					Version:    usr.GetVersion(),
+					AccountIds: tc.removeAccounts,
+				}
+
+				got, err := s.RemoveUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+				if tc.wantErr {
+					assert.Error(t, err)
+					return
+				}
+				require.NoError(t, err, "Got error: %v", err)
+
+				assert.ElementsMatch(t, got.GetItem().GetAccountIds(), tc.resultAccounts)
+			})
+	}
+
+	usr := iam.TestUser(t, iamRepo, o.GetPublicId())
+
+	failCases := []struct {
+		name string
+		req  *pbs.AddUserAccountsRequest
+		err  error
+	}{
+		{
+			name: "Bad User Id",
+			req: &pbs.AddUserAccountsRequest{
+				Id:      "bad id",
+				Version: usr.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.AddUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(usr.GetScopeId())), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "AddUserAccounts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 		})
 	}
 }
