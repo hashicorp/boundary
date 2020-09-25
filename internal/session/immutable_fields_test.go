@@ -120,6 +120,15 @@ func TestState_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"PublicId"},
 		},
 		{
+			name: "status",
+			update: func() *State {
+				s := new.Clone().(*State)
+				s.Status = "active"
+				return s
+			}(),
+			fieldMask: []string{"Status"},
+		},
+		{
 			name: "start time",
 			update: func() *State {
 				s := new.Clone().(*State)
@@ -257,6 +266,15 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 				return s
 			}(),
 			fieldMask: []string{"PublicId"},
+		},
+		{
+			name: "status",
+			update: func() *ConnectionState {
+				s := new.Clone().(*ConnectionState)
+				s.Status = "closed"
+				return s
+			}(),
+			fieldMask: []string{"Status"},
 		},
 		{
 			name: "start time",
