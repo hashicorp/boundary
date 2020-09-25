@@ -1,3 +1,4 @@
+import BrandedCta from 'components/branded-cta'
 import HomepageHero from 'components/homepage-hero'
 import ProductFeaturesList from '@hashicorp/react-product-features-list'
 import UseCases from '@hashicorp/react-use-cases'
@@ -98,6 +99,7 @@ export default function HomePage() {
           />
         </div>
       </div>
+      <BrandedCta />
     </div>
   )
 }
