@@ -1,0 +1,249 @@
+---
+layout: docs
+page_title: Production Installation
+sidebar_title: Production Install
+description: |-
+  How to install Boundary in a production environment
+---
+
+# Production Installation
+
+Installing Boundary in a production setting requires prerequisits for infrastructure. At the most basic level, Boundary operators should run a minimum of 3 controllers and 3 workers. Running 3 of each server type gives a fundamental level of high availability for the control plane (controller), as well as bandwith for number of sessions on the data plane (worker). Both server type should be ran in a fault tolerant setting, that is, in a self-healing environmnet such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.
+
+## Network Requirements
+
+- Client -> Controller port is :9200
+- Controller -> Worker port is :9201
+- Client must have access to Controller on :9200
+- :9201 must be open between Worker and Controller
+- Workers must have a route and port access to the targets which they service
+
+## Architecture
+
+The general architecture for the server infrastructure requires 3 controllers and 3 workers. The documentation here uses virtual machines running on Amazon EC2 as the example environment, but this use
+case can be extrapolated to almost any cloud platform to suit operator needs:
+
+![](/img/production.png)
+
+As shown above, Boundary is broken up into its controller and worker server components across 3 [EC2 instances](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance), in
+3 separate [subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet), in three separate [availability zones](), with the controller API and UI being publically exposed by an [application load balancer (ALB)](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb). The worker and controller VM's are in independant [auto-scaling groups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group), allowing them to maintain their exact capacity.
+
+Boundary requires an external [Postgres](https://www.postgresql.org/) and [KMS](https://aws.amazon.com/kms/). In the example above, we're using AWS managed services for these components. For Postgres, we're using [RDS](https://aws.amazon.com/rds/) and for KMS we're using Amazon's [Key Management Service](https://aws.amazon.com/kms/).
+
+## Architecture Breakdown
+
+### API and Console Load Balancer
+
+Load balancing the controller allows operators to secure the ingress to the Boundary system. We recommend placing all Boundary server's in private networks and using load balancing tecniques to expose services such as the API and administrative console to public networks. In the production architecture, we recommend load balancing using a layer 7 load balancer and further constraining ingress to that load balancer with layer 4 constraints such as [security groups](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html) or [IP tables](https://wiki.archlinux.org/index.php/Iptables).
+
+For general configuration, we recommend the following:
+
+- HTTPS listener with valid TLS certificate for the domain it's serving or TLS passthrough
+- Health check port should use :9200 with TCP protocol
+
+### Controller Configuration
+
+When running Boundary controller as a service we recommend storing the file at `/etc/boundary-controller.hcl`. A `boundary` user and group should exist to manage this configuration file and to further restrict who can read and modify it.
+
+Example controller configuration:
+
+```hcl
+# Disable memory lock: https://www.man7.org/linux/man-pages/man2/mlock.2.html
+disable_mlock = true
+
+telemetry {
+  # TODO: prometheus is not currently implemented
+  prometheus_retention_time = "24h"
+  disable_hostname = true
+}
+
+# Controller configuration block
+controller {
+  # This name attr must be unique!
+  name = "demo-controller-${count.index}"
+  # Description of this controller
+  description = "A controller for a demo!"
+}
+
+# API listener configuration block
+listener "tcp" {
+  # Should be the address of the NIC that the controller server will be reached on
+  address = "${self.private_ip}:9200"
+  # The purpose of this listener block
+	purpose = "api"
+  # Should be enabled for production installs
+	tls_disable = true
+  # TODO
+	# proxy_protocol_behavior = "allow_authorized"
+  # TODO
+	# proxy_protocol_authorized_addrs = "127.0.0.1"
+  # Enable CORS for the Admin UI
+	cors_enabled = true
+	cors_allowed_origins = ["*"]
+}
+
+# Data-plane listener configuration block (used for worker coordination)
+listener "tcp" {
+  # Should be the IP of the NIC that the worker will connect on
+  address = "${self.private_ip}:9201"
+  # The purpose of this listener
+	purpose = "cluster"
+  # Should be enabled for production installs
+	tls_disable = true
+  # TODO
+	# proxy_protocol_behavior = "allow_authorized"
+  # TODO
+	# proxy_protocol_authorized_addrs = "127.0.0.1"
+}
+
+# Root KMS configuration block: this is the root key for Boundary
+# Use a production KMS such as AWS KMS in production installs
+kms "aead" {
+	purpose = "root"
+	aead_type = "aes-gcm"
+	key = "sP1fnF5Xz85RrXyELHFeZg9Ad2qt4Z4bgNHVGtD6ung="
+	key_id = "global_root"
+}
+
+# Worker authorization KMS
+# Use a production KMS such as AWS KMS for production installs
+# This key is the same key used in the worker configuration
+kms "aead" {
+	purpose = "worker-auth"
+	aead_type = "aes-gcm"
+	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id = "global_worker-auth"
+}
+
+# Recovery KMS block: configures the recovery key for Boundary
+# Use a production KMS such as AWS KMS for production installs
+kms "aead" {
+	purpose = "recovery"
+	aead_type = "aes-gcm"
+	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id = "global_recovery"
+}
+
+# Database URL for postgres. This can be a direct "postgres://"
+# URL, or it can be "file://" to read the contents of a file to
+# supply the url, or "env://" to name an environment variable
+# that contains the URL.
+database {
+  url = "postgresql://boundary:boundarydemo@${aws_db_instance.boundary.endpoint}/boundary"
+}
+```
+
+### Worker Configuration
+
+```hcl
+listener "tcp" {
+	purpose = "proxy"
+	tls_disable = true
+	#proxy_protocol_behavior = "allow_authorized"
+	#proxy_protocol_authorized_addrs = "127.0.0.1"
+}
+
+worker {
+  # Name attr must be unique
+	name = "demo-worker-${count.index}"
+	description = "A default worker created demonstration"
+	controllers = [
+    "${aws_instance.controller[0].private_ip}",
+    "${aws_instance.controller[1].private_ip}",
+    "${aws_instance.controller[2].private_ip}"
+  ]
+}
+
+# must be same key as used on controller config
+kms "aead" {
+	purpose = "worker-auth"
+	aead_type = "aes-gcm"
+	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id = "global_worker-auth"
+}
+```
+
+name must be unique!
+
+### Installation
+
+`TYPE` below can be either `worker` or `controller`.
+
+1. `/etc/boundary-${TYPE}.hcl`: Configuration file for the boundary service
+   See above example configurations.
+
+2. `/usr/local/bin/boundary`: The Boundary binary
+   Can build from https://github.com/hashicorp/boundary or download binary from our release pages.
+
+3. `/etc/systemd/system/boundary-${TYPE}.service`: Systemd unit file for the Boundary service
+   Example:
+
+```
+[Unit]
+Description=${NAME} ${TYPE}
+
+[Service]
+ExecStart=/usr/local/bin/${NAME} ${TYPE} -config /etc/${NAME}-${TYPE}.hcl
+User=boundary
+Group=boundary
+LimitMEMLOCK=infinity
+Capabilities=CAP_IPC_LOCK+ep
+CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Here's a simple install script that creates the boundary group and user, installs the
+systemd unit file and enables it at startup:
+
+```
+#!/bin/bash
+# Installs the boundary as a service for systemd on linux
+# Usage: ./install.sh <worker|controller>
+
+TYPE=$1
+NAME=boundary
+
+sudo cat << EOF > /etc/systemd/system/${NAME}-${TYPE}.service
+[Unit]
+Description=${NAME} ${TYPE}
+
+[Service]
+ExecStart=/usr/local/bin/${NAME} ${TYPE} -config /etc/${NAME}-${TYPE}.hcl
+User=boundary
+Group=boundary
+LimitMEMLOCK=infinity
+Capabilities=CAP_IPC_LOCK+ep
+CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Add the boundary system user and group to ensure we have a no-login
+# user capable of owning and running Boundary
+sudo adduser --system --group boundary || true
+sudo chown boundary:boundary /etc/${NAME}-${TYPE}.hcl
+sudo chown boundary:boundary /usr/local/bin/boundary
+
+# Make sure to initialize the DB before starting the service. This will result in
+# a database already initizalized warning if another controller or worker has done this
+# already, making it a lazy, best effort initialization
+if [ "${TYPE}" = "controller" ]; then
+  sudo /usr/local/bin/boundary database init -config /etc/${NAME}-${TYPE}.hcl || true
+fi
+
+sudo chmod 664 /etc/systemd/system/${NAME}-${TYPE}.service
+sudo systemctl daemon-reload
+sudo systemctl enable ${NAME}-${TYPE}
+sudo systemctl start ${NAME}-${TYPE}
+```
+
+### Postgres Configuration
+
+TBD
+
+### KMS Configuration
+
+TBD
