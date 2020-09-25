@@ -976,7 +976,7 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 	user := TestUser(t, repo, org.PublicId)
 
 	createAccountsFn := func(orgId string) []string {
-		require.NoError(t, conn.Where("1=1").Delete(allocAccount()).Error)
+		require.NoError(t, conn.Where("iam_user_id = ?", user.PublicId).Delete(allocAccount()).Error)
 		results := []string{}
 		for i := 0; i < 5; i++ {
 			a := testAccount(t, conn, orgId, authMethodId, "")
@@ -997,7 +997,7 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 		wantErrIs error
 	}{
 		{
-			name: "valid-both-users-and-groups",
+			name: "valid",
 			args: args{
 				userVersion: 1,
 				userId:      user.PublicId,
@@ -1005,55 +1005,48 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 			},
 			wantErr: false,
 		},
-		// {
-		// 	name: "valid-just-groups",
-		// 	args: args{
-		// 		userVersion:  2,
-		// 		wantGroupIds: true,
-		// 	},
-		// 	wantErr: false,
-		// },
-		// {
-		// 	name: "valid-just-users",
-		// 	args: args{
-		// 		userVersion:    3,
-		// 		wantAccountIds: true,
-		// 	},
-		// 	wantErr: false,
-		// },
-		// {
-		// 	name: "bad-version",
-		// 	args: args{
-		// 		userVersion:    1000,
-		// 		wantAccountIds: true,
-		// 		wantGroupIds:   true,
-		// 	},
-		// 	wantErr: true,
-		// },
-		// {
-		// 	name: "zero-version",
-		// 	args: args{
-		// 		userVersion:    0,
-		// 		wantAccountIds: true,
-		// 		wantGroupIds:   true,
-		// 	},
-		// 	wantErr: true,
-		// },
-		// {
-		// 	name: "no-principals",
-		// 	args: args{
-		// 		userVersion: 1,
-		// 	},
-		// 	wantErr: true,
-		// },
-		// {
-		// 	name: "recovery-user",
-		// 	args: args{
-		// 		userVersion:     1,
-		// 		specificUserIds: []string{"u_recovery"},
-		// 	},
-		// 	wantErr: true,
-		// },
+		{
+			name: "already-associated",
+			args: args{
+				userVersion: 1,
+				userId:      user.PublicId,
+				accountIds: func() []string {
+					ids := createAccountsFn(org.PublicId)
+					u := TestUser(t, repo, org.PublicId)
+					a := testAccount(t, conn, org.PublicId, authMethodId, u.PublicId)
+					ids = append(ids, a.PublicId)
+					return ids
+				}(),
+			},
+			wantErr: true,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				userVersion: 22,
+				userId:      user.PublicId,
+				accountIds:  createAccountsFn(org.PublicId),
+			},
+			wantErr: true,
+		},
+		{
+			name: "zero-version",
+			args: args{
+				userVersion: 0,
+				userId:      user.PublicId,
+				accountIds:  createAccountsFn(org.PublicId),
+			},
+			wantErr: true,
+		},
+		{
+			name: "no-accounts",
+			args: args{
+				userVersion: 1,
+				userId:      user.PublicId,
+				accountIds:  nil,
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
