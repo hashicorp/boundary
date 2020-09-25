@@ -12,8 +12,16 @@ inputs:
     PRODUCT_VERSION: 0.0.1
     BUILD_TAGS: ui
     CGO_ENABLED: 0
+
   templates:
+
     BINARY_NAME: '{{.PRODUCT_NAME}}{{if eq .GOOS "windows"}}.exe{{end}}'
+
+    PRODUCT_VERSION_MMP: >-
+      {{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{index . 0}}{{end}}
+
+    PRODUCT_VERSION_PRE: >-
+      {{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{if gt (len .) 1}}{{index . 1}}{{else}}"''"{{end}}{{end}}
 
 packages:
   - inputs: { GOOS: darwin, GOARCH: amd64 }
@@ -58,11 +66,12 @@ layers:
   - name: copy-source
     source-include: "*.go"
 
-build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary;
+build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;
   go build -v
-    -ldflags "-X $VERSION_PKG_PATH.Revision=$PACKAGE_SOURCE_ID
-              -X $VERSION_PKG_PATH.Version={{.PRODUCT_VERSION}}"
+    -ldflags "-X $VERSION_PKG_PATH.GitCommit=$PACKAGE_SOURCE_ID
+              -X $VERSION_PKG_PATH.Version={{.PRODUCT_VERSION_MMP}}
+              -X $VERSION_PKG_PATH.VersionPrerelease={{.PRODUCT_VERSION_PRE}}"
     -o $OUTPUT_DIR/{{.BINARY_NAME}}
     ./cmd/boundary
   && cd $OUTPUT_DIR && zip $PACKAGE_ZIP_NAME {{.BINARY_NAME}}

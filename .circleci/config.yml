@@ -92,7 +92,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: bf5ea00c6f4f9ca08f9e3462bf988de871b02df8
+    - PACKAGE_SPEC_ID: e1993a64411c7d5bfae5a3c3eeb15aeda6822ea2
     steps:
     - setup_remote_docker:
         version: 19.03.12
@@ -104,7 +104,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: cache001-package-bf5ea00c6f4f9ca08f9e3462bf988de871b02df8-{{checksum ".buildcache/cache-keys/package-bf5ea00c6f4f9ca08f9e3462bf988de871b02df8"}}
+        key: cache001-package-e1993a64411c7d5bfae5a3c3eeb15aeda6822ea2-{{checksum ".buildcache/cache-keys/package-e1993a64411c7d5bfae5a3c3eeb15aeda6822ea2"}}
     - run:
         command: |
           if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
@@ -138,7 +138,7 @@ jobs:
     - run:
         command: ls -lahR .buildcache/packages
     - save_cache:
-        key: cache001-package-bf5ea00c6f4f9ca08f9e3462bf988de871b02df8-{{checksum ".buildcache/cache-keys/package-bf5ea00c6f4f9ca08f9e3462bf988de871b02df8"}}
+        key: cache001-package-e1993a64411c7d5bfae5a3c3eeb15aeda6822ea2-{{checksum ".buildcache/cache-keys/package-e1993a64411c7d5bfae5a3c3eeb15aeda6822ea2"}}
         paths:
         - .buildcache/packages/store
   linux_amd64_package:
@@ -149,7 +149,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 42855ae063b178c24cc6bacf667ef017b3f9c8f0
+    - PACKAGE_SPEC_ID: 7655ed418439b6899d17af07f4b46c44b0f7ab65
     steps:
     - setup_remote_docker:
         version: 19.03.12
@@ -161,7 +161,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: cache001-package-42855ae063b178c24cc6bacf667ef017b3f9c8f0-{{checksum ".buildcache/cache-keys/package-42855ae063b178c24cc6bacf667ef017b3f9c8f0"}}
+        key: cache001-package-7655ed418439b6899d17af07f4b46c44b0f7ab65-{{checksum ".buildcache/cache-keys/package-7655ed418439b6899d17af07f4b46c44b0f7ab65"}}
     - run:
         command: |
           if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
@@ -195,7 +195,7 @@ jobs:
     - run:
         command: ls -lahR .buildcache/packages
     - save_cache:
-        key: cache001-package-42855ae063b178c24cc6bacf667ef017b3f9c8f0-{{checksum ".buildcache/cache-keys/package-42855ae063b178c24cc6bacf667ef017b3f9c8f0"}}
+        key: cache001-package-7655ed418439b6899d17af07f4b46c44b0f7ab65-{{checksum ".buildcache/cache-keys/package-7655ed418439b6899d17af07f4b46c44b0f7ab65"}}
         paths:
         - .buildcache/packages/store
   bundle-releases:
@@ -208,20 +208,20 @@ jobs:
         command: make -C packages*.lock write-all-package-cache-keys
         name: Write package cache key
     - restore_cache:
-        key: cache001-package-bf5ea00c6f4f9ca08f9e3462bf988de871b02df8-{{checksum ".buildcache/cache-keys/package-bf5ea00c6f4f9ca08f9e3462bf988de871b02df8"}}
+        key: cache001-package-e1993a64411c7d5bfae5a3c3eeb15aeda6822ea2-{{checksum ".buildcache/cache-keys/package-e1993a64411c7d5bfae5a3c3eeb15aeda6822ea2"}}
     - run:
         command: |
           make package-meta
         environment:
-          PACKAGE_SPEC_ID: bf5ea00c6f4f9ca08f9e3462bf988de871b02df8
+          PACKAGE_SPEC_ID: e1993a64411c7d5bfae5a3c3eeb15aeda6822ea2
         name: Write package metadata for darwin_amd64_package
     - restore_cache:
-        key: cache001-package-42855ae063b178c24cc6bacf667ef017b3f9c8f0-{{checksum ".buildcache/cache-keys/package-42855ae063b178c24cc6bacf667ef017b3f9c8f0"}}
+        key: cache001-package-7655ed418439b6899d17af07f4b46c44b0f7ab65-{{checksum ".buildcache/cache-keys/package-7655ed418439b6899d17af07f4b46c44b0f7ab65"}}
     - run:
         command: |
           make package-meta
         environment:
-          PACKAGE_SPEC_ID: 42855ae063b178c24cc6bacf667ef017b3f9c8f0
+          PACKAGE_SPEC_ID: 7655ed418439b6899d17af07f4b46c44b0f7ab65
         name: Write package metadata for linux_amd64_package
     - run:
         command: make aliases
