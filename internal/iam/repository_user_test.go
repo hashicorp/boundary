@@ -118,6 +118,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	id := testId(t)
 	org, proj := TestScopes(t, repo)
+	authMethodId := testAuthMethod(t, conn, org.PublicId)
 	pubId := func(s string) *string { return &s }
 
 	type args struct {
@@ -301,11 +302,18 @@ func TestRepository_UpdateUser(t *testing.T) {
 			if tt.wantDup {
 				u := TestUser(t, repo, org.PublicId, tt.newUserOpts...)
 				u.Name = tt.args.name
-				_, _, err := repo.UpdateUser(context.Background(), u, 1, tt.args.fieldMaskPaths, tt.args.opt...)
+				_, _, _, err := repo.UpdateUser(context.Background(), u, 1, tt.args.fieldMaskPaths, tt.args.opt...)
 				require.NoError(err)
 			}
 
 			u := TestUser(t, repo, org.PublicId, tt.newUserOpts...)
+			acctCount := 3
+			accountIds := make([]string, 0, acctCount)
+			for i := 0; i < acctCount; i++ {
+				aa := testAccount(t, conn, org.PublicId, authMethodId, u.PublicId)
+				accountIds = append(accountIds, aa.PublicId)
+			}
+			sort.Strings(accountIds)
 
 			updateUser := allocUser()
 			updateUser.PublicId = u.PublicId
@@ -317,6 +325,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			updateUser.Description = tt.args.description
 
 			var userAfterUpdate *User
+			var acctIdsAfterUpdate []string
 			var updatedRows int
 			var err error
 			if tt.directUpdate {
@@ -327,7 +336,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 					userAfterUpdate = resource.(*User)
 				}
 			} else {
-				userAfterUpdate, updatedRows, err = repo.UpdateUser(context.Background(), &updateUser, 1, tt.args.fieldMaskPaths, tt.args.opt...)
+				userAfterUpdate, acctIdsAfterUpdate, updatedRows, err = repo.UpdateUser(context.Background(), &updateUser, 1, tt.args.fieldMaskPaths, tt.args.opt...)
 			}
 			if tt.wantErr {
 				require.Error(err)
@@ -350,6 +359,9 @@ func TestRepository_UpdateUser(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			assert.NotEqual(u.UpdateTime, userAfterUpdate.UpdateTime)
+			sort.Strings(acctIdsAfterUpdate)
+			assert.Equal(accountIds, acctIdsAfterUpdate)
+
 			foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
 			require.NoError(err)
 			assert.True(proto.Equal(userAfterUpdate, foundUser))

@@ -42,19 +42,19 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 // be updated.  Fields will be set to NULL if the field is a zero value and
 // included in fieldMask. Name and Description are the only updatable fields,
 // If no updatable fields are included in the fieldMaskPaths, then an error is returned.
-func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32, fieldMaskPaths []string, opt ...Option) (*User, int, error) {
+func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32, fieldMaskPaths []string, opt ...Option) (*User, []string, int, error) {
 	if user == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update user: missing user %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: missing user %w", db.ErrInvalidParameter)
 	}
 	if user.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update user: missing user public id %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: missing user public id %w", db.ErrInvalidParameter)
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
 		default:
-			return nil, db.NoRowsAffected, fmt.Errorf("update user: field: %s: %w", f, db.ErrInvalidFieldMask)
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
 	}
 	var dbMask, nullFields []string
@@ -67,18 +67,80 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update user: %w", db.ErrEmptyFieldMask)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: %w", db.ErrEmptyFieldMask)
 	}
 
-	u := user.Clone()
-	resource, rowsUpdated, err := r.update(ctx, u.(*User), version, dbMask, nullFields, opt...)
+	u := user.Clone().(*User)
+	metadata, err := r.stdMetadata(ctx, u)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: error getting metadata for update: %w", err)
+	}
+	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_UPDATE.String()}
+
+	dbOpts := []db.Option{
+		db.WithVersion(&version),
+	}
+	opts := getOpts(opt...)
+	if opts.withSkipVetForWrite {
+		dbOpts = append(dbOpts, db.WithSkipVetForWrite(true))
+	}
+
+	scope, err := u.GetScope(ctx, r.reader)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: unable to get scope: %w", err)
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: unable to get oplog wrapper: %w", err)
+	}
+	dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
+
+	var rowsUpdated int
+	var returnedUser *User
+	var currentAccountIds []string
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			returnedUser = u.Clone().(*User)
+			rowsUpdated, err = w.Update(
+				ctx,
+				returnedUser,
+				dbMask,
+				nullFields,
+				dbOpts...,
+			)
+			if err == nil && rowsUpdated > 1 {
+				// return err, which will result in a rollback of the update
+				return errors.New("error more than 1 resource would have been updated ")
+			}
+			if err != nil {
+				return err
+			}
+			// we need a new repo, that's using the same reader/writer as this TxHandler
+			txRepo := &Repository{
+				reader: reader,
+				writer: w,
+				kms:    r.kms,
+				// intentionally not setting the defaultLimit, so we'll get all
+				// the account ids without a limit
+			}
+			currentAccountIds, err = txRepo.ListAssociatedAccountIds(ctx, user.PublicId)
+			if err != nil {
+				return fmt.Errorf("unable to retrieve current account ids after update: %w", err)
+			}
+			return nil
+		},
+	)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update user: user %s already exists in org %s", user.Name, user.ScopeId)
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: user %s already exists in org %s", user.Name, user.ScopeId)
 		}
-		return nil, db.NoRowsAffected, fmt.Errorf("update user: %w for %s", err, user.PublicId)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: %w for %s", err, user.PublicId)
 	}
-	return resource.(*User), rowsUpdated, err
+	return returnedUser, currentAccountIds, rowsUpdated, err
 }
 
 // LookupUser will look up a user in the repository.  If the user is not
