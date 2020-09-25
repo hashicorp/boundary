@@ -1,4 +1,5 @@
 import HomepageHero from 'components/homepage-hero'
+import SectionBreakCta from 'components/section-break-cta'
 import ProductFeaturesList from '@hashicorp/react-product-features-list'
 
 export default function HomePage() {
@@ -20,6 +21,7 @@ export default function HomePage() {
           },
         ]}
       />
+      <SectionBreakCta />
       <ProductFeaturesList
         heading="Boundary Features"
         features={[
