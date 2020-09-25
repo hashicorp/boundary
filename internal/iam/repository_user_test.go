@@ -1045,19 +1045,6 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "one-not-associated",
-			args: args{
-				userId: user.PublicId,
-				accountIdsFn: func() []string {
-					ids := createAccountsFn()
-					a := testAccount(t, conn, org.PublicId, authMethodId, "")
-					ids = append(ids, a.PublicId)
-					return ids
-				},
-			},
-			wantErr: true,
-		},
-		{
 			name: "bad-version",
 			args: args{
 				userVersionOverride: func() *uint32 {
