@@ -6,3 +6,113 @@ description: Connecting to your first target
 ---
 
 # Connect to Your First Target
+
+Make sure you've exported the dev Boundary server address: `export BOUNDARY_ADDR=http://127.0.0.1:9200`
+
+The default target is a TCP target with a default port of `:22`. The default host associated with this target is `127.0.0.1`. When we run `boundary connect` against this target, we'll open a local authenticated proxy to the target host's default port (`127.0.0.1:22`). Because this target is proxying our SSH server locally, we can use our built-in `connect ssh` command to wrap the proxied TCP connection and SSH via Boundary:
+
+```
+boundary connect ssh -target-id ttcp_1234567890 -- -l <your username>
+```
+
+This will execute SSH on the target and port combination specified by the local boundary proxy. The `--` usage allows you to specify flags to pass to the SSH session, in this case, `-l <username>` allows us to override the username SSH will use in starting the session.
+
+## Built-In vs. Exec
+
+Boundary comes with built-in wrappers for popular layer 7 connection protocols, such as:
+
+- `ssh`: defaults to the local SSH client (`ssh`)
+- `postgres`: defaults to your local Postgres client (`psql`)
+- `rdp`: defaults to your local RDP client (`mstsc`)
+
+However, we know that sometimes you may want to do something totally off the cuff, and for that we have a built in connect flag called `-exec`. The `-exec` flag is a very powerful tool, allowing you to wrap Boundary TCP sessions in your preferred client. You can use this flag to create an authenticated proxy to almost anything.
+
+For example, if we wanted to use Boundary to create an authenticated firewall around DNS lookups, we can update the default TCP target from a default port of `:22` to `:53`
+
+```
+boundary targets update tcp -default-port 53 -id ttcp_1234567890
+
+Target information:
+  Created Time:               Fri, 25 Sep 2020 08:43:11 PDT
+  Description:                Provides an initial target in Boundary
+  ID:                         ttcp_1234567890
+  Name:                       Generated target
+  Session Connection Limit:   1
+  Session Max Seconds:        28800
+  Type:                       tcp
+  Updated Time:               Fri, 25 Sep 2020 09:18:59 PDT
+  Version:                    2
+
+  Scope:
+    ID:                       p_1234567890
+    Name:                     Generated project scope
+    Parent Scope ID:          o_1234567890
+    Type:                     project
+
+  Host Sets:
+    Host Catalog ID:          hcst_1234567890
+    ID:                       hsst_1234567890
+
+  Attributes:
+    Default Port:             53
+```
+
+We can see in the output above that the default port for our target has now changed to `:53`.
+
+Now, lets also update the default static host's address from `127.0.0.1` to google's DNS server, `8.8.8.8:
+
+```
+boundary hosts update static -address 8.8.8.8 -id hst_1234567890
+
+Host information:
+  Created Time:        Fri, 25 Sep 2020 08:43:10 PDT
+  Description:         Provides an initial host in Boundary
+  Host Catalog ID:     hcst_1234567890
+  ID:                  hst_1234567890
+  Name:                Generated host
+  Type:                static
+  Updated Time:        Fri, 25 Sep 2020 09:28:32 PDT
+  Version:             2
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Attributes:
+    address:           8.8.8.8
+```
+
+And finally, lets exec a `dig` command as the wrapper for our TCP target session to do an authenticated DNS query of google.com:
+
+```
+boundary connect -exec dig -target-id ttcp_1234567890 \
+                   -- @{{boundary.ip}} \
+                   -p {{boundary.port}} \
+                   +tcp google.com
+
+; <<>> DiG 9.10.6 <<>> @127.0.0.1 -p 49757 +tcp google.com
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 18306
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 512
+;; QUESTION SECTION:
+;google.com.			IN	A
+
+;; ANSWER SECTION:
+google.com.		299	IN	A	216.58.193.78
+
+;; Query time: 68 msec
+;; SERVER: 127.0.0.1#49757(127.0.0.1)
+;; WHEN: Fri Sep 25 09:30:22 PDT 2020
+;; MSG SIZE  rcvd: 55
+```
+
+In the above example, we override the nameserver with `@{{boundary.ip}}` to tell dig to use the local Boundary proxy IP as the namesever. We also overrode the port dig uses with `-p {{boundary.port}}` to tell dig to use the ephemeral port that Boundary proxy will run the session on.
+
+Lastly, you'll notice we used the `+tcp` flag for the dig command here. DNS by default will use UDP and the session that Boundary creates is a TCP connection, so we override this to force dig to use TCP by default.
