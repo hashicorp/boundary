@@ -60,12 +60,8 @@ export default [
           'transit',
         ],
       },
-      {
-        category: 'controller',
-      },
-      {
-        category: 'worker',
-      },
+      'controller',
+      'worker',
       'telemetry',
     ],
   },

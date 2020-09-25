@@ -2,6 +2,7 @@ import Subnav from '@hashicorp/react-subnav'
 import { useRouter } from 'next/router'
 import subnavItems from 'data/navigation'
 import { productSlug } from 'data/metadata'
+import Link from 'next/link'
 
 export default function ProductSubnav() {
   const router = useRouter()
@@ -16,12 +17,13 @@ export default function ProductSubnav() {
           text: 'GitHub',
           url: `https://www.github.com/hashicorp/${productSlug}`,
         },
-        { text: 'Download', url: '#' },
+        { text: 'Download', url: '/docs/getting-started/building' },
       ]}
       currentPath={router.pathname}
       menuItemsAlign="right"
       menuItems={subnavItems}
       constrainWidth
+      Link={Link}
     />
   )
 }

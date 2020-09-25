@@ -13,7 +13,7 @@ import (
 	// certificates that use it can be parsed.
 	_ "crypto/sha512"
 
-	"github.com/hashicorp/go-alpnmux"
+	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/shared-secure-libs/listenerutil"
