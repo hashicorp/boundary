@@ -351,11 +351,11 @@ func (r *Repository) AssociateAccounts(ctx context.Context, userId string, userV
 	return currentAccountIds, nil
 }
 
-// DisassociatedAccounts will associate a user with existing accounts and
+// DisassociateAccounts will disassociate a user from existing accounts and
 // return a list of all associated account ids for the user. The accounts must
-// not already be associated with different users.  No options are currently
+// not be associated with different users.  No options are currently
 // supported.
-func (r *Repository) DisassociatedAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
+func (r *Repository) DisassociateAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
 	if userId == "" {
 		return nil, fmt.Errorf("disassociate accounts: missing user public id %w", db.ErrInvalidParameter)
 	}
