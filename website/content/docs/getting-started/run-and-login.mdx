@@ -8,53 +8,19 @@ description: |-
 
 # Run and Login to Boundary
 
-Before you can do anything with Boundary, you need to get the Boundary services up and running for the first time. To do this, we're going to run Boundary in `dev` mode.
-
-Dev mode is an all-in-one installation method for getting started with Boundary quickly. As the name implies,
-dev mode is not a production installation method, but instead a way to get Boundary running with a Postgres
-database easily. Do not use dev mode in a production environment, see [Poduction Installation](/docs/installing/production) section for
-production ready deployment methods.
-
-Dev mode brings up a fully functioning instance of Boundary, including:
-
-1. A controller server
-2. A worker server
-3. A Postgres database
-
-These components should all be considered ephemeral - no data persistence occurs across dev mode restarts. It's
-strongly recommended that users leverage our [Terraform Provider for Boundary](https://github.com/hashicorp/terraform-provider-boundary) for managing configuration
-of Boundary. This will simplify starting up and shutting down your Boundary dev instance.
-
-## Requiements
-
-There are a few requirements for running dev mode:
-
-1. Docker is installed
-2. A route to download the [Postgres Docker image](https://hub.docker.com/_/postgres) is available or a local image cache is available
-
-## Start Boundary Services
-
 To start Boundary in dev mode:
 
 ```bash
 boundary dev
 ```
 
-The above is the most simple way to start the Boundary server in dev mode. However, there are likely some overrides you'll want to configure when
-doing so, these include:
-
-1. Auth method ID
-2. Auth method password
-3. Account login name
-
-To use these overrides, set the following flags:
+When the Boundary services start, you'll get the randomly generated login name and password in the output. To make things even more simple, you can override these values with hard coded ones instead:
 
 ```bash
-boundary dev -dev-auth-method-id=ampw_0000000000 -dev-password=foofoofoo -dev-login-name=foo
+boundary dev \
+         -password=foofoofoo \
+         -login-name=foo
 ```
-
-Setting these allows you to configure hardcoded auth method ID, password, and login name. You can then use these hardcoded values when configuring clients
-such as the Terraform Provider, or when logging into the admin console.
 
 ## Login to Boundary
 
@@ -64,22 +30,22 @@ For CLI users, you can override using flags:
 
 ```
 # Boundary uses http not https in dev mode
-export BOUNDARY_ADDR=http://127.0.0.1:9200
-boundary authenticate password -login-name=foo -password foofoofoo -auth-method-id=ampw_0000000000
+boundary authenticate password --addr='http://127.0.0.1:9200' \
+         -login-name=foo \
+         -password foofoofoo \
+         -auth-method-id=ampw_1234567890
 ```
 
 The authenticate to the Admin UI, open [http://127.0.0.1:9200](http://127.0.0.1:9200) in a browser and enter the hard coded login name and password:
 
 ![](/img/login-dev-mode.png)
 
-Note: Opening `127.0.0.1:9200` will redirect you to the auth method set in the global scope, which is shown in the image above.
-
-And of course, you can also use these overrides to configure the [Terraform provider for Boundary](https://github.com/hashicorp/terraform-provider-boundary):
+You can also use these overrides to configure the [Terraform provider for Boundary](https://github.com/hashicorp/terraform-provider-boundary):
 
 ```hcl
  provider "boundary" {
     base_url             = "http://127.0.0.1:9200"
-    auth_method_id       = "ampw_0000000000"
+    auth_method_id       = "ampw_1234567890"
     auth_method_username = "foo"
     auth_method_password = "foofoofoo"
 }
