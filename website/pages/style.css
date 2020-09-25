@@ -30,11 +30,6 @@
 /* Print Styles */
 @import './print.css';
 
-/* Expand content so footer is always at the bottom */
-.__next > .content {
-  min-height: calc(100vh - 260px);
-}
-
 /*
  * About this selector:
  * `.g-subnav ~ *` finds all elements after the navigation.
@@ -52,12 +47,12 @@
   scroll-margin-top: calc(64px + 0.5em);
 }
 
-/* Sticky Footer */
-.content {
+/* Expand content so Footer is sticky at the bottom */
+#__next > .content {
   overflow-y: auto;
 
-  /* 100% height - nav - footer */
-  min-height: calc(100vh - (64px + 77px));
+  /* 100% height - nav - footer - meganav */
+  min-height: calc(100vh - (64px + 77px + 48px));
 }
 
 /* Web Fonts */
