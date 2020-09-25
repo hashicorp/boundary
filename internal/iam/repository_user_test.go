@@ -870,7 +870,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				Ids: func() Ids {
 					u := TestUser(t, repo, org.PublicId)
 					a := testAccount(t, conn, org.PublicId, authMethodId, u.PublicId)
-					a2 := testAccount(t, conn, org.PublicId, authMethodId, "")
+					a2 := testAccount(t, conn, org.PublicId, authMethodId, u.PublicId)
 					return Ids{user: u.PublicId, accts: []string{a.PublicId, a2.PublicId}}
 				}(),
 			},
@@ -907,6 +907,8 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 					return Ids{user: u.PublicId, accts: []string{a.PublicId}}
 				}(),
 			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
 		},
 		{
 			name: "assoc-with-diff-user",
@@ -942,7 +944,8 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 					return Ids{user: id, accts: []string{a.PublicId}}
 				}(),
 			},
-			wantErr: false,
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
 		},
 		{
 			name: "bad-user-id",
