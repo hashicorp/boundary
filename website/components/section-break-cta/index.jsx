@@ -4,8 +4,9 @@ import Button from '@hashicorp/react-button'
 export default function SectionBreakCta({ heading, content, link }) {
   return (
     <div className={styles.sectionBreakCta}>
-      <h4 className="g-type-display-4">{heading}</h4>
-      <p className="g-type-body">{content}</p>
+      <hr />
+      <h4 className={`g-type-display-4 ${styles.heading}`}>{heading}</h4>
+      <p className={`g-type-body ${styles.content}`}>{content}</p>
       <Button
         title={link.text}
         url={link.url}

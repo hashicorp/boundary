@@ -1,3 +1,26 @@
 .sectionBreakCta {
-  /* styles TBD */
+  padding: 60px;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  box-shadow: 0 8px 12px rgba(37, 38, 45, 0.08);
+  margin: 0 auto;
+
+  & hr {
+    width: 64px;
+    background-color: var(--red);
+    margin-top: 0;
+    margin-bottom: 24px;
+  }
+}
+
+.heading {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.content {
+  margin-top: 0;
+  margin-bottom: 40px;
 }
