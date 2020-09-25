@@ -124,7 +124,10 @@ kms "aead" {
 	key_id = "global_recovery"
 }
 
-# Database URL for postgres, can be overridden with PG_URL
+# Database URL for postgres. This can be a direct "postgres://"
+# URL, or it can be "file://" to read the contents of a file to
+# supply the url, or "env://" to name an environment variable
+# that contains the URL.
 database {
   url = "postgresql://boundary:boundarydemo@${aws_db_instance.boundary.endpoint}/boundary"
 }

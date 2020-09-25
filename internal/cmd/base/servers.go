@@ -441,23 +441,35 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 	opts := getOpts(opt...)
 
-	c, url, container, err := db.InitDbInDocker(dialect)
-	// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
-	// function before returning from this method
-	defer func() {
-		if !opts.withSkipDatabaseDestruction {
-			if err := c(); err != nil {
-				b.Logger.Error("error cleaning up docker container", "error", err)
+	var container, url string
+	var err error
+	var c func() error
+
+	switch b.DatabaseUrl {
+	case "":
+		c, url, container, err = db.InitDbInDocker(dialect)
+		// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
+		// function before returning from this method
+		defer func() {
+			if !opts.withSkipDatabaseDestruction {
+				if err := c(); err != nil {
+					b.Logger.Error("error cleaning up docker container", "error", err)
+				}
 			}
+		}()
+
+		if err != nil {
+			return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
 		}
-	}()
 
-	if err != nil {
-		return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
+		b.DevDatabaseCleanupFunc = c
+		b.DatabaseUrl = url
+
+	default:
+		if _, err := db.InitStore(dialect, c, b.DatabaseUrl); err != nil {
+			return fmt.Errorf("error initializing store: %w", err)
+		}
 	}
-
-	b.DevDatabaseCleanupFunc = c
-	b.DatabaseUrl = url
 
 	b.InfoKeys = append(b.InfoKeys, "dev database url")
 	b.Info["dev database url"] = b.DatabaseUrl
