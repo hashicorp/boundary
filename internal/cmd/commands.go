@@ -71,6 +71,18 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "ssh",
 			}, nil
 		},
+		"connect rdp": func() (cli.Command, error) {
+			return &proxy.Command{
+				Command: base.NewCommand(ui),
+				Func:    "rdp",
+			}, nil
+		},
+		"connect postgres": func() (cli.Command, error) {
+			return &proxy.Command{
+				Command: base.NewCommand(ui),
+				Func:    "postgres",
+			}, nil
+		},
 
 		"authenticate": func() (cli.Command, error) {
 			return &authenticate.Command{
