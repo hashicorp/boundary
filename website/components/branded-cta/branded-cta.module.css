@@ -1,3 +1,44 @@
 .brandedCta {
-  /* Styles TBD */
+  padding: 48px 0;
+}
+
+.contentContainer {
+  @media (--medium-up) {
+    display: flex;
+  }
+
+  & .g-type-display-2 {
+    @media (--medium-up) {
+      flex-basis: 33.3%;
+      padding-right: 32px;
+    }
+
+  & + .content-and-links .g-type-body-large {
+    margin-top: 16px;
+    @media (--medium-up) {
+      margin: 0;
+    }
+  }
+  }
+}
+
+.content-and-links {
+  @media (--medium-up) {
+    flex-basis: 66.6%;
+    margin-left: 32px;
+  }
+
+  & .g-type-body-large {
+    max-width: 35em;
+  }
+}
+
+.links {
+  margin-top: 40px;
+  margin-bottom: -16px;
+
+  & .g-btn {
+    margin-right: 16px;
+    margin-bottom: 16px;
+  }
 }
