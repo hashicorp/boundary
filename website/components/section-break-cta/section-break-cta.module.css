@@ -6,6 +6,7 @@
   text-align: center;
   box-shadow: 0 8px 12px rgba(37, 38, 45, 0.08);
   margin: 0 auto;
+  background-color: var(--white);
 
   @media (width <= 880px) {
     margin: 0 40px;

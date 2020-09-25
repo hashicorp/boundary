@@ -21,14 +21,17 @@ export default function HomePage() {
           },
         ]}
       />
-      <SectionBreakCta
-        heading="Have you tried Boundary?"
-        content="Share your feedback for a chance to receive special swag."
-        link={{
-          text: 'Share your Boundary story',
-          url: 'http://hashi.co/boundary-survey',
-        }}
-      />
+      <div className="break-section">
+        <SectionBreakCta
+          heading="Have you tried Boundary?"
+          content="Share your feedback for a chance to receive special swag."
+          link={{
+            text: 'Share your Boundary story',
+            url: 'http://hashi.co/boundary-survey',
+          }}
+        />
+      </div>
+
       <ProductFeaturesList
         heading="Boundary Features"
         features={[

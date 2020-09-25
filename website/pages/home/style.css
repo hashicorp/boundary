@@ -1,3 +1,14 @@
 p {
-  color: black;
+  color: gray-7;
+}
+
+.p-home {
+  & .break-section {
+    background: linear-gradient(
+      var(--gray-7) 0%,
+      var(--gray-7) 50%,
+      var(--white) 50%,
+      var(--white) 100%
+    );
+  }
 }
