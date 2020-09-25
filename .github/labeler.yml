@@ -1,6 +1,3 @@
-test:
-  - **/*_test.go
-
 api:
   - api/*
 
