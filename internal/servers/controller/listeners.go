@@ -13,8 +13,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
-	"github.com/hashicorp/go-alpnmux"
 	"github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
 )

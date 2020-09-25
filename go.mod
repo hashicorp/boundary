@@ -19,7 +19,6 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.0-beta.4.0.20200813083929-9bdca3d79b97
 	github.com/hashicorp/dbassert v0.0.0-20200602142727-a6709b436ad6
 	github.com/hashicorp/errwrap v1.0.0
-	github.com/hashicorp/go-alpnmux v0.0.0-20200822022353-14527cfc58e5
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-kms-wrapping v0.5.14
