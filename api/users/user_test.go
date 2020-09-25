@@ -6,12 +6,53 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCustom(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	uClient := users.NewClient(client)
+	aClient := accounts.NewClient(client)
+
+	usr1, err := uClient.Create(tc.Context(), "global")
+	require.NoError(err)
+
+	acct1, err := aClient.Create(tc.Context(), token.AuthMethodId, accounts.WithPasswordAccountLoginName("accountname"))
+	require.NoError(err)
+	acct2, err := aClient.Create(tc.Context(), token.AuthMethodId, accounts.WithPasswordAccountLoginName("accountname2"))
+	require.NoError(err)
+
+	addResult, err := uClient.AddAccounts(tc.Context(), usr1.Item.Id, 0, []string{acct1.Item.Id, acct2.Item.Id}, users.WithAutomaticVersioning(true))
+	assert.NoError(err)
+	assert.ElementsMatch([]string{acct1.Item.Id, acct2.Item.Id}, addResult.Item.AccountIds)
+
+	// Add the account to the default user
+	_, err = uClient.AddAccounts(tc.Context(), token.UserId, 0, []string{acct1.Item.Id}, users.WithAutomaticVersioning(true))
+	assert.Error(err)
+
+	remResult, err := uClient.RemoveAccounts(tc.Context(), usr1.Item.Id, 0, []string{acct1.Item.Id}, users.WithAutomaticVersioning(true))
+	assert.NoError(err)
+	assert.ElementsMatch([]string{acct2.Item.Id}, remResult.Item.AccountIds)
+
+	// Cannot remove an account that isn't associated with a user.
+	_, err = uClient.RemoveAccounts(tc.Context(), usr1.Item.Id, 0, []string{acct1.Item.Id}, users.WithAutomaticVersioning(true))
+	assert.Error(err)
+
+	setResult, err := uClient.SetAccounts(tc.Context(), usr1.Item.Id, 0, []string{acct1.Item.Id, acct2.Item.Id}, users.WithAutomaticVersioning(true))
+	assert.NoError(err)
+	assert.ElementsMatch([]string{acct1.Item.Id, acct2.Item.Id}, setResult.Item.AccountIds)
+}
 
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)

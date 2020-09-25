@@ -2346,7 +2346,7 @@
     },
     "/v1/users/{id}:add-accounts": {
       "post": {
-        "summary": "Adds Users as members to a Group",
+        "summary": "Associates an account to a User.",
         "operationId": "UserService_AddUserAccounts",
         "responses": {
           "200": {
@@ -2379,7 +2379,7 @@
     },
     "/v1/users/{id}:remove-accounts": {
       "post": {
-        "summary": "Removes the specified members from a Group.",
+        "summary": "Removes the specified Accounts from being associated with the provided User.",
         "operationId": "UserService_RemoveUserAccounts",
         "responses": {
           "200": {
@@ -2412,7 +2412,7 @@
     },
     "/v1/users/{id}:set-accounts": {
       "post": {
-        "summary": "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified.",
+        "summary": "Set the Accounts associated to the User to exactly the list of provided in the request, removing any Accounts that are not specified.",
         "operationId": "UserService_SetUserAccounts",
         "responses": {
           "200": {
