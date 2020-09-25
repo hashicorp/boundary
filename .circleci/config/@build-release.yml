@@ -68,24 +68,27 @@ jobs:
           name: Build layer 00-install-deps-2d16c6b83793b47aad77bb2e6ebb2ff70b64c1e9
           command: |
             
+            eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-            eval $(ssh-agent)
+            ssh-add -l -E md5
 
             make -f packages*.lock/layer.mk 00-install-deps-2d16c6b83793b47aad77bb2e6ebb2ff70b64c1e9-image
       - run:
           name: Build layer 01-download-modules-b298c74274cbe268d6b4c7826a0dd425f3138e62
           command: |
             
+            eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-            eval $(ssh-agent)
+            ssh-add -l -E md5
 
             make -f packages*.lock/layer.mk 01-download-modules-b298c74274cbe268d6b4c7826a0dd425f3138e62-image
       - run:
           name: Build layer 02-copy-source-0f2f67537f81b566bf36ede6b6d539dacf74a2a5
           command: |
             
+            eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-            eval $(ssh-agent)
+            ssh-add -l -E md5
 
             make -f packages*.lock/layer.mk 02-copy-source-0f2f67537f81b566bf36ede6b6d539dacf74a2a5-image
       - run: make -f packages*.lock/layer.mk 02-copy-source-0f2f67537f81b566bf36ede6b6d539dacf74a2a5-save
@@ -147,8 +150,9 @@ jobs:
           name: Compile Package
           command: |
             
+            eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-            eval $(ssh-agent)
+            ssh-add -l -E md5
 
             make -C packages*.lock package
 
@@ -205,8 +209,9 @@ jobs:
           name: Compile Package
           command: |
             
+            eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-            eval $(ssh-agent)
+            ssh-add -l -E md5
 
             make -C packages*.lock package
 
