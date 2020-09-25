@@ -9,7 +9,7 @@ export default function HomePage() {
         links={[
           {
             text: 'Download',
-            url: '/docs/getting-started/building',
+            url: 'https://github.com/hashicorp/boundary/releases/tag/beta',
             type: 'download',
           },
           {
