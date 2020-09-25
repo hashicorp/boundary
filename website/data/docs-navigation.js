@@ -86,7 +86,7 @@ export default [
     content: [
       {
         category: 'release-notes',
-        content: ['0_0_1'],
+        content: ['0_1_0'],
       },
     ],
   },
