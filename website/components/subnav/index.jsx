@@ -19,7 +19,7 @@ export default function ProductSubnav() {
         },
         {
           text: 'Download',
-          url: 'https://github.com/hashicorp/boundary/releases/tag/beta',
+          url: 'https://github.com/hashicorp/boundary/releases',
         },
       ]}
       currentPath={router.pathname}
