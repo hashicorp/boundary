@@ -44,8 +44,8 @@ const (
 	),
 	delete_accounts (account_id) as (
 	  -- returns the DELETE list
-	  select host_id
-		from account_id
+	  select account_id
+		from current_accounts
 	   where account_id not in (select * from final_accounts)
 	),
 	insert_accounts (account_id) as (
