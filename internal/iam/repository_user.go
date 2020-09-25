@@ -144,22 +144,26 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 	return returnedUser, currentAccountIds, rowsUpdated, err
 }
 
-// LookupUser will look up a user in the repository.  If the user is not
-// found, it will return nil, nil.
-func (r *Repository) LookupUser(ctx context.Context, withPublicId string, opt ...Option) (*User, error) {
-	if withPublicId == "" {
-		return nil, fmt.Errorf("lookup user: missing public id %w", db.ErrInvalidParameter)
+// LookupUser will look up a user and its associated account ids in the
+// repository.  If the user is not found, it will return nil, nil, nil.
+func (r *Repository) LookupUser(ctx context.Context, userId string, opt ...Option) (*User, []string, error) {
+	if userId == "" {
+		return nil, nil, fmt.Errorf("lookup user: missing public id %w", db.ErrInvalidParameter)
 	}
 
 	user := allocUser()
-	user.PublicId = withPublicId
+	user.PublicId = userId
 	if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, nil
+			return nil, nil, nil
 		}
-		return nil, fmt.Errorf("lookup user: failed %w for %s", err, withPublicId)
+		return nil, nil, fmt.Errorf("lookup user: failed %w for %s", err, userId)
 	}
-	return &user, nil
+	currentAccountIds, err := r.ListAssociatedAccountIds(ctx, userId)
+	if err != nil {
+		return nil, nil, fmt.Errorf("lookup user: unable to retrieve current account ids: %w", err)
+	}
+	return &user, currentAccountIds, nil
 }
 
 // DeleteUser will delete a user from the repository

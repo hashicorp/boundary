@@ -100,7 +100,7 @@ func TestRepository_CreateUser(t *testing.T) {
 			assert.NotNil(u.CreateTime)
 			assert.NotNil(u.UpdateTime)
 
-			foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
+			foundUser, _, err := repo.LookupUser(context.Background(), u.PublicId)
 			require.NoError(err)
 			assert.True(proto.Equal(foundUser, u))
 
@@ -362,9 +362,11 @@ func TestRepository_UpdateUser(t *testing.T) {
 			sort.Strings(acctIdsAfterUpdate)
 			assert.Equal(accountIds, acctIdsAfterUpdate)
 
-			foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
+			foundUser, foundAccountIds, err := repo.LookupUser(context.Background(), u.PublicId)
 			require.NoError(err)
 			assert.True(proto.Equal(userAfterUpdate, foundUser))
+			sort.Strings(foundAccountIds)
+			assert.Equal(accountIds, foundAccountIds)
 
 			dbassert := dbassert.New(t, rw)
 			if tt.args.name == "" {
@@ -451,7 +453,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundUser, err := repo.LookupUser(context.Background(), tt.args.user.PublicId)
+			foundUser, _, err := repo.LookupUser(context.Background(), tt.args.user.PublicId)
 			require.NoError(err)
 			assert.Nil(foundUser)
 
@@ -1083,7 +1085,7 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 			accountIds := tt.args.accountIdsFn()
 			sort.Strings(accountIds)
 
-			origUser, err := repo.LookupUser(context.Background(), user.PublicId)
+			origUser, _, err := repo.LookupUser(context.Background(), user.PublicId)
 			require.NoError(err)
 
 			version := origUser.Version
@@ -1115,7 +1117,7 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 			sort.Strings(foundIds)
 			assert.Equal(accountIds, foundIds)
 
-			u, err := repo.LookupUser(context.Background(), tt.args.userId)
+			u, _, err := repo.LookupUser(context.Background(), tt.args.userId)
 			require.NoError(err)
 			assert.Equal(version+1, u.Version)
 		})
@@ -1213,7 +1215,7 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			accountIds := tt.args.accountIdsFn()
 
-			origUser, err := repo.LookupUser(context.Background(), user.PublicId)
+			origUser, _, err := repo.LookupUser(context.Background(), user.PublicId)
 			require.NoError(err)
 
 			version := origUser.Version
@@ -1242,7 +1244,7 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 				assert.True(!strutil.StrListContains(foundIds, id))
 			}
 
-			u, err := repo.LookupUser(context.Background(), tt.args.userId)
+			u, _, err := repo.LookupUser(context.Background(), tt.args.userId)
 			require.NoError(err)
 			assert.Equal(version+1, u.Version)
 		})

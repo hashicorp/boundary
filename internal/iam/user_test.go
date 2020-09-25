@@ -230,7 +230,7 @@ func Test_UserUpdate(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			assert.NotEqual(u.UpdateTime, updateUser.UpdateTime)
-			foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
+			foundUser, _, err := repo.LookupUser(context.Background(), u.PublicId)
 			require.NoError(err)
 			assert.True(proto.Equal(updateUser, foundUser))
 		})
@@ -291,7 +291,7 @@ func Test_UserDelete(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundUser, err := repo.LookupUser(context.Background(), tt.user.GetPublicId())
+			foundUser, _, err := repo.LookupUser(context.Background(), tt.user.GetPublicId())
 			assert.NoError(err)
 			assert.Nil(foundUser)
 		})
