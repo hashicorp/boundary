@@ -66,7 +66,6 @@ export default function HomePage() {
         <div className="g-grid-container">
           <h2 className="g-type-display-2">Use cases</h2>
           <UseCases
-            // TODO Move images to Dato
             items={[
               {
                 title: 'Identity-based access',
@@ -75,7 +74,7 @@ export default function HomePage() {
                 image: {
                   url: require('./img/red-usecase-accessprivileges.png?url'),
                 },
-                link: { title: 'Learn more', url: 'https://hashicorp.com' },
+                link: { title: 'Learn more', url: '#TODO' },
               },
               {
                 title: 'Automate access',
@@ -84,7 +83,7 @@ export default function HomePage() {
                 image: {
                   url: require('./img/red-usecase-accessmgmt.png?url'),
                 },
-                link: { title: 'Learn more', url: 'https://hashicorp.com' },
+                link: { title: 'Learn more', url: '#TODO' },
               },
               {
                 title: 'Session visibility',
@@ -93,7 +92,7 @@ export default function HomePage() {
                 image: {
                   url: require('./img/red-usecase-sessionvisibility.png?url'),
                 },
-                link: { title: 'Learn more', url: 'https://hashicorp.com' },
+                link: { title: 'Learn more', url: '#TODO' },
               },
             ]}
           />
