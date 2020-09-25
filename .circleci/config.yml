@@ -4,7 +4,7 @@ orbs:
 jobs:
   build:
     machine:
-      image: 'ubuntu-1604:201903-01'
+      image: 'circleci/golang:1.15.2'
     working_directory: ~/boundary
     steps:
     - add_ssh_keys:
