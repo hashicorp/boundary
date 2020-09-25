@@ -7,14 +7,20 @@ export default function BrandedCta(props) {
   return (
     <div className={styles.brandedCta}>
       <div className={`g-grid-container ${styles.contentContainer}`}>
-        <h2 data-testid="heading" className="g-type-display-2">
+        <h2
+          data-testid="heading"
+          className={`g-type-display-2 ${styles.heading}`}
+        >
           {heading}
         </h2>
         <div className="content-and-links">
-          <p data-testid="content" className="g-type-body-large">
+          <p
+            data-testid="content"
+            className={`g-type-body-large ${styles.content}`}
+          >
             {content}
           </p>
-          <div data-testid="links" className="links">
+          <div data-testid="links" className={styles.links}>
             {links.map((link, stableIdx) => {
               const buttonVariant = stableIdx === 0 ? 'primary' : 'secondary'
               const linkType = link.type || ''
