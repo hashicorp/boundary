@@ -49,5 +49,6 @@
   & a {
     margin-right: 32px;
     margin-bottom: 32px;
+    border-radius: 3px;
   }
 }
