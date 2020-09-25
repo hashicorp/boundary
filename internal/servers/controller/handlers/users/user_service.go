@@ -297,14 +297,14 @@ func (s Service) addInRepo(ctx context.Context, userId string, accountIds []stri
 	}
 	_, err = repo.AssociateAccounts(ctx, userId, version, accountIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to add members to group: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add accounts to user: %v.", err)
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+		return nil, fmt.Errorf("unable to look up user after adding accounts: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup group after adding member to it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after adding accounts to it.")
 	}
 	return toProto(out, accts), nil
 }
@@ -316,14 +316,14 @@ func (s Service) setInRepo(ctx context.Context, userId string, accountIds []stri
 	}
 	_, err = repo.SetAssociatedAccounts(ctx, userId, version, accountIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to set members on group: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set accounts for the user: %v.", err)
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+		return nil, fmt.Errorf("unable to look up user after setting accounts: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup group after setting members for it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after setting accounts for it.")
 	}
 	return toProto(out, accts), nil
 }
@@ -335,14 +335,14 @@ func (s Service) removeInRepo(ctx context.Context, userId string, accountIds []s
 	}
 	_, err = repo.DisassociateAccounts(ctx, userId, version, accountIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to remove members from group: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove accounts from user: %v.", err)
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+		return nil, fmt.Errorf("unable to look up user after removing accounts: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup group after removing members from it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after removing accounts from it.")
 	}
 	return toProto(out, accts), nil
 }
