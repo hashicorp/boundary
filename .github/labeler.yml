@@ -1,0 +1,26 @@
+test:
+  - **/*_test.go
+
+api:
+  - api/*
+
+core:
+  - internal/*
+
+website:
+  - website/*
+
+docs/concepts:
+  - website/content/docs/concepts/*
+
+docs/getting-started:
+  - website/content/docs/getting-started/*
+
+docs/installing:
+  - website/content/docs/installing/*
+
+docs/configuration:
+  - website/content/docs/configuration/*
+
+docs/releases:
+  - website/content/docs/releases/*
