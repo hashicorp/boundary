@@ -1,5 +1,31 @@
 begin;
 
+  create or replace function rollup_connections(p_session_id wt_public_id)
+    returns void
+  as $$
+  declare
+    session_row wh_session_accumulating_fact%rowtype;
+  begin
+    with
+    session_totals (session_id, total_connection_count, total_bytes_up, total_bytes_down) as (
+      select session_id,
+             sum(connection_count),
+             sum(bytes_up),
+             sum(bytes_down)
+        from wh_session_connection_accumulating_fact
+       where session_id = p_session_id
+       group by session_id
+    )
+    update wh_session_accumulating_fact
+       set total_connection_count = session_totals.total_connection_count,
+           total_bytes_up         = session_totals.total_bytes_up,
+           total_bytes_down       = session_totals.total_bytes_down
+      from session_totals
+     where wh_session_accumulating_fact.session_id = session_totals.session_id
+    returning wh_session_accumulating_fact.* into strict session_row;
+  end;
+  $$ language plpgsql;
+
   create or replace function insert_wh_session_fact()
     returns trigger
   as $$
@@ -89,6 +115,7 @@ begin;
       from authorized_timestamp,
            session_dimension
       returning * into strict new_row;
+    perform rollup_connections(new.session_id);
     return null;
   end;
   $$ language plpgsql;
@@ -98,6 +125,30 @@ begin;
   after insert on session_connection
     for each row execute function insert_wh_session_connection_fact();
 
+  create or replace function update_wh_session_connection_fact()
+    returns trigger
+  as $$
+  declare
+    updated_row wh_session_connection_accumulating_fact%rowtype;
+  begin
+        update wh_session_connection_accumulating_fact
+           set client_tcp_address       = new.client_tcp_address,
+               client_tcp_port_number   = new.client_tcp_port,
+               endpoint_tcp_address     = new.endpoint_tcp_address,
+               endpoint_tcp_port_number = new.endpoint_tcp_port,
+               bytes_up                 = new.bytes_up,
+               bytes_down               = new.bytes_down
+         where connection_id = new.public_id
+     returning * into strict updated_row;
+    perform rollup_connections(new.session_id);
+    return null;
+  end;
+  $$ language plpgsql;
+
+  create trigger
+    update_wh_session_connection_fact
+  after update on session_connection
+    for each row execute function update_wh_session_connection_fact();
 
 
 commit;

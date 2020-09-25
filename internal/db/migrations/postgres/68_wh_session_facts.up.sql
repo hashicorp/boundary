@@ -175,5 +175,6 @@ begin;
     'endpoint and sent to the client for this connection. Bytes Down is a fully '
     'additive measurement.';
 
+  create index on wh_session_connection_accumulating_fact(session_id);
 
 commit;
