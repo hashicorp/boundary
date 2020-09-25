@@ -66,13 +66,13 @@ type Command struct {
 	flagTargetId   string
 	flagHostId     string
 	flagExec       string
+	flagUsername   string
 
 	// SSH
 	flagSshStyle string
 
 	// Postgres
-	flagPostgresStyle    string
-	flagPostgresUsername string
+	flagPostgresStyle string
 
 	// RDP
 	flagRdpStyle string
@@ -221,6 +221,14 @@ func (c *Command) Flags() *base.FlagSets {
 			Usage:      `Specifies how the CLI will attempt to invoke an SSH client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "ssh" and "putty".`,
 		})
 
+		f.StringVar(&base.StringVar{
+			Name:       "username",
+			Target:     &c.flagUsername,
+			EnvVar:     "BOUNDARY_CONNECT_USERNAME",
+			Completion: complete.PredictNothing,
+			Usage:      `Specifies the username to pass through to the client`,
+		})
+
 	case "postgres":
 		f := set.NewFlagSet("Postgres Options")
 
@@ -235,10 +243,10 @@ func (c *Command) Flags() *base.FlagSets {
 
 		f.StringVar(&base.StringVar{
 			Name:       "username",
-			Target:     &c.flagPostgresUsername,
-			EnvVar:     "BOUNDARY_CONNECT_POSTGRES_USERNAME",
+			Target:     &c.flagUsername,
+			EnvVar:     "BOUNDARY_CONNECT_USERNAME",
 			Completion: complete.PredictNothing,
-			Usage:      `Specifies the username to pass through to the Postgres client.`,
+			Usage:      `Specifies the username to pass through to the client`,
 		})
 
 	case "rdp":
@@ -726,13 +734,16 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		case "putty":
 			args = append(args, "-P", port, ip)
 		}
+		if c.flagUsername != "" {
+			args = append(args, "-l", c.flagUsername)
+		}
 
 	case "postgres":
 		switch c.flagPostgresStyle {
 		case "psql":
 			args = append(args, "-p", port, "-h", ip)
-			if c.flagPostgresUsername != "" {
-				args = append(args, "-U", c.flagPostgresUsername)
+			if c.flagUsername != "" {
+				args = append(args, "-U", c.flagUsername)
 			}
 		}
 
