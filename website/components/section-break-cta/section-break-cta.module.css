@@ -1,11 +1,15 @@
 .sectionBreakCta {
-  padding: 60px;
+  padding: 60px 30px;
   max-width: 800px;
   display: flex;
   flex-direction: column;
   text-align: center;
   box-shadow: 0 8px 12px rgba(37, 38, 45, 0.08);
   margin: 0 auto;
+
+  @media (width <= 880px) {
+    margin: 0 40px;
+  }
 
   & hr {
     width: 64px;
