@@ -21,7 +21,15 @@ export default function HomePage() {
           },
         ]}
       />
-      <SectionBreakCta />
+      {/* TODO Use finalized URL here */}
+      <SectionBreakCta
+        heading="Have you tried Boundary?"
+        content="Share your feedback for a chance to receive special swag."
+        link={{
+          text: 'Share your Boundary story',
+          url: 'https://hashicorp.com',
+        }}
+      />
       <ProductFeaturesList
         heading="Boundary Features"
         features={[
