@@ -37,6 +37,6 @@ These components should all be considered ephemeral - no data persistence occurs
 1. A static [host](/docs/concepts/domain-model/hosts) and [host set](/docs/concepts/domain-model/host-sets) with default ID's of `hst_1234567890` and `hsst_1234567890` respectively.
 1. A TCP [target](/docs/concepts/domain-model/targets) with a default ID of `ttcp_1234567890`.
 
-All of the default ID suffixes are overridable as well as several other dev mode configurations. To see a complete list of these override flags, consult `boundary dev -h`.
+The default ID suffixes are overridable or can be randomly generated, and there are many other dev mode controls. To see a complete list of these override flags, consult `boundary dev -h`.
 
 If you plan on provisioning a large number of resources in dev mode, it's strongly recommended that users leverage our [Terraform Provider for Boundary](https://github.com/hashicorp/terraform-provider-boundary) for managing configuration of Boundary. This will simplify starting up and shutting down your Boundary dev instance.
