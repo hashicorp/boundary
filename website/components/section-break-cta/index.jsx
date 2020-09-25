@@ -15,7 +15,7 @@ export default function SectionBreakCta({ heading, content, link }) {
           variant: 'tertiary-neutral',
           background: 'light',
         }}
-        linkType="inbound"
+        linkType="outbound"
       />
     </div>
   )
