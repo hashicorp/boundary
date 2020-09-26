@@ -131,13 +131,13 @@ type TLSConfig struct {
 // DefaultConfig returns a default configuration for the client. It is
 // safe to modify the return value of this function.
 //
-// The default Addr is https://127.0.0.1:9200, but this can be overridden by
+// The default Addr is http://127.0.0.1:9200, but this can be overridden by
 // setting the `BOUNDARY_ADDR` environment variable.
 //
 // If an error is encountered, this will return nil.
 func DefaultConfig() (*Config, error) {
 	config := &Config{
-		Addr:       "https://127.0.0.1:9200",
+		Addr:       "http://127.0.0.1:9200",
 		HttpClient: cleanhttp.DefaultPooledClient(),
 		Timeout:    time.Second * 60,
 		TLSConfig:  &TLSConfig{},
