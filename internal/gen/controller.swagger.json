@@ -2345,7 +2345,7 @@
     },
     "/v1/users/{id}:add-accounts": {
       "post": {
-        "summary": "Associates an account to a User.",
+        "summary": "Associates an Account to a User.",
         "operationId": "UserService_AddUserAccounts",
         "responses": {
           "200": {
