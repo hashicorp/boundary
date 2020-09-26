@@ -71,7 +71,7 @@ export default [
   },
   {
     category: 'admin-console',
-    content: ['login'],
+    content: ['getting-started'],
   },
   {
     category: 'command-line',

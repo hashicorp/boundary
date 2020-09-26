@@ -1,0 +1,52 @@
+---
+layout: docs
+page_title: Getting Started - UI
+sidebar_title: Getting Started
+description: |-
+  Boundary admin console getting started
+---
+
+# Getting Started with the Admin Console
+
+## Logging In
+
+If you don't already have a deployment of Boundary, you can start one locally in dev mode:
+
+```bash
+$ boundary dev -password=foofoofoo -login-name=foo
+```
+
+Navigate to the login page in a browser, and enter your credentials
+
+![](/img/ui_login.png)
+
+## View Users & Add a User
+
+Click on the default organization, and then navigate to the side-bar `users` and click the `+` sign
+
+![](/img/ui_users.png)
+
+![](/img/ui_users_2.png)
+
+## View a Session
+
+Start a TCP session to the default target
+
+```bash
+$ boundary connect -target-id ttcp_1234567890
+
+Proxy listening information:
+  Address:             127.0.0.1
+  Connection Limit:    1
+  Expiration:          Sat, 26 Sep 2020 20:28:20 PDT
+  Port:                50188
+  Protocol:            tcp
+  Session ID:          s_aSEjQBflI8
+```
+
+Navigate to `projects` -> `sessions`
+
+![](/img/ui_sessions.png)
+
+You can see multiple sessions, the last one is the latest one. In this view we can see two others
+that are pending cancellation.
