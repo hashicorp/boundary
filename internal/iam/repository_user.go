@@ -139,7 +139,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 				// intentionally not setting the defaultLimit, so we'll get all
 				// the account ids without a limit
 			}
-			currentAccountIds, err = txRepo.ListAssociatedAccountIds(ctx, user.PublicId)
+			currentAccountIds, err = txRepo.ListUserAccounts(ctx, user.PublicId)
 			if err != nil {
 				return fmt.Errorf("unable to retrieve current account ids after update: %w", err)
 			}
@@ -170,7 +170,7 @@ func (r *Repository) LookupUser(ctx context.Context, userId string, opt ...Optio
 		}
 		return nil, nil, fmt.Errorf("lookup user: failed %w for %s", err, userId)
 	}
-	currentAccountIds, err := r.ListAssociatedAccountIds(ctx, userId)
+	currentAccountIds, err := r.ListUserAccounts(ctx, userId)
 	if err != nil {
 		return nil, nil, fmt.Errorf("lookup user: unable to retrieve current account ids: %w", err)
 	}
@@ -331,9 +331,9 @@ func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId strin
 	return &u, nil
 }
 
-// ListAssociatedAccountIds returns the account ids for the userId and supports the
+// ListUserAccounts returns the account ids for the userId and supports the
 // WithLimit option. Returns nil, nil when no associated accounts are found.
-func (r *Repository) ListAssociatedAccountIds(ctx context.Context, userId string, opt ...Option) ([]string, error) {
+func (r *Repository) ListUserAccounts(ctx context.Context, userId string, opt ...Option) ([]string, error) {
 	if userId == "" {
 		return nil, fmt.Errorf("list auth account ids: missing user id: %w", db.ErrInvalidParameter)
 	}
@@ -351,11 +351,11 @@ func (r *Repository) ListAssociatedAccountIds(ctx context.Context, userId string
 	return ids, nil
 }
 
-// AssociateAccounts will associate a user with existing accounts and
+// AddUserAccounts will associate a user with existing accounts and
 // return a list of all associated account ids for the user. The accounts must
 // not already be associated with different users.  No options are currently
 // supported.
-func (r *Repository) AssociateAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
+func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
 	if userId == "" {
 		return nil, fmt.Errorf("associate accounts: missing user public id %w", db.ErrInvalidParameter)
 	}
@@ -419,7 +419,7 @@ func (r *Repository) AssociateAccounts(ctx context.Context, userId string, userV
 				// intentionally not setting the defaultLimit, so we'll get all
 				// the account ids without a limit
 			}
-			currentAccountIds, err = txRepo.ListAssociatedAccountIds(ctx, user.PublicId)
+			currentAccountIds, err = txRepo.ListUserAccounts(ctx, user.PublicId)
 			if err != nil {
 				return fmt.Errorf("associate accounts: unable to retrieve current account ids after adds: %w", err)
 			}
@@ -432,11 +432,11 @@ func (r *Repository) AssociateAccounts(ctx context.Context, userId string, userV
 	return currentAccountIds, nil
 }
 
-// DisassociateAccounts will disassociate a user from existing accounts and
+// DeleteUserAccounts will disassociate a user from existing accounts and
 // return a list of all associated account ids for the user. The accounts must
 // not be associated with different users.  No options are currently
 // supported.
-func (r *Repository) DisassociateAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
+func (r *Repository) DeleteUserAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
 	if userId == "" {
 		return nil, fmt.Errorf("disassociate accounts: missing user public id %w", db.ErrInvalidParameter)
 	}
@@ -499,7 +499,7 @@ func (r *Repository) DisassociateAccounts(ctx context.Context, userId string, us
 				// intentionally not setting the defaultLimit, so we'll get all
 				// the account ids without a limit
 			}
-			currentAccountIds, err = txRepo.ListAssociatedAccountIds(ctx, user.PublicId)
+			currentAccountIds, err = txRepo.ListUserAccounts(ctx, user.PublicId)
 			if err != nil {
 				return fmt.Errorf("disassociate accounts: unable to retrieve current account ids after adds: %w", err)
 			}
@@ -512,11 +512,11 @@ func (r *Repository) DisassociateAccounts(ctx context.Context, userId string, us
 	return currentAccountIds, nil
 }
 
-// DisassociatedAccounts will associate a user with existing accounts and
+// SetUserAccounts will associate a user with existing accounts and
 // return a list of all associated account ids for the user. The accounts must
 // not already be associated with different users.  No options are currently
 // supported.
-func (r *Repository) SetAssociatedAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
+func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
 	if userId == "" {
 		return nil, fmt.Errorf("set associated accounts: missing user public id %w", db.ErrInvalidParameter)
 	}
@@ -555,7 +555,7 @@ func (r *Repository) SetAssociatedAccounts(ctx context.Context, userId string, u
 					// intentionally not setting the defaultLimit, so we'll get all
 					// the account ids without a limit
 				}
-				currentAccountIds, err = txRepo.ListAssociatedAccountIds(ctx, userId)
+				currentAccountIds, err = txRepo.ListUserAccounts(ctx, userId)
 				if err != nil {
 					return fmt.Errorf("set associated accounts: unable to retrieve current account ids after set: %w", err)
 				}
@@ -606,7 +606,7 @@ func (r *Repository) SetAssociatedAccounts(ctx context.Context, userId string, u
 				// intentionally not setting the defaultLimit, so we'll get all
 				// the account ids without a limit
 			}
-			currentAccountIds, err = txRepo.ListAssociatedAccountIds(ctx, user.PublicId)
+			currentAccountIds, err = txRepo.ListUserAccounts(ctx, user.PublicId)
 			if err != nil {
 				return fmt.Errorf("set associated accounts: unable to retrieve current account ids after set: %w", err)
 			}

@@ -295,7 +295,7 @@ func (s Service) addInRepo(ctx context.Context, userId string, accountIds []stri
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.AssociateAccounts(ctx, userId, version, accountIds)
+	_, err = repo.AddUserAccounts(ctx, userId, version, accountIds)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add accounts to user: %v.", err)
 	}
@@ -314,7 +314,7 @@ func (s Service) setInRepo(ctx context.Context, userId string, accountIds []stri
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.SetAssociatedAccounts(ctx, userId, version, accountIds)
+	_, err = repo.SetUserAccounts(ctx, userId, version, accountIds)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set accounts for the user: %v.", err)
 	}
@@ -333,7 +333,7 @@ func (s Service) removeInRepo(ctx context.Context, userId string, accountIds []s
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DisassociateAccounts(ctx, userId, version, accountIds)
+	_, err = repo.DeleteUserAccounts(ctx, userId, version, accountIds)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove accounts from user: %v.", err)
 	}
@@ -393,7 +393,7 @@ func toProto(in *iam.User, accts []string) *pb.User {
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
-		AccountIds: accts,
+		AccountIds:  accts,
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -403,7 +403,7 @@ func toProto(in *iam.User, accts []string) *pb.User {
 	}
 	for _, a := range accts {
 		out.Accounts = append(out.Accounts, &pb.Account{
-			Id:      a,
+			Id: a,
 			// TODO: Update this when an account can be associated with a user from a different scope.
 			ScopeId: in.GetScopeId(),
 		})
