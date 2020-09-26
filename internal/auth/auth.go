@@ -322,6 +322,10 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 		}
 		if at != nil {
 			userId = at.GetIamUserId()
+			if userId == "" {
+				v.logger.Warn("perform auth check: valid token did not map to a user, likely because no account is associated with the user any longer; continuing as u_anon", "token_id", at.GetPublicId())
+				userId = "u_anon"
+			}
 		}
 	}
 
