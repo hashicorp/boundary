@@ -4,7 +4,6 @@ go 1.15
 
 require (
 	github.com/armon/go-metrics v0.3.4
-	github.com/btcsuite/btcutil v1.0.2
 	github.com/bufbuild/buf v0.24.0
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
@@ -32,6 +31,7 @@ require (
 	github.com/hashicorp/shared-secure-libs v0.0.2
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200916184745-5576096032f8
 	github.com/iancoleman/strcase v0.1.2
+	github.com/itchyny/base58-go v0.1.0
 	github.com/jackc/pgx/v4 v4.8.1
 	github.com/jinzhu/gorm v1.9.16
 	github.com/kr/pretty v0.2.1

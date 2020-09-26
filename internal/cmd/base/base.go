@@ -3,6 +3,7 @@ package base
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -15,7 +16,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/sdk/wrapper"
@@ -219,10 +219,13 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 				token = ""
 			}
 			if token != "" {
-				tokenBytes := base58.Decode(token)
-				if len(tokenBytes) == 0 {
+				tokenBytes, err := base64.RawStdEncoding.DecodeString(token)
+				switch {
+				case err != nil:
+					c.UI.Error(fmt.Errorf("Error base64-unmarshaling stored token from system credential store: %w", err).Error())
+				case len(tokenBytes) == 0:
 					c.UI.Error("Zero length token after decoding stored token from system credential store")
-				} else {
+				default:
 					var authToken authtokens.AuthToken
 					if err := json.Unmarshal(tokenBytes, &authToken); err != nil {
 						c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))

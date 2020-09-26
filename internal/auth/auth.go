@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
@@ -22,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/recovery"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/itchyny/base58-go"
 	"github.com/kr/pretty"
 	"google.golang.org/protobuf/proto"
 )
@@ -496,7 +496,12 @@ func (v *verifier) decryptToken() {
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
-		marshaledToken := base58.Decode(v.requestInfo.EncryptedToken[len(globals.ServiceTokenV1):])
+		marshaledToken, err := base58.BitcoinEncoding.Decode([]byte(v.requestInfo.EncryptedToken[len(globals.ServiceTokenV1):]))
+		if err != nil {
+			v.logger.Trace("decrypt bearer token: error unmarshaling base58 token; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
 
 		blobInfo := new(wrapping.EncryptedBlobInfo)
 		if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
