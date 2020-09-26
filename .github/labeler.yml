@@ -91,6 +91,18 @@ core/types:
 core/ui:
   - internal/ui/*
 
+cli:
+  - internal/cmd/*
+
+cli/base:
+  - internal/cmd/base/*
+
+cli/command:
+  - internal/cmd/commands/*
+
+sdk:
+  - sdk/*
+
 website:
   - website/*
 
@@ -108,3 +120,6 @@ docs/configuration:
 
 docs/releases:
   - website/content/docs/releases/*
+
+docs/developing:
+  - website/content/docs/developing/*
