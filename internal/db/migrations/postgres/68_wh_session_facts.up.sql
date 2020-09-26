@@ -56,15 +56,15 @@ begin;
       on update cascade,
     session_canceling_time wh_timestamp default 'infinity'::timestamptz,
 
-    session_closed_date_id integer default -1 not null
+    session_terminated_date_id integer default -1 not null
       references wh_date_dimension (id)
       on delete restrict
       on update cascade,
-    session_closed_time_id integer default -1 not null
+    session_terminated_time_id integer default -1 not null
       references wh_time_of_day_dimension (id)
       on delete restrict
       on update cascade,
-    session_closed_time wh_timestamp default 'infinity'::timestamptz,
+    session_terminated_time wh_timestamp default 'infinity'::timestamptz,
 
     -- The total number of connections made during the session.
     total_connection_count bigint, -- will be null until the first connection is created
