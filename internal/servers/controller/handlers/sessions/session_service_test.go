@@ -78,6 +78,7 @@ func TestGetSession(t *testing.T) {
 		ExpirationTime: sess.ExpirationTime.GetTimestamp(),
 		Scope:          &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
 		States:         []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
+		Certificate:    sess.Certificate,
 	}
 
 	cases := []struct {
@@ -191,6 +192,7 @@ func TestList(t *testing.T) {
 			Scope:          &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String()},
 			Status:         status,
 			States:         states,
+			Certificate:    sess.Certificate,
 		})
 	}
 
@@ -299,6 +301,7 @@ func TestCancel(t *testing.T) {
 		ExpirationTime: sess.ExpirationTime.GetTimestamp(),
 		Scope:          &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
 		Status:         session.StatusCanceling.String(),
+		Certificate:    sess.Certificate,
 	}
 
 	version := wireSess.GetVersion()

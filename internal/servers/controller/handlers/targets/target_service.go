@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"net/url"
 
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
@@ -25,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -401,13 +401,15 @@ HostSetIterationLoop:
 	if err != nil {
 		return nil, err
 	}
+	encodedMarshaledSad := base58.FastBase58Encoding(marshaledSad)
+
 	ret := &pb.SessionAuthorization{
 		SessionId:          sess.PublicId,
 		TargetId:           t.GetPublicId(),
 		Scope:              authResults.Scope,
 		CreatedTime:        sess.CreateTime.GetTimestamp(),
 		Type:               t.GetType(),
-		AuthorizationToken: base58.Encode(marshaledSad),
+		AuthorizationToken: string(encodedMarshaledSad),
 		UserId:             authResults.UserId,
 		HostId:             chosenId.hostId,
 		HostSetId:          chosenId.hostSetId,

@@ -20,7 +20,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
@@ -30,6 +29,7 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/mitchellh/cli"
+	"github.com/mr-tron/base58"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
@@ -391,7 +391,11 @@ func (c *Command) Run(args []string) (retCode int) {
 		authzString = sa.AuthorizationToken
 	}
 
-	marshaled := base58.Decode(authzString)
+	marshaled, err := base58.FastBase58Decoding(authzString)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Unable to base58-decode authorization data: %w", err).Error())
+		return 1
+	}
 	if len(marshaled) == 0 {
 		c.UI.Error("Zero length authorization information after decoding")
 		return 1

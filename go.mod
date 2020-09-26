@@ -4,7 +4,6 @@ go 1.15
 
 require (
 	github.com/armon/go-metrics v0.3.4
-	github.com/btcsuite/btcutil v1.0.2
 	github.com/bufbuild/buf v0.24.0
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
@@ -42,6 +41,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.0
 	github.com/mitchellh/gox v1.0.1
 	github.com/mitchellh/mapstructure v1.3.3
+	github.com/mr-tron/base58 v1.2.0
 	github.com/oligot/go-mod-upgrade v0.2.1
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
