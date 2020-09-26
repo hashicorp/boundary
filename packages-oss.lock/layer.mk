@@ -171,6 +171,7 @@ $$(info SOURCE_DIRTY_LIST=$$($(1)_SOURCE_DIRTY_LIST))
 $$(info SOURCE_DIRTY_SUM=$$($(1)_SOURCE_DIRTY_SUM))
 $$(info SOURCE_ID=$$($(1)_SOURCE_ID))
 $$(info LAYER_ID=$$($(1)_LAYER_ID))
+$$(info SOURCE_LIST=$$(shell $$($(1)_SOURCE_CMD)))
 $$(info =====)
 endif
 
