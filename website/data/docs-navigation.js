@@ -17,7 +17,7 @@ export default [
   },
   {
     category: 'developing',
-    content: ['building'],
+    content: ['building', 'ui'],
   },
   {
     category: 'concepts',
