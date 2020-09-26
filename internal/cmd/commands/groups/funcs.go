@@ -51,7 +51,7 @@ func removeMembersHelp() string {
 		"",
 		`  Removes members (users) from a group given its ID. The "user" flag can be specified multiple times. Example:`,
 		"",
-		`    $ boundary groups remove-members -id r_1234567890 -user u_1234567890`,
+		`    $ boundary groups remove-members -id g_1234567890 -user u_1234567890`,
 	})
 }
 
@@ -121,5 +121,6 @@ func generateGroupTableOutput(in *groups.Group) string {
 			)
 		}
 	}
+
 	return base.WrapForHelpText(ret)
 }

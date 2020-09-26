@@ -116,6 +116,7 @@ func (c *Command) Run(args []string) int {
 	default:
 		opts = append(opts, groups.WithName(c.FlagName))
 	}
+
 	switch c.FlagDescription {
 	case "":
 	case "null":
@@ -142,7 +143,6 @@ func (c *Command) Run(args []string) int {
 				members = nil
 			}
 		}
-
 	}
 
 	groupClient := groups.NewClient(client)

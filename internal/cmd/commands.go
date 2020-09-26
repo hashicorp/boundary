@@ -717,6 +717,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "list",
 			}, nil
 		},
+		"users add-accounts": func() (cli.Command, error) {
+			return &users.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-accounts",
+			}, nil
+		},
+		"users set-accounts": func() (cli.Command, error) {
+			return &users.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-accounts",
+			}, nil
+		},
+		"users remove-accounts": func() (cli.Command, error) {
+			return &users.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-accounts",
+			}, nil
+		},
 	}
 }
 
