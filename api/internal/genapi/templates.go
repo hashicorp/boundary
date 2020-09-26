@@ -13,32 +13,6 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-func toPath(segments []string, action string) string {
-	// If it's just a collection name, don't do a fmt.Sprintf
-	if len(segments) == 1 {
-		ret := segments[0]
-		if action != "" {
-			ret = fmt.Sprintf("%s:%s", ret, action)
-		}
-		return fmt.Sprintf(`"%s"`, ret)
-	}
-
-	var printfString, printfArg []string
-	for i, s := range segments {
-		if i%2 == 0 {
-			// The first (zero index) is always the resource name, the next will be the id.
-			printfString = append(printfString, s)
-		} else {
-			printfString = append(printfString, "%s")
-			printfArg = append(printfArg, s)
-		}
-	}
-	if action != "" {
-		action = fmt.Sprintf(":%s", action)
-	}
-	return fmt.Sprintf("fmt.Sprintf(\"%s%s\", %s)", strings.Join(printfString, "/"), action, strings.Join(printfArg, ", "))
-}
-
 func getArgsAndPaths(in []string, parentTypeName, action string) (colArg, resArg string, colPath, resPath string) {
 	resArg = fmt.Sprintf("%sId", strcase.ToLowerCamel(strings.ReplaceAll(in[len(in)-1], "-", "_")))
 	strToReplace := "scope"
@@ -207,12 +181,12 @@ var listTemplate = template.Must(template.New("").Funcs(
 		"snakeCase": snakeCase,
 	},
 ).Parse(`
-func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, opt... Option) (*{{ .Name }}ListResult, *api.Error, error) {
+func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, opt... Option) (*{{ .Name }}ListResult, error) {
 	if {{ .CollectionFunctionArg }} == "" {
-		return nil, nil, fmt.Errorf("empty {{ .CollectionFunctionArg }} value passed into List request")
+		return nil, fmt.Errorf("empty {{ .CollectionFunctionArg }} value passed into List request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -220,7 +194,7 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 
 	req, err := c.client.NewRequest(ctx, "GET", "{{ .CollectionPath }}", nil, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
 	{{ if ( eq .CollectionPath "\"scopes\"" ) }}
 	opts.queryMap["scope_id"] = scopeId
@@ -235,37 +209,37 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
+		return nil, fmt.Errorf("error performing client request during List call: %w", err)
 	}
 
 	target := new({{ .Name }}ListResult)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
+		return nil, fmt.Errorf("error decoding List response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 `))
 
 var readTemplate = template.Must(template.New("").Parse(`
-func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, opt... Option) (*{{ .Name }}ReadResult, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, opt... Option) (*{{ .Name }}ReadResult, error) {
 	if {{ .ResourceFunctionArg }} == "" {
-		return nil, nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Read request")
+		return nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Read request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", {{ .ResourcePath }}, nil, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -278,38 +252,38 @@ func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, op
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
 
 	target := new({{ .Name }}ReadResult)
 	target.Item = new({{ .Name }})
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
+		return nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 `))
 
 var deleteTemplate = template.Must(template.New("").Parse(`
-func (c *Client) Delete(ctx context.Context, {{ .ResourceFunctionArg }} string, opt... Option) (*{{ .Name }}DeleteResult, *api.Error, error) { 
+func (c *Client) Delete(ctx context.Context, {{ .ResourceFunctionArg }} string, opt... Option) (*{{ .Name }}DeleteResult, error) { 
 	if {{ .ResourceFunctionArg }} == "" {
-		return nil, nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Delete request")
+		return nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Delete request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 	
 	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", {{ .ResourcePath }}, nil, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Delete request: %w", err)
+		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -322,22 +296,22 @@ func (c *Client) Delete(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Delete call: %w", err)
 	}
 
 	apiErr, err := resp.Decode(nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Delete response: %w", err)
+		return nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 
 	target := &{{ .Name }}DeleteResult{
 		responseBody: resp.Body,
 		responseMap: resp.Map,
 	}
-	return target, nil, nil
+	return target, nil
 }
 `))
 
@@ -346,18 +320,18 @@ var createTemplate = template.Must(template.New("").Funcs(
 		"snakeCase": snakeCase,
 	},
 ).Parse(`
-func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ .CollectionFunctionArg }} string, opt... Option) (*{{ .Name }}CreateResult, *api.Error, error) {
+func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ .CollectionFunctionArg }} string, opt... Option) (*{{ .Name }}CreateResult, error) {
 	if {{ .CollectionFunctionArg }} == "" {
-		return nil, nil, fmt.Errorf("empty {{ .CollectionFunctionArg }} value passed into Create request")
+		return nil, fmt.Errorf("empty {{ .CollectionFunctionArg }} value passed into Create request")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 	{{ if .TypeOnCreate }} if resourceType == "" {
-		return nil, nil, fmt.Errorf("empty resourceType value passed into Create request")
+		return nil, fmt.Errorf("empty resourceType value passed into Create request")
 	} else {
 		opts.postMap["type"] = resourceType
 	}{{ end }}
@@ -366,7 +340,7 @@ func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceTyp
 
 	req, err := c.client.NewRequest(ctx, "POST", "{{ .CollectionPath }}", opts.postMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+		return nil, fmt.Errorf("error creating Create request: %w", err)
 	}
 	{{ if ( eq .CollectionPath "\"scopes\"" ) }}
 	opts.queryMap["scope_id"] = scopeId
@@ -381,31 +355,31 @@ func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceTyp
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Create call: %w", err)
 	}
 
 	target := new({{ .Name }}CreateResult)
 	target.Item = new({{ .Name }})
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+		return nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 `))
 
 var updateTemplate = template.Must(template.New("").Parse(`
-func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, version uint32, opt... Option) (*{{ .Name }}UpdateResult, *api.Error, error) {
+func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, version uint32, opt... Option) (*{{ .Name }}UpdateResult, error) {
 	if {{ .ResourceFunctionArg }} == "" {
-		return nil, nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Update request")
+		return nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Update request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -413,20 +387,20 @@ func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 	{{ if .VersionEnabled }}
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
-			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
+			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, {{ .ResourceFunctionArg }}, opt...)
+		existingTarget, existingErr := c.Read(ctx, {{ .ResourceFunctionArg }}, opt...)
 		if existingErr != nil {
-			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingTarget == nil {
-			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
 		}
 		if existingTarget.Item == nil {
-			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
 		version = existingTarget.Item.Version
 	}
@@ -436,7 +410,7 @@ func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 
 	req, err := c.client.NewRequest(ctx, "PATCH", {{ .ResourcePath }}, opts.postMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -449,21 +423,21 @@ func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Update call: %w", err)
 	}
 
 	target := new({{ .Name }}UpdateResult)
 	target.Item = new({{ .Name }})
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
+		return nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 `))
 
@@ -481,15 +455,15 @@ var sliceSubTypeTemplate = template.Must(template.New("").Funcs(
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
 {{ $resPath := getPathWithAction $input.PathArgs $input.ParentTypeName $actionName }}
-func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunctionArg }} string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}UpdateResult, *api.Error, error) { 
+func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunctionArg }} string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}UpdateResult, error) { 
 	if {{ $input.ResourceFunctionArg }} == "" {
-		return nil, nil, fmt.Errorf("empty {{ $input.ResourceFunctionArg }} value passed into {{ $fullName }} request")
+		return nil, fmt.Errorf("empty {{ $input.ResourceFunctionArg }} value passed into {{ $fullName }} request")
 	}
 	{{ if ( not ( eq $op "Set" ) ) }}if len({{ $value }}) == 0 {
-		return nil, nil, errors.New("empty {{ $value }} passed into {{ $fullName }} request")
+		return nil, errors.New("empty {{ $value }} passed into {{ $fullName }} request")
 	}{{ end }}
 	if c.client == nil {
-		return nil, nil, errors.New("nil client")
+		return nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -497,20 +471,20 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 	{{ if $input.VersionEnabled }}
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
-			return nil, nil, errors.New("zero version number passed into {{ $fullName }} request")
+			return nil, errors.New("zero version number passed into {{ $fullName }} request")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, {{ $input.ResourceFunctionArg }}, opt...)
+		existingTarget, existingErr := c.Read(ctx, {{ $input.ResourceFunctionArg }}, opt...)
 		if existingErr != nil {
-			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingTarget == nil {
-			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
 		}
 		if existingTarget.Item == nil {
-			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
 		version = existingTarget.Item.Version
 	}
@@ -520,7 +494,7 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 
 	req, err := c.client.NewRequest(ctx, "POST", {{ $resPath }}, opts.postMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating {{ $fullName }} request: %w", err)
+		return nil, fmt.Errorf("error creating {{ $fullName }} request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -533,21 +507,21 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during {{ $fullName }} call: %w", err)
+		return nil, fmt.Errorf("error performing client request during {{ $fullName }} call: %w", err)
 	}
 
 	target := new({{ $input.Name }}UpdateResult)
 	target.Item = new({{ $input.Name }})
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding {{ $fullName }} response: %w", err)
+		return nil, fmt.Errorf("error decoding {{ $fullName }} response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 {{ end }}
 {{ end }}

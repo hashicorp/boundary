@@ -1,12 +1,7 @@
 export default [
   {
     text: 'Docs',
-    url: '/docs',
-    type: 'inbound',
-  },
-  {
-    text: 'Community',
-    url: '/community',
+    url: '/docs/getting-started',
     type: 'inbound',
   },
 ]

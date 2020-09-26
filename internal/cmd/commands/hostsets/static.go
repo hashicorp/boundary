@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -152,23 +151,22 @@ func (c *StaticCommand) Run(args []string) int {
 	}
 
 	var result api.GenericResult
-	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		result, apiErr, err = hostsetClient.Create(c.Context, c.flagHostCatalogId, opts...)
+		result, err = hostsetClient.Create(c.Context, c.flagHostCatalogId, opts...)
 	case "update":
-		result, apiErr, err = hostsetClient.Update(c.Context, c.FlagId, version, opts...)
+		result, err = hostsetClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
 	plural := "static-type host-set"
 	if err != nil {
+		if api.AsServerError(err) != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
+			return 1
+		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
 		return 2
-	}
-	if apiErr != nil {
-		c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, pretty.Sprint(apiErr)))
-		return 1
 	}
 
 	set := result.GetItem().(*hostsets.HostSet)

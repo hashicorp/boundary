@@ -11,143 +11,126 @@ import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
 message HostSet{
+	// Output only. The ID of the Host Set.
 	string id = 10;
-	string host_catalog_id = 20;
+
+	// Output only. The Host Catalog to which this Host Set belongs.
+	string host_catalog_id = 20 [json_name="host_catalog_id"];
 }
 
 // Target contains all fields related to a Target resource
 message Target {
-	// The ID of the resource
-	// Output only.
+	// Output only. The ID of the resource.
 	string id = 10;
 
-	// The id of the parent of this resource.  This must be defined for creation of this resource, but is otherwise
-	// read only.
+	// The Scope of of this resource. This must be defined for creation of this resource, but is otherwise output only.
 	string scope_id = 20 [json_name="scope_id"];
 
-	// Scope information for this resource
-	// Output only.
+	// Output only. Scope information for this resource.
 	resources.scopes.v1.ScopeInfo scope = 30;
 	
-	// Required name for identification purposes
+	// Required name for identification purposes.
 	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
-	// Optional user-set description for identification purposes
+	// Optional user-set description for identification purposes.
 	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
-	// The time this resource was created
-	// Output only.
+	// Output only. The time this resource was created.
 	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];
 
-	// The time this resource was last updated.
-	// Output only.
+	// Output only. The time this resource was last updated.
 	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
 
-	// The version can be used in subsequent write requests to ensure this
-	// resource has not changed and to fail the write if it has.
+	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
 	uint32 version = 80;
 
+	// The type of the Target.
 	string type = 90;
 
-	// The ids of the host sets that make up this target.
-	repeated string host_set_ids = 100;
+	// The IDs of the Host Sets associated with this Target.
+	repeated string host_set_ids = 100 [json_name="host_set_ids"];
 
-	// The host sets that make up this target.
-	// Output only.
-	repeated HostSet host_sets = 110;
+	// Output only. The Host Sets associated with this Target.
+	repeated HostSet host_sets = 110 [json_name="host_sets"];
 
-	// Maximum total lifetime of a created session, in seconds
-	google.protobuf.UInt32Value session_max_seconds = 120 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"session_max_seconds" that: "SessionMaxSeconds"}];
+	// Maximum total lifetime of a created Session, in seconds.
+	google.protobuf.UInt32Value session_max_seconds = 120 [json_name="session_max_seconds", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"session_max_seconds" that: "SessionMaxSeconds"}];
 
-	// Maximum number of connections in a session
-	google.protobuf.Int32Value session_connection_limit = 130 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"session_connection_limit" that: "SessionConnectionLimit"}];
+	// Maximum number of connections allowed in a Session.
+	google.protobuf.Int32Value session_connection_limit = 130 [json_name="session_connection_limit", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"session_connection_limit" that: "SessionConnectionLimit"}];
 
-	// The attributes that are applied for the specific Target type.
+	// The attributes that are applicable for the specific Target.
 	google.protobuf.Struct attributes = 200 [(custom_options.v1.generate_sdk_option) = true];
 }
 
+// TcpTargetAttributes contains attributes relevant to Targets of type "tcp"
 message TcpTargetAttributes {
-	google.protobuf.UInt32Value default_port = 10 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.default_port" that: "DefaultPort"}];
+	// The default TCP port that will be used when connecting to the endpoint unless overridden by a Host Set or Host.
+	google.protobuf.UInt32Value default_port = 10 [json_name="default_port", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.default_port" that: "DefaultPort"}];
 }
 
-// WorkerInfo contains information about workers, returned in
-// SessionAuthorization
+// WorkerInfo contains information about workers, returned in to the client in SessionAuthorization
 message WorkerInfo {
-	// The address of the worker
+	// Output only. The address of the worker.
 	string address = 10;
 }
 
-// SessionAuthorization contains all fields related to authorization for a
-// session. It's in the Targets API because it's returned by a target authorize
-// action.
+// SessionAuthorizationData contains the fields needed by the proxy command to connect to a worker. It is marshaled inside the SessionAuthorization message.
 message SessionAuthorizationData {
-	// The ID of the session
-	// Output only.
-	string session_id = 10;
+	// Output only. The ID of the session.
+	string session_id = 10 [json_name="session_id"];
 
-	// The id of the target authorizing this session. This must be defined for
-	// creation of this resource, but is otherwise read only.
-	// Output only.
+	// Output only. The ID of the Target authorizing this session.
 	string target_id = 20 [json_name="target_id"];
 
-	// Scope information for this resource
-	// Output only.
+	// Output only. Scope information for this the Target that authorized this session.
 	resources.scopes.v1.ScopeInfo scope = 30;
 
-	// The time this resource was created
-	// Output only.
+	// Output only. The time this resource was created.
 	google.protobuf.Timestamp created_time = 40 [json_name="created_time"];
 
-	// Type of the session (e.g. tcp, ssh, etc.)
-	// Output only.
+	// Output only. Type of the session (e.g. tcp, ssh, etc.).
 	string type = 80;
 
-	// Connection limit. -1 means unlimited. This is not actually enforced on
-	// the client side but it provides for better listener handling by including
-	// it.
-	// Output only.
-	int32 connection_limit = 90;
+	// Output only. The connection limit being applied to this session. -1 means unlimited. This is not actually enforced on the client side but it provides for better listener handling by including it.
+	int32 connection_limit = 90 [json_name="connection_limit"];
 
-	// The certificate to use when connecting (or if using custom certs, to
-	// serve as the "login"). Raw DER bytes.
-	// Output only.
+	// Output only. The certificate to use when connecting. Raw DER bytes.
 	bytes certificate = 120;
 
-	// The private key to use when connecting (or if using custom certs, to pass
-	// as the "password"). We are using Ed25519 so this is purely raw bytes, no
-	// marshaling.
-	// Output only.
+	// Output only. The private key to use when connecting. We are using Ed25519, so this is purely raw bytes, no marshaling.
 	bytes private_key = 130 [json_name="private_key"];
 
-	// Worker information. The first worker in the array should be prioritized.
-	// Output only.
+	// Output only. Worker information. The first worker in the array should be prioritized.
 	repeated WorkerInfo worker_info = 150 [json_name="worker_info"];
 }
 
+// SessionAuthorization contains all fields related to authorization for a Session. It's in the Targets package because it's returned by a Target's authorize action.
 message SessionAuthorization {
-	// The ID of the session
-	// Output only.
-	string session_id = 10;
+	// Output only. The ID of the Session.
+	string session_id = 10 [json_name="session_id"];
 
-	// The id of the target authorizing this session. This must be defined for
-	// creation of this resource, but is otherwise read only.
-	// Output only.
+	// Output only. The ID of the Target authorizing this Session.
 	string target_id = 20 [json_name="target_id"];
 
-	// Scope information for this resource
-	// Output only.
+	// Output only. Scope information for this resource.
 	resources.scopes.v1.ScopeInfo scope = 30;
 
-	// The time this resource was created
-	// Output only.
+	// Output only. The time this resource was created.
 	google.protobuf.Timestamp created_time = 40 [json_name="created_time"];
 
-	// Type of the session (e.g. tcp, ssh, etc.)
-	// Output only.
+	// Output only. The User for which this Session was authorized.
+	string user_id = 50 [json_name="user_id"];
+
+	// Output only. The Host Set containing the Host being used for this Session.
+	string host_set_id = 60 [json_name="host_set_id"];
+
+	// Output only. The Host whose address is being used as the endpoint for this Session.
+	string host_id = 70 [json_name="host_id"];
+
+	// Output only. Type of the Session (e.g. tcp, ssh, etc.).
 	string type = 80;
 
-	// The marshaled SessionAuthorizationData message containing all information
-	// that the proxy needs.
-	// Output only.
-	string authorization_token = 90;
+	// Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.
+	string authorization_token = 90 [json_name="authorization_token"];
 }

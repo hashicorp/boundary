@@ -119,7 +119,6 @@ service AccountService {
 
 message GetAccountRequest {
   string id = 1;
-  string view = 2;
 }
 
 message GetAccountResponse {
@@ -127,8 +126,7 @@ message GetAccountResponse {
 }
 
 message ListAccountsRequest {
-  string auth_method_id = 1;
-  string view = 2;
+  string auth_method_id = 1 [json_name="auth_method_id"];
 }
 
 message ListAccountsResponse {
@@ -147,7 +145,7 @@ message CreateAccountResponse {
 message UpdateAccountRequest {
   string id = 1;
   resources.accounts.v1.Account item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
 
 message UpdateAccountResponse {

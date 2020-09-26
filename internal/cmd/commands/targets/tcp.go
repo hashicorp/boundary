@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -213,23 +212,22 @@ func (c *TcpCommand) Run(args []string) int {
 	}
 
 	var result api.GenericResult
-	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		result, apiErr, err = targetClient.Create(c.Context, "tcp", c.FlagScopeId, opts...)
+		result, err = targetClient.Create(c.Context, "tcp", c.FlagScopeId, opts...)
 	case "update":
-		result, apiErr, err = targetClient.Update(c.Context, c.FlagId, version, opts...)
+		result, err = targetClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
 	plural := "tcp-type target"
 	if err != nil {
+		if api.AsServerError(err) != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
+			return 1
+		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
 		return 2
-	}
-	if apiErr != nil {
-		c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, pretty.Sprint(apiErr)))
-		return 1
 	}
 
 	target := result.GetItem().(*targets.Target)

@@ -51,7 +51,7 @@ func removeMembersHelp() string {
 		"",
 		`  Removes members (users) from a group given its ID. The "user" flag can be specified multiple times. Example:`,
 		"",
-		`    $ boundary groups remove-members -id r_1234567890 -user u_1234567890`,
+		`    $ boundary groups remove-members -id g_1234567890 -user u_1234567890`,
 	})
 }
 
@@ -71,14 +71,11 @@ func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
 }
 
 func generateGroupTableOutput(in *groups.Group) string {
-	var ret []string
-
 	nonAttributeMap := map[string]interface{}{
 		"ID":           in.Id,
-		"Scope ID":     in.Scope.Id,
 		"Version":      in.Version,
-		"Created Time": in.CreatedTime.Local().Format(time.RFC3339),
-		"Updated Time": in.UpdatedTime.Local().Format(time.RFC3339),
+		"Created Time": in.CreatedTime.Local().Format(time.RFC1123),
+		"Updated Time": in.UpdatedTime.Local().Format(time.RFC1123),
 	}
 
 	if in.Name != "" {
@@ -88,22 +85,42 @@ func generateGroupTableOutput(in *groups.Group) string {
 		nonAttributeMap["Description"] = in.Description
 	}
 
-	ret = append(ret, "", "Group information:")
+	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
-	ret = append(ret,
-		base.WrapMap(2, 0, nonAttributeMap),
-	)
+	var groupMaps []map[string]interface{}
+	if len(in.Members) > 0 {
+		for _, member := range in.Members {
+			m := map[string]interface{}{
+				"ID":       member.Id,
+				"Scope ID": member.ScopeId,
+			}
+			groupMaps = append(groupMaps, m)
+		}
+		if l := len("Scope ID"); l > maxLength {
+			maxLength = l
+		}
+	}
+
+	ret := []string{
+		"",
+		"Group information:",
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
+		"  Scope:",
+		base.ScopeInfoForOutput(in.Scope, maxLength),
+	}
 
 	if len(in.Members) > 0 {
 		ret = append(ret,
-			fmt.Sprintf("  Members:      %s", ""),
+			"",
+			"  Members:",
 		)
+		for _, m := range groupMaps {
+			ret = append(ret,
+				base.WrapMap(4, maxLength, m),
+				"",
+			)
+		}
 	}
-	for _, member := range in.Members {
-		ret = append(ret,
-			fmt.Sprintf("    ID:         %s", member.Id),
-			fmt.Sprintf("      Scope ID: %s", member.ScopeId),
-		)
-	}
+
 	return base.WrapForHelpText(ret)
 }

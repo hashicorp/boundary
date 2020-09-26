@@ -86,11 +86,58 @@ service UserService {
       summary: "Deletes a User"
     };
   }
+
+  // AddUserAccounts adds users as members to a group.  The provided request
+  // must include the user id which the account will be added to. If the any
+  // of the ids are missing, malformed or references a non
+  // existing resource, an error is returned.  If any of the accounts are
+  // associated with another user an error is returned.
+  rpc AddUserAccounts(AddUserAccountsRequest) returns (AddUserAccountsResponse) {
+    option (google.api.http) = {
+      post: "/v1/users/{id}:add-accounts"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Associates an Account to a User."
+    };
+  }
+
+  // SetUserAccounts sets the group's members.  Any existing accounts are
+  // removed if they are not included in this request.  The provided request
+  // must include the user ids which the account will be set to. If the user
+  // id is missing, malformed or references a non existing resource, an error
+  // is returned.  If any of the accounts are associated with another
+  // user an error is returned.
+  rpc SetUserAccounts(SetUserAccountsRequest) returns (SetUserAccountsResponse) {
+    option (google.api.http) = {
+      post: "/v1/users/{id}:set-accounts"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Set the Accounts associated to the User to exactly the list of provided in the request, removing any Accounts that are not specified."
+    };
+  }
+
+  // RemoveUserAccounts removes accounts from the specified user.
+  // The provided request must include the user id which the accounts
+  // will be removed from. If the provided account id is not associated with the
+  // provided user, an error is returned.
+  rpc RemoveUserAccounts(RemoveUserAccountsRequest) returns (RemoveUserAccountsResponse) {
+    option (google.api.http) = {
+      post: "/v1/users/{id}:remove-accounts"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Removes the specified Accounts from being associated with the provided User."
+    };
+  }
 }
 
 message GetUserRequest {
   string id = 1;
-  string view = 2;
 }
 
 message GetUserResponse {
@@ -99,7 +146,6 @@ message GetUserResponse {
 
 message ListUsersRequest {
   string scope_id = 1;
-  string view = 2;
 }
 
 message ListUsersResponse {
@@ -118,7 +164,7 @@ message CreateUserResponse {
 message UpdateUserRequest {
   string id = 1;
   resources.users.v1.User item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
 
 message UpdateUserResponse {
@@ -130,3 +176,36 @@ message DeleteUserRequest {
 }
 
 message DeleteUserResponse {}
+
+message AddUserAccountsRequest {
+  string id = 1;
+  // The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail.
+  uint32 version = 2;
+  repeated string account_ids = 3 [json_name="account_ids"];
+}
+
+message AddUserAccountsResponse {
+  resources.users.v1.User item = 1;
+}
+
+message SetUserAccountsRequest {
+  string id = 1;
+  // The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail.
+  uint32 version = 2;
+  repeated string account_ids = 3 [json_name="account_ids"];
+}
+
+message SetUserAccountsResponse {
+  resources.users.v1.User item = 1;
+}
+
+message RemoveUserAccountsRequest {
+  string id = 1;
+  // The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail.
+  uint32 version = 2;
+  repeated string account_ids = 3 [json_name="account_ids"];
+}
+
+message RemoveUserAccountsResponse {
+  resources.users.v1.User item = 1;
+}

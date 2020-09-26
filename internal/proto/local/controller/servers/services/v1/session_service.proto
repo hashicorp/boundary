@@ -43,6 +43,10 @@ message LookupSessionResponse {
 	controller.servers.services.v1.SESSIONSTATUS status = 60;
 	int32 connection_limit = 70;
 	int32 connections_left = 80;
+	string host_id = 90;
+	string host_set_id = 100;
+	string target_id = 110;
+	string user_id = 120;
 }
 
 message ActivateSessionRequest {
@@ -73,6 +77,7 @@ message ConnectConnectionRequest {
 	uint32 client_tcp_port = 30;
 	string endpoint_tcp_address = 40;
 	uint32 endpoint_tcp_port = 50;
+	string type = 60;
 }
 
 message ConnectConnectionResponse {

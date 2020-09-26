@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/go-alpnmux"
+	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/go-multierror"
 )
 

@@ -840,7 +840,7 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 			}
 			for _, id := range tt.args.userIds {
 				assert.NotEmpty(gotMembers[id])
-				u, err := repo.LookupUser(context.Background(), id)
+				u, _, err := repo.LookupUser(context.Background(), id)
 				assert.NoError(err)
 				assert.Equal(id, u.PublicId)
 			}

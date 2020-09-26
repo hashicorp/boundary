@@ -10,28 +10,24 @@ import (
 func generateAuthTokenTableOutput(in *authtokens.AuthToken) string {
 	nonAttributeMap := map[string]interface{}{
 		"ID":                         in.Id,
-		"Scope ID":                   in.Scope.Id,
 		"Auth Method ID":             in.AuthMethodId,
 		"User ID":                    in.UserId,
-		"Created Time":               in.CreatedTime.Local().Format(time.RFC3339),
-		"Updated Time":               in.UpdatedTime.Local().Format(time.RFC3339),
-		"Expiration Time":            in.ExpirationTime.Local().Format(time.RFC3339),
-		"Approximate Last Used Time": in.ApproximateLastUsedTime.Local().Format(time.RFC3339),
+		"Created Time":               in.CreatedTime.Local().Format(time.RFC1123),
+		"Updated Time":               in.UpdatedTime.Local().Format(time.RFC1123),
+		"Expiration Time":            in.ExpirationTime.Local().Format(time.RFC1123),
+		"Approximate Last Used Time": in.ApproximateLastUsedTime.Local().Format(time.RFC1123),
 	}
 
-	maxLength := 0
-	for k := range nonAttributeMap {
-		if len(k) > maxLength {
-			maxLength = len(k)
-		}
-	}
+	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
-	ret := []string{"", "Auth Token information:"}
-
-	ret = append(ret,
-		// We do +2 because there is another +2 offset for host sets below
+	ret := []string{
+		"",
+		"Auth Token information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-	)
+		"",
+		"  Scope:",
+		base.ScopeInfoForOutput(in.Scope, maxLength),
+	}
 
 	return base.WrapForHelpText(ret)
 }

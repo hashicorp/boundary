@@ -34,14 +34,11 @@ type Principal struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The ID of the principal.
-	// Output only.
+	// Output only. The ID of the principal.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// The type of the principal.
-	// Output only.
+	// Output only. The type of the principal.
 	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	// The scope ID of the principal.
-	// Output only.
+	// Output only. The Scope of the principal.
 	ScopeId string `protobuf:"bytes,3,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
 }
 
@@ -103,14 +100,11 @@ type GrantJson struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The ID, if set.
-	// Output only.
+	// Output only. The ID, if set.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// The type, if set.
-	// Output only.
+	// Output only. The type, if set.
 	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	// The actions.
-	// Output only.
+	// Output only. The actions.
 	Actions []string `protobuf:"bytes,3,rep,name=actions,proto3" json:"actions,omitempty"`
 }
 
@@ -172,14 +166,11 @@ type Grant struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The original user-supplied string.
-	// Output only.
+	// Output only. The original user-supplied string.
 	Raw string `protobuf:"bytes,1,opt,name=raw,proto3" json:"raw,omitempty"`
-	// The canonically formatted string.
-	// Output only.
+	// Output only. The canonically-formatted string.
 	Canonical string `protobuf:"bytes,2,opt,name=canonical,proto3" json:"canonical,omitempty"`
-	// The JSON representation of the grant.
-	// Output only.
+	// Output only. The JSON representation of the grant.
 	Json *GrantJson `protobuf:"bytes,3,opt,name=json,proto3" json:"json,omitempty"`
 }
 
@@ -242,44 +233,31 @@ type Role struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The ID of the Role
-	// Output only.
+	// Output only. The ID of the Role
 	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
-	// The id of the scope this resource is in.
+	// The ID of the Scope containing this Role.
 	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
-	// Scope information for this resource
-	// Output only.
+	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
-	// Optional name for identification purposes
+	// Optional name for identification purposes.
 	Name *wrappers.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"`
-	// Optional user-set description for identification purposes
+	// Optional user-set description for identification purposes.
 	Description *wrappers.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"`
-	// The time this resource was created
-	// Output only.
+	// Output only. The time this resource was created.
 	CreatedTime *timestamp.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"`
-	// The time this resource was last updated.
-	// Output only.
+	// Output only. The time this resource was last updated.
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
-	// The version can be used in subsequent write requests to ensure this resource
-	// has not changed and to fail the write if it has.
+	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"`
-	// The scope the grants will apply to. If the role is at the global scope,
-	// this can be an org or project. If the role is at an org
-	// scope, this can be a project within the org. It is invalid for
-	// this to be anything other than the role's scope when the role's scope is
-	// a project.
+	// The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project.
 	GrantScopeId *wrappers.StringValue `protobuf:"bytes,90,opt,name=grant_scope_id,proto3" json:"grant_scope_id,omitempty"`
-	// The IDs (only) of principals that are assigned to this role.
-	// Output only.
+	// Output only. The IDs (only) of principals that are assigned to this role.
 	PrincipalIds []string `protobuf:"bytes,100,rep,name=principal_ids,proto3" json:"principal_ids,omitempty"`
-	// The principals that are assigned to this role.
-	// Output only.
+	// Output only. The principals that are assigned to this role.
 	Principals []*Principal `protobuf:"bytes,110,rep,name=principals,proto3" json:"principals,omitempty"`
-	// The grants that this role provides for its principals.
-	// Output only.
+	// Output only. The grants that this role provides for its principals.
 	GrantStrings []string `protobuf:"bytes,120,rep,name=grant_strings,proto3" json:"grant_strings,omitempty"`
-	// The parsed grant information.
-	// Output only.
+	// Output only. The parsed grant information.
 	Grants []*Grant `protobuf:"bytes,130,rep,name=grants,proto3" json:"grants,omitempty"`
 }
 

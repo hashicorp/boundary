@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
@@ -28,10 +29,7 @@ var _ io.Reader
 var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
-
-var (
-	filter_AuthMethodService_GetAuthMethod_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
-)
+var _ = metadata.Join
 
 func request_AuthMethodService_GetAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetAuthMethodRequest
@@ -52,13 +50,6 @@ func request_AuthMethodService_GetAuthMethod_0(ctx context.Context, marshaler ru
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthMethodService_GetAuthMethod_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetAuthMethod(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -85,13 +76,6 @@ func local_request_AuthMethodService_GetAuthMethod_0(ctx context.Context, marsha
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthMethodService_GetAuthMethod_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.GetAuthMethod(ctx, &protoReq)
@@ -324,12 +308,14 @@ func local_request_AuthMethodService_DeleteAuthMethod_0(ctx context.Context, mar
 // RegisterAuthMethodServiceHandlerServer registers the http handlers for service AuthMethodService to "mux".
 // UnaryRPC     :call AuthMethodServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
-// Note that using this registration option will cause many gRPC library features (such as grpc.SendHeader, etc) to stop working. Consider using RegisterAuthMethodServiceHandlerFromEndpoint instead.
+// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterAuthMethodServiceHandlerFromEndpoint instead.
 func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server AuthMethodServiceServer) error {
 
 	mux.Handle("GET", pattern_AuthMethodService_GetAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/GetAuthMethod")
 		if err != nil {
@@ -337,6 +323,7 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			return
 		}
 		resp, md, err := local_request_AuthMethodService_GetAuthMethod_0(rctx, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -350,6 +337,8 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 	mux.Handle("GET", pattern_AuthMethodService_ListAuthMethods_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/ListAuthMethods")
 		if err != nil {
@@ -357,6 +346,7 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			return
 		}
 		resp, md, err := local_request_AuthMethodService_ListAuthMethods_0(rctx, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -370,6 +360,8 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 	mux.Handle("POST", pattern_AuthMethodService_CreateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/CreateAuthMethod")
 		if err != nil {
@@ -377,6 +369,7 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			return
 		}
 		resp, md, err := local_request_AuthMethodService_CreateAuthMethod_0(rctx, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -390,6 +383,8 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 	mux.Handle("PATCH", pattern_AuthMethodService_UpdateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/UpdateAuthMethod")
 		if err != nil {
@@ -397,6 +392,7 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			return
 		}
 		resp, md, err := local_request_AuthMethodService_UpdateAuthMethod_0(rctx, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -410,6 +406,8 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 	mux.Handle("DELETE", pattern_AuthMethodService_DeleteAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/DeleteAuthMethod")
 		if err != nil {
@@ -417,6 +415,7 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			return
 		}
 		resp, md, err := local_request_AuthMethodService_DeleteAuthMethod_0(rctx, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)

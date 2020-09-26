@@ -40,7 +40,7 @@ type HandlerProperties struct {
 }
 
 // Handler returns an http.Handler for the services. This can be used on
-// its own to mount the Vault API within another web server.
+// its own to mount the Controller API within another web server.
 func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()

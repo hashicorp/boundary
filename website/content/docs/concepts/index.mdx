@@ -1,0 +1,29 @@
+---
+layout: docs
+page_title: Concepts
+sidebar_title: Concepts
+description: |-
+  An introduction to Boundary concepts and architecture.
+---
+
+
+# Concepts
+Boundary is a tool for managing identity-based access for modern, dynamic infrastructure. It's helpful to understand how Boundary organizes principals and resources as well as how it allows you define granular permissions for principals' allowed actions and access. A glossary of terms are broken down in our [domain model](/docs/concepts/domain-model).
+
+
+# Identity & Permission Management
+Identity management is a core concept in Boundary. Boundary manages
+* [Users](/docs/concepts/domain-model/users), which are the entities authorized to access Boundary.
+* [Groups](/docs/concepts/domain-model/groups), which are collections of users which share permissions.
+
+Users and Groups can be assigned permissions by assigning them to [roles](/docs/concepts/domain-model/roles). Roles can have their permissions granularly defined with [grants](/docs/concepts/domain-model/grants). 
+
+
+# Resource Management
+Boundary enables flexible management of hosts and services without the use of an end-agent. Boundary administrators define [targets](/docs/concepts/domain-model/targets) which expose one or more [hosts](/docs/concepts/domain-model/hosts) with connection info. Access to resource can be assigned to [roles](/docs/concepts/domain-model/roles) through a [grant](/docs/concepts/domain-model/grants).
+
+# Next Steps 
+Be sure Boundary is able to run locally with the instructions at [Getting-Started](/docs/getting-started/index). Then, learn how to create targets and initiate a session with [Connect to Your First Target](/docs/getting-started/connect-to-target).
+
+# Further Reading
+For more information see our general recommendations for [deployment architecture](/docs/installing/production) and be sure to stay tuned for our [security model](/docs/concepts/security-model).

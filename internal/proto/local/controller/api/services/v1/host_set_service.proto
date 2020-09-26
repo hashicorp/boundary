@@ -152,7 +152,6 @@ service HostSetService {
 
 message GetHostSetRequest {
   string id = 1;
-  string view = 2;
 }
 
 message GetHostSetResponse {
@@ -161,7 +160,6 @@ message GetHostSetResponse {
 
 message ListHostSetsRequest {
   string host_catalog_id = 1 [json_name="host_catalog_id"];
-  string view = 2;
 }
 
 message ListHostSetsResponse {
@@ -180,7 +178,7 @@ message CreateHostSetResponse {
 message UpdateHostSetRequest {
   string id = 1;
   api.resources.hostsets.v1.HostSet item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
 
 message UpdateHostSetResponse {
@@ -197,10 +195,8 @@ message AddHostSetHostsRequest {
   string id = 1;
   uint32 version = 2;
 
-  // A list of host IDs which will be added to this host set. Each host
-  // referenced here must be a child of the same host catalog that this host
-  // set is a child of.
-  repeated string host_ids = 3;
+  // A list of Host IDs which will be added to this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child.
+  repeated string host_ids = 3 [json_name="host_ids"];
 }
 
 message AddHostSetHostsResponse {
@@ -211,10 +207,8 @@ message SetHostSetHostsRequest {
   string id = 1;
   uint32 version = 2;
 
-  // A list of host IDs which will be set on this host set. Each host
-  // referenced here must be a child of the same host catalog that this host
-  // set is a child of.
-  repeated string host_ids = 3;
+  // A list of Host IDs which will be set on this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child.
+  repeated string host_ids = 3 [json_name="host_ids"];
 }
 
 message SetHostSetHostsResponse {
@@ -222,13 +216,11 @@ message SetHostSetHostsResponse {
 }
 
 message RemoveHostSetHostsRequest {
-  // This host set's id.
   string id = 1;
   uint32 version = 2;
 
-  // A list of host IDs which should not be in the host set when this request
-  // returns.
-  repeated string host_ids = 3;
+  // A list of Host IDs which will be removed from this Host Set.
+  repeated string host_ids = 3 [json_name="host_ids"];
 }
 
 message RemoveHostSetHostsResponse {

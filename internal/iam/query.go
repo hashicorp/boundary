@@ -19,6 +19,49 @@ const (
 	whereValidAuthMethod = `select count(*) from auth_method where public_id = $1 and scope_id = $2`
 
 	// insertAuthMethod - insert a row directly into auth_method (TODO - this
-	// should be replaced with calls to the auth method repo)
+	// should be replaced with calls to the auth method repo).
 	insertAuthMethod = `insert into auth_method (public_id, scope_id) values ($1, $2)`
+
+	accountChangesQuery = `
+	with
+	final_accounts (account_id) as (
+	  -- returns the SET list
+	  select public_id
+		from auth_account
+	   where public_id in (%s)
+	),
+	current_accounts (account_id) as (
+	  -- returns the current list
+	  select public_id
+		from auth_account
+	   where iam_user_id = $1
+	),
+	keep_accounts (account_id) as (
+	  -- returns the KEEP list
+	  select account_id
+		from current_accounts
+	   where account_id in (select * from final_accounts)
+	),
+	delete_accounts (account_id) as (
+	  -- returns the DELETE list
+	  select account_id
+		from current_accounts
+	   where account_id not in (select * from final_accounts)
+	),
+	insert_accounts (account_id) as (
+	  -- returns the ADD list
+	  select account_id
+		from final_accounts
+	   where account_id not in (select * from keep_accounts)
+	),
+	final (action, account_id) as (
+	  select 'disassociate', account_id
+		from delete_accounts
+	   union
+	  select 'associate', account_id
+		from insert_accounts
+	)
+	select * from final
+	order by action, account_id;
+	`
 )

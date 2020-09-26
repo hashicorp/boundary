@@ -1,28 +1,24 @@
 package handlers
 
 import (
+	"errors"
 	"testing"
 
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/genproto/googleapis/rpc/errdetails"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func errorIncludesFields(t *testing.T, err error, wantFields []string) {
 	t.Helper()
-	s, ok := status.FromError(err)
-	require.True(t, ok)
-	require.Len(t, s.Details(), 1)
-	rd, ok := s.Details()[0].(*errdetails.BadRequest)
-	require.True(t, ok)
+	var apiErr *apiError
+	require.True(t, errors.As(err, &apiErr))
 	var gotFields []string
-	for _, d := range rd.FieldViolations {
-		gotFields = append(gotFields, d.Field)
+	for _, d := range apiErr.inner.GetDetails().GetRequestFields() {
+		gotFields = append(gotFields, d.GetName())
 	}
 	assert.ElementsMatch(t, gotFields, wantFields)
 }

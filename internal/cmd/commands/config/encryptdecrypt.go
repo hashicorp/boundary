@@ -125,8 +125,6 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		return 1
 	}
 
-	args = f.Args()
-
 	switch c.flagConfig {
 	case "":
 		c.UI.Error(`Missing required parameter -config`)

@@ -37,11 +37,20 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	}
 	s = s.clone()
 
-	id, err := newHostSetId()
-	if err != nil {
-		return nil, fmt.Errorf("create: static host set: %w", err)
+	opts := getOpts(opt...)
+
+	if opts.withPublicId != "" {
+		if !strings.HasPrefix(opts.withPublicId, HostSetPrefix+"_") {
+			return nil, fmt.Errorf("create: static host set: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, HostSetPrefix, db.ErrInvalidPublicId)
+		}
+		s.PublicId = opts.withPublicId
+	} else {
+		id, err := newHostSetId()
+		if err != nil {
+			return nil, fmt.Errorf("create: static host set: %w", err)
+		}
+		s.PublicId = id
 	}
-	s.PublicId = id
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {

@@ -6,12 +6,53 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCustom(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	uClient := users.NewClient(client)
+	aClient := accounts.NewClient(client)
+
+	usr1, err := uClient.Create(tc.Context(), "global")
+	require.NoError(err)
+
+	acct1, err := aClient.Create(tc.Context(), token.AuthMethodId, accounts.WithPasswordAccountLoginName("accountname"))
+	require.NoError(err)
+	acct2, err := aClient.Create(tc.Context(), token.AuthMethodId, accounts.WithPasswordAccountLoginName("accountname2"))
+	require.NoError(err)
+
+	addResult, err := uClient.AddAccounts(tc.Context(), usr1.Item.Id, 0, []string{acct1.Item.Id, acct2.Item.Id}, users.WithAutomaticVersioning(true))
+	assert.NoError(err)
+	assert.ElementsMatch([]string{acct1.Item.Id, acct2.Item.Id}, addResult.Item.AccountIds)
+
+	// Add the account to the default user
+	_, err = uClient.AddAccounts(tc.Context(), token.UserId, 0, []string{acct1.Item.Id}, users.WithAutomaticVersioning(true))
+	assert.Error(err)
+
+	remResult, err := uClient.RemoveAccounts(tc.Context(), usr1.Item.Id, 0, []string{acct1.Item.Id}, users.WithAutomaticVersioning(true))
+	assert.NoError(err)
+	assert.ElementsMatch([]string{acct2.Item.Id}, remResult.Item.AccountIds)
+
+	// Cannot remove an account that isn't associated with a user.
+	_, err = uClient.RemoveAccounts(tc.Context(), usr1.Item.Id, 0, []string{acct1.Item.Id}, users.WithAutomaticVersioning(true))
+	assert.Error(err)
+
+	setResult, err := uClient.SetAccounts(tc.Context(), usr1.Item.Id, 0, []string{acct1.Item.Id, acct2.Item.Id}, users.WithAutomaticVersioning(true))
+	assert.NoError(err)
+	assert.ElementsMatch([]string{acct1.Item.Id, acct2.Item.Id}, setResult.Item.AccountIds)
+}
 
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
@@ -24,9 +65,8 @@ func TestList(t *testing.T) {
 	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	userClient := users.NewClient(client)
 
-	ul, apiErr, err := userClient.List(tc.Context(), org.GetPublicId())
+	ul, err := userClient.List(tc.Context(), org.GetPublicId())
 	assert.NoError(err)
-	assert.Nil(apiErr)
 	assert.Empty(ul.Items)
 
 	var expected []*users.User
@@ -34,25 +74,21 @@ func TestList(t *testing.T) {
 		expected = append(expected, &users.User{Name: fmt.Sprint(i)})
 	}
 
-	ucr, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[0].Name))
+	ucr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[0].Name))
 	assert.NoError(err)
-	assert.Nil(apiErr)
 	expected[0] = ucr.Item
 
-	ul, apiErr, err = userClient.List(tc.Context(), org.GetPublicId())
+	ul, err = userClient.List(tc.Context(), org.GetPublicId())
 	assert.NoError(err)
-	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		ucr, apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[i].Name))
+		ucr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName(expected[i].Name))
 		assert.NoError(err)
-		assert.Nil(apiErr)
 		expected[i] = ucr.Item
 	}
-	ul, apiErr, err = userClient.List(tc.Context(), org.GetPublicId())
+	ul, err = userClient.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
-	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul.Items))
 }
 
@@ -82,11 +118,8 @@ func TestCrud(t *testing.T) {
 	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	userClient := users.NewClient(client)
 
-	checkUser := func(step string, u *users.User, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
+	checkUser := func(step string, u *users.User, err error, wantedName string, wantedVersion uint32) {
 		assert.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
-			t.Errorf("ApiError message: %q", apiErr.Message)
-		}
 		assert.NotNil(u, "returned no resource", step)
 		gotName := ""
 		if u.Name != "" {
@@ -96,24 +129,24 @@ func TestCrud(t *testing.T) {
 		assert.EqualValues(wantedVersion, u.Version)
 	}
 
-	u, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("foo"))
-	checkUser("create", u.Item, apiErr, err, "foo", 1)
+	u, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("foo"))
+	checkUser("create", u.Item, err, "foo", 1)
 
-	u, apiErr, err = userClient.Read(tc.Context(), u.Item.Id)
-	checkUser("read", u.Item, apiErr, err, "foo", 1)
+	u, err = userClient.Read(tc.Context(), u.Item.Id)
+	checkUser("read", u.Item, err, "foo", 1)
 
-	u, apiErr, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version, users.WithName("bar"))
-	checkUser("update", u.Item, apiErr, err, "bar", 2)
+	u, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version, users.WithName("bar"))
+	checkUser("update", u.Item, err, "bar", 2)
 
-	u, apiErr, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version, users.DefaultName())
-	checkUser("update", u.Item, apiErr, err, "", 3)
+	u, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version, users.DefaultName())
+	checkUser("update", u.Item, err, "", 3)
 
-	_, apiErr, err = userClient.Delete(tc.Context(), u.Item.Id)
+	_, err = userClient.Delete(tc.Context(), u.Item.Id)
 	require.NoError(err)
-	assert.Nil(apiErr)
 
-	_, apiErr, err = userClient.Delete(tc.Context(), u.Item.Id)
-	require.NoError(err)
+	_, err = userClient.Delete(tc.Context(), u.Item.Id)
+	require.Error(err)
+	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 }
@@ -129,34 +162,38 @@ func TestErrors(t *testing.T) {
 	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 	userClient := users.NewClient(client)
 
-	u, apiErr, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
+	u, err := userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
 	require.NoError(err)
-	assert.Nil(apiErr)
 	assert.NotNil(u)
 
 	// Updating the wrong version should fail.
-	_, apiErr, err = userClient.Update(tc.Context(), u.Item.Id, 73, users.WithName("anything"))
-	require.NoError(err)
+	_, err = userClient.Update(tc.Context(), u.Item.Id, 73, users.WithName("anything"))
+	require.Error(err)
+	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 	// Create another resource with the same name.
-	_, apiErr, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
-	require.NoError(err)
+	_, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 
-	_, apiErr, err = userClient.Read(tc.Context(), iam.UserPrefix+"_doesntexis")
-	require.NoError(err)
+	_, err = userClient.Read(tc.Context(), iam.UserPrefix+"_doesntexis")
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
-	_, apiErr, err = userClient.Read(tc.Context(), "invalid id")
-	require.NoError(err)
+	_, err = userClient.Read(tc.Context(), "invalid id")
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
-	_, apiErr, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version)
-	require.NoError(err)
+	_, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version)
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 }

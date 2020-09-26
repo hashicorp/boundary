@@ -1,6 +1,7 @@
 package sessions_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
@@ -21,7 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
@@ -77,6 +78,7 @@ func TestGetSession(t *testing.T) {
 		ExpirationTime: sess.ExpirationTime.GetTimestamp(),
 		Scope:          &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
 		States:         []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
+		Certificate:    sess.Certificate,
 	}
 
 	cases := []struct {
@@ -84,32 +86,31 @@ func TestGetSession(t *testing.T) {
 		scopeId string
 		req     *pbs.GetSessionRequest
 		res     *pbs.GetSessionResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "Get a session",
 			scopeId: sess.ScopeId,
 			req:     &pbs.GetSessionRequest{Id: sess.GetPublicId()},
 			res:     &pbs.GetSessionResponse{Item: wireSess},
-			errCode: codes.OK,
 		},
 		{
-			name:    "Get a non existant Session",
-			req:     &pbs.GetSessionRequest{Id: session.SessionPrefix + "_DoesntExis"},
-			res:     nil,
-			errCode: codes.NotFound,
+			name: "Get a non existant Session",
+			req:  &pbs.GetSessionRequest{Id: session.SessionPrefix + "_DoesntExis"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name:    "Wrong id prefix",
-			req:     &pbs.GetSessionRequest{Id: "j_1234567890"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			name: "Wrong id prefix",
+			req:  &pbs.GetSessionRequest{Id: "j_1234567890"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:    "space in id",
-			req:     &pbs.GetSessionRequest{Id: session.SessionPrefix + "_1 23456789"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			name: "space in id",
+			req:  &pbs.GetSessionRequest{Id: session.SessionPrefix + "_1 23456789"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -120,7 +121,10 @@ func TestGetSession(t *testing.T) {
 			require.NoError(err, "Couldn't create new session service.")
 
 			got, gErr := s.GetSession(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 			if tc.res != nil {
 				assert.True(got.GetItem().GetExpirationTime().AsTime().Sub(tc.res.GetItem().GetExpirationTime().AsTime()) < 10*time.Millisecond)
 				tc.res.GetItem().ExpirationTime = got.GetItem().GetExpirationTime()
@@ -188,26 +192,25 @@ func TestList(t *testing.T) {
 			Scope:          &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String()},
 			Status:         status,
 			States:         states,
+			Certificate:    sess.Certificate,
 		})
 	}
 
 	cases := []struct {
-		name    string
-		req     *pbs.ListSessionsRequest
-		res     *pbs.ListSessionsResponse
-		errCode codes.Code
+		name string
+		req  *pbs.ListSessionsRequest
+		res  *pbs.ListSessionsResponse
+		err  error
 	}{
 		{
-			name:    "List Many Sessions",
-			req:     &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
-			res:     &pbs.ListSessionsResponse{Items: wantSession},
-			errCode: codes.OK,
+			name: "List Many Sessions",
+			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
+			res:  &pbs.ListSessionsResponse{Items: wantSession},
 		},
 		{
-			name:    "List No Sessions",
-			req:     &pbs.ListSessionsRequest{ScopeId: pNoSessions.GetPublicId()},
-			res:     &pbs.ListSessionsResponse{},
-			errCode: codes.OK,
+			name: "List No Sessions",
+			req:  &pbs.ListSessionsRequest{ScopeId: pNoSessions.GetPublicId()},
+			res:  &pbs.ListSessionsResponse{},
 		},
 	}
 	for _, tc := range cases {
@@ -216,7 +219,10 @@ func TestList(t *testing.T) {
 			require.NoError(t, err, "Couldn't create new session service.")
 
 			got, gErr := s.ListSessions(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
-			assert.Equal(t, tc.errCode, status.Code(gErr), "ListSessions(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(t, gErr)
+				assert.True(t, errors.Is(gErr, tc.err), "ListSessions(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 			if tc.res != nil {
 				for i, wantSess := range tc.res.GetItems() {
 					assert.True(t, got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
@@ -295,6 +301,7 @@ func TestCancel(t *testing.T) {
 		ExpirationTime: sess.ExpirationTime.GetTimestamp(),
 		Scope:          &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
 		Status:         session.StatusCanceling.String(),
+		Certificate:    sess.Certificate,
 	}
 
 	version := wireSess.GetVersion()
@@ -304,32 +311,31 @@ func TestCancel(t *testing.T) {
 		scopeId string
 		req     *pbs.CancelSessionRequest
 		res     *pbs.CancelSessionResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "Cancel a session",
 			scopeId: sess.ScopeId,
 			req:     &pbs.CancelSessionRequest{Id: sess.GetPublicId()},
 			res:     &pbs.CancelSessionResponse{Item: wireSess},
-			errCode: codes.OK,
 		},
 		{
-			name:    "Cancel a non existing Session",
-			req:     &pbs.CancelSessionRequest{Id: session.SessionPrefix + "_DoesntExis"},
-			res:     nil,
-			errCode: codes.NotFound,
+			name: "Cancel a non existing Session",
+			req:  &pbs.CancelSessionRequest{Id: session.SessionPrefix + "_DoesntExis"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name:    "Wrong id prefix",
-			req:     &pbs.CancelSessionRequest{Id: "j_1234567890"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			name: "Wrong id prefix",
+			req:  &pbs.CancelSessionRequest{Id: "j_1234567890"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:    "space in id",
-			req:     &pbs.CancelSessionRequest{Id: session.SessionPrefix + "_1 23456789"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			name: "space in id",
+			req:  &pbs.CancelSessionRequest{Id: session.SessionPrefix + "_1 23456789"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -342,7 +348,10 @@ func TestCancel(t *testing.T) {
 			tc.req.Version = version
 
 			got, gErr := s.CancelSession(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 
 			if tc.res == nil {
 				require.Nil(got)

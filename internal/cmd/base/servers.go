@@ -16,10 +16,8 @@ import (
 
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -31,7 +29,6 @@ import (
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/shared-secure-libs/gatedwriter"
 	"github.com/hashicorp/shared-secure-libs/reloadutil"
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -68,9 +65,20 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DevAuthMethodId string
-	DevLoginName    string
-	DevPassword     string
+	DevAuthMethodId                 string
+	DevLoginName                    string
+	DevPassword                     string
+	DevUserId                       string
+	DevOrgId                        string
+	DevProjectId                    string
+	DevHostCatalogId                string
+	DevHostSetId                    string
+	DevHostId                       string
+	DevTargetId                     string
+	DevHostAddress                  string
+	DevTargetDefaultPort            int
+	DevTargetSessionMaxSeconds      int
+	DevTargetSessionConnectionLimit int
 
 	DatabaseUrl            string
 	DevDatabaseCleanupFunc func() error
@@ -198,7 +206,7 @@ func (b *Server) SetupMetrics(ui cli.Ui, telemetry *configutil.Telemetry) error 
 	return nil
 }
 
-func (b *Server) PrintInfo(ui cli.Ui, mode string) {
+func (b *Server) PrintInfo(ui cli.Ui) {
 	b.InfoKeys = append(b.InfoKeys, "version")
 	verInfo := version.Get()
 	b.Info["version"] = verInfo.FullVersionNumber(false)
@@ -221,7 +229,7 @@ func (b *Server) PrintInfo(ui cli.Ui, mode string) {
 		}
 	}
 	sort.Strings(b.InfoKeys)
-	ui.Output(fmt.Sprintf("==> Boundary %s configuration:\n", mode))
+	ui.Output(fmt.Sprintf("==> Boundary server configuration:\n"))
 	for _, k := range b.InfoKeys {
 		ui.Output(fmt.Sprintf(
 			"%s%s: %s",
@@ -233,7 +241,7 @@ func (b *Server) PrintInfo(ui cli.Ui, mode string) {
 
 	// Output the header that the server has started
 	if !b.CombineLogs {
-		ui.Output(fmt.Sprintf("==> Boundary %s started! Log data will stream in below:\n", mode))
+		ui.Output(fmt.Sprintf("==> Boundary server started! Log data will stream in below:\n"))
 	}
 }
 
@@ -341,8 +349,8 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 				return errors.New("KMS block missing 'purpose'")
 			case "root", "worker-auth", "config":
 			case "recovery":
-				if config.Controller != nil && config.Controller.DevRecoveryKey != "" {
-					kms.Config["key"] = config.Controller.DevRecoveryKey
+				if config.Controller != nil && config.DevRecoveryKey != "" {
+					kms.Config["key"] = config.DevRecoveryKey
 				}
 			default:
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
@@ -433,21 +441,35 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 	opts := getOpts(opt...)
 
-	c, url, container, err := db.InitDbInDocker(dialect)
-	// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
-	// function before returning from this method
-	defer func() {
-		if err := c(); err != nil {
-			b.Logger.Error("error cleaning up docker container", "error", err)
+	var container, url string
+	var err error
+	var c func() error
+
+	switch b.DatabaseUrl {
+	case "":
+		c, url, container, err = db.InitDbInDocker(dialect)
+		// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
+		// function before returning from this method
+		defer func() {
+			if !opts.withSkipDatabaseDestruction {
+				if err := c(); err != nil {
+					b.Logger.Error("error cleaning up docker container", "error", err)
+				}
+			}
+		}()
+
+		if err != nil {
+			return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
 		}
-	}()
 
-	if err != nil {
-		return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
+		b.DevDatabaseCleanupFunc = c
+		b.DatabaseUrl = url
+
+	default:
+		if _, err := db.InitStore(dialect, c, b.DatabaseUrl); err != nil {
+			return fmt.Errorf("error initializing store: %w", err)
+		}
 	}
-
-	b.DevDatabaseCleanupFunc = c
-	b.DatabaseUrl = url
 
 	b.InfoKeys = append(b.InfoKeys, "dev database url")
 	b.Info["dev database url"] = b.DatabaseUrl
@@ -473,7 +495,40 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		return nil
 	}
 
-	if err := b.CreateInitialAuthMethod(context.Background()); err != nil {
+	if _, _, err := b.CreateInitialAuthMethod(context.Background()); err != nil {
+		return err
+	}
+
+	if opts.withSkipScopesCreation {
+		// now that we have passed all the error cases, reset c to be a noop so the
+		// defer doesn't do anything.
+		c = func() error { return nil }
+		return nil
+	}
+
+	if _, _, err := b.CreateInitialScopes(context.Background()); err != nil {
+		return err
+	}
+
+	if opts.withSkipHostResourcesCreation {
+		// now that we have passed all the error cases, reset c to be a noop so the
+		// defer doesn't do anything.
+		c = func() error { return nil }
+		return nil
+	}
+
+	if _, _, _, err := b.CreateInitialHostResources(context.Background()); err != nil {
+		return err
+	}
+
+	if opts.withSkipTargetCreation {
+		// now that we have passed all the error cases, reset c to be a noop so the
+		// defer doesn't do anything.
+		c = func() error { return nil }
+		return nil
+	}
+
+	if _, err := b.CreateInitialTarget(context.Background()); err != nil {
 		return err
 	}
 
@@ -509,105 +564,6 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 	_, err = kms.CreateKeysTx(cancelCtx, rw, rw, b.RootKms, b.SecureRandomReader, scope.Global.String())
 	if err != nil {
 		return fmt.Errorf("error creating global scope kms keys: %w", err)
-	}
-
-	return nil
-}
-
-func (b *Server) CreateInitialAuthMethod(ctx context.Context) error {
-	rw := db.New(b.Database)
-
-	kmsRepo, err := kms.NewRepository(rw, rw)
-	if err != nil {
-		return fmt.Errorf("error creating kms repository: %w", err)
-	}
-	kmsCache, err := kms.NewKms(kmsRepo)
-	if err != nil {
-		return fmt.Errorf("error creating kms cache: %w", err)
-	}
-	if err := kmsCache.AddExternalWrappers(
-		kms.WithRootWrapper(b.RootKms),
-	); err != nil {
-		return fmt.Errorf("error adding config keys to kms: %w", err)
-	}
-
-	// Create the dev auth method
-	pwRepo, err := password.NewRepository(rw, rw, kmsCache)
-	if err != nil {
-		return fmt.Errorf("error creating password repo: %w", err)
-	}
-	authMethod, err := password.NewAuthMethod(scope.Global.String())
-	if err != nil {
-		return fmt.Errorf("error creating new in memory auth method: %w", err)
-	}
-	if b.DevAuthMethodId == "" {
-		b.DevAuthMethodId, err = db.NewPublicId(password.AuthMethodPrefix)
-		if err != nil {
-			return fmt.Errorf("error generating dev auth method id: %w", err)
-		}
-	}
-
-	cancelCtx, cancel := context.WithCancel(ctx)
-	go func() {
-		<-b.ShutdownCh
-		cancel()
-	}()
-
-	_, err = pwRepo.CreateAuthMethod(cancelCtx, authMethod, password.WithPublicId(b.DevAuthMethodId))
-	if err != nil {
-		return fmt.Errorf("error saving auth method to the db: %w", err)
-	}
-	b.InfoKeys = append(b.InfoKeys, "generated auth method id")
-	b.Info["generated auth method id"] = b.DevAuthMethodId
-
-	// Create the dev user
-	if b.DevLoginName == "" {
-		b.DevLoginName, err = base62.Random(10)
-		if err != nil {
-			return fmt.Errorf("unable to generate login name: %w", err)
-		}
-		b.DevLoginName = strings.ToLower(b.DevLoginName)
-	}
-	if b.DevPassword == "" {
-		b.DevPassword, err = base62.Random(20)
-		if err != nil {
-			return fmt.Errorf("unable to generate password: %w", err)
-		}
-	}
-	b.InfoKeys = append(b.InfoKeys, "generated password")
-	b.Info["generated password"] = b.DevPassword
-
-	acct, err := password.NewAccount(b.DevAuthMethodId, password.WithLoginName(b.DevLoginName))
-	if err != nil {
-		return fmt.Errorf("error creating new in memory auth account: %w", err)
-	}
-	acct, err = pwRepo.CreateAccount(cancelCtx, scope.Global.String(), acct, password.WithPassword(b.DevPassword))
-	if err != nil {
-		return fmt.Errorf("error saving auth account to the db: %w", err)
-	}
-	b.InfoKeys = append(b.InfoKeys, "generated login name")
-	b.Info["generated login name"] = acct.GetLoginName()
-
-	// Create a role tying them together
-	iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
-	if err != nil {
-		return fmt.Errorf("unable to create repo for org id: %w", err)
-	}
-	pr, err := iam.NewRole(scope.Global.String())
-	if err != nil {
-		return fmt.Errorf("error creating in memory role for generated grants: %w", err)
-	}
-	pr.Name = "Generated Global Scope Admin Role"
-	pr.Description = `Provides admin grants to all authenticated users within the "global" scope`
-	defPermsRole, err := iamRepo.CreateRole(cancelCtx, pr)
-	if err != nil {
-		return fmt.Errorf("error creating role for default generated grants: %w", err)
-	}
-	if _, err := iamRepo.AddRoleGrants(cancelCtx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;actions=*"}); err != nil {
-		return fmt.Errorf("error creating grant for default generated grants: %w", err)
-	}
-	if _, err := iamRepo.AddPrincipalRoles(cancelCtx, defPermsRole.PublicId, defPermsRole.Version+1, []string{"u_auth"}, nil); err != nil {
-		return fmt.Errorf("error adding principal to role for default generated grants: %w", err)
 	}
 
 	return nil

@@ -138,6 +138,11 @@ var inputStructs = []*structInfo{
 	},
 	// User related resources
 	{
+		inProto:    &users.Account{},
+		outFile:    "users/account.gen.go",
+		outputOnly: true,
+	},
+	{
 		inProto: &users.User{},
 		outFile: "users/user.gen.go",
 		templates: []*template.Template{
@@ -147,6 +152,9 @@ var inputStructs = []*structInfo{
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
+		},
+		sliceSubTypes: map[string]string{
+			"Accounts": "accountIds",
 		},
 		pathArgs:            []string{"user"},
 		versionEnabled:      true,

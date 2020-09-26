@@ -7,8 +7,6 @@ import (
 )
 
 func generateSessionInfoTableOutput(in SessionInfo) string {
-	var ret []string
-
 	nonAttributeMap := map[string]interface{}{
 		"Session ID":       in.SessionId,
 		"Protocol":         in.Protocol,
@@ -18,19 +16,13 @@ func generateSessionInfoTableOutput(in SessionInfo) string {
 		"Connection Limit": in.ConnectionLimit,
 	}
 
-	maxLength := 0
-	for k := range nonAttributeMap {
-		if len(k) > maxLength {
-			maxLength = len(k)
-		}
-	}
+	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
-	ret = append(ret, "", "Proxy listening information:")
-
-	ret = append(ret,
-		// We do +2 because there is another +2 offset for host sets below
+	ret := []string{
+		"",
+		"Proxy listening information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-	)
+	}
 
 	return base.WrapForHelpText(ret)
 }

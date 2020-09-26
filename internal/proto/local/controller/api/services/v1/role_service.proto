@@ -186,7 +186,6 @@ service RoleService {
 
 message GetRoleRequest {
   string id = 1;
-  string view = 2;
 }
 
 message GetRoleResponse {
@@ -195,7 +194,6 @@ message GetRoleResponse {
 
 message ListRolesRequest {
   string scope_id = 1 [json_name="scope_id"];
-  string view = 2;
 }
 
 message ListRolesResponse {
@@ -211,11 +209,10 @@ message CreateRoleResponse {
   resources.roles.v1.Role item = 2;
 }
 
-// TODO: Add versions to Update and Delete role requests.
 message UpdateRoleRequest {
   string id = 1;
   resources.roles.v1.Role item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
 
 message UpdateRoleResponse {
@@ -230,8 +227,7 @@ message DeleteRoleResponse {}
 
 message AddRolePrincipalsRequest {
   string id = 1;
-  // The version ensures the role hasn't changed since it was last retrieved and if
-  // it has the request will fail.
+  // The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2;
   repeated string principal_ids = 3 [json_name="principal_ids"];
 }
@@ -242,8 +238,7 @@ message AddRolePrincipalsResponse {
 
 message SetRolePrincipalsRequest {
   string id = 1;
-  // The version ensures the role hasn't changed since it was last retrieved and if
-  // it has the request will fail.
+  // The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2;
   repeated string principal_ids = 3 [json_name="principal_ids"];
 }
@@ -254,8 +249,7 @@ message SetRolePrincipalsResponse {
 
 message RemoveRolePrincipalsRequest {
   string id = 1;
-  // The version ensures the role hasn't changed since it was last retrieved and if
-  // it has the request will fail.
+  // The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2;
   repeated string principal_ids = 3 [json_name="principal_ids"];
 }
@@ -266,8 +260,7 @@ message RemoveRolePrincipalsResponse {
 
 message AddRoleGrantsRequest {
   string id = 1;
-  // The version ensures the role hasn't changed since it was last retrieved and if
-  // it has the request will fail.
+  // The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2;
   repeated string grant_strings = 3 [json_name="grant_strings"];
 }
@@ -278,8 +271,7 @@ message AddRoleGrantsResponse {
 
 message SetRoleGrantsRequest {
   string id = 1;
-  // The version ensures the role hasn't changed since it was last retrieved and if
-  // it has the request will fail.
+  // The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2;
   repeated string grant_strings = 3 [json_name="grant_strings"];
 }
@@ -290,8 +282,7 @@ message SetRoleGrantsResponse {
 
 message RemoveRoleGrantsRequest {
   string id = 1;
-  // The version ensures the role hasn't changed since it was last retrieved and if
-  // it has the request will fail.
+  // The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2;
   repeated string grant_strings = 3 [json_name="grant_strings"];
 }

@@ -15,8 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // Service handles request as described by the pbs.SessionServiceServer interface.
@@ -132,7 +130,7 @@ func (s Service) cancelInRepo(ctx context.Context, id string, version uint32) (*
 	}
 	out, err := repo.CancelSession(ctx, id, version)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update session: %v.", err)
+		return nil, fmt.Errorf("unable to update session: %w", err)
 	}
 	return toProto(out), nil
 }
@@ -199,6 +197,7 @@ func toProto(in *session.Session) *pb.Session {
 		CreatedTime:    in.CreateTime.GetTimestamp(),
 		UpdatedTime:    in.UpdateTime.GetTimestamp(),
 		ExpirationTime: in.ExpirationTime.GetTimestamp(),
+		Certificate:    in.Certificate,
 	}
 	if len(in.States) > 0 {
 		out.Status = in.States[0].Status.String()

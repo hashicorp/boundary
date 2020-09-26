@@ -1,17 +1,17 @@
 package authenticate
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/btcsuite/btcutil/base58"
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/vault/sdk/helper/password"
-	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/posener/complete"
@@ -121,18 +121,18 @@ func (c *PasswordCommand) Run(args []string) int {
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
-	result, apiErr, err := authmethods.NewClient(client).Authenticate(c.Context, c.flagAuthMethodId,
+	result, err := authmethods.NewClient(client).Authenticate(c.Context, c.flagAuthMethodId,
 		map[string]interface{}{
 			"login_name": c.flagLoginName,
 			"password":   c.flagPassword,
 		})
 	if err != nil {
+		if api.AsServerError(err) != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing authentication: %s", err.Error()))
+			return 1
+		}
 		c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))
 		return 2
-	}
-	if apiErr != nil {
-		c.UI.Error(fmt.Sprintf("Error from controller when performing authentication: %s", pretty.Sprint(apiErr)))
-		return 1
 	}
 
 	token := result.Item
@@ -141,7 +141,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.UI.Output(base.WrapForHelpText([]string{
 			"",
 			"Authentication information:",
-			fmt.Sprintf("  Expiration Time: %s", token.ExpirationTime.Local().Format(time.RFC3339)),
+			fmt.Sprintf("  Expiration Time: %s", token.ExpirationTime.Local().Format(time.RFC1123)),
 			fmt.Sprintf("  Token:           %s", token.Token),
 			fmt.Sprintf("  User ID:         %s", token.UserId),
 		}))
@@ -165,7 +165,7 @@ func (c *PasswordCommand) Run(args []string) int {
 			c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to system credential store: %s", err))
 			return 1
 		}
-		if err := keyring.Set("HashiCorp Boundary Auth Token", tokenName, base58.Encode(marshaled)); err != nil {
+		if err := keyring.Set("HashiCorp Boundary Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
 			c.UI.Error(fmt.Sprintf("Error saving auth token to system credential store: %s", err))
 			return 1
 		}

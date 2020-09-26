@@ -34,12 +34,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -89,12 +83,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -251,12 +239,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -304,7 +286,7 @@
         "parameters": [
           {
             "name": "auth_method_id",
-            "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the scope\nbeing logged in to.",
+            "description": "The ID of the Auth Method in the system that should be used for authentication.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -340,12 +322,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -436,12 +412,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -466,12 +436,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -518,12 +482,6 @@
         "parameters": [
           {
             "name": "scope_id",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "view",
             "in": "query",
             "required": false,
             "type": "string"
@@ -576,12 +534,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -771,12 +723,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -828,12 +774,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -924,12 +864,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -979,12 +913,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -1105,7 +1033,6 @@
         "parameters": [
           {
             "name": "id",
-            "description": "This host set's id.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1175,12 +1102,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1230,12 +1151,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -1326,12 +1241,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1381,12 +1290,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -1675,12 +1578,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1711,8 +1608,7 @@
             "name": "skip_role_creation",
             "in": "query",
             "required": false,
-            "type": "boolean",
-            "format": "boolean"
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -1737,12 +1633,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -1833,12 +1723,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1863,12 +1747,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -1928,12 +1806,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1983,12 +1855,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -2211,12 +2077,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -2266,12 +2126,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -2343,6 +2197,105 @@
           "controller.api.services.v1.UserService"
         ]
       }
+    },
+    "/v1/users/{id}:add-accounts": {
+      "post": {
+        "summary": "Associates an Account to a User.",
+        "operationId": "UserService_AddUserAccounts",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddUserAccountsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
+    },
+    "/v1/users/{id}:remove-accounts": {
+      "post": {
+        "summary": "Removes the specified Accounts from being associated with the provided User.",
+        "operationId": "UserService_RemoveUserAccounts",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveUserAccountsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
+    },
+    "/v1/users/{id}:set-accounts": {
+      "post": {
+        "summary": "Set the Accounts associated to the User to exactly the list of provided in the request, removing any Accounts that are not specified.",
+        "operationId": "UserService_SetUserAccounts",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetUserAccountsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -2351,46 +2304,46 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the Account\nOutput only.",
+          "description": "Output only. The ID of the Account.",
           "readOnly": true
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for the Account.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "title": "Optional name for identification purposes"
+          "description": "Optional name for identification purposes."
         },
         "description": {
           "type": "string",
-          "title": "Optional user-set descripton for identification purposes"
+          "description": "Optional user-set descripton for identification purposes."
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was last updated.\nOutput only.",
+          "description": "Output only. The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has."
+          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
         },
         "type": {
           "type": "string",
-          "description": "The type of this account.  Possible values are: \"password\", \"oidc\"."
+          "description": "The type of this Account."
         },
         "auth_method_id": {
           "type": "string",
-          "description": "The auth method this account is created for.\nOutput only.",
+          "description": "Output only. The ID of the Auth Method that is associated with this Account.",
           "readOnly": true
         },
         "attributes": {
@@ -2398,173 +2351,173 @@
           "description": "The attributes that are applicable for the specific Account type."
         }
       },
-      "title": "Account contains all fields related to an auth Account resource"
+      "title": "Account contains all fields related to an Account resource"
     },
     "controller.api.resources.authmethods.v1.AuthMethod": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the AuthMethod\nOutput only.",
+          "description": "Output only. The ID of the Auth Method.",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "title": "The id of the scope this resource is a part of"
+          "description": "The ID of the Scope of which this Auth Method is a part."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for this Auth method.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "title": "Optional name for identification purposes"
+          "description": "Optional name for identification purposes."
         },
         "description": {
           "type": "string",
-          "title": "Optional user-set description for identification purposes"
+          "description": "Optional user-set description for identification purposes."
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was last updated.\nOutput only.",
+          "description": "Output only. The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has."
+          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
         },
         "type": {
           "type": "string",
-          "description": "The auth method type.  This can be \"password\" or \"oidc\"."
+          "description": "The Auth Method type."
         },
         "attributes": {
           "type": "object",
-          "description": "The attributes that are applied for the specific Auth Method type."
+          "description": "The attributes that are applicable for the specific Auth Method type."
         }
       },
-      "title": "AuthMethod contains all fields related to a AuthMethod resource"
+      "title": "AuthMethod contains all fields related to an Auth Method resource"
     },
     "controller.api.resources.authtokens.v1.AuthToken": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the AuthToken\nOutput only.",
+          "description": "Output only. The ID of the Auth Token.",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "description": "The scope this auth token is in."
+          "description": "The Scope in which this Auth Token was generated."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
         "token": {
           "type": "string",
-          "description": "The token value, which will only be populated after authentication and is\nonly ever visible to the end user whose login request resulted in this\nauth token being created.\nOutput only.",
+          "description": "Output only. The token value, which will only be populated after authentication and is only ever visible to the end user whose login request resulted in this Auth Token being created.",
           "readOnly": true
         },
         "user_id": {
           "type": "string",
-          "description": "The id of the user of this AuthToken.\nOutput only.",
+          "description": "Output only. The ID of the User associated with this Auth Token.",
           "readOnly": true
         },
         "auth_method_id": {
           "type": "string",
-          "description": "The id of the auth method of this AuthToken.\nOutput only.",
+          "description": "Output only. The ID of the Auth Method associated with this Auth Token.",
           "readOnly": true
         },
         "account_id": {
           "type": "string",
-          "description": "The id of the auth method account of this AuthToken.\nOutput only.",
+          "description": "Output only. The ID of the Account associated with this Auth Token.",
           "readOnly": true
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was last updated.\nOutput only.",
+          "description": "Output only. The time this resource was last updated.",
           "readOnly": true
         },
         "approximate_last_used_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The approximate time this AuthToken was last used.\nOutput only.",
+          "description": "Output only. The approximate time this Auth Token was last used.",
           "readOnly": true
         },
         "expiration_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this AuthToken expires.\nOutput only.",
+          "description": "Output only. The time this Auth Token expires.",
           "readOnly": true
         }
       },
-      "title": "AuthToken contains all fields related to an AuthToken resource"
+      "title": "AuthToken contains all fields related to an Auth Token resource"
     },
     "controller.api.resources.groups.v1.Group": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the Project\nOutput only.",
+          "description": "Output only. The ID of the Group.",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "description": "The id of the scope this resource is a part of."
+          "description": "The ID of the scope of which this Group is a part."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for this Group.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "title": "Optional name for identification purposes"
+          "description": "Optional name for identification purposes."
         },
         "description": {
           "type": "string",
-          "title": "Optional user-set descripton for identification purposes"
+          "description": "Optional user-set descripton for identification purposes."
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was last updated.\nOutput only.",
+          "description": "Output only. The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has."
+          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
         },
         "member_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Contains the list of member ids in this group.\nOutput only.",
+          "description": "Output only. Contains the list of member IDs in this Group.",
           "readOnly": true
         },
         "members": {
@@ -2572,7 +2525,7 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.groups.v1.Member"
           },
-          "description": "The members of this group.\nOutput only.",
+          "description": "Output only. The members of this Group.",
           "readOnly": true
         }
       },
@@ -2583,12 +2536,12 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the member.\nOutput only.",
+          "description": "Output only. The ID of the member.",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "description": "The scope ID of the member.\nOutput only.",
+          "description": "Output only. The Scope ID of the member.",
           "readOnly": true
         }
       }
@@ -2598,111 +2551,112 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the host\nOutput only.",
+          "description": "Output only. The ID of the host.",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "description": "The id of the scope this resource belongs to."
+          "description": "The ID of the Scope of which this Host Catalog is a part."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "title": "Optional name for identification purposes"
+          "description": "Optional name for identification purposes."
         },
         "description": {
           "type": "string",
-          "title": "Optional user-set description for identification purposes"
+          "description": "Optional user-set description for identification purposes."
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was last updated\nOutput only.",
+          "description": "Output only. The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has."
+          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
         },
         "type": {
           "type": "string",
-          "title": "The type of the resource, to help differentiate schemas"
+          "description": "The type of Host Catalog."
         },
         "attributes": {
           "type": "object",
-          "title": "Attributes specific to the catalog type"
+          "description": "Attributes specific to the catalog type."
         }
       },
-      "title": "HostCatalog manages Hosts and HostSets"
+      "title": "HostCatalog manages Hosts and Host Sets"
     },
     "controller.api.resources.hosts.v1.Host": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the host\nOutput only.",
+          "description": "Output only. The ID of the Host.",
           "readOnly": true
         },
         "host_catalog_id": {
           "type": "string",
-          "title": "The host catalog this host set is a part of\nOutput only"
+          "description": "Output only. The Host Catalog of which this Host is a part.",
+          "readOnly": true
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "title": "Optional name for identification purposes"
+          "description": "Optional name for identification purposes."
         },
         "description": {
           "type": "string",
-          "title": "Optional user-set description for identification purposes"
+          "description": "Optional user-set description for identification purposes."
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was last updated\nOutput only.",
+          "description": "Output only. The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has."
+          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
         },
         "type": {
           "type": "string",
-          "title": "The type of the resource, to help differentiate schemas"
+          "description": "The type of the resource."
         },
         "host_set_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "A list of host sets this host is in\nOutput only.",
+          "description": "Output only. A list of Host Sets containing this Host.",
           "readOnly": true
         },
         "attributes": {
           "type": "object",
-          "description": "The attributes that are applied for the specific host type."
+          "description": "The attributes that are applicable to the specific Host type."
         }
       },
       "title": "Host contains all fields related to a Host resource"
@@ -2712,78 +2666,79 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the host\nOutput only.",
+          "description": "Output only. The ID of the host.",
+          "readOnly": true
+        },
+        "host_catalog_id": {
+          "type": "string",
+          "description": "Output only. The Host Catalog of which this Host Set is a part.",
           "readOnly": true
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "title": "Optional name for identification purposes"
+          "description": "Optional name for identification purposes."
         },
         "description": {
           "type": "string",
-          "title": "Optional user-set description for identification purposes"
+          "description": "Optional user-set description for identification purposes."
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was last updated\nOutput only.",
+          "description": "Output only. The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has."
+          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
         },
         "type": {
           "type": "string",
-          "title": "The type of the resource, to help differentiate schemas"
-        },
-        "host_catalog_id": {
-          "type": "string",
-          "title": "The host catalog this host set is a part of\nOutput only"
+          "description": "The type of the Host Set."
         },
         "host_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "A list of hosts in this host set\nTODO: Figure out if this should be in the basic HostSet view and what\nview to use on the Hosts.\nOutput only.",
+          "description": "Output only. A list of Hosts in this Host Set.",
           "readOnly": true
         },
         "attributes": {
           "type": "object",
-          "description": "The attributes that are applied for the specific host set type."
+          "description": "The attributes that are applicable for the specific Host Set type."
         }
       },
-      "title": "HostSet is a collection of Hosts created and managed by a HostCatalog"
+      "title": "HostSet is a collection of Hosts created and managed by a Host Catalog"
     },
     "controller.api.resources.roles.v1.Grant": {
       "type": "object",
       "properties": {
         "raw": {
           "type": "string",
-          "description": "The original user-supplied string.\nOutput only.",
+          "description": "Output only. The original user-supplied string.",
           "readOnly": true
         },
         "canonical": {
           "type": "string",
-          "description": "The canonically formatted string.\nOutput only.",
+          "description": "Output only. The canonically-formatted string.",
           "readOnly": true
         },
         "json": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.GrantJson",
-          "description": "The JSON representation of the grant.\nOutput only.",
+          "description": "Output only. The JSON representation of the grant.",
           "readOnly": true
         }
       }
@@ -2793,12 +2748,12 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID, if set.\nOutput only.",
+          "description": "Output only. The ID, if set.",
           "readOnly": true
         },
         "type": {
           "type": "string",
-          "description": "The type, if set.\nOutput only.",
+          "description": "Output only. The type, if set.",
           "readOnly": true
         },
         "actions": {
@@ -2806,7 +2761,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The actions.\nOutput only.",
+          "description": "Output only. The actions.",
           "readOnly": true
         }
       }
@@ -2816,17 +2771,17 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the principal.\nOutput only.",
+          "description": "Output only. The ID of the principal.",
           "readOnly": true
         },
         "type": {
           "type": "string",
-          "description": "The type of the principal.\nOutput only.",
+          "description": "Output only. The type of the principal.",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "description": "The scope ID of the principal.\nOutput only.",
+          "description": "Output only. The Scope of the principal.",
           "readOnly": true
         }
       }
@@ -2836,53 +2791,53 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the Role\nOutput only.",
+          "title": "Output only. The ID of the Role",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "description": "The id of the scope this resource is in."
+          "description": "The ID of the Scope containing this Role."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "title": "Optional name for identification purposes"
+          "description": "Optional name for identification purposes."
         },
         "description": {
           "type": "string",
-          "title": "Optional user-set description for identification purposes"
+          "description": "Optional user-set description for identification purposes."
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was last updated.\nOutput only.",
+          "description": "Output only. The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has."
+          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
         },
         "grant_scope_id": {
           "type": "string",
-          "description": "The scope the grants will apply to. If the role is at the global scope,\nthis can be an org or project. If the role is at an org\nscope, this can be a project within the org. It is invalid for\nthis to be anything other than the role's scope when the role's scope is\na project."
+          "description": "The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project."
         },
         "principal_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "The IDs (only) of principals that are assigned to this role.\nOutput only.",
+          "description": "Output only. The IDs (only) of principals that are assigned to this role.",
           "readOnly": true
         },
         "principals": {
@@ -2890,7 +2845,7 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.roles.v1.Principal"
           },
-          "description": "The principals that are assigned to this role.\nOutput only.",
+          "description": "Output only. The principals that are assigned to this role.",
           "readOnly": true
         },
         "grant_strings": {
@@ -2898,7 +2853,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The grants that this role provides for its principals.\nOutput only.",
+          "description": "Output only. The grants that this role provides for its principals.",
           "readOnly": true
         },
         "grants": {
@@ -2906,7 +2861,7 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.roles.v1.Grant"
           },
-          "description": "The parsed grant information.\nOutput only.",
+          "description": "Output only. The parsed grant information.",
           "readOnly": true
         }
       },
@@ -2917,47 +2872,46 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the Scope\nOutput only.",
+          "description": "Output only. The ID of the Scope.",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "description": "The id of the scope this resource is in."
+          "description": "The ID of the Scope this resource is in. If this is the \"global\" Scope this field will be empty."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "title": "Optional name for identification purposes"
+          "description": "Optional name for identification purposes."
         },
         "description": {
           "type": "string",
-          "title": "Optional user-set descripton for identification purposes"
+          "description": "Optional user-set descripton for identification purposes."
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was last updated.\nOutput only.",
+          "description": "Output only. The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has.\nOutput only.",
-          "readOnly": true
+          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
         },
         "type": {
           "type": "string",
-          "title": "The type of the resource"
+          "description": "The type of the resource."
         }
       },
       "title": "Scope contains all fields related to a Scope resource"
@@ -2967,27 +2921,27 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the Scope\nOutput only.",
+          "description": "Output only. The ID of the Scope.",
           "readOnly": true
         },
         "type": {
           "type": "string",
-          "description": "The type of the Scope\nOutput only.",
+          "description": "Output only. The type of the Scope.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "description": "The name of the scope, if any\nOutput only.",
+          "description": "Output only. The name of the Scope, if any.",
           "readOnly": true
         },
         "description": {
           "type": "string",
-          "description": "The description of the scope, if any\nOutput only.",
+          "description": "Output only. The description of the Scope, if any.",
           "readOnly": true
         },
         "parent_scope_id": {
           "type": "string",
-          "description": "The ID of the parent scope, if any\nOutput only.",
+          "description": "Output only. The ID of the parent Scope, if any. This field will be empty if this is the \"global\" scope.",
           "readOnly": true
         }
       }
@@ -2997,95 +2951,103 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the resource\nOutput only.",
+          "description": "Output only. The ID of the Session.",
           "readOnly": true
         },
         "target_id": {
           "type": "string",
-          "description": "The id of the parent of this resource.  This must be defined for creation\nof this resource, but is otherwise read only."
+          "description": "Output only. The ID of the Target that created this Session.",
+          "readOnly": true
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was last updated.\nOutput only.",
+          "description": "Output only. The time this resource was last updated.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used when canceling this Session to ensure that the operation is acting on a known session state."
+        },
+        "type": {
+          "type": "string",
+          "description": "Output only. Type of the Session (e.g. tcp).",
           "readOnly": true
         },
         "expiration_time": {
           "type": "string",
           "format": "date-time",
-          "title": "After this time the connection will be expired, e.g. forcefully terminated"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has."
-        },
-        "type": {
-          "type": "string",
-          "title": "Type of the session (e.g. tcp, ssh, etc.)"
+          "description": "Output only. After this time the connection will be expired, e.g. forcefully terminated.",
+          "readOnly": true
         },
         "auth_token_id": {
           "type": "string",
-          "description": "The id of the token used to authenticate."
+          "description": "Output only. The ID of the Auth Token used to authenticate.",
+          "readOnly": true
         },
         "user_id": {
           "type": "string",
-          "title": "The ID of the user that requested the session"
+          "description": "Output only. The ID of the User that requested the Session.",
+          "readOnly": true
         },
         "host_set_id": {
           "type": "string",
-          "title": "The host set id used by the session's target"
+          "description": "Output only. The Host Set sourcing the Host for this Session.",
+          "readOnly": true
         },
         "host_id": {
           "type": "string",
-          "title": "The host id used by the session"
+          "description": "Output only. The Host used by the Session.",
+          "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "title": "The scope of the session"
+          "description": "Output only. The Scope of the Session.",
+          "readOnly": true
         },
         "endpoint": {
           "type": "string",
-          "title": "The endpoint of the session"
+          "description": "Output only. The endpoint of the Session; that is, the address to which the worker is proxying data.",
+          "readOnly": true
         },
         "states": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.sessions.v1.SessionState"
           },
-          "description": "The states of this session in descending from the current state to the\nfirst."
+          "description": "Output only. The states of this Session in descending order from the current state to the first.",
+          "readOnly": true
         },
         "status": {
           "type": "string",
-          "description": "The name of the current status of this session."
+          "description": "Output only. The current status of this Session.",
+          "readOnly": true
         },
         "worker_info": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.sessions.v1.WorkerInfo"
           },
-          "description": "Worker information. The first worker in the slice should be prioritized."
+          "description": "Output only. Worker information given to the client.",
+          "readOnly": true
         },
         "certificate": {
           "type": "string",
           "format": "byte",
-          "description": "Deprecated, to be moved to another proto by another PR:\nThe certificate to use when connecting (or if using custom certs, to\nserve as the \"login\"). Raw DER bytes."
-        },
-        "private_key": {
-          "type": "string",
-          "format": "byte",
-          "description": "The private key to use when connecting (or if using custom certs, to pass\nas the \"password\")."
+          "description": "Output only. The certificate generated for the session. Raw DER bytes.",
+          "readOnly": true
         }
       },
       "title": "Session contains all fields related to a Session resource"
@@ -3095,18 +3057,18 @@
       "properties": {
         "status": {
           "type": "string",
-          "description": "This is the status of the session.  For example \"pending\", \"active\",\n\"canceling\", \"terminated\"."
+          "description": "The status of the Session, e.g. \"pending\", \"active\", \"canceling\", \"terminated\"."
         },
         "start_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time the session entered this state.\nOutput only.",
+          "description": "Output only. The time the Session entered this state.",
           "readOnly": true
         },
         "end_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time the session stopped being in this state.\nOutput only.",
+          "description": "Output only. The time the Session stopped being in this state.",
           "readOnly": true
         }
       }
@@ -3116,7 +3078,7 @@
       "properties": {
         "address": {
           "type": "string",
-          "title": "The address of the worker"
+          "description": "The address of the worker."
         }
       }
     },
@@ -3124,10 +3086,14 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "Output only. The ID of the Host Set.",
+          "readOnly": true
         },
         "host_catalog_id": {
-          "type": "string"
+          "type": "string",
+          "description": "Output only. The Host Catalog to which this Host Set belongs.",
+          "readOnly": true
         }
       }
     },
@@ -3136,155 +3102,203 @@
       "properties": {
         "session_id": {
           "type": "string",
-          "description": "The ID of the session\nOutput only.",
+          "description": "Output only. The ID of the Session.",
           "readOnly": true
         },
         "target_id": {
           "type": "string",
-          "description": "The id of the target authorizing this session. This must be defined for\ncreation of this resource, but is otherwise read only.\nOutput only.",
+          "description": "Output only. The ID of the Target authorizing this Session.",
           "readOnly": true
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
+          "readOnly": true
+        },
+        "user_id": {
+          "type": "string",
+          "description": "Output only. The User for which this Session was authorized.",
+          "readOnly": true
+        },
+        "host_set_id": {
+          "type": "string",
+          "description": "Output only. The Host Set containing the Host being used for this Session.",
+          "readOnly": true
+        },
+        "host_id": {
+          "type": "string",
+          "description": "Output only. The Host whose address is being used as the endpoint for this Session.",
           "readOnly": true
         },
         "type": {
           "type": "string",
-          "description": "Type of the session (e.g. tcp, ssh, etc.)\nOutput only.",
+          "description": "Output only. Type of the Session (e.g. tcp, ssh, etc.).",
           "readOnly": true
         },
         "authorization_token": {
           "type": "string",
-          "description": "The marshaled SessionAuthorizationData message containing all information\nthat the proxy needs.\nOutput only.",
+          "description": "Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.",
           "readOnly": true
         }
-      }
+      },
+      "description": "SessionAuthorization contains all fields related to authorization for a Session. It's in the Targets package because it's returned by a Target's authorize action."
     },
     "controller.api.resources.targets.v1.Target": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the resource\nOutput only.",
+          "description": "Output only. The ID of the resource.",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "description": "The id of the parent of this resource.  This must be defined for creation of this resource, but is otherwise\nread only."
+          "description": "The Scope of of this resource. This must be defined for creation of this resource, but is otherwise output only."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "title": "Required name for identification purposes"
+          "description": "Required name for identification purposes."
         },
         "description": {
           "type": "string",
-          "title": "Optional user-set description for identification purposes"
+          "description": "Optional user-set description for identification purposes."
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was last updated.\nOutput only.",
+          "description": "Output only. The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has."
+          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
         },
         "type": {
-          "type": "string"
+          "type": "string",
+          "description": "The type of the Target."
         },
         "host_set_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "The ids of the host sets that make up this target."
+          "description": "The IDs of the Host Sets associated with this Target."
         },
         "host_sets": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.targets.v1.HostSet"
           },
-          "description": "The host sets that make up this target.\nOutput only.",
+          "description": "Output only. The Host Sets associated with this Target.",
           "readOnly": true
         },
         "session_max_seconds": {
           "type": "integer",
           "format": "int64",
-          "title": "Maximum total lifetime of a created session, in seconds"
+          "description": "Maximum total lifetime of a created Session, in seconds."
         },
         "session_connection_limit": {
           "type": "integer",
           "format": "int32",
-          "title": "Maximum number of connections in a session"
+          "description": "Maximum number of connections allowed in a Session."
         },
         "attributes": {
           "type": "object",
-          "description": "The attributes that are applied for the specific Target type."
+          "description": "The attributes that are applicable for the specific Target."
         }
       },
       "title": "Target contains all fields related to a Target resource"
+    },
+    "controller.api.resources.users.v1.Account": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the Account.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "Output only. The Scope containing the Account.",
+          "readOnly": true
+        }
+      }
     },
     "controller.api.resources.users.v1.User": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the Project\nOutput only.",
+          "description": "Output only. The ID of the User.",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "description": "The id of the scope this resource is in."
+          "description": "The ID of the Scope this resource is in."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for this resource\nOutput only.",
+          "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "title": "Optional name for identification purposes"
+          "description": "Optional name for identification purposes."
         },
         "description": {
           "type": "string",
-          "title": "Optional user-set description for identification purposes"
+          "description": "Optional user-set description for identification purposes."
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was created\nOutput only.",
+          "description": "Output only. The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this resource was last updated.\nOutput only.",
+          "description": "Output only. The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has."
+          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
+        },
+        "account_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. Contains the list of Account IDs linked to this User.",
+          "readOnly": true
+        },
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.users.v1.Account"
+          },
+          "description": "Output only. The Accounts linked to this User.",
+          "readOnly": true
         }
       },
       "title": "User contains all fields related to a User resource"
@@ -3298,7 +3312,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the group hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "member_ids": {
           "type": "array",
@@ -3331,7 +3345,7 @@
           "items": {
             "type": "string"
           },
-          "description": "A list of host IDs which will be added to this host set. Each host\nreferenced here must be a child of the same host catalog that this host\nset is a child of."
+          "description": "A list of Host IDs which will be added to this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child."
         }
       }
     },
@@ -3352,7 +3366,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "grant_strings": {
           "type": "array",
@@ -3379,7 +3393,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "principal_ids": {
           "type": "array",
@@ -3412,7 +3426,7 @@
           "items": {
             "type": "string"
           },
-          "title": "A list of host set IDs which will be added to this target. Each host set\nreferenced here must be a child of a host catalog in the same scope as this\ntarget"
+          "description": "A list of Host Set IDs which will be added to this target. Each Host Set referenced here must be a child of a Host Catalog in the same Scope as this Target."
         }
       }
     },
@@ -3424,20 +3438,47 @@
         }
       }
     },
+    "controller.api.services.v1.AddUserAccountsRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail."
+        },
+        "account_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.AddUserAccountsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
     "controller.api.services.v1.AuthenticateRequest": {
       "type": "object",
       "properties": {
         "auth_method_id": {
           "type": "string",
-          "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the scope\nbeing logged in to."
+          "description": "The ID of the Auth Method in the system that should be used for authentication."
         },
         "token_type": {
           "type": "string",
-          "description": "This can be \"cookie\" or \"token\".  If not provided, \"token\" will be used."
+          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order to keep it safe from rogue JS in the browser."
         },
         "credentials": {
           "type": "object",
-          "description": "credentials are the different possible credential names depending on what type of auth method is used.\nFor password auth method: should include only \"name\" and \"password\"."
+          "description": "Credentials are passed to the Auth Method; the valid keys and values depend on the type of Auth Method."
         }
       }
     },
@@ -3448,8 +3489,7 @@
           "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
         },
         "token_type": {
-          "type": "string",
-          "description": "This can be \"cookie\" or \"token\".  If not present, \"token\" should be assumed."
+          "type": "string"
         }
       }
     },
@@ -3461,7 +3501,7 @@
         },
         "host_id": {
           "type": "string",
-          "description": "An optional parameter allowing specification of the particular host within\nthe target's host sets to connect to during this session."
+          "description": "An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session."
         }
       }
     },
@@ -3899,7 +3939,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the group hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "member_ids": {
           "type": "array",
@@ -3921,8 +3961,7 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "This host set's id."
+          "type": "string"
         },
         "version": {
           "type": "integer",
@@ -3933,7 +3972,7 @@
           "items": {
             "type": "string"
           },
-          "description": "A list of host IDs which should not be in the host set when this request\nreturns."
+          "description": "A list of Host IDs which will be removed from this Host Set."
         }
       }
     },
@@ -3954,7 +3993,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "grant_strings": {
           "type": "array",
@@ -3981,7 +4020,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "principal_ids": {
           "type": "array",
@@ -4014,7 +4053,7 @@
           "items": {
             "type": "string"
           },
-          "description": "A list of host set IDs which should not be in the target when this request\nreturns."
+          "description": "A list of Host Set IDs which will be removed from this target."
         }
       }
     },
@@ -4023,6 +4062,33 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveUserAccountsRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail."
+        },
+        "account_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveUserAccountsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.users.v1.User"
         }
       }
     },
@@ -4035,7 +4101,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the group hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "member_ids": {
           "type": "array",
@@ -4068,7 +4134,7 @@
           "items": {
             "type": "string"
           },
-          "description": "A list of host IDs which will be set on this host set. Each host\nreferenced here must be a child of the same host catalog that this host\nset is a child of."
+          "description": "A list of Host IDs which will be set on this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child."
         }
       }
     },
@@ -4112,7 +4178,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "grant_strings": {
           "type": "array",
@@ -4139,7 +4205,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "principal_ids": {
           "type": "array",
@@ -4172,7 +4238,7 @@
           "items": {
             "type": "string"
           },
-          "description": "A list of host set IDs which will be set on this target. Each host set\nreferenced here must be a child of a host catalog in the same scope as this\ntarget."
+          "description": "A list of Host Set IDs which will be set on this target. Each Host Set referenced here must be a child of a Host Catalog in the same Scope as this Target."
         }
       }
     },
@@ -4181,6 +4247,33 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
+    "controller.api.services.v1.SetUserAccountsRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail."
+        },
+        "account_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.SetUserAccountsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.users.v1.User"
         }
       }
     },

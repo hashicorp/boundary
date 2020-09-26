@@ -9,16 +9,17 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/jinzhu/gorm"
-	"github.com/kr/pretty"
 )
 
 const (
@@ -60,8 +61,20 @@ func (tc *TestController) Context() context.Context {
 	return tc.ctx
 }
 
+func (tc *TestController) Kms() *kms.Kms {
+	return tc.c.kms
+}
+
 func (tc *TestController) IamRepo() *iam.Repository {
 	repo, err := tc.c.IamRepoFn()
+	if err != nil {
+		tc.t.Fatal(err)
+	}
+	return repo
+}
+
+func (tc *TestController) AuthTokenRepo() *authtoken.Repository {
+	repo, err := tc.c.AuthTokenRepoFn()
 	if err != nil {
 		tc.t.Fatal(err)
 	}
@@ -96,12 +109,16 @@ func (tc *TestController) DbConn() *gorm.DB {
 	return tc.b.Database
 }
 
+func (tc *TestController) Logger() hclog.Logger {
+	return tc.b.Logger
+}
+
 func (tc *TestController) Token() *authtokens.AuthToken {
 	if tc.opts.DisableAuthMethodCreation {
 		tc.t.Error("no default auth method ID configured")
 		return nil
 	}
-	token, apiErr, err := authmethods.NewClient(tc.Client()).Authenticate(
+	token, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
 		tc.b.DevAuthMethodId,
 		map[string]interface{}{
@@ -111,10 +128,6 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 	)
 	if err != nil {
 		tc.t.Error(fmt.Errorf("error logging in: %w", err))
-		return nil
-	}
-	if apiErr != nil {
-		tc.t.Error(fmt.Errorf("api err from logging in: %s", pretty.Sprint(apiErr)))
 		return nil
 	}
 	return token.Item
@@ -220,6 +233,18 @@ type TestControllerOpts struct {
 	// DisableAuthMethodCreation can be set true to disable creating an auth
 	// method automatically.
 	DisableAuthMethodCreation bool
+
+	// DisableScopesCreation can be set true to disable creating scopes
+	// automatically.
+	DisableScopesCreation bool
+
+	// DisableHostResourcesCreation can be set true to disable creating a host
+	// catalog and related resources automatically.
+	DisableHostResourcesCreation bool
+
+	// DisableTargetCreation can be set true to disable creating a target
+	// automatically.
+	DisableTargetCreation bool
 
 	// DisableDatabaseCreation can be set true to disable creating a dev
 	// database
@@ -364,10 +389,25 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 			if err := tc.b.CreateGlobalKmsKeys(ctx); err != nil {
 				t.Fatal(err)
 			}
-		}
-		if !opts.DisableAuthMethodCreation {
-			if err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
-				t.Fatal(err)
+			if !opts.DisableAuthMethodCreation {
+				if _, _, err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
+					t.Fatal(err)
+				}
+				if !opts.DisableScopesCreation {
+					if _, _, err := tc.b.CreateInitialScopes(ctx); err != nil {
+						t.Fatal(err)
+					}
+					if !opts.DisableHostResourcesCreation {
+						if _, _, _, err := tc.b.CreateInitialHostResources(ctx); err != nil {
+							t.Fatal(err)
+						}
+						if !opts.DisableTargetCreation {
+							if _, err := tc.b.CreateInitialTarget(ctx); err != nil {
+								t.Fatal(err)
+							}
+						}
+					}
+				}
 			}
 		}
 	} else if !opts.DisableDatabaseCreation {

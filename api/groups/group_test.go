@@ -41,21 +41,18 @@ func TestList(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			grps := groups.NewClient(client)
-			pl, apiErr, err := grps.List(tc.Context(), tt.scopeId)
+			pl, err := grps.List(tc.Context(), tt.scopeId)
 			assert.NoError(err)
-			assert.Nil(apiErr)
 			assert.Empty(pl.Items)
 
 			expected := make([]*groups.Group, 10)
 			for i := 0; i < 10; i++ {
-				createResult, apiErr, err := grps.Create(tc.Context(), tt.scopeId, groups.WithName(fmt.Sprint(i)))
+				createResult, err := grps.Create(tc.Context(), tt.scopeId, groups.WithName(fmt.Sprint(i)))
 				require.NoError(err)
-				assert.Nil(apiErr)
 				expected[i] = createResult.Item
 			}
-			pl, apiErr, err = grps.List(tc.Context(), tt.scopeId)
+			pl, err = grps.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
-			assert.Nil(apiErr)
 			require.NotNil(pl)
 			require.Len(pl.Items, 10)
 			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl.Items))
@@ -88,11 +85,8 @@ func TestCrud(t *testing.T) {
 	client.SetToken(token.Token)
 	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
-	checkGroup := func(step string, g *groups.Group, apiErr *api.Error, err error, wantedName string, wantedVersion uint32, expectedUserIds []string) {
+	checkGroup := func(step string, g *groups.Group, err error, wantedName string, wantedVersion uint32, expectedUserIds []string) {
 		require.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
-			t.Errorf("ApiError message: %q", apiErr.Message)
-		}
 		assert.NotNil(g, "returned no resource", step)
 		gotName := ""
 		if g.Name != "" {
@@ -120,44 +114,42 @@ func TestCrud(t *testing.T) {
 		},
 	}
 
-	user1, apiErr, err := users.NewClient(client).Create(tc.Context(), org.GetPublicId())
+	user1, err := users.NewClient(client).Create(tc.Context(), org.GetPublicId())
 	require.NoError(err)
-	require.Nil(apiErr)
 
-	user2, apiErr, err := users.NewClient(client).Create(tc.Context(), org.GetPublicId())
+	user2, err := users.NewClient(client).Create(tc.Context(), org.GetPublicId())
 	require.NoError(err)
-	require.Nil(apiErr)
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			groupsClient := groups.NewClient(client)
-			g, apiErr, err := groupsClient.Create(tc.Context(), tt.scopeId, groups.WithName("foo"))
-			checkGroup("create", g.Item, apiErr, err, "foo", 1, nil)
+			g, err := groupsClient.Create(tc.Context(), tt.scopeId, groups.WithName("foo"))
+			checkGroup("create", g.Item, err, "foo", 1, nil)
 
-			g, apiErr, err = groupsClient.Read(tc.Context(), g.Item.Id)
-			checkGroup("read", g.Item, apiErr, err, "foo", 1, nil)
+			g, err = groupsClient.Read(tc.Context(), g.Item.Id)
+			checkGroup("read", g.Item, err, "foo", 1, nil)
 
-			g, apiErr, err = groupsClient.Update(tc.Context(), g.Item.Id, g.Item.Version, groups.WithName("bar"))
-			checkGroup("update", g.Item, apiErr, err, "bar", 2, nil)
+			g, err = groupsClient.Update(tc.Context(), g.Item.Id, g.Item.Version, groups.WithName("bar"))
+			checkGroup("update", g.Item, err, "bar", 2, nil)
 
-			g, apiErr, err = groupsClient.Update(tc.Context(), g.Item.Id, g.Item.Version, groups.DefaultName())
-			checkGroup("update", g.Item, apiErr, err, "", 3, nil)
+			g, err = groupsClient.Update(tc.Context(), g.Item.Id, g.Item.Version, groups.DefaultName())
+			checkGroup("update", g.Item, err, "", 3, nil)
 
-			g, apiErr, err = groupsClient.AddMembers(tc.Context(), g.Item.Id, g.Item.Version, []string{user1.Item.Id})
-			checkGroup("update", g.Item, apiErr, err, "", 4, []string{user1.Item.Id})
+			g, err = groupsClient.AddMembers(tc.Context(), g.Item.Id, g.Item.Version, []string{user1.Item.Id})
+			checkGroup("update", g.Item, err, "", 4, []string{user1.Item.Id})
 
-			g, apiErr, err = groupsClient.SetMembers(tc.Context(), g.Item.Id, g.Item.Version, []string{user2.Item.Id})
-			checkGroup("update", g.Item, apiErr, err, "", 5, []string{user2.Item.Id})
+			g, err = groupsClient.SetMembers(tc.Context(), g.Item.Id, g.Item.Version, []string{user2.Item.Id})
+			checkGroup("update", g.Item, err, "", 5, []string{user2.Item.Id})
 
-			g, apiErr, err = groupsClient.RemoveMembers(tc.Context(), g.Item.Id, g.Item.Version, []string{user2.Item.Id})
-			checkGroup("update", g.Item, apiErr, err, "", 6, nil)
+			g, err = groupsClient.RemoveMembers(tc.Context(), g.Item.Id, g.Item.Version, []string{user2.Item.Id})
+			checkGroup("update", g.Item, err, "", 6, nil)
 
-			_, apiErr, err = groupsClient.Delete(tc.Context(), g.Item.Id)
+			_, err = groupsClient.Delete(tc.Context(), g.Item.Id)
 			require.NoError(err)
-			assert.Nil(apiErr)
 
-			_, apiErr, err = groupsClient.Delete(tc.Context(), g.Item.Id)
-			require.NoError(err)
+			_, err = groupsClient.Delete(tc.Context(), g.Item.Id)
+			require.Error(err)
+			apiErr := api.AsServerError(err)
 			require.NotNil(apiErr)
 			assert.EqualValues(http.StatusNotFound, apiErr.Status)
 		})
@@ -192,35 +184,37 @@ func TestErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			groupClient := groups.NewClient(client)
 
-			g, apiErr, err := groupClient.Create(tc.Context(), tt.scopeId, groups.WithName("first"))
+			g, err := groupClient.Create(tc.Context(), tt.scopeId, groups.WithName("first"))
 			require.NoError(err)
-			assert.Nil(apiErr)
 			assert.NotNil(g)
 
 			// Updating the wrong version should fail.
-			_, apiErr, err = groupClient.Update(tc.Context(), g.Item.Id, 73, groups.WithName("anything"))
-			require.NoError(err)
-			assert.NotNil(apiErr)
+			_, err = groupClient.Update(tc.Context(), g.Item.Id, 73, groups.WithName("anything"))
+			require.Error(err)
+			apiErr := api.AsServerError(err)
+			require.NotNil(apiErr)
 			assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 			// Create another resource with the same name.
-			_, apiErr, err = groupClient.Create(tc.Context(), tt.scopeId, groups.WithName("first"))
-			require.NoError(err)
-			assert.NotNil(apiErr)
+			_, err = groupClient.Create(tc.Context(), tt.scopeId, groups.WithName("first"))
+			require.Error(err)
 
-			_, apiErr, err = groupClient.Read(tc.Context(), iam.GroupPrefix+"_doesntexis")
-			require.NoError(err)
-			assert.NotNil(apiErr)
+			_, err = groupClient.Read(tc.Context(), iam.GroupPrefix+"_doesntexis")
+			require.Error(err)
+			apiErr = api.AsServerError(err)
+			require.NotNil(apiErr)
 			assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
-			_, apiErr, err = groupClient.Read(tc.Context(), "invalid id")
-			require.NoError(err)
-			assert.NotNil(apiErr)
+			_, err = groupClient.Read(tc.Context(), "invalid id")
+			require.Error(err)
+			apiErr = api.AsServerError(err)
+			require.NotNil(apiErr)
 			assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
-			_, apiErr, err = groupClient.Update(tc.Context(), g.Item.Id, g.Item.Version)
-			require.NoError(err)
-			assert.NotNil(apiErr)
+			_, err = groupClient.Update(tc.Context(), g.Item.Id, g.Item.Version)
+			require.Error(err)
+			apiErr = api.AsServerError(err)
+			require.NotNil(apiErr)
 			assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 		})
 	}

@@ -1,0 +1,30 @@
+---
+layout: docs
+page_title: Documentation
+sidebar_title: Building
+description: Building Boundary
+---
+
+# Building Boundary
+
+Building Boundary from source requires:
+
+- [Golang](https://golang.org/dl/) 1.15 or greater
+- `make` installed
+- [Docker](https://docs.docker.com/get-docker/) installed
+- Basic development environment (git, xcode if you're on Mac, etc)
+
+1. `$ git clone https://github.com/hashicorp/boundary` or if you're using SSH auth for
+   github, `$ git clone git@github.com:hashicorp/boundary`
+2. `$ cd boundary`
+3. `$ make dev`
+
+Once you've built Boundary, the binary will be available at `<repo path>/bin/boundary`. Move this
+binary to somewhere in your `$PATH` such as `/usr/local/bin`.
+
+## Cross Platform Build
+
+If you need to cross compile boundary for another OS or architecture, use the [XC_OSARCH](https://github.com/hashicorp/boundary/blob/master/scripts/build.sh#L26)
+environment variable to set this. Example: `$ XC_OSARCH=linux/amd64 make dev`
+
+For more details, please consult the [Boundary project on GitHub](https://github.com/hashicorp/boundary#build-and-start-boundary-in-dev-mode).

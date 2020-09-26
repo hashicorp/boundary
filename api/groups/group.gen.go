@@ -9,8 +9,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/kr/pretty"
-
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
 )
@@ -109,22 +107,22 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*GroupCreateResult, *api.Error, error) {
+func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*GroupCreateResult, error) {
 	if scopeId == "" {
-		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
+		return nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts.postMap["scope_id"] = scopeId
 
 	req, err := c.client.NewRequest(ctx, "POST", "groups", opts.postMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+		return nil, fmt.Errorf("error creating Create request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -137,36 +135,36 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Gr
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Create call: %w", err)
 	}
 
 	target := new(GroupCreateResult)
 	target.Item = new(Group)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+		return nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, groupId string, opt ...Option) (*GroupReadResult, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, groupId string, opt ...Option) (*GroupReadResult, error) {
 	if groupId == "" {
-		return nil, nil, fmt.Errorf("empty groupId value passed into Read request")
+		return nil, fmt.Errorf("empty groupId value passed into Read request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("groups/%s", groupId), nil, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -179,49 +177,49 @@ func (c *Client) Read(ctx context.Context, groupId string, opt ...Option) (*Grou
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
 
 	target := new(GroupReadResult)
 	target.Item = new(Group)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
+		return nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, groupId string, version uint32, opt ...Option) (*GroupUpdateResult, *api.Error, error) {
+func (c *Client) Update(ctx context.Context, groupId string, version uint32, opt ...Option) (*GroupUpdateResult, error) {
 	if groupId == "" {
-		return nil, nil, fmt.Errorf("empty groupId value passed into Update request")
+		return nil, fmt.Errorf("empty groupId value passed into Update request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
-			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
+			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, groupId, opt...)
+		existingTarget, existingErr := c.Read(ctx, groupId, opt...)
 		if existingErr != nil {
-			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingTarget == nil {
-			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
 		}
 		if existingTarget.Item == nil {
-			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
 		version = existingTarget.Item.Version
 	}
@@ -230,7 +228,7 @@ func (c *Client) Update(ctx context.Context, groupId string, version uint32, opt
 
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("groups/%s", groupId), opts.postMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -243,36 +241,36 @@ func (c *Client) Update(ctx context.Context, groupId string, version uint32, opt
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Update call: %w", err)
 	}
 
 	target := new(GroupUpdateResult)
 	target.Item = new(Group)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
+		return nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, groupId string, opt ...Option) (*GroupDeleteResult, *api.Error, error) {
+func (c *Client) Delete(ctx context.Context, groupId string, opt ...Option) (*GroupDeleteResult, error) {
 	if groupId == "" {
-		return nil, nil, fmt.Errorf("empty groupId value passed into Delete request")
+		return nil, fmt.Errorf("empty groupId value passed into Delete request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("groups/%s", groupId), nil, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Delete request: %w", err)
+		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -285,30 +283,30 @@ func (c *Client) Delete(ctx context.Context, groupId string, opt ...Option) (*Gr
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Delete call: %w", err)
 	}
 
 	apiErr, err := resp.Decode(nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Delete response: %w", err)
+		return nil, fmt.Errorf("error decoding Delete response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 
 	target := &GroupDeleteResult{
 		responseBody: resp.Body,
 		responseMap:  resp.Map,
 	}
-	return target, nil, nil
+	return target, nil
 }
 
-func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*GroupListResult, *api.Error, error) {
+func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*GroupListResult, error) {
 	if scopeId == "" {
-		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
+		return nil, fmt.Errorf("empty scopeId value passed into List request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -316,7 +314,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Grou
 
 	req, err := c.client.NewRequest(ctx, "GET", "groups", nil, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -329,51 +327,51 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Grou
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
+		return nil, fmt.Errorf("error performing client request during List call: %w", err)
 	}
 
 	target := new(GroupListResult)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
+		return nil, fmt.Errorf("error decoding List response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 
-func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupUpdateResult, *api.Error, error) {
+func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupUpdateResult, error) {
 	if groupId == "" {
-		return nil, nil, fmt.Errorf("empty groupId value passed into AddMembers request")
+		return nil, fmt.Errorf("empty groupId value passed into AddMembers request")
 	}
 	if len(memberIds) == 0 {
-		return nil, nil, errors.New("empty memberIds passed into AddMembers request")
+		return nil, errors.New("empty memberIds passed into AddMembers request")
 	}
 	if c.client == nil {
-		return nil, nil, errors.New("nil client")
+		return nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
-			return nil, nil, errors.New("zero version number passed into AddMembers request")
+			return nil, errors.New("zero version number passed into AddMembers request")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, groupId, opt...)
+		existingTarget, existingErr := c.Read(ctx, groupId, opt...)
 		if existingErr != nil {
-			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingTarget == nil {
-			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
 		}
 		if existingTarget.Item == nil {
-			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
 		version = existingTarget.Item.Version
 	}
@@ -383,7 +381,7 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:add-members", groupId), opts.postMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating AddMembers request: %w", err)
+		return nil, fmt.Errorf("error creating AddMembers request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -396,50 +394,50 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during AddMembers call: %w", err)
+		return nil, fmt.Errorf("error performing client request during AddMembers call: %w", err)
 	}
 
 	target := new(GroupUpdateResult)
 	target.Item = new(Group)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding AddMembers response: %w", err)
+		return nil, fmt.Errorf("error decoding AddMembers response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 
-func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupUpdateResult, *api.Error, error) {
+func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupUpdateResult, error) {
 	if groupId == "" {
-		return nil, nil, fmt.Errorf("empty groupId value passed into SetMembers request")
+		return nil, fmt.Errorf("empty groupId value passed into SetMembers request")
 	}
 
 	if c.client == nil {
-		return nil, nil, errors.New("nil client")
+		return nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
-			return nil, nil, errors.New("zero version number passed into SetMembers request")
+			return nil, errors.New("zero version number passed into SetMembers request")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, groupId, opt...)
+		existingTarget, existingErr := c.Read(ctx, groupId, opt...)
 		if existingErr != nil {
-			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingTarget == nil {
-			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
 		}
 		if existingTarget.Item == nil {
-			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
 		version = existingTarget.Item.Version
 	}
@@ -449,7 +447,7 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:set-members", groupId), opts.postMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating SetMembers request: %w", err)
+		return nil, fmt.Errorf("error creating SetMembers request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -462,52 +460,52 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during SetMembers call: %w", err)
+		return nil, fmt.Errorf("error performing client request during SetMembers call: %w", err)
 	}
 
 	target := new(GroupUpdateResult)
 	target.Item = new(Group)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding SetMembers response: %w", err)
+		return nil, fmt.Errorf("error decoding SetMembers response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 
-func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupUpdateResult, *api.Error, error) {
+func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*GroupUpdateResult, error) {
 	if groupId == "" {
-		return nil, nil, fmt.Errorf("empty groupId value passed into RemoveMembers request")
+		return nil, fmt.Errorf("empty groupId value passed into RemoveMembers request")
 	}
 	if len(memberIds) == 0 {
-		return nil, nil, errors.New("empty memberIds passed into RemoveMembers request")
+		return nil, errors.New("empty memberIds passed into RemoveMembers request")
 	}
 	if c.client == nil {
-		return nil, nil, errors.New("nil client")
+		return nil, errors.New("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
-			return nil, nil, errors.New("zero version number passed into RemoveMembers request")
+			return nil, errors.New("zero version number passed into RemoveMembers request")
 		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, groupId, opt...)
+		existingTarget, existingErr := c.Read(ctx, groupId, opt...)
 		if existingErr != nil {
-			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingTarget == nil {
-			return nil, nil, errors.New("nil resource response found when performing initial check-and-set read")
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
 		}
 		if existingTarget.Item == nil {
-			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
 		}
 		version = existingTarget.Item.Version
 	}
@@ -517,7 +515,7 @@ func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:remove-members", groupId), opts.postMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating RemoveMembers request: %w", err)
+		return nil, fmt.Errorf("error creating RemoveMembers request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -530,19 +528,19 @@ func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during RemoveMembers call: %w", err)
+		return nil, fmt.Errorf("error performing client request during RemoveMembers call: %w", err)
 	}
 
 	target := new(GroupUpdateResult)
 	target.Item = new(Group)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding RemoveMembers response: %w", err)
+		return nil, fmt.Errorf("error decoding RemoveMembers response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }

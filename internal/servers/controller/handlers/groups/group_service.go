@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -194,7 +193,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Group, error) 
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Group %q doesn't exist.", id)
 		}
-		return nil, err
+		return nil, fmt.Errorf("unable to get group: %w", err)
 	}
 	if g == nil {
 		return nil, handlers.NotFoundErrorf("Group %q doesn't exist.", id)
@@ -212,7 +211,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Grou
 	}
 	u, err := iam.NewGroup(scopeId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build group for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build group for creation: %v.", err)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -220,10 +219,10 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Grou
 	}
 	out, err := repo.CreateGroup(ctx, u)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create group: %v.", err)
+		return nil, fmt.Errorf("unable to create group: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create group but no error returned from repository.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create group but no error returned from repository.")
 	}
 	return toProto(out, nil), nil
 }
@@ -239,7 +238,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	version := item.GetVersion()
 	g, err := iam.NewGroup(scopeId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build group for update: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build group for update: %v.", err)
 	}
 	g.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -252,10 +251,10 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, m, rowsUpdated, err := repo.UpdateGroup(ctx, g, version, dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update group: %v.", err)
+		return nil, fmt.Errorf("unable to update group: %w", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Group %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Group %q doesn't exist or incorrect version provided.", id)
 	}
 	return toProto(out, m), nil
 }
@@ -270,7 +269,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
 		}
-		return false, status.Errorf(codes.Internal, "Unable to delete group: %v.", err)
+		return false, fmt.Errorf("unable to delete group: %w", err)
 	}
 	return rows > 0, nil
 }
@@ -282,7 +281,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Group,
 	}
 	gl, err := repo.ListGroups(ctx, scopeId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to list groups: %w", err)
 	}
 	var outGl []*pb.Group
 	for _, g := range gl {
@@ -298,14 +297,15 @@ func (s Service) addMembersInRepo(ctx context.Context, groupId string, userIds [
 	}
 	_, err = repo.AddGroupMembers(ctx, groupId, version, userIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to add members to group: %v.", err)
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add members to group: %v.", err)
 	}
 	out, m, err := repo.LookupGroup(ctx, groupId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+		return nil, fmt.Errorf("unable to look up group after adding members: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup group after adding member to it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup group after adding member to it.")
 	}
 	return toProto(out, m), nil
 }
@@ -317,14 +317,15 @@ func (s Service) setMembersInRepo(ctx context.Context, groupId string, userIds [
 	}
 	_, _, err = repo.SetGroupMembers(ctx, groupId, version, userIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to set members on group: %v.", err)
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set members on group: %v.", err)
 	}
 	out, m, err := repo.LookupGroup(ctx, groupId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+		return nil, fmt.Errorf("unable to look up group after setting members: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup group after setting members for it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup group after setting members for it.")
 	}
 	return toProto(out, m), nil
 }
@@ -336,14 +337,15 @@ func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userId
 	}
 	_, err = repo.DeleteGroupMembers(ctx, groupId, version, userIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to remove members from group: %v.", err)
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove members from group: %v.", err)
 	}
 	out, m, err := repo.LookupGroup(ctx, groupId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+		return nil, fmt.Errorf("unable to look up group after removing members: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup group after removing members from it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup group after removing members from it.")
 	}
 	return toProto(out, m), nil
 }

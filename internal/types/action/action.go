@@ -34,6 +34,9 @@ const (
 	SetHostSets      Type = 25
 	RemoveHostSets   Type = 26
 	Cancel           Type = 27
+	AddAccounts      Type = 28
+	SetAccounts      Type = 29
+	RemoveAccounts   Type = 30
 )
 
 var Map = map[string]Type{
@@ -64,6 +67,9 @@ var Map = map[string]Type{
 	SetHostSets.String():      SetHostSets,
 	RemoveHostSets.String():   RemoveHostSets,
 	Cancel.String():           Cancel,
+	AddAccounts.String():      AddAccounts,
+	SetAccounts.String():      SetAccounts,
+	RemoveAccounts.String():   RemoveAccounts,
 }
 
 func (a Type) String() string {
@@ -96,5 +102,8 @@ func (a Type) String() string {
 		"set-host-sets",
 		"remove-host-sets",
 		"cancel",
+		"add-accounts",
+		"set-accounts",
+		"remove-accounts",
 	}[a]
 }

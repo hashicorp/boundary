@@ -13,7 +13,7 @@ import (
 	// certificates that use it can be parsed.
 	_ "crypto/sha512"
 
-	"github.com/hashicorp/go-alpnmux"
+	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/shared-secure-libs/listenerutil"
@@ -98,6 +98,15 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 	}
 	if port == "" {
 		return nil, nil, nil, errors.New("could not determine port")
+	}
+
+	switch purpose {
+	case "cluster":
+		l.TLSDisable = true
+	case "proxy":
+		// TODO: Eventually we'll support bringing your own cert, and we'd only
+		// want to disable if you aren't actually bringing your own
+		l.TLSDisable = true
 	}
 
 	bindProto := "tcp"

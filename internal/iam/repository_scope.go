@@ -110,7 +110,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		}
 		role.PublicId = rolePublicId
 		role.Name = "on-scope-creation"
-		role.Description = fmt.Sprintf("Role created for administration of scope %s at its creation time", scopePublicId)
+		role.Description = fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId)
 		roleRaw = role
 		roleMetadata = oplog.Metadata{
 			"resource-public-id": []string{rolePublicId},

@@ -10,48 +10,43 @@ import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
-// AuthMethod contains all fields related to a AuthMethod resource
+// AuthMethod contains all fields related to an Auth Method resource
 message AuthMethod {
-	// The ID of the AuthMethod
-	// Output only.
+	// Output only. The ID of the Auth Method.
 	string id = 10;
 
-	// The id of the scope this resource is a part of
+	// The ID of the Scope of which this Auth Method is a part.
 	string scope_id = 20 [json_name="scope_id"];
 
-	// Scope information for this resource
-	// Output only.
+	// Output only. Scope information for this Auth method.
 	resources.scopes.v1.ScopeInfo scope = 30;
 
-	// Optional name for identification purposes
+	// Optional name for identification purposes.
 	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
-	// Optional user-set description for identification purposes
+	// Optional user-set description for identification purposes.
 	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
-	// The time this resource was created
-	// Output only.
+	// Output only. The time this resource was created.
 	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];
 
-	// The time this resource was last updated.
-	// Output only.
+	// Output only. The time this resource was last updated.
 	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
 
-	// The version can be used in subsequent write requests to ensure this resource
-	// has not changed and to fail the write if it has.
+	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
 	uint32 version = 80;
 
-	// The auth method type.  This can be "password" or "oidc".
+	// The Auth Method type.
 	string type = 90;
 
-	// The attributes that are applied for the specific Auth Method type.
+	// The attributes that are applicable for the specific Auth Method type.
 	google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
 }
 
 message PasswordAuthMethodAttributes {
-	// The minimum length allowed for user names for accounts in this auth method.
-	uint32 min_login_name_length = 10 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.min_login_name_length" that: "MinLoginNameLength"}];
+	// The minimum length allowed for user names for Accounts in this Auth Method.
+	uint32 min_login_name_length = 10 [json_name="min_login_name_length", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.min_login_name_length" that: "MinLoginNameLength"}];
 
-	// The minimum length allowed for passwords for accounts in this auth method.
-	uint32 min_password_length = 20 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.min_password_length" that: "MinPasswordLength"}];
+	// The minimum length allowed for passwords for Accounts in this Auth Method.
+	uint32 min_password_length = 20 [json_name="min_password_length", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.min_password_length" that: "MinPasswordLength"}];
 }

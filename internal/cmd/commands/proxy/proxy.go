@@ -13,11 +13,14 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
-	"github.com/btcsuite/btcutil/base58"
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -25,8 +28,8 @@ import (
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
+	"github.com/mr-tron/base58"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
@@ -60,18 +63,32 @@ type Command struct {
 	flagAuthz      string
 	flagListenAddr string
 	flagListenPort int
-	flagVerbose    bool
 	flagTargetId   string
 	flagHostId     string
+	flagExec       string
+	flagUsername   string
+
+	// SSH
+	flagSshStyle string
+
+	// Postgres
+	flagPostgresStyle string
+
+	// RDP
+	flagRdpStyle string
 
 	Func string
 
-	connWg            *sync.WaitGroup
-	listenerCloseOnce sync.Once
-	listener          *net.TCPListener
-	connsLeftCh       chan int32
-	connectionsLeft   atomic.Int32
-	expiration        time.Time
+	connWg             *sync.WaitGroup
+	listenerCloseOnce  sync.Once
+	listener           *net.TCPListener
+	listenerAddr       *net.TCPAddr
+	connsLeftCh        chan int32
+	connectionsLeft    atomic.Int32
+	expiration         time.Time
+	execCmdReturnValue *atomic.Int32
+	proxyCtx           context.Context
+	proxyCancel        context.CancelFunc
 }
 
 func (c *Command) Synopsis() string {
@@ -80,6 +97,12 @@ func (c *Command) Synopsis() string {
 		return "Launch the Boundary CLI in proxy mode"
 	case "connect":
 		return "Authorize a session against a target and launch a proxied connection"
+	case "ssh":
+		return "Authorize a session against a target and invoke an SSH client to connect"
+	case "postgres":
+		return "Authorize a session against a target and invoke a Postgres client (by default psql) to connect"
+	case "rdp":
+		return "Authorize a session against a target and invoke an RDP client to connect"
 	}
 	return ""
 }
@@ -118,10 +141,10 @@ func (c *Command) Flags() *base.FlagSets {
 	}
 	set := c.FlagSet(bits)
 
-	f := set.NewFlagSet("Proxy Options")
-
 	switch c.Func {
 	case "proxy":
+		f := set.NewFlagSet("Proxy Options")
+
 		f.StringVar(&base.StringVar{
 			Name:       "authz",
 			Target:     &c.flagAuthz,
@@ -129,7 +152,26 @@ func (c *Command) Flags() *base.FlagSets {
 			Completion: complete.PredictAnything,
 			Usage:      `The authorization string returned from the Boundary controller. If set to "-", the command will attempt to read in the authorization string from standard input.`,
 		})
-	case "connect":
+
+		f.StringVar(&base.StringVar{
+			Name:       "listen-addr",
+			Target:     &c.flagListenAddr,
+			EnvVar:     "BOUNDARY_PROXY_LISTEN_ADDR",
+			Completion: complete.PredictAnything,
+			Usage:      `If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot, the command will error. If not set, defaults to the IPv4 loopback address (127.0.0.1).`,
+		})
+
+		f.IntVar(&base.IntVar{
+			Name:       "listen-port",
+			Target:     &c.flagListenPort,
+			EnvVar:     "BOUNDARY_PROXY_LISTEN_PORT",
+			Completion: complete.PredictAnything,
+			Usage:      `If set, the CLI will attempt to bind its listening port to the given value. If it cannot, the command will error.`,
+		})
+
+	case "connect", "ssh", "rdp", "postgres":
+		f := set.NewFlagSet("Connect Options")
+
 		f.StringVar(&base.StringVar{
 			Name:   "target-id",
 			Target: &c.flagTargetId,
@@ -140,30 +182,94 @@ func (c *Command) Flags() *base.FlagSets {
 			Target: &c.flagHostId,
 			Usage:  "The ID of a specific host to connect to out of the hosts from the target's host sets. If not specified, one is chosen at random.",
 		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "listen-addr",
+			Target:     &c.flagListenAddr,
+			EnvVar:     "BOUNDARY_CONNECT_LISTEN_ADDR",
+			Completion: complete.PredictAnything,
+			Usage:      `If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot, the command will error. If not set, defaults to the most common IPv4 loopback address (127.0.0.1).`,
+		})
+
+		f.IntVar(&base.IntVar{
+			Name:       "listen-port",
+			Target:     &c.flagListenPort,
+			EnvVar:     "BOUNDARY_CONNECT_LISTEN_PORT",
+			Completion: complete.PredictAnything,
+			Usage:      `If set, the CLI will attempt to bind its listening port to the given value. If it cannot, the command will error.`,
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "exec",
+			Target:     &c.flagExec,
+			EnvVar:     "BOUNDARY_CONNECT_EXEC",
+			Completion: complete.PredictAnything,
+			Usage:      `If set, after connecting to the worker, the given binary will be executed. This should be a binary on your path, or an absolute path. If all command flags are followed by " -- " (space, two hyphens, space), then any arguments after that will be sent directly to the binary.`,
+		})
 	}
 
-	f.StringVar(&base.StringVar{
-		Name:       "listen-addr",
-		Target:     &c.flagListenAddr,
-		EnvVar:     "BOUNDARY_PROXY_LISTEN_ADDR",
-		Completion: complete.PredictAnything,
-		Usage:      `If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot, the command will error. If not set, defaults to the most common IPv4 loopback address (127.0.0.1)."`,
-	})
+	switch c.Func {
+	case "ssh":
+		f := set.NewFlagSet("SSH Options")
 
-	f.IntVar(&base.IntVar{
-		Name:       "listen-port",
-		Target:     &c.flagListenPort,
-		EnvVar:     "BOUNDARY_PROXY_LISTEN_PORT",
-		Completion: complete.PredictAnything,
-		Usage:      `If set, the CLI will attempt to bind its listening port to the given value. If it cannot, the command will error."`,
-	})
+		f.StringVar(&base.StringVar{
+			Name:       "style",
+			Target:     &c.flagSshStyle,
+			EnvVar:     "BOUNDARY_CONNECT_SSH_STYLE",
+			Completion: complete.PredictSet("ssh", "putty"),
+			Default:    "ssh",
+			Usage:      `Specifies how the CLI will attempt to invoke an SSH client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "ssh" and "putty".`,
+		})
 
-	f.BoolVar(&base.BoolVar{
-		Name:       "verbose",
-		Target:     &c.flagVerbose,
-		Completion: complete.PredictAnything,
-		Usage:      "Turns on some extra verbosity in the command output.",
-	})
+		f.StringVar(&base.StringVar{
+			Name:       "username",
+			Target:     &c.flagUsername,
+			EnvVar:     "BOUNDARY_CONNECT_USERNAME",
+			Completion: complete.PredictNothing,
+			Usage:      `Specifies the username to pass through to the client`,
+		})
+
+	case "postgres":
+		f := set.NewFlagSet("Postgres Options")
+
+		f.StringVar(&base.StringVar{
+			Name:       "style",
+			Target:     &c.flagPostgresStyle,
+			EnvVar:     "BOUNDARY_CONNECT_POSTGRES_STYLE",
+			Completion: complete.PredictSet("psql"),
+			Default:    "psql",
+			Usage:      `Specifies how the CLI will attempt to invoke a Postgres client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "psql".`,
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "username",
+			Target:     &c.flagUsername,
+			EnvVar:     "BOUNDARY_CONNECT_USERNAME",
+			Completion: complete.PredictNothing,
+			Usage:      `Specifies the username to pass through to the client`,
+		})
+
+	case "rdp":
+		f := set.NewFlagSet("RDP Options")
+
+		f.StringVar(&base.StringVar{
+			Name:       "style",
+			Target:     &c.flagRdpStyle,
+			EnvVar:     "BOUNDARY_CONNECT_RDP_STYLE",
+			Completion: complete.PredictSet("mstsc"),
+			Default:    "mstsc",
+			Usage:      `Specifies how the CLI will attempt to invoke an RDP client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "mstsc".`,
+		})
+	}
+
+	/*
+		f.BoolVar(&base.BoolVar{
+			Name:       "verbose",
+			Target:     &c.flagVerbose,
+			Completion: complete.PredictAnything,
+			Usage:      "Turns on some extra verbosity in the command output.",
+		})
+	*/
 
 	return set
 }
@@ -177,11 +283,34 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) (retCode int) {
+	var passthroughArgs []string
+	for i, v := range args {
+		if v == "--" {
+			passthroughArgs = args[i+1:]
+			args = args[:i]
+		}
+	}
+
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
 		return 1
+	}
+
+	switch c.Func {
+	case "ssh":
+		if c.flagExec == "" {
+			c.flagExec = strings.ToLower(c.flagSshStyle)
+		}
+	case "postgres":
+		if c.flagExec == "" {
+			c.flagExec = strings.ToLower(c.flagPostgresStyle)
+		}
+	case "rdp":
+		if c.flagExec == "" {
+			c.flagExec = strings.ToLower(c.flagRdpStyle)
+		}
 	}
 
 	tofuToken, err := base62.Random(20)
@@ -231,7 +360,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			}
 		}
 
-	case "connect":
+	case "connect", "ssh", "postgres", "rdp":
 		if c.flagTargetId == "" {
 			c.UI.Error("Target ID must be provided")
 			return 1
@@ -249,20 +378,24 @@ func (c *Command) Run(args []string) (retCode int) {
 			opts = append(opts, targets.WithHostId(c.flagHostId))
 		}
 
-		sar, apiErr, err := targetClient.Authorize(c.Context, c.flagTargetId, opts...)
+		sar, err := targetClient.Authorize(c.Context, c.flagTargetId, opts...)
 		if err != nil {
+			if api.AsServerError(err) != nil {
+				c.UI.Error(fmt.Sprintf("Error from controller when performing authorize on a session against target: %s", err.Error()))
+				return 1
+			}
 			c.UI.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))
 			return 2
-		}
-		if apiErr != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing authorize on a session against target: %s", pretty.Sprint(apiErr)))
-			return 1
 		}
 		sa := sar.GetItem().(*targets.SessionAuthorization)
 		authzString = sa.AuthorizationToken
 	}
 
-	marshaled := base58.Decode(authzString)
+	marshaled, err := base58.FastBase58Decoding(authzString)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Unable to base58-decode authorization data: %w", err).Error())
+		return 1
+	}
 	if len(marshaled) == 0 {
 		c.UI.Error("Zero length authorization information after decoding")
 		return 1
@@ -294,6 +427,12 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 
 	c.expiration = parsedCert.NotAfter
+
+	// We don't _rely_ on client-side timeout verification but this prevents us
+	// seeming to be ready for a connection that will immediately fail when we
+	// try to actually make it
+	c.proxyCtx, c.proxyCancel = context.WithDeadline(c.Context, c.expiration)
+	defer c.proxyCancel()
 
 	certPool := x509.NewCertPool()
 	certPool.AddCert(parsedCert)
@@ -341,27 +480,29 @@ func (c *Command) Run(args []string) (retCode int) {
 		c.listenerCloseOnce.Do(listenerCloseFunc)
 	}()
 
-	listenerAddr := c.listener.Addr().(*net.TCPAddr)
+	c.listenerAddr = c.listener.Addr().(*net.TCPAddr)
 
-	sessInfo := SessionInfo{
-		Protocol:        "tcp",
-		Address:         listenerAddr.IP.String(),
-		Port:            listenerAddr.Port,
-		Expiration:      c.expiration,
-		ConnectionLimit: data.GetConnectionLimit(),
-		SessionId:       data.GetSessionId(),
-	}
-
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateSessionInfoTableOutput(sessInfo))
-	case "json":
-		out, err := json.Marshal(&sessInfo)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("error marshaling session information: %w", err).Error())
-			return 1
+	if c.flagExec == "" {
+		sessInfo := SessionInfo{
+			Protocol:        "tcp",
+			Address:         c.listenerAddr.IP.String(),
+			Port:            c.listenerAddr.Port,
+			Expiration:      c.expiration,
+			ConnectionLimit: data.GetConnectionLimit(),
+			SessionId:       data.GetSessionId(),
 		}
-		c.UI.Output(string(out))
+
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateSessionInfoTableOutput(sessInfo))
+		case "json":
+			out, err := json.Marshal(&sessInfo)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("error marshaling session information: %w", err).Error())
+				return 1
+			}
+			c.UI.Output(string(out))
+		}
 	}
 
 	c.connWg = new(sync.WaitGroup)
@@ -373,6 +514,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			listeningConn, err := c.listener.AcceptTCP()
 			if err != nil {
 				select {
+				case <-c.proxyCtx.Done():
+					return
 				case <-c.Context.Done():
 					return
 				default:
@@ -400,28 +543,63 @@ func (c *Command) Run(args []string) (retCode int) {
 	}()
 
 	timer := time.NewTimer(time.Until(c.expiration))
-	var termInfo TerminationInfo
-Wait:
-	for {
-		select {
-		case <-c.Context.Done():
-			termInfo.Reason = "Received shutdown signal"
-			timer.Stop()
-			break Wait
-		case <-timer.C:
-			termInfo.Reason = "Session has expired"
-			break Wait
-		case connsLeft := <-c.connsLeftCh:
-			c.updateConnsLeft(connsLeft)
-			if connsLeft == 0 {
+	c.connWg.Add(1)
+	go func() {
+		defer c.connWg.Done()
+		defer c.listenerCloseOnce.Do(listenerCloseFunc)
+
+		for {
+			select {
+			case <-c.proxyCtx.Done():
+				timer.Stop()
+				return
+			case <-c.Context.Done():
+				timer.Stop()
+				return
+			case <-timer.C:
+				return
+			case connsLeft := <-c.connsLeftCh:
+				c.updateConnsLeft(connsLeft)
+				if connsLeft == 0 {
+					return
+				}
+			}
+		}
+	}()
+
+	if c.flagExec != "" {
+		c.connWg.Add(1)
+		c.execCmdReturnValue = new(atomic.Int32)
+		go c.handleExec(passthroughArgs)
+	}
+
+	c.connWg.Wait()
+
+	if c.execCmdReturnValue != nil {
+		retCode = int(c.execCmdReturnValue.Load())
+	}
+
+	termInfo := TerminationInfo{Reason: "Unknown"}
+	select {
+	case <-c.Context.Done():
+		termInfo.Reason = "Received shutdown signal"
+	case <-timer.C:
+		termInfo.Reason = "Session has expired"
+	default:
+		if c.execCmdReturnValue != nil {
+			r := c.execCmdReturnValue.Load()
+			switch r {
+			case 0:
+				termInfo.Reason = "Executed command has completed successfully"
+			default:
+				termInfo.Reason = fmt.Sprintf("Executed command exited with code %d", r)
+			}
+		} else {
+			if c.connectionsLeft.Load() == 0 {
 				termInfo.Reason = "No connections left in session"
-				break Wait
 			}
 		}
 	}
-	c.listenerCloseOnce.Do(listenerCloseFunc)
-
-	c.connWg.Wait()
 
 	switch base.Format(c.UI) {
 	case "table":
@@ -435,7 +613,7 @@ Wait:
 		c.UI.Output(string(out))
 	}
 
-	return 0
+	return
 }
 
 func (c *Command) handleConnection(
@@ -447,7 +625,7 @@ func (c *Command) handleConnection(
 	defer c.connWg.Done()
 
 	conn, resp, err := websocket.Dial(
-		c.Context,
+		c.proxyCtx,
 		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
 		&websocket.DialOptions{
 			HTTPClient: &http.Client{
@@ -479,11 +657,11 @@ func (c *Command) handleConnection(
 	}
 
 	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
-	if err := wspb.Write(c.Context, conn, &handshake); err != nil {
+	if err := wspb.Write(c.proxyCtx, conn, &handshake); err != nil {
 		return fmt.Errorf("error sending handshake to worker: %w", err)
 	}
 	var handshakeResult proxy.HandshakeResult
-	if err := wspb.Read(c.Context, conn, &handshakeResult); err != nil {
+	if err := wspb.Read(c.proxyCtx, conn, &handshakeResult); err != nil {
 		switch {
 		case strings.Contains(err.Error(), "unable to authorize connection"):
 			// There's no reason to think we'd be able to authorize any more
@@ -498,14 +676,8 @@ func (c *Command) handleConnection(
 		c.connsLeftCh <- handshakeResult.GetConnectionsLeft()
 	}
 
-	// We don't _rely_ on client-side timeout verification but this prevents us
-	// seeming to be ready for a connection that will immediately fail when we
-	// try to actually make it
-	expiringCtx, cancel := context.WithDeadline(c.Context, handshakeResult.GetExpiration().AsTime())
-	defer cancel()
-
 	// Get a wrapped net.Conn so we can use io.Copy
-	netConn := websocket.NetConn(expiringCtx, conn, websocket.MessageBinary)
+	netConn := websocket.NetConn(c.proxyCtx, conn, websocket.MessageBinary)
 
 	localWg := new(sync.WaitGroup)
 	localWg.Add(2)
@@ -534,14 +706,110 @@ func (c *Command) updateConnsLeft(connsLeft int32) {
 		ConnectionsLeft: connsLeft,
 	}
 
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateConnectionInfoTableOutput(connInfo))
-	case "json":
-		out, err := json.Marshal(&connInfo)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
+	if c.flagExec == "" {
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateConnectionInfoTableOutput(connInfo))
+		case "json":
+			out, err := json.Marshal(&connInfo)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
+			}
+			c.UI.Output(string(out))
 		}
-		c.UI.Output(string(out))
 	}
+}
+
+func (c *Command) handleExec(passthroughArgs []string) {
+	defer c.connWg.Done()
+	defer c.proxyCancel()
+
+	port := strconv.Itoa(c.listenerAddr.Port)
+	ip := c.listenerAddr.IP.String()
+	addr := c.listenerAddr.String()
+
+	var args []string
+
+	switch c.Func {
+	case "ssh":
+		switch c.flagSshStyle {
+		case "ssh":
+			args = append(args, "-p", port, ip)
+		case "putty":
+			args = append(args, "-P", port, ip)
+		}
+		if c.flagUsername != "" {
+			args = append(args, "-l", c.flagUsername)
+		}
+
+	case "postgres":
+		switch c.flagPostgresStyle {
+		case "psql":
+			args = append(args, "-p", port, "-h", ip)
+			if c.flagUsername != "" {
+				args = append(args, "-U", c.flagUsername)
+			}
+		}
+
+	case "rdp":
+		switch c.flagRdpStyle {
+		case "mstsc":
+			args = append(args, "/v", addr)
+		}
+	}
+
+	args = append(passthroughArgs, args...)
+
+	// Might want -t for ssh or -tt but seems fine without it for now...
+
+	stringReplacer := func(in, typ, replacer string) string {
+		for _, style := range []string{
+			fmt.Sprintf("{{boundary.%s}}", typ),
+			fmt.Sprintf("{{ boundary.%s}}", typ),
+			fmt.Sprintf("{{boundary.%s }}", typ),
+			fmt.Sprintf("{{ boundary.%s }}", typ),
+		} {
+			in = strings.Replace(in, style, replacer, -1)
+		}
+		return in
+	}
+
+	for i := range args {
+		args[i] = stringReplacer(args[i], "port", port)
+		args[i] = stringReplacer(args[i], "ip", ip)
+		args[i] = stringReplacer(args[i], "addr", addr)
+	}
+
+	// NOTE: exec.CommandContext is a hard kill, so if used it leaves the
+	// terminal in a weird state. It suffices to simply close the connection,
+	// which already happens, so we don't need/want CommandContext here.
+	cmd := exec.Command(c.flagExec, args...)
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%s", port),
+		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", ip),
+		fmt.Sprintf("BOUNDARY_PROXIED_ADDR=%s", addr),
+	)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		exitCode := 2
+
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if exitError.Success() {
+				c.execCmdReturnValue.Store(0)
+				return
+			}
+			if ws, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				c.execCmdReturnValue.Store(int32(ws.ExitStatus()))
+				return
+			}
+		}
+
+		c.UI.Error(fmt.Sprintf("Failed to run command: %s", err))
+		c.execCmdReturnValue.Store(int32(exitCode))
+		return
+	}
+	c.execCmdReturnValue.Store(0)
 }

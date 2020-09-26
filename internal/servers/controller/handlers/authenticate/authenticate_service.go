@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -75,11 +74,6 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
 }
 
-// Deauthenticate implements the interface pbs.AuthenticationServiceServer.
-func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequest) (*pbs.DeauthenticateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented.")
-}
-
 func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId, loginName, pw string) (*pba.AuthToken, error) {
 	iamRepo, err := s.iamRepo()
 	if err != nil {
@@ -99,7 +93,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId
 		return nil, err
 	}
 	if acct == nil {
-		return nil, status.Error(codes.Unauthenticated, "Unable to authenticate.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Unauthenticated, "Unable to authenticate.")
 	}
 
 	u, err := iamRepo.LookupUserWithLogin(ctx, acct.GetPublicId(), iam.WithAutoVivify(true))

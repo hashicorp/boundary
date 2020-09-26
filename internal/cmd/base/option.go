@@ -14,9 +14,13 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
-	withNoTokenScope           bool
-	withNoTokenValue           bool
-	withSkipAuthMethodCreation bool
+	withNoTokenScope              bool
+	withNoTokenValue              bool
+	withSkipDatabaseDestruction   bool
+	withSkipAuthMethodCreation    bool
+	withSkipScopesCreation        bool
+	withSkipHostResourcesCreation bool
+	withSkipTargetCreation        bool
 }
 
 func getDefaultOptions() Options {
@@ -29,6 +33,13 @@ func getDefaultOptions() Options {
 func WithNoTokenScope() Option {
 	return func(o *Options) {
 		o.withNoTokenScope = true
+	}
+}
+
+// WithSkipDatabaseDestruction tells the command not to destroy the database even on error.
+func WithSkipDatabaseDestruction() Option {
+	return func(o *Options) {
+		o.withSkipDatabaseDestruction = true
 	}
 }
 
@@ -46,5 +57,29 @@ func WithNoTokenValue() Option {
 func WithSkipAuthMethodCreation() Option {
 	return func(o *Options) {
 		o.withSkipAuthMethodCreation = true
+	}
+}
+
+// WithSkipScopesCreation tells the command not to instantiate scopes on first
+// run.
+func WithSkipScopesCreation() Option {
+	return func(o *Options) {
+		o.withSkipScopesCreation = true
+	}
+}
+
+// WithSkipHostResourcesCreation tells the command not to instantiate a host
+// catalog and related resources on first run.
+func WithSkipHostResourcesCreation() Option {
+	return func(o *Options) {
+		o.withSkipHostResourcesCreation = true
+	}
+}
+
+// WithSkipTargetCreation tells the command not to instantiate a target on first
+// run.
+func WithSkipTargetCreation() Option {
+	return func(o *Options) {
+		o.withSkipTargetCreation = true
 	}
 }

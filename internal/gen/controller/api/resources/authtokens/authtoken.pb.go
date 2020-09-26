@@ -28,45 +28,33 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-// AuthToken contains all fields related to an AuthToken resource
+// AuthToken contains all fields related to an Auth Token resource
 type AuthToken struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The ID of the AuthToken
-	// Output only.
+	// Output only. The ID of the Auth Token.
 	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
-	// The scope this auth token is in.
+	// The Scope in which this Auth Token was generated.
 	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
-	// Scope information for this resource
-	// Output only.
+	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
-	// The token value, which will only be populated after authentication and is
-	// only ever visible to the end user whose login request resulted in this
-	// auth token being created.
-	// Output only.
+	// Output only. The token value, which will only be populated after authentication and is only ever visible to the end user whose login request resulted in this Auth Token being created.
 	Token string `protobuf:"bytes,40,opt,name=token,proto3" json:"token,omitempty"`
-	// The id of the user of this AuthToken.
-	// Output only.
+	// Output only. The ID of the User associated with this Auth Token.
 	UserId string `protobuf:"bytes,50,opt,name=user_id,proto3" json:"user_id,omitempty"`
-	// The id of the auth method of this AuthToken.
-	// Output only.
+	// Output only. The ID of the Auth Method associated with this Auth Token.
 	AuthMethodId string `protobuf:"bytes,60,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty"`
-	// The id of the auth method account of this AuthToken.
-	// Output only.
+	// Output only. The ID of the Account associated with this Auth Token.
 	AccountId string `protobuf:"bytes,70,opt,name=account_id,proto3" json:"account_id,omitempty"`
-	// The time this resource was created
-	// Output only.
+	// Output only. The time this resource was created.
 	CreatedTime *timestamp.Timestamp `protobuf:"bytes,80,opt,name=created_time,proto3" json:"created_time,omitempty"`
-	// The time this resource was last updated.
-	// Output only.
+	// Output only. The time this resource was last updated.
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,90,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
-	// The approximate time this AuthToken was last used.
-	// Output only.
+	// Output only. The approximate time this Auth Token was last used.
 	ApproximateLastUsedTime *timestamp.Timestamp `protobuf:"bytes,100,opt,name=approximate_last_used_time,proto3" json:"approximate_last_used_time,omitempty"`
-	// The time this AuthToken expires.
-	// Output only.
+	// Output only. The time this Auth Token expires.
 	ExpirationTime *timestamp.Timestamp `protobuf:"bytes,110,opt,name=expiration_time,proto3" json:"expiration_time,omitempty"`
 }
 

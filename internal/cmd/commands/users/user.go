@@ -8,9 +8,7 @@ import (
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -22,26 +20,45 @@ type Command struct {
 	*base.Command
 
 	Func string
+
+	flagAccounts []string
 }
 
 func (c *Command) Synopsis() string {
-	return common.SynopsisFunc(c.Func, "user")
+	switch c.Func {
+	case "", "create", "update", "read", "delete", "list":
+		return common.SynopsisFunc(c.Func, "user")
+	case "add-accounts", "set-accounts", "remove-accounts":
+		return accountSynopsisFunc(c.Func)
+	}
+	return ""
+}
+
+var helpMap = func() map[string]func() string {
+	ret := common.HelpMap("user")
+	ret["add-accounts"] = addAccountsHelp
+	ret["set-accounts"] = setAccountsHelp
+	ret["remove-accounts"] = removeAccountsHelp
+	return ret
 }
 
 var flagsMap = map[string][]string{
-	"create": {"scope-id", "name", "description"},
-	"update": {"id", "name", "description", "version"},
-	"read":   {"id"},
-	"delete": {"id"},
-	"list":   {"scope-id"},
+	"create":          {"scope-id", "name", "description"},
+	"update":          {"id", "name", "description", "version"},
+	"read":            {"id"},
+	"delete":          {"id"},
+	"list":            {"scope-id"},
+	"add-accounts":    {"id", "account", "version"},
+	"set-accounts":    {"id", "account", "version"},
+	"remove-accounts": {"id", "account", "version"},
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("user")
+	hm := helpMap()
 	if c.Func == "" {
-		return helpMap["base"]()
+		return hm["base"]()
 	}
-	return helpMap[c.Func]() + c.Flags().Help()
+	return hm[c.Func]() + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -49,7 +66,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	if len(flagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.User.String(), flagsMap[c.Func])
+		populateFlags(c, f, flagsMap[c.Func])
 	}
 
 	return set
@@ -108,6 +125,26 @@ func (c *Command) Run(args []string) int {
 		opts = append(opts, users.WithDescription(c.FlagDescription))
 	}
 
+	accounts := c.flagAccounts
+	switch c.Func {
+	case "add-accounts", "remove-accounts":
+		if len(c.flagAccounts) == 0 {
+			c.UI.Error("No accounts supplied via -account")
+			return 1
+		}
+
+	case "set-accounts":
+		switch len(c.flagAccounts) {
+		case 0:
+			c.UI.Error("No accounts supplied via -account")
+			return 1
+		case 1:
+			if c.flagAccounts[0] == "null" {
+				accounts = nil
+			}
+		}
+	}
+
 	userClient := users.NewClient(client)
 
 	// Perform check-and-set when needed
@@ -127,23 +164,28 @@ func (c *Command) Run(args []string) int {
 	existed := true
 	var result api.GenericResult
 	var listResult api.GenericListResult
-	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		result, apiErr, err = userClient.Create(c.Context, c.FlagScopeId, opts...)
+		result, err = userClient.Create(c.Context, c.FlagScopeId, opts...)
 	case "update":
-		result, apiErr, err = userClient.Update(c.Context, c.FlagId, version, opts...)
+		result, err = userClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		result, apiErr, err = userClient.Read(c.Context, c.FlagId, opts...)
+		result, err = userClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		_, apiErr, err = userClient.Delete(c.Context, c.FlagId, opts...)
-		if apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+		_, err = userClient.Delete(c.Context, c.FlagId, opts...)
+		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
 			existed = false
-			apiErr = nil
+			err = nil
 		}
 	case "list":
-		listResult, apiErr, err = userClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, err = userClient.List(c.Context, c.FlagScopeId, opts...)
+	case "add-accounts":
+		result, err = userClient.AddAccounts(c.Context, c.FlagId, version, accounts, opts...)
+	case "set-accounts":
+		result, err = userClient.SetAccounts(c.Context, c.FlagId, version, accounts, opts...)
+	case "remove-accounts":
+		result, err = userClient.RemoveAccounts(c.Context, c.FlagId, version, accounts, opts...)
 	}
 
 	plural := "user"
@@ -151,12 +193,12 @@ func (c *Command) Run(args []string) int {
 		plural = "users"
 	}
 	if err != nil {
+		if api.AsServerError(err) != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
+			return 1
+		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
 		return 2
-	}
-	if apiErr != nil {
-		c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, pretty.Sprint(apiErr)))
-		return 1
 	}
 
 	switch c.Func {

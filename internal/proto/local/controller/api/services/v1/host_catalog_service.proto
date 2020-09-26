@@ -94,7 +94,6 @@ service HostCatalogService {
 
 message GetHostCatalogRequest {
   string id = 1;
-  string view = 2;
 }
 
 message GetHostCatalogResponse {
@@ -103,7 +102,6 @@ message GetHostCatalogResponse {
 
 message ListHostCatalogsRequest {
   string scope_id = 1 [json_name="scope_id"];
-  string view = 2;
 }
 
 message ListHostCatalogsResponse {

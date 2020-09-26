@@ -60,17 +60,8 @@ func Migrate(connectionUrl string, migrationsDirectory string) error {
 	return nil
 }
 
-// InitDbInDocker initializes the data store within docker or an existing PG_URL
+// InitDbInDocker initializes the data store within docker or an existing
 func InitDbInDocker(dialect string) (cleanup func() error, retURL, container string, err error) {
-	switch dialect {
-	case "postgres":
-		if os.Getenv("PG_URL") != "" {
-			if _, err := InitStore(dialect, func() error { return nil }, os.Getenv("PG_URL")); err != nil {
-				return func() error { return nil }, os.Getenv("PG_URL"), "", fmt.Errorf("error initializing store: %w", err)
-			}
-			return func() error { return nil }, os.Getenv("PG_URL"), "", nil
-		}
-	}
 	c, url, container, err := StartDbInDocker(dialect)
 	if err != nil {
 		return func() error { return nil }, "", "", fmt.Errorf("could not start docker: %w", err)
@@ -99,8 +90,8 @@ func StartDbInDocker(dialect string) (cleanup func() error, retURL, container st
 	var url string
 	switch dialect {
 	case "postgres":
-		resource, err = pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=boundary"})
-		url = "postgres://postgres:secret@localhost:%s?sslmode=disable"
+		resource, err = pool.Run("postgres", "12", []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
+		url = "postgres://postgres:password@localhost:%s?sslmode=disable"
 	default:
 		panic(fmt.Sprintf("unknown dialect %q", dialect))
 	}

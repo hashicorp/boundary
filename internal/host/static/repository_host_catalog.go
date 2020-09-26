@@ -35,11 +35,20 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	}
 	c = c.clone()
 
-	id, err := newHostCatalogId()
-	if err != nil {
-		return nil, fmt.Errorf("create: static host catalog: %w", err)
+	opts := getOpts(opt...)
+
+	if opts.withPublicId != "" {
+		if !strings.HasPrefix(opts.withPublicId, HostCatalogPrefix+"_") {
+			return nil, fmt.Errorf("create: static host catalog: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, HostCatalogPrefix, db.ErrInvalidPublicId)
+		}
+		c.PublicId = opts.withPublicId
+	} else {
+		id, err := newHostCatalogId()
+		if err != nil {
+			return nil, fmt.Errorf("create: static host catalog: %w", err)
+		}
+		c.PublicId = id
 	}
-	c.PublicId = id
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {

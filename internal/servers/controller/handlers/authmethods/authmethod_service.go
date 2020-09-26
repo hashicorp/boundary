@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -185,7 +184,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	}
 	u, err := password.NewAuthMethod(scopeId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build auth method for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method for creation: %v.", err)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -193,10 +192,10 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	}
 	out, err := repo.CreateAuthMethod(ctx, u)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create auth method: %v.", err)
+		return nil,fmt.Errorf("unable to create auth method: %w", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create auth method but no error returned from repository.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
 	}
 	return toProto(out)
 }
@@ -211,12 +210,13 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	u, err := password.NewAuthMethod(scopeId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build auth method for update: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method for update: %v.", err)
 	}
 
 	pwAttrs := &pb.PasswordAuthMethodAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
+		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+			map[string]string{"attributes": "Attribute fields do not match the expected format."})
 	}
 	if pwAttrs.GetMinLoginNameLength() != 0 {
 		u.MinLoginNameLength = pwAttrs.GetMinLoginNameLength()
@@ -237,10 +237,10 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update auth method: %v.", err)
+		return nil, fmt.Errorf("unable to update auth method: %w", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", id)
 	}
 	return toProto(out)
 }
@@ -255,7 +255,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
 		}
-		return false, status.Errorf(codes.Internal, "Unable to delete auth method: %v.", err)
+		return false, fmt.Errorf("unable to delete auth method: %w", err)
 	}
 	return rows > 0, nil
 }
@@ -324,7 +324,7 @@ func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
 		MinPasswordLength:  in.GetMinPasswordLength(),
 	})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
 	}
 	out.Attributes = st
 	return &out, nil
@@ -365,7 +365,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 		switch auth.SubtypeFromId(req.GetId()) {
 		case auth.PasswordSubtype:
 			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != auth.PasswordSubtype {
-				badFields["type"] = "Cannot modify resource type."
+				badFields["type"] = "Cannot modify the resource type."
 			}
 			pwAttrs := &pb.PasswordAuthMethodAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {

@@ -33,20 +33,15 @@ type ScopeInfo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The ID of the Scope
-	// Output only.
+	// Output only. The ID of the Scope.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// The type of the Scope
-	// Output only.
+	// Output only. The type of the Scope.
 	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	// The name of the scope, if any
-	// Output only.
+	// Output only. The name of the Scope, if any.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// The description of the scope, if any
-	// Output only.
+	// Output only. The description of the Scope, if any.
 	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
-	// The ID of the parent scope, if any
-	// Output only.
+	// Output only. The ID of the parent Scope, if any. This field will be empty if this is the "global" scope.
 	ParentScopeId string `protobuf:"bytes,5,opt,name=parent_scope_id,proto3" json:"parent_scope_id,omitempty"`
 }
 
@@ -123,29 +118,23 @@ type Scope struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The ID of the Scope
-	// Output only.
+	// Output only. The ID of the Scope.
 	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
-	// The id of the scope this resource is in.
+	// The ID of the Scope this resource is in. If this is the "global" Scope this field will be empty.
 	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
-	// Scope information for this resource
-	// Output only.
+	// Output only. Scope information for this resource.
 	Scope *ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
-	// Optional name for identification purposes
+	// Optional name for identification purposes.
 	Name *wrappers.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"`
-	// Optional user-set descripton for identification purposes
+	// Optional user-set descripton for identification purposes.
 	Description *wrappers.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"`
-	// The time this resource was created
-	// Output only.
+	// Output only. The time this resource was created.
 	CreatedTime *timestamp.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"`
-	// The time this resource was last updated.
-	// Output only.
+	// Output only. The time this resource was last updated.
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
-	// The version can be used in subsequent write requests to ensure this
-	// resource has not changed and to fail the write if it has.
-	// Output only.
+	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"`
-	// The type of the resource
+	// The type of the resource.
 	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"`
 }
 

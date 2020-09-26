@@ -5,26 +5,33 @@ package controller.api.v1;
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api;api";
 
 message ErrorDetails {
+	// The TraceId that can be used for OpenTelemetry.
 	string TraceId = 1 [json_name="TraceId"];
+	// A request ID.
 	string request_id = 2 [json_name="request_id"];
-	repeated FieldError request_fields = 3 [json_name="request_fields"];
+	// An Error ID.
+	string error_id = 3 [json_name="error_id"];
+	// Request-field-specific error details.
+	repeated FieldError request_fields = 4 [json_name="request_fields"];
 }
 
 // FieldErrors contains error information on a per field basis.
 message FieldError {
+	// The name of the field.
 	string name = 1;
-	string description= 2;
+
+	// The description of the error.
+	string description = 2;
 }
 
 // Error is returned by the JSON API when an error occurs.
 message Error {
-	// The HTTP Status code applicable to this error
+	// The HTTP Status code applicable to this error.
 	int32 status = 1;
-	// An application-specific error string
+	// An application-specific error string.
 	string code = 2;
-	// A human readable explanation specific to this occurrence of the error
+	// A human-readable explanation specific to this occurrence of the error.
 	string message = 3;
-	// Additional metadata regarding the error. Depending on the error
-	// different fields will be populated.
+	// Additional metadata regarding the error. Depending on the error, different fields will be populated.
 	ErrorDetails details = 4;
 }

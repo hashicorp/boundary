@@ -18,9 +18,9 @@ type Session struct {
 	Scope          *scopes.ScopeInfo `json:"scope,omitempty"`
 	CreatedTime    time.Time         `json:"created_time,omitempty"`
 	UpdatedTime    time.Time         `json:"updated_time,omitempty"`
-	ExpirationTime time.Time         `json:"expiration_time,omitempty"`
 	Version        uint32            `json:"version,omitempty"`
 	Type           string            `json:"type,omitempty"`
+	ExpirationTime time.Time         `json:"expiration_time,omitempty"`
 	AuthTokenId    string            `json:"auth_token_id,omitempty"`
 	UserId         string            `json:"user_id,omitempty"`
 	HostSetId      string            `json:"host_set_id,omitempty"`
@@ -114,19 +114,19 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Read(ctx context.Context, sessionId string, opt ...Option) (*SessionReadResult, *api.Error, error) {
+func (c *Client) Read(ctx context.Context, sessionId string, opt ...Option) (*SessionReadResult, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("empty sessionId value passed into Read request")
+		return nil, fmt.Errorf("empty sessionId value passed into Read request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("sessions/%s", sessionId), nil, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -139,29 +139,29 @@ func (c *Client) Read(ctx context.Context, sessionId string, opt ...Option) (*Se
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
 
 	target := new(SessionReadResult)
 	target.Item = new(Session)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
+		return nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }
 
-func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*SessionListResult, *api.Error, error) {
+func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*SessionListResult, error) {
 	if scopeId == "" {
-		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
+		return nil, fmt.Errorf("empty scopeId value passed into List request")
 	}
 	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+		return nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -169,7 +169,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Sess
 
 	req, err := c.client.NewRequest(ctx, "GET", "sessions", nil, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
 
 	if len(opts.queryMap) > 0 {
@@ -182,18 +182,18 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Sess
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
+		return nil, fmt.Errorf("error performing client request during List call: %w", err)
 	}
 
 	target := new(SessionListResult)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
+		return nil, fmt.Errorf("error decoding List response: %w", err)
 	}
 	if apiErr != nil {
-		return nil, apiErr, nil
+		return nil, apiErr
 	}
 	target.responseBody = resp.Body
 	target.responseMap = resp.Map
-	return target, apiErr, nil
+	return target, nil
 }

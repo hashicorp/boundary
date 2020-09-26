@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -58,14 +57,10 @@ func testId(t *testing.T) string {
 // testInitDbInDocker initializes postgres within dockertest for the unit tests
 func testInitDbInDocker(t *testing.T) (cleanup func(), retURL string, err error) {
 	t.Helper()
-	if os.Getenv("PG_URL") != "" {
-		testInitStore(t, func() {}, os.Getenv("PG_URL"))
-		return func() {}, os.Getenv("PG_URL"), nil
-	}
 	pool, err := dockertest.NewPool("")
 	require.NoErrorf(t, err, "could not connect to docker: %w", err)
 
-	resource, err := pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=boundary"})
+	resource, err := pool.Run("postgres", "12", []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
 	require.NoErrorf(t, err, "could not start resource: %w", err)
 
 	c := func() {
@@ -73,7 +68,7 @@ func testInitDbInDocker(t *testing.T) (cleanup func(), retURL string, err error)
 		assert.NoError(t, err)
 	}
 
-	url := fmt.Sprintf("postgres://postgres:secret@localhost:%s?sslmode=disable", resource.GetPort("5432/tcp"))
+	url := fmt.Sprintf("postgres://postgres:password@localhost:%s?sslmode=disable", resource.GetPort("5432/tcp"))
 
 	err = pool.Retry(func() error {
 		db, err := sql.Open("postgres", url)

@@ -2,6 +2,7 @@ package authenticate
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -14,10 +15,10 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -98,7 +99,7 @@ func TestAuthenticate(t *testing.T) {
 					return &structpb.Struct{Fields: creds}
 				}(),
 			},
-			wantErr: status.Error(codes.InvalidArgument, "invalid argument"),
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "no-authmethod",
@@ -111,7 +112,7 @@ func TestAuthenticate(t *testing.T) {
 					return &structpb.Struct{Fields: creds}
 				}(),
 			},
-			wantErr: status.Error(codes.InvalidArgument, "invalid argument"),
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "wrong-password",
@@ -126,7 +127,7 @@ func TestAuthenticate(t *testing.T) {
 					return &structpb.Struct{Fields: creds}
 				}(),
 			},
-			wantErr: status.Error(codes.Unauthenticated, "unauthenticated"),
+			wantErr: handlers.ApiErrorWithCode(codes.Unauthenticated),
 		},
 		{
 			name: "wrong-login-name",
@@ -141,7 +142,7 @@ func TestAuthenticate(t *testing.T) {
 					return &structpb.Struct{Fields: creds}
 				}(),
 			},
-			wantErr: status.Error(codes.Unauthenticated, "unauthenticated"),
+			wantErr: handlers.ApiErrorWithCode(codes.Unauthenticated),
 		},
 	}
 
@@ -154,7 +155,7 @@ func TestAuthenticate(t *testing.T) {
 			resp, err := s.Authenticate(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
-				assert.Equal(status.Code(tc.wantErr), status.Code(err))
+				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
 				return
 			}
 			require.NoError(err)

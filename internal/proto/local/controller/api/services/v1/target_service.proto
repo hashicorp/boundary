@@ -154,7 +154,6 @@ service TargetService {
 
 message GetTargetRequest {
   string id = 1;
-  string view = 2;
 }
 
 message GetTargetResponse {
@@ -163,7 +162,6 @@ message GetTargetResponse {
 
 message ListTargetsRequest {
   string scope_id = 1;
-  string view = 2;
 }
 
 message ListTargetsResponse {
@@ -182,7 +180,7 @@ message CreateTargetResponse {
 message UpdateTargetRequest {
   string id = 1;
   resources.targets.v1.Target item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
 
 message UpdateTargetResponse {
@@ -199,10 +197,8 @@ message AddTargetHostSetsRequest {
   string id = 1;
   uint32 version = 2;
 
-  // A list of host set IDs which will be added to this target. Each host set
-  // referenced here must be a child of a host catalog in the same scope as this
-  // target
-  repeated string host_set_ids = 3;
+  // A list of Host Set IDs which will be added to this target. Each Host Set referenced here must be a child of a Host Catalog in the same Scope as this Target.
+  repeated string host_set_ids = 3 [json_name="host_set_ids"];
 }
 
 message AddTargetHostSetsResponse {
@@ -213,10 +209,8 @@ message SetTargetHostSetsRequest {
   string id = 1;
   uint32 version = 2;
 
-  // A list of host set IDs which will be set on this target. Each host set
-  // referenced here must be a child of a host catalog in the same scope as this
-  // target.
-  repeated string host_set_ids = 3;
+// A list of Host Set IDs which will be set on this target. Each Host Set referenced here must be a child of a Host Catalog in the same Scope as this Target.
+  repeated string host_set_ids = 3 [json_name="host_set_ids"];
 }
 
 message SetTargetHostSetsResponse {
@@ -227,9 +221,8 @@ message RemoveTargetHostSetsRequest {
   string id = 1;
   uint32 version = 2;
 
-  // A list of host set IDs which should not be in the target when this request
-  // returns.
-  repeated string host_set_ids = 3;
+// A list of Host Set IDs which will be removed from this target.
+  repeated string host_set_ids = 3 [json_name="host_set_ids"];
 }
 
 message RemoveTargetHostSetsResponse {
@@ -239,9 +232,8 @@ message RemoveTargetHostSetsResponse {
 message AuthorizeSessionRequest {
   string id = 1;
 
-  // An optional parameter allowing specification of the particular host within
-  // the target's host sets to connect to during this session.
-  string host_id = 2;
+  // An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session.
+  string host_id = 2 [json_name="host_id"];
 }
 
 message AuthorizeSessionResponse {

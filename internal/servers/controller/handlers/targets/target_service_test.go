@@ -2,6 +2,7 @@ package targets_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
@@ -85,45 +87,47 @@ func TestGet(t *testing.T) {
 	}
 
 	cases := []struct {
-		name    string
-		req     *pbs.GetTargetRequest
-		res     *pbs.GetTargetResponse
-		errCode codes.Code
+		name string
+		req  *pbs.GetTargetRequest
+		res  *pbs.GetTargetResponse
+		err  error
 	}{
 		{
-			name:    "Get an Existing Target",
-			req:     &pbs.GetTargetRequest{Id: tar.GetPublicId()},
-			res:     &pbs.GetTargetResponse{Item: pTar},
-			errCode: codes.OK,
+			name: "Get an Existing Target",
+			req:  &pbs.GetTargetRequest{Id: tar.GetPublicId()},
+			res:  &pbs.GetTargetResponse{Item: pTar},
 		},
 		{
-			name:    "Get a non existing Target",
-			req:     &pbs.GetTargetRequest{Id: target.TcpTargetPrefix + "_DoesntExis"},
-			res:     nil,
-			errCode: codes.NotFound,
+			name: "Get a non existing Target",
+			req:  &pbs.GetTargetRequest{Id: target.TcpTargetPrefix + "_DoesntExis"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name:    "Wrong id prefix",
-			req:     &pbs.GetTargetRequest{Id: "j_1234567890"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			name: "Wrong id prefix",
+			req:  &pbs.GetTargetRequest{Id: "j_1234567890"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:    "space in id",
-			req:     &pbs.GetTargetRequest{Id: target.TcpTargetPrefix + "_1 23456789"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			name: "space in id",
+			req:  &pbs.GetTargetRequest{Id: target.TcpTargetPrefix + "_1 23456789"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 
 			s, err := testService(t, conn, kms, wrapper)
-			require.NoError(t, err, "Couldn't create a new host set service.")
+			require.NoError(err, "Couldn't create a new host set service.")
 
 			got, gErr := s.GetTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "GetTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 
 			if tc.res != nil {
 				tc.res.Item.Version = 1
@@ -166,19 +170,17 @@ func TestList(t *testing.T) {
 		name    string
 		scopeId string
 		res     *pbs.ListTargetsResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "List Many Host Sets",
 			scopeId: proj.GetPublicId(),
 			res:     &pbs.ListTargetsResponse{Items: wantTars},
-			errCode: codes.OK,
 		},
 		{
 			name:    "List No Host Sets",
 			scopeId: projNoTar.GetPublicId(),
 			res:     &pbs.ListTargetsResponse{},
-			errCode: codes.OK,
 		},
 	}
 	for _, tc := range cases {
@@ -188,7 +190,10 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new host set service.")
 
 			got, gErr := s.ListTargets(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListTargetsRequest{ScopeId: tc.scopeId})
-			assert.Equal(tc.errCode, status.Code(gErr), "ListTargets(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListTargets(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.err)
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListTargets(%q) got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
 	}
@@ -211,7 +216,7 @@ func TestDelete(t *testing.T) {
 		scopeId string
 		req     *pbs.DeleteTargetRequest
 		res     *pbs.DeleteTargetResponse
-		errCode codes.Code
+		err     error
 	}{
 		{
 			name:    "Delete an Existing Target",
@@ -219,8 +224,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteTargetRequest{
 				Id: tar.GetPublicId(),
 			},
-			res:     &pbs.DeleteTargetResponse{},
-			errCode: codes.OK,
+			res: &pbs.DeleteTargetResponse{},
 		},
 		{
 			name:    "Delete Not Existing Target",
@@ -228,7 +232,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteTargetRequest{
 				Id: target.TcpTargetPrefix + "_doesntexis",
 			},
-			errCode: codes.NotFound,
+			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name:    "Bad target id formatting",
@@ -236,14 +240,17 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteTargetRequest{
 				Id: target.TcpTargetPrefix + "_bad_format",
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			got, gErr := s.DeleteTarget(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "DeleteTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "DeleteTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteTarget(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
@@ -251,7 +258,7 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
+	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -261,7 +268,7 @@ func TestDelete_twice(t *testing.T) {
 	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test")
 
 	s, err := testService(t, conn, kms, wrapper)
-	require.NoError(t, err, "Couldn't create a new target service.")
+	require.NoError(err, "Couldn't create a new target service.")
 	req := &pbs.DeleteTargetRequest{
 		Id: tar.GetPublicId(),
 	}
@@ -270,7 +277,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteTarget(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.Equal(codes.NotFound, status.Code(gErr), "Expected permission denied for the second delete.")
+	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -282,10 +289,10 @@ func TestCreate(t *testing.T) {
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	cases := []struct {
-		name    string
-		req     *pbs.CreateTargetRequest
-		res     *pbs.CreateTargetResponse
-		errCode codes.Code
+		name string
+		req  *pbs.CreateTargetRequest
+		res  *pbs.CreateTargetResponse
+		err  error
 	}{
 		{
 			name: "Create a valid target",
@@ -313,7 +320,6 @@ func TestCreate(t *testing.T) {
 					SessionConnectionLimit: wrapperspb.Int32(1),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Create with default port 0",
@@ -325,7 +331,7 @@ func TestCreate(t *testing.T) {
 					"default_port": structpb.NewNumberValue(0),
 				}},
 			}},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Create with unknown type",
@@ -334,7 +340,7 @@ func TestCreate(t *testing.T) {
 				Description: wrapperspb.String("desc"),
 				Type:        "ThisIsMadeUp",
 			}},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Create with no type",
@@ -342,31 +348,31 @@ func TestCreate(t *testing.T) {
 				Name:        wrapperspb.String("name"),
 				Description: wrapperspb.String("desc"),
 			}},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
 				Id: "not allowed to be set",
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
 				CreatedTime: ptypes.TimestampNow(),
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
 				UpdatedTime: ptypes.TimestampNow(),
 			}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -377,7 +383,10 @@ func TestCreate(t *testing.T) {
 			require.NoError(err, "Failed to create a new host set service.")
 
 			got, gErr := s.CreateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "CreateTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "CreateTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), target.TcpTargetPrefix), got.GetItem().GetId())
@@ -444,22 +453,23 @@ func TestUpdate(t *testing.T) {
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	cases := []struct {
-		name    string
-		req     *pbs.UpdateTargetRequest
-		res     *pbs.UpdateTargetResponse
-		errCode codes.Code
+		name string
+		req  *pbs.UpdateTargetRequest
+		res  *pbs.UpdateTargetResponse
+		err  error
 	}{
 		{
 			name: "Update an Existing Target",
 			req: &pbs.UpdateTargetRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description", "session_max_seconds", "session_connection_limit"},
+					Paths: []string{"name", "description", "session_max_seconds", "session_connection_limit", "type"},
 				},
 				Item: &pb.Target{
 					Name:                   wrapperspb.String("name"),
 					Description:            wrapperspb.String("desc"),
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
+					Type: target.TcpSubType.String(),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -480,17 +490,17 @@ func TestUpdate(t *testing.T) {
 					SessionConnectionLimit: wrapperspb.Int32(5),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Multiple Paths in single string",
 			req: &pbs.UpdateTargetRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name,description"},
+					Paths: []string{"name,description,type"},
 				},
 				Item: &pb.Target{
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
+					Type: target.TcpSubType.String(),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -511,7 +521,6 @@ func TestUpdate(t *testing.T) {
 					SessionConnectionLimit: wrapperspb.Int32(5),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "No Update Mask",
@@ -521,7 +530,7 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("updated desc"),
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Empty Path",
@@ -532,7 +541,7 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("updated desc"),
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Update port to 0",
@@ -544,7 +553,7 @@ func TestUpdate(t *testing.T) {
 					}},
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Only non-existant paths in Mask",
@@ -555,7 +564,7 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("updated desc"),
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Unset Name",
@@ -567,7 +576,7 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("ignored"),
 				},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Unset Description",
@@ -596,7 +605,6 @@ func TestUpdate(t *testing.T) {
 					SessionConnectionLimit: wrapperspb.Int32(5),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Update Only Name",
@@ -627,7 +635,6 @@ func TestUpdate(t *testing.T) {
 					SessionConnectionLimit: wrapperspb.Int32(5),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Update Only Description",
@@ -658,7 +665,6 @@ func TestUpdate(t *testing.T) {
 					SessionConnectionLimit: wrapperspb.Int32(5),
 				},
 			},
-			errCode: codes.OK,
 		},
 		{
 			name: "Update a Non Existing Target",
@@ -673,7 +679,7 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("desc"),
 				},
 			},
-			errCode: codes.NotFound,
+			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Cant change Id",
@@ -688,8 +694,8 @@ func TestUpdate(t *testing.T) {
 					Name:        wrapperspb.String("new"),
 					Description: wrapperspb.String("new desc"),
 				}},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Cant specify Created Time",
@@ -701,8 +707,8 @@ func TestUpdate(t *testing.T) {
 					CreatedTime: ptypes.TimestampNow(),
 				},
 			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Cant specify Updated Time",
@@ -714,21 +720,8 @@ func TestUpdate(t *testing.T) {
 					UpdatedTime: ptypes.TimestampNow(),
 				},
 			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Valid mask, cant specify type",
-			req: &pbs.UpdateTargetRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name"},
-				},
-				Item: &pb.Target{
-					Type: "Unknown",
-				},
-			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -740,9 +733,12 @@ func TestUpdate(t *testing.T) {
 			proto.Merge(req, tc.req)
 
 			got, gErr := tested.UpdateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "UpdateTarget(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "UpdateTarget(%+v) got error %v, wanted %v", req, gErr, tc.err)
+			}
 
-			if tc.errCode == codes.OK {
+			if tc.err == nil {
 				defer resetTarget()
 			}
 
@@ -763,6 +759,43 @@ func TestUpdate(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateTarget(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
+}
+
+func TestUpdate_BadVersion(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	rw := db.New(conn)
+	repoFn := func() (*target.Repository, error) {
+		return target.NewRepository(rw, rw, kms)
+	}
+	repo, err := repoFn()
+	require.NoError(t, err, "Couldn't create new target repo.")
+
+	tar, err := target.NewTcpTarget(proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
+	tar.DefaultPort = 2
+	require.NoError(t, err)
+	gtar, _, err := repo.CreateTcpTarget(context.Background(), tar)
+	require.NoError(t, err)
+
+	tested, err := testService(t, conn, kms, wrapper)
+	require.NoError(t, err, "Failed to create a new host set service.")
+
+	upTar, err := tested.UpdateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), &pbs.UpdateTargetRequest{
+		Id:         gtar.GetPublicId(),
+		Item:       &pb.Target{
+			Description:            wrapperspb.String("updated"),
+			Version:                72,
+		},
+		UpdateMask: &field_mask.FieldMask{Paths: []string{"description"}},
+	})
+	assert.Nil(t, upTar)
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, handlers.NotFoundError()), "Got %v, wanted not found error.", err)
 }
 
 func TestAddTargetHostSets(t *testing.T) {
@@ -818,9 +851,9 @@ func TestAddTargetHostSets(t *testing.T) {
 	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test")
 
 	failCases := []struct {
-		name    string
-		req     *pbs.AddTargetHostSetsRequest
-		errCode codes.Code
+		name string
+		req  *pbs.AddTargetHostSetsRequest
+		err  error
 	}{
 		{
 			name: "Bad Set Id",
@@ -829,7 +862,7 @@ func TestAddTargetHostSets(t *testing.T) {
 				Version:    tar.GetVersion(),
 				HostSetIds: []string{hs[0].GetPublicId()},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Bad version",
@@ -838,7 +871,7 @@ func TestAddTargetHostSets(t *testing.T) {
 				Version:    tar.GetVersion() + 2,
 				HostSetIds: []string{hs[0].GetPublicId()},
 			},
-			errCode: codes.Internal,
+			err: handlers.ApiErrorWithCode(codes.Internal),
 		},
 		{
 			name: "Empty host set list",
@@ -846,14 +879,17 @@ func TestAddTargetHostSets(t *testing.T) {
 				Id:      tar.GetPublicId(),
 				Version: tar.GetVersion(),
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			_, gErr := s.AddTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "AddTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "AddTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 		})
 	}
 }
@@ -913,9 +949,9 @@ func TestSetTargetHostSets(t *testing.T) {
 	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test name")
 
 	failCases := []struct {
-		name    string
-		req     *pbs.SetTargetHostSetsRequest
-		errCode codes.Code
+		name string
+		req  *pbs.SetTargetHostSetsRequest
+		err  error
 	}{
 		{
 			name: "Bad target Id",
@@ -924,7 +960,7 @@ func TestSetTargetHostSets(t *testing.T) {
 				Version:    tar.GetVersion(),
 				HostSetIds: []string{hs[0].GetPublicId()},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Bad version",
@@ -933,14 +969,17 @@ func TestSetTargetHostSets(t *testing.T) {
 				Version:    tar.GetVersion() + 3,
 				HostSetIds: []string{hs[0].GetPublicId()},
 			},
-			errCode: codes.Internal,
+			err: handlers.ApiErrorWithCode(codes.Internal),
 		},
 	}
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			_, gErr := s.SetTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "SetTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "SetTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 		})
 	}
 }
@@ -1009,9 +1048,9 @@ func TestRemoveTargetHostSets(t *testing.T) {
 	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "testing")
 
 	failCases := []struct {
-		name    string
-		req     *pbs.RemoveTargetHostSetsRequest
-		errCode codes.Code
+		name string
+		req  *pbs.RemoveTargetHostSetsRequest
+		err  error
 	}{
 		{
 			name: "Bad version",
@@ -1020,7 +1059,7 @@ func TestRemoveTargetHostSets(t *testing.T) {
 				Version:    tar.GetVersion() + 3,
 				HostSetIds: []string{hs[0].GetPublicId()},
 			},
-			errCode: codes.Internal,
+			err: handlers.ApiErrorWithCode(codes.Internal),
 		},
 		{
 			name: "Bad target Id",
@@ -1029,7 +1068,7 @@ func TestRemoveTargetHostSets(t *testing.T) {
 				Version:    tar.GetVersion(),
 				HostSetIds: []string{hs[0].GetPublicId()},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "empty sets",
@@ -1038,14 +1077,17 @@ func TestRemoveTargetHostSets(t *testing.T) {
 				Version:    tar.GetVersion(),
 				HostSetIds: []string{},
 			},
-			errCode: codes.InvalidArgument,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			_, gErr := s.RemoveTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "RemoveTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "RemoveTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
 		})
 	}
 }

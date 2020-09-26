@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
@@ -28,10 +29,7 @@ var _ io.Reader
 var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
-
-var (
-	filter_HostCatalogService_GetHostCatalog_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
-)
+var _ = metadata.Join
 
 func request_HostCatalogService_GetHostCatalog_0(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetHostCatalogRequest
@@ -52,13 +50,6 @@ func request_HostCatalogService_GetHostCatalog_0(ctx context.Context, marshaler 
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_HostCatalogService_GetHostCatalog_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetHostCatalog(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -85,13 +76,6 @@ func local_request_HostCatalogService_GetHostCatalog_0(ctx context.Context, mars
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_HostCatalogService_GetHostCatalog_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.GetHostCatalog(ctx, &protoReq)
@@ -324,12 +308,14 @@ func local_request_HostCatalogService_DeleteHostCatalog_0(ctx context.Context, m
 // RegisterHostCatalogServiceHandlerServer registers the http handlers for service HostCatalogService to "mux".
 // UnaryRPC     :call HostCatalogServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
-// Note that using this registration option will cause many gRPC library features (such as grpc.SendHeader, etc) to stop working. Consider using RegisterHostCatalogServiceHandlerFromEndpoint instead.
+// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterHostCatalogServiceHandlerFromEndpoint instead.
 func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server HostCatalogServiceServer) error {
 
 	mux.Handle("GET", pattern_HostCatalogService_GetHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/GetHostCatalog")
 		if err != nil {
@@ -337,6 +323,7 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 			return
 		}
 		resp, md, err := local_request_HostCatalogService_GetHostCatalog_0(rctx, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -350,6 +337,8 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 	mux.Handle("GET", pattern_HostCatalogService_ListHostCatalogs_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/ListHostCatalogs")
 		if err != nil {
@@ -357,6 +346,7 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 			return
 		}
 		resp, md, err := local_request_HostCatalogService_ListHostCatalogs_0(rctx, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -370,6 +360,8 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 	mux.Handle("POST", pattern_HostCatalogService_CreateHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/CreateHostCatalog")
 		if err != nil {
@@ -377,6 +369,7 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 			return
 		}
 		resp, md, err := local_request_HostCatalogService_CreateHostCatalog_0(rctx, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -390,6 +383,8 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 	mux.Handle("PATCH", pattern_HostCatalogService_UpdateHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/UpdateHostCatalog")
 		if err != nil {
@@ -397,6 +392,7 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 			return
 		}
 		resp, md, err := local_request_HostCatalogService_UpdateHostCatalog_0(rctx, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -410,6 +406,8 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 	mux.Handle("DELETE", pattern_HostCatalogService_DeleteHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostCatalogService/DeleteHostCatalog")
 		if err != nil {
@@ -417,6 +415,7 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 			return
 		}
 		resp, md, err := local_request_HostCatalogService_DeleteHostCatalog_0(rctx, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
