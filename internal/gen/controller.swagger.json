@@ -286,7 +286,7 @@
         "parameters": [
           {
             "name": "auth_method_id",
-            "description": "The ID of the Auth method in the system that should be used for authentication.",
+            "description": "The ID of the Auth Method in the system that should be used for authentication.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3470,7 +3470,7 @@
       "properties": {
         "auth_method_id": {
           "type": "string",
-          "description": "The ID of the Auth method in the system that should be used for authentication."
+          "description": "The ID of the Auth Method in the system that should be used for authentication."
         },
         "token_type": {
           "type": "string",

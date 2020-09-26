@@ -33,8 +33,7 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-// The layout of the struct for "credentials" field in AuthenticateRequest.  This message isn't
-// directly referenced anywhere but is used here to define the expected field names and types.
+// The layout of the struct for "credentials" field in AuthenticateRequest.  This message isn't directly referenced anywhere but is used here to define the expected field names and types.
 type PasswordCredentials struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -95,7 +94,7 @@ type AuthenticateRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The ID of the Auth method in the system that should be used for authentication.
+	// The ID of the Auth Method in the system that should be used for authentication.
 	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty"`
 	// This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order to keep it safe from rogue JS in the browser.
 	TokenType string `protobuf:"bytes,2,opt,name=token_type,proto3" json:"token_type,omitempty"`
@@ -385,7 +384,7 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type AuthenticationServiceClient interface {
-	// Authenticate validates credentials provided and returns an auth token.
+	// Authenticate validates credentials provided and returns an Auth Token.
 	Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error)
 }
 
@@ -408,7 +407,7 @@ func (c *authenticationServiceClient) Authenticate(ctx context.Context, in *Auth
 
 // AuthenticationServiceServer is the server API for AuthenticationService service.
 type AuthenticationServiceServer interface {
-	// Authenticate validates credentials provided and returns an auth token.
+	// Authenticate validates credentials provided and returns an Auth Token.
 	Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
 }
 
