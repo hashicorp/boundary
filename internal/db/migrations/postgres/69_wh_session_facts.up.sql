@@ -158,4 +158,93 @@ begin;
     for each row
     execute function wh_update_session_connection();
 
+  --
+  -- Session State trigger
+  --
+
+  create or replace function wh_insert_session_state()
+    returns trigger
+  as $$
+  declare
+    date_col text;
+    time_col text;
+    ts_col text;
+    q text;
+    session_row wh_session_accumulating_fact%rowtype;
+  begin
+    if new.state = 'pending' then
+      -- The pending state is the first state which is handled by the
+      -- wh_insert_session trigger. The update statement in this trigger will
+      -- fail for the pending state because the row for the session has not yet
+      -- been inserted into the wh_session_accumulating_fact table.
+      return null;
+    end if;
+
+    date_col = 'session_' || new.state || '_date_id';
+    time_col = 'session_' || new.state || '_time_id';
+    ts_col   = 'session_' || new.state || '_time';
+
+    q = format('update wh_session_accumulating_fact
+                   set (%I, %I, %I) = (select wh_date_id(%L), wh_time_id(%L), %L::timestamptz)
+                 where session_id = %L
+                returning *',
+                date_col,       time_col,       ts_col,
+                new.start_time, new.start_time, new.start_time,
+                new.session_id);
+    execute q into strict session_row;
+
+    return null;
+  end;
+  $$ language plpgsql;
+
+  create trigger wh_insert_session_state
+    after insert on session_state
+    for each row
+    execute function wh_insert_session_state();
+
+  --
+  -- Session Connection State trigger
+  --
+
+  create or replace function wh_insert_session_connection_state()
+    returns trigger
+  as $$
+  declare
+    date_col text;
+    time_col text;
+    ts_col text;
+    q text;
+    connection_row wh_session_connection_accumulating_fact%rowtype;
+  begin
+    if new.state = 'authorized' then
+      -- The authorized state is the first state which is handled by the
+      -- wh_insert_session_connection trigger. The update statement in this
+      -- trigger will fail for the authorized state because the row for the
+      -- session connection has not yet been inserted into the
+      -- wh_session_connection_accumulating_fact table.
+      return null;
+    end if;
+
+    date_col = 'connection_' || new.state || '_date_id';
+    time_col = 'connection_' || new.state || '_time_id';
+    ts_col   = 'connection_' || new.state || '_time';
+
+    q = format('update wh_session_connection_accumulating_fact
+                   set (%I, %I, %I) = (select wh_date_id(%L), wh_time_id(%L), %L::timestamptz)
+                 where connection_id = %L
+                returning *',
+                date_col,       time_col,       ts_col,
+                new.start_time, new.start_time, new.start_time,
+                new.connection_id);
+    execute q into strict connection_row;
+
+    return null;
+  end;
+  $$ language plpgsql;
+
+  create trigger wh_insert_session_connection_state
+    after insert on session_connection_state
+    for each row
+    execute function wh_insert_session_connection_state();
+
 commit;
