@@ -24,7 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/itchyny/base58-go"
+	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -401,10 +401,8 @@ HostSetIterationLoop:
 	if err != nil {
 		return nil, err
 	}
-	encodedMarshaledSad, err := base58.BitcoinEncoding.Encode(marshaledSad)
-	if err != nil {
-		return nil, err
-	}
+	encodedMarshaledSad := base58.FastBase58Encoding(marshaledSad)
+
 	ret := &pb.SessionAuthorization{
 		SessionId:          sess.PublicId,
 		TargetId:           t.GetPublicId(),

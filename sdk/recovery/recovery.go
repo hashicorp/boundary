@@ -11,7 +11,7 @@ import (
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
-	"github.com/itchyny/base58-go"
+	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -61,11 +61,9 @@ func formatToken(ctx context.Context, wrapper wrapping.Wrapper, info *Info) (str
 		return "", fmt.Errorf("error marshaling encrypted blob: %w", err)
 	}
 
-	encodedMarshaledBlob, err := base58.BitcoinEncoding.Encode(marshaledBlob)
-	if err != nil {
-		return "", fmt.Errorf("error base58-encoding marshaled encrypted blob: %w", err)
-	}
-	return fmt.Sprintf("r_%s%s", v1String, string(encodedMarshaledBlob)), nil
+	encodedMarshaledBlob := base58.FastBase58Encoding(marshaledBlob)
+
+	return fmt.Sprintf("r_%s%s", v1String, encodedMarshaledBlob), nil
 }
 
 func ParseRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper, versionedToken string) (*Info, error) {
@@ -88,7 +86,7 @@ func ParseRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper, versioned
 		return nil, fmt.Errorf("unknown recovery token version %s", ver)
 	}
 
-	marshaledBlob, err := base58.BitcoinEncoding.Decode([]byte(token))
+	marshaledBlob, err := base58.FastBase58Decoding(token)
 	if err != nil {
 		return nil, fmt.Errorf("error base58-decoding token: %w", err)
 	}

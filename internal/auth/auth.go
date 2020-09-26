@@ -21,8 +21,8 @@ import (
 	"github.com/hashicorp/boundary/sdk/recovery"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/itchyny/base58-go"
 	"github.com/kr/pretty"
+	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -496,7 +496,7 @@ func (v *verifier) decryptToken() {
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
-		marshaledToken, err := base58.BitcoinEncoding.Decode([]byte(v.requestInfo.EncryptedToken[len(globals.ServiceTokenV1):]))
+		marshaledToken, err := base58.FastBase58Decoding(v.requestInfo.EncryptedToken[len(globals.ServiceTokenV1):])
 		if err != nil {
 			v.logger.Trace("decrypt bearer token: error unmarshaling base58 token; continuing as anonymous user", "error", err)
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown

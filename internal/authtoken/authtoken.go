@@ -14,7 +14,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/itchyny/base58-go"
+	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -133,10 +133,7 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 		return "", fmt.Errorf("error marshaling encrypted token: %w", err)
 	}
 
-	encoded, err := base58.BitcoinEncoding.Encode(marshaledBlob)
-	if err != nil {
-		return "", fmt.Errorf("error base58-encoding marshaled token: %w", err)
-	}
+	encoded := base58.FastBase58Encoding(marshaledBlob)
 
-	return globals.ServiceTokenV1 + string(encoded), nil
+	return globals.ServiceTokenV1 + encoded, nil
 }

@@ -28,8 +28,8 @@ import (
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/itchyny/base58-go"
 	"github.com/mitchellh/cli"
+	"github.com/mr-tron/base58"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
@@ -391,9 +391,9 @@ func (c *Command) Run(args []string) (retCode int) {
 		authzString = sa.AuthorizationToken
 	}
 
-	marshaled, err := base58.BitcoinEncoding.Decode([]byte(authzString))
+	marshaled, err := base58.FastBase58Decoding(authzString)
 	if err != nil {
-		c.UI.Error(fmt.Errorf("Unable to base58-deode authorization data: %w", err).Error())
+		c.UI.Error(fmt.Errorf("Unable to base58-decode authorization data: %w", err).Error())
 		return 1
 	}
 	if len(marshaled) == 0 {
