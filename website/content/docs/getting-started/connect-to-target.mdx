@@ -16,7 +16,7 @@ the target host on the target's default port (`127.0.0.1:22`). Because this
 target is proxying to our local SSH server, we can use our built-in `connect ssh` command to wrap the proxied TCP connection and SSH via Boundary:
 
 ```
-boundary connect ssh -target-id ttcp_1234567890
+$ boundary connect ssh -target-id ttcp_1234567890
 ```
 
 This will execute SSH on the target and port combination specified by the local
@@ -29,7 +29,7 @@ dash will be passed to the executed client. For instance, rather than using
 `-username`, an equivalent alternative would be:
 
 ```
-boundary connect ssh -target-id ttcp_1234567890 -- -l some-other-user
+$ boundary connect ssh -target-id ttcp_1234567890 -- -l some-other-user
 ```
 
 There is also a `-style` flag to allow the command to format arguments in a
@@ -57,7 +57,7 @@ around 'curl', you could update the default TCP target from a default port
 of `:22` to `:443`:
 
 ```
-boundary targets update tcp -default-port 443 -id ttcp_1234567890
+$ boundary targets update tcp -default-port 443 -id ttcp_1234567890
 
 Target information:
   Created Time:               Fri, 25 Sep 2020 18:35:47 PDT
@@ -90,7 +90,7 @@ Now, `curl` can be used as the executed client for the TCP target session to do
 an authenticated download of hashicorp.com:
 
 ```
-boundary connect -exec curl -target-id ttcp_1234567890 \
+$ boundary connect -exec curl -target-id ttcp_1234567890 \
          -- -vvsL --output /dev/null hashicorp.com
 
 *   Trying 76.76.21.21...
@@ -109,5 +109,5 @@ run from WSL, the following allows usage of the wrapper but while specifying the
 correct available binary, as WSL must use `.exe` when invoking Windows binaries:
 
 ```
-boundary connect ssh -style putty -exec putty.exe -target-id ttcp_1234567890
+$ boundary connect ssh -style putty -exec putty.exe -target-id ttcp_1234567890
 ```

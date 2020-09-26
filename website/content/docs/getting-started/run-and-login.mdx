@@ -11,7 +11,7 @@ description: |-
 To start Boundary in dev mode:
 
 ```bash
-boundary dev
+$ boundary dev
 ```
 
 ## Login to Boundary
@@ -23,7 +23,7 @@ dev mode. These can be overridden, or randomly generated, with flags to
 From the CLI:
 
 ```
-boundary authenticate password \
+$ boundary authenticate password \
          -login-name=admin \
          -password password \
          -auth-method-id=ampw_1234567890
@@ -39,7 +39,7 @@ You can also use these overrides to configure the [Terraform provider for
 Boundary](https://github.com/hashicorp/terraform-provider-boundary):
 
 ```hcl
- provider "boundary" {
+provider "boundary" {
     base_url             = "http://127.0.0.1:9200"
     auth_method_id       = "ampw_1234567890"
     auth_method_username = "admin"
