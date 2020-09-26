@@ -14,7 +14,7 @@ message ErrorDetails {
 // FieldErrors contains error information on a per field basis.
 message FieldError {
 	string name = 1;
-	string description= 2;
+	string description = 2;
 }
 
 // Error is returned by the JSON API when an error occurs.

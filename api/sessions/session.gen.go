@@ -18,9 +18,9 @@ type Session struct {
 	Scope          *scopes.ScopeInfo `json:"scope,omitempty"`
 	CreatedTime    time.Time         `json:"created_time,omitempty"`
 	UpdatedTime    time.Time         `json:"updated_time,omitempty"`
-	ExpirationTime time.Time         `json:"expiration_time,omitempty"`
 	Version        uint32            `json:"version,omitempty"`
 	Type           string            `json:"type,omitempty"`
+	ExpirationTime time.Time         `json:"expiration_time,omitempty"`
 	AuthTokenId    string            `json:"auth_token_id,omitempty"`
 	UserId         string            `json:"user_id,omitempty"`
 	HostSetId      string            `json:"host_set_id,omitempty"`

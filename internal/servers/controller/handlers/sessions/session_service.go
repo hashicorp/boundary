@@ -197,6 +197,7 @@ func toProto(in *session.Session) *pb.Session {
 		CreatedTime:    in.CreateTime.GetTimestamp(),
 		UpdatedTime:    in.UpdateTime.GetTimestamp(),
 		ExpirationTime: in.ExpirationTime.GetTimestamp(),
+		Certificate:    in.Certificate,
 	}
 	if len(in.States) > 0 {
 		out.Status = in.States[0].Status.String()
