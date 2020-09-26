@@ -138,7 +138,6 @@ service UserService {
 
 message GetUserRequest {
   string id = 1;
-  string view = 2;
 }
 
 message GetUserResponse {
@@ -147,7 +146,6 @@ message GetUserResponse {
 
 message ListUsersRequest {
   string scope_id = 1;
-  string view = 2;
 }
 
 message ListUsersResponse {
@@ -166,7 +164,7 @@ message CreateUserResponse {
 message UpdateUserRequest {
   string id = 1;
   resources.users.v1.User item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
 
 message UpdateUserResponse {
@@ -181,8 +179,7 @@ message DeleteUserResponse {}
 
 message AddUserAccountsRequest {
   string id = 1;
-  // The version ensures the user hasn't changed since it was last retrieved and if
-  // it has the request will fail.
+  // The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2;
   repeated string account_ids = 3 [json_name="account_ids"];
 }
@@ -193,8 +190,7 @@ message AddUserAccountsResponse {
 
 message SetUserAccountsRequest {
   string id = 1;
-  // The version ensures the user hasn't changed since it was last retrieved and if
-  // it has the request will fail.
+  // The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2;
   repeated string account_ids = 3 [json_name="account_ids"];
 }
@@ -205,8 +201,7 @@ message SetUserAccountsResponse {
 
 message RemoveUserAccountsRequest {
   string id = 1;
-  // The version ensures the user hasn't changed since it was last retrieved and if
-  // it has the request will fail.
+  // The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2;
   repeated string account_ids = 3 [json_name="account_ids"];
 }

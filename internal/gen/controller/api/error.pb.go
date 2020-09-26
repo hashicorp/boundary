@@ -30,9 +30,13 @@ type ErrorDetails struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	TraceId       string        `protobuf:"bytes,1,opt,name=TraceId,proto3" json:"TraceId,omitempty"`
-	RequestId     string        `protobuf:"bytes,2,opt,name=request_id,proto3" json:"request_id,omitempty"`
-	ErrorId       string        `protobuf:"bytes,3,opt,name=error_id,proto3" json:"error_id,omitempty"`
+	// The TraceId that can be used for OpenTelemetry.
+	TraceId string `protobuf:"bytes,1,opt,name=TraceId,proto3" json:"TraceId,omitempty"`
+	// A request ID.
+	RequestId string `protobuf:"bytes,2,opt,name=request_id,proto3" json:"request_id,omitempty"`
+	// An Error ID.
+	ErrorId string `protobuf:"bytes,3,opt,name=error_id,proto3" json:"error_id,omitempty"`
+	// Request-field-specific error details.
 	RequestFields []*FieldError `protobuf:"bytes,4,rep,name=request_fields,proto3" json:"request_fields,omitempty"`
 }
 
@@ -102,7 +106,9 @@ type FieldError struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The name of the field.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The description of the error.
 	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
@@ -158,14 +164,13 @@ type Error struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The HTTP Status code applicable to this error
+	// The HTTP Status code applicable to this error.
 	Status int32 `protobuf:"varint,1,opt,name=status,proto3" json:"status,omitempty"`
-	// An application-specific error string
+	// An application-specific error string.
 	Code string `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	// A human readable explanation specific to this occurrence of the error
+	// A human-readable explanation specific to this occurrence of the error.
 	Message string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	// Additional metadata regarding the error. Depending on the error
-	// different fields will be populated.
+	// Additional metadata regarding the error. Depending on the error, different fields will be populated.
 	Details *ErrorDetails `protobuf:"bytes,4,opt,name=details,proto3" json:"details,omitempty"`
 }
 

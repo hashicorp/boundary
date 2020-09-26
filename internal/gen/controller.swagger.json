@@ -34,12 +34,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -89,12 +83,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -251,12 +239,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -304,7 +286,7 @@
         "parameters": [
           {
             "name": "auth_method_id",
-            "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the scope\nbeing logged in to.",
+            "description": "The ID of the Auth method in the system that should be used for authentication.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -340,12 +322,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -436,12 +412,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -466,12 +436,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -518,12 +482,6 @@
         "parameters": [
           {
             "name": "scope_id",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "view",
             "in": "query",
             "required": false,
             "type": "string"
@@ -576,12 +534,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -771,12 +723,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -828,12 +774,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -924,12 +864,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -979,12 +913,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -1105,7 +1033,6 @@
         "parameters": [
           {
             "name": "id",
-            "description": "This host set's id.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1175,12 +1102,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1230,12 +1151,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -1326,12 +1241,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1381,12 +1290,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -1675,12 +1578,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1736,12 +1633,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -1832,12 +1723,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1862,12 +1747,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -1927,12 +1806,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1982,12 +1855,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -2210,12 +2077,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -2265,12 +2126,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -3457,7 +3312,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the group hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "member_ids": {
           "type": "array",
@@ -3490,7 +3345,7 @@
           "items": {
             "type": "string"
           },
-          "description": "A list of host IDs which will be added to this host set. Each host\nreferenced here must be a child of the same host catalog that this host\nset is a child of."
+          "description": "A list of Host IDs which will be added to this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child."
         }
       }
     },
@@ -3511,7 +3366,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "grant_strings": {
           "type": "array",
@@ -3538,7 +3393,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "principal_ids": {
           "type": "array",
@@ -3571,7 +3426,7 @@
           "items": {
             "type": "string"
           },
-          "title": "A list of host set IDs which will be added to this target. Each host set\nreferenced here must be a child of a host catalog in the same scope as this\ntarget"
+          "description": "A list of Host Set IDs which will be added to this target. Each Host Set referenced here must be a child of a Host Catalog in the same Scope as this Target."
         }
       }
     },
@@ -3592,7 +3447,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the user hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "account_ids": {
           "type": "array",
@@ -3615,15 +3470,15 @@
       "properties": {
         "auth_method_id": {
           "type": "string",
-          "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the scope\nbeing logged in to."
+          "description": "The ID of the Auth method in the system that should be used for authentication."
         },
         "token_type": {
           "type": "string",
-          "description": "This can be \"cookie\" or \"token\".  If not provided, \"token\" will be used."
+          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order to keep it safe from rogue JS in the browser."
         },
         "credentials": {
           "type": "object",
-          "description": "credentials are the different possible credential names depending on what type of auth method is used.\nFor password auth method: should include only \"name\" and \"password\"."
+          "description": "Credentials are passed to the Auth Method; the valid keys and values depend on the type of Auth Method."
         }
       }
     },
@@ -3634,8 +3489,7 @@
           "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
         },
         "token_type": {
-          "type": "string",
-          "description": "This can be \"cookie\" or \"token\".  If not present, \"token\" should be assumed."
+          "type": "string"
         }
       }
     },
@@ -3647,7 +3501,7 @@
         },
         "host_id": {
           "type": "string",
-          "description": "An optional parameter allowing specification of the particular host within\nthe target's host sets to connect to during this session."
+          "description": "An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session."
         }
       }
     },
@@ -4085,7 +3939,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the group hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "member_ids": {
           "type": "array",
@@ -4107,8 +3961,7 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "This host set's id."
+          "type": "string"
         },
         "version": {
           "type": "integer",
@@ -4119,7 +3972,7 @@
           "items": {
             "type": "string"
           },
-          "description": "A list of host IDs which should not be in the host set when this request\nreturns."
+          "description": "A list of Host IDs which will be removed from this Host Set."
         }
       }
     },
@@ -4140,7 +3993,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "grant_strings": {
           "type": "array",
@@ -4167,7 +4020,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "principal_ids": {
           "type": "array",
@@ -4200,7 +4053,7 @@
           "items": {
             "type": "string"
           },
-          "description": "A list of host set IDs which should not be in the target when this request\nreturns."
+          "description": "A list of Host Set IDs which will be removed from this target."
         }
       }
     },
@@ -4221,7 +4074,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the user hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "account_ids": {
           "type": "array",
@@ -4248,7 +4101,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the group hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "member_ids": {
           "type": "array",
@@ -4281,7 +4134,7 @@
           "items": {
             "type": "string"
           },
-          "description": "A list of host IDs which will be set on this host set. Each host\nreferenced here must be a child of the same host catalog that this host\nset is a child of."
+          "description": "A list of Host IDs which will be set on this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child."
         }
       }
     },
@@ -4325,7 +4178,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "grant_strings": {
           "type": "array",
@@ -4352,7 +4205,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "principal_ids": {
           "type": "array",
@@ -4385,7 +4238,7 @@
           "items": {
             "type": "string"
           },
-          "description": "A list of host set IDs which will be set on this target. Each host set\nreferenced here must be a child of a host catalog in the same scope as this\ntarget."
+          "description": "A list of Host Set IDs which will be set on this target. Each Host Set referenced here must be a child of a Host Catalog in the same Scope as this Target."
         }
       }
     },
@@ -4406,7 +4259,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the user hasn't changed since it was last retrieved and if\nit has the request will fail."
+          "description": "The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "account_ids": {
           "type": "array",

@@ -74,11 +74,6 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
 }
 
-// Deauthenticate implements the interface pbs.AuthenticationServiceServer.
-func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequest) (*pbs.DeauthenticateResponse, error) {
-	return nil, handlers.ApiErrorWithCodeAndMessage(codes.Unimplemented, "Requested method is unimplemented.")
-}
-
 func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId, loginName, pw string) (*pba.AuthToken, error) {
 	iamRepo, err := s.iamRepo()
 	if err != nil {
