@@ -30,36 +30,31 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-// HostCatalog manages Hosts and HostSets
+// HostCatalog manages Hosts and Host Sets
 type HostCatalog struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The ID of the host
-	// Output only.
+	// Output only. The ID of the host.
 	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
-	// The id of the scope this resource belongs to.
+	// The ID of the Scope of which this Host Catalog is a part.
 	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
-	// Scope information for this resource
-	// Output only.
+	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
-	// Optional name for identification purposes
+	// Optional name for identification purposes.
 	Name *wrappers.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"`
-	// Optional user-set description for identification purposes
+	// Optional user-set description for identification purposes.
 	Description *wrappers.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"`
-	// The time this resource was created
-	// Output only.
+	// Output only. The time this resource was created.
 	CreatedTime *timestamp.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"`
-	// The time this resource was last updated
-	// Output only.
+	// Output only. The time this resource was last updated.
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
-	// The version can be used in subsequent write requests to ensure this resource
-	// has not changed and to fail the write if it has.
+	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"`
-	// The type of the resource, to help differentiate schemas
+	// The type of Host Catalog.
 	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"`
-	// Attributes specific to the catalog type
+	// Attributes specific to the catalog type.
 	Attributes *_struct.Struct `protobuf:"bytes,100,opt,name=attributes,proto3" json:"attributes,omitempty"`
 }
 

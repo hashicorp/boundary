@@ -10,51 +10,42 @@ import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
 message Member {
-	// The ID of the member.
-	// Output only.
+	// Output only. The ID of the member.
 	string id = 10;
 
-	// The scope ID of the member.
-	// Output only.
+	// Output only. The Scope ID of the member.
 	string scope_id = 20 [json_name="scope_id"];
 }
 
 // Group contains all fields related to a Group resource
 message Group {
-	// The ID of the Project
-	// Output only.
+	// Output only. The ID of the Group.
 	string id = 10;
 
-	// The id of the scope this resource is a part of.
+	// The ID of the scope of which this Group is a part.
 	string scope_id = 20 [json_name="scope_id"];
 
-	// Scope information for this resource
-	// Output only.
+	// Output only. Scope information for this Group.
 	resources.scopes.v1.ScopeInfo scope = 30;
 
-	// Optional name for identification purposes
+	// Optional name for identification purposes.
 	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
-	// Optional user-set descripton for identification purposes
+	// Optional user-set descripton for identification purposes.
 	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
-	// The time this resource was created
-	// Output only.
+	// Output only. The time this resource was created.
 	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];
 
-	// The time this resource was last updated.
-	// Output only.
+	// Output only. The time this resource was last updated.
 	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
 
-	// The version can be used in subsequent write requests to ensure this resource
-	// has not changed and to fail the write if it has.
+	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
 	uint32 version = 80;
 
-	// Contains the list of member ids in this group.
-	// Output only.
-	repeated string member_ids = 90;
+	// Output only. Contains the list of member IDs in this Group.
+	repeated string member_ids = 90 [json_name="member_ids"];
 
-	// The members of this group.
-	// Output only.
+	// Output only. The members of this Group.
 	repeated Member members = 100;
 }

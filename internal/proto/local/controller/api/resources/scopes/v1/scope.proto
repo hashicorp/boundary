@@ -9,59 +9,48 @@ import "google/protobuf/wrappers.proto";
 import "controller/custom_options/v1/options.proto";
 
 message ScopeInfo {
-	// The ID of the Scope
-	// Output only.
+	// Output only. The ID of the Scope.
 	string id = 1;
 
-	// The type of the Scope
-	// Output only.
+	// Output only. The type of the Scope.
 	string type = 2;
 
-	// The name of the scope, if any
-	// Output only.
+	// Output only. The name of the Scope, if any.
 	string name = 3;
 
-	// The description of the scope, if any
-	// Output only.
+	// Output only. The description of the Scope, if any.
 	string description = 4;
 
-	// The ID of the parent scope, if any
-	// Output only.
+	// Output only. The ID of the parent Scope, if any. This field will be empty if this is the "global" scope.
 	string parent_scope_id = 5 [json_name="parent_scope_id"];
 }
 
 // Scope contains all fields related to a Scope resource
 message Scope {
-	// The ID of the Scope
-	// Output only.
+	// Output only. The ID of the Scope.
 	string id = 10;
 
-	// The id of the scope this resource is in.
+	// The ID of the Scope this resource is in. If this is the "global" Scope this field will be empty.
 	string scope_id = 20 [json_name="scope_id"];
 
-	// Scope information for this resource
-	// Output only.
+	// Output only. Scope information for this resource.
 	ScopeInfo scope = 30;
 
-	// Optional name for identification purposes
+	// Optional name for identification purposes.
 	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "name" that: "name"}];
 
-	// Optional user-set descripton for identification purposes
+	// Optional user-set descripton for identification purposes.
 	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "description" that: "description"}];
 
-	// The time this resource was created
-	// Output only.
+	// Output only. The time this resource was created.
 	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];
 
-	// The time this resource was last updated.
-	// Output only.
+	// Output only. The time this resource was last updated.
 	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
 
-	// The version can be used in subsequent write requests to ensure this
-	// resource has not changed and to fail the write if it has.
-	// Output only.
+	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
 	uint32 version = 80;
 
-	// The type of the resource
+	// The type of the resource.
 	string type = 90;
 }

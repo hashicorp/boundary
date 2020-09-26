@@ -54,7 +54,6 @@ service SessionService {
 
 message GetSessionRequest {
 	string id = 1;
-	string view = 2;
 }
 
 message GetSessionResponse {
@@ -63,7 +62,6 @@ message GetSessionResponse {
 
 message ListSessionsRequest {
 	string scope_id = 1;
-	string view = 2;
 }
 
 message ListSessionsResponse {

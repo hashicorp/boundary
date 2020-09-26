@@ -88,7 +88,6 @@ service ScopeService {
 
 message GetScopeRequest {
   string id = 1;
-  string view = 2;
 }
 
 message GetScopeResponse {
@@ -97,7 +96,6 @@ message GetScopeResponse {
 
 message ListScopesRequest {
   string scope_id = 1;
-  string view = 2;
 }
 
 message ListScopesResponse {
@@ -117,7 +115,7 @@ message CreateScopeResponse {
 message UpdateScopeRequest {
   string id = 1;
   resources.scopes.v1.Scope item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
 
 message UpdateScopeResponse {

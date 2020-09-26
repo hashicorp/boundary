@@ -90,7 +90,6 @@ service HostService {
 
 message GetHostRequest {
   string id = 1;
-  string view = 2;
 }
 
 message GetHostResponse {
@@ -99,7 +98,6 @@ message GetHostResponse {
 
 message ListHostsRequest {
   string host_catalog_id = 1 [json_name="host_catalog_id"];
-  string view = 2;
 }
 
 message ListHostsResponse {
@@ -118,7 +116,7 @@ message CreateHostResponse {
 message UpdateHostRequest {
   string id = 1;
   api.resources.hosts.v1.Host item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
 
 message UpdateHostResponse {

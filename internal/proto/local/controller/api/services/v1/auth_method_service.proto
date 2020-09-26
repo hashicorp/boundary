@@ -89,7 +89,6 @@ service AuthMethodService {
 
 message GetAuthMethodRequest {
   string id = 1;
-  string view = 2;
 }
 
 message GetAuthMethodResponse {
@@ -98,7 +97,6 @@ message GetAuthMethodResponse {
 
 message ListAuthMethodsRequest {
   string scope_id = 1 [json_name="scope_id"];
-  string view = 2;
 }
 
 message ListAuthMethodsResponse {
@@ -117,7 +115,7 @@ message CreateAuthMethodResponse {
 message UpdateAuthMethodRequest {
   string id = 1;
   resources.authmethods.v1.AuthMethod item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
 
 message UpdateAuthMethodResponse {
