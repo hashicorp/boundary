@@ -22,6 +22,8 @@ type User struct {
 	CreatedTime time.Time         `json:"created_time,omitempty"`
 	UpdatedTime time.Time         `json:"updated_time,omitempty"`
 	Version     uint32            `json:"version,omitempty"`
+	AccountIds  []string          `json:"account_ids,omitempty"`
+	Accounts    []*Account        `json:"accounts,omitempty"`
 
 	responseBody *bytes.Buffer
 	responseMap  map[string]interface{}
@@ -332,6 +334,208 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*User
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding List response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
+	return target, nil
+}
+
+func (c *Client) AddAccounts(ctx context.Context, userId string, version uint32, accountIds []string, opt ...Option) (*UserUpdateResult, error) {
+	if userId == "" {
+		return nil, fmt.Errorf("empty userId value passed into AddAccounts request")
+	}
+	if len(accountIds) == 0 {
+		return nil, errors.New("empty accountIds passed into AddAccounts request")
+	}
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into AddAccounts request")
+		}
+		existingTarget, existingErr := c.Read(ctx, userId, opt...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+	opts.postMap["account_ids"] = accountIds
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users/%s:add-accounts", userId), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating AddAccounts request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during AddAccounts call: %w", err)
+	}
+
+	target := new(UserUpdateResult)
+	target.Item = new(User)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding AddAccounts response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
+	return target, nil
+}
+
+func (c *Client) SetAccounts(ctx context.Context, userId string, version uint32, accountIds []string, opt ...Option) (*UserUpdateResult, error) {
+	if userId == "" {
+		return nil, fmt.Errorf("empty userId value passed into SetAccounts request")
+	}
+
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into SetAccounts request")
+		}
+		existingTarget, existingErr := c.Read(ctx, userId, opt...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+	opts.postMap["account_ids"] = accountIds
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users/%s:set-accounts", userId), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating SetAccounts request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during SetAccounts call: %w", err)
+	}
+
+	target := new(UserUpdateResult)
+	target.Item = new(User)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding SetAccounts response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.responseBody = resp.Body
+	target.responseMap = resp.Map
+	return target, nil
+}
+
+func (c *Client) RemoveAccounts(ctx context.Context, userId string, version uint32, accountIds []string, opt ...Option) (*UserUpdateResult, error) {
+	if userId == "" {
+		return nil, fmt.Errorf("empty userId value passed into RemoveAccounts request")
+	}
+	if len(accountIds) == 0 {
+		return nil, errors.New("empty accountIds passed into RemoveAccounts request")
+	}
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into RemoveAccounts request")
+		}
+		existingTarget, existingErr := c.Read(ctx, userId, opt...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+	opts.postMap["account_ids"] = accountIds
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users/%s:remove-accounts", userId), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating RemoveAccounts request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during RemoveAccounts call: %w", err)
+	}
+
+	target := new(UserUpdateResult)
+	target.Item = new(User)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding RemoveAccounts response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr

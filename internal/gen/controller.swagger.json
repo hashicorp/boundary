@@ -2342,6 +2342,105 @@
           "controller.api.services.v1.UserService"
         ]
       }
+    },
+    "/v1/users/{id}:add-accounts": {
+      "post": {
+        "summary": "Associates an account to a User.",
+        "operationId": "UserService_AddUserAccounts",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddUserAccountsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
+    },
+    "/v1/users/{id}:remove-accounts": {
+      "post": {
+        "summary": "Removes the specified Accounts from being associated with the provided User.",
+        "operationId": "UserService_RemoveUserAccounts",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveUserAccountsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
+    },
+    "/v1/users/{id}:set-accounts": {
+      "post": {
+        "summary": "Set the Accounts associated to the User to exactly the list of provided in the request, removing any Accounts that are not specified.",
+        "operationId": "UserService_SetUserAccounts",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetUserAccountsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -3258,6 +3357,21 @@
       },
       "title": "Target contains all fields related to a Target resource"
     },
+    "controller.api.resources.users.v1.Account": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the account.\nOutput only.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope ID of the account.\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.users.v1.User": {
       "type": "object",
       "properties": {
@@ -3299,6 +3413,22 @@
           "type": "integer",
           "format": "int64",
           "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has."
+        },
+        "account_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Contains the list of account ids for this user.\nOutput only.",
+          "readOnly": true
+        },
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.users.v1.Account"
+          },
+          "description": "The acounts for this user.\nOutput only.",
+          "readOnly": true
         }
       },
       "title": "User contains all fields related to a User resource"
@@ -3435,6 +3565,33 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
+    "controller.api.services.v1.AddUserAccountsRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the user hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "account_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.AddUserAccountsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.users.v1.User"
         }
       }
     },
@@ -4040,6 +4197,33 @@
         }
       }
     },
+    "controller.api.services.v1.RemoveUserAccountsRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the user hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "account_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveUserAccountsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
     "controller.api.services.v1.SetGroupMembersRequest": {
       "type": "object",
       "properties": {
@@ -4195,6 +4379,33 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
+    "controller.api.services.v1.SetUserAccountsRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the user hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "account_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.SetUserAccountsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.users.v1.User"
         }
       }
     },

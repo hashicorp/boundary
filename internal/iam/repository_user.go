@@ -708,8 +708,8 @@ func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db
 		if err != nil {
 			return fmt.Errorf("dissociate user from accounts: unable to lookup account %s: %w", accountId, err)
 		}
-		if acct.IamUserId != "" && acct.IamUserId != userId {
-			return fmt.Errorf("dissociate user from accounts: %s account is associated with a user %s: %w", accountId, acct.IamUserId, db.ErrInvalidParameter)
+		if acct.IamUserId != userId {
+			return fmt.Errorf("dissociate user from accounts: %s account is not associated with user %s: %w", accountId, userId, db.ErrInvalidParameter)
 		}
 		authAccounts = append(authAccounts, &acct)
 	}

@@ -9,6 +9,16 @@ import "google/protobuf/wrappers.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
+message Account {
+	// The ID of the account.
+	// Output only.
+	string id = 10;
+
+	// The scope ID of the account.
+	// Output only.
+	string scope_id = 20 [json_name="scope_id"];
+}
+
 // User contains all fields related to a User resource
 message User {
 	// The ID of the Project
@@ -39,4 +49,12 @@ message User {
 	// The version can be used in subsequent write requests to ensure this
 	// resource has not changed and to fail the write if it has.
 	uint32 version = 80;
+
+	// Contains the list of account ids for this user.
+	// Output only.
+	repeated string account_ids = 90;
+
+	// The acounts for this user.
+	// Output only.
+	repeated Account accounts = 100;
 }
