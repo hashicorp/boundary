@@ -96,7 +96,7 @@ layers:
   - name: copy-source
     source-include: "*.go"
     dockerfile: |
-      RUN unset GOPATH; go build -v -tags '{{.BUILD_TAGS}}'
+      RUN unset GOPATH && go build -v -tags '{{.BUILD_TAGS}}' ./cmd/boundary
 
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;
