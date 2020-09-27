@@ -53,7 +53,7 @@ base-image: "golang@sha256:29452ef08bd0535f550c47b6034522c82ac10517b49c5f3b7a000
 layers:
   - name: base
     dockerfile: |
-      ENV GOPATH= GO111MODULE=on GOPRIVATE=github.com/hashicorp/*
+      ENV GOPATH= GOBIN=/usr/local/bin GO111MODULE=on GOPRIVATE=github.com/hashicorp/*
       RUN --mount=type=ssh \
           curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg \
            | apt-key add - \
@@ -65,8 +65,9 @@ layers:
           && touch -m 600 /root/.ssh/known_hosts \
           && ssh-keyscan github.com > /root/.ssh/known_hosts \
           && git config --global url."git@github.com:".insteadOf https://github.com/ \
-          && go get github.com/go-bindata/go-bindata/v3/go-bindata
-  - name: compile-ui
+          && go get github.com/go-bindata/go-bindata/v3/go-bindata \
+          && go-bindata --version
+  - name: ui
     source-include: internal/ui/VERSION
     dockerfile: |
       RUN --mount=type=ssh \
@@ -74,17 +75,17 @@ layers:
           && DIR=internal/ui/source/boundary-ui \
           && mkdir -p "$(dirname "$DIR")" \
           && git clone https://github.com/hashicorp/boundary-ui "$DIR" \
-          && cd "$DIR" \
+          && ( cd "$DIR" \
           && git fetch origin "$SHA" \
           && git checkout "$SHA" \
           && yarn install \
-          && yarn build:ui:core \
+          && yarn build:ui:core; ) \
           && TARGET=internal/ui/assets.go \
           && UIDIR="$DIR/ui/core/dist" \
           && go-bindata -fs -o "$TARGET" -pkg ui \
              -prefix "$UIDIR" "$UIDIR" "$UIDIR/assets" \
           && rm -rf "$DIR"
-  - name: download-modules
+  - name: go-modules
     source-include: go.mod go.sum
     dockerfile: |
       RUN --mount=type=ssh go mod download -x

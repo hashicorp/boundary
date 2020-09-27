@@ -50,14 +50,14 @@ jobs:
       - restore_cache:
           name: Restore build image cache
           keys:
-            - cache005-copy-source_733c_{{checksum ".buildcache/cache-keys/copy-source-733c0d1ad8c25a37b37f11dc7623aea54236bb81"}}
-            - cache005-download-modules_049d_{{checksum ".buildcache/cache-keys/download-modules-049dfc39db4c3567f5d44cad4f3a1cdfca06141f"}}
-            - cache005-compile-ui_ff2c_{{checksum ".buildcache/cache-keys/compile-ui-ff2cd70f145bbed1a6190dc12fc716e73578e346"}}
-            - cache005-base_7419_{{checksum ".buildcache/cache-keys/base-74197cd836f0cf2b4d74b84764f2c08bdcc480f0"}}
+            - cache005-copy-source_df70_{{checksum ".buildcache/cache-keys/copy-source-df70d84b48e1fe48d09efc041bd603cdb8cd0d7e"}}
+            - cache005-go-modules_54d6_{{checksum ".buildcache/cache-keys/go-modules-54d68de5b0e9dce10dab8d519be945ba7758efdd"}}
+            - cache005-ui_d280_{{checksum ".buildcache/cache-keys/ui-d280a4872cd4f689a9fa866f8e618210939659d9"}}
+            - cache005-base_b2b8_{{checksum ".buildcache/cache-keys/base-b2b897ce4eb6896c61cf4806ecc19a11bc7474aa"}}
       - run:
           name: Finish early if loaded exact match from cache.
           command: |
-            if [ -f .buildcache/archives/03-copy-source-733c0d1ad8c25a37b37f11dc7623aea54236bb81.tar.gz ]; then
+            if [ -f .buildcache/archives/03-copy-source-df70d84b48e1fe48d09efc041bd603cdb8cd0d7e.tar.gz ]; then
               echo "Exact match found in cache, skipping build."
               circleci-agent step halt
             else
@@ -67,7 +67,7 @@ jobs:
           name: Load whatever builder cache we have (if any) into the Docker daemon
           no_output_timeout: 30m
           command: |
-            LAYER_SPEC_ID=03-copy-source-733c0d1ad8c25a37b37f11dc7623aea54236bb81 make -C packages*.lock load-builder-cache
+            LAYER_SPEC_ID=03-copy-source-df70d84b48e1fe48d09efc041bd603cdb8cd0d7e make -C packages*.lock load-builder-cache
       - run:
           name: Build base layer
           command: |
@@ -75,23 +75,23 @@ jobs:
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
 
-            make -f packages*.lock/layer.mk 00-base-74197cd836f0cf2b4d74b84764f2c08bdcc480f0-image
+            make -f packages*.lock/layer.mk 00-base-b2b897ce4eb6896c61cf4806ecc19a11bc7474aa-image
       - run:
-          name: Build compile-ui layer
+          name: Build ui layer
           command: |
             
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
 
-            make -f packages*.lock/layer.mk 01-compile-ui-ff2cd70f145bbed1a6190dc12fc716e73578e346-image
+            make -f packages*.lock/layer.mk 01-ui-d280a4872cd4f689a9fa866f8e618210939659d9-image
       - run:
-          name: Build download-modules layer
+          name: Build go-modules layer
           command: |
             
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
 
-            make -f packages*.lock/layer.mk 02-download-modules-049dfc39db4c3567f5d44cad4f3a1cdfca06141f-image
+            make -f packages*.lock/layer.mk 02-go-modules-54d68de5b0e9dce10dab8d519be945ba7758efdd-image
       - run:
           name: Build copy-source layer
           command: |
@@ -99,44 +99,44 @@ jobs:
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
 
-            make -f packages*.lock/layer.mk 03-copy-source-733c0d1ad8c25a37b37f11dc7623aea54236bb81-image
+            make -f packages*.lock/layer.mk 03-copy-source-df70d84b48e1fe48d09efc041bd603cdb8cd0d7e-image
 
       - run:
           name: Export builder image
-          command: make -f packages*.lock/layer.mk 03-copy-source-733c0d1ad8c25a37b37f11dc7623aea54236bb81-save
+          command: make -f packages*.lock/layer.mk 03-copy-source-df70d84b48e1fe48d09efc041bd603cdb8cd0d7e-save
       - save_cache:
           name: Save layer copy-source to cache.
-          key: cache005-copy-source_733c_{{checksum ".buildcache/cache-keys/copy-source-733c0d1ad8c25a37b37f11dc7623aea54236bb81"}}
+          key: cache005-copy-source_df70_{{checksum ".buildcache/cache-keys/copy-source-df70d84b48e1fe48d09efc041bd603cdb8cd0d7e"}}
           paths:
-            - .buildcache/archives/03-copy-source-733c0d1ad8c25a37b37f11dc7623aea54236bb81.tar.gz
+            - .buildcache/archives/03-copy-source-df70d84b48e1fe48d09efc041bd603cdb8cd0d7e.tar.gz
       - run:
-          name: Prepare layer download-modules for caching
-          command: mv .buildcache/archives/03-copy-source-733c0d1ad8c25a37b37f11dc7623aea54236bb81.tar.gz .buildcache/archives/02-download-modules-049dfc39db4c3567f5d44cad4f3a1cdfca06141f.tar.gz
+          name: Prepare layer go-modules for caching
+          command: mv .buildcache/archives/03-copy-source-df70d84b48e1fe48d09efc041bd603cdb8cd0d7e.tar.gz .buildcache/archives/02-go-modules-54d68de5b0e9dce10dab8d519be945ba7758efdd.tar.gz
       - save_cache:
-          name: Save layer download-modules to cache.
-          key: cache005-download-modules_049d_{{checksum ".buildcache/cache-keys/download-modules-049dfc39db4c3567f5d44cad4f3a1cdfca06141f"}}
+          name: Save layer go-modules to cache.
+          key: cache005-go-modules_54d6_{{checksum ".buildcache/cache-keys/go-modules-54d68de5b0e9dce10dab8d519be945ba7758efdd"}}
           paths:
-            - .buildcache/archives/02-download-modules-049dfc39db4c3567f5d44cad4f3a1cdfca06141f.tar.gz
+            - .buildcache/archives/02-go-modules-54d68de5b0e9dce10dab8d519be945ba7758efdd.tar.gz
       - run:
-          name: Prepare layer compile-ui for caching
-          command: mv .buildcache/archives/02-download-modules-049dfc39db4c3567f5d44cad4f3a1cdfca06141f.tar.gz .buildcache/archives/01-compile-ui-ff2cd70f145bbed1a6190dc12fc716e73578e346.tar.gz
+          name: Prepare layer ui for caching
+          command: mv .buildcache/archives/02-go-modules-54d68de5b0e9dce10dab8d519be945ba7758efdd.tar.gz .buildcache/archives/01-ui-d280a4872cd4f689a9fa866f8e618210939659d9.tar.gz
       - save_cache:
-          name: Save layer compile-ui to cache.
-          key: cache005-compile-ui_ff2c_{{checksum ".buildcache/cache-keys/compile-ui-ff2cd70f145bbed1a6190dc12fc716e73578e346"}}
+          name: Save layer ui to cache.
+          key: cache005-ui_d280_{{checksum ".buildcache/cache-keys/ui-d280a4872cd4f689a9fa866f8e618210939659d9"}}
           paths:
-            - .buildcache/archives/01-compile-ui-ff2cd70f145bbed1a6190dc12fc716e73578e346.tar.gz
+            - .buildcache/archives/01-ui-d280a4872cd4f689a9fa866f8e618210939659d9.tar.gz
       - run:
           name: Prepare layer base for caching
-          command: mv .buildcache/archives/01-compile-ui-ff2cd70f145bbed1a6190dc12fc716e73578e346.tar.gz .buildcache/archives/00-base-74197cd836f0cf2b4d74b84764f2c08bdcc480f0.tar.gz
+          command: mv .buildcache/archives/01-ui-d280a4872cd4f689a9fa866f8e618210939659d9.tar.gz .buildcache/archives/00-base-b2b897ce4eb6896c61cf4806ecc19a11bc7474aa.tar.gz
       - save_cache:
           name: Save layer base to cache.
-          key: cache005-base_7419_{{checksum ".buildcache/cache-keys/base-74197cd836f0cf2b4d74b84764f2c08bdcc480f0"}}
+          key: cache005-base_b2b8_{{checksum ".buildcache/cache-keys/base-b2b897ce4eb6896c61cf4806ecc19a11bc7474aa"}}
           paths:
-            - .buildcache/archives/00-base-74197cd836f0cf2b4d74b84764f2c08bdcc480f0.tar.gz
+            - .buildcache/archives/00-base-b2b897ce4eb6896c61cf4806ecc19a11bc7474aa.tar.gz
   darwin_amd64_package:
     executor: builder
     environment:
-      - PACKAGE_SPEC_ID: 56ffc024cf2c6c839a1174d6bc19631b49be8217
+      - PACKAGE_SPEC_ID: ec2601d5987690573ad44e7c580558c9ca3776cc
     steps:
       
       - setup_remote_docker:
@@ -154,7 +154,7 @@ jobs:
       - write-package-cache-key
       - restore_cache:
           name: Restore package cache
-          key: 'cache005-package-56ffc024cf2c6c839a1174d6bc19631b49be8217-{{checksum ".buildcache/cache-keys/package-56ffc024cf2c6c839a1174d6bc19631b49be8217"}}'
+          key: 'cache005-package-ec2601d5987690573ad44e7c580558c9ca3776cc-{{checksum ".buildcache/cache-keys/package-ec2601d5987690573ad44e7c580558c9ca3776cc"}}'
       - run:
           name: Check the cache status.
           command: |
@@ -170,10 +170,10 @@ jobs:
       - restore_cache:
           name: Restore build layer cache
           keys:
-          - cache005-copy-source_733c_{{checksum ".buildcache/cache-keys/copy-source-733c0d1ad8c25a37b37f11dc7623aea54236bb81"}}
-          - cache005-download-modules_049d_{{checksum ".buildcache/cache-keys/download-modules-049dfc39db4c3567f5d44cad4f3a1cdfca06141f"}}
-          - cache005-compile-ui_ff2c_{{checksum ".buildcache/cache-keys/compile-ui-ff2cd70f145bbed1a6190dc12fc716e73578e346"}}
-          - cache005-base_7419_{{checksum ".buildcache/cache-keys/base-74197cd836f0cf2b4d74b84764f2c08bdcc480f0"}}
+          - cache005-copy-source_df70_{{checksum ".buildcache/cache-keys/copy-source-df70d84b48e1fe48d09efc041bd603cdb8cd0d7e"}}
+          - cache005-go-modules_54d6_{{checksum ".buildcache/cache-keys/go-modules-54d68de5b0e9dce10dab8d519be945ba7758efdd"}}
+          - cache005-ui_d280_{{checksum ".buildcache/cache-keys/ui-d280a4872cd4f689a9fa866f8e618210939659d9"}}
+          - cache005-base_b2b8_{{checksum ".buildcache/cache-keys/base-b2b897ce4eb6896c61cf4806ecc19a11bc7474aa"}}
       - run:
           name: Load whatever builder cache we have (if any) into the Docker daemon
           no_output_timeout: 30m
@@ -194,7 +194,7 @@ jobs:
           command: ls -lahR .buildcache/packages
       - save_cache:
           name: Saving package cache
-          key: 'cache005-package-56ffc024cf2c6c839a1174d6bc19631b49be8217-{{checksum ".buildcache/cache-keys/package-56ffc024cf2c6c839a1174d6bc19631b49be8217"}}'
+          key: 'cache005-package-ec2601d5987690573ad44e7c580558c9ca3776cc-{{checksum ".buildcache/cache-keys/package-ec2601d5987690573ad44e7c580558c9ca3776cc"}}'
           paths:
             - .buildcache/packages/store
       # Save builder image cache if necessary.
@@ -203,7 +203,7 @@ jobs:
   linux_amd64_package:
     executor: builder
     environment:
-      - PACKAGE_SPEC_ID: feb4dc5c3183325e0e834ff8950408ab667b6e0a
+      - PACKAGE_SPEC_ID: 03b80dee87205c34fa72073d1ad1bf474f260e74
     steps:
       
       - setup_remote_docker:
@@ -221,7 +221,7 @@ jobs:
       - write-package-cache-key
       - restore_cache:
           name: Restore package cache
-          key: 'cache005-package-feb4dc5c3183325e0e834ff8950408ab667b6e0a-{{checksum ".buildcache/cache-keys/package-feb4dc5c3183325e0e834ff8950408ab667b6e0a"}}'
+          key: 'cache005-package-03b80dee87205c34fa72073d1ad1bf474f260e74-{{checksum ".buildcache/cache-keys/package-03b80dee87205c34fa72073d1ad1bf474f260e74"}}'
       - run:
           name: Check the cache status.
           command: |
@@ -237,10 +237,10 @@ jobs:
       - restore_cache:
           name: Restore build layer cache
           keys:
-          - cache005-copy-source_733c_{{checksum ".buildcache/cache-keys/copy-source-733c0d1ad8c25a37b37f11dc7623aea54236bb81"}}
-          - cache005-download-modules_049d_{{checksum ".buildcache/cache-keys/download-modules-049dfc39db4c3567f5d44cad4f3a1cdfca06141f"}}
-          - cache005-compile-ui_ff2c_{{checksum ".buildcache/cache-keys/compile-ui-ff2cd70f145bbed1a6190dc12fc716e73578e346"}}
-          - cache005-base_7419_{{checksum ".buildcache/cache-keys/base-74197cd836f0cf2b4d74b84764f2c08bdcc480f0"}}
+          - cache005-copy-source_df70_{{checksum ".buildcache/cache-keys/copy-source-df70d84b48e1fe48d09efc041bd603cdb8cd0d7e"}}
+          - cache005-go-modules_54d6_{{checksum ".buildcache/cache-keys/go-modules-54d68de5b0e9dce10dab8d519be945ba7758efdd"}}
+          - cache005-ui_d280_{{checksum ".buildcache/cache-keys/ui-d280a4872cd4f689a9fa866f8e618210939659d9"}}
+          - cache005-base_b2b8_{{checksum ".buildcache/cache-keys/base-b2b897ce4eb6896c61cf4806ecc19a11bc7474aa"}}
       - run:
           name: Load whatever builder cache we have (if any) into the Docker daemon
           no_output_timeout: 30m
@@ -261,7 +261,7 @@ jobs:
           command: ls -lahR .buildcache/packages
       - save_cache:
           name: Saving package cache
-          key: 'cache005-package-feb4dc5c3183325e0e834ff8950408ab667b6e0a-{{checksum ".buildcache/cache-keys/package-feb4dc5c3183325e0e834ff8950408ab667b6e0a"}}'
+          key: 'cache005-package-03b80dee87205c34fa72073d1ad1bf474f260e74-{{checksum ".buildcache/cache-keys/package-03b80dee87205c34fa72073d1ad1bf474f260e74"}}'
           paths:
             - .buildcache/packages/store
       # Save builder image cache if necessary.
@@ -276,14 +276,14 @@ jobs:
       - load-darwin_amd64_package
       - run:
           environment:
-            PACKAGE_SPEC_ID: 56ffc024cf2c6c839a1174d6bc19631b49be8217
+            PACKAGE_SPEC_ID: ec2601d5987690573ad44e7c580558c9ca3776cc
           name: Write package metadata for darwin_amd64_package
           command: |
             make package-meta
       - load-linux_amd64_package
       - run:
           environment:
-            PACKAGE_SPEC_ID: feb4dc5c3183325e0e834ff8950408ab667b6e0a
+            PACKAGE_SPEC_ID: 03b80dee87205c34fa72073d1ad1bf474f260e74
           name: Write package metadata for linux_amd64_package
           command: |
             make package-meta
@@ -325,12 +325,12 @@ commands:
   load-darwin_amd64_package:
     steps:
       - restore_cache:
-          key: 'cache005-package-56ffc024cf2c6c839a1174d6bc19631b49be8217-{{checksum ".buildcache/cache-keys/package-56ffc024cf2c6c839a1174d6bc19631b49be8217"}}'
+          key: 'cache005-package-ec2601d5987690573ad44e7c580558c9ca3776cc-{{checksum ".buildcache/cache-keys/package-ec2601d5987690573ad44e7c580558c9ca3776cc"}}'
   
   load-linux_amd64_package:
     steps:
       - restore_cache:
-          key: 'cache005-package-feb4dc5c3183325e0e834ff8950408ab667b6e0a-{{checksum ".buildcache/cache-keys/package-feb4dc5c3183325e0e834ff8950408ab667b6e0a"}}'
+          key: 'cache005-package-03b80dee87205c34fa72073d1ad1bf474f260e74-{{checksum ".buildcache/cache-keys/package-03b80dee87205c34fa72073d1ad1bf474f260e74"}}'
   
 
   write-build-layer-cache-keys:
