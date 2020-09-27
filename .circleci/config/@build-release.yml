@@ -50,18 +50,14 @@ jobs:
       - restore_cache:
           name: Restore build image cache
           keys:
-            - cache005-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
-            - cache005-download-modules_9e33_{{checksum ".buildcache/cache-keys/download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf"}}
-            - cache005-generate-assets_7609_{{checksum ".buildcache/cache-keys/generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf"}}
-            - cache005-compile-ui_7d20_{{checksum ".buildcache/cache-keys/compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9"}}
-            - cache005-install-tools_4b2b_{{checksum ".buildcache/cache-keys/install-tools-4b2b8a186483d69012486bed7c5c030332be6014"}}
-            - cache005-configure-go_20d6_{{checksum ".buildcache/cache-keys/configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b"}}
-            - cache005-configure-git-ssh_dc7c_{{checksum ".buildcache/cache-keys/configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d"}}
-            - cache005-install-deps_ad24_{{checksum ".buildcache/cache-keys/install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59"}}
+            - cache005-copy-source_83a7_{{checksum ".buildcache/cache-keys/copy-source-83a7c01653ccf71fa7878c361105f49781c5d31d"}}
+            - cache005-download-modules_40d9_{{checksum ".buildcache/cache-keys/download-modules-40d975c2951ab8bf3f637a87d035ffcc1f9e24c6"}}
+            - cache005-compile-ui_0c3b_{{checksum ".buildcache/cache-keys/compile-ui-0c3b7abe2ca03ba110ba8adfb48b8b66b4c06d68"}}
+            - cache005-configure_7efd_{{checksum ".buildcache/cache-keys/configure-7efdcf3de239f1a1ae8e9bbd3d9d0dea213b0fdc"}}
       - run:
           name: Finish early if loaded exact match from cache.
           command: |
-            if [ -f .buildcache/archives/07-copy-source-a528829eb871c2744012d39745dab2d35ffae89b.tar.gz ]; then
+            if [ -f .buildcache/archives/03-copy-source-83a7c01653ccf71fa7878c361105f49781c5d31d.tar.gz ]; then
               echo "Exact match found in cache, skipping build."
               circleci-agent step halt
             else
@@ -71,39 +67,15 @@ jobs:
           name: Load whatever builder cache we have (if any) into the Docker daemon
           no_output_timeout: 30m
           command: |
-            LAYER_SPEC_ID=07-copy-source-a528829eb871c2744012d39745dab2d35ffae89b make -C packages*.lock load-builder-cache
+            LAYER_SPEC_ID=03-copy-source-83a7c01653ccf71fa7878c361105f49781c5d31d make -C packages*.lock load-builder-cache
       - run:
-          name: Build install-deps layer
+          name: Build configure layer
           command: |
             
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
 
-            make -f packages*.lock/layer.mk 00-install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59-image
-      - run:
-          name: Build configure-git-ssh layer
-          command: |
-            
-            eval "$(ssh-agent -s)"
-            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-
-            make -f packages*.lock/layer.mk 01-configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d-image
-      - run:
-          name: Build configure-go layer
-          command: |
-            
-            eval "$(ssh-agent -s)"
-            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-
-            make -f packages*.lock/layer.mk 02-configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b-image
-      - run:
-          name: Build install-tools layer
-          command: |
-            
-            eval "$(ssh-agent -s)"
-            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-
-            make -f packages*.lock/layer.mk 03-install-tools-4b2b8a186483d69012486bed7c5c030332be6014-image
+            make -f packages*.lock/layer.mk 00-configure-7efdcf3de239f1a1ae8e9bbd3d9d0dea213b0fdc-image
       - run:
           name: Build compile-ui layer
           command: |
@@ -111,15 +83,7 @@ jobs:
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
 
-            make -f packages*.lock/layer.mk 04-compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9-image
-      - run:
-          name: Build generate-assets layer
-          command: |
-            
-            eval "$(ssh-agent -s)"
-            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
-
-            make -f packages*.lock/layer.mk 05-generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf-image
+            make -f packages*.lock/layer.mk 01-compile-ui-0c3b7abe2ca03ba110ba8adfb48b8b66b4c06d68-image
       - run:
           name: Build download-modules layer
           command: |
@@ -127,7 +91,7 @@ jobs:
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
 
-            make -f packages*.lock/layer.mk 06-download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf-image
+            make -f packages*.lock/layer.mk 02-download-modules-40d975c2951ab8bf3f637a87d035ffcc1f9e24c6-image
       - run:
           name: Build copy-source layer
           command: |
@@ -135,76 +99,44 @@ jobs:
             eval "$(ssh-agent -s)"
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
 
-            make -f packages*.lock/layer.mk 07-copy-source-a528829eb871c2744012d39745dab2d35ffae89b-image
+            make -f packages*.lock/layer.mk 03-copy-source-83a7c01653ccf71fa7878c361105f49781c5d31d-image
 
       - run:
           name: Export builder image
-          command: make -f packages*.lock/layer.mk 07-copy-source-a528829eb871c2744012d39745dab2d35ffae89b-save
+          command: make -f packages*.lock/layer.mk 03-copy-source-83a7c01653ccf71fa7878c361105f49781c5d31d-save
       - save_cache:
           name: Save layer copy-source to cache.
-          key: cache005-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
+          key: cache005-copy-source_83a7_{{checksum ".buildcache/cache-keys/copy-source-83a7c01653ccf71fa7878c361105f49781c5d31d"}}
           paths:
-            - .buildcache/archives/07-copy-source-a528829eb871c2744012d39745dab2d35ffae89b.tar.gz
+            - .buildcache/archives/03-copy-source-83a7c01653ccf71fa7878c361105f49781c5d31d.tar.gz
       - run:
           name: Prepare layer download-modules for caching
-          command: mv .buildcache/archives/07-copy-source-a528829eb871c2744012d39745dab2d35ffae89b.tar.gz .buildcache/archives/06-download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf.tar.gz
+          command: mv .buildcache/archives/03-copy-source-83a7c01653ccf71fa7878c361105f49781c5d31d.tar.gz .buildcache/archives/02-download-modules-40d975c2951ab8bf3f637a87d035ffcc1f9e24c6.tar.gz
       - save_cache:
           name: Save layer download-modules to cache.
-          key: cache005-download-modules_9e33_{{checksum ".buildcache/cache-keys/download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf"}}
+          key: cache005-download-modules_40d9_{{checksum ".buildcache/cache-keys/download-modules-40d975c2951ab8bf3f637a87d035ffcc1f9e24c6"}}
           paths:
-            - .buildcache/archives/06-download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf.tar.gz
-      - run:
-          name: Prepare layer generate-assets for caching
-          command: mv .buildcache/archives/06-download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf.tar.gz .buildcache/archives/05-generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf.tar.gz
-      - save_cache:
-          name: Save layer generate-assets to cache.
-          key: cache005-generate-assets_7609_{{checksum ".buildcache/cache-keys/generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf"}}
-          paths:
-            - .buildcache/archives/05-generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf.tar.gz
+            - .buildcache/archives/02-download-modules-40d975c2951ab8bf3f637a87d035ffcc1f9e24c6.tar.gz
       - run:
           name: Prepare layer compile-ui for caching
-          command: mv .buildcache/archives/05-generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf.tar.gz .buildcache/archives/04-compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9.tar.gz
+          command: mv .buildcache/archives/02-download-modules-40d975c2951ab8bf3f637a87d035ffcc1f9e24c6.tar.gz .buildcache/archives/01-compile-ui-0c3b7abe2ca03ba110ba8adfb48b8b66b4c06d68.tar.gz
       - save_cache:
           name: Save layer compile-ui to cache.
-          key: cache005-compile-ui_7d20_{{checksum ".buildcache/cache-keys/compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9"}}
+          key: cache005-compile-ui_0c3b_{{checksum ".buildcache/cache-keys/compile-ui-0c3b7abe2ca03ba110ba8adfb48b8b66b4c06d68"}}
           paths:
-            - .buildcache/archives/04-compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9.tar.gz
+            - .buildcache/archives/01-compile-ui-0c3b7abe2ca03ba110ba8adfb48b8b66b4c06d68.tar.gz
       - run:
-          name: Prepare layer install-tools for caching
-          command: mv .buildcache/archives/04-compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9.tar.gz .buildcache/archives/03-install-tools-4b2b8a186483d69012486bed7c5c030332be6014.tar.gz
+          name: Prepare layer configure for caching
+          command: mv .buildcache/archives/01-compile-ui-0c3b7abe2ca03ba110ba8adfb48b8b66b4c06d68.tar.gz .buildcache/archives/00-configure-7efdcf3de239f1a1ae8e9bbd3d9d0dea213b0fdc.tar.gz
       - save_cache:
-          name: Save layer install-tools to cache.
-          key: cache005-install-tools_4b2b_{{checksum ".buildcache/cache-keys/install-tools-4b2b8a186483d69012486bed7c5c030332be6014"}}
+          name: Save layer configure to cache.
+          key: cache005-configure_7efd_{{checksum ".buildcache/cache-keys/configure-7efdcf3de239f1a1ae8e9bbd3d9d0dea213b0fdc"}}
           paths:
-            - .buildcache/archives/03-install-tools-4b2b8a186483d69012486bed7c5c030332be6014.tar.gz
-      - run:
-          name: Prepare layer configure-go for caching
-          command: mv .buildcache/archives/03-install-tools-4b2b8a186483d69012486bed7c5c030332be6014.tar.gz .buildcache/archives/02-configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b.tar.gz
-      - save_cache:
-          name: Save layer configure-go to cache.
-          key: cache005-configure-go_20d6_{{checksum ".buildcache/cache-keys/configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b"}}
-          paths:
-            - .buildcache/archives/02-configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b.tar.gz
-      - run:
-          name: Prepare layer configure-git-ssh for caching
-          command: mv .buildcache/archives/02-configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b.tar.gz .buildcache/archives/01-configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d.tar.gz
-      - save_cache:
-          name: Save layer configure-git-ssh to cache.
-          key: cache005-configure-git-ssh_dc7c_{{checksum ".buildcache/cache-keys/configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d"}}
-          paths:
-            - .buildcache/archives/01-configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d.tar.gz
-      - run:
-          name: Prepare layer install-deps for caching
-          command: mv .buildcache/archives/01-configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d.tar.gz .buildcache/archives/00-install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59.tar.gz
-      - save_cache:
-          name: Save layer install-deps to cache.
-          key: cache005-install-deps_ad24_{{checksum ".buildcache/cache-keys/install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59"}}
-          paths:
-            - .buildcache/archives/00-install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59.tar.gz
+            - .buildcache/archives/00-configure-7efdcf3de239f1a1ae8e9bbd3d9d0dea213b0fdc.tar.gz
   darwin_amd64_package:
     executor: builder
     environment:
-      - PACKAGE_SPEC_ID: 671eb951939aab765d220e3c33b70fd9a6d97c31
+      - PACKAGE_SPEC_ID: 082652163f13f0d93dfcc6ce7898979e02059661
     steps:
       
       - setup_remote_docker:
@@ -222,7 +154,7 @@ jobs:
       - write-package-cache-key
       - restore_cache:
           name: Restore package cache
-          key: 'cache005-package-671eb951939aab765d220e3c33b70fd9a6d97c31-{{checksum ".buildcache/cache-keys/package-671eb951939aab765d220e3c33b70fd9a6d97c31"}}'
+          key: 'cache005-package-082652163f13f0d93dfcc6ce7898979e02059661-{{checksum ".buildcache/cache-keys/package-082652163f13f0d93dfcc6ce7898979e02059661"}}'
       - run:
           name: Check the cache status.
           command: |
@@ -238,14 +170,10 @@ jobs:
       - restore_cache:
           name: Restore build layer cache
           keys:
-          - cache005-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
-          - cache005-download-modules_9e33_{{checksum ".buildcache/cache-keys/download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf"}}
-          - cache005-generate-assets_7609_{{checksum ".buildcache/cache-keys/generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf"}}
-          - cache005-compile-ui_7d20_{{checksum ".buildcache/cache-keys/compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9"}}
-          - cache005-install-tools_4b2b_{{checksum ".buildcache/cache-keys/install-tools-4b2b8a186483d69012486bed7c5c030332be6014"}}
-          - cache005-configure-go_20d6_{{checksum ".buildcache/cache-keys/configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b"}}
-          - cache005-configure-git-ssh_dc7c_{{checksum ".buildcache/cache-keys/configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d"}}
-          - cache005-install-deps_ad24_{{checksum ".buildcache/cache-keys/install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59"}}
+          - cache005-copy-source_83a7_{{checksum ".buildcache/cache-keys/copy-source-83a7c01653ccf71fa7878c361105f49781c5d31d"}}
+          - cache005-download-modules_40d9_{{checksum ".buildcache/cache-keys/download-modules-40d975c2951ab8bf3f637a87d035ffcc1f9e24c6"}}
+          - cache005-compile-ui_0c3b_{{checksum ".buildcache/cache-keys/compile-ui-0c3b7abe2ca03ba110ba8adfb48b8b66b4c06d68"}}
+          - cache005-configure_7efd_{{checksum ".buildcache/cache-keys/configure-7efdcf3de239f1a1ae8e9bbd3d9d0dea213b0fdc"}}
       - run:
           name: Load whatever builder cache we have (if any) into the Docker daemon
           no_output_timeout: 30m
@@ -266,7 +194,7 @@ jobs:
           command: ls -lahR .buildcache/packages
       - save_cache:
           name: Saving package cache
-          key: 'cache005-package-671eb951939aab765d220e3c33b70fd9a6d97c31-{{checksum ".buildcache/cache-keys/package-671eb951939aab765d220e3c33b70fd9a6d97c31"}}'
+          key: 'cache005-package-082652163f13f0d93dfcc6ce7898979e02059661-{{checksum ".buildcache/cache-keys/package-082652163f13f0d93dfcc6ce7898979e02059661"}}'
           paths:
             - .buildcache/packages/store
       # Save builder image cache if necessary.
@@ -275,7 +203,7 @@ jobs:
   linux_amd64_package:
     executor: builder
     environment:
-      - PACKAGE_SPEC_ID: a902295a6ed82c199ac1ad0431413427b383ede9
+      - PACKAGE_SPEC_ID: 83812b0d179e059b28974a1114c8752e120bb8d3
     steps:
       
       - setup_remote_docker:
@@ -293,7 +221,7 @@ jobs:
       - write-package-cache-key
       - restore_cache:
           name: Restore package cache
-          key: 'cache005-package-a902295a6ed82c199ac1ad0431413427b383ede9-{{checksum ".buildcache/cache-keys/package-a902295a6ed82c199ac1ad0431413427b383ede9"}}'
+          key: 'cache005-package-83812b0d179e059b28974a1114c8752e120bb8d3-{{checksum ".buildcache/cache-keys/package-83812b0d179e059b28974a1114c8752e120bb8d3"}}'
       - run:
           name: Check the cache status.
           command: |
@@ -309,14 +237,10 @@ jobs:
       - restore_cache:
           name: Restore build layer cache
           keys:
-          - cache005-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
-          - cache005-download-modules_9e33_{{checksum ".buildcache/cache-keys/download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf"}}
-          - cache005-generate-assets_7609_{{checksum ".buildcache/cache-keys/generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf"}}
-          - cache005-compile-ui_7d20_{{checksum ".buildcache/cache-keys/compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9"}}
-          - cache005-install-tools_4b2b_{{checksum ".buildcache/cache-keys/install-tools-4b2b8a186483d69012486bed7c5c030332be6014"}}
-          - cache005-configure-go_20d6_{{checksum ".buildcache/cache-keys/configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b"}}
-          - cache005-configure-git-ssh_dc7c_{{checksum ".buildcache/cache-keys/configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d"}}
-          - cache005-install-deps_ad24_{{checksum ".buildcache/cache-keys/install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59"}}
+          - cache005-copy-source_83a7_{{checksum ".buildcache/cache-keys/copy-source-83a7c01653ccf71fa7878c361105f49781c5d31d"}}
+          - cache005-download-modules_40d9_{{checksum ".buildcache/cache-keys/download-modules-40d975c2951ab8bf3f637a87d035ffcc1f9e24c6"}}
+          - cache005-compile-ui_0c3b_{{checksum ".buildcache/cache-keys/compile-ui-0c3b7abe2ca03ba110ba8adfb48b8b66b4c06d68"}}
+          - cache005-configure_7efd_{{checksum ".buildcache/cache-keys/configure-7efdcf3de239f1a1ae8e9bbd3d9d0dea213b0fdc"}}
       - run:
           name: Load whatever builder cache we have (if any) into the Docker daemon
           no_output_timeout: 30m
@@ -337,7 +261,7 @@ jobs:
           command: ls -lahR .buildcache/packages
       - save_cache:
           name: Saving package cache
-          key: 'cache005-package-a902295a6ed82c199ac1ad0431413427b383ede9-{{checksum ".buildcache/cache-keys/package-a902295a6ed82c199ac1ad0431413427b383ede9"}}'
+          key: 'cache005-package-83812b0d179e059b28974a1114c8752e120bb8d3-{{checksum ".buildcache/cache-keys/package-83812b0d179e059b28974a1114c8752e120bb8d3"}}'
           paths:
             - .buildcache/packages/store
       # Save builder image cache if necessary.
@@ -352,14 +276,14 @@ jobs:
       - load-darwin_amd64_package
       - run:
           environment:
-            PACKAGE_SPEC_ID: 671eb951939aab765d220e3c33b70fd9a6d97c31
+            PACKAGE_SPEC_ID: 082652163f13f0d93dfcc6ce7898979e02059661
           name: Write package metadata for darwin_amd64_package
           command: |
             make package-meta
       - load-linux_amd64_package
       - run:
           environment:
-            PACKAGE_SPEC_ID: a902295a6ed82c199ac1ad0431413427b383ede9
+            PACKAGE_SPEC_ID: 83812b0d179e059b28974a1114c8752e120bb8d3
           name: Write package metadata for linux_amd64_package
           command: |
             make package-meta
@@ -401,12 +325,12 @@ commands:
   load-darwin_amd64_package:
     steps:
       - restore_cache:
-          key: 'cache005-package-671eb951939aab765d220e3c33b70fd9a6d97c31-{{checksum ".buildcache/cache-keys/package-671eb951939aab765d220e3c33b70fd9a6d97c31"}}'
+          key: 'cache005-package-082652163f13f0d93dfcc6ce7898979e02059661-{{checksum ".buildcache/cache-keys/package-082652163f13f0d93dfcc6ce7898979e02059661"}}'
   
   load-linux_amd64_package:
     steps:
       - restore_cache:
-          key: 'cache005-package-a902295a6ed82c199ac1ad0431413427b383ede9-{{checksum ".buildcache/cache-keys/package-a902295a6ed82c199ac1ad0431413427b383ede9"}}'
+          key: 'cache005-package-83812b0d179e059b28974a1114c8752e120bb8d3-{{checksum ".buildcache/cache-keys/package-83812b0d179e059b28974a1114c8752e120bb8d3"}}'
   
 
   write-build-layer-cache-keys:

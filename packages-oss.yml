@@ -51,56 +51,50 @@ package-aliases:
 base-image: "golang@sha256:29452ef08bd0535f550c47b6034522c82ac10517b49c5f3b7a00035ecee0089e"
 
 layers:
-  - name: install-deps
+  - name: configure
     dockerfile: |
-      RUN apt-get update -y && apt-get install -yq zip
-      RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
-          echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
-          apt-get update && apt-get install -yq yarn
-  - name: configure-git-ssh
-    dockerfile: |
-      RUN mkdir -m 700 /root/.ssh; \
-            touch -m 600 /root/.ssh/known_hosts; \
-            ssh-keyscan github.com > /root/.ssh/known_hosts && \
-            git config --global url."git@github.com:".insteadOf https://github.com/
-  - name: configure-go
-    dockerfile: |
-      ENV GO111MODULE=on
-      ENV GOPRIVATE=github.com/hashicorp/*
-  - name: install-tools
-    dockerfile: |
-      RUN go get github.com/go-bindata/go-bindata/v3/go-bindata
+      ENV GO111MODULE=on GOPRIVATE=github.com/hashicorp/* GOPATH=
+      RUN --mount=type=ssh \
+          curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg \
+           | apt-key add - \
+          && echo "deb https://dl.yarnpkg.com/debian/ stable main" \
+           | tee /etc/apt/sources.list.d/yarn.list \
+          && apt-get update \
+          && apt-get install -yq yarn zip \
+          && mkdir -m 700 /root/.ssh \
+          && touch -m 600 /root/.ssh/known_hosts \
+          && ssh-keyscan github.com > /root/.ssh/known_hosts \
+          && git config --global url."git@github.com:".insteadOf https://github.com/
+          && go get github.com/go-bindata/go-bindata/v3/go-bindata
   - name: compile-ui
     source-include: internal/ui/VERSION
     dockerfile: |
       RUN --mount=type=ssh \
-          SHA="$(head -n1 internal/ui/VERSION | cut -d' ' -f1)" && \
-            DIR=internal/ui/source/boundary-ui && \
-            mkdir -p "$(dirname "$DIR")" && \
-            git clone https://github.com/hashicorp/boundary-ui "$DIR" && \
-            cd "$DIR" && \
-            git fetch origin "$SHA" && \
-            git checkout "$SHA" && \
-            yarn install && yarn build:ui:core
-  - name: generate-assets
-    dockerfile: |
-      RUN  \
-            DIR=internal/ui/source/boundary-ui && \
-            TARGET=internal/ui/assets.go && \
-            UIDIR="$DIR/ui/core/dist" && \
-            go-bindata -fs -o "$TARGET" -pkg ui -prefix "$UIDIR" "$UIDIR" "$UIDIR/assets"
+          SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" \
+          && DIR=internal/ui/source/boundary-ui \
+          && mkdir -p "$(dirname "$DIR")" \
+          && git clone https://github.com/hashicorp/boundary-ui "$DIR" \
+          && cd "$DIR" \
+          && git fetch origin "$SHA" \
+          && git checkout "$SHA" \
+          && yarn install
+          && yarn build:ui:core
+          && TARGET=internal/ui/assets.go \
+          && UIDIR="$DIR/ui/core/dist" \
+          && go-bindata -fs -o "$TARGET" -pkg ui -prefix "$UIDIR" "$UIDIR" "$UIDIR/assets" \
+          && rm -rf "$DIR"
   - name: download-modules
     source-include: go.mod go.sum
     dockerfile: |
-      RUN --mount=type=ssh unset GOPATH && go mod download -x
+      RUN --mount=type=ssh go mod download -x
   - name: copy-source
     source-include: "*.go"
     dockerfile: |
-      RUN unset GOPATH && go build -v -tags '{{.BUILD_TAGS}}' ./cmd/boundary
+      RUN go build -x -tags '{{.BUILD_TAGS}}' ./cmd/boundary
 
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;
-  go build -v -tags '{{.BUILD_TAGS}}'
+  go build -x -tags '{{.BUILD_TAGS}}'
     -ldflags "-X $VERSION_PKG_PATH.GitCommit=$PACKAGE_SOURCE_ID
               -X $VERSION_PKG_PATH.Version={{.PRODUCT_VERSION_MMP}}
               -X $VERSION_PKG_PATH.VersionPrerelease={{.PRODUCT_VERSION_PRE}}"
