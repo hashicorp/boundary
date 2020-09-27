@@ -47,7 +47,8 @@ package-aliases:
     template: >-
       boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
 
-base-image: "golang@sha256:21408f9e65fbd1fac28d8a6788485a74f9029fece0086a25d1eaf1d8cc79b7ad"
+# golang@sha256:29452ef08bd0535f550c47b6034522c82ac10517b49c5f3b7a00035ecee0089e = golang:1.15.2-buster
+base-image: "golang@sha256:29452ef08bd0535f550c47b6034522c82ac10517b49c5f3b7a00035ecee0089e"
 
 layers:
   - name: install-deps
@@ -94,10 +95,12 @@ layers:
       RUN --mount=type=ssh unset GOPATH && go mod download -x
   - name: copy-source
     source-include: "*.go"
+    dockerfile: |
+      RUN unset GOPATH; go build -v -tags '{{.BUILD_TAGS}}'
 
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;
-  go build -v
+  go build -v -tags '{{.BUILD_TAGS}}'
     -ldflags "-X $VERSION_PKG_PATH.GitCommit=$PACKAGE_SOURCE_ID
               -X $VERSION_PKG_PATH.Version={{.PRODUCT_VERSION_MMP}}
               -X $VERSION_PKG_PATH.VersionPrerelease={{.PRODUCT_VERSION_PRE}}"
