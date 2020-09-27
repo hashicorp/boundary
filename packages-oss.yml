@@ -51,9 +51,9 @@ package-aliases:
 base-image: "golang@sha256:29452ef08bd0535f550c47b6034522c82ac10517b49c5f3b7a00035ecee0089e"
 
 layers:
-  - name: configure
+  - name: base
     dockerfile: |
-      ENV GO111MODULE=on GOPRIVATE=github.com/hashicorp/* GOPATH=
+      ENV GOPATH= GO111MODULE=on GOPRIVATE=github.com/hashicorp/*
       RUN --mount=type=ssh \
           curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg \
            | apt-key add - \
@@ -64,7 +64,7 @@ layers:
           && mkdir -m 700 /root/.ssh \
           && touch -m 600 /root/.ssh/known_hosts \
           && ssh-keyscan github.com > /root/.ssh/known_hosts \
-          && git config --global url."git@github.com:".insteadOf https://github.com/
+          && git config --global url."git@github.com:".insteadOf https://github.com/ \
           && go get github.com/go-bindata/go-bindata/v3/go-bindata
   - name: compile-ui
     source-include: internal/ui/VERSION
@@ -77,11 +77,12 @@ layers:
           && cd "$DIR" \
           && git fetch origin "$SHA" \
           && git checkout "$SHA" \
-          && yarn install
-          && yarn build:ui:core
+          && yarn install \
+          && yarn build:ui:core \
           && TARGET=internal/ui/assets.go \
           && UIDIR="$DIR/ui/core/dist" \
-          && go-bindata -fs -o "$TARGET" -pkg ui -prefix "$UIDIR" "$UIDIR" "$UIDIR/assets" \
+          && go-bindata -fs -o "$TARGET" -pkg ui \
+             -prefix "$UIDIR" "$UIDIR" "$UIDIR/assets" \
           && rm -rf "$DIR"
   - name: download-modules
     source-include: go.mod go.sum
