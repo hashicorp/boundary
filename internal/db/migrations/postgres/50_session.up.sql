@@ -71,7 +71,8 @@ begin;
           'closed by end-user',
           'terminated',
           'network error',
-          'system error'
+          'system error',
+          'connection limit'
         )
       )
   );
@@ -83,7 +84,8 @@ begin;
     ('closed by end-user'),
     ('terminated'),
     ('network error'),
-    ('system error');
+    ('system error'),
+    ('connection limit');
 
   create table session (
     public_id wt_public_id primary key,
@@ -236,18 +238,25 @@ begin;
   as $$
   begin
     if new.termination_reason is not null then
-      -- check to see if there are any open connections.
-      perform from
-        session_connection sc,
-        session_connection_state scs
+     perform from 
+        session_connection
       where
-        sc.public_id = scs.connection_id and 
-        scs.state != 'closed' and
-        sc.session_id = new.public_id;
-      if found then 
-        raise 'session %s has existing open connections', new.public_id;
+        session_id = new.public_id;
+      if found then
+          -- check to see if there are any open connections.
+          perform from
+            -- connections are closed
+            session_connection sc,
+            session_connection_state scs
+          where
+            sc.public_id = scs.connection_id and 
+            scs.state = 'closed' and
+            sc.session_id = new.public_id;
+          if not found then 
+            raise 'session %s has existing open connections', new.public_id;
+          end if;
       end if;
-      
+
       -- check to see if there's a terminated state already, before inserting a
       -- new one.
       perform from
