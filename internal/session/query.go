@@ -140,4 +140,48 @@ where
 	%s
 %s
 `
+
+	termSessionsUpdate = `
+update session us
+	set termination_reason = 
+	case 
+		when now() > us.expiration_time then 'timed out'
+		else 'connection limit'
+	end
+where
+	termination_reason is null and
+	-- session expired or connection limit reached
+	(
+		now() > us.expiration_time or 
+		(
+			select count (*) 
+				from session_connection sc 
+			where 
+						sc.session_id = us.public_id
+		) >= connection_limit 
+	) and 
+	-- make sure there are no existing connections
+	us.public_id in (
+		-- sessions without any connections
+		select s.public_id 
+		from 
+			session s
+		left join session_connection sc on sc.session_id = s.public_id 
+		where 
+			sc.session_id is null
+			and s.public_id = us.public_id 
+		union
+		-- sessions where all connections are closed
+		select s.public_id 
+		from
+			session s,
+			session_connection c,
+			session_connection_state cs
+		where
+			s.public_id = c.session_id and
+			c.public_id = cs.connection_id and
+			cs.state = 'closed' and 
+			s.public_id = us.public_id 
+	);
+`
 )

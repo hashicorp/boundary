@@ -338,6 +338,27 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 	return &updatedSession, nil
 }
 
+func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error) {
+	var rowsAffected int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			var err error
+			rowsAffected, err = w.Exec(termSessionsUpdate, nil)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("terminate completed sessions: %w", err)
+	}
+	return rowsAffected, nil
+}
+
 // AuthorizeConnection will check to see if a connection is allowed.  Currently,
 // that authorization checks:
 // * the hasn't expired based on the session.Expiration
