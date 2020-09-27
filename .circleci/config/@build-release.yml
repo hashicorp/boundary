@@ -17,7 +17,7 @@ executors:
   builder-machine:
     machine:
       image: ubuntu-1604:202007-01
-    resource_class: large
+    resource_class: xlarge
     environment:
       PRODUCT_REVISION: ""
       AUTO_INSTALL_TOOLS: 'YES'

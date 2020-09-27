@@ -8,7 +8,7 @@ jobs:
   build-common-layers:
     machine:
       image: ubuntu-1604:202007-01
-    resource_class: large
+    resource_class: xlarge
     shell: /usr/bin/env bash -euo pipefail -c
     steps:
     - add_ssh_keys:
