@@ -17,7 +17,7 @@ executors:
   builder-machine:
     machine:
       image: ubuntu-1604:202007-01
-    resource_class: 2xlarge
+    resource_class: large
     environment:
       PRODUCT_REVISION: ""
       AUTO_INSTALL_TOOLS: 'YES'
@@ -50,14 +50,14 @@ jobs:
       - restore_cache:
           name: Restore build image cache
           keys:
-            - cache004-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
-            - cache004-download-modules_9e33_{{checksum ".buildcache/cache-keys/download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf"}}
-            - cache004-generate-assets_7609_{{checksum ".buildcache/cache-keys/generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf"}}
-            - cache004-compile-ui_7d20_{{checksum ".buildcache/cache-keys/compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9"}}
-            - cache004-install-tools_4b2b_{{checksum ".buildcache/cache-keys/install-tools-4b2b8a186483d69012486bed7c5c030332be6014"}}
-            - cache004-configure-go_20d6_{{checksum ".buildcache/cache-keys/configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b"}}
-            - cache004-configure-git-ssh_dc7c_{{checksum ".buildcache/cache-keys/configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d"}}
-            - cache004-install-deps_ad24_{{checksum ".buildcache/cache-keys/install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59"}}
+            - cache005-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
+            - cache005-download-modules_9e33_{{checksum ".buildcache/cache-keys/download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf"}}
+            - cache005-generate-assets_7609_{{checksum ".buildcache/cache-keys/generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf"}}
+            - cache005-compile-ui_7d20_{{checksum ".buildcache/cache-keys/compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9"}}
+            - cache005-install-tools_4b2b_{{checksum ".buildcache/cache-keys/install-tools-4b2b8a186483d69012486bed7c5c030332be6014"}}
+            - cache005-configure-go_20d6_{{checksum ".buildcache/cache-keys/configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b"}}
+            - cache005-configure-git-ssh_dc7c_{{checksum ".buildcache/cache-keys/configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d"}}
+            - cache005-install-deps_ad24_{{checksum ".buildcache/cache-keys/install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59"}}
       - run:
           name: Finish early if loaded exact match from cache.
           command: |
@@ -142,7 +142,7 @@ jobs:
           command: make -f packages*.lock/layer.mk 07-copy-source-a528829eb871c2744012d39745dab2d35ffae89b-save
       - save_cache:
           name: Save layer copy-source to cache.
-          key: cache004-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
+          key: cache005-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
           paths:
             - .buildcache/archives/07-copy-source-a528829eb871c2744012d39745dab2d35ffae89b.tar.gz
       - run:
@@ -150,7 +150,7 @@ jobs:
           command: mv .buildcache/archives/07-copy-source-a528829eb871c2744012d39745dab2d35ffae89b.tar.gz .buildcache/archives/06-download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf.tar.gz
       - save_cache:
           name: Save layer download-modules to cache.
-          key: cache004-download-modules_9e33_{{checksum ".buildcache/cache-keys/download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf"}}
+          key: cache005-download-modules_9e33_{{checksum ".buildcache/cache-keys/download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf"}}
           paths:
             - .buildcache/archives/06-download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf.tar.gz
       - run:
@@ -158,7 +158,7 @@ jobs:
           command: mv .buildcache/archives/06-download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf.tar.gz .buildcache/archives/05-generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf.tar.gz
       - save_cache:
           name: Save layer generate-assets to cache.
-          key: cache004-generate-assets_7609_{{checksum ".buildcache/cache-keys/generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf"}}
+          key: cache005-generate-assets_7609_{{checksum ".buildcache/cache-keys/generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf"}}
           paths:
             - .buildcache/archives/05-generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf.tar.gz
       - run:
@@ -166,7 +166,7 @@ jobs:
           command: mv .buildcache/archives/05-generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf.tar.gz .buildcache/archives/04-compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9.tar.gz
       - save_cache:
           name: Save layer compile-ui to cache.
-          key: cache004-compile-ui_7d20_{{checksum ".buildcache/cache-keys/compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9"}}
+          key: cache005-compile-ui_7d20_{{checksum ".buildcache/cache-keys/compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9"}}
           paths:
             - .buildcache/archives/04-compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9.tar.gz
       - run:
@@ -174,7 +174,7 @@ jobs:
           command: mv .buildcache/archives/04-compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9.tar.gz .buildcache/archives/03-install-tools-4b2b8a186483d69012486bed7c5c030332be6014.tar.gz
       - save_cache:
           name: Save layer install-tools to cache.
-          key: cache004-install-tools_4b2b_{{checksum ".buildcache/cache-keys/install-tools-4b2b8a186483d69012486bed7c5c030332be6014"}}
+          key: cache005-install-tools_4b2b_{{checksum ".buildcache/cache-keys/install-tools-4b2b8a186483d69012486bed7c5c030332be6014"}}
           paths:
             - .buildcache/archives/03-install-tools-4b2b8a186483d69012486bed7c5c030332be6014.tar.gz
       - run:
@@ -182,7 +182,7 @@ jobs:
           command: mv .buildcache/archives/03-install-tools-4b2b8a186483d69012486bed7c5c030332be6014.tar.gz .buildcache/archives/02-configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b.tar.gz
       - save_cache:
           name: Save layer configure-go to cache.
-          key: cache004-configure-go_20d6_{{checksum ".buildcache/cache-keys/configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b"}}
+          key: cache005-configure-go_20d6_{{checksum ".buildcache/cache-keys/configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b"}}
           paths:
             - .buildcache/archives/02-configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b.tar.gz
       - run:
@@ -190,7 +190,7 @@ jobs:
           command: mv .buildcache/archives/02-configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b.tar.gz .buildcache/archives/01-configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d.tar.gz
       - save_cache:
           name: Save layer configure-git-ssh to cache.
-          key: cache004-configure-git-ssh_dc7c_{{checksum ".buildcache/cache-keys/configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d"}}
+          key: cache005-configure-git-ssh_dc7c_{{checksum ".buildcache/cache-keys/configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d"}}
           paths:
             - .buildcache/archives/01-configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d.tar.gz
       - run:
@@ -198,7 +198,7 @@ jobs:
           command: mv .buildcache/archives/01-configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d.tar.gz .buildcache/archives/00-install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59.tar.gz
       - save_cache:
           name: Save layer install-deps to cache.
-          key: cache004-install-deps_ad24_{{checksum ".buildcache/cache-keys/install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59"}}
+          key: cache005-install-deps_ad24_{{checksum ".buildcache/cache-keys/install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59"}}
           paths:
             - .buildcache/archives/00-install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59.tar.gz
   darwin_amd64_package:
@@ -222,7 +222,7 @@ jobs:
       - write-package-cache-key
       - restore_cache:
           name: Restore package cache
-          key: 'cache004-package-671eb951939aab765d220e3c33b70fd9a6d97c31-{{checksum ".buildcache/cache-keys/package-671eb951939aab765d220e3c33b70fd9a6d97c31"}}'
+          key: 'cache005-package-671eb951939aab765d220e3c33b70fd9a6d97c31-{{checksum ".buildcache/cache-keys/package-671eb951939aab765d220e3c33b70fd9a6d97c31"}}'
       - run:
           name: Check the cache status.
           command: |
@@ -238,14 +238,14 @@ jobs:
       - restore_cache:
           name: Restore build layer cache
           keys:
-          - cache004-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
-          - cache004-download-modules_9e33_{{checksum ".buildcache/cache-keys/download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf"}}
-          - cache004-generate-assets_7609_{{checksum ".buildcache/cache-keys/generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf"}}
-          - cache004-compile-ui_7d20_{{checksum ".buildcache/cache-keys/compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9"}}
-          - cache004-install-tools_4b2b_{{checksum ".buildcache/cache-keys/install-tools-4b2b8a186483d69012486bed7c5c030332be6014"}}
-          - cache004-configure-go_20d6_{{checksum ".buildcache/cache-keys/configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b"}}
-          - cache004-configure-git-ssh_dc7c_{{checksum ".buildcache/cache-keys/configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d"}}
-          - cache004-install-deps_ad24_{{checksum ".buildcache/cache-keys/install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59"}}
+          - cache005-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
+          - cache005-download-modules_9e33_{{checksum ".buildcache/cache-keys/download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf"}}
+          - cache005-generate-assets_7609_{{checksum ".buildcache/cache-keys/generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf"}}
+          - cache005-compile-ui_7d20_{{checksum ".buildcache/cache-keys/compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9"}}
+          - cache005-install-tools_4b2b_{{checksum ".buildcache/cache-keys/install-tools-4b2b8a186483d69012486bed7c5c030332be6014"}}
+          - cache005-configure-go_20d6_{{checksum ".buildcache/cache-keys/configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b"}}
+          - cache005-configure-git-ssh_dc7c_{{checksum ".buildcache/cache-keys/configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d"}}
+          - cache005-install-deps_ad24_{{checksum ".buildcache/cache-keys/install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59"}}
       - run:
           name: Load whatever builder cache we have (if any) into the Docker daemon
           no_output_timeout: 30m
@@ -266,7 +266,7 @@ jobs:
           command: ls -lahR .buildcache/packages
       - save_cache:
           name: Saving package cache
-          key: 'cache004-package-671eb951939aab765d220e3c33b70fd9a6d97c31-{{checksum ".buildcache/cache-keys/package-671eb951939aab765d220e3c33b70fd9a6d97c31"}}'
+          key: 'cache005-package-671eb951939aab765d220e3c33b70fd9a6d97c31-{{checksum ".buildcache/cache-keys/package-671eb951939aab765d220e3c33b70fd9a6d97c31"}}'
           paths:
             - .buildcache/packages/store
       # Save builder image cache if necessary.
@@ -293,7 +293,7 @@ jobs:
       - write-package-cache-key
       - restore_cache:
           name: Restore package cache
-          key: 'cache004-package-a902295a6ed82c199ac1ad0431413427b383ede9-{{checksum ".buildcache/cache-keys/package-a902295a6ed82c199ac1ad0431413427b383ede9"}}'
+          key: 'cache005-package-a902295a6ed82c199ac1ad0431413427b383ede9-{{checksum ".buildcache/cache-keys/package-a902295a6ed82c199ac1ad0431413427b383ede9"}}'
       - run:
           name: Check the cache status.
           command: |
@@ -309,14 +309,14 @@ jobs:
       - restore_cache:
           name: Restore build layer cache
           keys:
-          - cache004-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
-          - cache004-download-modules_9e33_{{checksum ".buildcache/cache-keys/download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf"}}
-          - cache004-generate-assets_7609_{{checksum ".buildcache/cache-keys/generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf"}}
-          - cache004-compile-ui_7d20_{{checksum ".buildcache/cache-keys/compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9"}}
-          - cache004-install-tools_4b2b_{{checksum ".buildcache/cache-keys/install-tools-4b2b8a186483d69012486bed7c5c030332be6014"}}
-          - cache004-configure-go_20d6_{{checksum ".buildcache/cache-keys/configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b"}}
-          - cache004-configure-git-ssh_dc7c_{{checksum ".buildcache/cache-keys/configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d"}}
-          - cache004-install-deps_ad24_{{checksum ".buildcache/cache-keys/install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59"}}
+          - cache005-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
+          - cache005-download-modules_9e33_{{checksum ".buildcache/cache-keys/download-modules-9e330ce9ee7fb38ecd15fe995fc2791a5dc225cf"}}
+          - cache005-generate-assets_7609_{{checksum ".buildcache/cache-keys/generate-assets-760993a96a68b03d7e2bbfd1c6c61e77dddf44cf"}}
+          - cache005-compile-ui_7d20_{{checksum ".buildcache/cache-keys/compile-ui-7d200c7e3967abb06b6992e54c29aa7dd0fd89a9"}}
+          - cache005-install-tools_4b2b_{{checksum ".buildcache/cache-keys/install-tools-4b2b8a186483d69012486bed7c5c030332be6014"}}
+          - cache005-configure-go_20d6_{{checksum ".buildcache/cache-keys/configure-go-20d64b31d4c0a2121fd38bc5e09bd2cefcb6cb1b"}}
+          - cache005-configure-git-ssh_dc7c_{{checksum ".buildcache/cache-keys/configure-git-ssh-dc7ce117539ec62b7d74ddf97f61763669bb1a0d"}}
+          - cache005-install-deps_ad24_{{checksum ".buildcache/cache-keys/install-deps-ad24d423f40b3b1e43b945ca5ea78da48a616c59"}}
       - run:
           name: Load whatever builder cache we have (if any) into the Docker daemon
           no_output_timeout: 30m
@@ -337,7 +337,7 @@ jobs:
           command: ls -lahR .buildcache/packages
       - save_cache:
           name: Saving package cache
-          key: 'cache004-package-a902295a6ed82c199ac1ad0431413427b383ede9-{{checksum ".buildcache/cache-keys/package-a902295a6ed82c199ac1ad0431413427b383ede9"}}'
+          key: 'cache005-package-a902295a6ed82c199ac1ad0431413427b383ede9-{{checksum ".buildcache/cache-keys/package-a902295a6ed82c199ac1ad0431413427b383ede9"}}'
           paths:
             - .buildcache/packages/store
       # Save builder image cache if necessary.
@@ -401,12 +401,12 @@ commands:
   load-darwin_amd64_package:
     steps:
       - restore_cache:
-          key: 'cache004-package-671eb951939aab765d220e3c33b70fd9a6d97c31-{{checksum ".buildcache/cache-keys/package-671eb951939aab765d220e3c33b70fd9a6d97c31"}}'
+          key: 'cache005-package-671eb951939aab765d220e3c33b70fd9a6d97c31-{{checksum ".buildcache/cache-keys/package-671eb951939aab765d220e3c33b70fd9a6d97c31"}}'
   
   load-linux_amd64_package:
     steps:
       - restore_cache:
-          key: 'cache004-package-a902295a6ed82c199ac1ad0431413427b383ede9-{{checksum ".buildcache/cache-keys/package-a902295a6ed82c199ac1ad0431413427b383ede9"}}'
+          key: 'cache005-package-a902295a6ed82c199ac1ad0431413427b383ede9-{{checksum ".buildcache/cache-keys/package-a902295a6ed82c199ac1ad0431413427b383ede9"}}'
   
 
   write-build-layer-cache-keys:
