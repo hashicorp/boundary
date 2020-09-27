@@ -17,7 +17,7 @@ executors:
   builder-machine:
     machine:
       image: ubuntu-1604:202007-01
-    resource_class: xlarge
+    resource_class: 2xlarge
     environment:
       PRODUCT_REVISION: ""
       AUTO_INSTALL_TOOLS: 'YES'
@@ -136,7 +136,10 @@ jobs:
             ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
 
             make -f packages*.lock/layer.mk 07-copy-source-a528829eb871c2744012d39745dab2d35ffae89b-image
-      - run: make -f packages*.lock/layer.mk 07-copy-source-a528829eb871c2744012d39745dab2d35ffae89b-save
+
+      - run:
+          name: Export builder image
+          command: make -f packages*.lock/layer.mk 07-copy-source-a528829eb871c2744012d39745dab2d35ffae89b-save
       - save_cache:
           name: Save layer copy-source to cache.
           key: cache003-copy-source_a528_{{checksum ".buildcache/cache-keys/copy-source-a528829eb871c2744012d39745dab2d35ffae89b"}}
