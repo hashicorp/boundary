@@ -47,7 +47,7 @@ package-aliases:
       {{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
   - type: github-releases
     template: >-
-      {{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
+      {{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
 #  - type: public-hc-releases
 #    template: >-
 #      boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
