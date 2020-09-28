@@ -12,20 +12,20 @@
     margin: 0 40px;
   }
 
+  & > h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+
+  & > p {
+    margin-top: 0;
+    margin-bottom: 40px;
+  }
+
   & hr {
     width: 64px;
     background-color: var(--red);
     margin-top: 0;
     margin-bottom: 24px;
   }
-}
-
-.heading {
-  margin-top: 0;
-  margin-bottom: 8px;
-}
-
-.content {
-  margin-top: 0;
-  margin-bottom: 40px;
 }

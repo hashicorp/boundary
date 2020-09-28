@@ -5,8 +5,8 @@ export default function SectionBreakCta({ heading, content, link }) {
   return (
     <div className={styles.sectionBreakCta}>
       <hr />
-      <h4 className={`g-type-display-4 ${styles.heading}`}>{heading}</h4>
-      <p className={`g-type-body ${styles.content}`}>{content}</p>
+      <h4 className="g-type-display-4">{heading}</h4>
+      <p className="g-type-body">{content}</p>
       <Button
         title={link.text}
         url={link.url}
