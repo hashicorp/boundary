@@ -1,11 +1,45 @@
-.howItWorks {
-  /* Styles TBD */
+.root {
+  padding: 88px 0;
+
+  & > h2 {
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 64px;
+  }
+}
+
+.contentContainer {
+  display: flex;
+
+  & > div {
+    max-width: 591px;
+    margin-right: 136px;
+  }
+
+  & > ul {
+    padding: 0;
+
+    & > li {
+      padding: 0;
+    }
+  }
+}
+
+.footerText {
+  color: var(--gray-5);
 }
 
 .image {
-  /* Styles TBD */
+  & > img {
+    max-width: 100%;
+  }
 }
 
 .sections {
-  /* Styles TBD */
+  & > li {
+    list-style: none;
+    & + li {
+      margin-top: 330px;
+    }
+  }
 }
