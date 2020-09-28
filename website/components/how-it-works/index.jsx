@@ -10,22 +10,18 @@ export default function HowItWorks({ sections }) {
         </div>
         <ul className={s.sections}>
           {/* TODO Remove sections ternary when sections is no longer temp */}
-          {sections
-            ? sections.map(({ title, description, logos, footerText }) => (
-                <li key="title">
-                  <h4 className="g-type-display-4">{title}</h4>
-                  <p className="g-type-body">{description}</p>
-                  {logos ? (
-                    <div>{`<LogoList logos={logos} /> here`}</div>
-                  ) : null}
-                  {footerText ? (
-                    <p className={`g-type-tag-label ${s.footerText}`}>
-                      {footerText}
-                    </p>
-                  ) : null}
-                </li>
-              ))
-            : null}
+          {sections.map(({ title, description, logos, footerText }) => (
+            <li key="title">
+              <h4 className="g-type-display-4">{title}</h4>
+              <p className="g-type-body">{description}</p>
+              {logos ? <div>{`<LogoList logos={logos} /> here`}</div> : null}
+              {footerText ? (
+                <p className={`g-type-tag-label ${s.footerText}`}>
+                  {footerText}
+                </p>
+              ) : null}
+            </li>
+          ))}
         </ul>
       </div>
     </div>
