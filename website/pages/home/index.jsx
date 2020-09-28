@@ -1,3 +1,4 @@
+import BrandedCta from 'components/branded-cta'
 import HomepageHero from 'components/homepage-hero'
 import SectionBreakCta from 'components/section-break-cta'
 import ProductFeaturesList from '@hashicorp/react-product-features-list'
@@ -110,6 +111,14 @@ export default function HomePage() {
           />
         </div>
       </div>
+      <BrandedCta
+        heading="Ready to get started?"
+        content="Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments."
+        links={[
+          { text: 'Download', url: '/download', type: 'download' },
+          { text: 'Explore documentation', url: '/docs' },
+        ]}
+      />
     </div>
   )
 }
