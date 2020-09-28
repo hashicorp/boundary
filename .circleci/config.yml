@@ -138,7 +138,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 2647dd2d665b71b5da76a9964b4c272985d37ea0
   darwin_amd64_package:
     docker:
     - image: circleci/buildpack-deps
@@ -146,7 +146,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 2647dd2d665b71b5da76a9964b4c272985d37ea0
     - PACKAGE_SPEC_ID: 3f81e804b31cb70e63a9c834931d9a0a4c2e2bb3
     steps:
     - setup_remote_docker:
@@ -216,7 +216,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 2647dd2d665b71b5da76a9964b4c272985d37ea0
     - PACKAGE_SPEC_ID: 26ad460ac09efc9c56bdbb7a962ff92616c06c51
     steps:
     - setup_remote_docker:
@@ -286,7 +286,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 2647dd2d665b71b5da76a9964b4c272985d37ea0
     - PACKAGE_SPEC_ID: 6b5bf7794d67cf76b1b4772807af52deb1f6a808
     steps:
     - setup_remote_docker:
@@ -389,27 +389,27 @@ jobs:
         command: ls -lahR .buildcache
         name: List Build Cache
     - run:
-        command: cp packages*.lock/pkgs.yml lockfile-standalone.yml
+        command: cp packages*.lock/pkgs.yml lockfile-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911.yml
     - store_artifacts:
-        destination: lockfile-standalone.yml
-        path: lockfile-standalone.yml
+        destination: lockfile-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911.yml
+        path: lockfile-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911.yml
     - store_artifacts:
-        destination: packages-standalone
+        destination: packages-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911
         path: .buildcache/packages
     - run:
-        command: tar -czf packages-standalone.tar.gz .buildcache/packages lockfile-standalone.yml
+        command: tar -czf packages-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911.tar.gz .buildcache/packages lockfile-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911.yml
     - store_artifacts:
-        destination: packages-standalone.tar.gz
-        path: packages-standalone.tar.gz
+        destination: packages-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911.tar.gz
+        path: packages-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911.tar.gz
     - run:
-        command: tar -czf meta-standalone.tar.gz .buildcache/packages/store/*.json lockfile-standalone.yml
+        command: tar -czf meta-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911.tar.gz .buildcache/packages/store/*.json lockfile-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911.yml
     - store_artifacts:
-        destination: meta-standalone.tar.gz
-        path: meta-standalone.tar.gz
+        destination: meta-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911.tar.gz
+        path: meta-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911.tar.gz
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 2647dd2d665b71b5da76a9964b4c272985d37ea0
   build:
     machine:
       image: ubuntu-1604:201903-01
@@ -551,7 +551,7 @@ jobs:
         when: always
     working_directory: ~/boundary
 workflows:
-  build-standalone:
+  build-2647dd2d665b71b5da76a9964b4c272985d37ea0-748714d3a36e1911:
     jobs:
     - build-common-layers
     - darwin_amd64_package:
