@@ -50,10 +50,10 @@ jobs:
       - restore_cache:
           name: Restore build image cache
           keys:
-            - cache005-copy-source_2bf2_{{checksum ".buildcache/cache-keys/copy-source-2bf23f8820c7f77d69c67cc1e898d73e3d002cc9"}}
-            - cache005-go-modules_694e_{{checksum ".buildcache/cache-keys/go-modules-694e8500194e3b187b35bd9a40229f3bd215710e"}}
-            - cache005-ui_5f82_{{checksum ".buildcache/cache-keys/ui-5f82d1f0cbf979ee051aa1ba0f7105483fa6947d"}}
-            - cache005-base_aac1_{{checksum ".buildcache/cache-keys/base-aac1d959b4b3af1495941602b5e51fb6181baded"}}
+            - cache006-copy-source_2bf2_{{checksum ".buildcache/cache-keys/copy-source-2bf23f8820c7f77d69c67cc1e898d73e3d002cc9"}}
+            - cache006-go-modules_694e_{{checksum ".buildcache/cache-keys/go-modules-694e8500194e3b187b35bd9a40229f3bd215710e"}}
+            - cache006-ui_5f82_{{checksum ".buildcache/cache-keys/ui-5f82d1f0cbf979ee051aa1ba0f7105483fa6947d"}}
+            - cache006-base_aac1_{{checksum ".buildcache/cache-keys/base-aac1d959b4b3af1495941602b5e51fb6181baded"}}
       - run:
           name: Finish early if loaded exact match from cache.
           command: |
@@ -72,32 +72,64 @@ jobs:
           name: Build base layer
           command: |
             
+            KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
             eval "$(ssh-agent -s)"
-            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+            if [ -f "$KEYFILE" ]; then
+              ssh-add "$KEYFILE"
+            else
+              echo "==> INFO: SSH key for github.com not found"
+              echo "    Attempts to access private repositories from within"
+              echo "    the build will fail, e.g. for private go modules, or"
+              echo "    attempts to directly clone private repositories."
+            fi
 
             make -f packages*.lock/layer.mk 00-base-aac1d959b4b3af1495941602b5e51fb6181baded-image
       - run:
           name: Build ui layer
           command: |
             
+            KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
             eval "$(ssh-agent -s)"
-            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+            if [ -f "$KEYFILE" ]; then
+              ssh-add "$KEYFILE"
+            else
+              echo "==> INFO: SSH key for github.com not found"
+              echo "    Attempts to access private repositories from within"
+              echo "    the build will fail, e.g. for private go modules, or"
+              echo "    attempts to directly clone private repositories."
+            fi
 
             make -f packages*.lock/layer.mk 01-ui-5f82d1f0cbf979ee051aa1ba0f7105483fa6947d-image
       - run:
           name: Build go-modules layer
           command: |
             
+            KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
             eval "$(ssh-agent -s)"
-            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+            if [ -f "$KEYFILE" ]; then
+              ssh-add "$KEYFILE"
+            else
+              echo "==> INFO: SSH key for github.com not found"
+              echo "    Attempts to access private repositories from within"
+              echo "    the build will fail, e.g. for private go modules, or"
+              echo "    attempts to directly clone private repositories."
+            fi
 
             make -f packages*.lock/layer.mk 02-go-modules-694e8500194e3b187b35bd9a40229f3bd215710e-image
       - run:
           name: Build copy-source layer
           command: |
             
+            KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
             eval "$(ssh-agent -s)"
-            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+            if [ -f "$KEYFILE" ]; then
+              ssh-add "$KEYFILE"
+            else
+              echo "==> INFO: SSH key for github.com not found"
+              echo "    Attempts to access private repositories from within"
+              echo "    the build will fail, e.g. for private go modules, or"
+              echo "    attempts to directly clone private repositories."
+            fi
 
             make -f packages*.lock/layer.mk 03-copy-source-2bf23f8820c7f77d69c67cc1e898d73e3d002cc9-image
 
@@ -106,7 +138,7 @@ jobs:
           command: make -f packages*.lock/layer.mk 03-copy-source-2bf23f8820c7f77d69c67cc1e898d73e3d002cc9-save
       - save_cache:
           name: Save layer copy-source to cache.
-          key: cache005-copy-source_2bf2_{{checksum ".buildcache/cache-keys/copy-source-2bf23f8820c7f77d69c67cc1e898d73e3d002cc9"}}
+          key: cache006-copy-source_2bf2_{{checksum ".buildcache/cache-keys/copy-source-2bf23f8820c7f77d69c67cc1e898d73e3d002cc9"}}
           paths:
             - .buildcache/archives/03-copy-source-2bf23f8820c7f77d69c67cc1e898d73e3d002cc9.tar.gz
       - run:
@@ -114,7 +146,7 @@ jobs:
           command: mv .buildcache/archives/03-copy-source-2bf23f8820c7f77d69c67cc1e898d73e3d002cc9.tar.gz .buildcache/archives/02-go-modules-694e8500194e3b187b35bd9a40229f3bd215710e.tar.gz
       - save_cache:
           name: Save layer go-modules to cache.
-          key: cache005-go-modules_694e_{{checksum ".buildcache/cache-keys/go-modules-694e8500194e3b187b35bd9a40229f3bd215710e"}}
+          key: cache006-go-modules_694e_{{checksum ".buildcache/cache-keys/go-modules-694e8500194e3b187b35bd9a40229f3bd215710e"}}
           paths:
             - .buildcache/archives/02-go-modules-694e8500194e3b187b35bd9a40229f3bd215710e.tar.gz
       - run:
@@ -122,7 +154,7 @@ jobs:
           command: mv .buildcache/archives/02-go-modules-694e8500194e3b187b35bd9a40229f3bd215710e.tar.gz .buildcache/archives/01-ui-5f82d1f0cbf979ee051aa1ba0f7105483fa6947d.tar.gz
       - save_cache:
           name: Save layer ui to cache.
-          key: cache005-ui_5f82_{{checksum ".buildcache/cache-keys/ui-5f82d1f0cbf979ee051aa1ba0f7105483fa6947d"}}
+          key: cache006-ui_5f82_{{checksum ".buildcache/cache-keys/ui-5f82d1f0cbf979ee051aa1ba0f7105483fa6947d"}}
           paths:
             - .buildcache/archives/01-ui-5f82d1f0cbf979ee051aa1ba0f7105483fa6947d.tar.gz
       - run:
@@ -130,7 +162,7 @@ jobs:
           command: mv .buildcache/archives/01-ui-5f82d1f0cbf979ee051aa1ba0f7105483fa6947d.tar.gz .buildcache/archives/00-base-aac1d959b4b3af1495941602b5e51fb6181baded.tar.gz
       - save_cache:
           name: Save layer base to cache.
-          key: cache005-base_aac1_{{checksum ".buildcache/cache-keys/base-aac1d959b4b3af1495941602b5e51fb6181baded"}}
+          key: cache006-base_aac1_{{checksum ".buildcache/cache-keys/base-aac1d959b4b3af1495941602b5e51fb6181baded"}}
           paths:
             - .buildcache/archives/00-base-aac1d959b4b3af1495941602b5e51fb6181baded.tar.gz
   darwin_amd64_package:
@@ -154,7 +186,7 @@ jobs:
       - write-package-cache-key
       - restore_cache:
           name: Restore package cache
-          key: 'cache005-package-a0ba97d1f6d539dc949e65f4f0859e8823062c37-{{checksum ".buildcache/cache-keys/package-a0ba97d1f6d539dc949e65f4f0859e8823062c37"}}'
+          key: 'cache006-package-a0ba97d1f6d539dc949e65f4f0859e8823062c37-{{checksum ".buildcache/cache-keys/package-a0ba97d1f6d539dc949e65f4f0859e8823062c37"}}'
       - run:
           name: Check the cache status.
           command: |
@@ -170,10 +202,10 @@ jobs:
       - restore_cache:
           name: Restore build layer cache
           keys:
-          - cache005-copy-source_2bf2_{{checksum ".buildcache/cache-keys/copy-source-2bf23f8820c7f77d69c67cc1e898d73e3d002cc9"}}
-          - cache005-go-modules_694e_{{checksum ".buildcache/cache-keys/go-modules-694e8500194e3b187b35bd9a40229f3bd215710e"}}
-          - cache005-ui_5f82_{{checksum ".buildcache/cache-keys/ui-5f82d1f0cbf979ee051aa1ba0f7105483fa6947d"}}
-          - cache005-base_aac1_{{checksum ".buildcache/cache-keys/base-aac1d959b4b3af1495941602b5e51fb6181baded"}}
+          - cache006-copy-source_2bf2_{{checksum ".buildcache/cache-keys/copy-source-2bf23f8820c7f77d69c67cc1e898d73e3d002cc9"}}
+          - cache006-go-modules_694e_{{checksum ".buildcache/cache-keys/go-modules-694e8500194e3b187b35bd9a40229f3bd215710e"}}
+          - cache006-ui_5f82_{{checksum ".buildcache/cache-keys/ui-5f82d1f0cbf979ee051aa1ba0f7105483fa6947d"}}
+          - cache006-base_aac1_{{checksum ".buildcache/cache-keys/base-aac1d959b4b3af1495941602b5e51fb6181baded"}}
       - run:
           name: Load whatever builder cache we have (if any) into the Docker daemon
           no_output_timeout: 30m
@@ -184,8 +216,16 @@ jobs:
           name: Compile Package
           command: |
             
+            KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
             eval "$(ssh-agent -s)"
-            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+            if [ -f "$KEYFILE" ]; then
+              ssh-add "$KEYFILE"
+            else
+              echo "==> INFO: SSH key for github.com not found"
+              echo "    Attempts to access private repositories from within"
+              echo "    the build will fail, e.g. for private go modules, or"
+              echo "    attempts to directly clone private repositories."
+            fi
 
             make -C packages*.lock package
 
@@ -194,7 +234,7 @@ jobs:
           command: ls -lahR .buildcache/packages
       - save_cache:
           name: Saving package cache
-          key: 'cache005-package-a0ba97d1f6d539dc949e65f4f0859e8823062c37-{{checksum ".buildcache/cache-keys/package-a0ba97d1f6d539dc949e65f4f0859e8823062c37"}}'
+          key: 'cache006-package-a0ba97d1f6d539dc949e65f4f0859e8823062c37-{{checksum ".buildcache/cache-keys/package-a0ba97d1f6d539dc949e65f4f0859e8823062c37"}}'
           paths:
             - .buildcache/packages/store
       # Save builder image cache if necessary.
@@ -221,7 +261,7 @@ jobs:
       - write-package-cache-key
       - restore_cache:
           name: Restore package cache
-          key: 'cache005-package-556901dfda0ede9e6e44f06371985480234f7b8f-{{checksum ".buildcache/cache-keys/package-556901dfda0ede9e6e44f06371985480234f7b8f"}}'
+          key: 'cache006-package-556901dfda0ede9e6e44f06371985480234f7b8f-{{checksum ".buildcache/cache-keys/package-556901dfda0ede9e6e44f06371985480234f7b8f"}}'
       - run:
           name: Check the cache status.
           command: |
@@ -237,10 +277,10 @@ jobs:
       - restore_cache:
           name: Restore build layer cache
           keys:
-          - cache005-copy-source_2bf2_{{checksum ".buildcache/cache-keys/copy-source-2bf23f8820c7f77d69c67cc1e898d73e3d002cc9"}}
-          - cache005-go-modules_694e_{{checksum ".buildcache/cache-keys/go-modules-694e8500194e3b187b35bd9a40229f3bd215710e"}}
-          - cache005-ui_5f82_{{checksum ".buildcache/cache-keys/ui-5f82d1f0cbf979ee051aa1ba0f7105483fa6947d"}}
-          - cache005-base_aac1_{{checksum ".buildcache/cache-keys/base-aac1d959b4b3af1495941602b5e51fb6181baded"}}
+          - cache006-copy-source_2bf2_{{checksum ".buildcache/cache-keys/copy-source-2bf23f8820c7f77d69c67cc1e898d73e3d002cc9"}}
+          - cache006-go-modules_694e_{{checksum ".buildcache/cache-keys/go-modules-694e8500194e3b187b35bd9a40229f3bd215710e"}}
+          - cache006-ui_5f82_{{checksum ".buildcache/cache-keys/ui-5f82d1f0cbf979ee051aa1ba0f7105483fa6947d"}}
+          - cache006-base_aac1_{{checksum ".buildcache/cache-keys/base-aac1d959b4b3af1495941602b5e51fb6181baded"}}
       - run:
           name: Load whatever builder cache we have (if any) into the Docker daemon
           no_output_timeout: 30m
@@ -251,8 +291,16 @@ jobs:
           name: Compile Package
           command: |
             
+            KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
             eval "$(ssh-agent -s)"
-            ssh-add ~/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98
+            if [ -f "$KEYFILE" ]; then
+              ssh-add "$KEYFILE"
+            else
+              echo "==> INFO: SSH key for github.com not found"
+              echo "    Attempts to access private repositories from within"
+              echo "    the build will fail, e.g. for private go modules, or"
+              echo "    attempts to directly clone private repositories."
+            fi
 
             make -C packages*.lock package
 
@@ -261,7 +309,7 @@ jobs:
           command: ls -lahR .buildcache/packages
       - save_cache:
           name: Saving package cache
-          key: 'cache005-package-556901dfda0ede9e6e44f06371985480234f7b8f-{{checksum ".buildcache/cache-keys/package-556901dfda0ede9e6e44f06371985480234f7b8f"}}'
+          key: 'cache006-package-556901dfda0ede9e6e44f06371985480234f7b8f-{{checksum ".buildcache/cache-keys/package-556901dfda0ede9e6e44f06371985480234f7b8f"}}'
           paths:
             - .buildcache/packages/store
       # Save builder image cache if necessary.
@@ -325,12 +373,12 @@ commands:
   load-darwin_amd64_package:
     steps:
       - restore_cache:
-          key: 'cache005-package-a0ba97d1f6d539dc949e65f4f0859e8823062c37-{{checksum ".buildcache/cache-keys/package-a0ba97d1f6d539dc949e65f4f0859e8823062c37"}}'
+          key: 'cache006-package-a0ba97d1f6d539dc949e65f4f0859e8823062c37-{{checksum ".buildcache/cache-keys/package-a0ba97d1f6d539dc949e65f4f0859e8823062c37"}}'
   
   load-linux_amd64_package:
     steps:
       - restore_cache:
-          key: 'cache005-package-556901dfda0ede9e6e44f06371985480234f7b8f-{{checksum ".buildcache/cache-keys/package-556901dfda0ede9e6e44f06371985480234f7b8f"}}'
+          key: 'cache006-package-556901dfda0ede9e6e44f06371985480234f7b8f-{{checksum ".buildcache/cache-keys/package-556901dfda0ede9e6e44f06371985480234f7b8f"}}'
   
 
   write-build-layer-cache-keys:
