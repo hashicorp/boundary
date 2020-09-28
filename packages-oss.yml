@@ -53,9 +53,15 @@ base-image: "golang@sha256:29452ef08bd0535f550c47b6034522c82ac10517b49c5f3b7a000
 layers:
   - name: base
     dockerfile: |
-      ENV GOPATH= GOBIN=/usr/local/bin GO111MODULE=on GOPRIVATE=github.com/hashicorp/*
+      ENV \
+        GOPATH= \
+        GOBIN=/usr/local/bin \
+        GO111MODULE=on \
+        GOPRIVATE=github.com/hashicorp/* \
+        GOCACHE=/go/cache
       RUN --mount=type=ssh \
-          curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg \
+          mkdir -p "$GOCACHE" \
+          && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg \
            | apt-key add - \
           && echo "deb https://dl.yarnpkg.com/debian/ stable main" \
            | tee /etc/apt/sources.list.d/yarn.list \
@@ -92,7 +98,7 @@ layers:
   - name: copy-source
     source-include: "*.go"
     dockerfile: |
-      RUN go build -x -tags '{{.BUILD_TAGS}}' ./cmd/boundary
+      RUN go build -x -tags '{{.BUILD_TAGS}}' -o /dev/null ./cmd/boundary
 
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;
