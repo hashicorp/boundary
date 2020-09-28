@@ -1,5 +1,6 @@
 import BrandedCta from 'components/branded-cta'
 import HomepageHero from 'components/homepage-hero'
+import HowItWorks from 'components/how-it-works'
 import SectionBreakCta from 'components/section-break-cta'
 import ProductFeaturesList from '@hashicorp/react-product-features-list'
 import UseCases from '@hashicorp/react-use-cases'
@@ -25,6 +26,9 @@ export default function HomePage() {
         // TODO Replace URL with finalized URL
         videoUrl="https://www.youtube.com/watch?v=Y7c_twmDxQ4"
       />
+
+      <HowItWorks />
+
       <div className="break-section">
         <SectionBreakCta
           heading="Have you tried Boundary?"
@@ -77,6 +81,7 @@ export default function HomePage() {
           },
         ]}
       />
+
       <div className="use-cases-section">
         <div className="g-grid-container">
           <h2 className="g-type-display-2">Use cases</h2>
@@ -113,6 +118,7 @@ export default function HomePage() {
           />
         </div>
       </div>
+
       <BrandedCta
         heading="Ready to get started?"
         content="Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments."
