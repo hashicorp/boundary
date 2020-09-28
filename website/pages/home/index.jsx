@@ -1,4 +1,5 @@
 import HomepageHero from 'components/homepage-hero'
+import SectionBreakCta from 'components/section-break-cta'
 import ProductFeaturesList from '@hashicorp/react-product-features-list'
 import UseCases from '@hashicorp/react-use-cases'
 
@@ -21,6 +22,17 @@ export default function HomePage() {
           },
         ]}
       />
+      <div className="break-section">
+        <SectionBreakCta
+          heading="Have you tried Boundary?"
+          content="Share your feedback for a chance to receive special swag."
+          link={{
+            text: 'Share your Boundary story',
+            url: 'http://hashi.co/boundary-survey',
+          }}
+        />
+      </div>
+
       <ProductFeaturesList
         heading="Boundary Features"
         features={[
