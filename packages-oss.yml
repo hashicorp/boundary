@@ -27,7 +27,6 @@ packages:
   - inputs: { GOOS: darwin, GOARCH: amd64 }
   - inputs: { GOOS: linux, GOARCH: amd64 }
   - inputs: { GOOS: windows, GOARCH: amd64 }
-  - inputs: { GOOS: freebsd, GOARCH: amd64 }
 
 meta:
   defaults:
