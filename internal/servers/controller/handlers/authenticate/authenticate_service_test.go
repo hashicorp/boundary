@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
-	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -50,7 +49,7 @@ func TestAuthenticate(t *testing.T) {
 	cases := []struct {
 		name    string
 		request *pbs.AuthenticateRequest
-		want    *pbs.AuthenticateResponse
+		wantType string
 		wantErr error
 	}{
 		{
@@ -66,9 +65,22 @@ func TestAuthenticate(t *testing.T) {
 					return &structpb.Struct{Fields: creds}
 				}(),
 			},
-			want: &pbs.AuthenticateResponse{Item: &pba.AuthToken{
+			wantType: "token",
+		},
+		{
+			name: "cookie-type",
+			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
-			}},
+				TokenType:    "cookie",
+				Credentials: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
+			},
+			wantType: "cookie",
 		},
 		{
 			name: "no-token-type",
@@ -82,9 +94,6 @@ func TestAuthenticate(t *testing.T) {
 					return &structpb.Struct{Fields: creds}
 				}(),
 			},
-			want: &pbs.AuthenticateResponse{Item: &pba.AuthToken{
-				AuthMethodId: am.GetPublicId(),
-			}},
 		},
 		{
 			name: "bad-token-type",
@@ -166,6 +175,9 @@ func TestAuthenticate(t *testing.T) {
 			assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
 			assert.Equal(aToken.GetCreatedTime(), aToken.GetUpdatedTime())
 			assert.Equal(aToken.GetCreatedTime(), aToken.GetApproximateLastUsedTime())
+			assert.Equal(acct.GetPublicId(), aToken.GetAccountId())
+			assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
+			assert.Equal(tc.wantType, resp.GetTokenType())
 		})
 	}
 }
@@ -214,6 +226,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	aToken := resp.GetItem()
 	assert.Equal(iamUser.GetPublicId(), aToken.GetUserId())
 	assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
+	assert.Equal(acct.GetPublicId(), aToken.GetAccountId())
 
 	assert.NotEmpty(aToken.GetId())
 	assert.NotEmpty(aToken.GetToken())
