@@ -35,7 +35,7 @@
   }
 }
 
-.sections {
+.features {
   & > li {
     list-style: none;
     & + li {

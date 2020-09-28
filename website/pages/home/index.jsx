@@ -28,7 +28,7 @@ export default function HomePage() {
       />
 
       <HowItWorks
-        sections={[
+        features={[
           {
             title: 'Authenticate',
             description:
