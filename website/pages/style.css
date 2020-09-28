@@ -20,6 +20,7 @@
 @import '~@hashicorp/react-mega-nav/style.css';
 @import '~@hashicorp/react-docs-page/style.css';
 @import '~@hashicorp/react-product-features-list/dist/style.css';
+@import '~@hashicorp/react-use-cases/dist/style.css';
 
 /* Local Components */
 @import '../components/footer/style.css';

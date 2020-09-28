@@ -11,7 +11,7 @@ console.log(`AUTH0_DOMAIN: ${process.env.AUTH0_DOMAIN}`)
 
 module.exports = withHashicorp({
   defaultLayout: true,
-  transpileModules: ['is-absolute-url', '@hashicorp/react-mega-nav'],
+  transpileModules: ['is-absolute-url', '@hashicorp/react-.*'],
   mdx: { resolveIncludes: path.join(__dirname, 'pages/partials') },
 })({
   async redirects() {
