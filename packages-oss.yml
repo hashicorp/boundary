@@ -9,7 +9,7 @@ config:
 inputs:
   defaults:
     PRODUCT_NAME: boundary
-    PRODUCT_VERSION: 0.0.1
+    PRODUCT_VERSION: 0.1.0-beta.1
     BUILD_TAGS: ui
     CGO_ENABLED: 0
 
@@ -26,6 +26,8 @@ inputs:
 packages:
   - inputs: { GOOS: darwin, GOARCH: amd64 }
   - inputs: { GOOS: linux, GOARCH: amd64 }
+  - inputs: { GOOS: windows, GOARCH: amd64 }
+  - inputs: { GOOS: freebsd, GOARCH: amd64 }
 
 meta:
   defaults:
@@ -43,9 +45,12 @@ package-aliases:
   - type: local
     template: >-
       {{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
-  - type: public-hc-releases
+  - type: github-releases
     template: >-
-      boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
+      {{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
+#  - type: public-hc-releases
+#    template: >-
+#      boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
 
 # golang@sha256:29452ef08bd0535f550c47b6034522c82ac10517b49c5f3b7a00035ecee0089e = golang:1.15.2-buster
 base-image: "golang@sha256:29452ef08bd0535f550c47b6034522c82ac10517b49c5f3b7a00035ecee0089e"
