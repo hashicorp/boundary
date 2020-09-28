@@ -10,7 +10,7 @@ executors:
     docker:
       - image: circleci/buildpack-deps
     environment:
-      PRODUCT_REVISION: ""
+      PRODUCT_REVISION: "ad364714b47113baf7e87e9a382d03b8f73b896a"
       AUTO_INSTALL_TOOLS: 'YES'
       BUILDKIT_PROGRESS: plain
     shell: /usr/bin/env bash -euo pipefail -c
@@ -19,14 +19,14 @@ executors:
       image: ubuntu-1604:202007-01
     resource_class: xlarge
     environment:
-      PRODUCT_REVISION: ""
+      PRODUCT_REVISION: "ad364714b47113baf7e87e9a382d03b8f73b896a"
       AUTO_INSTALL_TOOLS: 'YES'
       BUILDKIT_PROGRESS: plain
     shell: /usr/bin/env bash -euo pipefail -c
 
 workflows:
   version: 2
-  build-standalone:
+  build-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75:
     jobs:
       - build-common-layers
       - darwin_amd64_package: { requires: [ build-common-layers ] }
@@ -512,30 +512,30 @@ jobs:
           command: ls -lahR .buildcache
 
       # Give the lockfile a name store_artifacts can work with.
-      - run: cp packages*.lock/pkgs.yml lockfile-standalone.yml
+      - run: cp packages*.lock/pkgs.yml lockfile-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75.yml
 
       # Surface the lock file as an artifact.
       - store_artifacts:
-          path: lockfile-standalone.yml
-          destination: lockfile-standalone.yml
+          path: lockfile-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75.yml
+          destination: lockfile-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75.yml
 
       # Surface the package store directory as an artifact.
       # This makes each zipped package separately downloadable.
       - store_artifacts:
           path: .buildcache/packages
-          destination: packages-standalone
+          destination: packages-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75
 
       # Surface a tarball of the whole package store plus lockfile as an artifact.
-      - run: tar -czf packages-standalone.tar.gz .buildcache/packages lockfile-standalone.yml
+      - run: tar -czf packages-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75.tar.gz .buildcache/packages lockfile-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75.yml
       - store_artifacts:
-          path: packages-standalone.tar.gz
-          destination: packages-standalone.tar.gz
+          path: packages-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75.tar.gz
+          destination: packages-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75.tar.gz
 
       # Surface a tarball of just the metadata files.
-      - run: tar -czf meta-standalone.tar.gz .buildcache/packages/store/*.json lockfile-standalone.yml
+      - run: tar -czf meta-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75.tar.gz .buildcache/packages/store/*.json lockfile-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75.yml
       - store_artifacts:
-          path: meta-standalone.tar.gz
-          destination: meta-standalone.tar.gz
+          path: meta-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75.tar.gz
+          destination: meta-ad364714b47113baf7e87e9a382d03b8f73b896a-93a6ac5d68844c75.tar.gz
 
 commands:
   load-darwin_amd64_package:
