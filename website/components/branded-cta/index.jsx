@@ -36,11 +36,6 @@ export default function BrandedCta(props) {
                   }}
                   title={link.text}
                   url={link.url}
-                  style={{
-                    backgroundColor:
-                      buttonVariant === 'primary' ? '#F04E54' : '',
-                    borderColor: buttonVariant === 'primary' ? '#F04E54' : '',
-                  }}
                 />
               )
             })}

@@ -4,6 +4,18 @@
   background-image: url('./img/bg-pattern.svg');
   background-position: bottom right;
   background-repeat: no-repeat;
+
+  @media (--small) {
+    background-position: bottom 0 right -130px;
+  }
+
+  @media (462px <= width < 600px) {
+    background-position: bottom 0 right -260px;
+  }
+
+  @media (width < 462px) {
+    background-position: bottom 0 right -170px;
+  }
 }
 
 .contentContainer {
