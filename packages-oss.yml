@@ -104,11 +104,11 @@ layers:
   - name: copy-source
     source-include: "*.go"
     dockerfile: |
-      RUN go build -x -tags '{{.BUILD_TAGS}}' -o /dev/null ./cmd/boundary
+      RUN go build -v -tags '{{.BUILD_TAGS}}' -o /dev/null ./cmd/boundary
 
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;
-  go build -x -tags '{{.BUILD_TAGS}}'
+  go build -v -tags '{{.BUILD_TAGS}}'
     -ldflags "-X $VERSION_PKG_PATH.GitCommit=$PACKAGE_SOURCE_ID
               -X $VERSION_PKG_PATH.Version={{.PRODUCT_VERSION_MMP}}
               -X $VERSION_PKG_PATH.VersionPrerelease={{.PRODUCT_VERSION_PRE}}"
