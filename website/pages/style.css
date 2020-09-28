@@ -6,7 +6,7 @@
 @import '~@hashicorp/react-global-styles/_temporary-to-remove/layout.css';
 @import '~@hashicorp/react-global-styles/_temporary-to-remove/tables.css';
 
-@import '~@hashicorp/react-button/dist/style.css';
+@import '~@hashicorp/react-button/styles/index.css';
 @import '~@hashicorp/react-consent-manager/dist/style.css';
 @import '~@hashicorp/react-toggle/dist/style.css';
 @import '~@hashicorp/react-section-header/dist/style.css';
