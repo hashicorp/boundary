@@ -30,6 +30,7 @@
 
 .heading {
   color: var(--black);
+  margin-top: 0;
 
   @media (width >= 992px) {
     flex-basis: 33.3%;
@@ -59,8 +60,7 @@
   margin-bottom: -16px;
 
   & a {
-    margin-right: 32px;
-    margin-bottom: 32px;
-    border-radius: 3px;
+    margin-right: 16px;
+    margin-bottom: 16px;
   }
 }

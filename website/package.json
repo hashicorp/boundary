@@ -6,6 +6,7 @@
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^9.0.6",
     "@hashicorp/nextjs-scripts": "13.0.0-canary.1",
+    "@hashicorp/react-button": "^3.0.1",
     "@hashicorp/react-content": "4.0.2",
     "@hashicorp/react-docs-page": "5.0.3",
     "@hashicorp/react-global-styles": "4.5.0",
