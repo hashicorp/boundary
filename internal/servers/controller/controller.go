@@ -147,6 +147,7 @@ func (c *Controller) Start() error {
 
 	c.startStatusTicking(c.baseContext)
 	c.startRecoveryNonceCleanupTicking(c.baseContext)
+	c.startTerminateCompletedSessionsTicking(c.baseContext)
 	c.started.Store(true)
 
 	return nil
