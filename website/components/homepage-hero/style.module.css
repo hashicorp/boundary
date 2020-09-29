@@ -2,9 +2,9 @@
   width: 100%;
   padding: 150px 0;
   background-repeat: no-repeat;
-  background-color: var(--gray-7);
+  background-color: var(--red-l3);
   background-image: url(/img/hero-pattern.svg);
-  background-size: cover;
+  background-position: bottom right;
 
   @media (max-width: 758px) {
     padding: 64px 0;
