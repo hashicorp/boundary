@@ -40,7 +40,8 @@ message User {
 	// Output only. The time this resource was last updated.
 	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
 
-	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
+	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
 	uint32 version = 80;
 
 	// Output only. Contains the list of Account IDs linked to this User.

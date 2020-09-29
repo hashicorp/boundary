@@ -10,43 +10,37 @@ import "google/protobuf/field_mask.proto";
 import "controller/api/resources/hostcatalogs/v1/host_catalog.proto";
 
 service HostCatalogService {
-	option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
-		description: "The host catalog service allows you to get/mutate Host catalogs of every type."
-	};
 
   // GetHostCatalog returns a stored Host Catalog if present.  The provided
-  // request must include the scope and catalog IDs for the host catalog being
-  // retrieved. If any of those IDs are missing, malformed, or reference a
-  // non-existing resource an error is returned.
+  // request must include the Catalog IDs for the Host Catalog being retrieved.
+  // If missing, malformed, or referencing a non-existing resource an error is
+  // returned.
   rpc GetHostCatalog(GetHostCatalogRequest) returns (GetHostCatalogResponse) {
-    // Gets the host as specified in the url.
     option (google.api.http) = {
       get: "/v1/host-catalogs/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single HostCatalog"
-      description: "Gets a single Host Catalog with the provided identifier."
+      summary: "Gets a single Host Catalog."
     };
   }
 
-  // ListHostCatalogs returns a list of stored HostCatalogs which exist inside
-  // the project referenced in the request. The request must include the scope
-  // ID for the HostCatalogs being retrieved. If any of those ids are missing,
-  // malformed, or reference a non-existing parent resource an error is
-  // returned.
+  // ListHostCatalogs returns a list of stored Host Catalogs which exist inside
+  // the scope referenced in the request. The request must include the scope
+  // ID and if it is  missing, malformed, or references a non-existing resource
+  // an error is returned.
   rpc ListHostCatalogs(ListHostCatalogsRequest) returns (ListHostCatalogsResponse) {
     option (google.api.http) = {
       get: "/v1/host-catalogs"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a list of HostCatalogs"
+      summary: "Gets a list of Host Catalogs."
     };
   }
 
-  // CreateHostCatalog creates and stores a HostCatalog in boundary.  The
-  // provided request must include the scope ID in which the catalog will be
-  // created and the catalog type to be created. If any of these required fields
+  // CreateHostCatalog creates and stores a Host Catalog in boundary.  The
+  // provided request must include the scope ID in which the Catalog will be
+  // created and the Catalog type to be created. If any of these required fields
   // are missing, malformed, or reference a non-existing parent resource an
   // error is returned.
   rpc CreateHostCatalog(CreateHostCatalogRequest) returns (CreateHostCatalogResponse) {
@@ -56,16 +50,15 @@ service HostCatalogService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a HostCatalog"
-      description: "Creates a single host catalog under the specified scope"
+      summary: "Creates a Host Catalog"
     };
   }
 
-  // UpdateHostCatalog updates an existing HostCatalog in Boundary. The
-  // provided HostCatalog must not have any read only fields set. The update
+  // UpdateHostCatalog updates an existing Host Catalog in Boundary. The
+  // provided Host Catalog must not have any read only fields set. The update
   // mask must be provided and include at least 1 mutable field. To unset a
   // field's value include that field name in the update mask and don't set the
-  // field in the HostCatalog.
+  // field in the Host Catalog.
   rpc UpdateHostCatalog(UpdateHostCatalogRequest) returns (UpdateHostCatalogResponse) {
     option (google.api.http) = {
       patch: "/v1/host-catalogs/{id}"
@@ -73,21 +66,19 @@ service HostCatalogService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a HostCatalog"
+      summary: "Updates a Host Catalog"
     };
   }
 
-  // DeleteHostCatalog removes a HostCatalog and all associated hosts and host
-  // sets from Boundary. If the provided scope or HostCatalog IDs are
-  // malformed or not provided DeleteHostCatalog returns an error. It is not an
-  // error to call DeleteHostCatalog for an scope or HostCatalog that does not
-  // exist as the response indicates if it existed or not.
+  // DeleteHostCatalog removes a Host Catalog and all associated Hosts and Host
+  // sets from Boundary. If the provided Host Catalog IDs is malformed or not
+  // provided DeleteHostCatalog returns an error.
   rpc DeleteHostCatalog(DeleteHostCatalogRequest) returns (DeleteHostCatalogResponse) {
     option (google.api.http) = {
       delete: "/v1/host-catalogs/{id}"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a HostCatalog"
+      summary: "Deletes a Host Catalog"
     };
   }
 }

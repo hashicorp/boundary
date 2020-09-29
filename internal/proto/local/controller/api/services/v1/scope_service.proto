@@ -13,7 +13,7 @@ service ScopeService {
 
   // GetScope returns a stored Scope if present.  The provided request
   // must include the scope ID for the scope being retrieved. If
-  // any of those IDs are missing, malformed or reference a non existing
+  // that ID is missing, malformed or references a non existing
   // resource an error is returned.
   rpc GetScope(GetScopeRequest) returns (GetScopeResponse) {
     option (google.api.http) = {
@@ -21,25 +21,25 @@ service ScopeService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Scope"
+      summary: "Gets a single Scope."
     };
   }
 
-  // ListScopes returns a list of stored scopes which exist inside the scope of
-  // the token making the request.
+  // ListScopes returns a list of stored Scopes which exist inside the provided
+  // parent Scope id.
   rpc ListScopes(ListScopesRequest) returns (ListScopesResponse) {
     option (google.api.http) = {
       get: "/v1/scopes"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Scopes within the scope of the token making the request"
+      summary: "Lists all Scopes within the Scope provided in the request."
     };
   }
 
-  // CreateScope creates and stores a scope in boundary.  The provided request
-  // must include the scope ID in which the scope will be created. If the scope
+  // CreateScope creates and stores a Scope in boundary.  The provided request
+  // must include the Scope ID in which the new scope will be created. If the Scope
   // ID is missing, malformed or references a non existing scope, an error is
-  // returned. If a name is provided that is in use in another scope in the same
+  // returned. If a name is provided that is in use in another Scope in the same
   // parent scope, an error is returned.
   rpc CreateScope(CreateScopeRequest) returns (CreateScopeResponse) {
     option (google.api.http) = {
@@ -48,18 +48,18 @@ service ScopeService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Scope"
+      summary: "Creates a single Scope."
     };
   }
 
-  // UpdateScope updates an existing scope in boundary.  The provided
-  // scope must not have any read only fields set.  The update mask must be
+  // UpdateScope updates an existing Scope in boundary.  The provided
+  // Scope must not have any read only fields set.  The update mask must be
   // included in the request and contain at least 1 mutable field.  To unset
   // a field's value, include the field in the update mask and don't set it
-  // in the provided scope. An error is returned if either the org
-  // or scope ids are missing or reference a non existing resource.  An error
+  // in the provided scope. An error is returned if the Scope Id is
+  // missing or reference a non-existing resource.  An error
   // is also returned if the request attempts to update the name to one that is
-  // already in use in this org.
+  // already in use by another scope in the parent scope.
   rpc UpdateScope(UpdateScopeRequest) returns (UpdateScopeResponse) {
     option (google.api.http) = {
       patch: "/v1/scopes/{id}"
@@ -67,21 +67,18 @@ service ScopeService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Scope"
+      summary: "Updates a Scope."
     };
   }
 
-  // DeleteScope remotes a scope and all child resources from Boundary. If the
-  // provided scope IDs are malformed or not provided an error is returned. No
-  // error is returned if the ID references a resource that does not exist as
-  // the response itself specifies if the resource existed before the
-  // DeleteScope request was received.
+  // DeleteScope remotes a Scope and all child resources from Boundary. If the
+  // provided Scope IDs are malformed or not provided an error is returned.
   rpc DeleteScope(DeleteScopeRequest) returns (DeleteScopeResponse) {
     option (google.api.http) = {
       delete: "/v1/scopes/{id}"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Scope"
+      summary: "Deletes a Scope."
     };
   }
 }
