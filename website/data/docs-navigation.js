@@ -79,12 +79,8 @@ export default [
     ],
   },
   {
-    category: 'admin-console',
-    content: ['login'],
-  },
-  {
-    category: 'command-line',
-    content: ['login'],
+    category: 'common-workflows',
+    content: ['manage-targets', 'manage-identities', 'manage-sessions'],
   },
   {
     category: 'releases',
