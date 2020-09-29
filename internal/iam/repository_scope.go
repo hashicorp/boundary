@@ -109,7 +109,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			return nil, fmt.Errorf("create scope: error generating public id for new admin role: %w", err)
 		}
 		adminRole.PublicId = adminRolePublicId
-		adminRole.Name = "administration"
+		adminRole.Name = "Administration"
 		adminRole.Description = fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId)
 		adminRoleRaw = adminRole
 		adminRoleMetadata = oplog.Metadata{
@@ -135,7 +135,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			return nil, fmt.Errorf("create scope: error generating public id for new default role: %w", err)
 		}
 		defaultRole.PublicId = defaultRolePublicId
-		defaultRole.Name = "default"
+		defaultRole.Name = "Default Grants"
 		defaultRole.Description = fmt.Sprintf("Role created for authentication to and listing of some resources of scope %s at its creation time", scopePublicId)
 		defaultRoleRaw = defaultRole
 		defaultRoleMetadata = oplog.Metadata{
@@ -302,12 +302,6 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				{
 					principals := []interface{}{}
 					rolePrincipal, err := NewUserRole(defaultRolePublicId, "u_anon")
-					if err != nil {
-						return fmt.Errorf("unable to create in memory role user: %w", err)
-					}
-					principals = append(principals, rolePrincipal)
-
-					rolePrincipal, err = NewUserRole(defaultRolePublicId, "u_auth")
 					if err != nil {
 						return fmt.Errorf("unable to create in memory role user: %w", err)
 					}
