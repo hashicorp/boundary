@@ -88,6 +88,10 @@ export default [
     ],
   },
   {
+    category: 'roadmap',
+    content: ['0_2_0'],
+  },
+  {
     category: 'releases',
     content: [
       {
