@@ -17,7 +17,7 @@ export default function HomePage() {
             type: 'download',
           },
           {
-            text: 'Documentaion',
+            text: 'Documentation',
             url: '/docs',
             type: 'inbound',
           },
