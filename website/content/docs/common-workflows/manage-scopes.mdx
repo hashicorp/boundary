@@ -21,7 +21,9 @@ In this example, we're going to create two scopes, a project and an organization
 
 An organization lives in the global scope. In this example, we're going to create an organization. In doing so, we're going to opt for automated role creation during scope generation in order to simplify management of the scope by the user.
 
-#### CLI
+<Tabs>
+<Tab heading="CLI">
+
 
 ```bash
 $ boundary scopes create -scope-id global -name my_org -description 'My frist org'
@@ -40,7 +42,9 @@ Scope information:
     Type:              global
 ```
 
-#### UI
+</Tab>
+<Tab heading="Admin Console">
+
 
 Navigate to the main boundary landing page and choose `new` organization:
 ![](/img/manage-scopes-org-undefined.png)
@@ -51,7 +55,9 @@ Fill in the orgnaization details:
 Click save and view the org in the main Boundary landing page:
 ![](/img/manage-scopes-org-defined.png)
 
-#### Terraform
+</Tab>
+<Tab heading="Terraform">
+
 
 ```hcl
 resource "boundary_scope" "org" {
@@ -62,11 +68,17 @@ resource "boundary_scope" "org" {
 }
 ```
 
+</Tab>
+</Tabs>
+
+
 ## Create a Project
 
 Next, we're going to add a project scope to our organization. Again, we're going to opt for automated role creation to simplify management of this scope.
 
-#### CLI
+<Tabs>
+<Tab heading="CLI">
+
 
 ```bash
 $ boundary scopes create -scope-id o_0MkQUfE9jA -name my_project -description 'My frist project'
@@ -86,7 +98,9 @@ Scope information:
     Type:              org
 ```
 
-#### UI
+</Tab>
+<Tab heading="Admin Console">
+
 
 Navigate to your org in the UI and click `new` project:
 ![](/img/manage-scopes-project-undefined.png)
@@ -97,7 +111,9 @@ Add the project settings:
 View the newly created project:
 ![](/img/manage-scopes-project-defined.png)
 
-#### Terraform
+</Tab>
+<Tab heading="Terraform">
+
 
 ```hcl
 resource "boundary_scope" "project" {
@@ -109,3 +125,7 @@ resource "boundary_scope" "project" {
   auto_create_role = true
 }
 ```
+
+</Tab>
+</Tabs>
+
