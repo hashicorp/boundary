@@ -22,7 +22,8 @@ type Command struct {
 
 	Func string
 
-	flagSkipRoleCreation bool
+	flagSkipAdminRoleCreation   bool
+	flagSkipDefaultRoleCreation bool
 }
 
 func (c *Command) Synopsis() string {
@@ -30,7 +31,7 @@ func (c *Command) Synopsis() string {
 }
 
 var flagsMap = map[string][]string{
-	"create": {"scope-id", "name", "description", "skip-role-creation"},
+	"create": {"scope-id", "name", "description", "skip-admin-role-creation", "skip-default-role-creation"},
 	"update": {"id", "name", "description", "version"},
 	"read":   {"id"},
 	"delete": {"id"},
@@ -53,9 +54,14 @@ func (c *Command) Flags() *base.FlagSets {
 		common.PopulateCommonFlags(c.Command, f, resource.Scope.String(), flagsMap[c.Func])
 		if c.Func == "create" {
 			f.BoolVar(&base.BoolVar{
-				Name:   "skip-role-creation",
-				Target: &c.flagSkipRoleCreation,
+				Name:   "skip-admin-role-creation",
+				Target: &c.flagSkipAdminRoleCreation,
 				Usage:  "If set, a role granting the current user access to administer the newly-created scope will not automatically be created",
+			})
+			f.BoolVar(&base.BoolVar{
+				Name:   "skip-default-role-creation",
+				Target: &c.flagSkipDefaultRoleCreation,
+				Usage:  "If set, a role granting the anonymous user access to log into auth methods and a few other actions within the newly-created scope will not automatically be created",
 			})
 		}
 	}
@@ -116,8 +122,11 @@ func (c *Command) Run(args []string) int {
 		opts = append(opts, scopes.WithDescription(c.FlagDescription))
 	}
 
-	if c.flagSkipRoleCreation {
-		opts = append(opts, scopes.WithSkipRoleCreation(c.flagSkipRoleCreation))
+	if c.flagSkipAdminRoleCreation {
+		opts = append(opts, scopes.WithSkipAdminRoleCreation(c.flagSkipAdminRoleCreation))
+	}
+	if c.flagSkipDefaultRoleCreation {
+		opts = append(opts, scopes.WithSkipDefaultRoleCreation(c.flagSkipDefaultRoleCreation))
 	}
 
 	scopeClient := scopes.NewClient(client)
