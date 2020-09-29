@@ -13,12 +13,12 @@ export default function HomePage() {
         links={[
           {
             text: 'Download',
-            url: 'https://github.com/hashicorp/boundary/releases',
+            url: '/download',
             type: 'download',
           },
           {
-            text: 'Get Started',
-            url: '/docs/getting-started',
+            text: 'Documentaion',
+            url: '/docs',
             type: 'inbound',
           },
         ]}
