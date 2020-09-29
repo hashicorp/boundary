@@ -4307,8 +4307,8 @@ begin;
            else 'Weekday'
          end                                 as weekday_indicator
     from generate_series(
-           current_timestamp,
-           current_timestamp + interval '50 years',
+           date_trunc('day', timestamp '2019-10-09'),
+           date_trunc('day', timestamp '2019-10-09' + interval '50 years'),
            interval '1 day'
          ) as t(day);
 
