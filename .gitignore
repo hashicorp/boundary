@@ -124,4 +124,7 @@ update-ui-assets*
 # Test config file
 test*.hcl
 
+# Terraform state and stuff
+.terraform
+
 # vim: set filetype=conf :

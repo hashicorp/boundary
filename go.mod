@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/armon/go-metrics v0.3.4
 	github.com/bufbuild/buf v0.24.0
+	github.com/docker/docker v1.4.2-0.20200319182547-c7ad2b866182
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
@@ -16,19 +17,20 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.0-beta.5
+	github.com/gruntwork-io/terratest v0.30.6
 	github.com/hashicorp/dbassert v0.0.0-20200928193136-88d5f2091187
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-kms-wrapping v0.5.16
 	github.com/hashicorp/go-multierror v1.1.0
-	github.com/hashicorp/go-plugin v1.2.0 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.7
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/shared-secure-libs v0.0.2
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.0.3 // indirect
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200916184745-5576096032f8
 	github.com/iancoleman/strcase v0.1.2
 	github.com/jackc/pgx/v4 v4.8.1
@@ -43,6 +45,7 @@ require (
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oligot/go-mod-upgrade v0.2.1
+	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.1.3
@@ -50,6 +53,7 @@ require (
 	github.com/posener/complete v1.2.3
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/spf13/afero v1.3.4 // indirect
+	github.com/spf13/cobra v1.0.1-0.20200713175500-884edc58ad08
 	github.com/stretchr/testify v1.6.1
 	github.com/zalando/go-keyring v0.1.0
 	go.uber.org/atomic v1.7.0
