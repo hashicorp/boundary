@@ -307,7 +307,8 @@ func (g Grant) validateType() error {
 		resource.HostCatalog,
 		resource.HostSet,
 		resource.Host,
-		resource.Target:
+		resource.Target,
+		resource.Session:
 		return nil
 	}
 	return fmt.Errorf("unknown type specifier %q", g.typ)
