@@ -18,15 +18,13 @@ export default [
   {
     category: 'developing',
     content: [
-		  'building', 
-			'ui',
-			{
-			  category: 'sdk',
-				content: [
-				  'authenticate',
-			  ],
-			},
-		],
+      'building',
+      'ui',
+      {
+        category: 'sdk',
+        content: ['authenticate'],
+      },
+    ],
   },
   {
     category: 'concepts',
@@ -82,7 +80,12 @@ export default [
   },
   {
     category: 'common-workflows',
-    content: ['manage-targets', 'manage-identities', 'manage-sessions'],
+    content: [
+      'manage-scopes',
+      'manage-targets',
+      'manage-identities',
+      'manage-sessions',
+    ],
   },
   {
     category: 'releases',
