@@ -60,6 +60,36 @@ export default function HomePage() {
             title: 'Authorize',
             description:
               'Authorize access to services and hosts based on roles and logical services.',
+            logos: [
+              {
+                alt: 'Consul',
+                url: require('./img/logos/consul.svg?url'),
+              },
+              {
+                alt: 'Microsoft Azure',
+                url: require('./img/logos/azure.svg?url'),
+              },
+              {
+                alt: 'Consul',
+                url: require('./img/logos/consul.svg?url'),
+              },
+              {
+                alt: 'Microsoft Azure',
+                url: require('./img/logos/azure.svg?url'),
+              },
+              {
+                alt: 'Consul',
+                url: require('./img/logos/consul.svg?url'),
+              },
+              {
+                alt: 'Microsoft Azure',
+                url: require('./img/logos/azure.svg?url'),
+              },
+              {
+                alt: 'Consul',
+                url: require('./img/logos/consul.svg?url'),
+              },
+            ],
           },
           {
             title: 'Access',

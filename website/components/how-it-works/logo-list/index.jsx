@@ -5,7 +5,7 @@ export default function LogoList({ logos }) {
   if (logos.length > 6) {
     formattedLogos = logos.slice(0, 6)
     formattedLogos.push({
-      url: '',
+      url: require('./img/more.svg?url'),
       alt: 'More integrations',
     })
   } else formattedLogos = logos
