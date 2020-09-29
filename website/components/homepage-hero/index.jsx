@@ -5,13 +5,8 @@ export default function HomepageHero({ title, description, links }) {
   return (
     <div className={s.root}>
       <div className="g-grid-container">
-        <span className={s.eyebrow}>
-          Welcome to the <span className={s.red}>INTERNAL BETA</span> for
-          HashiCorp Boundary! This is a confidential internal only beta. No
-          details should be shared externally.
-        </span>
-        <h1 className="g-type-display-1">{title}</h1>
         <div className={s.contentAndLinks}>
+          <h1 className="g-type-display-1">{title}</h1>
           <p className="g-type-body-large">{description}</p>
           <div className={s.links}>
             {links.map((link, index) => {
@@ -29,6 +24,7 @@ export default function HomepageHero({ title, description, links }) {
             })}
           </div>
         </div>
+        <div className={s.image}></div>
       </div>
     </div>
   )
