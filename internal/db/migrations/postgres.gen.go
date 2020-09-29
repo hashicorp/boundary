@@ -3594,23 +3594,24 @@ begin;
   as $$
   begin
     if new.termination_reason is not null then
-     perform from 
-        session_connection
-      where
-        session_id = new.public_id;
-      if found then
-          -- check to see if there are any open connections.
-          perform from
-            -- connections are closed
-            session_connection sc,
-            session_connection_state scs
-          where
-            sc.public_id = scs.connection_id and 
-            scs.state = 'closed' and
-            sc.session_id = new.public_id;
-          if not found then 
-            raise 'session %s has existing open connections', new.public_id;
-          end if;
+      perform  from 
+        session
+      where 
+        public_id = new.public_id and 
+        public_id not in (
+            select session_id 
+              from session_connection
+            where
+              public_id in (
+                select connection_id
+                  from session_connection_state
+                where 
+                  state != 'closed' and 
+                  end_time is null
+              )
+        );
+      if not found then 
+        raise 'session %s has open connections', new.public_id;
       end if;
 
       -- check to see if there's a terminated state already, before inserting a

@@ -157,31 +157,24 @@ where
 			select count (*) 
 				from session_connection sc 
 			where 
-						sc.session_id = us.public_id
+				sc.session_id = us.public_id
 		) >= connection_limit 
 	) and 
 	-- make sure there are no existing connections
-	us.public_id in (
-		-- sessions without any connections
-		select s.public_id 
+ 	us.public_id not in (
+		select 
+			session_id 
 		from 
-			session s
-		left join session_connection sc on sc.session_id = s.public_id 
-		where 
-			sc.session_id is null
-			and s.public_id = us.public_id 
-		union
-		-- sessions where all connections are closed
-		select s.public_id 
-		from
-			session s,
-			session_connection c,
-			session_connection_state cs
-		where
-			s.public_id = c.session_id and
-			c.public_id = cs.connection_id and
-			cs.state = 'closed' and 
-			s.public_id = us.public_id 
-	);
+		  session_connection
+     	where public_id in (
+			select 
+				connection_id
+			from 
+				session_connection_state
+			where 
+				state != 'closed' and
+               end_time is null
+    )
+)
 `
 )
