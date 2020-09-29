@@ -33,21 +33,16 @@ export default function HomePage() {
             title: 'Authenticate',
             description:
               'Authenticate with trusted identity provider access to hosts and services.',
-            logos: [],
-            footerText: 'Integrations coming soon',
           },
           {
             title: 'Authorize',
             description:
               'Authorize access to services and hosts based on roles and logical services.',
-            logos: [],
-            footerText: 'Integrations coming soon',
           },
           {
             title: 'Access',
             description:
               'Securely connect with just-in-time access without exposing or distributing credentials.',
-            footerText: 'Integrations coming soon',
           },
         ]}
       />

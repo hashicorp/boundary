@@ -1,3 +1,7 @@
 .root {
   /* Styles TBD */
 }
+
+.footerText {
+  color: var(--gray-5);
+}
