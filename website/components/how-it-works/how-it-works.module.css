@@ -16,14 +16,18 @@
     flex-direction: column;
   }
 
-  & > * {
-    @media (width > 767px) {
-      width: 45%;
-    }
-  }
-
   & > ul {
-    padding: 0;
+    max-width: 591px;
+    padding-left: 128px;
+
+    @media (width < 1120px) {
+      padding-left: 64px;
+    }
+
+    @media (--small) {
+      max-width: inherit;
+      padding-left: 0;
+    }
 
     & > li {
       padding: 0;
@@ -36,6 +40,8 @@
 }
 
 .image {
+  max-width: 591px;
+
   & > img {
     max-width: 100%;
   }
