@@ -33,6 +33,28 @@ export default function HomePage() {
             title: 'Authenticate',
             description:
               'Authenticate with trusted identity provider access to hosts and services.',
+            logos: [
+              {
+                alt: 'Consul',
+                url: require('./img/logos/consul.svg?url'),
+              },
+              {
+                alt: 'Microsoft Azure',
+                url: require('./img/logos/azure.svg?url'),
+              },
+              {
+                alt: 'Consul',
+                url: require('./img/logos/consul.svg?url'),
+              },
+              {
+                alt: 'Microsoft Azure',
+                url: require('./img/logos/azure.svg?url'),
+              },
+              {
+                alt: 'Consul',
+                url: require('./img/logos/consul.svg?url'),
+              },
+            ],
           },
           {
             title: 'Authorize',

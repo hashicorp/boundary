@@ -12,9 +12,13 @@ export default function LogoList({ logos }) {
 
   return (
     <div className={s.root}>
-      {formattedLogos.map((logo) => (
-        <div key={logo.url} className={s.logo}>
-          <img src={logo.url} alt={logo.company} />
+      {formattedLogos.map((logo, stableIdx) => (
+        <div
+          // eslint-disable-next-line react/no-array-index-key
+          key={stableIdx}
+          className={s.logo}
+        >
+          <img src={logo.url} alt={logo.alt} />
         </div>
       ))}
       <p className={`g-type-tag-label ${s.footerText}`}>
