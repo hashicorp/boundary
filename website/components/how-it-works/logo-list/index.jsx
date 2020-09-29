@@ -12,15 +12,17 @@ export default function LogoList({ logos }) {
 
   return (
     <div className={s.root}>
-      {formattedLogos.map((logo, stableIdx) => (
-        <div
-          // eslint-disable-next-line react/no-array-index-key
-          key={stableIdx}
-          className={s.logo}
-        >
-          <img src={logo.url} alt={logo.alt} />
-        </div>
-      ))}
+      <div className={s.logos}>
+        {formattedLogos.map((logo, stableIdx) => (
+          <div
+            // eslint-disable-next-line react/no-array-index-key
+            key={stableIdx}
+          >
+            <img src={logo.url} alt={logo.alt} />
+          </div>
+        ))}
+      </div>
+
       <p className={`g-type-tag-label ${s.footerText}`}>
         Integrations coming soon
       </p>

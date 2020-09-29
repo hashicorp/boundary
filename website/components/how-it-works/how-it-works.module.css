@@ -17,16 +17,17 @@
   }
 
   & > ul {
-    max-width: 591px;
-    padding-left: 128px;
+    max-width: 488px;
+    margin-left: 128px;
+    padding: 0;
 
     @media (width < 1120px) {
-      padding-left: 64px;
+      margin-left: 64px;
     }
 
     @media (--small) {
       max-width: inherit;
-      padding-left: 0;
+      margin-left: 0;
     }
 
     & > li {

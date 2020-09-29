@@ -2,6 +2,18 @@
   /* Styles TBD */
 }
 
+.logos {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  max-width: 440px;
+  flex-wrap: wrap;
+
+  & > div {
+    margin-right: 30px;
+  }
+}
+
 .footerText {
   color: var(--gray-5);
 }
