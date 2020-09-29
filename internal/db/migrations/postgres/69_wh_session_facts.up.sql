@@ -1,5 +1,8 @@
 begin;
 
+  -- wh_rollup_connections calculates the aggregate values from
+  -- wh_session_connection_accumulating_fact for p_session_id and updates
+  -- wh_session_accumulating_fact for p_session_id with those values.
   create or replace function wh_rollup_connections(p_session_id wt_public_id)
     returns void
   as $$
@@ -30,6 +33,11 @@ begin;
   -- Session triggers
   --
 
+  -- wh_insert_session returns an after insert trigger for the session table
+  -- which inserts a row in wh_session_accumulating_fact for the new session.
+  -- wh_insert_session also calls the wh_upsert_host and wh_upsert_user
+  -- functions which can result in new rows in wh_host_dimension and
+  -- wh_user_dimension respectively.
   create or replace function wh_insert_session()
     returns trigger
   as $$
@@ -74,6 +82,11 @@ begin;
   -- Session Connection triggers
   --
 
+  -- wh_insert_session_connection returns an after insert trigger for the
+  -- session_connection table which inserts a row in
+  -- wh_session_connection_accumulating_fact for the new session connection.
+  -- wh_insert_session_connection also calls wh_rollup_connections which can
+  -- result in updates to wh_session_accumulating_fact.
   create or replace function wh_insert_session_connection()
     returns trigger
   as $$
@@ -133,6 +146,11 @@ begin;
     for each row
     execute function wh_insert_session_connection();
 
+  -- wh_update_session_connection returns an after update trigger for the
+  -- session_connection table which updates a row in
+  -- wh_session_connection_accumulating_fact for the session connection.
+  -- wh_update_session_connection also calls wh_rollup_connections which can
+  -- result in updates to wh_session_accumulating_fact.
   create or replace function wh_update_session_connection()
     returns trigger
   as $$
@@ -162,6 +180,8 @@ begin;
   -- Session State trigger
   --
 
+  -- wh_insert_session_state returns an after insert trigger for the
+  -- session_state table which updates wh_session_accumulating_fact.
   create or replace function wh_insert_session_state()
     returns trigger
   as $$
@@ -206,6 +226,9 @@ begin;
   -- Session Connection State trigger
   --
 
+  -- wh_insert_session_connection_state returns an after insert trigger for the
+  -- session_connection_state table which updates
+  -- wh_session_connection_accumulating_fact.
   create or replace function wh_insert_session_connection_state()
     returns trigger
   as $$

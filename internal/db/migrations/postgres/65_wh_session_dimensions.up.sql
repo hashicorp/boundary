@@ -138,8 +138,6 @@ begin;
    where current_row_indicator = 'Current'
   ;
 
-  -- TODO(mgaffney) 09/2020: insert 0 row
-
   create table wh_user_dimension (
     -- random id generated using encode(digest(gen_random_bytes(16), 'sha256'), 'base64')
     -- this is done to prevent conflicts with rows in other clusters

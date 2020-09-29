@@ -1,5 +1,13 @@
 begin;
 
+  -- wh_upsert_host returns the wh_host_dimension id for p_host_id,
+  -- p_host_set_id, and p_target_id. wh_upsert_host compares the current values
+  -- in the wh_host_dimension with the current values in the operational tables
+  -- for the provide parameters. If the values between the operational tables
+  -- and the wh_host_dimension differ, a new row is inserted in the
+  -- wh_host_dimension to match the current values in the operational tables and
+  -- the new id is returned. If the values do not differ, the current id is
+  -- returned.
   create or replace function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
     returns wh_dim_id
   as $$
@@ -63,6 +71,13 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- wh_upsert_user returns the wh_user_dimension id for p_user_id and
+  -- p_auth_token_id. wh_upsert_user compares the current values in the
+  -- wh_user_dimension with the current values in the operational tables for the
+  -- provide parameters. If the values between the operational tables and the
+  -- wh_user_dimension differ, a new row is inserted in the wh_user_dimension to
+  -- match the current values in the operational tables and the new id is
+  -- returned. If the values do not differ, the current id is returned.
   create or replace function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id)
     returns wh_dim_id
   as $$

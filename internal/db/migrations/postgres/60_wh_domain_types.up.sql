@@ -18,6 +18,8 @@ begin;
   comment on domain wh_bytes_transmitted is
   'A non-negative integer representing the number of bytes transmitted';
 
+  -- wh_dim_id generates and returns a random ID which should be considered as
+  -- universally unique.
   create or replace function wh_dim_id()
     returns text
   as $$
@@ -51,24 +53,28 @@ begin;
   comment on domain wh_dim_text is
   'Text fields in dimension tables are always not null and always not empty strings';
 
+  -- wh_date_id returns the wh_date_dimension id for ts.
   create or replace function wh_date_id(ts wh_timestamp)
     returns integer
   as $$
     select to_char(ts, 'YYYYMMDD')::integer;
   $$ language sql;
 
+  -- wh_time_id returns the wh_time_of_day_dimension id for ts.
   create or replace function wh_time_id(ts wh_timestamp)
     returns integer
   as $$
     select to_char(ts, 'SSSS')::integer;
   $$ language sql;
 
+  -- wh_date_id returns the wh_date_dimension id for current_timestamp.
   create or replace function wh_current_date_id()
     returns integer
   as $$
     select wh_date_id(current_timestamp);
   $$ language sql;
 
+  -- wh_time_id returns the wh_time_of_day_dimension id for current_timestamp.
   create or replace function wh_current_time_id()
     returns integer
   as $$

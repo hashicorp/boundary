@@ -4181,6 +4181,8 @@ begin;
   comment on domain wh_bytes_transmitted is
   'A non-negative integer representing the number of bytes transmitted';
 
+  -- wh_dim_id generates and returns a random ID which should be considered as
+  -- universally unique.
   create or replace function wh_dim_id()
     returns text
   as $$
@@ -4214,24 +4216,28 @@ begin;
   comment on domain wh_dim_text is
   'Text fields in dimension tables are always not null and always not empty strings';
 
+  -- wh_date_id returns the wh_date_dimension id for ts.
   create or replace function wh_date_id(ts wh_timestamp)
     returns integer
   as $$
     select to_char(ts, 'YYYYMMDD')::integer;
   $$ language sql;
 
+  -- wh_time_id returns the wh_time_of_day_dimension id for ts.
   create or replace function wh_time_id(ts wh_timestamp)
     returns integer
   as $$
     select to_char(ts, 'SSSS')::integer;
   $$ language sql;
 
+  -- wh_date_id returns the wh_date_dimension id for current_timestamp.
   create or replace function wh_current_date_id()
     returns integer
   as $$
     select wh_date_id(current_timestamp);
   $$ language sql;
 
+  -- wh_time_id returns the wh_time_of_day_dimension id for current_timestamp.
   create or replace function wh_current_time_id()
     returns integer
   as $$
@@ -4516,8 +4522,6 @@ begin;
    where current_row_indicator = 'Current'
   ;
 
-  -- TODO(mgaffney) 09/2020: insert 0 row
-
   create table wh_user_dimension (
     -- random id generated using encode(digest(gen_random_bytes(16), 'sha256'), 'base64')
     -- this is done to prevent conflicts with rows in other clusters
@@ -4627,6 +4631,14 @@ commit;
 		bytes: []byte(`
 begin;
 
+  -- wh_upsert_host returns the wh_host_dimension id for p_host_id,
+  -- p_host_set_id, and p_target_id. wh_upsert_host compares the current values
+  -- in the wh_host_dimension with the current values in the operational tables
+  -- for the provide parameters. If the values between the operational tables
+  -- and the wh_host_dimension differ, a new row is inserted in the
+  -- wh_host_dimension to match the current values in the operational tables and
+  -- the new id is returned. If the values do not differ, the current id is
+  -- returned.
   create or replace function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
     returns wh_dim_id
   as $$
@@ -4690,6 +4702,13 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- wh_upsert_user returns the wh_user_dimension id for p_user_id and
+  -- p_auth_token_id. wh_upsert_user compares the current values in the
+  -- wh_user_dimension with the current values in the operational tables for the
+  -- provide parameters. If the values between the operational tables and the
+  -- wh_user_dimension differ, a new row is inserted in the wh_user_dimension to
+  -- match the current values in the operational tables and the new id is
+  -- returned. If the values do not differ, the current id is returned.
   create or replace function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id)
     returns wh_dim_id
   as $$
@@ -4980,6 +4999,9 @@ commit;
 		bytes: []byte(`
 begin;
 
+  -- wh_rollup_connections calculates the aggregate values from
+  -- wh_session_connection_accumulating_fact for p_session_id and updates
+  -- wh_session_accumulating_fact for p_session_id with those values.
   create or replace function wh_rollup_connections(p_session_id wt_public_id)
     returns void
   as $$
@@ -5010,6 +5032,11 @@ begin;
   -- Session triggers
   --
 
+  -- wh_insert_session returns an after insert trigger for the session table
+  -- which inserts a row in wh_session_accumulating_fact for the new session.
+  -- wh_insert_session also calls the wh_upsert_host and wh_upsert_user
+  -- functions which can result in new rows in wh_host_dimension and
+  -- wh_user_dimension respectively.
   create or replace function wh_insert_session()
     returns trigger
   as $$
@@ -5054,6 +5081,11 @@ begin;
   -- Session Connection triggers
   --
 
+  -- wh_insert_session_connection returns an after insert trigger for the
+  -- session_connection table which inserts a row in
+  -- wh_session_connection_accumulating_fact for the new session connection.
+  -- wh_insert_session_connection also calls wh_rollup_connections which can
+  -- result in updates to wh_session_accumulating_fact.
   create or replace function wh_insert_session_connection()
     returns trigger
   as $$
@@ -5113,6 +5145,11 @@ begin;
     for each row
     execute function wh_insert_session_connection();
 
+  -- wh_update_session_connection returns an after update trigger for the
+  -- session_connection table which updates a row in
+  -- wh_session_connection_accumulating_fact for the session connection.
+  -- wh_update_session_connection also calls wh_rollup_connections which can
+  -- result in updates to wh_session_accumulating_fact.
   create or replace function wh_update_session_connection()
     returns trigger
   as $$
@@ -5142,6 +5179,8 @@ begin;
   -- Session State trigger
   --
 
+  -- wh_insert_session_state returns an after insert trigger for the
+  -- session_state table which updates wh_session_accumulating_fact.
   create or replace function wh_insert_session_state()
     returns trigger
   as $$
@@ -5186,6 +5225,9 @@ begin;
   -- Session Connection State trigger
   --
 
+  -- wh_insert_session_connection_state returns an after insert trigger for the
+  -- session_connection_state table which updates
+  -- wh_session_connection_accumulating_fact.
   create or replace function wh_insert_session_connection_state()
     returns trigger
   as $$
