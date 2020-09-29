@@ -17,7 +17,16 @@ export default [
   },
   {
     category: 'developing',
-    content: ['building', 'ui'],
+    content: [
+		  'building', 
+			'ui',
+			{
+			  category: 'sdk',
+				content: [
+				  'authenticate',
+			  ],
+			},
+		],
   },
   {
     category: 'concepts',
@@ -75,10 +84,6 @@ export default [
   },
   {
     category: 'command-line',
-    content: ['login'],
-  },
-  {
-    category: 'sdk',
     content: ['login'],
   },
   {
