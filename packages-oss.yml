@@ -1,0 +1,116 @@
+---
+config:
+  product-repo: git@github.com:hashicorp/boundary.git
+  release-repo: git@github.com:hashicorp/boundary-release.git
+  product-id: github.com/hashicorp/boundary
+  circleci-project-slug: gh/hashicorp/boundary
+  circleci-host: circleci.com
+
+inputs:
+  defaults:
+    PRODUCT_NAME: boundary
+    PRODUCT_VERSION: 0.1.0-beta.2
+    BUILD_TAGS: ui
+    CGO_ENABLED: 0
+
+  templates:
+
+    BINARY_NAME: '{{.PRODUCT_NAME}}{{if eq .GOOS "windows"}}.exe{{end}}'
+
+    PRODUCT_VERSION_MMP: >-
+      {{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{index . 0}}{{end}}
+
+    PRODUCT_VERSION_PRE: >-
+      {{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{if gt (len .) 1}}{{index . 1}}{{else}}"''"{{end}}{{end}}
+
+packages:
+  - inputs: { GOOS: darwin, GOARCH: amd64 }
+  - inputs: { GOOS: linux, GOARCH: amd64 }
+  - inputs: { GOOS: windows, GOARCH: amd64 }
+
+meta:
+  defaults:
+    # No default metadata.
+  templates:
+    BUILD_JOB_NAME: >-
+      {{.GOOS}}_{{.GOARCH}}_package
+    POST_PROCESSORS: '
+      {{- if and (eq .GOOS "darwin") (eq .GOARCH "amd64")}}apple-notarize {{end -}}
+      {{- if and (eq .GOOS "windows") (eq .GOARCH "amd64")}}microsoft-notarize {{end -}}
+      av-scan'
+    BUNDLE_NAME: "boundary_{{.PRODUCT_VERSION}}"
+
+package-aliases:
+  - type: local
+    template: >-
+      {{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
+  - type: github-releases
+    template: >-
+      {{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
+#  - type: public-hc-releases
+#    template: >-
+#      boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
+
+# golang@sha256:29452ef08bd0535f550c47b6034522c82ac10517b49c5f3b7a00035ecee0089e = golang:1.15.2-buster
+base-image: "golang@sha256:29452ef08bd0535f550c47b6034522c82ac10517b49c5f3b7a00035ecee0089e"
+
+layers:
+  - name: base
+    dockerfile: |
+      ENV \
+        GOPATH= \
+        GOBIN=/usr/local/bin \
+        GO111MODULE=on \
+        GOPRIVATE=github.com/hashicorp/* \
+        GOCACHE=/go/cache \
+        CGO_ENABLED=0
+      RUN --mount=type=ssh \
+          go env && mkdir -p "$GOCACHE" \
+          && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg \
+           | apt-key add - \
+          && echo "deb https://dl.yarnpkg.com/debian/ stable main" \
+           | tee /etc/apt/sources.list.d/yarn.list \
+          && apt-get update \
+          && apt-get install -yq yarn zip \
+          && mkdir -m 700 /root/.ssh \
+          && touch -m 600 /root/.ssh/known_hosts \
+          && ssh-keyscan github.com > /root/.ssh/known_hosts \
+          && git config --global url."git@github.com:".insteadOf https://github.com/ \
+          && go get github.com/go-bindata/go-bindata/v3/go-bindata \
+          && go-bindata --version
+  - name: ui
+    source-include: internal/ui/VERSION
+    dockerfile: |
+      RUN --mount=type=ssh \
+          SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" \
+          && DIR=internal/ui/source/boundary-ui \
+          && mkdir -p "$(dirname "$DIR")" \
+          && git clone https://github.com/hashicorp/boundary-ui "$DIR" \
+          && ( cd "$DIR" \
+          && git fetch origin "$SHA" \
+          && git checkout "$SHA" \
+          && yarn install \
+          && yarn build:ui:core; ) \
+          && TARGET=internal/ui/assets.go \
+          && UIDIR="$DIR/ui/core/dist" \
+          && go-bindata -fs -o "$TARGET" -pkg ui \
+             -prefix "$UIDIR" "$UIDIR" "$UIDIR/assets" \
+          && rm -rf "$DIR"
+  - name: go-modules
+    source-include: go.mod go.sum
+    dockerfile: |
+      RUN --mount=type=ssh go mod download -x
+  - name: copy-source
+    source-include: "*.go"
+    dockerfile: |
+      RUN go build -v -tags '{{.BUILD_TAGS}}' -o /dev/null ./cmd/boundary
+
+build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
+  unset GOPATH;
+  go build -v -tags '{{.BUILD_TAGS}}'
+    -ldflags "-X $VERSION_PKG_PATH.GitCommit=$PACKAGE_SOURCE_ID
+              -X $VERSION_PKG_PATH.Version={{.PRODUCT_VERSION_MMP}}
+              -X $VERSION_PKG_PATH.VersionPrerelease={{.PRODUCT_VERSION_PRE}}"
+    -o $OUTPUT_DIR/{{.BINARY_NAME}}
+    ./cmd/boundary
+  && cd $OUTPUT_DIR && zip $PACKAGE_ZIP_NAME {{.BINARY_NAME}}

@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -447,19 +448,28 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 
 	switch b.DatabaseUrl {
 	case "":
-		c, url, container, err = db.InitDbInDocker(dialect)
+		c, url, container, err = docker.StartDbInDocker(dialect)
 		// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
 		// function before returning from this method
 		defer func() {
 			if !opts.withSkipDatabaseDestruction {
-				if err := c(); err != nil {
-					b.Logger.Error("error cleaning up docker container", "error", err)
+				if c != nil {
+					if err := c(); err != nil {
+						b.Logger.Error("error cleaning up docker container", "error", err)
+					}
 				}
 			}
 		}()
-
+		if err == docker.ErrDockerUnsupported {
+			return err
+		}
 		if err != nil {
 			return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
+		}
+
+		_, err := db.InitStore(dialect, c, url)
+		if err != nil {
+			return fmt.Errorf("unable to initialize dev database with dialect %s: %w", dialect, err)
 		}
 
 		b.DevDatabaseCleanupFunc = c

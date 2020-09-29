@@ -17,7 +17,16 @@ export default [
   },
   {
     category: 'developing',
-    content: ['building', 'ui'],
+    content: [
+		  'building', 
+			'ui',
+			{
+			  category: 'sdk',
+				content: [
+				  'authenticate',
+			  ],
+			},
+		],
   },
   {
     category: 'concepts',
@@ -70,16 +79,8 @@ export default [
     ],
   },
   {
-    category: 'admin-console',
-    content: ['login'],
-  },
-  {
-    category: 'command-line',
-    content: ['login'],
-  },
-  {
-    category: 'sdk',
-    content: ['login'],
+    category: 'common-workflows',
+    content: ['manage-targets', 'manage-identities', 'manage-sessions'],
   },
   {
     category: 'releases',
