@@ -1,0 +1,111 @@
+---
+layout: docs
+page_title: Manage Scopes
+sidebar_title: Mange Scopes
+description: How to manage Boundary scopes
+---
+
+# Manage Scopes
+
+Scopes are a foundational part of Boundary. They allow users to segregate resources and assign ownership of resources to principals. There are three hierarchies of scopes within Boundary:
+
+1. Global
+2. Organization
+3. Project
+
+Some resources can only be associated with a specific level of scope. Targets for example can only be project scope. Other resources can be of two scopes. For example, users can be both organization and project level scope. See the [domain model](/docs/domain-model) for detailed resource specific information.
+
+In this example, we're going to create two scopes, a project and an organization.
+
+## Create a Organization
+
+An organization lives in the global scope. In this example, we're going to create an organization. In doing so, we're going to opt for automated role creation during scope generation in order to simplify management of the scope by the user.
+
+#### CLI
+
+```bash
+$ boundary scopes create -scope-id global -name my_org -description 'My frist org'
+
+Scope information:
+  Created Time:        Tue, 29 Sep 2020 05:48:22 PDT
+  Description:         My frist org
+  ID:                  o_y0fEd8iY2J
+  Name:                my_org
+  Updated Time:        Tue, 29 Sep 2020 05:48:22 PDT
+  Version:             1
+
+  Scope (parent):
+    ID:                global
+    Name:              global
+    Type:              global
+```
+
+#### UI
+
+Navigate to the main boundary landing page and choose `new` organization:
+![](/img/manage-scopes-org-undefined.png)
+
+Fill in the orgnaization details:
+![](/img/manage-scopes-org-settings.png)
+
+Click save and view the org in the main Boundary landing page:
+![](/img/manage-scopes-org-defined.png)
+
+#### Terraform
+
+```hcl
+resource "boundary_scope" "org" {
+  scope_id         = "global"
+  name             = "my_org"
+  description      = "My first org"
+  auto_create_role = true
+}
+```
+
+## Create a Project
+
+Next, we're going to add a project scope to our organization. Again, we're going to opt for automated role creation to simplify management of this scope.
+
+#### CLI
+
+```bash
+$ boundary scopes create -scope-id o_0MkQUfE9jA -name my_project -description 'My frist project'
+
+Scope information:
+  Created Time:        Tue, 29 Sep 2020 05:57:45 PDT
+  Description:         My frist project
+  ID:                  p_jqCwqjSTQ4
+  Name:                my_project
+  Updated Time:        Tue, 29 Sep 2020 05:57:45 PDT
+  Version:             1
+
+  Scope (parent):
+    ID:                o_0MkQUfE9jA
+    Name:              my_org
+    Parent Scope ID:   global
+    Type:              org
+```
+
+#### UI
+
+Navigate to your org in the UI and click `new` project:
+![](/img/manage-scopes-project-undefined.png)
+
+Add the project settings:
+![](/img/manage-scopes-project-settings.png)
+
+View the newly created project:
+![](/img/manage-scopes-project-defined.png)
+
+#### Terraform
+
+```hcl
+resource "boundary_scope" "project" {
+  name             = "my_project"
+  description      = "My first project"
+
+  # scope_id is taken from the org resource defined above
+  scope_id         = boundary_scope.org.id
+  auto_create_role = true
+}
+```
