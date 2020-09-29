@@ -10,10 +10,16 @@
 
 .contentContainer {
   display: flex;
+  justify-content: space-between;
 
-  & > div {
-    max-width: 591px;
-    margin-right: 136px;
+  @media (--small) {
+    flex-direction: column;
+  }
+
+  & > * {
+    @media (width > 767px) {
+      width: 45%;
+    }
   }
 
   & > ul {
@@ -40,6 +46,10 @@
     list-style: none;
     & + li {
       margin-top: 330px;
+
+      @media (--small) {
+        margin-top: 128px;
+      }
     }
   }
 }
