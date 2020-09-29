@@ -20,7 +20,9 @@ For this example, we're going to create a target to access postgres on `localhos
 1. The host address is `127.0.0.1`
 2. The target port is `:5432`
 
-#### CLI
+<Tabs>
+<Tab heading="CLI">
+
 
 ```bash
 boundary hosts create static -name postgres -description "Postgres host" -address "127.0.0.1" -host-catalog-id "hcst_1234567890"
@@ -45,7 +47,9 @@ Host information:
     address:           127.0.0.1
 ```
 
-#### UI
+</Tab>
+<Tab heading="Admin Console">
+
 
 Navigate to the default host catalog:
 ![](/img/manage-targets-host-undefined.png)
@@ -59,7 +63,9 @@ Fill in the required information about our postgres host:
 View the host in the catalog:
 ![](/img/manage-targets-new-host-defined.png)
 
-#### Terraform
+</Tab>
+<Tab heading="Terraform">
+
 
 To define this same host using our Terraform provider:
 
@@ -73,11 +79,17 @@ resource "boundary_host" "postgres" {
 }
 ```
 
+</Tab>
+</Tabs>
+
+
 ## Define a Host-Set
 
 Host-sets allow us to group hosts of similar interests together. A target works off of host-sets, so even though we are only defining one host in this example, we're going to create a host-set of one host.
 
-#### CLI
+<Tabs>
+<Tab heading="CLI">
+
 
 ```bash
 boundary host-sets create static -name "postgres" -description "Postgres host set" -host-catalog-id hcst_1234567890
@@ -99,7 +111,9 @@ Host Set information:
     Type:              project
 ```
 
-#### UI
+</Tab>
+<Tab heading="Admin Console">
+
 
 Navigate to the host catalog and the `host sets` tab, select `Create Host Set` from `manage` dropdown:
 ![](/img/manage-targets-new-host-set-undefined.png)
@@ -110,7 +124,9 @@ Fill in the host-set definition:
 See the new host set in the host-catalog view:
 ![](/img/manage-targets-new-host-set-defined.png)
 
-#### Terraform
+</Tab>
+<Tab heading="Terraform">
+
 
 To define this host-set in Terraform:
 
@@ -126,9 +142,15 @@ resource "boundary_host_set" "postgres" {
 }
 ```
 
+</Tab>
+</Tabs>
+
+
 ## Define Target
 
-#### CLI
+<Tabs>
+<Tab heading="CLI">
+
 
 ```bash
 boundary targets create tcp -name 'postgres' -description 'Postgres target' -default-port 5432 -scope-id p_1234567890 -session-connection-limit '-1'
@@ -153,7 +175,9 @@ Target information:
     Default Port:             5432
 ```
 
-#### UI
+</Tab>
+<Tab heading="Admin Console">
+
 
 Navigate to your the default project:
 ![](/img/manage-targets-new-target-project.png)
@@ -167,7 +191,9 @@ Fill in the Target info:
 See the Target in the targets view:
 ![](/img/manage-targets-new-target-defined.png)
 
-#### Terraform
+</Tab>
+<Tab heading="Terraform">
+
 
 To define this target in Terraform:
 
@@ -186,3 +212,7 @@ resource "boundary_target" "postgres" {
   ]
 }
 ```
+
+</Tab>
+</Tabs>
+
