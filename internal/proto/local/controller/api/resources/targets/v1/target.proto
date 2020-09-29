@@ -41,7 +41,8 @@ message Target {
 	// Output only. The time this resource was last updated.
 	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
 
-	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
+	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
 	uint32 version = 80;
 
 	// The type of the Target.
@@ -56,7 +57,7 @@ message Target {
 	// Maximum total lifetime of a created Session, in seconds.
 	google.protobuf.UInt32Value session_max_seconds = 120 [json_name="session_max_seconds", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"session_max_seconds" that: "SessionMaxSeconds"}];
 
-	// Maximum number of connections allowed in a Session.
+	// Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1.
 	google.protobuf.Int32Value session_connection_limit = 130 [json_name="session_connection_limit", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"session_connection_limit" that: "SessionConnectionLimit"}];
 
 	// The attributes that are applicable for the specific Target.

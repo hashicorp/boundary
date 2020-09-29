@@ -11,38 +11,37 @@ import "controller/api/resources/hosts/v1/host.proto";
 
 service HostService {
   // GetHost returns a stored Host if present.  The provided request
-  // must include the host catalog and host ID for the resource being
-  // retrieved. If any of those IDs are missing, malformed or reference a
-  // non existing resource an error is returned.
+  // must include the host ID for the resource being retrieved. If the ID is
+  // missing, malformed or referencing anon existing resource an error is
+   // returned.
   rpc GetHost(GetHostRequest) returns (GetHostResponse) {
     option (google.api.http) = {
       get: "/v1/hosts/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Host"
+      summary: "Gets a single Host."
     };
   }
 
-  // ListHosts returns a list of stored hosts which exist inside the scope
-  // referenced inside the request. The request must include the scope ID and
-  // the host catalog id for the hosts being retrieved. If the any of those
-  // are missing, malformed, or reference a non existing scope, an error is
-  // returned.
+  // ListHosts returns a list of stored hosts which exist inside the provided
+  // Host Catalog. The request must include the Host Catalog id containing the
+  // Hosts being listed.  If the id is missing, malformed, or reference a
+  // non-existing resource, an error is returned.
   rpc ListHosts(ListHostsRequest) returns (ListHostsResponse) {
     option (google.api.http) = {
       get: "/v1/hosts"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "List all Hosts for the specified catalog"
+      summary: "List all Hosts for the specified Catalog."
     };
   }
 
-  // CreateHost creates and stores a host in boundary.  The provided
-  // request must include the scope and host catalog ids in which the host
-  // will be created.  If the scope or catalog id is missing, malformed or references a
-  // non existing resource, an error is returned.  If a name is provided that
-  // is in use by another host in the same host catalog, an error is returned.
+  // CreateHost creates and stores a Host in boundary.  The provided
+  // request must include the Host Catalog id in which the Host
+  // will be created.  If the Catalog id is missing, malformed or references a
+  // non-existing resource, an error is returned.  If a name is provided that
+  // is in use by another Host in the same Host Catalog, an error is returned.
   rpc CreateHost(CreateHostRequest) returns (CreateHostResponse) {
     option (google.api.http) = {
       post: "/v1/hosts"
@@ -50,18 +49,18 @@ service HostService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Create a single Host"
+      summary: "Create a single Host."
     };
   }
 
-  // UpdateHost updates an existing host in boundary.  The provided
-  // host must not have any read only fields set.  The update mask must be
+  // UpdateHost updates an existing Host in boundary.  The provided
+  // Host must not have any read only fields set.  The update mask must be
   // included in the request and contain at least 1 mutable field.  To unset
   // a field's value, include the field in the update mask and don't set it
-  // in the provided host. An error is returned if either the scope
-  // or host catalog or host ids are missing or reference a non existing
-  // resource.  An error is also returned if the request attempts to update the
-  // name to one that is already in use in this host catalog.
+  // in the provided Host. An error is returned if the Host id is missing or
+  // reference a non-existing resource.  An error is also returned if the
+  // request attempts to update the name to one that is already in use in
+  // the same Host Catalog.
   rpc UpdateHost(UpdateHostRequest) returns (UpdateHostResponse) {
     option (google.api.http) = {
       patch: "/v1/hosts/{id}"
@@ -69,21 +68,18 @@ service HostService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Update a Host"
+      summary: "Update a Host."
     };
   }
 
-  // DeleteHost removes a host from Boundary. If the provided scope,
-  // host catalog, or host ids are malformed or not provided an error is
-  // returned.  No error is returned if any of the ids reference resources that
-  // do not exist since the response itself specifies if the resource existed
-  // before the DeleteHost request was received.
+  // DeleteHost removes a Host from Boundary. If the provided Host ID
+  // is malformed or not provided an error is returned.
   rpc DeleteHost(DeleteHostRequest) returns (DeleteHostResponse) {
     option (google.api.http) = {
       delete: "/v1/hosts/{id}"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Delete a Host"
+      summary: "Delete a Host."
     };
   }
 }

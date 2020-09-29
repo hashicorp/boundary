@@ -2,8 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Controller API",
-    "description": "API for managing resources associated with Controllers.",
-    "version": "0.0.1"
+    "version": "version not set"
   },
   "schemes": [
     "https",
@@ -18,7 +17,7 @@
   "paths": {
     "/v1/accounts": {
       "get": {
-        "summary": "Lists all accounts in a specific auth method.",
+        "summary": "Lists all Accounts in a specific Auth Method.",
         "operationId": "AccountService_ListAccounts",
         "responses": {
           "200": {
@@ -41,7 +40,7 @@
         ]
       },
       "post": {
-        "summary": "Creates a single account in the provided auth method.",
+        "summary": "Creates a single Account in the provided Auth Method.",
         "operationId": "AccountService_CreateAccount",
         "responses": {
           "200": {
@@ -68,7 +67,7 @@
     },
     "/v1/accounts/{id}": {
       "get": {
-        "summary": "Gets a single Account",
+        "summary": "Gets a single Account.",
         "operationId": "AccountService_GetAccount",
         "responses": {
           "200": {
@@ -91,7 +90,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes an account.",
+        "summary": "Deletes an Account.",
         "operationId": "AccountService_DeleteAccount",
         "responses": {
           "200": {
@@ -114,7 +113,7 @@
         ]
       },
       "patch": {
-        "summary": "Updates an account.",
+        "summary": "Updates an Account.",
         "operationId": "AccountService_UpdateAccount",
         "responses": {
           "200": {
@@ -157,7 +156,7 @@
     },
     "/v1/accounts/{id}:change-password": {
       "post": {
-        "summary": "Sets the password for the provided account.",
+        "summary": "Sets the password for the provided Account.",
         "operationId": "AccountService_ChangePassword",
         "responses": {
           "200": {
@@ -190,7 +189,7 @@
     },
     "/v1/accounts/{id}:set-password": {
       "post": {
-        "summary": "Sets the password for the provided account.",
+        "summary": "Sets the password for the provided Account.",
         "operationId": "AccountService_SetPassword",
         "responses": {
           "200": {
@@ -223,7 +222,7 @@
     },
     "/v1/auth-methods": {
       "get": {
-        "summary": "Lists all AuthMethods",
+        "summary": "Lists all Auth Methods.",
         "operationId": "AuthMethodService_ListAuthMethods",
         "responses": {
           "200": {
@@ -246,7 +245,7 @@
         ]
       },
       "post": {
-        "summary": "Creates a single AuthMethod",
+        "summary": "Creates a single Auth Method.",
         "operationId": "AuthMethodService_CreateAuthMethod",
         "responses": {
           "200": {
@@ -307,7 +306,7 @@
     },
     "/v1/auth-methods/{id}": {
       "get": {
-        "summary": "Gets a single AuthMethod",
+        "summary": "Gets a single Auth Method.",
         "operationId": "AuthMethodService_GetAuthMethod",
         "responses": {
           "200": {
@@ -353,7 +352,7 @@
         ]
       },
       "patch": {
-        "summary": "Updates an AuthMethod",
+        "summary": "Updates an Auth Method.",
         "operationId": "AuthMethodService_UpdateAuthMethod",
         "responses": {
           "200": {
@@ -396,7 +395,7 @@
     },
     "/v1/auth-tokens": {
       "get": {
-        "summary": "Lists all AuthTokens",
+        "summary": "Lists all Auth Tokens.",
         "operationId": "AuthTokenService_ListAuthTokens",
         "responses": {
           "200": {
@@ -421,7 +420,7 @@
     },
     "/v1/auth-tokens/{id}": {
       "get": {
-        "summary": "Gets a single AuthToken",
+        "summary": "Gets a single Auth Token.",
         "operationId": "AuthTokenService_GetAuthToken",
         "responses": {
           "200": {
@@ -444,7 +443,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes an AuthTokens",
+        "summary": "Deletes an Auth Token.",
         "operationId": "AuthTokenService_DeleteAuthToken",
         "responses": {
           "200": {
@@ -469,7 +468,7 @@
     },
     "/v1/groups": {
       "get": {
-        "summary": "Lists all Groups",
+        "summary": "Lists all Groups.",
         "operationId": "GroupService_ListGroups",
         "responses": {
           "200": {
@@ -492,7 +491,7 @@
         ]
       },
       "post": {
-        "summary": "Creates a single Group",
+        "summary": "Creates a single Group.",
         "operationId": "GroupService_CreateGroup",
         "responses": {
           "200": {
@@ -519,7 +518,7 @@
     },
     "/v1/groups/{id}": {
       "get": {
-        "summary": "Gets a single Group",
+        "summary": "Gets a single Group.",
         "operationId": "GroupService_GetGroup",
         "responses": {
           "200": {
@@ -542,7 +541,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes a Group",
+        "summary": "Deletes a Group.",
         "operationId": "GroupService_DeleteGroup",
         "responses": {
           "200": {
@@ -565,7 +564,7 @@
         ]
       },
       "patch": {
-        "summary": "Updates a Group",
+        "summary": "Updates a Group.",
         "operationId": "GroupService_UpdateGroup",
         "responses": {
           "200": {
@@ -608,7 +607,7 @@
     },
     "/v1/groups/{id}:add-members": {
       "post": {
-        "summary": "Adds Users as members to a Group",
+        "summary": "Adds members to a Group.",
         "operationId": "GroupService_AddGroupMembers",
         "responses": {
           "200": {
@@ -707,7 +706,7 @@
     },
     "/v1/host-catalogs": {
       "get": {
-        "summary": "Gets a list of HostCatalogs",
+        "summary": "Gets a list of Host Catalogs.",
         "operationId": "HostCatalogService_ListHostCatalogs",
         "responses": {
           "200": {
@@ -730,8 +729,7 @@
         ]
       },
       "post": {
-        "summary": "Creates a HostCatalog",
-        "description": "Creates a single host catalog under the specified scope",
+        "summary": "Creates a Host Catalog",
         "operationId": "HostCatalogService_CreateHostCatalog",
         "responses": {
           "200": {
@@ -758,8 +756,7 @@
     },
     "/v1/host-catalogs/{id}": {
       "get": {
-        "summary": "Gets a single HostCatalog",
-        "description": "Gets a single Host Catalog with the provided identifier.",
+        "summary": "Gets a single Host Catalog.",
         "operationId": "HostCatalogService_GetHostCatalog",
         "responses": {
           "200": {
@@ -782,7 +779,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes a HostCatalog",
+        "summary": "Deletes a Host Catalog",
         "operationId": "HostCatalogService_DeleteHostCatalog",
         "responses": {
           "200": {
@@ -805,7 +802,7 @@
         ]
       },
       "patch": {
-        "summary": "Updates a HostCatalog",
+        "summary": "Updates a Host Catalog",
         "operationId": "HostCatalogService_UpdateHostCatalog",
         "responses": {
           "200": {
@@ -848,7 +845,7 @@
     },
     "/v1/host-sets": {
       "get": {
-        "summary": "List all HostSets under the specific catalog",
+        "summary": "List all Host Sets under the specific Catalog.",
         "operationId": "HostSetService_ListHostSets",
         "responses": {
           "200": {
@@ -871,7 +868,7 @@
         ]
       },
       "post": {
-        "summary": "Create a HostSet",
+        "summary": "Create a Host Set.",
         "operationId": "HostSetService_CreateHostSet",
         "responses": {
           "200": {
@@ -898,7 +895,7 @@
     },
     "/v1/host-sets/{id}": {
       "get": {
-        "summary": "Get a single HostSet",
+        "summary": "Get a single Host Set.",
         "operationId": "HostSetService_GetHostSet",
         "responses": {
           "200": {
@@ -921,7 +918,7 @@
         ]
       },
       "delete": {
-        "summary": "Delete a HostSet",
+        "summary": "Delete a Host Set.",
         "operationId": "HostSetService_DeleteHostSet",
         "responses": {
           "200": {
@@ -944,7 +941,7 @@
         ]
       },
       "patch": {
-        "summary": "Update a HostSet",
+        "summary": "Update a Host Set.",
         "operationId": "HostSetService_UpdateHostSet",
         "responses": {
           "200": {
@@ -1086,7 +1083,7 @@
     },
     "/v1/hosts": {
       "get": {
-        "summary": "List all Hosts for the specified catalog",
+        "summary": "List all Hosts for the specified Catalog.",
         "operationId": "HostService_ListHosts",
         "responses": {
           "200": {
@@ -1109,7 +1106,7 @@
         ]
       },
       "post": {
-        "summary": "Create a single Host",
+        "summary": "Create a single Host.",
         "operationId": "HostService_CreateHost",
         "responses": {
           "200": {
@@ -1136,7 +1133,7 @@
     },
     "/v1/hosts/{id}": {
       "get": {
-        "summary": "Gets a single Host",
+        "summary": "Gets a single Host.",
         "operationId": "HostService_GetHost",
         "responses": {
           "200": {
@@ -1159,7 +1156,7 @@
         ]
       },
       "delete": {
-        "summary": "Delete a Host",
+        "summary": "Delete a Host.",
         "operationId": "HostService_DeleteHost",
         "responses": {
           "200": {
@@ -1182,7 +1179,7 @@
         ]
       },
       "patch": {
-        "summary": "Update a Host",
+        "summary": "Update a Host.",
         "operationId": "HostService_UpdateHost",
         "responses": {
           "200": {
@@ -1225,7 +1222,7 @@
     },
     "/v1/roles": {
       "get": {
-        "summary": "Lists all Roles",
+        "summary": "Lists all Roles.",
         "operationId": "RoleService_ListRoles",
         "responses": {
           "200": {
@@ -1248,7 +1245,7 @@
         ]
       },
       "post": {
-        "summary": "Creates a single Role",
+        "summary": "Creates a single Role.",
         "operationId": "RoleService_CreateRole",
         "responses": {
           "200": {
@@ -1275,7 +1272,7 @@
     },
     "/v1/roles/{id}": {
       "get": {
-        "summary": "Gets a single Role",
+        "summary": "Gets a single Role.",
         "operationId": "RoleService_GetRole",
         "responses": {
           "200": {
@@ -1298,7 +1295,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes a Role",
+        "summary": "Deletes a Role.",
         "operationId": "RoleService_DeleteRole",
         "responses": {
           "200": {
@@ -1321,7 +1318,7 @@
         ]
       },
       "patch": {
-        "summary": "Updates a Role",
+        "summary": "Updates a Role.",
         "operationId": "RoleService_UpdateRole",
         "responses": {
           "200": {
@@ -1364,7 +1361,7 @@
     },
     "/v1/roles/{id}:add-grants": {
       "post": {
-        "summary": "Adds grants to a role",
+        "summary": "Adds grants to a Role",
         "operationId": "RoleService_AddRoleGrants",
         "responses": {
           "200": {
@@ -1397,7 +1394,7 @@
     },
     "/v1/roles/{id}:add-principals": {
       "post": {
-        "summary": "Adds Users and/or Groups to a Role",
+        "summary": "Adds Users and/or Groups to a Role.",
         "operationId": "RoleService_AddRolePrincipals",
         "responses": {
           "200": {
@@ -1430,7 +1427,7 @@
     },
     "/v1/roles/{id}:remove-grants": {
       "post": {
-        "summary": "Removes grants from a role.",
+        "summary": "Removes grants from a Role.",
         "operationId": "RoleService_RemoveRoleGrants",
         "responses": {
           "200": {
@@ -1496,7 +1493,7 @@
     },
     "/v1/roles/{id}:set-grants": {
       "post": {
-        "summary": "Set grants for a role, removing any grants that are not specified in the request.",
+        "summary": "Set grants for a Role, removing any grants that are not specified in the request.",
         "operationId": "RoleService_SetRoleGrants",
         "responses": {
           "200": {
@@ -1562,7 +1559,7 @@
     },
     "/v1/scopes": {
       "get": {
-        "summary": "Lists all Scopes within the scope of the token making the request",
+        "summary": "Lists all Scopes within the Scope provided in the request.",
         "operationId": "ScopeService_ListScopes",
         "responses": {
           "200": {
@@ -1585,7 +1582,7 @@
         ]
       },
       "post": {
-        "summary": "Creates a single Scope",
+        "summary": "Creates a single Scope.",
         "operationId": "ScopeService_CreateScope",
         "responses": {
           "200": {
@@ -1608,7 +1605,8 @@
             "name": "skip_role_creation",
             "in": "query",
             "required": false,
-            "type": "boolean"
+            "type": "boolean",
+            "format": "boolean"
           }
         ],
         "tags": [
@@ -1618,7 +1616,7 @@
     },
     "/v1/scopes/{id}": {
       "get": {
-        "summary": "Gets a single Scope",
+        "summary": "Gets a single Scope.",
         "operationId": "ScopeService_GetScope",
         "responses": {
           "200": {
@@ -1641,7 +1639,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes a Scope",
+        "summary": "Deletes a Scope.",
         "operationId": "ScopeService_DeleteScope",
         "responses": {
           "200": {
@@ -1664,7 +1662,7 @@
         ]
       },
       "patch": {
-        "summary": "Updates a Scope",
+        "summary": "Updates a Scope.",
         "operationId": "ScopeService_UpdateScope",
         "responses": {
           "200": {
@@ -1707,7 +1705,7 @@
     },
     "/v1/sessions": {
       "get": {
-        "summary": "Lists all Sessions",
+        "summary": "Lists all Sessions.",
         "operationId": "SessionService_ListSessions",
         "responses": {
           "200": {
@@ -1732,7 +1730,7 @@
     },
     "/v1/sessions/{id}": {
       "get": {
-        "summary": "Gets a single Session",
+        "summary": "Gets a single Session.",
         "operationId": "SessionService_GetSession",
         "responses": {
           "200": {
@@ -1757,7 +1755,7 @@
     },
     "/v1/sessions/{id}:cancel": {
       "post": {
-        "summary": "Cancels a Session",
+        "summary": "Cancels a Session.",
         "operationId": "SessionService_CancelSession",
         "responses": {
           "200": {
@@ -1790,7 +1788,7 @@
     },
     "/v1/targets": {
       "get": {
-        "summary": "Lists all Targets",
+        "summary": "Lists all Targets.",
         "operationId": "TargetService_ListTargets",
         "responses": {
           "200": {
@@ -1813,7 +1811,7 @@
         ]
       },
       "post": {
-        "summary": "Creates a single Target",
+        "summary": "Creates a single Target.",
         "operationId": "TargetService_CreateTarget",
         "responses": {
           "200": {
@@ -1840,7 +1838,7 @@
     },
     "/v1/targets/{id}": {
       "get": {
-        "summary": "Gets a single Target",
+        "summary": "Gets a single Target.",
         "operationId": "TargetService_GetTarget",
         "responses": {
           "200": {
@@ -1863,7 +1861,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes a Target",
+        "summary": "Deletes a Target.",
         "operationId": "TargetService_DeleteTarget",
         "responses": {
           "200": {
@@ -1886,7 +1884,7 @@
         ]
       },
       "patch": {
-        "summary": "Updates a Target",
+        "summary": "Updates a Target.",
         "operationId": "TargetService_UpdateTarget",
         "responses": {
           "200": {
@@ -1962,7 +1960,7 @@
     },
     "/v1/targets/{id}:authorize": {
       "post": {
-        "summary": "Authorizes a Session",
+        "summary": "Authorizes a Session.",
         "operationId": "TargetService_AuthorizeSession",
         "responses": {
           "200": {
@@ -2061,7 +2059,7 @@
     },
     "/v1/users": {
       "get": {
-        "summary": "Lists all Users",
+        "summary": "Lists all Users.",
         "operationId": "UserService_ListUsers",
         "responses": {
           "200": {
@@ -2084,7 +2082,7 @@
         ]
       },
       "post": {
-        "summary": "Creates a single User",
+        "summary": "Creates a single User.",
         "operationId": "UserService_CreateUser",
         "responses": {
           "200": {
@@ -2111,7 +2109,7 @@
     },
     "/v1/users/{id}": {
       "get": {
-        "summary": "Gets a single User",
+        "summary": "Gets a single User.",
         "operationId": "UserService_GetUser",
         "responses": {
           "200": {
@@ -2134,7 +2132,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes a User",
+        "summary": "Deletes a User.",
         "operationId": "UserService_DeleteUser",
         "responses": {
           "200": {
@@ -2157,7 +2155,7 @@
         ]
       },
       "patch": {
-        "summary": "Updates a User",
+        "summary": "Updates a User.",
         "operationId": "UserService_UpdateUser",
         "responses": {
           "200": {
@@ -2318,7 +2316,7 @@
         },
         "description": {
           "type": "string",
-          "description": "Optional user-set descripton for identification purposes."
+          "description": "Optional user-set description for identification purposes."
         },
         "created_time": {
           "type": "string",
@@ -2335,7 +2333,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "type": {
           "type": "string",
@@ -2343,8 +2341,7 @@
         },
         "auth_method_id": {
           "type": "string",
-          "description": "Output only. The ID of the Auth Method that is associated with this Account.",
-          "readOnly": true
+          "description": "The ID of the Auth Method that is associated with this Account."
         },
         "attributes": {
           "type": "object",
@@ -2393,7 +2390,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "type": {
           "type": "string",
@@ -2510,7 +2507,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "member_ids": {
           "type": "array",
@@ -2586,7 +2583,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "type": {
           "type": "string",
@@ -2609,8 +2606,7 @@
         },
         "host_catalog_id": {
           "type": "string",
-          "description": "Output only. The Host Catalog of which this Host is a part.",
-          "readOnly": true
+          "description": "The Host Catalog of which this Host is a part."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
@@ -2640,7 +2636,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "type": {
           "type": "string",
@@ -2666,13 +2662,12 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the host.",
+          "description": "Output only. The ID of the Host Set.",
           "readOnly": true
         },
         "host_catalog_id": {
           "type": "string",
-          "description": "Output only. The Host Catalog of which this Host Set is a part.",
-          "readOnly": true
+          "description": "The Host Catalog of which this Host Set is a part."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
@@ -2702,7 +2697,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "type": {
           "type": "string",
@@ -2791,7 +2786,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "title": "Output only. The ID of the Role",
+          "description": "Output only. The ID of the Role.",
           "readOnly": true
         },
         "scope_id": {
@@ -2826,7 +2821,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "grant_scope_id": {
           "type": "string",
@@ -2907,7 +2902,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "type": {
           "type": "string",
@@ -3189,7 +3184,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "type": {
           "type": "string",
@@ -3218,7 +3213,7 @@
         "session_connection_limit": {
           "type": "integer",
           "format": "int32",
-          "description": "Maximum number of connections allowed in a Session."
+          "description": "Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1."
         },
         "attributes": {
           "type": "object",
@@ -3282,7 +3277,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "account_ids": {
           "type": "array",
@@ -3312,7 +3307,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the group hasn't changed since it was last retrieved and if it has the request will fail."
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "member_ids": {
           "type": "array",
@@ -3338,7 +3333,8 @@
         },
         "version": {
           "type": "integer",
-          "format": "int64"
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "host_ids": {
           "type": "array",
@@ -3366,7 +3362,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "grant_strings": {
           "type": "array",
@@ -3393,7 +3389,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "principal_ids": {
           "type": "array",
@@ -3419,14 +3415,14 @@
         },
         "version": {
           "type": "integer",
-          "format": "int64"
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "host_set_ids": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "description": "A list of Host Set IDs which will be added to this target. Each Host Set referenced here must be a child of a Host Catalog in the same Scope as this Target."
+          }
         }
       }
     },
@@ -3447,7 +3443,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail."
+          "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "account_ids": {
           "type": "array",
@@ -3541,7 +3537,8 @@
         },
         "version": {
           "type": "integer",
-          "format": "int64"
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "current_password": {
           "type": "string"
@@ -3939,7 +3936,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the group hasn't changed since it was last retrieved and if it has the request will fail."
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "member_ids": {
           "type": "array",
@@ -3965,7 +3962,8 @@
         },
         "version": {
           "type": "integer",
-          "format": "int64"
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "host_ids": {
           "type": "array",
@@ -3993,7 +3991,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "grant_strings": {
           "type": "array",
@@ -4020,7 +4018,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "principal_ids": {
           "type": "array",
@@ -4046,14 +4044,14 @@
         },
         "version": {
           "type": "integer",
-          "format": "int64"
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "host_set_ids": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "description": "A list of Host Set IDs which will be removed from this target."
+          }
         }
       }
     },
@@ -4074,7 +4072,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail."
+          "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "account_ids": {
           "type": "array",
@@ -4101,7 +4099,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the group hasn't changed since it was last retrieved and if it has the request will fail."
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "member_ids": {
           "type": "array",
@@ -4127,7 +4125,8 @@
         },
         "version": {
           "type": "integer",
-          "format": "int64"
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "host_ids": {
           "type": "array",
@@ -4154,7 +4153,8 @@
         },
         "version": {
           "type": "integer",
-          "format": "int64"
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "password": {
           "type": "string"
@@ -4178,7 +4178,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "grant_strings": {
           "type": "array",
@@ -4205,7 +4205,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the role hasn't changed since it was last retrieved and if it has the request will fail."
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "principal_ids": {
           "type": "array",
@@ -4231,14 +4231,14 @@
         },
         "version": {
           "type": "integer",
-          "format": "int64"
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
         "host_set_ids": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "description": "A list of Host Set IDs which will be set on this target. Each Host Set referenced here must be a child of a Host Catalog in the same Scope as this Target."
+          }
         }
       }
     },
@@ -4259,7 +4259,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail."
+          "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
         },
         "account_ids": {
           "type": "array",
