@@ -31,6 +31,8 @@ export default [
   {
     category: 'concepts',
     content: [
+      'api-standards',
+      'cli-standards',
       'security-model',
       {
         category: 'domain-model',
