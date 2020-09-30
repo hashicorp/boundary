@@ -132,7 +132,7 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating role for default generated grants: %w", err)
 	}
-	if _, err := iamRepo.AddRoleGrants(cancelCtx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;actions=*"}); err != nil {
+	if _, err := iamRepo.AddRoleGrants(cancelCtx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;type=*;actions=*"}); err != nil {
 		return nil, nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
 	}
 	if _, err := iamRepo.AddPrincipalRoles(cancelCtx, defPermsRole.PublicId, defPermsRole.Version+1, []string{u.GetPublicId()}, nil); err != nil {

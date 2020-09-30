@@ -385,7 +385,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	}
 	parsedGrants = make([]perms.Grant, 0, len(grantPairs))
 	for _, pair := range grantPairs {
-		parsed, err := perms.Parse(pair.ScopeId, userId, pair.Grant)
+		parsed, err := perms.Parse(pair.ScopeId, userId, pair.Grant, true)
 		if err != nil {
 			retErr = fmt.Errorf("perform auth check: failed to parse grant %#v: %w", pair.Grant, err)
 			return
