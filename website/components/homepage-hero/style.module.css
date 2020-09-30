@@ -1,60 +1,75 @@
 .root {
   width: 100%;
-  padding: 150px 0;
+  padding-top: 88px;
+  padding-bottom: 128px;
   background-repeat: no-repeat;
-  background-color: var(--gray-7);
+  background-color: var(--red-l3);
   background-image: url(/img/hero-pattern.svg);
-  background-size: cover;
+  background-position: bottom right;
 
-  @media (max-width: 758px) {
+  @media (max-width: 767px) {
     padding: 64px 0;
-  }
-
-  & .eyebrow {
-    font-family: var(--font-body);
-    text-align: center;
-    display: block;
-    font-weight: var(--font-weight-bold);
-    font-size: 1.1rem;
-
-    & .red {
-      color: #ba2226;
-    }
-  }
-
-  @media (max-width: 758px) {
-    background-image: url(/img/mobile-hero-pattern.svg);
+    background-position: bottom 0 right -130px;
   }
 
   & h1 {
-    text-align: center;
     white-space: pre-wrap;
+    margin-top: 0;
   }
 
   & p {
-    margin: 0 auto 0 auto;
-    text-align: center;
-    max-width: 40em;
+    max-width: 22em;
+    color: var(--gray-2);
+
+    @media (width < 1219px) {
+      margin: 0 auto;
+    }
   }
 
-  & :global(.g-grid-container) {
-    max-width: 700px;
-  }
+  & .contentAndLinks {
+    max-width: 513px;
 
-  & .links {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-top: calc(32px - 8px);
-    margin-bottom: -8px;
+    @media (width < 1219px) {
+      margin-bottom: 64px;
+      text-align: center;
+    }
 
-    & a {
-      margin: 8px;
+    & .links {
+      display: flex;
+      flex-wrap: wrap;
+      margin-top: calc(32px - 8px);
 
-      &:global(.variant-primary) {
-        border-color: var(--boundary);
-        background-color: var(--boundary);
+      @media (width < 1219px) {
+        justify-content: center;
+      }
+
+      & a {
+        &:global(.variant-primary) {
+          border-color: var(--boundary);
+          background-color: var(--boundary);
+          margin-right: 16px;
+
+          @media (width < 405px) {
+            margin-bottom: 16px;
+          }
+        }
       }
     }
   }
+}
+
+.contentContainer {
+  composes: g-grid-container from global;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  @media (width < 1219px) {
+    flex-direction: column;
+  }
+}
+
+.video {
+  max-width: 100%;
+  box-shadow: 0 24px 40px rgba(50, 14, 16, 0.24);
 }
