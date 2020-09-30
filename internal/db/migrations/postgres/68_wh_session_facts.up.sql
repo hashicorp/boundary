@@ -23,6 +23,9 @@ begin;
       on delete restrict
       on update cascade,
 
+    -- TODO(mgaffney) 09/2020: add dimension and foreign key for the session
+    -- termination reason
+
     -- date and time foreign keys
     session_pending_date_id integer not null
       references wh_date_dimension (id)
@@ -64,6 +67,11 @@ begin;
       on update cascade,
     session_terminated_time wh_timestamp default 'infinity'::timestamptz,
 
+    -- TODO(mgaffney) 09/2020: add columns for session expiration
+
+    -- TODO(mgaffney) 09/2020: add connection limit. This may need a dimension
+    -- table and foreign key column to represent unlimited connections.
+
     -- The total number of connections made during the session.
     total_connection_count bigint, -- will be null until the first connection is created
 
@@ -97,6 +105,9 @@ begin;
       on delete restrict
       on update cascade,
 
+    -- TODO(mgaffney) 09/2020: add dimension and foreign key for the connection
+    -- closed reason
+
     -- date and time foreign keys and timestamps
     connection_authorized_date_id integer not null
       references wh_date_dimension (id)
@@ -128,8 +139,7 @@ begin;
       on update cascade,
     connection_closed_time wh_timestamp default 'infinity'::timestamptz,
 
-    -- NOTE(mgaffney) 09/2020: should a column be added for the duration of
-    -- connection? If so, what should the units of the duration be?
+    -- TODO(mgaffney) 09/2020: add a connection_duration_in_seconds column
 
     -- The client address and port are degenerate dimensions
     client_tcp_address inet, -- can be null
