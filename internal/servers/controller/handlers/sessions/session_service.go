@@ -192,6 +192,8 @@ func toProto(in *session.Session) *pb.Session {
 		HostId:      in.HostId,
 		HostSetId:   in.HostSetId,
 		AuthTokenId: in.AuthTokenId,
+		Endpoint:    in.Endpoint,
+		Type:        "tcp",
 		// TODO: Provide the ServerType and the ServerId when that information becomes relevant in the API.
 
 		CreatedTime:    in.CreateTime.GetTimestamp(),
