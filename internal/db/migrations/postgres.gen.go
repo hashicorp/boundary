@@ -4796,8 +4796,6 @@ begin;
   -- The table wh_session_accumulating_fact is an accumulating fact table.
   -- The grain of the fact table is one row per session.
   create table wh_session_accumulating_fact (
-    -- TODO(mgaffney) 09/2020: partition table
-
     session_id wt_public_id primary key,
     -- auth token id is a degenerate dimension
     auth_token_id wt_public_id not null,
@@ -4869,8 +4867,6 @@ begin;
   -- The wh_session_connection_accumulating_fact table is an accumulating fact table.
   -- The grain of the fact table is one row per session connection.
   create table wh_session_connection_accumulating_fact  (
-    -- TODO(mgaffney) 09/2020: partition table
-
     connection_id wt_public_id primary key,
     -- session_id is a degenerate dimension
     session_id wt_public_id not null
