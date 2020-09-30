@@ -90,7 +90,7 @@ func (c *Controller) startTerminateCompletedSessionsTicking(cancelCtx context.Co
 			if r.Float32() > 0.5 {
 				f = -1 * f
 			}
-			return terminationInterval + time.Duration(f*float64(time.Second))
+			return terminationInterval + time.Duration(f*float64(time.Minute))
 		}
 		timer := time.NewTimer(0)
 		for {
