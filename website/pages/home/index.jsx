@@ -89,6 +89,10 @@ export default function HomePage() {
                 alt: 'Consul',
                 url: require('./img/logos/consul.svg?url'),
               },
+              {
+                url: require('./img/logos/more.svg?url'),
+                alt: 'More integrations',
+              },
             ],
           },
           {
