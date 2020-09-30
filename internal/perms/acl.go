@@ -83,19 +83,21 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 		switch {
 		// type=<resource.type>;actions=<action>
 		case grant.id == "" &&
-			grant.typ == r.Type:
+			(grant.typ == r.Type || grant.typ == resource.All):
 			results.Allowed = true
 			return
 
 		// id=<resource.id>;actions=<action>
-		case (grant.id == r.Id || grant.id == "*") &&
+		case grant.id != "" &&
+			(grant.id == r.Id || grant.id == "*") &&
 			grant.typ == resource.Unknown:
 			results.Allowed = true
 			return
 
 		// id=<pin>;type=<resource.type>;actions=<action>
-		case grant.id == r.Pin &&
-			grant.typ == r.Type:
+		case grant.id != "" &&
+			grant.id == r.Pin &&
+			(grant.typ == r.Type || grant.typ == resource.All):
 			results.Allowed = true
 			return
 		}

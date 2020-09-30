@@ -52,6 +52,12 @@ func Test_ACLAllowed(t *testing.T) {
 				"id={{user.id }};actions=create,update",
 			},
 		},
+		{
+			scope: "o_d",
+			grants: []string{
+				"type=*;actions=create,update",
+			},
+		},
 	}
 
 	// See acl.go for expected allowed formats. The goal here is to basically
@@ -196,6 +202,16 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			name:        "good templated user id",
 			resource:    Resource{ScopeId: "o_c", Id: "u_abcd1234"},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: action.Create, allowed: true},
+				{action: action.Update, allowed: true},
+			},
+			userId: "u_abcd1234",
+		},
+		{
+			name:        "all type",
+			resource:    Resource{ScopeId: "o_d", Type: resource.Account},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
 				{action: action.Create, allowed: true},
