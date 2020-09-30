@@ -79,12 +79,11 @@ func TestAccount_Clone(t *testing.T) {
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
-		rw := db.New(conn)
 		u := TestUser(t, repo, org.PublicId)
 		authMethodPublicId := testAuthMethod(t, conn, org.PublicId)
 		acct := testAccount(t, conn, org.PublicId, authMethodPublicId, u.PublicId)
 		acct2 := testAccount(t, conn, org.PublicId, authMethodPublicId, "")
-		dbassert := dbassert.New(t, rw)
+		dbassert := dbassert.New(t, conn.DB())
 		dbassert.IsNull(acct2, "IamUserId")
 		cp := acct.Clone()
 		assert.True(!proto.Equal(cp.(*authAccount).Account, acct2.Account))
