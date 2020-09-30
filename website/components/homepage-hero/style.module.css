@@ -27,12 +27,17 @@
 
     @media (width < 1219px) {
       margin-bottom: 64px;
+      text-align: center;
     }
 
     & .links {
       display: flex;
       flex-wrap: wrap;
       margin-top: calc(32px - 8px);
+
+      @media (width < 1219px) {
+        justify-content: center;
+      }
 
       & a {
         &:global(.variant-primary) {
