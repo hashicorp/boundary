@@ -54,9 +54,6 @@ type Reader interface {
 
 	// ScanRows will scan sql rows into the interface provided
 	ScanRows(rows *sql.Rows, result interface{}) error
-
-	// DB returns the sql.DB
-	DB() (*sql.DB, error)
 }
 
 // Writer interface defines create, update and retryable transaction handlers
@@ -105,9 +102,6 @@ type Writer interface {
 	// caller must decide what to do with the transaction, which almost always
 	// should be to rollback. Delete returns the number of rows deleted or an error.
 	DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error)
-
-	// DB returns the sql.DB
-	DB() (*sql.DB, error)
 
 	// Exec will execute the sql with the values as parameters. The int returned
 	// is the number of rows affected by the sql. No options are currently
@@ -188,14 +182,6 @@ var _ Writer = (*Db)(nil)
 
 func New(underlying *gorm.DB) *Db {
 	return &Db{underlying: underlying}
-}
-
-// DB returns the sql.DB
-func (rw *Db) DB() (*sql.DB, error) {
-	if rw.underlying == nil {
-		return nil, fmt.Errorf("missing underlying db: %w", ErrInvalidParameter)
-	}
-	return rw.underlying.DB(), nil
 }
 
 // Exec will execute the sql with the values as parameters. The int returned
