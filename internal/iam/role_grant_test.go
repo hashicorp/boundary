@@ -72,12 +72,12 @@ func TestRoleGrant_Create(t *testing.T) {
 			name: "valid-reversed-grant",
 			args: args{
 				roleId: projRole.PublicId,
-				grant:  "actions=*;id=*",
+				grant:  "type=*;actions=*;id=*",
 			},
 			want: func() *RoleGrant {
 				g := allocRoleGrant()
 				g.RoleId = projRole.PublicId
-				g.RawGrant = "actions=*;id=*"
+				g.RawGrant = "type=*;actions=*;id=*"
 				g.CanonicalGrant = "id=*;type=*;actions=*"
 				return &g
 			}(),
@@ -127,7 +127,7 @@ func TestRoleGrant_Update(t *testing.T) {
 		r := TestRole(t, conn, org.PublicId)
 		roleGrant := TestRoleGrant(t, conn, r.PublicId, "id=*;type=*;actions=*")
 		updateRoleGrant := roleGrant.Clone().(*RoleGrant)
-		updateRoleGrant.RawGrant = "actions=*;id=*"
+		updateRoleGrant.RawGrant = "type=*;actions=*;id=*"
 		updatedRows, err := rw.Update(context.Background(), updateRoleGrant, []string{"RawGrant"}, nil)
 		require.Error(err)
 		assert.Equal(0, updatedRows)

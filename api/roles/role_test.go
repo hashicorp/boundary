@@ -91,10 +91,10 @@ func TestCustom(t *testing.T) {
 			assert.Empty(updatedRole.Item.Principals)
 			version++
 
-			updatedRole, err = rc.AddGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=read"})
+			updatedRole, err = rc.AddGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;type=*;actions=read"})
 			require.NoError(err)
 			assert.EqualValues(updatedRole.Item.Version, version)
-			assert.Contains(updatedRole.Item.GrantStrings, "id=*;actions=read")
+			assert.Contains(updatedRole.Item.GrantStrings, "id=*;type=*;actions=read")
 			version++
 
 			updatedRole, err = rc.SetGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;type=*;actions=*"})
