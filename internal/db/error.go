@@ -39,6 +39,49 @@ var (
 	ErrMultipleRecords = errors.New("multiple records")
 )
 
+type Dialect string
+
+const (
+	UnknownDialect  Dialect = "unknown"
+	PostgresDialect Dialect = "postgres"
+)
+
+// String representation of the dialect
+func (d Dialect) String() string {
+	return string(d)
+}
+
+type dialectError struct {
+	Dialect Dialect
+	Message string
+	Code    string
+}
+
+type Error struct {
+	Msg string
+
+	Class ErrClass
+	Code  ErrCode
+
+	dialectError *dialectError
+}
+
+type ErrClass string
+type ErrCode string
+
+func NewError(Msg string, t ErrClass, code ErrCode) error {
+	panic("")
+}
+func NewFromDialect(dbError error) error {
+	panic("")
+}
+func ParseError(errStr string) error {
+	panic("")
+}
+func (e *Error) Error() string {
+	panic("")
+}
+
 // IsUniqueError returns a boolean indicating whether the error is known to
 // report a unique constraint violation.
 func IsUniqueError(err error) bool {
