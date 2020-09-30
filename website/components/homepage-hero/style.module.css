@@ -1,12 +1,13 @@
 .root {
   width: 100%;
-  padding: 150px 0;
+  padding-top: 88px;
+  padding-bottom: 128px;
   background-repeat: no-repeat;
   background-color: var(--red-l3);
   background-image: url(/img/hero-pattern.svg);
   background-position: bottom right;
 
-  @media (max-width: 1120px) {
+  @media (max-width: 1219px) {
     background-image: url(/img/mobile-hero-pattern.svg);
   }
 
@@ -28,11 +29,14 @@
   & .contentAndLinks {
     max-width: 513px;
 
+    @media (width < 1219px) {
+      margin-bottom: 64px;
+    }
+
     & .links {
       display: flex;
       flex-wrap: wrap;
       margin-top: calc(32px - 8px);
-      margin-bottom: -8px;
 
       & a {
         &:global(.variant-primary) {
@@ -41,7 +45,7 @@
           margin-right: 32px;
 
           @media (width < 405px) {
-            margin-bottom: 32px;
+            margin-bottom: 16px;
           }
         }
       }
@@ -54,4 +58,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  @media (width < 1219px) {
+    flex-direction: column;
+  }
+}
+
+.video {
+  max-width: 100%;
 }
