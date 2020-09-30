@@ -18,8 +18,12 @@
   }
 
   & p {
-    margin: 0 auto 0 auto;
-    max-width: 40em;
+    max-width: 22em;
+    color: var(--gray-2);
+
+    @media (width < 1219px) {
+      margin: 0 auto;
+    }
   }
 
   & .contentAndLinks {
@@ -43,7 +47,7 @@
         &:global(.variant-primary) {
           border-color: var(--boundary);
           background-color: var(--boundary);
-          margin-right: 32px;
+          margin-right: 16px;
 
           @media (width < 405px) {
             margin-bottom: 16px;
@@ -67,4 +71,5 @@
 
 .video {
   max-width: 100%;
+  box-shadow: 0 24px 40px rgba(50, 14, 16, 0.24);
 }
