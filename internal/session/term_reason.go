@@ -17,6 +17,7 @@ const (
 	NetworkError       TerminationReason = "network error"
 	SystemError        TerminationReason = "system error"
 	ConnectionLimit    TerminationReason = "connection limit"
+	SessionCanceled    TerminationReason = "canceled"
 )
 
 // String representation of the termination reason

@@ -339,6 +339,7 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 // TerminateCompletedSessions will terminate sessions in the repo based on:
 //  * sessions that have exhausted their connection limit and all their connections are closed.
 //	* sessions that are expired and all their connections are closed.
+//	* sessions that are canceling and all their connections are closed
 // This function should called on a periodic basis a Controllers via it's
 // "ticker" pattern.
 func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error) {

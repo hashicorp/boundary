@@ -3428,7 +3428,8 @@ begin;
           'terminated',
           'network error',
           'system error',
-          'connection limit'
+          'connection limit',
+          'canceled'
         )
       )
   );
@@ -3441,7 +3442,8 @@ begin;
     ('terminated'),
     ('network error'),
     ('system error'),
-    ('connection limit');
+    ('connection limit'),
+    ('canceled');
 
   create table session (
     public_id wt_public_id primary key,

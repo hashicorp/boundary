@@ -852,6 +852,34 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "canceled-sessions-with-closed-connections",
+			setup: func() testArgs {
+				cnt := 1
+				wantTermed := map[string]TerminationReason{}
+				sessions := make([]*Session, 0, 5)
+				for i := 0; i < cnt; i++ {
+					// make one with limit of 3 and closed connections
+					s := setupFn(3, time.Hour+1, false)
+					wantTermed[s.PublicId] = SessionCanceled
+					sessions = append(sessions, s)
+
+					// make one with connection left open
+					s2 := setupFn(1, time.Hour+1, true)
+					sessions = append(sessions, s2)
+
+					// now cancel the sessions
+					for _, ses := range sessions {
+						_, err := repo.CancelSession(context.Background(), ses.PublicId, ses.Version)
+						require.NoError(t, err)
+					}
+				}
+				return testArgs{
+					sessions:   sessions,
+					wantTermed: wantTermed,
+				}
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
