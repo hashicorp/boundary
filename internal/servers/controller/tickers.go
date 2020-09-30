@@ -111,8 +111,6 @@ func (c *Controller) startTerminateCompletedSessionsTicking(cancelCtx context.Co
 						c.logger.Info("terminating completed sessions successful", "sessions_terminated", terminationCount)
 					}
 				}
-
-				timer := time.NewTimer(0)
 				timer.Reset(getRandomInterval())
 			}
 		}
