@@ -12,14 +12,14 @@
 @import '~@hashicorp/react-section-header/dist/style.css';
 @import '~@hashicorp/react-product-downloader/dist/style.css';
 @import '~@hashicorp/react-vertical-text-block-list/dist/style.css';
-@import '~@hashicorp/react-docs-sidenav/dist/style.css';
-@import '~@hashicorp/react-content/dist/style.css';
+@import '~@hashicorp/react-docs-sidenav/style.css';
+@import '~@hashicorp/react-content/style.css';
 @import '~@hashicorp/react-subnav/dist/style.css';
 @import '~@hashicorp/react-tabs/dist/style.css';
 @import '~@hashicorp/react-enterprise-alert/dist/style.css';
 @import '~@hashicorp/react-mega-nav/style.css';
 @import '~@hashicorp/react-docs-page/style.css';
-@import '~@hashicorp/react-product-features-list/dist/style.css';
+@import '~@hashicorp/react-product-features-list/style.css';
 @import '~@hashicorp/react-use-cases/dist/style.css';
 
 /* Local Components */
