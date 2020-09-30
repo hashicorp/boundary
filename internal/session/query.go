@@ -165,7 +165,7 @@ where
 		select 
 			session_id 
 		from 
-		  session_connection
+		  	session_connection
      	where public_id in (
 			select 
 				connection_id
