@@ -762,7 +762,7 @@ func associationChanges(ctx context.Context, reader db.Reader, userId string, ac
 	for _, v := range accountIds {
 		params = append(params, v)
 	}
-	rows, err := reader.Query(query, params)
+	rows, err := reader.Query(ctx, query, params)
 	if err != nil {
 		return nil, nil, fmt.Errorf("changes: query failed: %w", err)
 	}
