@@ -35,14 +35,14 @@ func Test_ACLAllowed(t *testing.T) {
 			grants: []string{
 				"id=a_bar;actions=read,update",
 				"id=a_foo;type=host-catalog;actions=update,delete",
-				"type=host-set;actions=list,create",
+				"id=*;type=host-set;actions=list,create",
 			},
 		},
 		{
 			scope: "o_b",
 			grants: []string{
-				"type=host-set;actions=list,create",
-				"type=host;actions=*",
+				"id=*;type=host-set;actions=list,create",
+				"id=*;type=host;actions=*",
 				"id=*;actions=authenticate",
 			},
 		},
@@ -55,7 +55,7 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			scope: "o_d",
 			grants: []string{
-				"type=*;actions=create,update",
+				"id=*;type=*;actions=create,update",
 			},
 		},
 	}

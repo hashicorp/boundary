@@ -1103,8 +1103,8 @@ insert into iam_role (public_id, name, description, scope_id)
   values('r_default', 'Default Grants', 'Default role created on first instantiation of Boundary. It is meant to provide enough permissions for users to successfully authenticate via various client types.', 'global');
 insert into iam_role_grant (role_id, canonical_grant, raw_grant)
   values
-    ('r_default', 'type=scope;actions=list', 'type=scope;actions=list'),
-    ('r_default', 'type=auth-method;actions=authenticate,list', 'type=auth-method;actions=authenticate,list');
+    ('r_default', 'id=*;type=scope;actions=list', 'id=*;type=scope;actions=list'),
+    ('r_default', 'id=*;type=auth-method;actions=authenticate,list', 'id=*;type=auth-method;actions=authenticate,list');
 insert into iam_user_role (role_id, principal_id)
   values 
     ('r_default', 'u_anon');
