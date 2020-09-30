@@ -1104,7 +1104,7 @@ func TestDb_Exec(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		require.NoError(err)
 		require.NotEmpty(user.Id)
-		rowsAffected, err := w.Exec("update db_test_user set name = ? where public_id = ?", []interface{}{"updated-" + id, user.PublicId})
+		rowsAffected, err := w.Exec(context.Background(), "update db_test_user set name = ? where public_id = ?", []interface{}{"updated-" + id, user.PublicId})
 		require.NoError(err)
 		require.Equal(1, rowsAffected)
 	})
@@ -1540,7 +1540,7 @@ func TestDb_Query(t *testing.T) {
 		assert.Equal("alice", user.Name)
 
 		where := "select * from db_test_user where name in ($1, $2)"
-		rows, err := rw.Query(where, []interface{}{"alice", "bob"})
+		rows, err := rw.Query(context.Background(), where, []interface{}{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
 		for rows.Next() {
