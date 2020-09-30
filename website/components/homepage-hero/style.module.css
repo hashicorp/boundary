@@ -7,10 +7,6 @@
   background-image: url(/img/hero-pattern.svg);
   background-position: bottom right;
 
-  @media (max-width: 1219px) {
-    background-image: url(/img/mobile-hero-pattern.svg);
-  }
-
   @media (max-width: 767px) {
     padding: 64px 0;
     background-position: bottom 0 right -130px;
