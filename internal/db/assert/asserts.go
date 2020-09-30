@@ -17,9 +17,6 @@ type DbAsserts struct {
 // New creates a new DbAsserts.
 func New(t dbassert.TestingT, r *sql.DB) *DbAsserts {
 	assert.NotNil(t, r, "db.Reader is nill")
-
-	// db := r.DB()
-	// assert.NotNil(t, db)
 	return &DbAsserts{
 		asserts: gormAssert.New(t, r, "postgres"),
 	}
