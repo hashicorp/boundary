@@ -17,6 +17,7 @@
 
   & h1 {
     white-space: pre-wrap;
+    margin-top: 0;
   }
 
   & p {
@@ -46,4 +47,11 @@
       }
     }
   }
+}
+
+.contentContainer {
+  composes: g-grid-container from global;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
