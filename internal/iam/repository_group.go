@@ -503,7 +503,7 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 		params = append(params, v)
 	}
 	// fmt.Println(query, params)
-	rows, err := reader.Query(query, params)
+	rows, err := reader.Query(ctx, query, params)
 	if err != nil {
 		return nil, nil, fmt.Errorf("changes: query failed: %w", err)
 	}

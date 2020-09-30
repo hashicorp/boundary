@@ -1,9 +1,10 @@
 package dbassert
 
 import (
+	"database/sql"
+
 	dbassert "github.com/hashicorp/dbassert"
 
-	"github.com/hashicorp/boundary/internal/db"
 	gormAssert "github.com/hashicorp/dbassert/gorm"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,13 +15,10 @@ type DbAsserts struct {
 }
 
 // New creates a new DbAsserts.
-func New(t dbassert.TestingT, r db.Reader) *DbAsserts {
+func New(t dbassert.TestingT, r *sql.DB) *DbAsserts {
 	assert.NotNil(t, r, "db.Reader is nill")
-
-	db, err := r.DB()
-	assert.NoError(t, err)
 	return &DbAsserts{
-		asserts: gormAssert.New(t, db, "postgres"),
+		asserts: gormAssert.New(t, r, "postgres"),
 	}
 }
 

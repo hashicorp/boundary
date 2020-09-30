@@ -304,11 +304,7 @@ func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId strin
 	if withAccountId == "" {
 		return nil, fmt.Errorf("missing account id %w", db.ErrInvalidParameter)
 	}
-	underlying, err := r.reader.DB()
-	if err != nil {
-		return nil, fmt.Errorf("unable to get underlying db for account search: %w", err)
-	}
-	rows, err := underlying.Query(whereUserAccount, withAccountId)
+	rows, err := r.reader.Query(ctx, whereUserAccount, []interface{}{withAccountId})
 	if err != nil {
 		return nil, fmt.Errorf("unable to query account %s", withAccountId)
 	}
@@ -762,7 +758,7 @@ func associationChanges(ctx context.Context, reader db.Reader, userId string, ac
 	for _, v := range accountIds {
 		params = append(params, v)
 	}
-	rows, err := reader.Query(query, params)
+	rows, err := reader.Query(ctx, query, params)
 	if err != nil {
 		return nil, nil, fmt.Errorf("changes: query failed: %w", err)
 	}

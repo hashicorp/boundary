@@ -24,10 +24,9 @@ Just some high-level usage highlights to get you started.  Read the godocs for a
     err = rw.LookupByPublicId(context.Background(), foundUser)
 
     // There's reader ScanRows that facilitates scanning rows from 
-    // a "raw" SQL query into your Gorm struct
-    tx, err := rw.DB()
+    // a query into your Gorm struct
     where := "select * from test_users where name in ($1, $2)"
-    rows, err := tx.Query(where, "alice", "bob")
+    rows, err := rw.Query(context.Background(), where, []interface{}{"alice", "bob"})
 	defer rows.Close()
 	for rows.Next() {
         user := db_test.NewTestUser()
