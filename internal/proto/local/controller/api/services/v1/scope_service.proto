@@ -100,8 +100,9 @@ message ListScopesResponse {
 }
 
 message CreateScopeRequest {
-  bool skip_role_creation = 1;
-  resources.scopes.v1.Scope item = 2;
+  bool skip_admin_role_creation = 1;
+  bool skip_default_role_creation = 2;
+  resources.scopes.v1.Scope item = 3;
 }
 
 message CreateScopeResponse {

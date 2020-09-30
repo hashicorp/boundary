@@ -162,7 +162,8 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	opts = append(opts, iam.WithSkipRoleCreation(req.GetSkipRoleCreation()))
+	opts = append(opts, iam.WithSkipAdminRoleCreation(req.GetSkipAdminRoleCreation()))
+	opts = append(opts, iam.WithSkipDefaultRoleCreation(req.GetSkipDefaultRoleCreation()))
 
 	parentScope := authResults.Scope
 	var iamScope *iam.Scope
