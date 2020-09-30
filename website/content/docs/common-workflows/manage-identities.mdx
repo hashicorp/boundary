@@ -6,3 +6,264 @@ description: How to manage Boundary identities
 ---
 
 # Manage Identities
+
+Identities in Boundary are known as [Principals](/docs/concepts/domain-model/principals). Principals are embodied in two types of resources:
+
+1. Users
+1. Groups
+
+Both users and groups can be granted access to resources through [grants](/docs/concepts/domain-model/grants) on [roles](/docs/concepts/domain-model/roles).
+
+In this example, we're going to show you how to create an account and user for an organization auth method to allow that user to login to Boundary. Because an
+auth method can be at the org and global scopes, we're going to create an org-level auth method in the default generated org.
+
+--> Note that all resource ID's in this example are illustrations only - ID's are uniquely generated for every resource, please make sure to update yours when
+running this example!
+
+## Create an Auth Method
+
+Create a password auth method in the generated default organization:
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```bash
+$ boundary auth-methods create password -scope-id o_1234567890 -name org_auth_method -description 'Org auth method'
+
+Auth Method information:
+  Created Time:                Tue, 29 Sep 2020 08:32:04 PDT
+  Description:                 Org auth method
+  ID:                          ampw_PbE6nNT72a
+  Name:                        org_auth_method
+  Type:                        password
+  Updated Time:                Tue, 29 Sep 2020 08:32:04 PDT
+  Version:                     1
+
+  Scope:
+    ID:                        o_1234567890
+    Name:                      Generated org scope
+    Parent Scope ID:           global
+    Type:                      org
+  Attributes:
+    Minimum Login Name Length: 3
+    Minimum Password Length:   8
+```
+
+</Tab>
+<Tab heading="Admin Console">
+
+
+Navigate to the generated org, then auth methods and select `new` auth method:
+![](/img/manage-id-auth-method-undefined.png)
+
+Fill in the auth method settings:
+![](/img/manage-id-auth-method-setting.png)
+
+See the new auth method for the organization in the auth method panel:
+![](/img/manage-id-auth-method-defined.png)
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_auth_method" "password" {
+  name        = "org_auth_method"
+  description = "Password auth method for org"
+  type        = "password"
+  scope_id    = "o_1234567890"
+}
+```
+
+</Tab>
+</Tabs>
+
+
+## Create Account
+
+Create an account for the organization auth method. Note that user names must be all lowercase alphanumeric and the password must be 6 or more characters.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```bash
+boundary accounts create password -auth-method-id ampw_PbE6nNT72a -login-name 'myuser' -password supersecure -name my_account -description 'My password account'
+
+Account information:
+  Auth Method ID:      ampw_PbE6nNT72a
+  Created Time:        Tue, 29 Sep 2020 08:35:02 PDT
+  Description:         My password account
+  ID:                  apw_BOn3EcqQfe
+  Name:                my_account
+  Type:                password
+  Updated Time:        Tue, 29 Sep 2020 08:35:02 PDT
+  Version:             1
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Attributes:
+    Login Name:        myuser
+```
+
+</Tab>
+<Tab heading="Admin Console">
+
+
+Navigate to the generated org, then auth methods, the auth method created above, then the accounts tab.
+
+Select `new` account:
+![](/img/manage-id-acct-undefined.png)
+
+Fill in the account settings:
+![](/img/manage-id-acct-settings.png)
+
+See the new account for the password auth method:
+![](/img/manage-id-acct-defined.png)
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_account" "my_user" {
+  name           = "myuser"
+  description    = "Login account for my user"
+  type           = "password"
+  login_name     = "myuser"
+  password       = "supersecure"
+  auth_method_id = "ampw_PbE6nNT72a"
+}
+```
+
+</Tab>
+</Tabs>
+
+
+## Create User
+
+Next, create a user at the organization scope.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+First, create the user resource:
+
+```bash
+$ boundary users create -name "myuser" -description "My user resource" -scope-id o_1234567890
+
+User information:
+  Created Time:        Tue, 29 Sep 2020 06:37:12 PDT
+  Description:         My user resource
+  ID:                  u_yXhZpt5PX3
+  Name:                myuser
+  Updated Time:        Tue, 29 Sep 2020 06:37:12 PDT
+  Version:             1
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+```
+
+Then associate the user with the account previously created:
+
+```bash
+$ boundary users set-accounts -id u_yXhZpt5PX3 -account apw_BOn3EcqQfe
+
+User information:
+  Created Time:        Tue, 29 Sep 2020 08:43:43 PDT
+  Description:         My organization user
+  ID:                  u_yXhZpt5PX3
+  Name:                my_user
+  Updated Time:        Tue, 29 Sep 2020 08:54:11 PDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Accounts:
+    ID:                apw_BOn3EcqQfe
+    Scope ID:          o_1234567890
+```
+
+</Tab>
+<Tab heading="Admin Console">
+
+
+Navigate to the generated org, then accounts and select `new` account:
+![](/img/manage-id-user-undefined.png)
+
+Fill in the user settings:
+![](/img/manage-id-user-settings.png)
+
+See the new user for the organization in the users panel:
+![](/img/manage-id-user-defined.png)
+
+Associate the user with the account: this can only be done in the CLI or via Terraform currently.
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_user" "myuser" {
+  name        = "myuser"
+  description = "My user resource"
+
+  # taken from the example account resource defined above
+  account_ids = [ boundary_account.myuser.id ]
+  scope_id    = "o_1234567890"
+}
+```
+
+</Tab>
+</Tabs>
+
+
+## Login
+
+Now you can test logging in.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```bash
+$ boundary authenticate password -login-name myuser -password supersecure -auth-method-id ampw_PbE6nNT72a
+```
+
+</Tab>
+<Tab heading="Admin Console">
+
+
+Navigate to the login page and select the generated org from the organizations dropdown, then enter in your
+username and password for your account that you created above:
+
+![](/img/manage-id-login.png)
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+provider "boundary" {
+  addr                            = "http://127.0.0.1:9200"
+  auth_method_id                  = "ampw_PbE6nNT72a"
+  password_auth_method_login_name = "myuser"
+  password_auth_method_password   = "supersecure"
+}
+```
+
+</Tab>
+</Tabs>
+
