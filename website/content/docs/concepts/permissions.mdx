@@ -1,0 +1,91 @@
+---
+layout: docs
+page_title: Permissions
+sidebar_title: Permissions
+description: |-
+  Boundary's permissions model
+---
+
+# Overview
+
+
+## Resource Table
+
+The following table works as a quick cheat-sheet to help you manage your permissions.
+
+<table>
+<thead>
+  <tr>
+    <th>Resource Type</th>
+    <th>Available Scopes</th>
+    <th>API Endpoint</th>
+    <th>Parameters into Permissions Engine</th>
+    <th>Available Actions/Grant Examples</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td rowspan="2">Auth Method</td>
+    <td rowspan="2">
+      <ul>
+        <li>Global</li>
+        <li>Organization</li>
+      </ul>
+    </td>
+    <td><code>/auth-methods</code></td>
+    <td>
+      <ul>
+        <li>Scope</li>
+          <ul>
+            <li><code>scope_id</code></li>
+          </ul>
+        <li>Resource</li>
+          <ul>
+            <li>Type</li>
+              <ul>
+                <li><code>auth-method</code></li>
+              </ul>
+          </ul>
+      </ul>
+    </td>
+    <td>
+      <ul>
+        <li><code>create</code>: Create auth method</li>
+          <ul>
+            <li><code>type=[resource.type]</code></li>
+          </ul>
+        <li>Resource</li>
+          <ul>
+            <li>Type</li>
+              <ul>
+                <li><code>auth-method</code></li>
+              </ul>
+          </ul>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td><code>/auth-methods/[id]</code></td>
+     <td>
+      <ul>
+        <li>Scope</li>
+          <ul>
+            <li><code>scope_id</code></li>
+          </ul>
+        <li>Resource</li>
+          <ul>
+            <li>ID</li>
+              <ul>
+               <li><code>[id]</code></li>
+              </ul>
+            <li>Type</li>
+              <ul>
+                <li><code>auth-method</code></li>
+              </ul>
+          </ul>
+      </ul>
+    </td>
+    <td></td>
+  </tr>
+</tbody>
+</table>
