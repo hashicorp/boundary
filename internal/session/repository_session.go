@@ -207,12 +207,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	q := sessionList
 	query := fmt.Sprintf(q, limit, whereClause, opts.withOrder)
 
-	tx, err := r.reader.DB()
-	if err != nil {
-		return nil, fmt.Errorf("list sessions: unable to get DB: %w", err)
-	}
-
-	rows, err := tx.QueryContext(ctx, query, args...)
+	rows, err := r.reader.Query(ctx, query, args)
 	if err != nil {
 		return nil, fmt.Errorf("changes: query failed: %w", err)
 	}
@@ -396,11 +391,7 @@ type ConnectionAuthzSummary struct {
 }
 
 func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) (*ConnectionAuthzSummary, error) {
-	tx, err := r.reader.DB()
-	if err != nil {
-		return nil, fmt.Errorf("session summary: unable to get DB: %w", err)
-	}
-	rows, err := tx.QueryContext(ctx, remainingConnectionsCte, sessionId)
+	rows, err := r.reader.Query(ctx, remainingConnectionsCte, []interface{}{sessionId})
 	if err != nil {
 		return nil, fmt.Errorf("session summary: query failed: %w", err)
 	}

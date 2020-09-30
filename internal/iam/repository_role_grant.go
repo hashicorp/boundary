@@ -448,11 +448,7 @@ select role_scope as scope_id, role_grant as grant from final;
 	}
 
 	var grants []perms.GrantPair
-	tx, err := r.reader.DB()
-	if err != nil {
-		return nil, err
-	}
-	rows, err := tx.Query(query, userId)
+	rows, err := r.reader.Query(ctx, query, []interface{}{userId})
 	if err != nil {
 		return nil, err
 	}
