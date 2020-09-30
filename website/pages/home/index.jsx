@@ -22,6 +22,8 @@ export default function HomePage() {
             type: 'inbound',
           },
         ]}
+        // TODO Replace URL with finalized URL
+        videoUrl="https://www.youtube.com/watch?v=Y7c_twmDxQ4"
       />
       <div className="break-section">
         <SectionBreakCta

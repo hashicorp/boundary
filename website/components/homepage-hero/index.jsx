@@ -2,7 +2,7 @@ import s from './style.module.css'
 import Button from '@hashicorp/react-button'
 import ReactPlayer from 'react-player'
 
-export default function HomepageHero({ title, description, links }) {
+export default function HomepageHero({ title, description, links, videoUrl }) {
   return (
     <div className={s.root}>
       <div className={s.contentContainer}>
@@ -26,9 +26,8 @@ export default function HomepageHero({ title, description, links }) {
           </div>
         </div>
         <div className={s.video}>
-          {/* TODO Replace URL with finalized video URL */}
           <ReactPlayer
-            url="https://www.youtube.com/watch?v=Y7c_twmDxQ4"
+            url={videoUrl}
             width="596px"
             height="376px"
             style={{
