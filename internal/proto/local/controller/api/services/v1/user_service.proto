@@ -12,8 +12,8 @@ import "controller/api/resources/users/v1/user.proto";
 service UserService {
 
   // GetUser returns a stored User if present.  The provided request
-  // must include the scope and user ID for the user being retrieved. If
-  // any of those IDs are missing, malformed or reference a non existing
+  // must include the User ID for the User being retrieved. If
+  // that ID is missing, malformed or reference a non existing
   // resource an error is returned.
   rpc GetUser(GetUserRequest) returns (GetUserResponse) {
     option (google.api.http) = {
@@ -21,28 +21,28 @@ service UserService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single User"
+      summary: "Gets a single User."
     };
   }
 
-  // ListUsers returns a list of stored users which exist inside the org
-  // referenced inside the request. The request must include the scope ID for
-  // the users being retrieved. If the scope ID is missing, malformed, or
-  // reference a non existing scope, an error is returned.
+  // ListUsers returns a list of stored Users which exist inside the provided
+  // scope. The request must include the scope ID for the Users being listed.
+  // If the scope ID is missing, malformed, or reference a non existing scope,
+  // an error is returned.
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
     option (google.api.http) = {
       get: "/v1/users"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Users"
+      summary: "Lists all Users."
     };
   }
 
-  // CreateUser creates and stores a user in boundary.  The provided
-  // request must include the scope id in which the user will be created.
-  // If the scope id is missing, malformed or references a non existing
-  // scope, an error is returned.  If a name is provided that is in
-  // use in another user in the same scope, an error is returned.
+  // CreateUser creates and stores a User in boundary.  The provided
+  // request must include the Scope id in which the User will be created.
+  // If the Scope id is missing, malformed or references a non existing
+  // resource, an error is returned.  If a name is provided that is in
+  // use in another User in the same scope, an error is returned.
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
     option (google.api.http) = {
       post: "/v1/users"
@@ -50,18 +50,18 @@ service UserService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single User"
+      summary: "Creates a single User."
     };
   }
 
-  // UpdateUser updates an existing user in boundary.  The provided
-  // user must not have any read only fields set.  The update mask must be
+  // UpdateUser updates an existing User in boundary.  The provided
+  // User must not have any read only fields set.  The update mask must be
   // included in the request and contain at least 1 mutable field.  To unset
   // a field's value, include the field in the update mask and don't set it
-  // in the provided user. An error is returned if either the scope
-  // or user ids are missing or reference a non existing resource.  An error
-  // is also returned if the request attempts to update the name to one that is
-  // already in use in this scope.
+  // in the provided User. An error is returned if either the User id is
+  // missing or reference a non existing resource.  An error is also returned
+  // if the request attempts to update the name to one that is already in use
+  // in this Scope.
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse) {
     option (google.api.http) = {
       patch: "/v1/users/{id}"
@@ -69,29 +69,26 @@ service UserService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a User"
+      summary: "Updates a User."
     };
   }
 
-  // DeleteUser removes a user from Boundary. If the provided scope or user ids
-  // are malformed or not provided an error is returned.  No error is returned
-  // if either ids reference resources that do not exist as the response itself
-  // specifies if the resource existed before the DeleteUser request was
-  // received.
+  // DeleteUser removes a User from Boundary. If the provided User ID
+  // is malformed or not provided an error is returned.
   rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
     option (google.api.http) = {
       delete: "/v1/users/{id}"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a User"
+      summary: "Deletes a User."
     };
   }
 
-  // AddUserAccounts adds users as members to a group.  The provided request
-  // must include the user id which the account will be added to. If the any
-  // of the ids are missing, malformed or references a non
-  // existing resource, an error is returned.  If any of the accounts are
-  // associated with another user an error is returned.
+  // AddUserAccounts adds Users as members to a group.  The provided request
+  // must include the User id which the Account will be added to. If that id is
+  // missing, malformed or references a non existing resource, an error is
+  // returned. If any of the Accounts are associated with another User an
+  // error is returned.
   rpc AddUserAccounts(AddUserAccountsRequest) returns (AddUserAccountsResponse) {
     option (google.api.http) = {
       post: "/v1/users/{id}:add-accounts"
@@ -103,12 +100,14 @@ service UserService {
     };
   }
 
-  // SetUserAccounts sets the group's members.  Any existing accounts are
-  // removed if they are not included in this request.  The provided request
-  // must include the user ids which the account will be set to. If the user
-  // id is missing, malformed or references a non existing resource, an error
-  // is returned.  If any of the accounts are associated with another
-  // user an error is returned.
+  // SetUserAccounts sets the Accounts associated with this User.
+  // Any existing Accounts are removed if they are not included in this request.
+  // The provided request must include the User ID which the Accounts will be
+  // associated with.  Any Accounts not included in this request but previously
+  // associated with this user will be disassociated.
+  // If the User ID is missing, malformed or references a non existing resource,
+  // an error is returned.
+  // If any of the Accounts are associated with another User an error is returned.
   rpc SetUserAccounts(SetUserAccountsRequest) returns (SetUserAccountsResponse) {
     option (google.api.http) = {
       post: "/v1/users/{id}:set-accounts"
@@ -120,10 +119,10 @@ service UserService {
     };
   }
 
-  // RemoveUserAccounts removes accounts from the specified user.
-  // The provided request must include the user id which the accounts
-  // will be removed from. If the provided account id is not associated with the
-  // provided user, an error is returned.
+  // RemoveUserAccounts removes Accounts from the specified User.
+  // The provided request must include the User id which the Accounts
+  // will be removed from. If the provided Account ids is not associated with the
+  // provided User, an error is returned.
   rpc RemoveUserAccounts(RemoveUserAccountsRequest) returns (RemoveUserAccountsResponse) {
     option (google.api.http) = {
       post: "/v1/users/{id}:remove-accounts"
@@ -179,7 +178,7 @@ message DeleteUserResponse {}
 
 message AddUserAccountsRequest {
   string id = 1;
-  // The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail.
+  // The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2;
   repeated string account_ids = 3 [json_name="account_ids"];
 }
@@ -190,7 +189,7 @@ message AddUserAccountsResponse {
 
 message SetUserAccountsRequest {
   string id = 1;
-  // The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail.
+  // The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2;
   repeated string account_ids = 3 [json_name="account_ids"];
 }
@@ -201,7 +200,7 @@ message SetUserAccountsResponse {
 
 message RemoveUserAccountsRequest {
   string id = 1;
-  // The version ensures the user hasn't changed since it was last retrieved and if it has the request will fail.
+  // The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2;
   repeated string account_ids = 3 [json_name="account_ids"];
 }

@@ -185,8 +185,8 @@ func TestList(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	oNoRoles, pWithRoles := iam.TestScopes(t, iamRepo)
-	oWithRoles, pNoRoles := iam.TestScopes(t, iamRepo)
+	oNoRoles, pWithRoles := iam.TestScopes(t, iamRepo, iam.WithSkipDefaultRoleCreation(true))
+	oWithRoles, pNoRoles := iam.TestScopes(t, iamRepo, iam.WithSkipDefaultRoleCreation(true))
 	var wantOrgRoles []*pb.Role
 	var wantProjRoles []*pb.Role
 	for i := 0; i < 10; i++ {

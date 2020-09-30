@@ -585,7 +585,7 @@ func TestRepository_ListRoles(t *testing.T) {
 				withScopeId: org.PublicId,
 				opt:         []Option{WithLimit(-1)},
 			},
-			wantCnt: repo.defaultLimit + 1,
+			wantCnt: repo.defaultLimit + 2,
 			wantErr: false,
 		},
 		{
@@ -596,7 +596,7 @@ func TestRepository_ListRoles(t *testing.T) {
 				withScopeId: proj.PublicId,
 				opt:         []Option{WithLimit(-1)},
 			},
-			wantCnt: repo.defaultLimit + 1,
+			wantCnt: repo.defaultLimit + 2,
 			wantErr: false,
 		},
 		{

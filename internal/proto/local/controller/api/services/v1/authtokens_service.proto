@@ -10,44 +10,40 @@ import "controller/api/resources/authtokens/v1/authtoken.proto";
 
 service AuthTokenService {
 
-  // GetAuthToken returns a stored auth token if present.  The provided request
-  // must include the org and auth token id for the auth token being retrieved. If
-  // any of those ids are missing, malformed or reference a non existing
-  // resource an error is returned.
+  // GetAuthToken returns a stored Auth Token if present.  The provided request
+  // must include the Auth Token id and if it is missing, malformed or
+   // referencing a non existing resource an error is returned.
   rpc GetAuthToken(GetAuthTokenRequest) returns (GetAuthTokenResponse) {
     option (google.api.http) = {
       get: "/v1/auth-tokens/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single AuthToken"
+      summary: "Gets a single Auth Token."
     };
   }
 
-  // ListAuthTokens returns a list of stored auth tokens which exist inside the org
-  // referenced inside the request.  The request must include the org id for
-  // the auth token being retrieved.  If the org id is missing, malformed, or
-  // reference a non existing organization, an error is returned.
+  // ListAuthTokens returns a list of stored Auth Tokens which exist inside
+  // the provided scope.  The request must include the scope ids for
+  // the Auth Tokens being listed.  If the scope id is missing, malformed, or
+  // referencing a non existing resource, an error is returned.
   rpc ListAuthTokens(ListAuthTokensRequest) returns (ListAuthTokensResponse) {
     option (google.api.http) = {
       get: "/v1/auth-tokens"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all AuthTokens"
+      summary: "Lists all Auth Tokens."
     };
   }
 
-  // DeleteAuthToken removes a auth token from Boundary. If the provided org or
-  // auth token ids are malformed or not provided an error is returned.  No error is returned
-  // if either ids reference resources that do not exist as the response itself
-  // specifies if the resource existed before the DeleteAuthToken request was
-  // received.
+  // DeleteAuthToken removes a Auth Token from Boundary. If the provided
+  // Auth Token id is malformed or not provided an error is returned.
   rpc DeleteAuthToken(DeleteAuthTokenRequest) returns (DeleteAuthTokenResponse) {
     option (google.api.http) = {
       delete: "/v1/auth-tokens/{id}"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes an AuthTokens"
+      summary: "Deletes an Auth Token."
     };
   }
 }

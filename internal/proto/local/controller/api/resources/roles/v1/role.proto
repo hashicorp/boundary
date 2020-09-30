@@ -44,7 +44,7 @@ message Grant {
 
 // Role contains all fields related to a Role resource
 message Role {
-	// Output only. The ID of the Role
+	// Output only. The ID of the Role.
 	string id = 10;
 
 	// The ID of the Scope containing this Role.
@@ -65,7 +65,8 @@ message Role {
 	// Output only. The time this resource was last updated.
 	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
 
-	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
+	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
 	uint32 version = 80;
 
 	// The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project.

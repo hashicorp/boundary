@@ -106,7 +106,8 @@ type Group struct {
 	CreatedTime *timestamp.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"`
 	// Output only. The time this resource was last updated.
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
-	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
+	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"`
 	// Output only. Contains the list of member IDs in this Group.
 	MemberIds []string `protobuf:"bytes,90,rep,name=member_ids,proto3" json:"member_ids,omitempty"`

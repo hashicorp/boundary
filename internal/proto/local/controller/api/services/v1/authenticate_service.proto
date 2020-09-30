@@ -9,6 +9,14 @@ import "google/api/annotations.proto";
 import "google/protobuf/struct.proto";
 import "controller/api/resources/authtokens/v1/authtoken.proto";
 
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Controller API"
+  }
+  schemes: HTTPS
+  schemes: HTTP
+};
+
 service AuthenticationService {
   // Authenticate validates credentials provided and returns an Auth Token.
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {

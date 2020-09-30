@@ -13,10 +13,10 @@ import "controller/custom_options/v1/options.proto";
 
 // HostSet is a collection of Hosts created and managed by a Host Catalog
 message HostSet {
-	// Output only. The ID of the host.
+	// Output only. The ID of the Host Set.
 	string id = 10;
 
-	// Output only. The Host Catalog of which this Host Set is a part.
+	// The Host Catalog of which this Host Set is a part.
 	string host_catalog_id = 20 [json_name="host_catalog_id"];
 
 	// Output only. Scope information for this resource.
@@ -34,7 +34,8 @@ message HostSet {
 	// Output only. The time this resource was last updated.
 	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
 
-	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
+	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
 	uint32 version = 80;
 
 	// The type of the Host Set.

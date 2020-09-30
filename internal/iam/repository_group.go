@@ -484,7 +484,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 	return currentMembers, totalRowsAffected, nil
 }
 
-// associationChanges returns two slices: accounts to associate and disassociate
+// groupMemberChanges returns two slices: members to add and delete
 func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, userIds []string) ([]interface{}, []interface{}, error) {
 	var inClauseSpots []string
 	// starts at 2 because there is already a $1 in the query
