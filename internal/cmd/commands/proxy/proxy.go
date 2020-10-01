@@ -799,6 +799,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 			}
 			var uri string
 			if c.flagHttpHost != "" {
+				c.flagHttpHost = strings.TrimSuffix(c.flagHttpHost, "/")
 				args = append(args, "-H", fmt.Sprintf("Host: %s", c.flagHttpHost))
 				args = append(args, "--resolve", fmt.Sprintf("%s:%s:%s", c.flagHttpHost, port, ip))
 				uri = fmt.Sprintf("%s://%s:%s", c.flagHttpScheme, c.flagHttpHost, port)
