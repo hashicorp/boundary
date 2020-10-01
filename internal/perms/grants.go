@@ -230,7 +230,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 //
 // The scope must be the org and project where this grant originated, not the
 // request.
-func Parse(scopeId, userId, grantString string) (Grant, error) {
+func Parse(scopeId, userId, grantString string, skipFinalValidation bool) (Grant, error) {
 	if len(grantString) == 0 {
 		return Grant{}, errors.New("grant string is empty")
 	}
@@ -279,16 +279,36 @@ func Parse(scopeId, userId, grantString string) (Grant, error) {
 		}
 	}
 
-	if grant.id == "" && grant.typ == resource.Unknown {
-		return Grant{}, errors.New(`"id" and "type" cannot both be empty`)
-	}
-
 	if err := grant.validateType(); err != nil {
 		return Grant{}, err
 	}
 
 	if err := grant.parseAndValidateActions(); err != nil {
 		return Grant{}, err
+	}
+
+	if !skipFinalValidation {
+		// Validate the grant. Create a dummy resource and pass it through
+		// Allowed and ensure that we get allowed.
+		acl := NewACL(grant)
+		r := Resource{
+			ScopeId: scopeId,
+			Id:      grant.id,
+			Type:    grant.typ,
+		}
+		if !topLevelType(grant.typ) {
+			r.Pin = grant.id
+		}
+		var allowed bool
+		for k := range grant.actions {
+			results := acl.Allowed(r, k)
+			if results.Allowed {
+				allowed = true
+			}
+		}
+		if !allowed {
+			return Grant{}, errors.New("parsed grant string would not result in any action being authorized")
+		}
 	}
 
 	return grant, nil
@@ -307,7 +327,8 @@ func (g Grant) validateType() error {
 		resource.HostCatalog,
 		resource.HostSet,
 		resource.Host,
-		resource.Target:
+		resource.Target,
+		resource.Session:
 		return nil
 	}
 	return fmt.Errorf("unknown type specifier %q", g.typ)

@@ -16,7 +16,7 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.0-beta.5
-	github.com/hashicorp/dbassert v0.0.0-20200602142727-a6709b436ad6
+	github.com/hashicorp/dbassert v0.0.0-20200928193136-88d5f2091187
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.14.1

@@ -192,12 +192,15 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			it for two subsequent calls. This then becomes a question of
 			how/when to finalize the wrapper. Probably it needs to be stored in
 			the base and then at the end of the command run we finalize it if it
-			exists. defer func() {if err := wrapper.Finalize(c.Context); err !=
-			nil {c.UI.Error(fmt.Errorf("An error was encountered finalizing the
-			kms: %w", err).Error())
-			    }
+			exists.
+
+			defer func() {
+				if err := wrapper.Finalize(c.Context); err != nil {
+					c.UI.Error(fmt.Errorf("An error was encountered finalizing the kms: %w", err).Error())
+				}
 			}()
 		*/
+
 		c.client.SetRecoveryKmsWrapper(wrapper)
 
 	case c.FlagToken != "":
@@ -209,30 +212,9 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		}
 		os.Setenv(EnvTokenName, tokenName)
 		if tokenName != "none" {
-			token, err := keyring.Get("HashiCorp Boundary Auth Token", tokenName)
-			if err != nil {
-				if err == keyring.ErrNotFound {
-					c.UI.Info("No saved credential found, continuing without")
-				} else {
-					c.UI.Error(fmt.Sprintf("Error reading auth token from system credential store: %s", err))
-				}
-				token = ""
-			}
-			if token != "" {
-				tokenBytes, err := base64.RawStdEncoding.DecodeString(token)
-				switch {
-				case err != nil:
-					c.UI.Error(fmt.Errorf("Error base64-unmarshaling stored token from system credential store: %w", err).Error())
-				case len(tokenBytes) == 0:
-					c.UI.Error("Zero length token after decoding stored token from system credential store")
-				default:
-					var authToken authtokens.AuthToken
-					if err := json.Unmarshal(tokenBytes, &authToken); err != nil {
-						c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
-					} else {
-						c.client.SetToken(authToken.Token)
-					}
-				}
+			authToken := c.ReadTokenFromKeyring(tokenName)
+			if authToken != nil {
+				c.client.SetToken(authToken.Token)
 			}
 		}
 	}
@@ -242,6 +224,35 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	}
 
 	return c.client, nil
+}
+
+func (c *Command) ReadTokenFromKeyring(tokenName string) *authtokens.AuthToken {
+	token, err := keyring.Get("HashiCorp Boundary Auth Token", tokenName)
+	if err != nil {
+		if err == keyring.ErrNotFound {
+			c.UI.Info("No saved credential found, continuing without")
+		} else {
+			c.UI.Error(fmt.Sprintf("Error reading auth token from system credential store: %s", err))
+		}
+		token = ""
+	}
+	if token != "" {
+		tokenBytes, err := base64.RawStdEncoding.DecodeString(token)
+		switch {
+		case err != nil:
+			c.UI.Error(fmt.Errorf("Error base64-unmarshaling stored token from system credential store: %w", err).Error())
+		case len(tokenBytes) == 0:
+			c.UI.Error("Zero length token after decoding stored token from system credential store")
+		default:
+			var authToken authtokens.AuthToken
+			if err := json.Unmarshal(tokenBytes, &authToken); err != nil {
+				c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
+			} else {
+				return &authToken
+			}
+		}
+	}
+	return nil
 }
 
 type FlagSetBit uint

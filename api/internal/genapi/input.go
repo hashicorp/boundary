@@ -127,8 +127,14 @@ var inputStructs = []*structInfo{
 		pathArgs: []string{"scope"},
 		extraOptions: []fieldInfo{
 			{
-				Name:      "SkipRoleCreation",
-				ProtoName: "skip_role_creation",
+				Name:      "SkipAdminRoleCreation",
+				ProtoName: "skip_admin_role_creation",
+				FieldType: "bool",
+				Query:     true,
+			},
+			{
+				Name:      "SkipDefaultRoleCreation",
+				ProtoName: "skip_default_role_creation",
 				FieldType: "bool",
 				Query:     true,
 			},

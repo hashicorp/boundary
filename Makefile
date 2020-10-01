@@ -116,6 +116,17 @@ test-ci: install-go
 install-go:
 	./ci/goinstall.sh
 
-.PHONY: api tools gen migrations proto website
+.PHONY: api tools gen migrations proto website ci-config ci-verify
 
 .NOTPARALLEL:
+
+ci-config:
+	@$(MAKE) -C .circleci ci-config
+
+ci-verify:
+	@$(MAKE) -C .circleci ci-verify
+
+PACKAGESPEC_CIRCLECI_CONFIG := .circleci/config/@build-release.yml
+PACKAGESPEC_HOOK_POST_CI_CONFIG := $(MAKE) ci-config
+
+-include packagespec.mk

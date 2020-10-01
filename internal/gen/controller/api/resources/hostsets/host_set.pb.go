@@ -37,9 +37,9 @@ type HostSet struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Output only. The ID of the host.
+	// Output only. The ID of the Host Set.
 	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
-	// Output only. The Host Catalog of which this Host Set is a part.
+	// The Host Catalog of which this Host Set is a part.
 	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
@@ -51,7 +51,8 @@ type HostSet struct {
 	CreatedTime *timestamp.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"`
 	// Output only. The time this resource was last updated.
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
-	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
+	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"`
 	// The type of the Host Set.
 	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"`

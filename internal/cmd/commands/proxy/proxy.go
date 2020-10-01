@@ -68,6 +68,12 @@ type Command struct {
 	flagExec       string
 	flagUsername   string
 
+	// HTTP
+	flagHttpStyle  string
+	flagHttpHost   string
+	flagHttpMethod string
+	flagHttpScheme string
+
 	// SSH
 	flagSshStyle string
 
@@ -97,10 +103,12 @@ func (c *Command) Synopsis() string {
 		return "Launch the Boundary CLI in proxy mode"
 	case "connect":
 		return "Authorize a session against a target and launch a proxied connection"
+	case "http":
+		return "Authorize a session against a target and invoke an HTTP client to connect"
 	case "ssh":
 		return "Authorize a session against a target and invoke an SSH client to connect"
 	case "postgres":
-		return "Authorize a session against a target and invoke a Postgres client (by default psql) to connect"
+		return "Authorize a session against a target and invoke a Postgres client to connect"
 	case "rdp":
 		return "Authorize a session against a target and invoke an RDP client to connect"
 	}
@@ -169,7 +177,7 @@ func (c *Command) Flags() *base.FlagSets {
 			Usage:      `If set, the CLI will attempt to bind its listening port to the given value. If it cannot, the command will error.`,
 		})
 
-	case "connect", "ssh", "rdp", "postgres":
+	case "connect", "http", "ssh", "rdp", "postgres":
 		f := set.NewFlagSet("Connect Options")
 
 		f.StringVar(&base.StringVar{
@@ -209,6 +217,43 @@ func (c *Command) Flags() *base.FlagSets {
 	}
 
 	switch c.Func {
+	case "http":
+		f := set.NewFlagSet("HTTP Options")
+
+		f.StringVar(&base.StringVar{
+			Name:       "style",
+			Target:     &c.flagHttpStyle,
+			EnvVar:     "BOUNDARY_CONNECT_HTTP_STYLE",
+			Completion: complete.PredictSet("curl"),
+			Default:    "curl",
+			Usage:      `Specifies how the CLI will attempt to invoke an HTTP client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "curl".`,
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "host",
+			Target:     &c.flagHttpHost,
+			EnvVar:     "BOUNDARY_CONNECT_HTTP_HOST",
+			Completion: complete.PredictNothing,
+			Usage:      `Specifies the host value to use. The specified hostname will be passed through to the client (if supported) for use in the Host header and TLS SNI value.`,
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "method",
+			Target:     &c.flagHttpMethod,
+			EnvVar:     "BOUNDARY_CONNECT_HTTP_METHOD",
+			Completion: complete.PredictNothing,
+			Usage:      `Specifies the method to use. If not set, will use the client's default.`,
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "scheme",
+			Target:     &c.flagHttpScheme,
+			Default:    "https",
+			EnvVar:     "BOUNDARY_CONNECT_HTTP_SCHEME",
+			Completion: complete.PredictNothing,
+			Usage:      `Specifies the scheme to use.`,
+		})
+
 	case "ssh":
 		f := set.NewFlagSet("SSH Options")
 
@@ -299,6 +344,10 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 
 	switch c.Func {
+	case "http":
+		if c.flagExec == "" {
+			c.flagExec = strings.ToLower(c.flagHttpStyle)
+		}
 	case "ssh":
 		if c.flagExec == "" {
 			c.flagExec = strings.ToLower(c.flagSshStyle)
@@ -360,7 +409,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			}
 		}
 
-	case "connect", "ssh", "postgres", "rdp":
+	case "connect", "http", "ssh", "postgres", "rdp":
 		if c.flagTargetId == "" {
 			c.UI.Error("Target ID must be provided")
 			return 1
@@ -590,7 +639,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			r := c.execCmdReturnValue.Load()
 			switch r {
 			case 0:
-				termInfo.Reason = "Executed command has completed successfully"
+				termInfo.Reason = ""
 			default:
 				termInfo.Reason = fmt.Sprintf("Executed command exited with code %d", r)
 			}
@@ -601,16 +650,18 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	}
 
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateTerminationInfoTableOutput(termInfo))
-	case "json":
-		out, err := json.Marshal(&termInfo)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("error marshaling termination information: %w", err).Error())
-			return 1
+	if termInfo.Reason != "" {
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateTerminationInfoTableOutput(termInfo))
+		case "json":
+			out, err := json.Marshal(&termInfo)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("error marshaling termination information: %w", err).Error())
+				return 1
+			}
+			c.UI.Output(string(out))
 		}
-		c.UI.Output(string(out))
 	}
 
 	return
@@ -731,6 +782,21 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	var args []string
 
 	switch c.Func {
+	case "http":
+		switch c.flagHttpStyle {
+		case "curl":
+			if c.flagHttpMethod != "" {
+				args = append(args, "-X", c.flagHttpMethod)
+			}
+			if c.flagHttpHost != "" {
+				args = append(args, "-H", fmt.Sprintf("Host: %s", c.flagHttpHost))
+				args = append(args, "--resolve", fmt.Sprintf("%s:%s:%s", c.flagHttpHost, port, ip))
+				args = append(args, fmt.Sprintf("%s://%s:%s", c.flagHttpScheme, c.flagHttpHost, port))
+			} else {
+				args = append(args, fmt.Sprintf("%s://%s", c.flagHttpScheme, addr))
+			}
+		}
+
 	case "ssh":
 		switch c.flagSshStyle {
 		case "ssh":

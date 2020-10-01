@@ -161,6 +161,7 @@ func toProto(t *authtoken.AuthToken) *pba.AuthToken {
 		Token:                   t.GetToken(),
 		UserId:                  t.GetIamUserId(),
 		AuthMethodId:            t.GetAuthMethodId(),
+		AccountId:               t.GetAuthAccountId(),
 		CreatedTime:             t.GetCreateTime().GetTimestamp(),
 		UpdatedTime:             t.GetUpdateTime().GetTimestamp(),
 		ApproximateLastUsedTime: t.GetApproximateLastAccessTime().GetTimestamp(),

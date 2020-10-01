@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Check .circleci/config.yml is up to date and valid, and that all changes are
+# included together in this commit.
+
+# Fail early if we accidentally used '.yaml' instead of '.yml'
+if ! git diff --name-only --cached --exit-code -- '.circleci/***.yaml'; then
+  echo "ERROR: File(s) with .yaml extension detected. Please rename them .yml instead."
+	exit 1
+fi
+
+# Succeed early if no changes to yml files in .circleci/ are currently staged.
+# make ci-verify is slow so we really don't want to run it unnecessarily.
+if git diff --name-only --cached --exit-code -- '.circleci/***.yml'; then
+  exit 0
+fi
+
+# Make sure to add no explicit output before this line, as it would just be noise
+# for those making non-circleci changes.
+echo "==> Verifying config changes in .circleci/"
+echo "--> OK: All files are .yml not .yaml"
+
+# Ensure commit includes _all_ files in .circleci/
+# So not only are the files up to date, but we are also committing them in one go.
+if ! git diff --name-only --exit-code -- '.circleci/***.yml'; then
+  echo "ERROR: Some .yml diffs in .circleci/ are staged, others not."
+  echo "Please commit the entire .circleci/ directory together, or omit it altogether."
+	exit 1
+fi
+
+# Even untracked yml or yaml files will get baked into the output.
+# This is a loose check on _any_ untracked files in .circleci/ for simplicity.
+if [ -n "$(git ls-files --others --exclude-standard '.circleci/')" ]; then
+  echo "ERROR: You have untracked files in .circleci/ please add or delete them."
+  exit 1
+fi
+
+echo "--> OK: All .yml files in .circleci are staged."
+if ! make -C .circleci ci-verify; then
+  echo "ERROR: make ci-verify failed"
+	exit 1
+fi
+echo "--> OK: make ci-verify succeeded."

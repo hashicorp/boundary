@@ -50,13 +50,10 @@ type Reader interface {
 	// operate within the context of any ongoing transaction for the db.Reader.  The
 	// caller must close the returned *sql.Rows. Query can/should be used in
 	// combination with ScanRows.
-	Query(sql string, values []interface{}, opt ...Option) (*sql.Rows, error)
+	Query(ctx context.Context, sql string, values []interface{}, opt ...Option) (*sql.Rows, error)
 
 	// ScanRows will scan sql rows into the interface provided
 	ScanRows(rows *sql.Rows, result interface{}) error
-
-	// DB returns the sql.DB
-	DB() (*sql.DB, error)
 }
 
 // Writer interface defines create, update and retryable transaction handlers
@@ -106,13 +103,10 @@ type Writer interface {
 	// should be to rollback. Delete returns the number of rows deleted or an error.
 	DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error)
 
-	// DB returns the sql.DB
-	DB() (*sql.DB, error)
-
 	// Exec will execute the sql with the values as parameters. The int returned
 	// is the number of rows affected by the sql. No options are currently
 	// supported.
-	Exec(sql string, values []interface{}, opt ...Option) (int, error)
+	Exec(ctx context.Context, sql string, values []interface{}, opt ...Option) (int, error)
 
 	// GetTicket returns an oplog ticket for the aggregate root of "i" which can
 	// be used to WriteOplogEntryWith for that aggregate root.
@@ -190,18 +184,10 @@ func New(underlying *gorm.DB) *Db {
 	return &Db{underlying: underlying}
 }
 
-// DB returns the sql.DB
-func (rw *Db) DB() (*sql.DB, error) {
-	if rw.underlying == nil {
-		return nil, fmt.Errorf("missing underlying db: %w", ErrInvalidParameter)
-	}
-	return rw.underlying.DB(), nil
-}
-
 // Exec will execute the sql with the values as parameters. The int returned
 // is the number of rows affected by the sql. No options are currently
 // supported.
-func (rw *Db) Exec(sql string, values []interface{}, opt ...Option) (int, error) {
+func (rw *Db) Exec(ctx context.Context, sql string, values []interface{}, opt ...Option) (int, error) {
 	if sql == "" {
 		return NoRowsAffected, fmt.Errorf("missing sql: %w", ErrInvalidParameter)
 	}
@@ -216,7 +202,7 @@ func (rw *Db) Exec(sql string, values []interface{}, opt ...Option) (int, error)
 // operate within the context of any ongoing transaction for the db.Reader.  The
 // caller must close the returned *sql.Rows. Query can/should be used in
 // combination with ScanRows.
-func (rw *Db) Query(sql string, values []interface{}, opt ...Option) (*sql.Rows, error) {
+func (rw *Db) Query(ctx context.Context, sql string, values []interface{}, opt ...Option) (*sql.Rows, error) {
 	if sql == "" {
 		return nil, fmt.Errorf("raw missing sql: %w", ErrInvalidParameter)
 	}

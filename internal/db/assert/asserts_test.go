@@ -6,7 +6,6 @@ import (
 	dbassert "github.com/hashicorp/dbassert"
 	gormAssert "github.com/hashicorp/dbassert/gorm"
 
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,12 +21,8 @@ func Test_FieldDomain(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	assert := assert.New(t)
-	gormDb, err := gorm.Open("postgres", conn)
-	assert.NoError(err)
-	r := db.New(gormDb)
 	mockery := new(dbassert.MockTesting)
-	dbassert := New(mockery, r)
+	dbassert := New(mockery, conn)
 
 	dbassert.Domain(&gormAssert.TestModel{}, "PublicId", "dbasserts_public_id")
 	mockery.AssertNoError(t)
@@ -48,12 +43,8 @@ func Test_FieldNullable(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	assert := assert.New(t)
-	gormDb, err := gorm.Open("postgres", conn)
-	assert.NoError(err)
-	r := db.New(gormDb)
 	mockery := new(dbassert.MockTesting)
-	dbassert := New(mockery, r)
+	dbassert := New(mockery, conn)
 
 	dbassert.Nullable(&gormAssert.TestModel{}, "Nullable")
 	mockery.AssertNoError(t)
@@ -77,9 +68,8 @@ func Test_FieldIsNull(t *testing.T) {
 	assert := assert.New(t)
 	gormDb, err := gorm.Open("postgres", conn)
 	assert.NoError(err)
-	r := db.New(gormDb)
 	mockery := new(dbassert.MockTesting)
-	dbassert := New(mockery, r)
+	dbassert := New(mockery, conn)
 
 	v := 1
 	m := gormAssert.CreateTestModel(t, gormDb, nil, &v)
@@ -106,9 +96,8 @@ func Test_FieldNotNull(t *testing.T) {
 	assert := assert.New(t)
 	gormDb, err := gorm.Open("postgres", conn)
 	assert.NoError(err)
-	r := db.New(gormDb)
 	mockery := new(dbassert.MockTesting)
-	dbassert := New(mockery, r)
+	dbassert := New(mockery, conn)
 
 	v := 1
 	m := gormAssert.CreateTestModel(t, gormDb, nil, &v)

@@ -91,19 +91,19 @@ func TestCustom(t *testing.T) {
 			assert.Empty(updatedRole.Item.Principals)
 			version++
 
-			updatedRole, err = rc.AddGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=read"})
+			updatedRole, err = rc.AddGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;type=*;actions=read"})
 			require.NoError(err)
 			assert.EqualValues(updatedRole.Item.Version, version)
-			assert.Contains(updatedRole.Item.GrantStrings, "id=*;actions=read")
+			assert.Contains(updatedRole.Item.GrantStrings, "id=*;type=*;actions=read")
 			version++
 
-			updatedRole, err = rc.SetGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=*"})
+			updatedRole, err = rc.SetGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;type=*;actions=*"})
 			require.NoError(err)
 			assert.EqualValues(updatedRole.Item.Version, version)
-			assert.Contains(updatedRole.Item.GrantStrings, "id=*;actions=*")
+			assert.Contains(updatedRole.Item.GrantStrings, "id=*;type=*;actions=*")
 			version++
 
-			updatedRole, err = rc.RemoveGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;actions=*"})
+			updatedRole, err = rc.RemoveGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;type=*;actions=*"})
 			require.NoError(err)
 			assert.EqualValues(updatedRole.Item.Version, version)
 			assert.Empty(updatedRole.Item.Grants)
@@ -143,22 +143,22 @@ func TestList(t *testing.T) {
 			roleClient := roles.NewClient(client)
 			p1, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
-			require.Len(p1.Items, 1)
-			expected = append(expected, p1.Items[0])
+			require.Len(p1.Items, 2)
+			expected = append(expected, p1.Items[0:2]...)
 
-			for i := 1; i < 11; i++ {
+			for i := 2; i < 12; i++ {
 				expected = append(expected, &roles.Role{Name: fmt.Sprint(i)})
 			}
 
-			rcr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[1].Name))
+			rcr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[2].Name))
 			require.NoError(err)
-			expected[1] = rcr.Item
+			expected[2] = rcr.Item
 
 			p2, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
-			assert.ElementsMatch(comparableSlice(expected[0:2]), comparableSlice(p2.Items))
+			assert.ElementsMatch(comparableSlice(expected[0:3]), comparableSlice(p2.Items))
 
-			for i := 2; i < 11; i++ {
+			for i := 3; i < 12; i++ {
 				rcr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[i].Name))
 				assert.NoError(err)
 				expected[i] = rcr.Item

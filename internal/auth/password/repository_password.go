@@ -203,11 +203,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, loginName, password string) (*authAccount, error) {
 	var accts []authAccount
 
-	tx, err := r.reader.DB()
-	if err != nil {
-		return nil, err
-	}
-	rows, err := tx.Query(authenticateQuery, authMethodId, loginName)
+	rows, err := r.reader.Query(ctx, authenticateQuery, []interface{}{authMethodId, loginName})
 	if err != nil {
 		return nil, err
 	}

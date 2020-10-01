@@ -95,23 +95,16 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 		address = $5,
 		update_time = $6;
 	`
-	underlying, err := r.writer.DB()
-	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("error fetching underlying DB for upsert operation: %w", err)
-	}
-	result, err := underlying.ExecContext(ctx, q,
-		server.PrivateId,
-		server.Type,
-		server.Name,
-		server.Description,
-		server.Address,
-		time.Now().Format(time.RFC3339))
+
+	rowsAffected, err := r.writer.Exec(ctx, q,
+		[]interface{}{server.PrivateId,
+			server.Type,
+			server.Name,
+			server.Description,
+			server.Address,
+			time.Now().Format(time.RFC3339)})
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("error performing status upsert: %w", err)
-	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("unable to fetch number of rows affected from query: %w", err)
 	}
 	// If updating a controller, done
 	if server.Type == resource.Controller.String() {

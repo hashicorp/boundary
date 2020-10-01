@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -374,6 +375,10 @@ func (c *Command) Run(args []string) int {
 			opts = append(opts, base.WithSkipDatabaseDestruction())
 		}
 		if err := c.CreateDevDatabase("postgres", opts...); err != nil {
+			if err == docker.ErrDockerUnsupported {
+				c.UI.Error("Automatically starting a Docker container running Postgres is not currently supported on this platform. Please use -database-url to pass in a URL (or an env var or file reference to a URL) for connecting to an existing empty database.")
+				return 1
+			}
 			c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 			return 1
 		}

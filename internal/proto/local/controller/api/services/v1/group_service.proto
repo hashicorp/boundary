@@ -14,37 +14,35 @@ import "controller/api/resources/scopes/v1/scope.proto";
 service GroupService {
 
   // GetGroup returns a stored Group if present. The provided request must
-  // include the scope for the group being retrieved. If any of those ids are
-  // missing, malformed or reference a non existing resource an error is
-  // returned.
+  // include the Group id and if it is missing, malformed or referencing a
+  // non existing resource an error is returned.
   rpc GetGroup(GetGroupRequest) returns (GetGroupResponse) {
     option (google.api.http) = {
       get: "/v1/groups/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Group"
+      summary: "Gets a single Group."
     };
   }
 
-  // ListGroups returns a list of stored groups which exist inside the org
-  // referenced inside the request. The request must include the scope for
-  // the groups being retrieved. If the scope is missing, malformed, or
+  // ListGroups returns a list of stored Groups which exist inside the
+  // provided scope id. If that id is missing, malformed, or
   // references a non-existing scope, an error is returned.
   rpc ListGroups(ListGroupsRequest) returns (ListGroupsResponse) {
     option (google.api.http) = {
       get: "/v1/groups"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Groups"
+      summary: "Lists all Groups."
     };
   }
 
-  // CreateGroup creates and stores a group in boundary. The provided
-  // request must include the scope ID in which the group will be created.
+  // CreateGroup creates and stores a Group in boundary. The provided
+  // request must include the scope ID in which the Group will be created.
   // If the scope ID is missing, malformed or references a non existing
-  // org, an error is returned. If a name is provided that is in
-  // use in another group in the same scope, an error is returned.
+  // resource, an error is returned. If a name is provided that is in
+  // use in another Group in the same scope, an error is returned.
   rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse) {
     option (google.api.http) = {
       post: "/v1/groups"
@@ -52,18 +50,18 @@ service GroupService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Group"
+      summary: "Creates a single Group."
     };
   }
 
-  // UpdateGroup updates an existing group in boundary. The provided group
+  // UpdateGroup updates an existing Group in boundary. The provided Group
   // must not have any read only fields set. The update mask must be included in
   // the request and contain at least 1 mutable field. To unset a field's value,
   // include the field in the update mask and don't set it in the provided
-  // group. An error is returned if either the scope or group ids are missing or
-  // reference a non-existing resource. An error is also returned if the
-  // request attempts to update the name to one that is already in use in this
-  // scope.
+  // Group. An error is returned if the Group id is missing or reference a
+  // non-existing resource. An error is also returned if the request attempts
+  // to update the name to one that is already used by another Group in the
+  // same scope.
   rpc UpdateGroup(UpdateGroupRequest) returns (UpdateGroupResponse) {
     option (google.api.http) = {
       patch: "/v1/groups/{id}"
@@ -71,28 +69,25 @@ service GroupService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Group"
+      summary: "Updates a Group."
     };
   }
 
-  // DeleteGroup removes a group from Boundary. If the provided scope or group
-  // IDs are malformed or not provided an error is returned. No error is
-  // returned if either IDs reference resources that do not exist as the
-  // response itself specifies if the resource existed before the DeleteGroup
-  // request was received.
+  // DeleteGroup removes a Group from Boundary. If the provided Group
+  // ID is malformed or not provided an error is returned.
   rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse) {
     option (google.api.http) = {
       delete: "/v1/groups/{id}"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Group"
+      summary: "Deletes a Group."
     };
   }
 
-  // AddGroupMembers adds users as members to a group.  The provided
-  // request must include the scope id and the group id which the users
-  // will be set to. If the any of the ids are missing, malformed or references a non
-  // existing resource, an error is returned.
+  // AddGroupMembers adds members to a Group.  The provided request must include
+  // the scope id and the Group id which the members will be added to.
+  // An error is returned if any provided id is missing, malformed or
+  // references a non-existing resource.
   rpc AddGroupMembers(AddGroupMembersRequest) returns (AddGroupMembersResponse) {
     option (google.api.http) = {
       post: "/v1/groups/{id}:add-members"
@@ -100,15 +95,15 @@ service GroupService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds Users as members to a Group"
+      summary: "Adds members to a Group."
     };
   }
 
-  // SetGroupMembers sets the group's members.  Any existing members on
-  // the group are deleted if they are not included in this request.  The provided
-  // request must include the scope id and the group id which the users
-  // will be set to. If the any of the ids are missing, malformed or references a non
-  // existing resource, an error is returned.
+  // SetGroupMembers sets the Group's members.  Any existing members on
+  // the Group are deleted if they are not included in this request.  The provided
+  // request must include the Group id which the members will be set to.
+  // An error is returned if any provided id is missing, malformed or
+  // references a non-existing resource.
   rpc SetGroupMembers(SetGroupMembersRequest) returns (SetGroupMembersResponse) {
     option (google.api.http) = {
       post: "/v1/groups/{id}:set-members"
@@ -120,10 +115,11 @@ service GroupService {
     };
   }
 
-  // RemoveGroupMembers removes members from the specified group.
-  // The provided request must include the scope id and the group id which the users
-  // will be set to. If the any of the ids are missing, malformed or references a non
-  // existing resource, an error is returned.
+  // RemoveGroupMembers removes members from the specified Group.
+  // The provided request must include the the Group id to which the members
+  // will be set.
+  // An error is returned if any provided id is missing, malformed or
+  // references a non-existing resource.
   rpc RemoveGroupMembers(RemoveGroupMembersRequest) returns (RemoveGroupMembersResponse) {
     option (google.api.http) = {
       post: "/v1/groups/{id}:remove-members"
@@ -179,7 +175,8 @@ message DeleteGroupResponse {}
 
 message AddGroupMembersRequest {
   string id = 1;
-  // The version ensures the group hasn't changed since it was last retrieved and if it has the request will fail.
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
   repeated string member_ids = 3 [json_name="member_ids"];
 }
@@ -190,7 +187,8 @@ message AddGroupMembersResponse {
 
 message SetGroupMembersRequest {
   string id = 1;
-  // The version ensures the group hasn't changed since it was last retrieved and if it has the request will fail.
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
   repeated string member_ids = 3 [json_name="member_ids"];
 }
@@ -201,7 +199,8 @@ message SetGroupMembersResponse {
 
 message RemoveGroupMembersRequest {
   string id = 1;
-  // The version ensures the group hasn't changed since it was last retrieved and if it has the request will fail.
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
   repeated string member_ids = 3 [json_name="member_ids"];
 }

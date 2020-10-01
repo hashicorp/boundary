@@ -368,7 +368,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			sort.Strings(foundAccountIds)
 			assert.Equal(accountIds, foundAccountIds)
 
-			dbassert := dbassert.New(t, rw)
+			dbassert := dbassert.New(t, conn.DB())
 			if tt.args.name == "" {
 				dbassert.IsNull(foundUser, "name")
 			}
@@ -645,7 +645,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			dbassert := dbassert.New(t, rw)
+			dbassert := dbassert.New(t, conn.DB())
 			got, err := repo.LookupUserWithLogin(context.Background(), tt.args.withAccountId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -963,7 +963,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			dbassert := dbassert.New(t, rw)
+			dbassert := dbassert.New(t, conn.DB())
 			err := dissociateUserFromAccounts(context.Background(), kms, rw, rw, tt.args.Ids.user, tt.args.Ids.accts, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -1096,7 +1096,7 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 				version = *tt.args.userVersionOverride
 			}
 
-			got, err := repo.AssociateAccounts(context.Background(), tt.args.userId, version, accountIds, tt.args.opt...)
+			got, err := repo.AddUserAccounts(context.Background(), tt.args.userId, version, accountIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
@@ -1115,7 +1115,7 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 			sort.Strings(got)
 			assert.Equal(accountIds, got)
 
-			foundIds, err := repo.ListAssociatedAccountIds(context.Background(), tt.args.userId)
+			foundIds, err := repo.ListUserAccounts(context.Background(), tt.args.userId)
 			require.NoError(err)
 			sort.Strings(foundIds)
 			assert.Equal(accountIds, foundIds)
@@ -1226,7 +1226,7 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 				version = *tt.args.userVersionOverride
 			}
 
-			got, err := repo.DisassociateAccounts(context.Background(), tt.args.userId, version, accountIds, tt.args.opt...)
+			got, err := repo.DeleteUserAccounts(context.Background(), tt.args.userId, version, accountIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
@@ -1241,7 +1241,7 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 				err = db.TestVerifyOplog(t, rw, id, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.NoError(err)
 			}
-			foundIds, err := repo.ListAssociatedAccountIds(context.Background(), tt.args.userId)
+			foundIds, err := repo.ListUserAccounts(context.Background(), tt.args.userId)
 			require.NoError(err)
 			for _, id := range accountIds {
 				assert.True(!strutil.StrListContains(foundIds, id))
@@ -1407,7 +1407,7 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 				version = *tt.args.userVersionOverride
 			}
 
-			got, err := repo.SetAssociatedAccounts(context.Background(), tt.args.userId, version, accountIds, tt.args.opt...)
+			got, err := repo.SetUserAccounts(context.Background(), tt.args.userId, version, accountIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
@@ -1428,7 +1428,7 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 			sort.Strings(got)
 			assert.Equal(accountIds, got)
 
-			foundIds, err := repo.ListAssociatedAccountIds(context.Background(), tt.args.userId)
+			foundIds, err := repo.ListUserAccounts(context.Background(), tt.args.userId)
 			require.NoError(err)
 			sort.Strings(foundIds)
 			assert.Equal(accountIds, foundIds)

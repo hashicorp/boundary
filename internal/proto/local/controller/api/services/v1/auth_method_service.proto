@@ -10,38 +10,36 @@ import "google/protobuf/field_mask.proto";
 import "controller/api/resources/authmethods/v1/auth_method.proto";
 
 service AuthMethodService {
-  // GetAuthMethod returns a stored AuthMethod if present.  The provided request
-  // must include the org and auth method id for the auth method being retrieved. If
-  // any of those ids are missing, malformed or reference a non existing
-  // resource an error is returned.
+  // GetAuthMethod returns a stored Auth Method if present.  The provided request
+  // must include the Auth Method id. If missing, malformed or referencing a
+   // non existing resource an error is returned.
   rpc GetAuthMethod(GetAuthMethodRequest) returns (GetAuthMethodResponse) {
     option (google.api.http) = {
       get: "/v1/auth-methods/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single AuthMethod"
+      summary: "Gets a single Auth Method."
     };
   }
 
-  // ListAuthMethods returns a list of stored auth methods which exist inside the org
-  // referenced inside the request.  The request must include the org id for
-  // the auth methods being retrieved.  If the org id is missing, malformed, or
-  // reference a non existing organization, an error is returned.
+  // ListAuthMethods returns a list of stored Auth Methods which are in the
+  // provided scope. The request must include the scope id and if missing,
+  // malformed, or referencing a non existing scope, an error is returned.
   rpc ListAuthMethods(ListAuthMethodsRequest) returns (ListAuthMethodsResponse) {
     option (google.api.http) = {
       get: "/v1/auth-methods"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all AuthMethods"
+      summary: "Lists all Auth Methods."
     };
   }
 
-  // CreateAuthMethod creates and stores a user in boundary.  The provided
-  // request must include the org id in which the user will be created.
-  // If the org id is missing, malformed or references a non existing
-  // org, an error is returned.  If a name is provided that is in
-  // use in another user in the same org, an error is returned.
+  // CreateAuthMethod creates and stores an Auth Method in boundary.  The
+  // provided request must include the scope in which the Auth Method will be
+  // created. If the scope id is missing, malformed or referencing a
+  // non existing resource an error is returned.  If a name is provided that is
+  // in use in another Auth Method in the same scope, an error is returned.
   rpc CreateAuthMethod(CreateAuthMethodRequest) returns (CreateAuthMethodResponse) {
     option (google.api.http) = {
       post: "/v1/auth-methods"
@@ -49,18 +47,18 @@ service AuthMethodService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single AuthMethod"
+      summary: "Creates a single Auth Method."
     };
   }
 
-  // UpdateAuthMethod updates an existing user in boundary.  The provided
-  // user must not have any read only fields set.  The update mask must be
+  // UpdateAuthMethod updates an existing Auth Method in boundary.  The provided
+  // Auth Method must not have any read only fields set.  The update mask must be
   // included in the request and contain at least 1 mutable field.  To unset
   // a field's value, include the field in the update mask and don't set it
-  // in the provided user. An error is returned if either the org
-  // or user ids are missing or reference a non existing resource.  An error
-  // is also returned if the request attempts to update the name to one that is
-  // already in use in this org.
+  // in the provided user. An error is returned if the Auth Method id is missing
+  // or reference a non existing resource.  An error is also returned if the
+  // request attempts to update the name to one that is already in use by
+  // another Auth Method in the parent scope.
   rpc UpdateAuthMethod(UpdateAuthMethodRequest) returns (UpdateAuthMethodResponse) {
     option (google.api.http) = {
       patch: "/v1/auth-methods/{id}"
@@ -68,15 +66,12 @@ service AuthMethodService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates an AuthMethod"
+      summary: "Updates an Auth Method."
     };
   }
 
-  // DeleteAuthMethod removes a user from Boundary. If the provided org or user ids
-  // are malformed or not provided an error is returned.  No error is returned
-  // if either ids reference resources that do not exist as the response itself
-  // specifies if the resource existed before the DeleteAuthMethod request was
-  // received.
+  // DeleteAuthMethod removes an Auth Method from Boundary. If the Auth Method id
+  // is malformed or not provided an error is returned.
   rpc DeleteAuthMethod(DeleteAuthMethodRequest) returns (DeleteAuthMethodResponse) {
     option (google.api.http) = {
       delete: "/v1/auth-methods/{id}"
