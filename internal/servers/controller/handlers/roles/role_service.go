@@ -538,7 +538,7 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 	}
 	for _, g := range grants {
 		out.GrantStrings = append(out.GrantStrings, g.GetRawGrant())
-		parsed, err := perms.Parse(in.GetGrantScopeId(), "", g.GetRawGrant(), false)
+		parsed, err := perms.Parse(in.GetGrantScopeId(), g.GetRawGrant())
 		if err != nil {
 			// This should never happen as we validate on the way in, but let's
 			// return what we can since we are still returning the raw grant
@@ -625,11 +625,6 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 
 func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
 	return handlers.ValidateDeleteRequest(iam.RolePrefix, req, func() map[string]string {
-		if req.GetId() == "r_default" {
-			return map[string]string{
-				"id": `Deleting "r_default" is not allowed`,
-			}
-		}
 		return nil
 	})
 }

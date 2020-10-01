@@ -26,6 +26,7 @@ func Test_ACLAllowed(t *testing.T) {
 		resource       Resource
 		actionsAllowed []actionAllowed
 		userId         string
+		accountId      string
 	}
 
 	// A set of common grants to use in the following tests
@@ -51,6 +52,7 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_c",
 			grants: []string{
 				"id={{user.id }};actions=read,update",
+				"id={{ account.id}};actions=change-password",
 			},
 		},
 		{
@@ -220,6 +222,27 @@ func Test_ACLAllowed(t *testing.T) {
 			userId: "u_abcd1234",
 		},
 		{
+			name:        "bad templated account id",
+			resource:    Resource{ScopeId: "o_c"},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: action.List},
+				{action: action.Authenticate},
+				{action: action.Delete},
+			},
+			accountId: "apw_1234567890",
+		},
+		{
+			name:        "good templated user id",
+			resource:    Resource{ScopeId: "o_c", Id: "apw_1234567890"},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: action.ChangePassword, allowed: true},
+				{action: action.Update},
+			},
+			accountId: "apw_1234567890",
+		},
+		{
 			name:        "all type",
 			resource:    Resource{ScopeId: "o_d", Type: resource.Account},
 			scopeGrants: commonGrants,
@@ -236,7 +259,7 @@ func Test_ACLAllowed(t *testing.T) {
 			var grants []Grant
 			for _, sg := range test.scopeGrants {
 				for _, g := range sg.grants {
-					grant, err := Parse(sg.scope, test.userId, g, false)
+					grant, err := Parse(sg.scope, g, WithAccountId(test.accountId), WithUserId(test.userId))
 					require.NoError(t, err)
 					grants = append(grants, grant)
 				}

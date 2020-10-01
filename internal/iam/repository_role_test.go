@@ -502,19 +502,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			wantErr:         true,
 			wantErrMsg:      "delete role: missing public id invalid parameter",
 		},
-		{
-			name: "r_default",
-			args: args{
-				role: func() *Role {
-					r := allocRole()
-					r.PublicId = "r_default"
-					return &r
-				}(),
-			},
-			wantRowsDeleted: 0,
-			wantErr:         true,
-			wantErrMsg:      `deletion of r_default not allowed`,
-		},
+
 		{
 			name: "not-found",
 			args: args{

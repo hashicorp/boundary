@@ -31,15 +31,16 @@ type InitCommand struct {
 
 	configWrapper wrapping.Wrapper
 
-	flagConfig                    string
-	flagConfigKms                 string
-	flagLogLevel                  string
-	flagLogFormat                 string
-	flagMigrationUrl              string
-	flagSkipAuthMethodCreation    bool
-	flagSkipScopesCreation        bool
-	flagSkipHostResourcesCreation bool
-	flagSkipTargetCreation        bool
+	flagConfig                       string
+	flagConfigKms                    string
+	flagLogLevel                     string
+	flagLogFormat                    string
+	flagMigrationUrl                 string
+	flagSkipInitialLoginRoleCreation bool
+	flagSkipAuthMethodCreation       bool
+	flagSkipScopesCreation           bool
+	flagSkipHostResourcesCreation    bool
+	flagSkipTargetCreation           bool
 }
 
 func (c *InitCommand) Synopsis() string {
@@ -56,6 +57,7 @@ func (c *InitCommand) Help() string {
 		"",
 		"  Unless told not to via flags, some initial resources will be created, in the following order and in the indicated scopes:",
 		"",
+		"    Initial Login Role (global)",
 		"    Password-Type Auth Method (global)",
 		"    Org Scope (global)",
 		"      Project Scope (org)",
@@ -112,6 +114,12 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	})
 
 	f = set.NewFlagSet("Init Options")
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-initial-login-role-creation",
+		Target: &c.flagSkipInitialLoginRoleCreation,
+		Usage:  "If not set, a default role allowing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-auth-method-creation",
@@ -283,10 +291,6 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Info("Global-scope KMS keys successfully created.")
 	}
 
-	if c.flagSkipAuthMethodCreation {
-		return 0
-	}
-
 	var jsonMap map[string]interface{}
 	if base.Format(c.UI) == "json" {
 		jsonMap = make(map[string]interface{})
@@ -301,6 +305,31 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}()
 	}
 
+	if c.flagSkipInitialLoginRoleCreation {
+		return 0
+	}
+
+	role, err := c.srv.CreateInitialLoginRole(c.Context)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error creating initial global-scoped login role: %w", err).Error())
+		return 1
+	}
+
+	roleInfo := &RoleInfo{
+		RoleId: role.PublicId,
+		Name:   role.Name,
+	}
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateInitialRoleTableOutput(roleInfo))
+	case "json":
+		jsonMap["login_role"] = roleInfo
+	}
+
+	if c.flagSkipAuthMethodCreation {
+		return 0
+	}
+
 	// Use an easy name, at least
 	c.srv.DevLoginName = "admin"
 	am, user, err := c.srv.CreateInitialAuthMethod(c.Context)
@@ -309,7 +338,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	authMethodInfo := &AuthMethodInfo{
+	authMethodInfo := &AuthInfo{
 		AuthMethodId:   c.srv.DevAuthMethodId,
 		AuthMethodName: am.Name,
 		LoginName:      c.srv.DevLoginName,
@@ -320,7 +349,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateInitialAuthMethodTableOutput(authMethodInfo))
+		c.UI.Output(generateInitialAuthTableOutput(authMethodInfo))
 	case "json":
 		jsonMap["auth_method"] = authMethodInfo
 	}

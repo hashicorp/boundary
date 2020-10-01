@@ -316,6 +316,7 @@ func Test_Parse(t *testing.T) {
 		name          string
 		input         string
 		userId        string
+		accountId     string
 		err           string
 		scopeOverride string
 		expected      Grant
@@ -479,13 +480,35 @@ func Test_Parse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:      "bad account id template",
+			input:     `id={{superman}};actions=create,read`,
+			accountId: "apw_1234567890",
+			err:       `unknown template "{{superman}}" in grant "id" value`,
+		},
+		{
+			name:      "good account id template",
+			input:     `id={{    account.id}};actions=create,read`,
+			accountId: "apw_1234567890",
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id: "apw_1234567890",
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
+				},
+			},
+		},
 	}
 
-	_, err := Parse("", "", "", false)
+	_, err := Parse("", "")
 	require.Error(t, err)
 	assert.Equal(t, "grant string is empty", err.Error())
 
-	_, err = Parse("", "", "{}", false)
+	_, err = Parse("", "{}")
 	require.Error(t, err)
 	assert.Equal(t, "no scope ID provided", err.Error())
 
@@ -497,7 +520,7 @@ func Test_Parse(t *testing.T) {
 			if test.scopeOverride != "" {
 				scope = test.scopeOverride
 			}
-			grant, err := Parse(scope, test.userId, test.input, false)
+			grant, err := Parse(scope, test.input, WithUserId(test.userId), WithAccountId(test.accountId))
 			if test.err != "" {
 				require.Error(err)
 				assert.True(strings.Contains(err.Error(), test.err), err.Error())
