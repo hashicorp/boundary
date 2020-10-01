@@ -426,11 +426,6 @@ func (b *Server) RunShutdownFuncs() error {
 }
 
 func (b *Server) ConnectToDatabase(dialect string) error {
-	dbEnv := os.Getenv("BOUNDARY_DATABASE_URL")
-	if dbEnv != "" {
-		b.DatabaseUrl = dbEnv
-	}
-
 	dbase, err := gorm.Open(dialect, b.DatabaseUrl)
 	if err != nil {
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
