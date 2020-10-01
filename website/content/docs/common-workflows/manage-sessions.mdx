@@ -6,3 +6,180 @@ description: How to manage Boundary sessions
 ---
 
 # Manage Sessions
+
+[Sessions](/docs/concepts/domain-model/sessions) are Boundary resources which enables connecting to a [target](/docs/concepts/domain-model/target). A target allows Boundary users to define an endpoint with a default-port and a protocol to establish a session. Unless specified with a `-host-id` flag when establishing a session, Boundary will choose one [host](/docs/concepts/domain-model/hosts) from the target's host-sets to connect to at random.
+
+In this section, we'll show you the basics of how to start a session in Boundary on the CLI and the admin console.
+
+We assume you're running Boundary in dev mode and have a default target of `ttcp_1234567890`. We also assume you've logged in on the command line and the admin console. See the output of `boundary dev` for these login values.
+
+## Authorize with a target
+
+For this example, we're going to authorize that you are able to connect to a target which results in an Authorization Token being returned which can be used to connect to the session through the proxy.
+
+<Tabs>
+    <Tab heading="CLI">
+
+        ```bash
+        $ boundary targets authorize -id ttcp_1234567890
+
+        Target information:
+            Authorization Token:   $LONG_STRING_OF_TEXT
+            Created Time:          2020-09-30T15:18:14-07:00
+            Host ID:               hst_1234567890
+            Scope ID:              p_1234567890
+            Session ID:            s_h7vBIhH5SZ
+            Target ID:             ttcp_1234567890
+            Type:                  tcp
+            User ID:               u_1234567890
+        ```
+
+    </Tab>
+</Tabs>
+
+#> Note: You can also provide a -host-id flag in the request above which ensures connecting using the provided Authorization Token will connect you to this specific host.
+
+## Connect to the session
+
+Once we have received an Authorization Token a Boundary session has been created and is waiting to proxy connection to the target.  We'll now connect our local proxy to the Boundary deployment.
+
+<Tabs>
+    <Tab heading="CLI">
+
+        ```bash
+        $ boundary proxy -authz $LONG_STRING_OF_TEXT
+
+        Proxy listening information:
+            Address:             127.0.0.1
+            Connection Limit:    1
+            Expiration:          Wed, 30 Sep 2020 23:18:14 MST
+            Port:                61991
+            Protocol:            tcp
+            Session ID:          s_h7vBIhH5SZ
+        ```
+
+    </Tab>
+</Tabs>
+
+With the above address and port information we can now connect to our local proxy and have our tcp traffic sent through the boundary system.
+
+```bash
+$ ssh 127.0.0.1 -p 61991
+...
+```
+
+For SSH connections we'll likely receive a notice that the authenticity of the host can't be established.
+
+## Viewing Sessions
+
+Beyond establishing sessions we can also view and cancel sessions.  Here we'll view all sessions that have recently happened in the project scope that are default target is in.
+
+<Tabs>
+    <Tab heading="CLI">
+
+        ```bash
+        $ boundary sessions list -scope-id p_1234567890
+
+        Session information:
+            ID:                 s_h7vBIhH5SZ
+                Status:           active
+                Created Time:     2020-09-30T15:18:14-07:00
+                Expiration Time:  2020-09-30T23:18:14-07:00
+                Updated Time:     2020-09-30T15:18:35-07:00
+                User ID:          u_1234567890
+                Target ID:        ttcp_1234567890
+        ```
+
+    </Tab>
+</Tabs>
+
+We can get a more detailed view of this specific session by reading it.
+
+<Tabs>
+    <Tab heading="CLI">
+
+        ```bash
+        $ boundary sessions read -id s_h7vBIhH5SZ
+
+        Session information:
+            Auth Token ID:       at_51XQGx0bzk
+            Created Time:        Wed, 30 Sep 2020 15:18:14 MST
+            Endpoint:            tcp://localhost:22
+            Expiration Time:     2020-09-30T23:18:14-07:00
+            Host ID:             hst_1234567890
+            Host Set ID:         hsst_1234567890
+            ID:                  s_h7vBIhH5SZ
+            Status:              active
+            Target ID:           ttcp_1234567890
+            Type:                tcp
+            Updated Time:        2020-09-30T15:18:35-07:00
+            User ID:             u_1234567890
+            Version:             2
+
+            Scope:
+                ID:                p_1234567890
+                Name:              Generated project scope
+                Parent Scope ID:   o_1234567890
+                Type:              project
+
+            States:
+                Start Time:        Wed, 30 Sep 2020 15:18:35 MST
+                Status:            active
+
+                End Time:          Wed, 30 Sep 2020 15:18:35 MST
+                Start Time:        Wed, 30 Sep 2020 15:18:14 MST
+                Status:            pending
+
+        ```
+
+    </Tab>
+</Tabs>
+
+## Cancelling Sessions
+
+To shut down a session the person initiating the connection can disconnect all connections or a request can be sent to Boundary to cancel a specific session.
+
+<Tabs>
+    <Tab heading="CLI">
+
+        ```bash
+        $ boundary sessions cancel -id s_h7vBIhH5SZ
+
+        Session information:
+            Auth Token ID:       at_51XQGx0bzk
+            Created Time:        Wed, 30 Sep 2020 15:18:14 MST
+            Endpoint:            tcp://localhost:22
+            Expiration Time:     2020-09-30T23:18:14-07:00
+            Host ID:             hst_1234567890
+            Host Set ID:         hsst_1234567890
+            ID:                  s_h7vBIhH5SZ
+            Status:              canceling
+            Target ID:           ttcp_1234567890
+            Type:                tcp
+            Updated Time:        2020-09-30T15:19:17-07:00
+            User ID:             u_1234567890
+            Version:             3
+
+            Scope:
+                ID:                p_1234567890
+                Name:              Generated project scope
+                Parent Scope ID:   o_1234567890
+                Type:              project
+
+            States:
+                Start Time:        Wed, 30 Sep 2020 15:19:17 MST
+                Status:            canceling
+
+                End Time:          Wed, 30 Sep 2020 15:19:17 MST
+                Start Time:        Wed, 30 Sep 2020 15:18:35 MST
+                Status:            active
+
+                End Time:          Wed, 30 Sep 2020 15:18:35 MST
+                Start Time:        Wed, 30 Sep 2020 15:18:14 MST
+                Status:            pending
+        ```
+
+    </Tab>
+</Tabs>
+
+Boundary will then cancel the session and move it into a "Terminated" state.
