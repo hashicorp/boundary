@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
-	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/vault/sdk/helper/password"
 	"github.com/mitchellh/cli"
@@ -136,7 +136,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		return 2
 	}
 
-	token := result.GetItem().(*authtoken.AuthToken)
+	token := result.GetItem().(*authtokens.AuthToken)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(base.WrapForHelpText([]string{
