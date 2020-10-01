@@ -86,6 +86,8 @@ type Command struct {
 
 	Func string
 
+	sessionAuthz *targets.SessionAuthorization
+
 	connWg             *sync.WaitGroup
 	listenerCloseOnce  sync.Once
 	listener           *net.TCPListener
@@ -412,9 +414,9 @@ func (c *Command) Run(args []string) (retCode int) {
 		if authzString[0] == '{' {
 			// Attempt to decode the JSON output of an authorize call and pull the
 			// token out of there
-			var sa targets.SessionAuthorization
-			if err := json.Unmarshal([]byte(authzString), &sa); err == nil {
-				authzString = sa.AuthorizationToken
+			c.sessionAuthz = new(targets.SessionAuthorization)
+			if err := json.Unmarshal([]byte(authzString), c.sessionAuthz); err == nil {
+				authzString = c.sessionAuthz.AuthorizationToken
 			}
 		}
 
@@ -445,8 +447,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.UI.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))
 			return 2
 		}
-		sa := sar.GetItem().(*targets.SessionAuthorization)
-		authzString = sa.AuthorizationToken
+		c.sessionAuthz = sar.GetItem().(*targets.SessionAuthorization)
+		authzString = c.sessionAuthz.AuthorizationToken
 	}
 
 	marshaled, err := base58.FastBase58Decoding(authzString)
@@ -645,13 +647,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		termInfo.Reason = "Session has expired"
 	default:
 		if c.execCmdReturnValue != nil {
-			r := c.execCmdReturnValue.Load()
-			switch r {
-			case 0:
-				termInfo.Reason = ""
-			default:
-				termInfo.Reason = fmt.Sprintf("Executed command exited with code %d", r)
-			}
+			// Don't print out in this case, so ensure we clear it
+			termInfo.Reason = ""
 		} else {
 			if c.connectionsLeft.Load() == 0 {
 				termInfo.Reason = "No connections left in session"
@@ -816,6 +813,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		switch c.flagSshStyle {
 		case "ssh":
 			args = append(args, "-p", port, ip)
+			args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthz.HostId))
 		case "putty":
 			args = append(args, "-P", port, ip)
 		}
