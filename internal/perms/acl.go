@@ -78,15 +78,14 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 		switch {
 		// type=<resource.type>;actions=<action> when action is list or create.
 		// If create, must be a top-level collection; otherwise an ID or "*"
-		// must be specified (as a pin format string, below). Type cannot be a
-		// wildcard.
+		// must be specified (as a pin format string, below).
 		case grant.id == "" &&
 			r.Id == "" &&
 			grant.typ == r.Type &&
-			grant.typ != resource.All &&
 			grant.typ != resource.Unknown &&
 			(aType == action.List ||
 				(topLevelType(r.Type) && aType == action.Create)):
+
 			results.Allowed = true
 			return
 
@@ -95,20 +94,16 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			grant.id != "" &&
 			grant.id != "*" &&
 			grant.typ == resource.Unknown:
+
 			results.Allowed = true
 			return
 
-		// id=*;type=*;actions=<action>
-		case grant.id == "*" && grant.typ == resource.All:
-			results.Allowed = true
-			return
-
-		// id=*;type=<resource.type>;actions=<action> where type cannot be a
-		// wildcard (that's handled in the above case) and cannot be unknown
+		// id=*;type=<resource.type>;actions=<action> where type cannot be
+		// unknown but can be a wildcard to allow any resource at all
 		case grant.id == "*" &&
-			(grant.typ == r.Type &&
-				grant.typ != resource.Unknown &&
-				grant.typ != resource.All):
+			grant.typ == r.Type &&
+			grant.typ != resource.Unknown:
+
 			results.Allowed = true
 			return
 
@@ -119,6 +114,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			grant.typ != resource.Unknown &&
 			(grant.typ == r.Type || grant.typ == resource.All) &&
 			!topLevelType(r.Type):
+
 			results.Allowed = true
 			return
 		}
