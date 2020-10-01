@@ -214,7 +214,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				msgs = append(msgs, &roleOplogMsg)
 
-				roleGrant, err := NewRoleGrant(adminRolePublicId, "id=*;actions=*")
+				roleGrant, err := NewRoleGrant(adminRolePublicId, "id=*;type=*;actions=*")
 				if err != nil {
 					return fmt.Errorf("unable to create in memory role grant: %w", err)
 				}
@@ -279,7 +279,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				// Grants
 				{
 					grants := []interface{}{}
-					roleGrant, err := NewRoleGrant(defaultRolePublicId, "id=*;type=scope;actions=list")
+					roleGrant, err := NewRoleGrant(defaultRolePublicId, "type=scope;actions=list")
 					if err != nil {
 						return fmt.Errorf("unable to create in memory role grant: %w", err)
 					}

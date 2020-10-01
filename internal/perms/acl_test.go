@@ -34,7 +34,8 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_a",
 			grants: []string{
 				"id=a_bar;actions=read,update",
-				"id=a_foo;type=host-catalog;actions=update,delete",
+				"type=host-catalog;actions=create",
+				"type=host;actions=list",
 				"id=*;type=host-set;actions=list,create",
 			},
 		},
@@ -42,14 +43,14 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_b",
 			grants: []string{
 				"id=*;type=host-set;actions=list,create",
-				"id=*;type=host;actions=*",
-				"id=*;actions=authenticate",
+				"id=mypin;type=host;actions=*",
+				"id=*;type=*;actions=authenticate",
 			},
 		},
 		{
 			scope: "o_c",
 			grants: []string{
-				"id={{user.id }};actions=create,update",
+				"id={{user.id }};actions=read,update",
 			},
 		},
 		{
@@ -81,8 +82,17 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
+			name:        "top level create with type only",
+			resource:    Resource{ScopeId: "o_a", Type: resource.HostCatalog},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: action.Create, allowed: true},
+				{action: action.Delete},
+			},
+		},
+		{
 			name:        "matching scope and id no matching action",
-			resource:    Resource{ScopeId: "o_a", Id: "a_foo"},
+			resource:    Resource{ScopeId: "o_a", Id: "a_foo", Type: resource.Role},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
 				{action: action.Update},
@@ -100,13 +110,33 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			name:        "matching scope and id and all action",
-			resource:    Resource{ScopeId: "o_b", Type: resource.Host},
+			name:        "matching scope and type and all action with valid pin",
+			resource:    Resource{ScopeId: "o_b", Pin: "mypin", Type: resource.Host},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
 				{action: action.Read, allowed: true},
 				{action: action.Update, allowed: true},
 				{action: action.Delete, allowed: true},
+			},
+		},
+		{
+			name:        "matching scope and type and all action but bad pin",
+			resource:    Resource{ScopeId: "o_b", Pin: "notmypin", Type: resource.Host},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: action.Read},
+				{action: action.Update},
+				{action: action.Delete},
+			},
+		},
+		{
+			name:        "matching scope and id and some action",
+			resource:    Resource{ScopeId: "o_b", Id: "myhost", Type: resource.HostSet},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: action.List, allowed: true},
+				{action: action.Create, allowed: true},
+				{action: action.AddHosts},
 			},
 		},
 		{
@@ -139,32 +169,12 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			name:        "matching scope, type, action, bad pin",
-			resource:    Resource{ScopeId: "o_a", Id: "a_foo", Type: resource.HostCatalog},
-			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.Update},
-				{action: action.Delete},
-				{action: action.Read},
-			},
-		},
-		{
 			name:        "matching scope, type, action, random id and bad pin",
 			resource:    Resource{ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "a_bar"},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
 				{action: action.Update},
 				{action: action.Delete},
-				{action: action.Read},
-			},
-		},
-		{
-			name:        "matching scope, type, action, random id and good pin",
-			resource:    Resource{ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "a_foo"},
-			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.Update, allowed: true},
-				{action: action.Delete, allowed: true},
 				{action: action.Read},
 			},
 		},
@@ -204,7 +214,7 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "o_c", Id: "u_abcd1234"},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: action.Create, allowed: true},
+				{action: action.Read, allowed: true},
 				{action: action.Update, allowed: true},
 			},
 			userId: "u_abcd1234",
@@ -226,7 +236,7 @@ func Test_ACLAllowed(t *testing.T) {
 			var grants []Grant
 			for _, sg := range test.scopeGrants {
 				for _, g := range sg.grants {
-					grant, err := Parse(sg.scope, test.userId, g)
+					grant, err := Parse(sg.scope, test.userId, g, false)
 					require.NoError(t, err)
 					grants = append(grants, grant)
 				}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/vault/sdk/helper/password"
 	"github.com/mitchellh/cli"
@@ -135,7 +136,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		return 2
 	}
 
-	token := result.Item
+	token := result.GetItem().(*authtokens.AuthToken)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(base.WrapForHelpText([]string{
@@ -149,7 +150,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		}))
 
 	case "json":
-		jsonOut, err := base.JsonFormatter{}.Format(result)
+		jsonOut, err := base.JsonFormatter{}.Format(token)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1

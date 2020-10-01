@@ -117,6 +117,7 @@ func generateRoleTableOutput(in *roles.Role) string {
 
 	if len(in.Principals) > 0 {
 		ret = append(ret,
+			"",
 			fmt.Sprintf("  Principals:       %s", ""),
 		)
 	}
@@ -135,7 +136,6 @@ func generateRoleTableOutput(in *roles.Role) string {
 	}
 	for _, grant := range in.Grants {
 		ret = append(ret,
-			"",
 			fmt.Sprintf("    %s", grant.Canonical),
 		)
 
