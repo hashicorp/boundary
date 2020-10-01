@@ -1,88 +1,89 @@
 .root {
-  /* Styles TBD */
-}
+  --transition-time: 0.7s;
 
-/* --------- */
+  & .arrowSpacer,
+  & .boundaryLetter,
+  & .iconSpacer,
+  & .iconBg {
+    fill: #fff;
+  }
 
-/* Example 1 */
+  & .iconLines,
+  & .iconBg {
+    stroke-linecap: round;
+    stroke-width: 1.5px;
+    stroke-linejoin: round;
+  }
 
-/* --------- */
-.arrowSpacer,
-.boundaryLetter,
-.iconSpacer,
-.iconBg {
-  fill: #fff;
-}
+  & .boundaryFill,
+  & .arrowHead {
+    fill: #f04e54;
+  }
 
-.iconLines,
-.iconBg {
-  stroke-linecap: round;
-  stroke-width: 1.5px;
-  stroke-linejoin: round;
-}
+  & .arrowSegment {
+    stroke-width: 2px;
+    stroke: #f04e54;
+    stroke-miterlimit: 10;
+    stroke-linecap: round;
+    fill: none;
+  }
 
-.boundaryFill,
-.arrowHead {
-  fill: #f04e54;
-}
+  & .dropShadow {
+    opacity: 0.08;
+    mix-blend-mode: multiply;
+  }
 
-.arrowSegment {
-  stroke-width: 2px;
-  stroke: #f04e54;
-  stroke-miterlimit: 10;
-  stroke-linecap: round;
-  fill: none;
-}
-
-.dropShadow {
-  opacity: 0.08;
-  mix-blend-mode: multiply;
-}
-
-.iconLines {
-  stroke: #fff;
-  fill: none;
-}
-
-.subtitle {
-  fill: #b6b8c3;
-}
-
-.iconBg {
-  stroke: #e5e6ec;
-  stroke-width: 1px;
-}
-
-.authenticate {
   & .iconLines {
+    stroke: #fff;
+    fill: none;
+  }
+
+  & .subtitle {
+    fill: #b6b8c3;
+  }
+
+  & .iconBg {
+    stroke: #e5e6ec;
     stroke-width: 1px;
   }
-}
 
-.authorize {
-  & .iconLines {
-    stroke: #b6b8c3;
+  & .authenticate {
+    & .iconLines {
+      stroke-width: 1px;
+    }
   }
 
-  &.active {
+  & .authorize {
+    & .iconLines {
+      stroke: #b6b8c3;
+    }
+
+    &.active {
+      /* Styles TBD */
+    }
+  }
+
+  & .access.active {
     /* Styles TBD */
   }
-}
 
-.access.active {
-  /* Styles TBD */
-}
+  & .hostsAndServices {
+    opacity: 0;
+    transition: var(--transition-time) ease;
+    transition-property: opacity, transform;
+    transform: translate(0, -18px);
 
-.hostsAndServices {
-  & .leadingLine {
-    fill: none;
-    stroke-linecap: round;
-    stroke-miterlimit: 10;
-    stroke-width: 1.5px;
-    stroke: #000;
-  }
+    & .leadingLine {
+      fill: none;
+      stroke-linecap: round;
+      stroke-miterlimit: 10;
+      stroke-width: 1.5px;
+      stroke: #000;
+    }
 
-  &.active {
-    /* Styles TBD */
+    &.active {
+      opacity: 1;
+      transform: translate(0, 0);
+    }
   }
 }

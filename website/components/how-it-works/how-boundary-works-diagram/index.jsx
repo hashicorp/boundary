@@ -3,11 +3,7 @@ import s from './how-boundary-works-diagram.module.css'
 export default function HowBoundaryWorksDiagram() {
   return (
     <div className={s.root}>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 559.92 498.86"
-        className={s.exOne}
-      >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 559.92 498.86">
         <g style={{ isolation: 'isolate' }}>
           <g id="Layer_2" data-name="Layer 2">
             <path
