@@ -101,8 +101,9 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 		// id=*;type=<resource.type>;actions=<action> where type cannot be
 		// unknown but can be a wildcard to allow any resource at all
 		case grant.id == "*" &&
-			grant.typ == r.Type &&
-			grant.typ != resource.Unknown:
+			grant.typ != resource.Unknown &&
+			(grant.typ == r.Type ||
+				grant.typ == resource.All):
 
 			results.Allowed = true
 			return
