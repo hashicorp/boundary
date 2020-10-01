@@ -498,6 +498,10 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		return err
 	}
 
+	if _, err := b.CreateInitialLoginRole(context.Background()); err != nil {
+		return err
+	}
+
 	if opts.withSkipAuthMethodCreation {
 		// now that we have passed all the error cases, reset c to be a noop so the
 		// defer doesn't do anything.

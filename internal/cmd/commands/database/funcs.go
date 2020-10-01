@@ -6,7 +6,34 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
-type AuthMethodInfo struct {
+type RoleInfo struct {
+	RoleId string `json:"scope_id"`
+	Name   string `json:"name"`
+}
+
+func generateInitialRoleTableOutput(in *RoleInfo) string {
+	nonAttributeMap := map[string]interface{}{
+		"Role ID": in.RoleId,
+		"Name":    in.Name,
+	}
+
+	maxLength := 0
+	for k := range nonAttributeMap {
+		if len(k) > maxLength {
+			maxLength = len(k)
+		}
+	}
+
+	ret := []string{
+		"",
+		"Initial login role information:",
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
+	}
+
+	return base.WrapForHelpText(ret)
+}
+
+type AuthInfo struct {
 	AuthMethodId   string `json:"auth_method_id"`
 	AuthMethodName string `json:"auth_method_name"`
 	LoginName      string `json:"login_name"`
@@ -16,7 +43,7 @@ type AuthMethodInfo struct {
 	UserName       string `json:"user_name"`
 }
 
-func generateInitialAuthMethodTableOutput(in *AuthMethodInfo) string {
+func generateInitialAuthTableOutput(in *AuthInfo) string {
 	nonAttributeMap := map[string]interface{}{
 		"Scope ID":         in.ScopeId,
 		"Auth Method ID":   in.AuthMethodId,
@@ -36,7 +63,7 @@ func generateInitialAuthMethodTableOutput(in *AuthMethodInfo) string {
 
 	ret := []string{
 		"",
-		"Initial auth method information:",
+		"Initial auth information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
 	}
 

@@ -280,14 +280,6 @@ func TestDelete(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name:    "Delete default role",
-			scopeId: "global",
-			req: &pbs.DeleteRoleRequest{
-				Id: "r_default",
-			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
 			name:    "Bad Role Id formatting",
 			scopeId: or.GetPublicId(),
 			req: &pbs.DeleteRoleRequest{

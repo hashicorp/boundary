@@ -614,8 +614,8 @@ func TestCreate(t *testing.T) {
 							switch role.GetName() {
 							case "Administration":
 								assert.Equal(fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", got.GetItem().GetId(), userId), role.GetDescription())
-							case "Default Grants":
-								assert.Equal(fmt.Sprintf("Role created for authentication to and listing of some resources of scope %s at its creation time", got.GetItem().GetId()), role.GetDescription())
+							case "Login and Default Grants":
+								assert.Equal(fmt.Sprintf("Role created for login capability and account self-management for users of scope %s at its creation time", got.GetItem().GetId()), role.GetDescription())
 							default:
 								t.Fatal("unexpected role name", role.GetName())
 							}

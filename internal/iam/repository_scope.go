@@ -135,8 +135,8 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			return nil, fmt.Errorf("create scope: error generating public id for new default role: %w", err)
 		}
 		defaultRole.PublicId = defaultRolePublicId
-		defaultRole.Name = "Default Grants"
-		defaultRole.Description = fmt.Sprintf("Role created for authentication to and listing of some resources of scope %s at its creation time", scopePublicId)
+		defaultRole.Name = "Login and Default Grants"
+		defaultRole.Description = fmt.Sprintf("Role created for login capability and account self-management for users of scope %s at its creation time", scopePublicId)
 		defaultRoleRaw = defaultRole
 		defaultRoleMetadata = oplog.Metadata{
 			"resource-public-id": []string{defaultRolePublicId},
@@ -290,8 +290,13 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 						return fmt.Errorf("unable to create in memory role grant: %w", err)
 					}
 					grants = append(grants, roleGrant)
+					roleGrant, err = NewRoleGrant(defaultRolePublicId, "id={{account.id}};actions=read,change-password")
+					if err != nil {
+						return fmt.Errorf("unable to create in memory role grant: %w", err)
+					}
+					grants = append(grants, roleGrant)
 
-					roleGrantOplogMsgs := make([]*oplog.Message, 0, 2)
+					roleGrantOplogMsgs := make([]*oplog.Message, 0, 3)
 					if err := w.CreateItems(ctx, grants, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
 						return fmt.Errorf("unable to add grants: %w", err)
 					}

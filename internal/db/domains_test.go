@@ -54,10 +54,6 @@ returning id;
 				"",
 			},
 			{
-				"r_default",
-				"role",
-			},
-			{
 				"global",
 				"scope",
 			},

@@ -230,6 +230,10 @@ type TestControllerOpts struct {
 	// DefaultPassword is the password used when creating the default account.
 	DefaultPassword string
 
+	// DisableInitialLoginRoleCreation can be set true to disable creating the
+	// global scope login role automatically.
+	DisableInitialLoginRoleCreation bool
+
 	// DisableAuthMethodCreation can be set true to disable creating an auth
 	// method automatically.
 	DisableAuthMethodCreation bool
@@ -389,21 +393,26 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 			if err := tc.b.CreateGlobalKmsKeys(ctx); err != nil {
 				t.Fatal(err)
 			}
-			if !opts.DisableAuthMethodCreation {
-				if _, _, err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
+			if !opts.DisableInitialLoginRoleCreation {
+				if _, err := tc.b.CreateInitialLoginRole(context.Background()); err != nil {
 					t.Fatal(err)
 				}
-				if !opts.DisableScopesCreation {
-					if _, _, err := tc.b.CreateInitialScopes(ctx); err != nil {
+				if !opts.DisableAuthMethodCreation {
+					if _, _, err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
 						t.Fatal(err)
 					}
-					if !opts.DisableHostResourcesCreation {
-						if _, _, _, err := tc.b.CreateInitialHostResources(ctx); err != nil {
+					if !opts.DisableScopesCreation {
+						if _, _, err := tc.b.CreateInitialScopes(ctx); err != nil {
 							t.Fatal(err)
 						}
-						if !opts.DisableTargetCreation {
-							if _, err := tc.b.CreateInitialTarget(ctx); err != nil {
+						if !opts.DisableHostResourcesCreation {
+							if _, _, _, err := tc.b.CreateInitialHostResources(ctx); err != nil {
 								t.Fatal(err)
+							}
+							if !opts.DisableTargetCreation {
+								if _, err := tc.b.CreateInitialTarget(ctx); err != nil {
+									t.Fatal(err)
+								}
 							}
 						}
 					}
