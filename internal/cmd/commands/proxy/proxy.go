@@ -86,6 +86,8 @@ type Command struct {
 
 	Func string
 
+	sessionAuthz *targets.SessionAuthorization
+
 	connWg             *sync.WaitGroup
 	listenerCloseOnce  sync.Once
 	listener           *net.TCPListener
@@ -412,9 +414,9 @@ func (c *Command) Run(args []string) (retCode int) {
 		if authzString[0] == '{' {
 			// Attempt to decode the JSON output of an authorize call and pull the
 			// token out of there
-			var sa targets.SessionAuthorization
-			if err := json.Unmarshal([]byte(authzString), &sa); err == nil {
-				authzString = sa.AuthorizationToken
+			c.sessionAuthz = new(targets.SessionAuthorization)
+			if err := json.Unmarshal([]byte(authzString), c.sessionAuthz); err == nil {
+				authzString = c.sessionAuthz.AuthorizationToken
 			}
 		}
 
@@ -445,8 +447,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.UI.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))
 			return 2
 		}
-		sa := sar.GetItem().(*targets.SessionAuthorization)
-		authzString = sa.AuthorizationToken
+		c.sessionAuthz = sar.GetItem().(*targets.SessionAuthorization)
+		authzString = c.sessionAuthz.AuthorizationToken
 	}
 
 	marshaled, err := base58.FastBase58Decoding(authzString)
@@ -816,6 +818,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		switch c.flagSshStyle {
 		case "ssh":
 			args = append(args, "-p", port, ip)
+			args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthz.HostId))
 		case "putty":
 			args = append(args, "-P", port, ip)
 		}
