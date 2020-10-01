@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -193,8 +194,7 @@ func toProto(in *session.Session) *pb.Session {
 		HostSetId:   in.HostSetId,
 		AuthTokenId: in.AuthTokenId,
 		Endpoint:    in.Endpoint,
-		// TODO: Export the session types like "tcp" into a variable that can be shared across the codebase.
-		Type:        "tcp",
+		Type:        target.SubtypeFromId(in.TargetId).String(),
 		// TODO: Provide the ServerType and the ServerId when that information becomes relevant in the API.
 
 		CreatedTime:    in.CreateTime.GetTimestamp(),
