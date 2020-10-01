@@ -71,6 +71,7 @@ type Command struct {
 	// HTTP
 	flagHttpStyle  string
 	flagHttpHost   string
+	flagHttpPath   string
 	flagHttpMethod string
 	flagHttpScheme string
 
@@ -84,6 +85,8 @@ type Command struct {
 	flagRdpStyle string
 
 	Func string
+
+	sessionAuthz *targets.SessionAuthorization
 
 	connWg             *sync.WaitGroup
 	listenerCloseOnce  sync.Once
@@ -235,6 +238,14 @@ func (c *Command) Flags() *base.FlagSets {
 			EnvVar:     "BOUNDARY_CONNECT_HTTP_HOST",
 			Completion: complete.PredictNothing,
 			Usage:      `Specifies the host value to use. The specified hostname will be passed through to the client (if supported) for use in the Host header and TLS SNI value.`,
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "path",
+			Target:     &c.flagHttpPath,
+			EnvVar:     "BOUNDARY_CONNECT_HTTP_PATH",
+			Completion: complete.PredictNothing,
+			Usage:      `Specifies a path that will be appended to the generated URL.`,
 		})
 
 		f.StringVar(&base.StringVar{
@@ -403,9 +414,9 @@ func (c *Command) Run(args []string) (retCode int) {
 		if authzString[0] == '{' {
 			// Attempt to decode the JSON output of an authorize call and pull the
 			// token out of there
-			var sa targets.SessionAuthorization
-			if err := json.Unmarshal([]byte(authzString), &sa); err == nil {
-				authzString = sa.AuthorizationToken
+			c.sessionAuthz = new(targets.SessionAuthorization)
+			if err := json.Unmarshal([]byte(authzString), c.sessionAuthz); err == nil {
+				authzString = c.sessionAuthz.AuthorizationToken
 			}
 		}
 
@@ -436,8 +447,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.UI.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))
 			return 2
 		}
-		sa := sar.GetItem().(*targets.SessionAuthorization)
-		authzString = sa.AuthorizationToken
+		c.sessionAuthz = sar.GetItem().(*targets.SessionAuthorization)
+		authzString = c.sessionAuthz.AuthorizationToken
 	}
 
 	marshaled, err := base58.FastBase58Decoding(authzString)
@@ -636,13 +647,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		termInfo.Reason = "Session has expired"
 	default:
 		if c.execCmdReturnValue != nil {
-			r := c.execCmdReturnValue.Load()
-			switch r {
-			case 0:
-				termInfo.Reason = ""
-			default:
-				termInfo.Reason = fmt.Sprintf("Executed command exited with code %d", r)
-			}
+			// Don't print out in this case, so ensure we clear it
+			termInfo.Reason = ""
 		} else {
 			if c.connectionsLeft.Load() == 0 {
 				termInfo.Reason = "No connections left in session"
@@ -788,19 +794,26 @@ func (c *Command) handleExec(passthroughArgs []string) {
 			if c.flagHttpMethod != "" {
 				args = append(args, "-X", c.flagHttpMethod)
 			}
+			var uri string
 			if c.flagHttpHost != "" {
+				c.flagHttpHost = strings.TrimSuffix(c.flagHttpHost, "/")
 				args = append(args, "-H", fmt.Sprintf("Host: %s", c.flagHttpHost))
 				args = append(args, "--resolve", fmt.Sprintf("%s:%s:%s", c.flagHttpHost, port, ip))
-				args = append(args, fmt.Sprintf("%s://%s:%s", c.flagHttpScheme, c.flagHttpHost, port))
+				uri = fmt.Sprintf("%s://%s:%s", c.flagHttpScheme, c.flagHttpHost, port)
 			} else {
-				args = append(args, fmt.Sprintf("%s://%s", c.flagHttpScheme, addr))
+				uri = fmt.Sprintf("%s://%s", c.flagHttpScheme, addr)
 			}
+			if c.flagHttpPath != "" {
+				uri = fmt.Sprintf("%s/%s", uri, strings.TrimPrefix(c.flagHttpPath, "/"))
+			}
+			args = append(args, uri)
 		}
 
 	case "ssh":
 		switch c.flagSshStyle {
 		case "ssh":
 			args = append(args, "-p", port, ip)
+			args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthz.HostId))
 		case "putty":
 			args = append(args, "-P", port, ip)
 		}
