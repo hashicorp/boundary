@@ -647,13 +647,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		termInfo.Reason = "Session has expired"
 	default:
 		if c.execCmdReturnValue != nil {
-			r := c.execCmdReturnValue.Load()
-			switch r {
-			case 0:
-				termInfo.Reason = ""
-			default:
-				termInfo.Reason = fmt.Sprintf("Executed command exited with code %d", r)
-			}
+			// Don't print out in this case, so ensure we clear it
+			termInfo.Reason = ""
 		} else {
 			if c.connectionsLeft.Load() == 0 {
 				termInfo.Reason = "No connections left in session"
