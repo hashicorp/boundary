@@ -17,7 +17,7 @@ import (
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func setup(t *testing.T) (func(), *gorm.DB) {
+func setup(t *testing.T) (func() error, *gorm.DB) {
 	t.Helper()
 	require := require.New(t)
 	cleanup, url, err := testInitDbInDocker(t)

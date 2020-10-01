@@ -442,7 +442,7 @@ func Test_RoleUpdate(t *testing.T) {
 			}
 			assert.True(proto.Equal(updateRole, foundRole))
 			if len(tt.args.nullPaths) != 0 {
-				dbassert := dbassert.New(t, rw)
+				dbassert := dbassert.New(t, conn.DB())
 				for _, f := range tt.args.nullPaths {
 					dbassert.IsNull(&foundRole, f)
 				}

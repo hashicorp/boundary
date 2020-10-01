@@ -107,7 +107,8 @@ type Target struct {
 	CreatedTime *timestamp.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"`
 	// Output only. The time this resource was last updated.
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
-	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
+	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"`
 	// The type of the Target.
 	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"`
@@ -117,7 +118,7 @@ type Target struct {
 	HostSets []*HostSet `protobuf:"bytes,110,rep,name=host_sets,proto3" json:"host_sets,omitempty"`
 	// Maximum total lifetime of a created Session, in seconds.
 	SessionMaxSeconds *wrappers.UInt32Value `protobuf:"bytes,120,opt,name=session_max_seconds,proto3" json:"session_max_seconds,omitempty"`
-	// Maximum number of connections allowed in a Session.
+	// Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1.
 	SessionConnectionLimit *wrappers.Int32Value `protobuf:"bytes,130,opt,name=session_connection_limit,proto3" json:"session_connection_limit,omitempty"`
 	// The attributes that are applicable for the specific Target.
 	Attributes *_struct.Struct `protobuf:"bytes,200,opt,name=attributes,proto3" json:"attributes,omitempty"`

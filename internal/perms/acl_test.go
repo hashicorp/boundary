@@ -35,14 +35,14 @@ func Test_ACLAllowed(t *testing.T) {
 			grants: []string{
 				"id=a_bar;actions=read,update",
 				"id=a_foo;type=host-catalog;actions=update,delete",
-				"type=host-set;actions=list,create",
+				"id=*;type=host-set;actions=list,create",
 			},
 		},
 		{
 			scope: "o_b",
 			grants: []string{
-				"type=host-set;actions=list,create",
-				"type=host;actions=*",
+				"id=*;type=host-set;actions=list,create",
+				"id=*;type=host;actions=*",
 				"id=*;actions=authenticate",
 			},
 		},
@@ -50,6 +50,12 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_c",
 			grants: []string{
 				"id={{user.id }};actions=create,update",
+			},
+		},
+		{
+			scope: "o_d",
+			grants: []string{
+				"id=*;type=*;actions=create,update",
 			},
 		},
 	}
@@ -196,6 +202,16 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			name:        "good templated user id",
 			resource:    Resource{ScopeId: "o_c", Id: "u_abcd1234"},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: action.Create, allowed: true},
+				{action: action.Update, allowed: true},
+			},
+			userId: "u_abcd1234",
+		},
+		{
+			name:        "all type",
+			resource:    Resource{ScopeId: "o_d", Type: resource.Account},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
 				{action: action.Create, allowed: true},

@@ -279,8 +279,8 @@ func Parse(scopeId, userId, grantString string) (Grant, error) {
 		}
 	}
 
-	if grant.id == "" && grant.typ == resource.Unknown {
-		return Grant{}, errors.New(`"id" and "type" cannot both be empty`)
+	if grant.id == "" {
+		return Grant{}, errors.New(`"id" cannot be empty, perhaps "*" was meant`)
 	}
 
 	if err := grant.validateType(); err != nil {
@@ -307,7 +307,8 @@ func (g Grant) validateType() error {
 		resource.HostCatalog,
 		resource.HostSet,
 		resource.Host,
-		resource.Target:
+		resource.Target,
+		resource.Session:
 		return nil
 	}
 	return fmt.Errorf("unknown type specifier %q", g.typ)

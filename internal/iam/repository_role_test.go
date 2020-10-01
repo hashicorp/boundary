@@ -448,7 +448,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			foundRole, _, _, err := repo.LookupRole(context.Background(), r.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(roleAfterUpdate, foundRole))
-			dbassert := dbassert.New(t, rw)
+			dbassert := dbassert.New(t, conn.DB())
 			if tt.args.name == "" {
 				assert.Equal(foundRole.Name, "")
 				dbassert.IsNull(foundRole, "name")
@@ -585,7 +585,7 @@ func TestRepository_ListRoles(t *testing.T) {
 				withScopeId: org.PublicId,
 				opt:         []Option{WithLimit(-1)},
 			},
-			wantCnt: repo.defaultLimit + 1,
+			wantCnt: repo.defaultLimit + 2,
 			wantErr: false,
 		},
 		{
@@ -596,7 +596,7 @@ func TestRepository_ListRoles(t *testing.T) {
 				withScopeId: proj.PublicId,
 				opt:         []Option{WithLimit(-1)},
 			},
-			wantCnt: repo.defaultLimit + 1,
+			wantCnt: repo.defaultLimit + 2,
 			wantErr: false,
 		},
 		{

@@ -1,20 +1,21 @@
 package db
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"os"
-	"strings"
-	"sync"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/hashicorp/boundary/internal/db/migrations"
+	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
-	"github.com/ory/dockertest/v3"
+)
+
+var (
+	StartDbInDocker = docker.StartDbInDocker
 )
 
 type DbType int
@@ -60,69 +61,6 @@ func Migrate(connectionUrl string, migrationsDirectory string) error {
 	return nil
 }
 
-// InitDbInDocker initializes the data store within docker or an existing
-func InitDbInDocker(dialect string) (cleanup func() error, retURL, container string, err error) {
-	c, url, container, err := StartDbInDocker(dialect)
-	if err != nil {
-		return func() error { return nil }, "", "", fmt.Errorf("could not start docker: %w", err)
-	}
-	if _, err := InitStore(dialect, c, url); err != nil {
-		return func() error { return nil }, "", "", fmt.Errorf("error initializing store: %w", err)
-	}
-	return c, url, container, nil
-}
-
-var (
-	mx = sync.Mutex{}
-)
-
-// StartDbInDocker
-func StartDbInDocker(dialect string) (cleanup func() error, retURL, container string, err error) {
-	// TODO: Debug what part of this method is actually causing race condition issues with our test and fix.
-	mx.Lock()
-	defer mx.Unlock()
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		return func() error { return nil }, "", "", fmt.Errorf("could not connect to docker: %w", err)
-	}
-
-	var resource *dockertest.Resource
-	var url string
-	switch dialect {
-	case "postgres":
-		resource, err = pool.Run("postgres", "12", []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
-		url = "postgres://postgres:password@localhost:%s?sslmode=disable"
-	default:
-		panic(fmt.Sprintf("unknown dialect %q", dialect))
-	}
-	if err != nil {
-		return func() error { return nil }, "", "", fmt.Errorf("could not start resource: %w", err)
-	}
-
-	cleanup = func() error {
-		return cleanupDockerResource(pool, resource)
-	}
-
-	url = fmt.Sprintf(url, resource.GetPort("5432/tcp"))
-
-	if err := pool.Retry(func() error {
-		db, err := sql.Open(dialect, url)
-		if err != nil {
-			return fmt.Errorf("error opening %s dev container: %w", dialect, err)
-		}
-
-		if err := db.Ping(); err != nil {
-			return err
-		}
-		defer db.Close()
-		return nil
-	}); err != nil {
-		return func() error { return nil }, "", "", fmt.Errorf("could not connect to docker: %w", err)
-	}
-
-	return cleanup, url, resource.Container.Name, nil
-}
-
 // InitStore will execute the migrations needed to initialize the store. It
 // returns true if migrations actually ran; false if we were already current.
 func InitStore(dialect string, cleanup func() error, url string) (bool, error) {
@@ -162,21 +100,6 @@ func InitStore(dialect string, cleanup func() error, url string) (bool, error) {
 		return false, mErr.ErrorOrNil()
 	}
 	return true, mErr.ErrorOrNil()
-}
-
-// cleanupDockerResource will clean up the dockertest resources (postgres)
-func cleanupDockerResource(pool *dockertest.Pool, resource *dockertest.Resource) error {
-	var err error
-	for i := 0; i < 10; i++ {
-		err = pool.Purge(resource)
-		if err == nil {
-			return nil
-		}
-	}
-	if strings.Contains(err.Error(), "No such container") {
-		return nil
-	}
-	return fmt.Errorf("Failed to cleanup local container: %s", err)
 }
 
 func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages []interface{}) {

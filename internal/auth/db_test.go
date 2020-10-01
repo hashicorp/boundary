@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -40,31 +41,45 @@ select count(*) from test_auth_method where public_id = $1;
 
 	assert, require := assert.New(t), require.New(t)
 
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	db := conn.DB()
-	_, err := db.Exec(createTable)
+	rw := db.New(conn)
+	_, err := rw.Exec(ctx, createTable, nil)
 	require.NoError(err)
 
-	_, err = db.Exec(addTriggers)
+	_, err = rw.Exec(ctx, addTriggers, nil)
 	require.NoError(err)
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	id := "l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
-	_, err = db.Query(insert, id, org.GetPublicId())
+	inserted, err := rw.Exec(ctx, insert, []interface{}{id, org.GetPublicId()})
 	require.NoError(err)
+	require.Equal(1, inserted)
 
-	var count int
-	err = db.QueryRow(baseTableQuery, id).Scan(&count)
+	type c struct {
+		Count int
+	}
+	var count c
+	rows, err := rw.Query(ctx, baseTableQuery, []interface{}{id})
 	require.NoError(err)
-	assert.Equal(1, count)
+	defer rows.Close()
+	for rows.Next() {
+		err := rw.ScanRows(rows, &count)
+		require.NoError(err)
+	}
+	assert.Equal(1, count.Count)
 
-	count = 0
-
-	err = db.QueryRow(testTableQuery, id).Scan(&count)
+	count.Count = 0
+	rows, err = rw.Query(ctx, testTableQuery, []interface{}{id})
 	require.NoError(err)
-	assert.Equal(1, count)
+	defer rows.Close()
+	for rows.Next() {
+		err := rw.ScanRows(rows, &count)
+		require.NoError(err)
+	}
+	assert.Equal(1, count.Count)
 }
 
 func TestDB_AuthAccountIDTrigger(t *testing.T) {
@@ -105,33 +120,46 @@ values
 
 	assert, require := assert.New(t), require.New(t)
 
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := iam.TestRepo(t, conn, wrapper)
-	db := conn.DB()
-	_, err := db.Exec(createTable)
+	rw := db.New(conn)
+	_, err := rw.Exec(ctx, createTable, nil)
 	require.NoError(err)
 
-	_, err = db.Exec(addTriggers)
+	_, err = rw.Exec(ctx, addTriggers, nil)
 	require.NoError(err)
 
 	org, _ := iam.TestScopes(t, repo)
 	meth_id := "31Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
-	_, err = db.Query(insertAuthMethod, meth_id, org.GetPublicId())
+	_, err = rw.Exec(ctx, insertAuthMethod, []interface{}{meth_id, org.GetPublicId()})
 	require.NoError(err)
 
 	id := "l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
-	_, err = db.Query(insert, id, meth_id)
+	_, err = rw.Exec(ctx, insert, []interface{}{id, meth_id})
 	require.NoError(err)
 
-	var count int
-	err = db.QueryRow(baseTableQuery, id).Scan(&count)
+	type c struct {
+		Count int
+	}
+	var count c
+	rows, err := rw.Query(ctx, baseTableQuery, []interface{}{id})
 	require.NoError(err)
-	assert.Equal(1, count)
+	defer rows.Close()
+	for rows.Next() {
+		err := rw.ScanRows(rows, &count)
+		require.NoError(err)
+	}
+	assert.Equal(1, count.Count)
 
-	count = 0
-
-	err = db.QueryRow(testTableQuery, id).Scan(&count)
+	count.Count = 0
+	rows, err = rw.Query(ctx, testTableQuery, []interface{}{id})
 	require.NoError(err)
-	assert.Equal(1, count)
+	defer rows.Close()
+	for rows.Next() {
+		err := rw.ScanRows(rows, &count)
+		require.NoError(err)
+	}
+	assert.Equal(1, count.Count)
 }

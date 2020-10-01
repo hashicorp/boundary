@@ -349,7 +349,7 @@ func Test_Parse(t *testing.T) {
 		{
 			name:  "empty id and type",
 			input: "actions=create",
-			err:   `"id" and "type" cannot both be empty`,
+			err:   `"id" cannot be empty, perhaps "*" was meant`,
 		},
 		{
 			name:  "good json",

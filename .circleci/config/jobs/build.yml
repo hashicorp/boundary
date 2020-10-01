@@ -1,0 +1,17 @@
+machine:
+  image: 'ubuntu-1604:201903-01'
+working_directory: ~/boundary
+steps:
+- add_ssh_keys:
+    fingerprints:
+      # hashicorp-ci github "machine" user, for private modules
+      - "c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98"
+- checkout
+- run:
+    name: "Run Acceptance Tests"
+    command: |
+      make test-ci
+- slack/status:
+    fail_only: true
+    only_for_branches: master
+    webhook: webhook

@@ -134,11 +134,8 @@ func (r *Repository) currentConfig(ctx context.Context, authMethodId string) (*c
 
 func (r *Repository) currentConfigForAccount(ctx context.Context, accountId string) (*currentConfig, error) {
 	var confs []currentConfig
-	tx, err := r.reader.DB()
-	if err != nil {
-		return nil, err
-	}
-	rows, err := tx.Query(currentConfigForAccountQuery, accountId)
+
+	rows, err := r.reader.Query(ctx, currentConfigForAccountQuery, []interface{}{accountId})
 	if err != nil {
 		return nil, err
 	}

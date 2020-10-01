@@ -321,17 +321,12 @@ func (r *Repository) changes(ctx context.Context, setId string, hostIds []string
 	}
 	query := fmt.Sprintf(setChangesQuery, inClause)
 
-	tx, err := r.reader.DB()
-	if err != nil {
-		return nil, fmt.Errorf("changes: unable to get DB: %w", err)
-	}
-
 	var params []interface{}
 	params = append(params, setId)
 	for _, v := range hostIds {
 		params = append(params, v)
 	}
-	rows, err := tx.QueryContext(ctx, query, params...)
+	rows, err := r.reader.Query(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("changes: query failed: %w", err)
 	}

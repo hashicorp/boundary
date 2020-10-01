@@ -23,7 +23,7 @@ func TestAdditionalVerification(t *testing.T) {
 	client := tc.Client()
 	token := tc.Token()
 	client.SetToken(token.Token)
-	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId), iam.WithSkipRoleCreation(true))
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
 
 	iamRepoFn := func() (*iam.Repository, error) {
 		return tc.IamRepo(), nil

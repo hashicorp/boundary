@@ -147,6 +147,7 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 	if err != nil {
 		return nil, err
 	}
+	g.Scope = authResults.Scope
 	return &pbs.AddHostSetHostsResponse{Item: g}, nil
 }
 
@@ -163,6 +164,7 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 	if err != nil {
 		return nil, err
 	}
+	g.Scope = authResults.Scope
 	return &pbs.SetHostSetHostsResponse{Item: g}, nil
 }
 
@@ -179,6 +181,7 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 	if err != nil {
 		return nil, err
 	}
+	g.Scope = authResults.Scope
 	return &pbs.RemoveHostSetHostsResponse{Item: g}, nil
 }
 

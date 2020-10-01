@@ -42,17 +42,18 @@ type Account struct {
 	Scope *scopes.ScopeInfo `protobuf:"bytes,20,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
 	Name *wrappers.StringValue `protobuf:"bytes,30,opt,name=name,proto3" json:"name,omitempty"`
-	// Optional user-set descripton for identification purposes.
+	// Optional user-set description for identification purposes.
 	Description *wrappers.StringValue `protobuf:"bytes,40,opt,name=description,proto3" json:"description,omitempty"`
 	// Output only. The time this resource was created.
 	CreatedTime *timestamp.Timestamp `protobuf:"bytes,50,opt,name=created_time,proto3" json:"created_time,omitempty"`
 	// Output only. The time this resource was last updated.
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,60,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
-	// Version can be used in subsequent write requests to ensure this resource has not changed and to fail the write if it has.
+	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty"`
 	// The type of this Account.
 	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty"`
-	// Output only. The ID of the Auth Method that is associated with this Account.
+	// The ID of the Auth Method that is associated with this Account.
 	AuthMethodId string `protobuf:"bytes,90,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty"`
 	// The attributes that are applicable for the specific Account type.
 	Attributes *_struct.Struct `protobuf:"bytes,100,opt,name=attributes,proto3" json:"attributes,omitempty"`

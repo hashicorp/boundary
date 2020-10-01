@@ -12,8 +12,8 @@ import "controller/api/resources/targets/v1/target.proto";
 service TargetService {
 
   // GetTarget returns a stored Target if present.  The provided request
-  // must include the scope and target ID for the target being retrieved. If
-  // any of those IDs are missing, malformed or reference a non existing
+  // must include the Target ID for the Target being retrieved. If
+  // that ID is missing, malformed or reference a non existing
   // resource an error is returned.
   rpc GetTarget(GetTargetRequest) returns (GetTargetResponse) {
     option (google.api.http) = {
@@ -21,28 +21,28 @@ service TargetService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Target"
+      summary: "Gets a single Target."
     };
   }
 
-  // ListTargets returns a list of stored targets which exist inside the project
+  // ListTargets returns a list of stored Targets which exist inside the project
   // referenced inside the request. The request must include the scope ID for
-  // the targets being retrieved. If the scope ID is missing, malformed, or
+  // the Targets being retrieved. If the scope ID is missing, malformed, or
   // reference a non existing scope, an error is returned.
   rpc ListTargets(ListTargetsRequest) returns (ListTargetsResponse) {
     option (google.api.http) = {
       get: "/v1/targets"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Targets"
+      summary: "Lists all Targets."
     };
   }
 
-  // CreateTarget creates and stores a target in boundary.  The provided
-  // request must include the scope id in which the target will be created.
+  // CreateTarget creates and stores a Target in boundary.  The provided
+  // request must include the scope id in which the Target will be created.
   // If the scope id is missing, malformed or references a non existing
   // scope, an error is returned.  If a name is provided that is in
-  // use in another target in the same scope, an error is returned.
+  // use in another Target in the same scope, an error is returned.
   rpc CreateTarget(CreateTargetRequest) returns (CreateTargetResponse) {
     option (google.api.http) = {
       post: "/v1/targets"
@@ -50,18 +50,18 @@ service TargetService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Target"
+      summary: "Creates a single Target."
     };
   }
 
-  // UpdateTarget updates an existing target in boundary.  The provided
-  // target must not have any read only fields set.  The update mask must be
+  // UpdateTarget updates an existing Target in boundary.  The provided
+  // Target must not have any read only fields set.  The update mask must be
   // included in the request and contain at least 1 mutable field.  To unset
   // a field's value, include the field in the update mask and don't set it
-  // in the provided target. An error is returned if either the scope
-  // or target ids are missing or reference a non existing resource.  An error
-  // is also returned if the request attempts to update the name to one that is
-  // already in use in this scope.
+  // in the provided Target. An error is returned if the Target ID is missing
+  // or reference a non-existing resource.  An error is also returned if the
+  // request attempts to update the name to one that is already in use in
+  // this scope.
   rpc UpdateTarget(UpdateTargetRequest) returns (UpdateTargetResponse) {
     option (google.api.http) = {
       patch: "/v1/targets/{id}"
@@ -69,25 +69,22 @@ service TargetService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Target"
+      summary: "Updates a Target."
     };
   }
 
-  // DeleteTarget removes a target from Boundary. If the provided scope or target ids
-  // are malformed or not provided an error is returned.  No error is returned
-  // if either ids reference resources that do not exist as the response itself
-  // specifies if the resource existed before the DeleteTarget request was
-  // received.
+  // DeleteTarget removes a Target from Boundary. If the provided Target ID
+  // is malformed or not provided an error is returned.
   rpc DeleteTarget(DeleteTargetRequest) returns (DeleteTargetResponse) {
     option (google.api.http) = {
       delete: "/v1/targets/{id}"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Target"
+      summary: "Deletes a Target."
     };
   }
   
-  // AuthorizeSession creates authorization information from a given target.
+  // AuthorizeSession creates authorization information from a given Target.
   rpc AuthorizeSession(AuthorizeSessionRequest) returns (AuthorizeSessionResponse) {
     option (google.api.http) = {
       post: "/v1/targets/{id}:authorize"
@@ -95,16 +92,17 @@ service TargetService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Authorizes a Session"
+      summary: "Authorizes a Session."
     };
   }
 
-  // AddTargetHostSets adds host sets to this target. The provided request must
-  // include the scope ID and the target ID to which the host sets will be added.
-  // All host sets added to the provided target must be a child of a catalog that
-  // is a child of the same scope as this target. If the scope or target IDs are
+  // AddTargetHostSets adds Host Sets to this Target. The provided request must
+  // include the Target ID to which the Host Sets will be added.
+  // All Host Sets added to the provided Target must be a child of a Catalog that
+  // is a child of the same scope as this Target. If the scope or Target IDs are
   // missing, malformed, or reference non-existing resources, an error is
-  // returned.
+  // returned. An error is returned if a Host Set is attempted to be added
+  // to a target that is already present on the Target.
   rpc AddTargetHostSets(AddTargetHostSetsRequest) returns (AddTargetHostSetsResponse) {
     option (google.api.http) = {
       post: "/v1/targets/{id}:add-host-sets"
@@ -116,11 +114,11 @@ service TargetService {
     };
   }
 
-  // SetTargetHostSets sets the target's host sets. Any existing host sets on the
-  // target are deleted if they are not included in this request. The
-  // provided request must include the scope, and the target ID on which the
-  // host sets will be set.  All host sets in the request must be a child of
-  // a catalog that is in the same scope as the provided target. If any
+  // SetTargetHostSets sets the Target's Host Sets. Any existing Host Sets on the
+  // Target are deleted if they are not included in this request. The
+  // provided request must include the scope, and the Target ID on which the
+  // Host Sets will be set.  All Host Sets in the request must be a child of
+  // a Catalog that is in the same scope as the provided Target. If any
   // IDs are missing, malformed, or references a non-existing resource, an
   // error is returned.
   rpc SetTargetHostSets(SetTargetHostSetsRequest) returns (SetTargetHostSetsResponse) {
@@ -134,11 +132,12 @@ service TargetService {
     };
   }
 
-  // RemoveTargetHostSets removes the host sets from the specified target. The
-  // provided request must include the scope and the target IDs for the target
-  // from which the host sets will be removed. If any of the IDs are missing,
-  // malformed, or references a non-existing scope or catalog, an error is
-  // returned.
+  // RemoveTargetHostSets removes the Host Sets from the specified Target. The
+  // provided request must include the Target ID for the Target
+  // from which the Host Sets will be removed. If the ID is missing,
+  // malformed, or references a non-existing scope or Catalog, an error is
+  // returned.  An error is returned if a Host Set is attempted to be
+  // removed from the Target when the Target does not have the Host Set.
   rpc RemoveTargetHostSets(RemoveTargetHostSetsRequest) returns (RemoveTargetHostSetsResponse) {
     option (google.api.http) = {
       post: "/v1/targets/{id}:remove-host-sets"
@@ -195,9 +194,9 @@ message DeleteTargetResponse {}
 
 message AddTargetHostSetsRequest {
   string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
-
-  // A list of Host Set IDs which will be added to this target. Each Host Set referenced here must be a child of a Host Catalog in the same Scope as this Target.
   repeated string host_set_ids = 3 [json_name="host_set_ids"];
 }
 
@@ -207,9 +206,9 @@ message AddTargetHostSetsResponse {
 
 message SetTargetHostSetsRequest {
   string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
-
-// A list of Host Set IDs which will be set on this target. Each Host Set referenced here must be a child of a Host Catalog in the same Scope as this Target.
   repeated string host_set_ids = 3 [json_name="host_set_ids"];
 }
 
@@ -219,9 +218,9 @@ message SetTargetHostSetsResponse {
 
 message RemoveTargetHostSetsRequest {
   string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
-
-// A list of Host Set IDs which will be removed from this target.
   repeated string host_set_ids = 3 [json_name="host_set_ids"];
 }
 

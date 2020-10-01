@@ -11,8 +11,8 @@ import "controller/api/resources/sessions/v1/session.proto";
 
 service SessionService {
 	// GetSession returns a stored Session if present.  The provided request
-	// must include the scope and session ID for the session being retrieved. If
-	// any of those IDs are missing, malformed or reference a non existing
+	// must include the Session ID for the Session being retrieved. If
+	// any that ID is missing, malformed or reference a non existing
 	// resource an error is returned.
 	rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {
 		option (google.api.http) = {
@@ -20,25 +20,25 @@ service SessionService {
 			response_body: "item"
 		};
 		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-			summary: "Gets a single Session"
+			summary: "Gets a single Session."
 		};
 	}
 
-	// ListSessions returns a list of stored sessions which exist inside the project
+	// ListSessions returns a list of stored Sessions which exist inside the scope
 	// referenced inside the request. The request must include the scope ID for
-	// the sessions being retrieved. If the scope ID is missing, malformed, or
+	// the Sessions being retrieved. If the scope ID is missing, malformed, or
 	// reference a non existing scope, an error is returned.
 	rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
 		option (google.api.http) = {
 			get: "/v1/sessions"
     	};
 		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-			summary: "Lists all Sessions"
+			summary: "Lists all Sessions."
 		};
 	}
 
-	// CancelSession cancels an existing session in boundary.  An error
-	// is returned if the request attempts to cancel a session that does
+	// CancelSession cancels an existing Session in boundary.  An error
+	// is returned if the request attempts to cancel a Session that does
 	// not exist.
 	rpc CancelSession(CancelSessionRequest) returns (CancelSessionResponse) {
 		option (google.api.http) = {
@@ -47,7 +47,7 @@ service SessionService {
 			response_body: "item"
 		};
 		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-			summary: "Cancels a Session"
+			summary: "Cancels a Session."
 		};
 	}
 }

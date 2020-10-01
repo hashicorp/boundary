@@ -71,14 +71,26 @@ func DefaultName() Option {
 	}
 }
 
-func WithSkipRoleCreation(inSkipRoleCreation bool) Option {
+func WithSkipAdminRoleCreation(inSkipAdminRoleCreation bool) Option {
 	return func(o *options) {
-		o.queryMap["skip_role_creation"] = fmt.Sprintf("%v", inSkipRoleCreation)
+		o.queryMap["skip_admin_role_creation"] = fmt.Sprintf("%v", inSkipAdminRoleCreation)
 	}
 }
 
-func DefaultSkipRoleCreation() Option {
+func DefaultSkipAdminRoleCreation() Option {
 	return func(o *options) {
-		o.postMap["skip_role_creation"] = nil
+		o.postMap["skip_admin_role_creation"] = nil
+	}
+}
+
+func WithSkipDefaultRoleCreation(inSkipDefaultRoleCreation bool) Option {
+	return func(o *options) {
+		o.queryMap["skip_default_role_creation"] = fmt.Sprintf("%v", inSkipDefaultRoleCreation)
+	}
+}
+
+func DefaultSkipDefaultRoleCreation() Option {
+	return func(o *options) {
+		o.postMap["skip_default_role_creation"] = nil
 	}
 }

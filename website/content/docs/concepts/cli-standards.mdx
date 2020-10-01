@@ -1,0 +1,80 @@
+---
+layout: docs
+page_title: CLI Standards
+sidebar_title: CLI Standards
+description: |-
+  Boundary's CLI standards
+---
+
+# Overview
+
+Boundary's CLI has predictable behavior throughout its various commands. This page details these standards to help users make better use of the CLI.
+
+## Parameter Handling
+
+All parameters specified on the CLI are specified as a Go-style flag with a single dash, e.g. `-id`. The arguments to those flags can be specified via an equals sign, as in `-id=r_1234567890`, or a space, like `-id r_1234567890`.
+
+To see available parameters, pass the `-h` flag to any command.
+
+Flags are semi-position dependent. The flags must come _after_ the command definition, but are otherwise order independent.
+
+For instance, the following are equivalent:
+
+* `boundary roles create -scope-id global -name foo`
+* `boundary roles create -name foo -scope-id global`
+
+But the following results in an error:
+
+* `boundary roles -name foo -scope-id global create`
+
+This applies to `-h` as well!
+
+### Connection Options
+
+Every command that results in an API call contains a set of flags that control connection options, which control TLS and other settings for the connection.
+
+### Client Options
+
+Every command that results in an API call contains a set of flags that control client options. Some notable options:
+
+* `output-curl-string`: This will format the command that would have been run as a string using `curl` that can be used directly on the command line. This is a great way to discover how CLI functions map to API calls.
+* `token-name`: When the CLI authenticates, it stores the token in the platform-specific OS credential store. By using the `token-name` parameter, more than one token can be stored at a time. Specifying this parameter at authentication time uses the given name as part of the key for storage; specifying it for any other command will cause the corresponding token to be used for that call.
+* `recovery-config`: This is used to specify a configuration file that contains the information necessary to access a KMS configured to be used for the recovery workflow within a Boundary controller.
+
+### Output Options
+
+Nearly every command supports having its success output be formatted as JSON via `-format json`. For commands that result in an API call, the JSON output will be the exact output from the controller. If using the output of the CLI in scripts or as parameters to other tools, _always_ use formatted output. The default text output is meant for human users and the formatting or the information included within that output from the original JSON may change at any time.
+
+## Mapping to Collections and Sub-Types
+
+Generally speaking, Boundary's CLI commands map to the collections they operate on. For instance, when operating on roles, the command will be `boundary roles ...`.
+
+As a result, the patterns for reading, deleting, and listing are predictable:
+
+* `boundary <collection> read`
+* `boundary <collection> delete`
+* `boundary <collection> list`
+
+`read` and `delete` will always operate on a particular resource identifier, so will always take in an `-id` parameter. `list` operates on collections so will either take a `-scope-id` parameter or, depending on type, a higher level resource identifier, e.g. `-auth-method-id`.
+
+Creating and updating resources may take an extra parameter if the resource type is abstract, that is, if the type cannot be operated on directly but must be operated on through an implementation. As an example, a role is not an abstract type, and does not have various implementations of it. As a result, a role can be operated on directly:
+
+* `boundary roles create`
+* `boundary roles update`.
+
+However, a target can be one of many types of targets, and a concrete implementation of a target is a `tcp` type of target. Therefore an extra parameter is required when creating or updating a target:
+
+* `boundary targets tcp create`
+* `boundary targets tcp update`
+
+This allows the CLI to perform proper presentation and validation of parameters and functions for the given type.
+
+Similar to `read`, `update` operates on an existing target so will always take an `-id` parameter. Similar to `list`, `create` operates on a collection so will either take a `-scope-id` parameter or a parameter defining the parent resource.
+
+## Completion
+
+Boundary's CLI supports autocompletion. For Bash, the following line in a `~/.bash_profile` or similar file will work:
+
+`complete -C /path/to/boundary boundary`
+
+This will allow tab completion of commands, flags, and in some cases the parameters to those flags.

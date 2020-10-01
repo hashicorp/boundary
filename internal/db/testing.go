@@ -20,13 +20,17 @@ import (
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL). Do not close the returned db.
 func TestSetup(t *testing.T, dialect string) (*gorm.DB, string) {
-	cleanup, url, _, err := InitDbInDocker(dialect)
+	cleanup, url, _, err := StartDbInDocker(dialect)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
 		assert.NoError(t, cleanup(), "Got error cleaning up db in docker.")
 	})
+	_, err = InitStore(dialect, cleanup, url)
+	if err != nil {
+		t.Fatal(err)
+	}
 	db, err := gorm.Open(dialect, url)
 	if err != nil {
 		t.Fatal(err)

@@ -1,7 +1,7 @@
 ---
 layout: docs
 page_title: Controller - Configuration
-sidebar_title: <code>controller</code>
+sidebar_title: controller
 description: |-
   The controller stanza configures controller-specifc parameters.
 ---
@@ -14,9 +14,14 @@ The `controller` stanza configures Boundary controller-specific parameters.
 controller {
   name = "example-controller"
   description = "An example controller"
+  database {
+    url = "postgresql://<username>:<password>@10.0.0.1:5432/<database_name>"
+  }
 }
 ```
 
 - `name` - Specifies a unique name of this controller within the Boundary controller cluster.
 
 - `description` - Specifies a friendly description of this controller.
+
+- `database` - Configuration block with one parameter, `url`, for connecting to Postgres.
