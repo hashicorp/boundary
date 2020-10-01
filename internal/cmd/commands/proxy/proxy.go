@@ -71,6 +71,7 @@ type Command struct {
 	// HTTP
 	flagHttpStyle  string
 	flagHttpHost   string
+	flagHttpPath   string
 	flagHttpMethod string
 	flagHttpScheme string
 
@@ -235,6 +236,14 @@ func (c *Command) Flags() *base.FlagSets {
 			EnvVar:     "BOUNDARY_CONNECT_HTTP_HOST",
 			Completion: complete.PredictNothing,
 			Usage:      `Specifies the host value to use. The specified hostname will be passed through to the client (if supported) for use in the Host header and TLS SNI value.`,
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "path",
+			Target:     &c.flagHttpPath,
+			EnvVar:     "BOUNDARY_CONNECT_HTTP_PATH",
+			Completion: complete.PredictNothing,
+			Usage:      `Specifies a path that will be appended to the generated URL.`,
 		})
 
 		f.StringVar(&base.StringVar{
@@ -788,13 +797,18 @@ func (c *Command) handleExec(passthroughArgs []string) {
 			if c.flagHttpMethod != "" {
 				args = append(args, "-X", c.flagHttpMethod)
 			}
+			var uri string
 			if c.flagHttpHost != "" {
 				args = append(args, "-H", fmt.Sprintf("Host: %s", c.flagHttpHost))
 				args = append(args, "--resolve", fmt.Sprintf("%s:%s:%s", c.flagHttpHost, port, ip))
-				args = append(args, fmt.Sprintf("%s://%s:%s", c.flagHttpScheme, c.flagHttpHost, port))
+				uri = fmt.Sprintf("%s://%s:%s", c.flagHttpScheme, c.flagHttpHost, port)
 			} else {
-				args = append(args, fmt.Sprintf("%s://%s", c.flagHttpScheme, addr))
+				uri = fmt.Sprintf("%s://%s", c.flagHttpScheme, addr)
 			}
+			if c.flagHttpPath != "" {
+				uri = fmt.Sprintf("%s/%s", uri, strings.TrimPrefix(c.flagHttpPath, "/"))
+			}
+			args = append(args, uri)
 		}
 
 	case "ssh":
