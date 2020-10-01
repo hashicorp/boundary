@@ -193,6 +193,7 @@ func toProto(in *session.Session) *pb.Session {
 		HostSetId:   in.HostSetId,
 		AuthTokenId: in.AuthTokenId,
 		Endpoint:    in.Endpoint,
+		// TODO: Export the session types like "tcp" into a variable that can be shared across the codebase.
 		Type:        "tcp",
 		// TODO: Provide the ServerType and the ServerId when that information becomes relevant in the API.
 
