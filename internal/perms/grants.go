@@ -230,7 +230,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 //
 // The scope must be the org and project where this grant originated, not the
 // request.
-func Parse(scopeId, userId, grantString string, skipFinalValidation bool) (Grant, error) {
+func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 	if len(grantString) == 0 {
 		return Grant{}, errors.New("grant string is empty")
 	}
@@ -266,14 +266,22 @@ func Parse(scopeId, userId, grantString string, skipFinalValidation bool) (Grant
 		}
 	}
 
-	// Check for templated user ID, and subtitute in with the authenticated user
+	opts := getOpts(opt...)
+
+	// Check for templated values ID, and subtitute in with the authenticated values
 	// if so
-	if grant.id != "" && userId != "" && strings.HasPrefix(grant.id, "{{") {
+	if grant.id != "" && strings.HasPrefix(grant.id, "{{") {
 		id := strings.TrimSuffix(strings.TrimPrefix(grant.id, "{{"), "}}")
 		id = strings.ToLower(strings.TrimSpace(id))
 		switch id {
 		case "user.id":
-			grant.id = userId
+			if opts.withUserId != "" {
+				grant.id = opts.withUserId
+			}
+		case "account.id":
+			if opts.withAccountId != "" {
+				grant.id = opts.withAccountId
+			}
 		default:
 			return Grant{}, fmt.Errorf("unknown template %q in grant %q value", grant.id, "id")
 		}
@@ -287,7 +295,7 @@ func Parse(scopeId, userId, grantString string, skipFinalValidation bool) (Grant
 		return Grant{}, err
 	}
 
-	if !skipFinalValidation {
+	if !opts.withSkipFinalValidation {
 		// Validate the grant. Create a dummy resource and pass it through
 		// Allowed and ensure that we get allowed.
 		acl := NewACL(grant)

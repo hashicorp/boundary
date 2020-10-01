@@ -504,7 +504,7 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	grantString := "id=*;type=*;actions=*"
-	g, err := perms.Parse("global", "", grantString, false)
+	g, err := perms.Parse("global", grantString)
 	require.NoError(t, err)
 	_, actions := g.Actions()
 	grant := &pb.Grant{
@@ -1339,7 +1339,7 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 	require.Equal(len(expected), len(got.GrantStrings))
 	require.Equal(len(expected), len(got.Grants))
 	for i, v := range expected {
-		parsed, err := perms.Parse("o_abc123", "", v, false)
+		parsed, err := perms.Parse("o_abc123", v)
 		require.NoError(err)
 		assert.Equal(expected[i], got.GrantStrings[i])
 		assert.Equal(expected[i], got.Grants[i].GetRaw())
