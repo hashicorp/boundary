@@ -54,6 +54,7 @@ export default [
       },
     ],
   },
+  '---',
   {
     category: 'configuration',
     content: [
@@ -87,6 +88,7 @@ export default [
       'manage-sessions',
     ],
   },
+  '---',
   {
     category: 'roadmap',
     content: ['0_2_0'],
@@ -101,6 +103,4 @@ export default [
     ],
   },
 
-  '---',
-  { title: 'External Link', href: 'https://www.hashicorp.com' },
 ]
