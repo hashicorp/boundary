@@ -11,6 +11,7 @@
 .contentContainer {
   display: flex;
   justify-content: space-between;
+  position: relative;
 
   @media (--small) {
     flex-direction: column;
@@ -37,8 +38,13 @@
 }
 
 .diagram {
+  --height: 534px;
+
   width: 591px;
   max-width: 100%;
+  position: sticky;
+  top: calc(50vh - (var(--height) / 2));
+  height: var(--height);
 
   & > svg {
     width: 100%;
