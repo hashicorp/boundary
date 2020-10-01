@@ -1,6 +1,7 @@
 import s from './how-boundary-works-diagram.module.css'
+import classnames from 'classnames'
 
-export default function HowBoundaryWorksDiagram() {
+export default function HowBoundaryWorksDiagram({ activeExampleIndex }) {
   return (
     <div className={s.root}>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 559.92 498.86">
@@ -17,7 +18,11 @@ export default function HowBoundaryWorksDiagram() {
             />
 
             {/* Hosts & Services */}
-            <g className={s.hostsAndServices}>
+            <g
+              className={classnames(s.hostsAndServices, {
+                [s.active]: activeExampleIndex === 2,
+              })}
+            >
               <path d="M31.92 169.08v8.4h-2.07v-3.37h-3.44v3.37h-2.07v-8.4h2.07v3.23h3.44v-3.23zM33.08 173.28a4.39 4.39 0 014.63-4.36 4.37 4.37 0 110 8.73 4.39 4.39 0 01-4.63-4.37zm7.16 0a2.53 2.53 0 10-2.53 2.53 2.43 2.43 0 002.53-2.53zM42.81 175.1l2-.58a2.35 2.35 0 002.19 1.39c.84 0 1.36-.37 1.36-.79s-.27-.6-.94-.81l-2.24-.67a2.4 2.4 0 01-2-2.22c0-1.38 1.34-2.5 3.23-2.5a4 4 0 013.85 2.2l-1.91.54a2.23 2.23 0 00-1.92-1c-.71 0-1.16.31-1.16.69s.21.49.59.6l2.19.67c1.31.4 2.39.95 2.39 2.36s-1.42 2.67-3.57 2.67a4.19 4.19 0 01-4.06-2.55zM58.18 170.88H55.4v6.6h-2.07v-6.6h-2.78v-1.8h7.63zM58.11 175.1l2-.58a2.35 2.35 0 002.26 1.39c.83 0 1.36-.37 1.36-.79s-.28-.6-.94-.81l-2.24-.67a2.42 2.42 0 01-2-2.22c0-1.38 1.35-2.5 3.23-2.5a4.08 4.08 0 013.86 2.2l-1.91.54a2.24 2.24 0 00-1.92-1c-.71 0-1.16.31-1.16.69s.21.49.58.6l2.2.67c1.31.4 2.39.95 2.39 2.36s-1.42 2.67-3.58 2.67a4.21 4.21 0 01-4.13-2.55zM75.84 177.48l-.66-.67a4.21 4.21 0 01-2.51.85 2.66 2.66 0 01-2.89-2.52 2.81 2.81 0 011.52-2.39 2.21 2.21 0 01-.6-1.41c0-1.56 1.16-2.42 2.9-2.42a2.59 2.59 0 012.69 2l-1.78.49a1 1 0 00-1-.85.79.79 0 00-.88.76c0 .37.33.67.5.87l1.92 2a4.59 4.59 0 00.45-1.14l1.75.48a5.79 5.79 0 01-.9 2l1.86 1.93zM74 175.55L72.44 174a1.21 1.21 0 00-.66 1 1 1 0 001.12.95 1.92 1.92 0 001.1-.4zM81.55 175.1l2-.58a2.33 2.33 0 002.25 1.39c.84 0 1.36-.37 1.36-.79s-.27-.6-.93-.81l-2.23-.67a2.42 2.42 0 01-2-2.22c0-1.38 1.35-2.5 3.23-2.5a4 4 0 013.85 2.2l-1.91.54a2.22 2.22 0 00-1.92-1c-.71 0-1.16.31-1.16.69s.22.49.59.6l2.19.67c1.31.4 2.4.95 2.4 2.36s-1.42 2.67-3.58 2.67a4.2 4.2 0 01-4.14-2.55zM92.37 170.88v1.47h3.91v1.74h-3.91v1.59h4.54v1.8h-6.56v-8.4h6.57v1.8zM101.71 174.72h-1.5v2.76h-2v-8.4h4.37a2.93 2.93 0 013.09 2.83 2.72 2.72 0 01-1.78 2.56l2.1 3h-2.38zm-1.5-1.74h2.17a1.13 1.13 0 001.23-1.07 1.1 1.1 0 00-1.14-1h-2.26zM115 169.08l-3.4 8.4h-2.27l-3.41-8.4h2.3l2.24 5.85 2.26-5.85zM115.77 169.08h2.09v8.4h-2.09zM119 173.28a4.37 4.37 0 014.57-4.36 4.19 4.19 0 014.28 2.81l-2 .48a2.28 2.28 0 00-2.24-1.42 2.39 2.39 0 00-2.47 2.48 2.43 2.43 0 002.47 2.51 2.25 2.25 0 002.24-1.41l2 .49a4.15 4.15 0 01-4.24 2.79 4.38 4.38 0 01-4.61-4.37zM131 170.88v1.47h3.91v1.74H131v1.59h4.54v1.8h-6.56v-8.4h6.57v1.8zM136.06 175.1l2-.58a2.35 2.35 0 002.26 1.39c.83 0 1.36-.37 1.36-.79s-.28-.6-.94-.81l-2.24-.67a2.42 2.42 0 01-2-2.22c0-1.38 1.35-2.5 3.23-2.5a4 4 0 013.85 2.2l-1.9.54a2.24 2.24 0 00-1.92-1c-.72 0-1.16.31-1.16.69s.21.49.58.6l2.2.67c1.31.4 2.39.95 2.39 2.36s-1.42 2.67-3.58 2.67a4.21 4.21 0 01-4.13-2.55z" />
               <path className={s.leadingLine} d="M156.62 129.73h.75" />
               <path
@@ -62,7 +67,11 @@ export default function HowBoundaryWorksDiagram() {
             </g>
 
             {/* Arrow (Example 1) */}
-            <g className={s.arrowOne}>
+            <g
+              className={classnames(s.arrowOne, {
+                [s.active]: activeExampleIndex === 0,
+              })}
+            >
               <circle
                 className={s.arrowSpacer}
                 cx="367.07"
@@ -84,7 +93,11 @@ export default function HowBoundaryWorksDiagram() {
             </g>
 
             {/* Arrow (Example 2) */}
-            <g className={s.arrowTwo}>
+            <g
+              className={classnames(s.arrowTwo, {
+                [s.active]: activeExampleIndex === 1,
+              })}
+            >
               <circle
                 className={s.arrowSpacer}
                 cx="209.12"
@@ -106,7 +119,11 @@ export default function HowBoundaryWorksDiagram() {
             </g>
 
             {/* Arrow (Example 3) */}
-            <g className={s.arrowThree}>
+            <g
+              className={classnames(s.arrowThree, {
+                [s.active]: activeExampleIndex === 2,
+              })}
+            >
               <circle
                 className={s.arrowSpacer}
                 cx="206.57"
@@ -218,7 +235,11 @@ export default function HowBoundaryWorksDiagram() {
             </g>
 
             {/* Authorize */}
-            <g className={s.authorize}>
+            <g
+              className={classnames(s.authorize, {
+                [s.active]: activeExampleIndex === 1,
+              })}
+            >
               <path d="M256.85 408.79h-3.69l-.62 1.61h-2.13l3.23-8.4h2.72l3.23 8.4h-2.13zm-.67-1.74l-1.18-3.14-1.18 3.14zM267.72 402v4.91c0 2.14-1.38 3.65-3.88 3.65s-3.88-1.51-3.88-3.65V402h2.1v4.87a1.78 1.78 0 103.56 0V402zM276.22 403.8h-2.78v6.6h-2.07v-6.6h-2.78V402h7.63zM284.73 402v8.4h-2.07V407h-3.44v3.37h-2.07V402h2.07v3.23h3.44V402zM285.89 406.2a4.63 4.63 0 114.62 4.36 4.39 4.39 0 01-4.62-4.36zm7.16 0a2.54 2.54 0 10-2.54 2.53 2.43 2.43 0 002.54-2.53zM299.84 407.64h-1.5v2.76h-2V402h4.36a2.92 2.92 0 013.09 2.83 2.7 2.7 0 01-1.78 2.55l2.11 3h-2.42zm-1.5-1.74h2.17a1.13 1.13 0 001.24-1.07 1.1 1.1 0 00-1.15-1.05h-2.26zM305.07 402h2.1v8.4h-2.1zM315.5 408.63v1.77h-7.21v-1.34l4.24-5.3h-4.18V402h7v1.36l-4.2 5.27zM318.64 403.8v1.46h3.91V407h-3.91v1.6h4.54v1.8h-6.56V402h6.57v1.8z" />
               <image
                 className={s.dropShadow}
@@ -247,7 +268,11 @@ export default function HowBoundaryWorksDiagram() {
             </g>
 
             {/* Access */}
-            <g className={s.access}>
+            <g
+              className={classnames(s.access, {
+                [s.active]: activeExampleIndex === 2,
+              })}
+            >
               <path
                 className={s.iconSpacer}
                 d="M140.24 213.11h68.6v66.62h-68.6z"
