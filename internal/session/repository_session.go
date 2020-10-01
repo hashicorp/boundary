@@ -284,11 +284,9 @@ func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessio
 	return s, nil
 }
 
-// TerminateSession sets a session's state to "terminated" in the repo.  It's
-// called by the worker when the session has been terminated or by a controller
-// when all of a session's workers have stopped sending heartbeat status for a
-// period of time.  Sessions cannot be terminated which still have connections
-// that are not closed.
+// TerminateSession sets a session's termination reason and it's state to
+// "terminated" Sessions cannot be terminated which still have connections that
+// are not closed.
 func (r *Repository) TerminateSession(ctx context.Context, sessionId string, sessionVersion uint32, reason TerminationReason) (*Session, error) {
 	if sessionId == "" {
 		return nil, fmt.Errorf("terminate session: missing session id: %w", db.ErrInvalidParameter)
@@ -331,6 +329,33 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 		return nil, fmt.Errorf("terminate session: %w", err)
 	}
 	return &updatedSession, nil
+}
+
+// TerminateCompletedSessions will terminate sessions in the repo based on:
+//  * sessions that have exhausted their connection limit and all their connections are closed.
+//	* sessions that are expired and all their connections are closed.
+//	* sessions that are canceling and all their connections are closed
+// This function should called on a periodic basis a Controllers via it's
+// "ticker" pattern.
+func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error) {
+	var rowsAffected int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			var err error
+			rowsAffected, err = w.Exec(ctx, termSessionsUpdate, nil)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("terminate completed sessions: %w", err)
+	}
+	return rowsAffected, nil
 }
 
 // AuthorizeConnection will check to see if a connection is allowed.  Currently,

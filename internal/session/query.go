@@ -140,4 +140,78 @@ where
 	%s
 %s
 `
+
+	// termSessionUpdate is one stmt that terminates sessions for the following
+	// reasons:
+	//	* sessions that are expired and all their connections are closed.
+	// 	* sessions that are canceling and all their connections are closed
+	//  * sessions that have exhausted their connection limit and all their connections are closed.
+	termSessionsUpdate = `
+with canceling_session(session_id) as
+(
+	select 
+		session_id
+	from
+		session_state ss
+	where 
+		ss.state = 'canceling' and 
+		ss.end_time is null
+)
+update session us
+	set termination_reason = 
+	case 
+		-- timed out sessions
+		when now() > us.expiration_time then 'timed out'
+		-- canceling sessions
+		when us.public_id in(
+			select 
+				session_id 
+			from 
+				canceling_session cs 
+			where 
+				us.public_id = cs.session_id
+			) then 'canceled' 
+		-- default: session connection limit reached.
+		else 'connection limit'
+	end
+where
+	termination_reason is null and
+	-- session expired or connection limit reached
+	(
+		-- expired sessions...
+		now() > us.expiration_time or 
+		-- connection limit reached...
+		(
+			select count (*) 
+				from session_connection sc 
+			where 
+				sc.session_id = us.public_id
+		) >= connection_limit or 
+		-- canceled sessions
+		us.public_id in (
+			select 
+				session_id
+			from
+				canceling_session cs
+			where 
+				us.public_id = cs.session_id 
+		)
+	) and 
+	-- make sure there are no existing connections
+ 	us.public_id not in (
+		select 
+			session_id 
+		from 
+		  	session_connection
+     	where public_id in (
+			select 
+				connection_id
+			from 
+				session_connection_state
+			where 
+				state != 'closed' and
+               	end_time is null
+    )
+)
+`
 )
