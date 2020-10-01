@@ -345,7 +345,7 @@ func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			rowsAffected, err = w.Exec(termSessionsUpdate, nil)
+			rowsAffected, err = w.Exec(ctx, termSessionsUpdate, nil)
 			if err != nil {
 				return err
 			}
