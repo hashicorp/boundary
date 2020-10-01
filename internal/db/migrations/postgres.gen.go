@@ -4010,7 +4010,7 @@ begin;
   after insert on session_connection
     for each row execute procedure insert_new_connection_state();
 
-  -- update_connection_state_on_closed_reason() is used in an update insert trigger on the
+  -- update_connection_state_on_closed_reason() is used in an update trigger on the
   -- session_connection table.  it will insert a state of "closed" in
   -- session_connection_state for the closed session connection. 
   create or replace function 
@@ -4030,6 +4030,43 @@ begin;
         insert into session_connection_state (connection_id, state)
         values
           (new.public_id, 'closed');
+      end if;
+      -- we want to terminate canceled sessions as soon as all of it's open
+      -- sessions are closed, so we will: check to see if the connection's
+      -- session is canceled and all connections are closed... if so, then
+      -- terminate the session. 
+      perform  from 
+        session 
+      where 
+        public_id = new.session_id and 
+        public_id in (
+            select session_id 
+              from session_state 
+            where
+              session_id = new.session_id and 
+              state = 'canceling' and
+		          end_time is null
+        ) and 
+        -- all session connections are closed
+        public_id not in (
+            select session_id 
+              from session_connection
+            where
+              session_id = new.session_id and
+              public_id in (
+                select connection_id
+                  from session_connection_state
+                where 
+                  state != 'closed' and 
+                  end_time is null
+              )
+        );
+      -- the connection's session is canceled and all of it's connections are
+      -- closed, so we will terminate the session right now.
+      if found then
+        update session 
+        set termination_reason = 'canceled'
+        where public_id = new.session_id;
       end if;
     end if;
     return new;
