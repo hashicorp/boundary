@@ -159,7 +159,6 @@ func TestRepository_ListSession(t *testing.T) {
 		}
 		assert.Equal(10, len(testSessions))
 		withIds := []string{testSessions[0].PublicId, testSessions[1].PublicId}
-		conn.LogMode(true)
 		got, err := repo.ListSessions(context.Background(), WithSessionIds(withIds...), WithOrder("create_time asc"))
 		require.NoError(err)
 		assert.Equal(2, len(got))
