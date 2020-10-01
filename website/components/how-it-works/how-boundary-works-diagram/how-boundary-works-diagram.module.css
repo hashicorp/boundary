@@ -1,0 +1,188 @@
+.root {
+  /* Styles TBD */
+}
+
+.exOne {
+  & .clsEx10,
+  & .clsEx18,
+  & .clsEx19,
+  & .book {
+    fill: none;
+  }
+
+  & .clsEx10,
+  & .whiteIconBg {
+    stroke-linecap: round;
+  }
+
+  & .whiteIconBg,
+  & .book,
+  & .userIcon {
+    stroke-width: 1.5px;
+  }
+
+  & .clsEx10,
+  & .whiteIconBg,
+  & .clsEx19 {
+    stroke-linejoin: round;
+  }
+
+  & .clsEx15 {
+    fill: #f04e54;
+  }
+
+  & .dropShadow {
+    opacity: 0.08;
+    mix-blend-mode: multiply;
+  }
+
+  & .clsEx10,
+  & .clsEx18,
+  & .clsEx19,
+  & .userIcon {
+    stroke: #fff;
+  }
+
+  & .subtitle {
+    fill: #b6b8c3;
+  }
+
+  & .clsEx12 {
+    fill: #e5e6ec;
+  }
+
+  & .arrowCircle,
+  & .boundaryLetter,
+  & .whiteIconSpacer,
+  & .whiteIconBg {
+    fill: #fff;
+  }
+
+  & .book {
+    stroke: #b6b8c3;
+  }
+}
+
+.exTwo {
+  & .clsEx210,
+  & .clsEx212,
+  & .clsEx26,
+  & .clsEx28,
+  & .clsEx29 {
+    fill: none;
+  }
+
+  & .clsEx26 {
+    stroke-width: 2px;
+    stroke: #f04e54;
+    stroke-miterlimit: 10;
+  }
+
+  & .clsEx210,
+  & .clsEx212,
+  & .clsEx26 {
+    stroke-linecap: round;
+  }
+
+  & .clsEx212 {
+    stroke-width: 1.5px;
+  }
+
+  & .clsEx23 {
+    fill: #fff;
+  }
+
+  & .clsEx210,
+  & .clsEx212,
+  & .clsEx29 {
+    stroke-linejoin: round;
+  }
+
+  & .clsEx25 {
+    fill: #f04e54;
+  }
+
+  & .dropShadow {
+    opacity: 0.08;
+    mix-blend-mode: multiply;
+  }
+
+  & .clsEx210,
+  & .clsEx212,
+  & .clsEx28,
+  & .clsEx29 {
+    stroke: #fff;
+  }
+
+  & .clsEx211 {
+    fill: #b6b8c3;
+  }
+}
+
+.exThree {
+  & .clsEx312,
+  & .clsEx314,
+  & .clsEx315,
+  & .clsEx316,
+  & .clsEx32,
+  & .clsEx33 {
+    fill: none;
+  }
+
+  & .clsEx312,
+  & .clsEx316,
+  & .clsEx32,
+  & .clsEx33 {
+    stroke-linecap: round;
+  }
+
+  & .clsEx32,
+  & .clsEx33 {
+    stroke-miterlimit: 10;
+  }
+
+  & .clsEx312,
+  & .clsEx32,
+  & .clsEx33 {
+    stroke-width: 1.5px;
+  }
+
+  & .clsEx32 {
+    stroke-dasharray: 1.5 5;
+    stroke: #f04e54;
+  }
+
+  & .clsEx33 {
+    stroke: #000;
+  }
+
+  & .clsEx36 {
+    fill: #fff;
+  }
+
+  & .clsEx312,
+  & .clsEx315,
+  & .clsEx316 {
+    stroke-linejoin: round;
+  }
+
+  & .clsEx38 {
+    fill: #f04e54;
+  }
+
+  & .clsEx310 {
+    opacity: 0.08;
+    mix-blend-mode: multiply;
+  }
+
+  & .clsEx311 {
+    fill: #b6b8c3;
+  }
+
+  & .clsEx312,
+  & .clsEx314,
+  & .clsEx315,
+  & .clsEx316 {
+    stroke: #fff;
+  }
+}

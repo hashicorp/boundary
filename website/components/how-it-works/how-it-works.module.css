@@ -36,11 +36,12 @@
   }
 }
 
-.image {
-  max-width: 591px;
+.diagram {
+  width: 591px;
+  max-width: 100%;
 
-  & > img {
-    max-width: 100%;
+  & > svg {
+    width: 100%;
   }
 }
 
