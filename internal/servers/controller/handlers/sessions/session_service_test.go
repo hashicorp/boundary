@@ -67,6 +67,7 @@ func TestGetSession(t *testing.T) {
 		Id:             sess.GetPublicId(),
 		ScopeId:        p.GetPublicId(),
 		AuthTokenId:    at.GetPublicId(),
+		Endpoint:       sess.Endpoint,
 		UserId:         at.GetIamUserId(),
 		TargetId:       sess.TargetId,
 		HostSetId:      sess.HostSetId,
@@ -79,6 +80,7 @@ func TestGetSession(t *testing.T) {
 		Scope:          &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
 		States:         []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
 		Certificate:    sess.Certificate,
+		Type:           target.TcpSubType.String(),
 	}
 
 	cases := []struct {
@@ -183,6 +185,7 @@ func TestList(t *testing.T) {
 			AuthTokenId:    at.GetPublicId(),
 			UserId:         at.GetIamUserId(),
 			TargetId:       sess.TargetId,
+			Endpoint:       sess.Endpoint,
 			HostSetId:      sess.HostSetId,
 			HostId:         sess.HostId,
 			Version:        sess.Version,
@@ -193,6 +196,7 @@ func TestList(t *testing.T) {
 			Status:         status,
 			States:         states,
 			Certificate:    sess.Certificate,
+			Type:           target.TcpSubType.String(),
 		})
 	}
 
@@ -297,11 +301,13 @@ func TestCancel(t *testing.T) {
 		HostSetId:      sess.HostSetId,
 		HostId:         sess.HostId,
 		Version:        sess.Version,
+		Endpoint:       sess.Endpoint,
 		CreatedTime:    sess.CreateTime.GetTimestamp(),
 		ExpirationTime: sess.ExpirationTime.GetTimestamp(),
 		Scope:          &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
 		Status:         session.StatusCanceling.String(),
 		Certificate:    sess.Certificate,
+		Type:           target.TcpSubType.String(),
 	}
 
 	version := wireSess.GetVersion()
