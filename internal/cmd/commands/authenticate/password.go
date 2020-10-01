@@ -141,6 +141,8 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.UI.Output(base.WrapForHelpText([]string{
 			"",
 			"Authentication information:",
+			fmt.Sprintf("  Account ID:      %s", token.AccountId),
+			fmt.Sprintf("  Auth Method ID:  %s", token.AuthMethodId),
 			fmt.Sprintf("  Expiration Time: %s", token.ExpirationTime.Local().Format(time.RFC1123)),
 			fmt.Sprintf("  Token:           %s", token.Token),
 			fmt.Sprintf("  User ID:         %s", token.UserId),
