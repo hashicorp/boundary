@@ -375,7 +375,7 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, princip
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = repo.SetPrincipalRoles(ctx, roleId, version, principalIds)
+	_, _, err = repo.SetPrincipalRoles(ctx, roleId, version, dedupe(principalIds))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set principals on role: %v.", err)
@@ -439,7 +439,7 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 	if grants == nil {
 		grants = []string{}
 	}
-	_, _, err = repo.SetRoleGrants(ctx, roleId, version, grants)
+	_, _, err = repo.SetRoleGrants(ctx, roleId, version, dedupe(grants))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set grants on role: %v.", err)
@@ -568,7 +568,8 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 
 func dedupe(s []string) []string {
 	seen := make(map[string]bool)
-	var dedupedSlice []string
+	// Initialize it here since repo depends on slice being not nil.
+	dedupedSlice := []string{}
 	for _, u := range s {
 		if _, found := seen[u]; !found {
 			seen[u] = true

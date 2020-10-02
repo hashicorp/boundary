@@ -996,6 +996,14 @@ func TestAddPrincipal(t *testing.T) {
 			resultGroups: []string{groups[0].GetPublicId(), groups[1].GetPublicId()},
 		},
 		{
+			name: "Add duplicate group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestGroupRole(t, conn, r.GetPublicId(), groups[0].GetPublicId())
+			},
+			addGroups:    []string{groups[1].GetPublicId(), groups[1].GetPublicId()},
+			resultGroups: []string{groups[0].GetPublicId(), groups[1].GetPublicId()},
+		},
+		{
 			name:     "Add invalid u_recovery on role",
 			setup:    func(r *iam.Role) {},
 			addUsers: []string{"u_recovery"},
@@ -1040,6 +1048,24 @@ func TestAddPrincipal(t *testing.T) {
 			req: &pbs.AddRolePrincipalsRequest{
 				Id:      "bad id",
 				Version: role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Bad Principal Id",
+			req: &pbs.AddRolePrincipalsRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+				PrincipalIds: []string{"invalid"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "u_recovery Id",
+			req: &pbs.AddRolePrincipalsRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+				PrincipalIds: []string{"u_recovery"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1099,6 +1125,14 @@ func TestSetPrincipal(t *testing.T) {
 				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
 			},
 			setUsers:    []string{users[1].GetPublicId()},
+			resultUsers: []string{users[1].GetPublicId()},
+		},
+		{
+			name: "Set duplicate user on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
+			},
+			setUsers:    []string{users[1].GetPublicId(), users[1].GetPublicId()},
 			resultUsers: []string{users[1].GetPublicId()},
 		},
 		{
@@ -1172,6 +1206,24 @@ func TestSetPrincipal(t *testing.T) {
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "Bad Principal Id",
+			req: &pbs.SetRolePrincipalsRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+				PrincipalIds: []string{"invalid"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "u_recovery",
+			req: &pbs.SetRolePrincipalsRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+				PrincipalIds: []string{"u_recovery"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1232,6 +1284,15 @@ func TestRemovePrincipal(t *testing.T) {
 			resultUsers: []string{users[0].GetPublicId()},
 		},
 		{
+			name: "Remove 1 duplicate user of 2 users from role",
+			setup: func(r *iam.Role) {
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[1].GetPublicId())
+			},
+			removeUsers: []string{users[1].GetPublicId(), users[1].GetPublicId()},
+			resultUsers: []string{users[0].GetPublicId()},
+		},
+		{
 			name: "Remove all users from role",
 			setup: func(r *iam.Role) {
 				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
@@ -1260,6 +1321,15 @@ func TestRemovePrincipal(t *testing.T) {
 				iam.TestGroupRole(t, conn, r.GetPublicId(), groups[1].GetPublicId())
 			},
 			removeGroups: []string{groups[1].GetPublicId()},
+			resultGroups: []string{groups[0].GetPublicId()},
+		},
+		{
+			name: "Remove 1 duplicate group of 2 groups from role",
+			setup: func(r *iam.Role) {
+				iam.TestGroupRole(t, conn, r.GetPublicId(), groups[0].GetPublicId())
+				iam.TestGroupRole(t, conn, r.GetPublicId(), groups[1].GetPublicId())
+			},
+			removeGroups: []string{groups[1].GetPublicId(), groups[1].GetPublicId()},
 			resultGroups: []string{groups[0].GetPublicId()},
 		},
 		{
@@ -1302,14 +1372,32 @@ func TestRemovePrincipal(t *testing.T) {
 
 	failCases := []struct {
 		name string
-		req  *pbs.AddRolePrincipalsRequest
+		req  *pbs.RemoveRolePrincipalsRequest
 		err  error
 	}{
 		{
 			name: "Bad Role Id",
-			req: &pbs.AddRolePrincipalsRequest{
+			req: &pbs.RemoveRolePrincipalsRequest{
 				Id:      "bad id",
 				Version: role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Bad User Id",
+			req: &pbs.RemoveRolePrincipalsRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+				PrincipalIds: []string{"g_validgroup", "invaliduser"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Bad Group Id",
+			req: &pbs.RemoveRolePrincipalsRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+				PrincipalIds: []string{"u_validuser", "invalidgroup"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1317,7 +1405,7 @@ func TestRemovePrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1371,6 +1459,12 @@ func TestAddGrants(t *testing.T) {
 			name:     "Add grant on role with grant",
 			existing: []string{"id=1;actions=read"},
 			add:      []string{"id=*;type=*;actions=delete"},
+			result:   []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+		},
+		{
+			name:     "Add duplicate grant on role with grant",
+			existing: []string{"id=1;actions=read"},
+			add:      []string{"id=*;type=*;actions=delete", "id=*;type=*;actions=delete"},
 			result:   []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
 		},
 		{
@@ -1435,6 +1529,24 @@ func TestAddGrants(t *testing.T) {
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "Unparseable Grant",
+			req: &pbs.AddRoleGrantsRequest{
+				Id:           role.GetPublicId(),
+				GrantStrings: []string{"id=*;type=*;actions=create", "unparseable"},
+				Version:      role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Empty Grant",
+			req: &pbs.AddRoleGrantsRequest{
+				Id:           role.GetPublicId(),
+				GrantStrings: []string{"id=*;type=*;actions=create", ""},
+				Version:      role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1484,8 +1596,14 @@ func TestSetGrants(t *testing.T) {
 			result:   []string{"id=*;type=*;actions=delete"},
 		},
 		{
-			name:     "Set empty on role",
+			name:     "Set duplicate grant matching existing grant",
 			existing: []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			set:      []string{"id=*;type=*;actions=delete", "id=*;type=*;actions=delete"},
+			result:   []string{"id=*;type=*;actions=delete"},
+		},
+		{
+			name:     "Set empty on role",
+			existing: []string{"id=1;type=*;actions=read", "id=*;type=*;actions=delete"},
 			set:      nil,
 			result:   nil,
 		},
@@ -1514,8 +1632,7 @@ func TestSetGrants(t *testing.T) {
 					assert.Error(err)
 					return
 				}
-				s, _ := status.FromError(err)
-				require.NoError(err, "Got error %v", s)
+				require.NoError(err, "Got error %v", err)
 				checkEqualGrants(t, tc.result, got.GetItem())
 			})
 		}
@@ -1543,6 +1660,15 @@ func TestSetGrants(t *testing.T) {
 			req: &pbs.SetRoleGrantsRequest{
 				Id:           "bad id",
 				GrantStrings: []string{"id=*;type=*;actions=create"},
+				Version:      role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Unparsable grant",
+			req: &pbs.SetRoleGrantsRequest{
+				Id:           role.GetPublicId(),
+				GrantStrings: []string{"id=*;type=*;actions=create", "unparseable"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1579,25 +1705,31 @@ func TestRemoveGrants(t *testing.T) {
 	}{
 		{
 			name:     "Remove all",
-			existing: []string{"id=1;actions=read"},
-			remove:   []string{"id=1;actions=read"},
+			existing: []string{"id=1;type=*;actions=read"},
+			remove:   []string{"id=1;type=*;actions=read"},
 		},
 		{
 			name:     "Remove partial",
-			existing: []string{"id=1;actions=read", "id=2;actions=delete"},
-			remove:   []string{"id=1;actions=read"},
-			result:   []string{"id=2;actions=delete"},
+			existing: []string{"id=1;type=*;actions=read", "id=2;type=*;actions=delete"},
+			remove:   []string{"id=1;type=*;actions=read"},
+			result:   []string{"id=2;type=*;actions=delete"},
+		},
+		{
+			name:     "Remove duplicate",
+			existing: []string{"id=1;type=*;actions=read", "id=2;type=*;actions=delete"},
+			remove:   []string{"id=1;type=*;actions=read", "id=1;type=*;actions=read"},
+			result:   []string{"id=2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove non existant",
-			existing: []string{"id=2;actions=delete"},
-			remove:   []string{"id=1;actions=read"},
-			result:   []string{"id=2;actions=delete"},
+			existing: []string{"id=2;type=*;actions=delete"},
+			remove:   []string{"id=1;type=*;actions=read"},
+			result:   []string{"id=2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove from empty role",
 			existing: []string{},
-			remove:   []string{"id=1;actions=read"},
+			remove:   []string{"id=1;type=*;actions=read"},
 			result:   nil,
 		},
 	}
@@ -1645,7 +1777,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Bad Version",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;actions=create"},
+				GrantStrings: []string{"id=2;type=*;actions=create"},
 				Version:      role.GetVersion() + 2,
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
@@ -1654,7 +1786,25 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           "bad id",
-				GrantStrings: []string{"id=*;actions=create"},
+				GrantStrings: []string{"id=*;type=*;actions=create"},
+				Version:      role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Empty Grant",
+			req: &pbs.RemoveRoleGrantsRequest{
+				Id:           role.GetPublicId(),
+				GrantStrings: []string{"id=*;type=*;actions=create", ""},
+				Version:      role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Unparseable Grant",
+			req: &pbs.RemoveRoleGrantsRequest{
+				Id:           role.GetPublicId(),
+				GrantStrings: []string{"id=*;type=*;actions=create", ";unparsable=2"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
