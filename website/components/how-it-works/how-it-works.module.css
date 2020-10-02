@@ -38,14 +38,6 @@
 .diagram {
   width: 591px;
   max-width: 100%;
-
-  @media (--medium-up) {
-    --height: 534px;
-
-    position: sticky;
-    top: calc(50vh - (var(--height) / 2));
-    height: var(--height);
-  }
 }
 
 .features {

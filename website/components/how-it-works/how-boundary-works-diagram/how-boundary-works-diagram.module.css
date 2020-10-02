@@ -1,6 +1,11 @@
 .root {
   --transition-time: 0.7s;
 
+  @media (--medium-up) {
+    position: sticky;
+    top: calc(50vh - (499px / 2));
+  }
+
   & > svg {
     width: 100%;
   }
