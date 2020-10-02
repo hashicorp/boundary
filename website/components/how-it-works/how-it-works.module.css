@@ -45,6 +45,14 @@
     list-style: none;
     padding: 135px 0;
 
+    &:first-child {
+      padding-top: 108px;
+
+      @media (width < 1120px) {
+        padding-top: 64px;
+      }
+    }
+
     @media (--small) {
       padding-top: 0;
       padding-bottom: 64px;

@@ -1,4 +1,8 @@
 .root {
+  & > h4 {
+    margin-top: 0;
+  }
+
   & > p {
     margin-bottom: 32px;
   }
