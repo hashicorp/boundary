@@ -573,7 +573,7 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = repo.SetTargetHostSets(ctx, targetId, version, hostSetIds)
+	_, _, err = repo.SetTargetHostSets(ctx, targetId, version, dedupe(hostSetIds))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set host sets in target: %v.", err)
