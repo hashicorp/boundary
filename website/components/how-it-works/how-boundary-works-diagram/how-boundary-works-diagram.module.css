@@ -62,10 +62,6 @@
   }
 
   & .authenticate {
-    & .spacer {
-      opacity: 0;
-    }
-
     & .iconBg {
       fill: var(--white);
     }
@@ -91,6 +87,21 @@
     }
   }
 
+  & .access {
+    & .spacer {
+      opacity: 0;
+    }
+
+    & .iconBg {
+      fill: var(--black);
+      stroke: var(--black);
+    }
+
+    & .vaultIcon {
+      fill: var(--white);
+    }
+  }
+
   & .hostsAndServices {
     opacity: 1;
     transform: translate(0, 0);
@@ -106,18 +117,10 @@
     }
   }
 
-  & .access.active {
-    & .spacer {
+  & .arrowOne .arrowHead,
+  & .arrowTwo .arrowHead {
+    @media (--small) {
       opacity: 0;
-    }
-
-    & .iconBg {
-      fill: var(--black);
-      stroke: var(--black);
-    }
-
-    & .vaultIcon {
-      fill: var(--white);
     }
   }
 
@@ -125,27 +128,58 @@
     & .arrowHead,
     & .arrowSegment,
     & .spacer {
-      opacity: 0;
+      @media (--medium-up) {
+        opacity: 0;
+      }
     }
 
     &.authorize {
       & .spacer {
-        opacity: 1;
+        @media (--medium-up) {
+          opacity: 1;
+        }
       }
 
       & .iconBg {
-        fill: var(--white);
-        stroke: #e5e6ec;
+        @media (--medium-up) {
+          fill: var(--white);
+          stroke: #e5e6ec;
+        }
       }
 
       & .iconLines {
-        stroke: #b6b8c3;
+        @media (--medium-up) {
+          stroke: #b6b8c3;
+        }
+      }
+    }
+
+    &.access {
+      & .spacer {
+        @media (--medium-up) {
+          opacity: 1;
+        }
+      }
+
+      & .iconBg {
+        @media (--medium-up) {
+          fill: var(--white);
+          stroke: var(--white);
+        }
+      }
+
+      & .vaultIcon {
+        @media (--medium-up) {
+          fill: var(--black);
+        }
       }
     }
 
     &.hostsAndServices {
-      opacity: 0;
-      transform: translate(0, 10px);
+      @media (--medium-up) {
+        opacity: 0;
+        transform: translate(0, 10px);
+      }
     }
   }
 }

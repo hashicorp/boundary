@@ -5,6 +5,9 @@
     text-align: center;
     margin-top: 0;
     margin-bottom: 64px;
+    @media (--small) {
+      margin-bottom: 0;
+    }
   }
 }
 
@@ -18,7 +21,7 @@
   }
 
   & > ul {
-    max-width: 488px;
+    max-width: 470px;
     margin-left: 128px;
     padding: 0;
 
@@ -34,13 +37,16 @@
 }
 
 .diagram {
-  --height: 534px;
-
   width: 591px;
   max-width: 100%;
-  position: sticky;
-  top: calc(50vh - (var(--height) / 2));
-  height: var(--height);
+
+  @media (--medium-up) {
+    --height: 534px;
+
+    position: sticky;
+    top: calc(50vh - (var(--height) / 2));
+    height: var(--height);
+  }
 }
 
 .features {
@@ -48,10 +54,9 @@
     list-style: none;
     padding: 135px 0;
 
-    & + li {
-      @media (--small) {
-        padding-top: 128px;
-      }
+    @media (--small) {
+      padding: 0;
+      padding-bottom: 64px;
     }
   }
 }

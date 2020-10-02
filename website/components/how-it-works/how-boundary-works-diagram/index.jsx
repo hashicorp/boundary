@@ -254,7 +254,7 @@ export default function HowBoundaryWorksDiagram({ activeExampleIndex }) {
             {/* Access */}
             <g
               className={classnames(s.access, {
-                [s.active]: activeExampleIndex === 2,
+                [s.inactive]: activeExampleIndex !== 2,
               })}
             >
               <path className={s.spacer} d="M140.24 213.11h68.6v66.62h-68.6z" />
