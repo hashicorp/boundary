@@ -5,6 +5,9 @@ import { useState } from 'react'
 
 export default function HowItWorks({ features }) {
   const [activeExampleIndex, setActiveExampleIndex] = useState(0)
+  const [viewportStatus, setViewportStatus] = useState(
+    new Array(features.length).fill(false)
+  )
 
   return (
     <div className={s.root}>
@@ -19,7 +22,19 @@ export default function HowItWorks({ features }) {
               <Feature
                 {...feature}
                 onInViewStatusChanged={(state) => {
-                  if (state === true) setActiveExampleIndex(index)
+                  const newStatusArray = [...viewportStatus]
+                  newStatusArray[index] = state
+                  setViewportStatus(newStatusArray)
+                  // Calculate the first element in focus, set that as
+                  // our new activeExampleIndex. If it's been updated
+                  // notify the subscriber.
+                  const newExampleIndex = newStatusArray.indexOf(true)
+                  if (
+                    activeExampleIndex != newExampleIndex &&
+                    newExampleIndex != -1
+                  ) {
+                    setActiveExampleIndex(newExampleIndex)
+                  }
                 }}
               />
             </li>
