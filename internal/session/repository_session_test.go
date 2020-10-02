@@ -892,13 +892,16 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.Equal(len(args.wantTermed), got)
-
+			t.Logf("terminated: %d", got)
+			var foundTerminated int
 			for _, ses := range args.sessions {
 				found, _, err := repo.LookupSession(context.Background(), ses.PublicId)
 				require.NoError(err)
 				_, shouldBeTerminated := args.wantTermed[found.PublicId]
 				if shouldBeTerminated {
+					if found.TerminationReason != "" {
+						foundTerminated += 1
+					}
 					assert.Equal(args.wantTermed[found.PublicId].String(), found.TerminationReason)
 					t.Logf("terminated %s has a connection limit of %d", found.PublicId, found.ConnectionLimit)
 					conn, err := repo.ListConnections(context.Background(), found.PublicId)
@@ -925,7 +928,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 					}
 				}
 			}
-
+			assert.Equal(len(args.wantTermed), foundTerminated)
 		})
 	}
 }

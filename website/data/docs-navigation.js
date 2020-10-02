@@ -31,6 +31,7 @@ export default [
     content: [
       'api-standards',
       'cli-standards',
+      'permissions',
       'security-model',
       {
         category: 'domain-model',
