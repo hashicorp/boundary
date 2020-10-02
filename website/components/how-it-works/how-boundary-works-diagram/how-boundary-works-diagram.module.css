@@ -1,6 +1,10 @@
 .root {
   --transition-time: 0.7s;
 
+  & > svg {
+    width: 100%;
+  }
+
   & .boundaryLetter,
   & .spacer,
   & .iconBg {

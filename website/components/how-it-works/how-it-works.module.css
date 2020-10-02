@@ -30,10 +30,6 @@
       max-width: inherit;
       margin-left: 0;
     }
-
-    & > li {
-      padding: 0;
-    }
   }
 }
 
@@ -45,20 +41,16 @@
   position: sticky;
   top: calc(50vh - (var(--height) / 2));
   height: var(--height);
-
-  & > svg {
-    width: 100%;
-  }
 }
 
 .features {
   & > li {
     list-style: none;
-    & + li {
-      margin-top: 330px;
+    padding: 135px 0;
 
+    & + li {
       @media (--small) {
-        margin-top: 128px;
+        padding-top: 128px;
       }
     }
   }
