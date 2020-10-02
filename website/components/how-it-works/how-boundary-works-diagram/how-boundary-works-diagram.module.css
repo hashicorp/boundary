@@ -3,7 +3,7 @@
 
   @media (--medium-up) {
     position: sticky;
-    top: calc(50vh - (499px / 2));
+    top: calc(50vh - (249px));
   }
 
   & > svg {

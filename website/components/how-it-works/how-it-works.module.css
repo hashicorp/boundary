@@ -29,6 +29,10 @@
       margin-left: 64px;
     }
 
+    @media (width < 1024px) {
+      margin-left: 40px;
+    }
+
     @media (--small) {
       margin-left: 0;
     }
