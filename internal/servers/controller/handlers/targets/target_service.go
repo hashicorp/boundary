@@ -14,6 +14,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -556,7 +557,7 @@ func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []str
 	if err != nil {
 		return nil, err
 	}
-	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, hostSetId)
+	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, dedupe(hostSetId))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sets to target: %v.", err)
@@ -593,7 +594,7 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeleteTargeHostSets(ctx, targetId, version, hostSetIds)
+	_, err = repo.DeleteTargeHostSets(ctx, targetId, version, dedupe(hostSetIds))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove host sets from target: %v.", err)
@@ -686,6 +687,18 @@ func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 		})
 	}
 	return &out, nil
+}
+
+func dedupe(s []string) []string {
+	seen := make(map[string]bool)
+	var dedupedSlice []string
+	for _, u := range s {
+		if _, found := seen[u]; !found {
+			seen[u] = true
+			dedupedSlice = append(dedupedSlice, u)
+		}
+	}
+	return dedupedSlice
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
@@ -800,6 +813,12 @@ func validateAddRequest(req *pbs.AddTargetHostSetsRequest) error {
 	if len(req.GetHostSetIds()) == 0 {
 		badFields["host_set_ids"] = "Must be non-empty."
 	}
+	for _, id := range req.GetHostSetIds() {
+		if !handlers.ValidId(static.HostSetPrefix, id) {
+			badFields["host_set_ids"] = "Incorrectly formatted host set identifier."
+			break
+		}
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
@@ -813,6 +832,12 @@ func validateSetRequest(req *pbs.SetTargetHostSetsRequest) error {
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
+	}
+	for _, id := range req.GetHostSetIds() {
+		if !handlers.ValidId(static.HostSetPrefix, id) {
+			badFields["host_set_ids"] = "Incorrectly formatted host set identifier."
+			break
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -830,6 +855,12 @@ func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	}
 	if len(req.GetHostSetIds()) == 0 {
 		badFields["host_set_ids"] = "Must be non-empty."
+	}
+	for _, id := range req.GetHostSetIds() {
+		if !handlers.ValidId(static.HostSetPrefix, id) {
+			badFields["host_set_ids"] = "Incorrectly formatted host set identifier."
+			break
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

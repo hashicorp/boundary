@@ -295,7 +295,7 @@ func (s Service) addMembersInRepo(ctx context.Context, groupId string, userIds [
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.AddGroupMembers(ctx, groupId, version, userIds)
+	_, err = repo.AddGroupMembers(ctx, groupId, version, dedupe(userIds))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add members to group: %v.", err)
@@ -335,7 +335,7 @@ func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userId
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeleteGroupMembers(ctx, groupId, version, userIds)
+	_, err = repo.DeleteGroupMembers(ctx, groupId, version, dedupe(userIds))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove members from group: %v.", err)
@@ -413,6 +413,18 @@ func toProto(in *iam.Group, members []*iam.GroupMember) *pb.Group {
 	return &out
 }
 
+func dedupe(s []string) []string {
+	seen := make(map[string]bool)
+	var dedupedSlice []string
+	for _, u := range s {
+		if _, found := seen[u]; !found {
+			seen[u] = true
+			dedupedSlice = append(dedupedSlice, u)
+		}
+	}
+	return dedupedSlice
+}
+
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
 //  * The path passed in is correctly formatted
@@ -467,8 +479,13 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 		badFields["member_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetMemberIds() {
+		if !handlers.ValidId(iam.UserPrefix, id) {
+			badFields["member_ids"] = "Must only contain valid user ids."
+			break
+		}
 		if id == "u_recovery" {
-			badFields["member_ids"] = "u_recovery cannot be assigned to a group"
+			badFields["member_ids"] = "u_recovery cannot be assigned to a group."
+			break
 		}
 	}
 	if len(badFields) > 0 {
@@ -486,8 +503,13 @@ func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
 		badFields["version"] = "Required field."
 	}
 	for _, id := range req.GetMemberIds() {
+		if !handlers.ValidId(iam.UserPrefix, id) {
+			badFields["member_ids"] = "Must only contain valid user ids."
+			break
+		}
 		if id == "u_recovery" {
-			badFields["member_ids"] = "u_recovery cannot be assigned to a group"
+			badFields["member_ids"] = "u_recovery cannot be assigned to a group."
+			break
 		}
 	}
 	if len(badFields) > 0 {
@@ -506,6 +528,12 @@ func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error
 	}
 	if len(req.GetMemberIds()) == 0 {
 		badFields["member_ids"] = "Must be non-empty."
+	}
+	for _, id := range req.GetMemberIds() {
+		if !handlers.ValidId(iam.UserPrefix, id) {
+			badFields["member_ids"] = "Must only contain valid user ids."
+			break
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
