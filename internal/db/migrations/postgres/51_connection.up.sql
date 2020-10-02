@@ -195,43 +195,9 @@ begin;
         values
           (new.public_id, 'closed');
       end if;
-      -- we want to terminate canceled sessions as soon as all of it's open
-      -- sessions are closed, so we will: check to see if the connection's
-      -- session is canceled and all connections are closed... if so, then
-      -- terminate the session. 
-      perform  from 
-        session 
-      where 
-        public_id = new.session_id and 
-        public_id in (
-            select session_id 
-              from session_state 
-            where
-              session_id = new.session_id and 
-              state = 'canceling' and
-		          end_time is null
-        ) and 
-        -- all session connections are closed
-        public_id not in (
-            select session_id 
-              from session_connection
-            where
-              session_id = new.session_id and
-              public_id in (
-                select connection_id
-                  from session_connection_state
-                where 
-                  state != 'closed' and 
-                  end_time is null
-              )
-        );
-      -- the connection's session is canceled and all of it's connections are
-      -- closed, so we will terminate the session right now.
-      if found then
-        update session 
-        set termination_reason = 'canceled'
-        where public_id = new.session_id;
-      end if;
+      -- whenever we close a connection, we want to terminate the session if
+      -- possible.  
+      perform terminate_session_if_possible(new.session_id);
     end if;
     return new;
   end;
@@ -316,5 +282,93 @@ begin;
 
   create trigger insert_session_connection_state before insert on session_connection_state
     for each row execute procedure insert_session_connection_state();
+
+-- terminate_session_if_possible takes a session id and terminates the session
+-- if the following conditions are met:
+--    * the session is expired and all its connections are closed.
+--    * the session is canceling and all its connections are closed
+--    * the session has exhausted its connection limit and all its connections
+--      are closed.  
+--
+--      Note: this function should align closely with the domain function
+--      TerminateCompletedSessions 
+create or replace function 
+    terminate_session_if_possible(terminate_session_id text)
+    returns void
+  as $$
+  begin 
+    -- is terminate_session_id in a canceling state
+    with canceling_session(session_id) as
+    (
+      select 
+        session_id
+      from
+        session_state ss
+      where 
+        ss.session_id = terminate_session_id and
+        ss.state = 'canceling' and 
+        ss.end_time is null
+    )
+    update session us
+      set termination_reason = 
+      case 
+        -- timed out sessions
+        when now() > us.expiration_time then 'timed out'
+        -- canceling sessions
+        when us.public_id in(
+          select 
+            session_id 
+          from 
+            canceling_session cs 
+          where
+            us.public_id = cs.session_id
+          ) then 'canceled' 
+        -- default: session connection limit reached.
+        else 'connection limit'
+      end
+    where
+      -- limit update to just the terminating_session_id
+      us.public_id = terminate_session_id and
+      termination_reason is null and
+      -- session expired or connection limit reached
+      (
+        -- expired sessions...
+        now() > us.expiration_time or 
+        -- connection limit reached...
+        (
+          select count (*) 
+            from session_connection sc 
+          where 
+            sc.session_id = us.public_id
+        ) >= connection_limit or 
+        -- canceled sessions
+        us.public_id in (
+          select 
+            session_id
+          from
+            canceling_session cs
+          where 
+            us.public_id = cs.session_id 
+        )
+      ) and 
+      -- make sure there are no existing connections
+      us.public_id not in (
+        select 
+          session_id 
+        from 
+            session_connection
+          where public_id in (
+          select 
+            connection_id
+          from 
+            session_connection_state
+          where 
+            state != 'closed' and
+            end_time is null
+        )
+    );
+ end;
+  $$ language plpgsql;
+
 
 commit;
