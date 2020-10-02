@@ -1,7 +1,7 @@
 ---
 config:
-  product-repo: git@github.com:hashicorp/boundary.git
-  release-repo: git@github.com:hashicorp/boundary-release.git
+  product-repo: https://github.com/hashicorp/boundary.git
+  release-repo: https://github.com/hashicorp/boundary-release.git
   product-id: github.com/hashicorp/boundary
   circleci-project-slug: gh/hashicorp/boundary
   circleci-host: circleci.com
@@ -9,7 +9,7 @@ config:
 inputs:
   defaults:
     PRODUCT_NAME: boundary
-    PRODUCT_VERSION: 0.1.0-beta.2
+    PRODUCT_VERSION: 0.1.0-beta.3
     BUILD_TAGS: ui
     CGO_ENABLED: 0
 
@@ -99,7 +99,7 @@ layers:
   - name: go-modules
     source-include: go.mod go.sum
     dockerfile: |
-      RUN --mount=type=ssh go mod download -x
+      RUN --mount=type=ssh go mod download
   - name: copy-source
     source-include: "*.go"
     dockerfile: |

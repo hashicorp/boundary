@@ -76,24 +76,24 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			continue
 		}
 		switch {
-		// type=<resource.type>;actions=<action> when action is list or create.
-		// If create, must be a top-level collection; otherwise an ID or "*"
-		// must be specified (as a pin format string, below).
-		case grant.id == "" &&
-			r.Id == "" &&
-			grant.typ == r.Type &&
-			grant.typ != resource.Unknown &&
-			(aType == action.List ||
-				(topLevelType(r.Type) && aType == action.Create)):
-
-			results.Allowed = true
-			return
-
 		// id=<resource.id>;actions=<action> where ID cannot be a wildcard
 		case grant.id == r.Id &&
 			grant.id != "" &&
 			grant.id != "*" &&
 			grant.typ == resource.Unknown:
+
+			results.Allowed = true
+			return
+
+		// type=<resource.type>;actions=<action> when action is list or create.
+		// Must be a top level collection, otherwise must be one of the two
+		// formats specified below.
+		case grant.id == "" &&
+			r.Id == "" &&
+			grant.typ == r.Type &&
+			grant.typ != resource.Unknown &&
+			topLevelType(r.Type) &&
+			(aType == action.List || aType == action.Create):
 
 			results.Allowed = true
 			return
