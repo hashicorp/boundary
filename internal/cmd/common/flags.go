@@ -50,6 +50,13 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 				Target: &c.FlagAuthMethodId,
 				Usage:  "The auth-method resource to use for the operation",
 			})
+		case "host-catalog-id":
+			f.StringVar(&base.StringVar{
+				Name:   "host-catalog-id",
+				EnvVar: "BOUNDARY_HOST_CATALOG_ID",
+				Target: &c.FlagHostCatalogId,
+				Usage:  "The host-catalog resource to use for the operation",
+			})
 		}
 	}
 }

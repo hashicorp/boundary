@@ -22,8 +22,7 @@ type Command struct {
 
 	Func string
 
-	flagHostCatalogId string
-	flagHosts         []string
+	flagHosts []string
 }
 
 func (c *Command) Synopsis() string {
@@ -136,12 +135,6 @@ func (c *Command) Flags() *base.FlagSets {
 
 	for _, name := range flagsMap[c.Func] {
 		switch name {
-		case "host-catalog-id":
-			f.StringVar(&base.StringVar{
-				Name:   "host-catalog-id",
-				Target: &c.flagHostCatalogId,
-				Usage:  "The host-catalog resource in which to list host-set resources",
-			})
 		case "host":
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   "host",
@@ -178,7 +171,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
-	if strutil.StrListContains(flagsMap[c.Func], "host-catalog-id") && c.flagHostCatalogId == "" {
+	if strutil.StrListContains(flagsMap[c.Func], "host-catalog-id") && c.FlagHostCatalogId == "" {
 		c.UI.Error("Host Catalog ID must be passed in via -host-catalog-id")
 		return 1
 	}
@@ -258,7 +251,7 @@ func (c *Command) Run(args []string) int {
 			err = nil
 		}
 	case "list":
-		listResult, err = hostsetClient.List(c.Context, c.flagHostCatalogId, opts...)
+		listResult, err = hostsetClient.List(c.Context, c.FlagHostCatalogId, opts...)
 	case "add-hosts":
 		result, err = hostsetClient.AddHosts(c.Context, c.FlagId, version, hosts, opts...)
 	case "remove-hosts":
