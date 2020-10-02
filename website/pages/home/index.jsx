@@ -35,24 +35,32 @@ export default function HomePage() {
               'Authenticate with trusted identity provider access to hosts and services.',
             logos: [
               {
-                alt: 'Consul',
-                url: require('./img/logos/consul.svg?url'),
+                alt: 'GitHub',
+                url: require('./img/logos/github.svg?url'),
+              },
+              {
+                alt: 'AWS',
+                url: require('./img/logos/aws.svg?url'),
               },
               {
                 alt: 'Microsoft Azure',
                 url: require('./img/logos/azure.svg?url'),
               },
               {
-                alt: 'Consul',
-                url: require('./img/logos/consul.svg?url'),
+                alt: 'Google Cloud Platform',
+                url: require('./img/logos/gcp.svg?url'),
               },
               {
-                alt: 'Microsoft Azure',
-                url: require('./img/logos/azure.svg?url'),
+                alt: 'Okta',
+                url: require('./img/logos/okta.svg?url'),
               },
               {
-                alt: 'Consul',
-                url: require('./img/logos/consul.svg?url'),
+                alt: 'Ping',
+                url: require('./img/logos/ping.svg?url'),
+              },
+              {
+                alt: 'More integrations',
+                url: require('./img/logos/more.svg?url'),
               },
             ],
           },
@@ -66,28 +74,24 @@ export default function HomePage() {
                 url: require('./img/logos/consul.svg?url'),
               },
               {
-                alt: 'Microsoft Azure',
-                url: require('./img/logos/azure.svg?url'),
-              },
-              {
-                alt: 'Consul',
-                url: require('./img/logos/consul.svg?url'),
+                alt: 'AWS',
+                url: require('./img/logos/aws.svg?url'),
               },
               {
                 alt: 'Microsoft Azure',
                 url: require('./img/logos/azure.svg?url'),
               },
               {
-                alt: 'Consul',
-                url: require('./img/logos/consul.svg?url'),
+                alt: 'Terraform',
+                url: require('./img/logos/terraform.svg?url'),
               },
               {
-                alt: 'Microsoft Azure',
-                url: require('./img/logos/azure.svg?url'),
+                alt: 'Google Cloud Platform',
+                url: require('./img/logos/gcp.svg?url'),
               },
               {
-                alt: 'Consul',
-                url: require('./img/logos/consul.svg?url'),
+                alt: 'Kubernetes',
+                url: require('./img/logos/kubernetes.svg?url'),
               },
               {
                 url: require('./img/logos/more.svg?url'),
