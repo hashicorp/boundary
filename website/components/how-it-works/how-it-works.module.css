@@ -30,7 +30,6 @@
     }
 
     @media (--small) {
-      max-width: inherit;
       margin-left: 0;
     }
   }
@@ -55,7 +54,7 @@
     padding: 135px 0;
 
     @media (--small) {
-      padding: 0;
+      padding-top: 0;
       padding-bottom: 64px;
     }
   }
