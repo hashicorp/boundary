@@ -943,6 +943,14 @@ func TestAddMember(t *testing.T) {
 			resultUsers: []string{users[0].GetPublicId(), users[1].GetPublicId()},
 		},
 		{
+			name: "Add duplicate user on populated group",
+			setup: func(g *iam.Group) {
+				iam.TestGroupMember(t, conn, g.GetPublicId(), users[0].GetPublicId())
+			},
+			addUsers:    []string{users[1].GetPublicId(), users[1].GetPublicId()},
+			resultUsers: []string{users[0].GetPublicId(), users[1].GetPublicId()},
+		},
+		{
 			name: "Add empty on populated group",
 			setup: func(g *iam.Group) {
 				iam.TestGroupMember(t, conn, g.GetPublicId(), users[0].GetPublicId())
@@ -995,6 +1003,24 @@ func TestAddMember(t *testing.T) {
 			req: &pbs.AddGroupMembersRequest{
 				Id:      "bad id",
 				Version: grp.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid user id in member list",
+			req: &pbs.AddGroupMembersRequest{
+				Id:      grp.GetPublicId(),
+				Version: grp.GetVersion(),
+				MemberIds: []string{"invalid"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "u_recovery",
+			req: &pbs.AddGroupMembersRequest{
+				Id:      grp.GetPublicId(),
+				Version: grp.GetVersion(),
+				MemberIds: []string{"u_recovery"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1052,6 +1078,14 @@ func TestSetMember(t *testing.T) {
 			resultUsers: []string{users[1].GetPublicId()},
 		},
 		{
+			name: "Set duplicate user on populated group",
+			setup: func(r *iam.Group) {
+				iam.TestGroupMember(t, conn, r.GetPublicId(), users[0].GetPublicId())
+			},
+			setUsers:    []string{users[1].GetPublicId(), users[1].GetPublicId()},
+			resultUsers: []string{users[1].GetPublicId()},
+		},
+		{
 			name: "Set empty on populated group",
 			setup: func(r *iam.Group) {
 				iam.TestGroupMember(t, conn, r.GetPublicId(), users[0].GetPublicId())
@@ -1099,6 +1133,24 @@ func TestSetMember(t *testing.T) {
 			req: &pbs.SetGroupMembersRequest{
 				Id:      "bad id",
 				Version: grp.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid user id in member list",
+			req: &pbs.SetGroupMembersRequest{
+				Id:      grp.GetPublicId(),
+				Version: grp.GetVersion(),
+				MemberIds: []string{"invalid"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "u_recovery",
+			req: &pbs.SetGroupMembersRequest{
+				Id:      grp.GetPublicId(),
+				Version: grp.GetVersion(),
+				MemberIds: []string{"u_recovery"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1166,6 +1218,15 @@ func TestRemoveMember(t *testing.T) {
 			resultUsers: []string{},
 		},
 		{
+			name: "Remove duplicate user from group",
+			setup: func(r *iam.Group) {
+				iam.TestGroupMember(t, conn, r.GetPublicId(), users[0].GetPublicId())
+				iam.TestGroupMember(t, conn, r.GetPublicId(), users[1].GetPublicId())
+			},
+			removeUsers: []string{users[0].GetPublicId(), users[0].GetPublicId()},
+			resultUsers: []string{users[1].GetPublicId()},
+		},
+		{
 			name: "Remove empty on populated group",
 			setup: func(r *iam.Group) {
 				iam.TestGroupMember(t, conn, r.GetPublicId(), users[0].GetPublicId())
@@ -1203,14 +1264,23 @@ func TestRemoveMember(t *testing.T) {
 
 	failCases := []struct {
 		name string
-		req  *pbs.AddGroupMembersRequest
+		req  *pbs.RemoveGroupMembersRequest
 		err  error
 	}{
 		{
 			name: "Bad Group Id",
-			req: &pbs.AddGroupMembersRequest{
+			req: &pbs.RemoveGroupMembersRequest{
 				Id:      "bad id",
 				Version: grp.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid user id in member list",
+			req: &pbs.RemoveGroupMembersRequest{
+				Id:      grp.GetPublicId(),
+				Version: grp.GetVersion(),
+				MemberIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1218,10 +1288,10 @@ func TestRemoveMember(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(grp.GetScopeId())), tc.req)
+			_, gErr := s.RemoveGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(grp.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "RemoveGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}

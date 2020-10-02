@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -16,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -295,7 +297,7 @@ func (s Service) addInRepo(ctx context.Context, userId string, accountIds []stri
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.AddUserAccounts(ctx, userId, version, accountIds)
+	_, err = repo.AddUserAccounts(ctx, userId, version, strutil.RemoveDuplicates(accountIds, false))
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add accounts to user: %v.", err)
 	}
@@ -314,7 +316,7 @@ func (s Service) setInRepo(ctx context.Context, userId string, accountIds []stri
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.SetUserAccounts(ctx, userId, version, accountIds)
+	_, err = repo.SetUserAccounts(ctx, userId, version, strutil.RemoveDuplicates(accountIds, false))
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set accounts for the user: %v.", err)
 	}
@@ -333,7 +335,7 @@ func (s Service) removeInRepo(ctx context.Context, userId string, accountIds []s
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeleteUserAccounts(ctx, userId, version, accountIds)
+	_, err = repo.DeleteUserAccounts(ctx, userId, version, strutil.RemoveDuplicates(accountIds, false))
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove accounts from user: %v.", err)
 	}
@@ -462,6 +464,13 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	if len(req.GetAccountIds()) == 0 {
 		badFields["account_ids"] = "Must be non-empty."
 	}
+	for _, a := range req.GetAccountIds() {
+		// TODO: Increase the type of auth accounts that can be added to a user.
+		if !handlers.ValidId(password.AccountPrefix, a) {
+			badFields["account_ids"] = "Values must be valid account ids."
+			break
+		}
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
@@ -475,6 +484,13 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
+	}
+	for _, a := range req.GetAccountIds() {
+		// TODO: Increase the type of auth accounts that can be added to a user.
+		if !handlers.ValidId(password.AccountPrefix, a) {
+			badFields["account_ids"] = "Values must be valid account ids."
+			break
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -492,6 +508,13 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 	}
 	if len(req.GetAccountIds()) == 0 {
 		badFields["account_ids"] = "Must be non-empty."
+	}
+	for _, a := range req.GetAccountIds() {
+		// TODO: Increase the type of auth accounts that can be added to a user.
+		if !handlers.ValidId(password.AccountPrefix, a) {
+			badFields["account_ids"] = "Values must be valid account ids."
+			break
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

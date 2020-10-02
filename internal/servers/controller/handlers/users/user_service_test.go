@@ -645,6 +645,17 @@ func TestAddAccount(t *testing.T) {
 			resultAccounts: []string{accts[0].GetPublicId(), accts[1].GetPublicId()},
 		},
 		{
+			name: "Add duplicate account on populated user",
+			setup: func(u *iam.User) {
+				_, err := iamRepo.SetUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			addAccounts:    []string{accts[1].GetPublicId(), accts[1].GetPublicId()},
+			resultAccounts: []string{accts[0].GetPublicId(), accts[1].GetPublicId()},
+		},
+		{
 			name: "Add empty on populated user",
 			setup: func(u *iam.User) {
 				iamRepo.SetUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
@@ -692,6 +703,15 @@ func TestAddAccount(t *testing.T) {
 			req: &pbs.AddUserAccountsRequest{
 				Id:      "bad id",
 				Version: usr.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Bad account Id",
+			req: &pbs.AddUserAccountsRequest{
+				Id:      usr.GetPublicId(),
+				Version: usr.GetVersion(),
+				AccountIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -747,6 +767,17 @@ func TestSetAccount(t *testing.T) {
 			resultAccounts: []string{accts[1].GetPublicId()},
 		},
 		{
+			name: "Set duplicate account on populated user",
+			setup: func(u *iam.User) {
+				iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			setAccounts:    []string{accts[1].GetPublicId(), accts[1].GetPublicId()},
+			resultAccounts: []string{accts[1].GetPublicId()},
+		},
+		{
 			name: "Set empty on populated user",
 			setup: func(u *iam.User) {
 				iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
@@ -795,6 +826,15 @@ func TestSetAccount(t *testing.T) {
 			req: &pbs.SetUserAccountsRequest{
 				Id:      "bad id",
 				Version: usr.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Bad account Id",
+			req: &pbs.SetUserAccountsRequest{
+				Id:      usr.GetPublicId(),
+				Version: usr.GetVersion(),
+				AccountIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -850,6 +890,17 @@ func TestRemoveAccount(t *testing.T) {
 			resultAccounts: []string{accts[0].GetPublicId()},
 		},
 		{
+			name: "Remove 1 duplicate accounts of 2 accounts from user",
+			setup: func(u *iam.User) {
+				_, err := iamRepo.SetUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId(), accts[1].GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			removeAccounts: []string{accts[1].GetPublicId(), accts[1].GetPublicId()},
+			resultAccounts: []string{accts[0].GetPublicId()},
+		},
+		{
 			name: "Remove all accounts from user",
 			setup: func(u *iam.User) {
 				_, err := iamRepo.SetUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
@@ -900,14 +951,23 @@ func TestRemoveAccount(t *testing.T) {
 
 	failCases := []struct {
 		name string
-		req  *pbs.AddUserAccountsRequest
+		req  *pbs.RemoveUserAccountsRequest
 		err  error
 	}{
 		{
 			name: "Bad User Id",
-			req: &pbs.AddUserAccountsRequest{
+			req: &pbs.RemoveUserAccountsRequest{
 				Id:      "bad id",
 				Version: usr.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Bad account Id",
+			req: &pbs.RemoveUserAccountsRequest{
+				Id:      usr.GetPublicId(),
+				Version: usr.GetVersion(),
+				AccountIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -915,7 +975,7 @@ func TestRemoveAccount(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(usr.GetScopeId())), tc.req)
+			_, gErr := s.RemoveUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(usr.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddUserAccounts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)

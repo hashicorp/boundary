@@ -344,7 +344,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 		badFields := map[string]string{}
 		if !handlers.ValidId(scope.Org.Prefix(), req.GetItem().GetScopeId()) &&
 			scope.Global.String() != req.GetItem().GetScopeId() {
-			badFields["scope_id"] = "This field is missing or improperly formatted."
+			badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 		}
 		switch auth.SubtypeFromType(req.GetItem().GetType()) {
 		case auth.PasswordSubtype:
@@ -386,7 +386,7 @@ func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
 		req.GetScopeId() != scope.Global.String() {
-		badFields["scope_id"] = "This field must be a valid project scope id."
+		badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

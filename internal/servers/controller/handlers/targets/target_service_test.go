@@ -824,9 +824,15 @@ func TestAddTargetHostSets(t *testing.T) {
 			resultHostSets: []string{hs[1].GetPublicId()},
 		},
 		{
-			name:           "Add host on populated target",
+			name:           "Add set on populated target",
 			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithHostSets([]string{hs[0].GetPublicId()})),
 			addHostSets:    []string{hs[1].GetPublicId()},
+			resultHostSets: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
+		},
+		{
+			name:           "Add duplicated sets on populated target",
+			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicated", target.WithHostSets([]string{hs[0].GetPublicId()})),
+			addHostSets:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSets: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		},
 	}
@@ -881,6 +887,15 @@ func TestAddTargetHostSets(t *testing.T) {
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "Incorrect host set ids",
+			req: &pbs.AddTargetHostSetsRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+				HostSetIds: []string{"incorrect"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -914,19 +929,25 @@ func TestSetTargetHostSets(t *testing.T) {
 		resultHostSets []string
 	}{
 		{
-			name:           "Set host on empty set",
+			name:           "Set on empty target",
 			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
 			setHostSets:    []string{hs[1].GetPublicId()},
 			resultHostSets: []string{hs[1].GetPublicId()},
 		},
 		{
-			name:           "Set host on populated set",
+			name:           "Set on populated target",
 			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithHostSets([]string{hs[0].GetPublicId()})),
 			setHostSets:    []string{hs[1].GetPublicId()},
 			resultHostSets: []string{hs[1].GetPublicId()},
 		},
 		{
-			name:           "Set empty on populated set",
+			name:           "Set duplicate host set on populated target",
+			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicate", target.WithHostSets([]string{hs[0].GetPublicId()})),
+			setHostSets:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
+			resultHostSets: []string{hs[1].GetPublicId()},
+		},
+		{
+			name:           "Set empty on populated target",
 			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "another populated", target.WithHostSets([]string{hs[0].GetPublicId()})),
 			setHostSets:    []string{},
 			resultHostSets: nil,
@@ -971,6 +992,15 @@ func TestSetTargetHostSets(t *testing.T) {
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
 		},
+		{
+			name: "Bad host set id",
+			req: &pbs.SetTargetHostSetsRequest{
+				Id:         tar.GetPublicId(),
+				Version:    tar.GetVersion(),
+				HostSetIds: []string{"invalid"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1014,6 +1044,12 @@ func TestRemoveTargetHostSets(t *testing.T) {
 			name:        "Remove 1 of 2 sets",
 			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithHostSets([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHosts: []string{hs[1].GetPublicId()},
+			resultHosts: []string{hs[0].GetPublicId()},
+		},
+		{
+			name:        "Remove 1 duplicate set of 2 sets",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove duplicate", target.WithHostSets([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
+			removeHosts: []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHosts: []string{hs[0].GetPublicId()},
 		},
 		{
@@ -1073,9 +1109,18 @@ func TestRemoveTargetHostSets(t *testing.T) {
 		{
 			name: "empty sets",
 			req: &pbs.RemoveTargetHostSetsRequest{
-				Id:         "bad id",
+				Id:         tar.GetPublicId(),
 				Version:    tar.GetVersion(),
 				HostSetIds: []string{},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid set ids",
+			req: &pbs.RemoveTargetHostSetsRequest{
+				Id:         tar.GetPublicId(),
+				Version:    tar.GetVersion(),
+				HostSetIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
