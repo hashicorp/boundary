@@ -1,6 +1,6 @@
 import s from './how-it-works.module.css'
-import LogoList from './logo-list'
 import HowBoundaryWorksDiagram from './how-boundary-works-diagram'
+import Feature from './feature'
 import { useState } from 'react'
 
 export default function HowItWorks({ features }) {
@@ -14,17 +14,14 @@ export default function HowItWorks({ features }) {
           <HowBoundaryWorksDiagram activeExampleIndex={activeExampleIndex} />
         </div>
         <ul className={s.features}>
-          {features.map(({ title, description, logos }) => (
-            <li
-              key={title}
-              // TODO Move to an InView threshold check; this is for testing
-              onClick={() => {
-                setActiveExampleIndex(activeExampleIndex + 1)
-              }}
-            >
-              <h4 className="g-type-display-4">{title}</h4>
-              <p className="g-type-body">{description}</p>
-              {logos ? <LogoList logos={logos} /> : null}
+          {features.map((feature, index) => (
+            <li key={feature.title}>
+              <Feature
+                {...feature}
+                onInViewStatusChanged={(state) => {
+                  if (state === true) setActiveExampleIndex(index)
+                }}
+              />
             </li>
           ))}
         </ul>
