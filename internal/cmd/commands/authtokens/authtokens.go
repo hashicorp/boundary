@@ -168,11 +168,11 @@ func (c *Command) Run(args []string) int {
 				}
 				output = append(output,
 					fmt.Sprintf("  ID:                            %s", t.Id),
-					fmt.Sprintf("    Approximate Last Used Time:  %s", t.ApproximateLastUsedTime.Local().Format(time.RFC3339)),
+					fmt.Sprintf("    Approximate Last Used Time:  %s", t.ApproximateLastUsedTime.Local().Format(time.RFC1123)),
 					fmt.Sprintf("    Auth Method ID:              %s", t.AuthMethodId),
-					fmt.Sprintf("    Created Time:                %s", t.CreatedTime.Local().Format(time.RFC3339)),
-					fmt.Sprintf("    Expiration Time:             %s", t.ExpirationTime.Local().Format(time.RFC3339)),
-					fmt.Sprintf("    Updated Time:                %s", t.UpdatedTime.Local().Format(time.RFC3339)),
+					fmt.Sprintf("    Created Time:                %s", t.CreatedTime.Local().Format(time.RFC1123)),
+					fmt.Sprintf("    Expiration Time:             %s", t.ExpirationTime.Local().Format(time.RFC1123)),
+					fmt.Sprintf("    Updated Time:                %s", t.UpdatedTime.Local().Format(time.RFC1123)),
 					fmt.Sprintf("    User ID:                     %s", t.UserId),
 				)
 			}

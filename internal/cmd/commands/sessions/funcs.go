@@ -33,7 +33,9 @@ func generateSessionTableOutput(in *sessions.Session) string {
 			m := map[string]interface{}{
 				"Status":     state.Status,
 				"Start Time": state.StartTime.Local().Format(time.RFC1123),
-				"End Time":   state.EndTime.Local().Format(time.RFC1123),
+			}
+			if !state.EndTime.IsZero() {
+				m["End Time"] = state.EndTime.Local().Format(time.RFC1123)
 			}
 			statesMaps = append(statesMaps, m)
 		}
