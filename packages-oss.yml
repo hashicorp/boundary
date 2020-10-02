@@ -1,7 +1,7 @@
 ---
 config:
-  product-repo: git@github.com:hashicorp/boundary.git
-  release-repo: git@github.com:hashicorp/boundary-release.git
+  product-repo: https://github.com/hashicorp/boundary.git
+  release-repo: https://github.com/hashicorp/boundary-release.git
   product-id: github.com/hashicorp/boundary
   circleci-project-slug: gh/hashicorp/boundary
   circleci-host: circleci.com
