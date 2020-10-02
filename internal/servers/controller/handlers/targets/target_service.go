@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
@@ -557,7 +558,7 @@ func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []str
 	if err != nil {
 		return nil, err
 	}
-	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, dedupe(hostSetId))
+	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetId, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sets to target: %v.", err)
@@ -573,7 +574,7 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = repo.SetTargetHostSets(ctx, targetId, version, dedupe(hostSetIds))
+	_, _, err = repo.SetTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set host sets in target: %v.", err)
@@ -594,7 +595,7 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeleteTargeHostSets(ctx, targetId, version, dedupe(hostSetIds))
+	_, err = repo.DeleteTargeHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove host sets from target: %v.", err)
@@ -687,18 +688,6 @@ func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 		})
 	}
 	return &out, nil
-}
-
-func dedupe(s []string) []string {
-	seen := make(map[string]bool)
-	var dedupedSlice []string
-	for _, u := range s {
-		if _, found := seen[u]; !found {
-			seen[u] = true
-			dedupedSlice = append(dedupedSlice, u)
-		}
-	}
-	return dedupedSlice
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce

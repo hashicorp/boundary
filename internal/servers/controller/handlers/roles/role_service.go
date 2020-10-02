@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -355,7 +356,7 @@ func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, princip
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.AddPrincipalRoles(ctx, roleId, version, dedupe(principalIds))
+	_, err = repo.AddPrincipalRoles(ctx, roleId, version, strutil.RemoveDuplicates(principalIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add principals to role: %v.", err)
@@ -375,7 +376,7 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, princip
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = repo.SetPrincipalRoles(ctx, roleId, version, dedupe(principalIds))
+	_, _, err = repo.SetPrincipalRoles(ctx, roleId, version, strutil.RemoveDuplicates(principalIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set principals on role: %v.", err)
@@ -395,7 +396,7 @@ func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, prin
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeletePrincipalRoles(ctx, roleId, version, dedupe(principalIds))
+	_, err = repo.DeletePrincipalRoles(ctx, roleId, version, strutil.RemoveDuplicates(principalIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove principals from role: %v.", err)
@@ -415,7 +416,7 @@ func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []st
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.AddRoleGrants(ctx, roleId, version, dedupe(grants))
+	_, err = repo.AddRoleGrants(ctx, roleId, version, strutil.RemoveDuplicates(grants, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add grants to role: %v.", err)
@@ -439,7 +440,7 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 	if grants == nil {
 		grants = []string{}
 	}
-	_, _, err = repo.SetRoleGrants(ctx, roleId, version, dedupe(grants))
+	_, _, err = repo.SetRoleGrants(ctx, roleId, version, strutil.RemoveDuplicates(grants, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set grants on role: %v.", err)
@@ -459,7 +460,7 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeleteRoleGrants(ctx, roleId, version, dedupe(grants))
+	_, err = repo.DeleteRoleGrants(ctx, roleId, version, strutil.RemoveDuplicates(grants, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove grants from role: %v", err)
@@ -564,19 +565,6 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 		out.GrantScopeId = &wrapperspb.StringValue{Value: in.GetGrantScopeId()}
 	}
 	return &out
-}
-
-func dedupe(s []string) []string {
-	seen := make(map[string]bool)
-	// Initialize it here since repo depends on slice being not nil.
-	dedupedSlice := []string{}
-	for _, u := range s {
-		if _, found := seen[u]; !found {
-			seen[u] = true
-			dedupedSlice = append(dedupedSlice, u)
-		}
-	}
-	return dedupedSlice
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce

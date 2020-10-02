@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -294,7 +295,7 @@ func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.AddSetMembers(ctx, scopeId, setId, version, dedupe(hostIds))
+	_, err = repo.AddSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add hosts to host set: %v.", err)
@@ -314,7 +315,7 @@ func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = repo.SetSetMembers(ctx, scopeId, setId, version, hostIds)
+	_, _, err = repo.SetSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set hosts in host set: %v.", err)
@@ -335,7 +336,7 @@ func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostId
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeleteSetMembers(ctx, scopeId, setId, version, dedupe(hostIds))
+	_, err = repo.DeleteSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove hosts from host set: %v.", err)
@@ -411,17 +412,6 @@ func toProto(in *static.HostSet, hs []*static.Host) *pb.HostSet {
 	return &out
 }
 
-func dedupe(s []string) []string {
-	seen := make(map[string]bool)
-	var dedupedSlice []string
-	for _, u := range s {
-		if _, found := seen[u]; !found {
-			seen[u] = true
-			dedupedSlice = append(dedupedSlice, u)
-		}
-	}
-	return dedupedSlice
-}
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
 //  * The path passed in is correctly formatted

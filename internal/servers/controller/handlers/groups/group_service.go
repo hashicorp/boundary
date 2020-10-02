@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -295,7 +296,7 @@ func (s Service) addMembersInRepo(ctx context.Context, groupId string, userIds [
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.AddGroupMembers(ctx, groupId, version, dedupe(userIds))
+	_, err = repo.AddGroupMembers(ctx, groupId, version, strutil.RemoveDuplicates(userIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add members to group: %v.", err)
@@ -315,7 +316,7 @@ func (s Service) setMembersInRepo(ctx context.Context, groupId string, userIds [
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = repo.SetGroupMembers(ctx, groupId, version, userIds)
+	_, _, err = repo.SetGroupMembers(ctx, groupId, version, strutil.RemoveDuplicates(userIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set members on group: %v.", err)
@@ -335,7 +336,7 @@ func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userId
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeleteGroupMembers(ctx, groupId, version, dedupe(userIds))
+	_, err = repo.DeleteGroupMembers(ctx, groupId, version, strutil.RemoveDuplicates(userIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove members from group: %v.", err)
@@ -411,18 +412,6 @@ func toProto(in *iam.Group, members []*iam.GroupMember) *pb.Group {
 		})
 	}
 	return &out
-}
-
-func dedupe(s []string) []string {
-	seen := make(map[string]bool)
-	var dedupedSlice []string
-	for _, u := range s {
-		if _, found := seen[u]; !found {
-			seen[u] = true
-			dedupedSlice = append(dedupedSlice, u)
-		}
-	}
-	return dedupedSlice
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce

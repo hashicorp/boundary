@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -296,7 +297,7 @@ func (s Service) addInRepo(ctx context.Context, userId string, accountIds []stri
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.AddUserAccounts(ctx, userId, version, dedupe(accountIds))
+	_, err = repo.AddUserAccounts(ctx, userId, version, strutil.RemoveDuplicates(accountIds, false))
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add accounts to user: %v.", err)
 	}
@@ -315,7 +316,7 @@ func (s Service) setInRepo(ctx context.Context, userId string, accountIds []stri
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.SetUserAccounts(ctx, userId, version, accountIds)
+	_, err = repo.SetUserAccounts(ctx, userId, version, strutil.RemoveDuplicates(accountIds, false))
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set accounts for the user: %v.", err)
 	}
@@ -334,7 +335,7 @@ func (s Service) removeInRepo(ctx context.Context, userId string, accountIds []s
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeleteUserAccounts(ctx, userId, version, dedupe(accountIds))
+	_, err = repo.DeleteUserAccounts(ctx, userId, version, strutil.RemoveDuplicates(accountIds, false))
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove accounts from user: %v.", err)
 	}
@@ -410,18 +411,6 @@ func toProto(in *iam.User, accts []string) *pb.User {
 		})
 	}
 	return &out
-}
-
-func dedupe(s []string) []string {
-	seen := make(map[string]bool)
-	var dedupedSlice []string
-	for _, u := range s {
-		if _, found := seen[u]; !found {
-			seen[u] = true
-			dedupedSlice = append(dedupedSlice, u)
-		}
-	}
-	return dedupedSlice
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
