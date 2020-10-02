@@ -1,4 +1,5 @@
-import LogoList from '../logo-list'
+import LogoList from './logo-list'
+import s from './feature.module.css'
 import { useInView } from 'react-intersection-observer'
 import { useState } from 'react'
 
@@ -16,7 +17,7 @@ export default function Feature({
   }
 
   return (
-    <div ref={ref}>
+    <div className={s.root} ref={ref}>
       <h4 className="g-type-display-4">{title}</h4>
       <p className="g-type-body">{description}</p>
       {logos ? <LogoList logos={logos} /> : null}
