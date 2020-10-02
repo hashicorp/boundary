@@ -14,9 +14,10 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 			f.StringVar(&base.StringVar{
 				Name:       "scope-id",
 				Target:     &c.FlagScopeId,
+				EnvVar:     "BOUNDARY_SCOPE_ID",
 				Default:    "global",
 				Completion: complete.PredictAnything,
-				Usage:      `Scope in which to make the request.`,
+				Usage:      `Scope in which to make the request`,
 			})
 		case "id":
 			f.StringVar(&base.StringVar{
@@ -41,6 +42,20 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 				Name:   "version",
 				Target: &c.FlagVersion,
 				Usage:  fmt.Sprintf("The version of the %s against which to perform an update operation. If not specified, the command will perform a check-and-set automatically.", resourceType),
+			})
+		case "auth-method-id":
+			f.StringVar(&base.StringVar{
+				Name:   "auth-method-id",
+				EnvVar: "BOUNDARY_AUTH_METHOD_ID",
+				Target: &c.FlagAuthMethodId,
+				Usage:  "The auth-method resource to use for the operation",
+			})
+		case "host-catalog-id":
+			f.StringVar(&base.StringVar{
+				Name:   "host-catalog-id",
+				EnvVar: "BOUNDARY_HOST_CATALOG_ID",
+				Target: &c.FlagHostCatalogId,
+				Usage:  "The host-catalog resource to use for the operation",
 			})
 		}
 	}

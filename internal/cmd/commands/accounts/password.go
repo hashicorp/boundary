@@ -24,9 +24,8 @@ type PasswordCommand struct {
 
 	Func string
 
-	flagAuthMethodId string
-	flagLoginName    string
-	flagPassword     string
+	flagLoginName string
+	flagPassword  string
 }
 
 func (c *PasswordCommand) Synopsis() string {
@@ -75,17 +74,6 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 		common.PopulateCommonFlags(c.Command, f, "password-type account", passwordFlagsMap[c.Func])
 	}
 
-	for _, name := range passwordFlagsMap[c.Func] {
-		switch name {
-		case "auth-method-id":
-			f.StringVar(&base.StringVar{
-				Name:   "auth-method-id",
-				Target: &c.flagAuthMethodId,
-				Usage:  "The auth-method resource in which to create or update the account resource",
-			})
-		}
-	}
-
 	f = set.NewFlagSet("Password Account Options")
 
 	for _, name := range passwordFlagsMap[c.Func] {
@@ -132,7 +120,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
-	if strutil.StrListContains(passwordFlagsMap[c.Func], "auth-method-id") && c.flagAuthMethodId == "" {
+	if strutil.StrListContains(passwordFlagsMap[c.Func], "auth-method-id") && c.FlagAuthMethodId == "" {
 		c.UI.Error("Auth Method ID must be passed in via -auth-method-id")
 		return 1
 	}
@@ -209,7 +197,7 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	switch c.Func {
 	case "create":
-		result, err = accountClient.Create(c.Context, c.flagAuthMethodId, opts...)
+		result, err = accountClient.Create(c.Context, c.FlagAuthMethodId, opts...)
 	case "update":
 		result, err = accountClient.Update(c.Context, c.FlagId, version, opts...)
 	}
