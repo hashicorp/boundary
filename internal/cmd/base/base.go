@@ -64,11 +64,13 @@ type Command struct {
 	FlagRecoveryConfig   string
 	flagOutputCurlString bool
 
-	FlagScopeId     string
-	FlagId          string
-	FlagName        string
-	FlagDescription string
-	FlagVersion     int
+	FlagScopeId       string
+	FlagId            string
+	FlagName          string
+	FlagDescription   string
+	FlagAuthMethodId  string
+	FlagHostCatalogId string
+	FlagVersion       int
 
 	client *api.Client
 }
