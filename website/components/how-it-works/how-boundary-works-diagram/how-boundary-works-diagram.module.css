@@ -1,11 +1,10 @@
 .root {
   --transition-time: 0.7s;
 
-  & .arrowSpacer,
   & .boundaryLetter,
-  & .iconSpacer,
+  & .spacer,
   & .iconBg {
-    fill: #fff;
+    fill: var(--white);
   }
 
   & .iconLines,
@@ -18,6 +17,13 @@
   & .boundaryFill,
   & .arrowHead {
     fill: #f04e54;
+  }
+
+  & .arrowHead,
+  & .arrowSegment,
+  & .spacer {
+    transition: var(--transition-time) ease;
+    transition-property: opacity;
   }
 
   & .arrowSegment {
@@ -34,8 +40,10 @@
   }
 
   & .iconLines {
-    stroke: #fff;
+    stroke: var(--white);
     fill: none;
+    transition: var(--transition-time) ease;
+    transition-property: stroke;
   }
 
   & .subtitle {
@@ -45,45 +53,95 @@
   & .iconBg {
     stroke: #e5e6ec;
     stroke-width: 1px;
+    transition: var(--transition-time) ease;
+    transition-property: fill, stroke;
   }
 
   & .authenticate {
+    & .spacer {
+      opacity: 0;
+    }
+
+    & .iconBg {
+      fill: var(--white);
+    }
+
     & .iconLines {
+      stroke: #e5e6ec;
       stroke-width: 1px;
     }
   }
 
   & .authorize {
+    & .spacer {
+      opacity: 0;
+    }
+
+    & .iconBg {
+      fill: var(--black);
+      stroke: var(--black);
+    }
+
     & .iconLines {
-      stroke: #b6b8c3;
+      stroke: #e5e6ec;
     }
-
-    &.active {
-      /* Styles TBD */
-    }
-  }
-
-  & .access.active {
-    /* Styles TBD */
   }
 
   & .hostsAndServices {
-    opacity: 0;
+    opacity: 1;
+    transform: translate(0, 0);
     transition: var(--transition-time) ease;
     transition-property: opacity, transform;
-    transform: translate(0, -18px);
 
     & .leadingLine {
       fill: none;
       stroke-linecap: round;
       stroke-miterlimit: 10;
       stroke-width: 1.5px;
-      stroke: #000;
+      stroke: var(--black);
+    }
+  }
+
+  & .access.active {
+    & .spacer {
+      opacity: 0;
     }
 
-    &.active {
-      opacity: 1;
-      transform: translate(0, 0);
+    & .iconBg {
+      fill: var(--black);
+      stroke: var(--black);
+    }
+
+    & .vaultIcon {
+      fill: var(--white);
+    }
+  }
+
+  & .inactive {
+    & .arrowHead,
+    & .arrowSegment,
+    & .spacer {
+      opacity: 0;
+    }
+
+    &.authorize {
+      & .spacer {
+        opacity: 1;
+      }
+
+      & .iconBg {
+        fill: var(--white);
+        stroke: #e5e6ec;
+      }
+
+      & .iconLines {
+        stroke: #b6b8c3;
+      }
+    }
+
+    &.hostsAndServices {
+      opacity: 0;
+      transform: translate(0, 10px);
     }
   }
 }
