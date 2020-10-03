@@ -18,9 +18,9 @@ Each grant is a mapping that describes a resource or set of resources and the ac
 
 * An `id` field that indicates a specific resource or a wildcard to match all
 * A `type` field that indicates a specific resource type or a wildcard to match all
-* An `actions` field indicating which actions to provide the resources matched by `id` and `type`
+* An `actions` field indicating which actions to allow the client to perform on the resources matched by `id` and `type`
 
-Grant strings can be supplied via JSON or a CLI/UI friendly, easily-composable string syntax.
+Grant strings can be supplied via a human-friendly string syntax or via JSON.
 
 Roles are composable; a user's final set of grants will be composed of various
 roles that each contribute grants to a set of principals that include that user
@@ -78,11 +78,13 @@ This grants `read` and `update` actions to that single resource.
 
 ### Type Only
 
-For a given type, allow these actions. Because type specifies only a collection
-as opposed to specific resources within that collection, only colletion actions
-are allowed in this format. Currently, this is `create` and `list`. Example:
+For a given type, allow these actions. Example:
 
 `type=host-catalog;actions=create,list`
+
+Because type specifies only a collection as opposed to specific resources within
+that collection, only collection actions are allowed in this format. Currently,
+this is `create` and `list`. 
 
 There is one additional restriction: this is only valid against "top-level"
 resource types, which currently are:
