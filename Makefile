@@ -47,7 +47,7 @@ else
 endif
 
 perms-table:
-	@go run internal/website/permstable.go
+	@go run internal/website/permstable/permstable.go
 
 gen: cleangen proto api migrations
 

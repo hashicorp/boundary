@@ -237,6 +237,56 @@ func sortedKeys(in map[string]string) []string {
 	return out
 }
 
+func clActions(typ string) []*Action {
+	return []*Action{
+		{
+			Name:        "create",
+			Description: fmt.Sprintf("Create %s", typ),
+			Examples: []string{
+				"type=<resource.type>;actions=create",
+				"type=*;actions=create",
+			},
+		},
+		{
+			Name:        "list",
+			Description: fmt.Sprintf("List %ss", strings.TrimPrefix(strings.TrimPrefix(typ, "an "), "a ")),
+			Examples: []string{
+				"type=<resource.type>;actions=list",
+				"type=*;actions=list",
+			},
+		},
+	}
+}
+
+func rudActions(typ string) []*Action {
+	return []*Action{
+		{
+			Name:        "read",
+			Description: fmt.Sprintf("Read %s", typ),
+			Examples: []string{
+				"id=<resource.id>;actions=read",
+				"id=*;type=<resource.type>;actions=read",
+			},
+		},
+		{
+			Name:        "update",
+			Description: fmt.Sprintf("Update %s", typ),
+			Examples: []string{
+				"id=<resource.id>;actions=update",
+				"id=*;type=<resource.type>;actions=update",
+			},
+		},
+		{
+			Name:        "delete",
+			Description: fmt.Sprintf("Delete %s", typ),
+			Examples: []string{
+				"id=<resource.id>;actions=delete",
+				"id=*;type=<resource.type>;actions=delete",
+			},
+		},
+	}
+}
+
 var authMethod = &Resource{
 	Type:   "Auth Method",
 	Scopes: iamScopes,
@@ -246,24 +296,7 @@ var authMethod = &Resource{
 			Params: map[string]string{
 				"Type": "auth-method",
 			},
-			Actions: []*Action{
-				{
-					Name:        "create",
-					Description: "Create an auth method",
-					Examples: []string{
-						"type=<resource.type>;actions=create",
-						"type=*;actions=create",
-					},
-				},
-				{
-					Name:        "list",
-					Description: "List auth methods",
-					Examples: []string{
-						"type=<resource.type>;actions=list",
-						"type=*;actions=list",
-					},
-				},
-			},
+			Actions: clActions("an auth method"),
 		},
 		{
 			Path: "/auth-methods/<id>",
@@ -271,32 +304,7 @@ var authMethod = &Resource{
 				"ID":   "<id>",
 				"Type": "auth-method",
 			},
-			Actions: []*Action{
-				{
-					Name:        "read",
-					Description: "Read an auth method",
-					Examples: []string{
-						"id=<resource.id>;actions=read",
-						"id=*;type=<resource.type>;actions=read",
-					},
-				},
-				{
-					Name:        "update",
-					Description: "Update an auth method",
-					Examples: []string{
-						"id=<resource.id>;actions=update",
-						"id=*;type=<resource.type>;actions=update",
-					},
-				},
-				{
-					Name:        "delete",
-					Description: "Delete an auth method",
-					Examples: []string{
-						"id=<resource.id>;actions=delete",
-						"id=*;type=<resource.type>;actions=delete",
-					},
-				},
-			},
+			Actions: rudActions("an auth method"),
 		},
 	},
 }
