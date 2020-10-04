@@ -195,11 +195,19 @@ around ID, type, and pin.
       </td>
       <td>
         <ul>
-          <li>Type</li>
+          <li>
+            <code>create</code>: Create an auth method
+          </li>
             <ul>
-              <li>
-                <code>auth-method</code>
-              </li>
+              <li><code>type=&lt;resource.type&gt;;actions=create</code></li>
+              <li><code>type=*;actions=create</code></li>
+            </ul>
+          <li>
+            <code>list</code>: List auth methods
+          </li>
+            <ul>
+              <li><code>type=&lt;resource.type&gt;;actions=list</code></li>
+              <li><code>type=*;actions=list</code></li>
             </ul>
         </ul>
       </td>
@@ -226,17 +234,26 @@ around ID, type, and pin.
       </td>
       <td>
         <ul>
-          <li>ID</li>
+          <li>
+            <code>read</code>: Read an auth method
+          </li>
             <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
+              <li><code>id=&lt;resource.id&gt;;actions=read</code></li>
+              <li><code>id=*;type=&lt;resource.type&gt;;actions=read</code></li>
             </ul>
-          <li>Type</li>
+          <li>
+            <code>update</code>: Update an auth method
+          </li>
             <ul>
-              <li>
-                <code>auth-method</code>
-              </li>
+              <li><code>id=&lt;resource.id&gt;;actions=update</code></li>
+              <li><code>id=*;type=&lt;resource.type&gt;;actions=update</code></li>
+            </ul>
+          <li>
+            <code>delete</code>: Delete an auth method
+          </li>
+            <ul>
+              <li><code>id=&lt;resource.id&gt;;actions=delete</code></li>
+              <li><code>id=*;type=&lt;resource.type&gt;;actions=delete</code></li>
             </ul>
         </ul>
       </td>

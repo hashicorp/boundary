@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 )
 
-const permsFile = "../../website/content/docs/concepts/permissions.mdx"
+const permsFile = "website/content/docs/concepts/permissions.mdx"
 
 var (
 	iamScopes  = []string{"Global", "Org"}
@@ -56,31 +57,13 @@ var table = &Table{
 		},
 	},
 	Body: &Body{
-		Resources: []*Resource{
-			{
-				Type:   "Auth Method",
-				Scopes: iamScopes,
-				Endpoints: []*Endpoint{
-					{
-						Path: "/auth-methods",
-						Params: map[string]string{
-							"Type": "auth-method",
-						},
-					},
-					{
-						Path: "/auth-methods/<id>",
-						Params: map[string]string{
-							"ID":   "<id>",
-							"Type": "auth-method",
-						},
-					},
-				},
-			},
-		},
+		Resources: make([]*Resource, 0, 12),
 	},
 }
 
 func main() {
+	table.Body.Resources = append(table.Body.Resources, authMethod)
+
 	fileContents, err := ioutil.ReadFile(permsFile)
 	if err != nil {
 		fmt.Println(err)
@@ -191,12 +174,12 @@ func (e *Endpoint) Marshal() (ret []string) {
 		fmt.Sprintf(`%s<ul>`, indent(8)),
 	)
 
-	for k, v := range e.Params {
+	for _, v := range sortedKeys(e.Params) {
 		ret = append(ret,
-			fmt.Sprintf(`%s<li>%s</li>`, indent(10), k),
+			fmt.Sprintf(`%s<li>%s</li>`, indent(10), v),
 			fmt.Sprintf(`%s<ul>`, indent(12)),
 			fmt.Sprintf(`%s<li>`, indent(14)),
-			fmt.Sprintf(`%s<code>%s</code>`, indent(16), escape(v)),
+			fmt.Sprintf(`%s<code>%s</code>`, indent(16), escape(e.Params[v])),
 			fmt.Sprintf(`%s</li>`, indent(14)),
 			fmt.Sprintf(`%s</ul>`, indent(12)),
 		)
@@ -209,13 +192,21 @@ func (e *Endpoint) Marshal() (ret []string) {
 		fmt.Sprintf(`%s<ul>`, indent(8)),
 	)
 
-	for k, v := range e.Params {
+	for _, v := range e.Actions {
 		ret = append(ret,
-			fmt.Sprintf(`%s<li>%s</li>`, indent(10), k),
+			fmt.Sprintf(`%s<li>`, indent(10)),
+			fmt.Sprintf(`%s<code>%s</code>: %s`, indent(12), v.Name, v.Description),
+			fmt.Sprintf(`%s</li>`, indent(10)),
+		)
+		ret = append(ret,
 			fmt.Sprintf(`%s<ul>`, indent(12)),
-			fmt.Sprintf(`%s<li>`, indent(14)),
-			fmt.Sprintf(`%s<code>%s</code>`, indent(16), escape(v)),
-			fmt.Sprintf(`%s</li>`, indent(14)),
+		)
+		for _, x := range v.Examples {
+			ret = append(ret,
+				fmt.Sprintf(`%s<li><code>%s</code></li>`, indent(14), escape(x)),
+			)
+		}
+		ret = append(ret,
 			fmt.Sprintf(`%s</ul>`, indent(12)),
 		)
 	}
@@ -228,29 +219,6 @@ func (e *Endpoint) Marshal() (ret []string) {
 	return
 }
 
-/*
-func (a *Action) Marshal() (ret []string) {
-	ret = append(ret,
-		fmt.Sprintf(`      <td><code>%s</code></td>`, escape(e.Path)),
-		`      <ul>`,
-	)
-
-	for k, v := range e.Params {
-		ret = append(ret,
-			fmt.Sprintf(`        <li>%s</li>`, k),
-			`        <ul>`,
-			fmt.Sprintf(`          <li><code>%s</code></li>`, escape(v)),
-			`        </ul>`,
-		)
-	}
-
-	ret = append(ret,
-		`      </ul>`,
-	)
-
-	return
-}
-*/
 func escape(s string) string {
 	ret := strings.Replace(s, "<", "&lt;", -1)
 	return strings.Replace(ret, ">", "&gt;", -1)
@@ -258,4 +226,77 @@ func escape(s string) string {
 
 func indent(num int) string {
 	return strings.Repeat(" ", num)
+}
+
+func sortedKeys(in map[string]string) []string {
+	out := make([]string, 0, len(in))
+	for k := range in {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+var authMethod = &Resource{
+	Type:   "Auth Method",
+	Scopes: iamScopes,
+	Endpoints: []*Endpoint{
+		{
+			Path: "/auth-methods",
+			Params: map[string]string{
+				"Type": "auth-method",
+			},
+			Actions: []*Action{
+				{
+					Name:        "create",
+					Description: "Create an auth method",
+					Examples: []string{
+						"type=<resource.type>;actions=create",
+						"type=*;actions=create",
+					},
+				},
+				{
+					Name:        "list",
+					Description: "List auth methods",
+					Examples: []string{
+						"type=<resource.type>;actions=list",
+						"type=*;actions=list",
+					},
+				},
+			},
+		},
+		{
+			Path: "/auth-methods/<id>",
+			Params: map[string]string{
+				"ID":   "<id>",
+				"Type": "auth-method",
+			},
+			Actions: []*Action{
+				{
+					Name:        "read",
+					Description: "Read an auth method",
+					Examples: []string{
+						"id=<resource.id>;actions=read",
+						"id=*;type=<resource.type>;actions=read",
+					},
+				},
+				{
+					Name:        "update",
+					Description: "Update an auth method",
+					Examples: []string{
+						"id=<resource.id>;actions=update",
+						"id=*;type=<resource.type>;actions=update",
+					},
+				},
+				{
+					Name:        "delete",
+					Description: "Delete an auth method",
+					Examples: []string{
+						"id=<resource.id>;actions=delete",
+						"id=*;type=<resource.type>;actions=delete",
+					},
+				},
+			},
+		},
+	},
 }
