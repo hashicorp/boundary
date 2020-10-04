@@ -1,0 +1,261 @@
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
+)
+
+const permsFile = "../../website/content/docs/concepts/permissions.mdx"
+
+var (
+	iamScopes  = []string{"Global", "Org"}
+	infraScope = []string{"Project"}
+)
+
+type Table struct {
+	Header *Header
+	Body   *Body
+}
+
+type Header struct {
+	Titles []string
+}
+
+type Body struct {
+	Resources []*Resource
+}
+
+type Resource struct {
+	Type      string
+	Scopes    []string
+	Endpoints []*Endpoint
+}
+
+type Endpoint struct {
+	Path    string
+	Params  map[string]string
+	Actions []*Action
+}
+
+type Action struct {
+	Name        string
+	Description string
+	Examples    []string
+}
+
+var table = &Table{
+	Header: &Header{
+		Titles: []string{
+			"Resource Type",
+			"Applicable Scopes",
+			"API Endpoint",
+			"Parameters into Permissions Engine",
+			"Available Actions / Examples",
+		},
+	},
+	Body: &Body{
+		Resources: []*Resource{
+			{
+				Type:   "Auth Method",
+				Scopes: iamScopes,
+				Endpoints: []*Endpoint{
+					{
+						Path: "/auth-methods",
+						Params: map[string]string{
+							"Type": "auth-method",
+						},
+					},
+					{
+						Path: "/auth-methods/<id>",
+						Params: map[string]string{
+							"ID":   "<id>",
+							"Type": "auth-method",
+						},
+					},
+				},
+			},
+		},
+	},
+}
+
+func main() {
+	fileContents, err := ioutil.ReadFile(permsFile)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	lines := strings.Split(string(fileContents), "\n")
+	var pre, post []string
+	var marker int
+	for i, line := range lines {
+		if strings.Contains(line, "BEGIN TABLE") {
+			marker = i
+		}
+		pre = append(pre, line)
+		if marker != 0 {
+			break
+		}
+	}
+
+	for i := marker + 1; i < len(lines); i++ {
+		if !strings.Contains(lines[i], "END TABLE") {
+			continue
+		}
+		marker = i
+		break
+	}
+
+	for i := marker; i < len(lines); i++ {
+		post = append(post, lines[i])
+	}
+
+	final := fmt.Sprintf("%s\n\n%s\n\n%s",
+		strings.Join(pre, "\n"),
+		strings.Join(table.Marshal(), "\n"),
+		strings.Join(post, "\n"))
+
+	if err := ioutil.WriteFile(permsFile, []byte(final), 0644); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func (t *Table) Marshal() (ret []string) {
+	ret = append(ret, "<table>")
+	ret = append(ret, "  <thead>")
+	ret = append(ret, t.Header.Marshal()...)
+	ret = append(ret, "  </thead>")
+	ret = append(ret, "  <tbody>")
+	ret = append(ret, t.Body.Marshal()...)
+	ret = append(ret, "  </tbody>")
+	ret = append(ret, "</table>")
+
+	return
+}
+
+func (h *Header) Marshal() (ret []string) {
+	ret = append(ret, fmt.Sprintf(`%s<tr>`, indent(4)))
+	for _, v := range h.Titles {
+		ret = append(ret,
+			fmt.Sprintf("%s<th>%s</th>", indent(6), v),
+		)
+	}
+	ret = append(ret, fmt.Sprintf(`%s</tr>`, indent(4)))
+
+	return
+}
+
+func (b *Body) Marshal() (ret []string) {
+	for _, v := range b.Resources {
+		ret = append(ret, v.Marshal()...)
+	}
+
+	return
+}
+
+func (r *Resource) Marshal() (ret []string) {
+	for i, v := range r.Endpoints {
+		ret = append(ret, fmt.Sprintf(`%s<tr>`, indent(4)))
+		if i == 0 {
+			ret = append(ret,
+				fmt.Sprintf(`%s<td rowspan="%d">%s</td>`, indent(6), len(r.Endpoints), r.Type),
+				fmt.Sprintf(`%s<td rowspan="%d">`, indent(6), len(r.Endpoints)),
+				fmt.Sprintf(`%s<ul>`, indent(8)),
+			)
+			for _, s := range r.Scopes {
+				ret = append(ret,
+					fmt.Sprintf(`%s<li>%s</li>`, indent(10), s),
+				)
+			}
+			ret = append(ret,
+				fmt.Sprintf(`%s</ul>`, indent(8)),
+				fmt.Sprintf(`%s</td>`, indent(6)),
+			)
+		}
+		ret = append(ret, v.Marshal()...)
+		ret = append(ret, fmt.Sprintf(`%s</tr>`, indent(4)))
+	}
+
+	return
+}
+
+func (e *Endpoint) Marshal() (ret []string) {
+	ret = append(ret,
+		fmt.Sprintf(`%s<td>`, indent(6)),
+		fmt.Sprintf(`%s<code>%s</code>`, indent(8), escape(e.Path)),
+		fmt.Sprintf(`%s</td>`, indent(6)),
+		fmt.Sprintf(`%s<td>`, indent(6)),
+		fmt.Sprintf(`%s<ul>`, indent(8)),
+	)
+
+	for k, v := range e.Params {
+		ret = append(ret,
+			fmt.Sprintf(`%s<li>%s</li>`, indent(10), k),
+			fmt.Sprintf(`%s<ul>`, indent(12)),
+			fmt.Sprintf(`%s<li>`, indent(14)),
+			fmt.Sprintf(`%s<code>%s</code>`, indent(16), escape(v)),
+			fmt.Sprintf(`%s</li>`, indent(14)),
+			fmt.Sprintf(`%s</ul>`, indent(12)),
+		)
+	}
+
+	ret = append(ret,
+		fmt.Sprintf(`%s</ul>`, indent(8)),
+		fmt.Sprintf(`%s</td>`, indent(6)),
+		fmt.Sprintf(`%s<td>`, indent(6)),
+		fmt.Sprintf(`%s<ul>`, indent(8)),
+	)
+
+	for k, v := range e.Params {
+		ret = append(ret,
+			fmt.Sprintf(`%s<li>%s</li>`, indent(10), k),
+			fmt.Sprintf(`%s<ul>`, indent(12)),
+			fmt.Sprintf(`%s<li>`, indent(14)),
+			fmt.Sprintf(`%s<code>%s</code>`, indent(16), escape(v)),
+			fmt.Sprintf(`%s</li>`, indent(14)),
+			fmt.Sprintf(`%s</ul>`, indent(12)),
+		)
+	}
+
+	ret = append(ret,
+		fmt.Sprintf(`%s</ul>`, indent(8)),
+		fmt.Sprintf(`%s</td>`, indent(6)),
+	)
+
+	return
+}
+
+/*
+func (a *Action) Marshal() (ret []string) {
+	ret = append(ret,
+		fmt.Sprintf(`      <td><code>%s</code></td>`, escape(e.Path)),
+		`      <ul>`,
+	)
+
+	for k, v := range e.Params {
+		ret = append(ret,
+			fmt.Sprintf(`        <li>%s</li>`, k),
+			`        <ul>`,
+			fmt.Sprintf(`          <li><code>%s</code></li>`, escape(v)),
+			`        </ul>`,
+		)
+	}
+
+	ret = append(ret,
+		`      </ul>`,
+	)
+
+	return
+}
+*/
+func escape(s string) string {
+	ret := strings.Replace(s, "<", "&lt;", -1)
+	return strings.Replace(ret, ">", "&gt;", -1)
+}
+
+func indent(num int) string {
+	return strings.Repeat(" ", num)
+}

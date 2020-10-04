@@ -159,77 +159,89 @@ ways to specify grants. Instead this table indicates the most scoped-down ways
 that access to an action can be granted, while helping to portray the concepts
 around ID, type, and pin.
 
+<!-- BEGIN TABLE -->
+
 <table>
-<thead>
-  <tr>
-    <th>Resource Type</th>
-    <th>Available Scopes</th>
-    <th>API Endpoint</th>
-    <th>Parameters into Permissions Engine</th>
-    <th>Available Actions/Grant Examples</th>
-  </tr>
-</thead>
-<tbody>
-  <tr>
-    <td rowspan="2">Auth Method</td>
-    <td rowspan="2">
-      <ul>
-        <li>Global</li>
-        <li>Organization</li>
-      </ul>
-    </td>
-    <td><code>/auth-methods</code></td>
-    <td>
-      <ul>
-        <li>Type</li>
-          <ul>
-            <li><code>auth-method</code></li>
-          </ul>
-      </ul>
-    </td>
-    <td>
-      <ul>
-        <li><code>create</code>: Create an auth method</li>
-          <ul>
-            <li><code>type=auth-method;actions=create</code></li>
-          </ul>
-          <li><code>list</code>: List auth methods</li>
-          <ul>
-            <li><code>type=auth-method;actions=list</code></li>
-          </ul>
-      </ul>
-    </td>
-  </tr>
-  <tr>
-    <td><code>/auth-methods/[id]</code></td>
-     <td>
-      <ul>
-        <li>ID</li>
-          <ul>
-            <li><code>[id]</code></li>
-          </ul>
-        <li>Type</li>
-          <ul>
-            <li><code>auth-method</code></li>
-          </ul>
-      </ul>
-    </td>
-    <td>
-      <ul>
-        <li><code>read</code>: Read an auth method's configuration</li>
-          <ul>
-            <li><code>id=[id];actions=read</code></li>
-          </ul>
-          <li><code>update</code>: Update an auth method's configuration</li>
-          <ul>
-            <li><code>id=[id];actions=update</code></li>
-          </ul>
-          <li><code>delete</code>: Delete an auth method</li>
-          <ul>
-            <li><code>id=[id];actions=delete</code></li>
-          </ul>
-      </ul>
-    </td>
-  </tr>
-</tbody>
+  <thead>
+    <tr>
+      <th>Resource Type</th>
+      <th>Applicable Scopes</th>
+      <th>API Endpoint</th>
+      <th>Parameters into Permissions Engine</th>
+      <th>Available Actions / Examples</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="2">Auth Method</td>
+      <td rowspan="2">
+        <ul>
+          <li>Global</li>
+          <li>Org</li>
+        </ul>
+      </td>
+      <td>
+        <code>/auth-methods</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>auth-method</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>auth-method</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/auth-methods/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>auth-method</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>auth-method</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
 </table>
+
+<!-- END TABLE -->
