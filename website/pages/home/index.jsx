@@ -1,5 +1,6 @@
 import BrandedCta from 'components/branded-cta'
 import HomepageHero from 'components/homepage-hero'
+import HowItWorks from 'components/how-it-works'
 import SectionBreakCta from 'components/section-break-cta'
 import ProductFeaturesList from '@hashicorp/react-product-features-list'
 import UseCases from '@hashicorp/react-use-cases'
@@ -25,6 +26,87 @@ export default function HomePage() {
         // TODO Replace URL with finalized URL
         videoUrl="https://www.youtube.com/watch?v=Y7c_twmDxQ4"
       />
+
+      <HowItWorks
+        features={[
+          {
+            title: 'Authenticate',
+            description:
+              'Authenticate with trusted identity provider access to hosts and services.',
+            logos: [
+              {
+                alt: 'GitHub',
+                url: require('./img/logos/github.svg?url'),
+              },
+              {
+                alt: 'AWS',
+                url: require('./img/logos/aws.svg?url'),
+              },
+              {
+                alt: 'Microsoft Azure',
+                url: require('./img/logos/azure.svg?url'),
+              },
+              {
+                alt: 'Google Cloud Platform',
+                url: require('./img/logos/gcp.svg?url'),
+              },
+              {
+                alt: 'Okta',
+                url: require('./img/logos/okta.svg?url'),
+              },
+              {
+                alt: 'Ping',
+                url: require('./img/logos/ping.svg?url'),
+              },
+              {
+                alt: 'More integrations',
+                url: require('./img/logos/more.svg?url'),
+              },
+            ],
+          },
+          {
+            title: 'Authorize',
+            description:
+              'Authorize access to services and hosts based on roles and logical services.',
+            logos: [
+              {
+                alt: 'Consul',
+                url: require('./img/logos/consul.svg?url'),
+              },
+              {
+                alt: 'AWS',
+                url: require('./img/logos/aws.svg?url'),
+              },
+              {
+                alt: 'Microsoft Azure',
+                url: require('./img/logos/azure.svg?url'),
+              },
+              {
+                alt: 'Terraform',
+                url: require('./img/logos/terraform.svg?url'),
+              },
+              {
+                alt: 'Google Cloud Platform',
+                url: require('./img/logos/gcp.svg?url'),
+              },
+              {
+                alt: 'Kubernetes',
+                url: require('./img/logos/kubernetes.svg?url'),
+              },
+              {
+                url: require('./img/logos/more.svg?url'),
+                alt: 'More integrations',
+              },
+            ],
+          },
+          {
+            title: 'Access',
+            description:
+              'Securely connect with just-in-time access without exposing or distributing credentials.',
+          },
+        ]}
+      />
+
       <div className="break-section">
         <SectionBreakCta
           heading="Have you tried Boundary?"
@@ -77,6 +159,7 @@ export default function HomePage() {
           },
         ]}
       />
+
       <div className="use-cases-section">
         <div className="g-grid-container">
           <h2 className="g-type-display-2">Use cases</h2>
@@ -113,6 +196,7 @@ export default function HomePage() {
           />
         </div>
       </div>
+
       <BrandedCta
         heading="Ready to get started?"
         content="Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments."
