@@ -25,10 +25,9 @@ controller {
 - `description` - Specifies a friendly description of this controller.
 
 - `database` - Configuration block with two valid parameters for connecting to Postgres:
+    - `url` - Configures the URL for connecting to Postgres
+    - `migration_url` - Can be used to specify a different URL for the migrations, as that 
+       usually requires higher priviledges.
 
-  - `url` - Configures the URL for connecting to Postgres
-  - `migration_url` - Can be used to specify a different URL for the migrations, as that
-    usually requires higher priviledges.
-
-  Either can refer to a file on disk (file://) from which a URL will be read; an env
-  var (env://) from which the URL will be read; or a direct database URL (postgres://).
+    Either can refer to a file on disk (file://) from which a URL will be read; an env
+    var (env://) from which the URL will be read; or a direct database URL (postgres://).

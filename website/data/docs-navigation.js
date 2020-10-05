@@ -36,7 +36,7 @@ export default [
       {
         category: 'domain-model',
         content: [
-          'accounts',
+				  'accounts',
           'actions',
           'auth-methods',
           'grants',
@@ -104,4 +104,5 @@ export default [
       },
     ],
   },
+
 ]
