@@ -784,62 +784,6 @@ func TestDb_Create(t *testing.T) {
 	})
 }
 
-func TestDb_LookupByName(t *testing.T) {
-	t.Parallel()
-	db, _ := TestSetup(t, "postgres")
-	t.Run("simple", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
-		id, err := uuid.GenerateUUID()
-		require.NoError(err)
-		user, err := db_test.NewTestUser()
-		require.NoError(err)
-		user.Name = "fn-" + id
-		err = w.Create(context.Background(), user)
-		require.NoError(err)
-		assert.NotEmpty(user.Id)
-
-		foundUser, err := db_test.NewTestUser()
-		require.NoError(err)
-		foundUser.Name = "fn-" + id
-		err = w.LookupByName(context.Background(), foundUser)
-		require.NoError(err)
-		assert.Equal(foundUser.Id, user.Id)
-	})
-	t.Run("tx-nil,", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		w := Db{}
-		foundUser, err := db_test.NewTestUser()
-		require.NoError(err)
-		foundUser.Name = "fn-name"
-		err = w.LookupByName(context.Background(), foundUser)
-		require.Error(err)
-		assert.Equal("error underlying db nil for lookup by name", err.Error())
-	})
-	t.Run("no-friendly-name-set", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
-		foundUser, err := db_test.NewTestUser()
-		require.NoError(err)
-		err = w.LookupByName(context.Background(), foundUser)
-		require.Error(err)
-		assert.Equal("error name empty string for lookup by name", err.Error())
-	})
-	t.Run("not-found", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
-		id, err := uuid.GenerateUUID()
-		require.NoError(err)
-
-		foundUser, err := db_test.NewTestUser()
-		require.NoError(err)
-		foundUser.Name = "fn-" + id
-		err = w.LookupByName(context.Background(), foundUser)
-		require.Error(err)
-		assert.Equal(ErrRecordNotFound, err)
-	})
-}
-
 func TestDb_LookupByPublicId(t *testing.T) {
 	t.Parallel()
 	db, _ := TestSetup(t, "postgres")
