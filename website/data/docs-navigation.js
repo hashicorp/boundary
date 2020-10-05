@@ -13,7 +13,7 @@ export default [
   },
   {
     category: 'installing',
-    content: ['production'],
+    content: ['high-availability'],
   },
   {
     category: 'developing',
@@ -36,7 +36,7 @@ export default [
       {
         category: 'domain-model',
         content: [
-				  'accounts',
+          'accounts',
           'actions',
           'auth-methods',
           'grants',
@@ -104,5 +104,4 @@ export default [
       },
     ],
   },
-
 ]
