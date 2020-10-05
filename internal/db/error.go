@@ -11,33 +11,33 @@ import (
 // with errors.Is.
 var (
 	// ErrInvalidPublicId indicates an invalid PublicId.
-	ErrInvalidPublicId = errors.New("invalid publicId")
+	ErrInvalidPublicId = NewError(WithErrorMsg("invalid publicId"), WithErrCode(ErrCodeInvalidParameter))
 
 	// ErrInvalidParameter is returned by create and update methods if
 	// an attribute on a struct contains illegal or invalid values.
-	ErrInvalidParameter = NewError(WithErrorMsg("invalid parameter"))
+	ErrInvalidParameter = NewError(WithErrorMsg("invalid parameter"), WithErrCode(ErrCodeInvalidParameter))
 
 	// ErrInvalidFieldMask is returned by update methods if the field mask
 	// contains unknown fields or fields that cannot be updated.
-	ErrInvalidFieldMask = errors.New("invalid field mask")
+	ErrInvalidFieldMask = NewError(WithErrorMsg("invalid field mask"), WithErrCode(ErrCodeInvalidParameter))
 
 	// ErrEmptyFieldMask is returned by update methods if the field mask is
 	// empty.
-	ErrEmptyFieldMask = errors.New("empty field mask")
+	ErrEmptyFieldMask = NewError(WithErrorMsg("empty field mask"), WithErrCode(ErrCodeInvalidParameter))
 
 	// ErrNotUnique is returned by create and update methods when a write
 	// to the repository resulted in a unique constraint violation.
-	ErrNotUnique = errors.New("unique constraint violation")
+	ErrNotUnique = NewError(WithErrorMsg("unique constraint violation"), WithErrCode(ErrCodeUnique))
 
 	// ErrRecordNotFound returns a "record not found" error and it only occurs
 	// when attempting to read from the database into struct.
 	// When reading into a slice it won't return this error.
-	ErrRecordNotFound = errors.New("record not found")
+	ErrRecordNotFound = NewError(WithErrorMsg("record not found"), WithErrCode(ErrCodeRecordNotFound))
 
 	// ErrMultipleRecords is returned by update and delete methods when a
 	// write to the repository would result in more than one record being
 	// changed resulting in the transaction being rolled back.
-	ErrMultipleRecords = errors.New("multiple records")
+	ErrMultipleRecords = NewError(WithErrorMsg("multiple records"), WithErrCode(ErrCodeMultipleRecords))
 )
 
 // IsUniqueError returns a boolean indicating whether the error is known to
@@ -101,9 +101,11 @@ type Error struct {
 }
 
 // NewError creates a new Error and supports the options of:
-// 	WithErrorCode() - allows you to specify an error code
-// 	WithWrap() - allows you to specify an error to wrap
-// 	WithErrorMsg() - allows you to specify an error msg
+// WithErrorMsg() - allows you to specify an error msg.  If a msg is specified,
+// then the error class and code will be surpressed when the Error() is called.
+// WithErrorCode() - allows you to specify an error code.  If no msg is
+// specified, then the error class and code are used when Error() is called.
+// WithWrap() - allows you to specify an error to wrap
 func NewError(opt ...Option) error {
 	opts := GetOpts(opt...)
 	if opts.withErrMsg == "" && opts.withErrCode == nil {
@@ -124,7 +126,7 @@ func (e *Error) Error() string {
 	if e.Msg != "" {
 		msgs = append(msgs, e.Msg)
 	}
-	if e.Code != nil {
+	if e.Msg == "" && e.Code != nil {
 		if info, ok := errorCodeInfo[*e.Code]; ok {
 			msgs = append(msgs, info.Message, info.Class.String())
 		}
@@ -155,6 +157,7 @@ const (
 	UnknownErrClass ErrClass = 0
 	ParameterError  ErrClass = 1
 	IntegrityError  ErrClass = 2
+	SearchError     ErrClass = 3
 )
 
 func (e ErrClass) String() string {
@@ -162,14 +165,17 @@ func (e ErrClass) String() string {
 		"unknown",
 		"parameter violation",
 		"integrity violation",
+		"search issue",
 	}[e]
 }
 
 const (
 	ErrCodeInvalidParameter ErrCode = 100
 	ErrCodeCheckConstraint  ErrCode = 1000
-	ErrCodeNotNull          ErrCode = 1100
-	ErrCodeUnique           ErrCode = 1200
+	ErrCodeNotNull          ErrCode = 1001
+	ErrCodeUnique           ErrCode = 1002
+	ErrCodeRecordNotFound   ErrCode = 1100
+	ErrCodeMultipleRecords  ErrCode = 1101
 )
 
 func (e ErrCode) String() string {
@@ -195,5 +201,13 @@ var errorCodeInfo = map[ErrCode]ErrInfo{
 	ErrCodeUnique: {
 		Message: "must be unique violation",
 		Class:   IntegrityError,
+	},
+	ErrCodeRecordNotFound: {
+		Message: "record not fouind",
+		Class:   SearchError,
+	},
+	ErrCodeMultipleRecords: {
+		Message: "multiple records",
+		Class:   SearchError,
 	},
 }
