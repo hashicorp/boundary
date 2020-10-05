@@ -1088,7 +1088,7 @@ var (
 
 	pattern_TargetService_DeleteTarget_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, ""))
 
-	pattern_TargetService_AuthorizeSession_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "authorize"))
+	pattern_TargetService_AuthorizeSession_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "authorize-session"))
 
 	pattern_TargetService_AddTargetHostSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "add-host-sets"))
 

@@ -268,7 +268,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 
 	opts := getOpts(opt...)
 
-	// Check for templated values ID, and subtitute in with the authenticated values
+	// Check for templated values ID, and substitute in with the authenticated values
 	// if so
 	if grant.id != "" && strings.HasPrefix(grant.id, "{{") {
 		id := strings.TrimSuffix(strings.TrimPrefix(grant.id, "{{"), "}}")

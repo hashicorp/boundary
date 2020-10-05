@@ -128,10 +128,10 @@ Boundary then cancels the session and move it into a "Terminated" state.
 
 ## Advanced Session Establishment
 
-Above we discussed connecting to a target using the `boundary connect` command. In addition to this we can create a session to a target and connect to that session in separate steps. This is accomplished using the `boundary targets authorize` command, which generates a authorization token that users can use to start a session via `boundary proxy` at their own convenience.
+Above we discussed connecting to a target using the `boundary connect` command. In addition to this we can create a session to a target and connect to that session in separate steps. This is accomplished using the `boundary targets authorize-session` command, which generates a authorization token that users can use to start a session via `boundary proxy` at their own convenience.
 
 ```bash
-$ boundary targets authorize -id ttcp_1234567890
+$ boundary targets authorize-session -id ttcp_1234567890
 
 Target information:
     Authorization Token:   $LONG_STRING_OF_TEXT

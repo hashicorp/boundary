@@ -802,6 +802,14 @@ func TestAddHostSetHosts(t *testing.T) {
 			addHosts:    []string{hs[1].GetPublicId()},
 			resultHosts: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		},
+		{
+			name: "Add duplicate host on populated set",
+			setup: func(g *static.HostSet) {
+				static.TestSetMembers(t, conn, g.GetPublicId(), hs[:1])
+			},
+			addHosts:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
+			resultHosts: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
+		},
 	}
 
 	for _, tc := range addCases {
@@ -844,6 +852,15 @@ func TestAddHostSetHosts(t *testing.T) {
 			req: &pbs.AddHostSetHostsRequest{
 				Id:      ss.GetPublicId(),
 				Version: ss.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid hosts in list",
+			req: &pbs.AddHostSetHostsRequest{
+				Id:      ss.GetPublicId(),
+				Version: ss.GetVersion(),
+				HostIds: []string{"invalid_id"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -898,6 +915,14 @@ func TestSetHostSetHosts(t *testing.T) {
 			resultHosts: []string{hs[1].GetPublicId()},
 		},
 		{
+			name: "Set duplicate host on populated set",
+			setup: func(r *static.HostSet) {
+				static.TestSetMembers(t, conn, r.GetPublicId(), hs[:1])
+			},
+			setHosts:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
+			resultHosts: []string{hs[1].GetPublicId()},
+		},
+		{
 			name: "Set empty on populated set",
 			setup: func(r *static.HostSet) {
 				static.TestSetMembers(t, conn, r.GetPublicId(), hs[:2])
@@ -935,6 +960,15 @@ func TestSetHostSetHosts(t *testing.T) {
 				Id:      "bad id",
 				Version: ss.GetVersion(),
 				HostIds: []string{hs[0].GetPublicId()},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Bad Host Id",
+			req: &pbs.SetHostSetHostsRequest{
+				Id:      ss.GetPublicId(),
+				Version: ss.GetVersion(),
+				HostIds: []string{"invalid_id"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -990,6 +1024,14 @@ func TestRemoveHostSetHosts(t *testing.T) {
 			resultHosts: []string{hs[0].GetPublicId()},
 		},
 		{
+			name: "Remove 1 duplicate of 2 hosts from set",
+			setup: func(r *static.HostSet) {
+				static.TestSetMembers(t, conn, r.GetPublicId(), hs[:2])
+			},
+			removeHosts: []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
+			resultHosts: []string{hs[0].GetPublicId()},
+		},
+		{
 			name: "Remove all hosts from set",
 			setup: func(r *static.HostSet) {
 				static.TestSetMembers(t, conn, r.GetPublicId(), hs[:2])
@@ -1041,9 +1083,18 @@ func TestRemoveHostSetHosts(t *testing.T) {
 		{
 			name: "empty hosts",
 			req: &pbs.RemoveHostSetHostsRequest{
-				Id:      "bad id",
+				Id:      ss.GetPublicId(),
 				Version: ss.GetVersion(),
 				HostIds: []string{},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "improperly formatted hosts",
+			req: &pbs.RemoveHostSetHostsRequest{
+				Id:      ss.GetPublicId(),
+				Version: ss.GetVersion(),
+				HostIds: []string{"invalid_host_id"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},

@@ -14,6 +14,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -24,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
@@ -225,10 +227,10 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 }
 
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (*pbs.AuthorizeSessionResponse, error) {
-	if err := validateAuthorizeRequest(req); err != nil {
+	if err := validateAuthorizeSessionRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Authorize)
+	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -556,7 +558,7 @@ func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []str
 	if err != nil {
 		return nil, err
 	}
-	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, hostSetId)
+	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetId, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sets to target: %v.", err)
@@ -572,7 +574,7 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = repo.SetTargetHostSets(ctx, targetId, version, hostSetIds)
+	_, _, err = repo.SetTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set host sets in target: %v.", err)
@@ -593,7 +595,7 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeleteTargeHostSets(ctx, targetId, version, hostSetIds)
+	_, err = repo.DeleteTargeHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove host sets from target: %v.", err)
@@ -800,6 +802,12 @@ func validateAddRequest(req *pbs.AddTargetHostSetsRequest) error {
 	if len(req.GetHostSetIds()) == 0 {
 		badFields["host_set_ids"] = "Must be non-empty."
 	}
+	for _, id := range req.GetHostSetIds() {
+		if !handlers.ValidId(static.HostSetPrefix, id) {
+			badFields["host_set_ids"] = "Incorrectly formatted host set identifier."
+			break
+		}
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
@@ -813,6 +821,12 @@ func validateSetRequest(req *pbs.SetTargetHostSetsRequest) error {
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
+	}
+	for _, id := range req.GetHostSetIds() {
+		if !handlers.ValidId(static.HostSetPrefix, id) {
+			badFields["host_set_ids"] = "Incorrectly formatted host set identifier."
+			break
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -831,13 +845,19 @@ func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	if len(req.GetHostSetIds()) == 0 {
 		badFields["host_set_ids"] = "Must be non-empty."
 	}
+	for _, id := range req.GetHostSetIds() {
+		if !handlers.ValidId(static.HostSetPrefix, id) {
+			badFields["host_set_ids"] = "Incorrectly formatted host set identifier."
+			break
+		}
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
 }
 
-func validateAuthorizeRequest(req *pbs.AuthorizeSessionRequest) error {
+func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
