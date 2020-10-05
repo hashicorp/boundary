@@ -111,7 +111,7 @@ func NewError(opt ...Option) error {
 
 	}
 	return &Error{
-		Wrapped: opts.withErr,
+		Wrapped: opts.withErrWrapped,
 		Msg:     opts.withErrMsg,
 		Code:    opts.withErrCode,
 	}
