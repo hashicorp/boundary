@@ -26,9 +26,6 @@ const (
 
 // Reader interface defines lookups/searching for resources
 type Reader interface {
-	// LookupByName will lookup resource by its friendly name which must be unique
-	LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error
-
 	// LookupById will lookup a resource by its primary key id, which must be
 	// unique. The resourceWithIder must implement either ResourcePublicIder or
 	// ResourcePrivateIder interface.
@@ -147,11 +144,6 @@ type ResourcePublicIder interface {
 // resource's private id.
 type ResourcePrivateIder interface {
 	GetPrivateId() string
-}
-
-// ResourceNamer defines an interface that LookupByName() can use to get the resource's friendly name
-type ResourceNamer interface {
-	GetName() string
 }
 
 type OpType int
@@ -918,26 +910,6 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 		}
 		return info, nil // it all worked!!!
 	}
-}
-
-// LookupByName will lookup resource my its friendly name which must be unique
-func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error {
-	if rw.underlying == nil {
-		return errors.New("error underlying db nil for lookup by name")
-	}
-	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for lookup by name")
-	}
-	if resource.GetName() == "" {
-		return errors.New("error name empty string for lookup by name")
-	}
-	if err := rw.underlying.Where("name = ?", resource.GetName()).First(resource).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return ErrRecordNotFound
-		}
-		return err
-	}
-	return nil
 }
 
 // LookupByPublicId will lookup resource by its public_id or private_id, which
