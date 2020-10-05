@@ -45,7 +45,7 @@ func TestAdditionalVerification(t *testing.T) {
 
 	projRole := iam.TestRole(t, conn, proj.GetPublicId())
 	iam.TestUserRole(t, conn, projRole.PublicId, token.UserId)
-	iam.TestRoleGrant(t, conn, projRole.PublicId, "id=ttcp_1234567890;actions=authorize")
+	iam.TestRoleGrant(t, conn, projRole.PublicId, "id=ttcp_1234567890;actions=authorize-session")
 
 	type additionalCase struct {
 		name    string
@@ -91,7 +91,7 @@ func TestAdditionalVerification(t *testing.T) {
 					name: "good target",
 					opts: []auth.Option{
 						auth.WithId("ttcp_1234567890"),
-						auth.WithAction(action.Authorize),
+						auth.WithAction(action.AuthorizeSession),
 						auth.WithScopeId(proj.PublicId),
 						auth.WithType(resource.Target),
 					},

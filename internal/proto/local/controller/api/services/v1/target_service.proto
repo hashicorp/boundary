@@ -87,7 +87,7 @@ service TargetService {
   // AuthorizeSession creates authorization information from a given Target.
   rpc AuthorizeSession(AuthorizeSessionRequest) returns (AuthorizeSessionResponse) {
     option (google.api.http) = {
-      post: "/v1/targets/{id}:authorize"
+      post: "/v1/targets/{id}:authorize-session"
       body: "*"
       response_body: "item"
     };

@@ -227,10 +227,10 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 }
 
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (*pbs.AuthorizeSessionResponse, error) {
-	if err := validateAuthorizeRequest(req); err != nil {
+	if err := validateAuthorizeSessionRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Authorize)
+	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -857,7 +857,7 @@ func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	return nil
 }
 
-func validateAuthorizeRequest(req *pbs.AuthorizeSessionRequest) error {
+func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
 		badFields["id"] = "Incorrectly formatted identifier."

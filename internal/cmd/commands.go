@@ -621,10 +621,10 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"targets authorize": func() (cli.Command, error) {
+		"targets authorize-session": func() (cli.Command, error) {
 			return &targets.Command{
 				Command: base.NewCommand(ui),
-				Func:    "authorize",
+				Func:    "authorize-session",
 			}, nil
 		},
 		"targets read": func() (cli.Command, error) {
