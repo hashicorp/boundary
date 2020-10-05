@@ -703,10 +703,10 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		if !handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) {
-			badFields["scope_id"] = "This field is required to have a properly formatted project scope id."
+			badFields["scope_id"] = "This field is required to have a properly formatted project scope id. Try '-scope-id <scope_id>'."
 		}
 		if req.GetItem().GetName() == nil || req.GetItem().GetName().GetValue() == "" {
-			badFields["name"] = "This field is required."
+			badFields["name"] = "Name field is required. Try '-name <name>'."
 		}
 		if req.GetItem().GetSessionConnectionLimit() != nil {
 			val := req.GetItem().GetSessionConnectionLimit().GetValue()
@@ -714,11 +714,11 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 			case val == -1:
 			case val > 0:
 			default:
-				badFields["session_connection_limit"] = "This must be -1 (unlimited) or greater than zero."
+				badFields["session_connection_limit"] = "Session connection limit must be -1 (unlimited) or greater than zero. Try '-session-connection-limit <int>'."
 			}
 		}
 		if req.GetItem().GetSessionMaxSeconds() != nil && req.GetItem().GetSessionMaxSeconds().GetValue() == 0 {
-			badFields["session_max_seconds"] = "This must be greater than zero."
+			badFields["session_max_seconds"] = "Session max seconds must be greater than zero. Try '-session-max-seconds <int>'."
 		}
 		switch target.SubtypeFromType(req.GetItem().GetType()) {
 		case target.TcpSubType:
