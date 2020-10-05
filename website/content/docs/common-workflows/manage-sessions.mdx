@@ -15,7 +15,7 @@ We assume you're running Boundary in dev mode using the default target resource 
 
 ## Start a Session
 
-When we connect to a target a session is created in boundary. To demonstrate what a session looks like we are going to connect to an ssh based target.
+Connecting to a target creates a session in Boundary. To demonstrate what a session looks like we are going to connect to a TCP target with a default port of 22 for SSH access.
 
 ```bash
 $ boundary connect ssh -target-id ttcp_1234567890 --
@@ -29,11 +29,11 @@ Proxy listening information:
     Session ID:          s_h7vBIhH5SZ
 ```
 
-For more information regarding different ways to connect to a target behind boundary see [Connect to Target](/docs/getting-started/connect-to-target) under Getting Started and [Advanced Session Establishment](#advanced-session-establishment) below.
+For more information regarding different ways to connect to a target behind Boundary see [Connect to Target](/docs/getting-started/connect-to-target) under Getting Started and [Advanced Session Establishment](#advanced-session-establishment) below.
 
 ## View Sessions
 
-View all sessions boundary has for the project `p_1234567890` by listing them.
+View all sessions which Boundary has for the project `p_1234567890` by listing them.
 
 ```bash
 $ boundary sessions list -scope-id p_1234567890
@@ -128,7 +128,7 @@ Boundary then cancels the session and move it into a "Terminated" state.
 
 ## Advanced Session Establishment
 
-Above we discussed connecting to a target using the boundary connect command. In addition to this we can create a session to a target and connect to that session in seperate steps. This is accomplished using the boundary target authorize that you are able to connect to a target which results in an Authorization Token being returned which can be used to connect to the session through the proxy.
+Above we discussed connecting to a target using the `boundary connect` command. In addition to this we can create a session to a target and connect to that session in separate steps. This is accomplished using the `boundary targets authorize` command, which generates a authorization token that users can use to start a session via `boundary proxy` at their own convenience.
 
 ```bash
 $ boundary targets authorize -id ttcp_1234567890
@@ -158,7 +158,7 @@ Proxy listening information:
     Session ID:          s_h7vBIhH5SZ
 ```
 
-With the above address and port information we can now connect to our local proxy and have our tcp traffic sent through the boundary system.
+With the above address and port information we can now connect to our local proxy and have our tcp traffic sent through the Boundary system.
 
 ```bash
 $ ssh 127.0.0.1 -p 61991
