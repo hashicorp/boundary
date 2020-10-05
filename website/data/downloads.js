@@ -4,12 +4,12 @@ export const packageManagers = {
   homebrew: {
     label: 'Homebrew',
     url: '#',
-    commands: ['brew install hashicorp/tap/terraform'],
+    commands: ['brew install hashicorp/tap/boundary'],
   },
   chocolatey: {
     label: 'Chocolatey',
     url: '#',
-    commands: ['choco install terraform'],
+    commands: ['choco install boundary'],
   },
   ubuntu: {
     label: 'Ubuntu/Debian',
