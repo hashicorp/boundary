@@ -46,6 +46,9 @@ else
 	@echo "==> UI assets found, use build-ui target to update"
 endif
 
+perms-table:
+	@go run internal/website/permstable/permstable.go
+
 gen: cleangen proto api migrations
 
 migrations:
