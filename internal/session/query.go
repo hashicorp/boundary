@@ -182,11 +182,15 @@ where
 		now() > us.expiration_time or 
 		-- connection limit reached...
 		(
+			-- handle unlimited connections...
+			connection_limit != -1 and
+			(
 			select count (*) 
 				from session_connection sc 
 			where 
 				sc.session_id = us.public_id
-		) >= connection_limit or 
+			) >= connection_limit
+		) or 
 		-- canceled sessions
 		us.public_id in (
 			select 
