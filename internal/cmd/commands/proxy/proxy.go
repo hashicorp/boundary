@@ -135,7 +135,7 @@ func (c *Command) Help() string {
 		return base.WrapForHelpText([]string{
 			"Usage: boundary connect [options] [args]",
 			"",
-			`  This command performs a target authorization and proxy launch in one command; it is equivalent to sending the output of "boundary targets authorize" into "boundary proxy". See the help output for those commands for more information.`,
+			`  This command performs a target authorization and proxy launch in one command; it is equivalent to sending the output of "boundary targets authorize-session" into "boundary proxy". See the help output for those commands for more information.`,
 			"",
 			"  Example:",
 			"",
@@ -412,8 +412,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 
 		if authzString[0] == '{' {
-			// Attempt to decode the JSON output of an authorize call and pull the
-			// token out of there
+			// Attempt to decode the JSON output of an authorize-session call
+			// and pull the token out of there
 			c.sessionAuthz = new(targets.SessionAuthorization)
 			if err := json.Unmarshal([]byte(authzString), c.sessionAuthz); err == nil {
 				authzString = c.sessionAuthz.AuthorizationToken
@@ -438,10 +438,10 @@ func (c *Command) Run(args []string) (retCode int) {
 			opts = append(opts, targets.WithHostId(c.flagHostId))
 		}
 
-		sar, err := targetClient.Authorize(c.Context, c.flagTargetId, opts...)
+		sar, err := targetClient.AuthorizeSession(c.Context, c.flagTargetId, opts...)
 		if err != nil {
 			if api.AsServerError(err) != nil {
-				c.UI.Error(fmt.Sprintf("Error from controller when performing authorize on a session against target: %s", err.Error()))
+				c.UI.Error(fmt.Sprintf("Error from controller when performing authorize-session against target: %s", err.Error()))
 				return 1
 			}
 			c.UI.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))

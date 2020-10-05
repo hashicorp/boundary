@@ -733,10 +733,10 @@ var target = &Resource{
 					},
 				},
 				&Action{
-					Name:        "authorize",
+					Name:        "authorize-session",
 					Description: "Authorize a session via the target",
 					Examples: []string{
-						"id=<id>;actions=authorize",
+						"id=<id>;actions=authorize-session",
 					},
 				},
 			),

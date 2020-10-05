@@ -14,7 +14,7 @@ const (
 	Delete           Type = 5
 	Authenticate     Type = 6
 	All              Type = 7
-	Authorize        Type = 8
+	AuthorizeSession Type = 8
 	AddGrants        Type = 9
 	RemoveGrants     Type = 10
 	SetGrants        Type = 11
@@ -47,7 +47,7 @@ var Map = map[string]Type{
 	Delete.String():           Delete,
 	Authenticate.String():     Authenticate,
 	All.String():              All,
-	Authorize.String():        Authorize,
+	AuthorizeSession.String(): AuthorizeSession,
 	AddGrants.String():        AddGrants,
 	RemoveGrants.String():     RemoveGrants,
 	SetGrants.String():        SetGrants,
@@ -82,7 +82,7 @@ func (a Type) String() string {
 		"delete",
 		"authenticate",
 		"*",
-		"authorize",
+		"authorize-session",
 		"add-grants",
 		"remove-grants",
 		"set-grants",
