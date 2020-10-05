@@ -879,6 +879,26 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "sessions-with-unlimited-connections",
+			setup: func() testArgs {
+				cnt := 5
+				wantTermed := map[string]TerminationReason{}
+				sessions := make([]*Session, 0, 5)
+				for i := 0; i < cnt; i++ {
+					// make one with unlimited connections
+					s := setupFn(-1, time.Hour+1, false)
+					// make one with limit of one all connections closed
+					s2 := setupFn(1, time.Hour+1, false)
+					sessions = append(sessions, s, s2)
+					wantTermed[s2.PublicId] = ConnectionLimit
+				}
+				return testArgs{
+					sessions:   sessions,
+					wantTermed: wantTermed,
+				}
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
