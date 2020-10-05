@@ -33,10 +33,10 @@ comment on domain wt_scope_id is
 create domain wt_role_id as text
 not null
 check(
-  length(trim(value)) > 10 or value = 'r_default'
+  length(trim(value)) > 10
 );
 comment on domain wt_scope_id is
-'"r_default", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_timestamp as
   timestamp with time zone

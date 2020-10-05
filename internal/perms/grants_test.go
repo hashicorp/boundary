@@ -316,6 +316,7 @@ func Test_Parse(t *testing.T) {
 		name          string
 		input         string
 		userId        string
+		accountId     string
 		err           string
 		scopeOverride string
 		expected      Grant
@@ -349,43 +350,69 @@ func Test_Parse(t *testing.T) {
 		{
 			name:  "empty id and type",
 			input: "actions=create",
-			err:   `"id" and "type" cannot both be empty`,
+			err:   `parsed grant string would not result in any action being authorized`,
 		},
 		{
-			name:  "good json",
-			input: `{"id":"foobar","type":"host-catalog","actions":["create","read"]}`,
+			name:  "good json type",
+			input: `{"type":"host-catalog","actions":["create"]}`,
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
 					Type: scope.Org,
 				},
-				id:  "foobar",
 				typ: resource.HostCatalog,
 				actions: map[action.Type]bool{
 					action.Create: true,
-					action.Read:   true,
 				},
 			},
 		},
 		{
-			name:  "good text",
-			input: `id=foobar;type=host-catalog;actions=create,read`,
+			name:  "good json id",
+			input: `{"id":"foobar","actions":["read"]}`,
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
 					Type: scope.Org,
 				},
 				id:  "foobar",
+				typ: resource.Unknown,
+				actions: map[action.Type]bool{
+					action.Read: true,
+				},
+			},
+		},
+		{
+			name:  "good text type",
+			input: `type=host-catalog;actions=create`,
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
 				typ: resource.HostCatalog,
 				actions: map[action.Type]bool{
 					action.Create: true,
-					action.Read:   true,
+				},
+			},
+		},
+		{
+			name:  "good text id",
+			input: `id=foobar;actions=read`,
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id:  "foobar",
+				typ: resource.Unknown,
+				actions: map[action.Type]bool{
+					action.Read: true,
 				},
 			},
 		},
 		{
 			name:          "default project scope",
-			input:         `id=foobar;type=host-catalog;actions=create,read`,
+			input:         `id=foobar;actions=read`,
 			scopeOverride: "p_1234",
 			expected: Grant{
 				scope: Scope{
@@ -393,16 +420,15 @@ func Test_Parse(t *testing.T) {
 					Type: scope.Project,
 				},
 				id:  "foobar",
-				typ: resource.HostCatalog,
+				typ: resource.Unknown,
 				actions: map[action.Type]bool{
-					action.Create: true,
-					action.Read:   true,
+					action.Read: true,
 				},
 			},
 		},
 		{
 			name:          "default org scope",
-			input:         `id=foobar;type=host-catalog;actions=create,read`,
+			input:         `id=foobar;actions=read`,
 			scopeOverride: "o_1234",
 			expected: Grant{
 				scope: Scope{
@@ -410,16 +436,15 @@ func Test_Parse(t *testing.T) {
 					Type: scope.Org,
 				},
 				id:  "foobar",
-				typ: resource.HostCatalog,
+				typ: resource.Unknown,
 				actions: map[action.Type]bool{
-					action.Create: true,
-					action.Read:   true,
+					action.Read: true,
 				},
 			},
 		},
 		{
 			name:          "default global scope",
-			input:         `id=foobar;type=host-catalog;actions=create,read`,
+			input:         `id=foobar;actions=read`,
 			scopeOverride: "global",
 			expected: Grant{
 				scope: Scope{
@@ -427,10 +452,9 @@ func Test_Parse(t *testing.T) {
 					Type: scope.Global,
 				},
 				id:  "foobar",
-				typ: resource.HostCatalog,
+				typ: resource.Unknown,
 				actions: map[action.Type]bool{
-					action.Create: true,
-					action.Read:   true,
+					action.Read: true,
 				},
 			},
 		},
@@ -456,13 +480,35 @@ func Test_Parse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:      "bad account id template",
+			input:     `id={{superman}};actions=create,read`,
+			accountId: "apw_1234567890",
+			err:       `unknown template "{{superman}}" in grant "id" value`,
+		},
+		{
+			name:      "good account id template",
+			input:     `id={{    account.id}};actions=create,read`,
+			accountId: "apw_1234567890",
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id: "apw_1234567890",
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
+				},
+			},
+		},
 	}
 
-	_, err := Parse("", "", "")
+	_, err := Parse("", "")
 	require.Error(t, err)
 	assert.Equal(t, "grant string is empty", err.Error())
 
-	_, err = Parse("", "", "{}")
+	_, err = Parse("", "{}")
 	require.Error(t, err)
 	assert.Equal(t, "no scope ID provided", err.Error())
 
@@ -474,10 +520,10 @@ func Test_Parse(t *testing.T) {
 			if test.scopeOverride != "" {
 				scope = test.scopeOverride
 			}
-			grant, err := Parse(scope, test.userId, test.input)
+			grant, err := Parse(scope, test.input, WithUserId(test.userId), WithAccountId(test.accountId))
 			if test.err != "" {
 				require.Error(err)
-				assert.True(strings.Contains(err.Error(), test.err))
+				assert.True(strings.Contains(err.Error(), test.err), err.Error())
 			} else {
 				require.NoError(err)
 				assert.Equal(test.expected, grant)

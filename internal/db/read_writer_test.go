@@ -1069,28 +1069,6 @@ func TestDb_SearchWhere(t *testing.T) {
 	}
 }
 
-func TestDb_DB(t *testing.T) {
-	t.Parallel()
-	db, _ := TestSetup(t, "postgres")
-	t.Run("valid", func(t *testing.T) {
-		require := require.New(t)
-		w := Db{underlying: db}
-		d, err := w.DB()
-		require.NoError(err)
-		require.NotNil(d)
-		err = d.Ping()
-		require.NoError(err)
-	})
-	t.Run("nil-tx", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: nil}
-		d, err := w.DB()
-		require.Error(err)
-		assert.Nil(d)
-		assert.Equal("missing underlying db: invalid parameter", err.Error())
-	})
-}
-
 func TestDb_Exec(t *testing.T) {
 	t.Parallel()
 	t.Run("update", func(t *testing.T) {
@@ -1104,7 +1082,7 @@ func TestDb_Exec(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		require.NoError(err)
 		require.NotEmpty(user.Id)
-		rowsAffected, err := w.Exec("update db_test_user set name = ? where public_id = ?", []interface{}{"updated-" + id, user.PublicId})
+		rowsAffected, err := w.Exec(context.Background(), "update db_test_user set name = ? where public_id = ?", []interface{}{"updated-" + id, user.PublicId})
 		require.NoError(err)
 		require.Equal(1, rowsAffected)
 	})
@@ -1506,11 +1484,8 @@ func TestDb_ScanRows(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		require.NoError(err)
 		assert.NotEmpty(user.Id)
-
-		tx, err := w.DB()
-		require.NoError(err)
 		where := "select * from db_test_user where name in ($1, $2)"
-		rows, err := tx.Query(where, "alice", "bob")
+		rows, err := w.Query(context.Background(), where, []interface{}{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
 		for rows.Next() {
@@ -1540,7 +1515,7 @@ func TestDb_Query(t *testing.T) {
 		assert.Equal("alice", user.Name)
 
 		where := "select * from db_test_user where name in ($1, $2)"
-		rows, err := rw.Query(where, []interface{}{"alice", "bob"})
+		rows, err := rw.Query(context.Background(), where, []interface{}{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
 		for rows.Next() {

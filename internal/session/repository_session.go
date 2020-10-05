@@ -207,12 +207,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	q := sessionList
 	query := fmt.Sprintf(q, limit, whereClause, opts.withOrder)
 
-	tx, err := r.reader.DB()
-	if err != nil {
-		return nil, fmt.Errorf("list sessions: unable to get DB: %w", err)
-	}
-
-	rows, err := tx.QueryContext(ctx, query, args...)
+	rows, err := r.reader.Query(ctx, query, args)
 	if err != nil {
 		return nil, fmt.Errorf("changes: query failed: %w", err)
 	}
@@ -289,11 +284,9 @@ func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessio
 	return s, nil
 }
 
-// TerminateSession sets a session's state to "terminated" in the repo.  It's
-// called by the worker when the session has been terminated or by a controller
-// when all of a session's workers have stopped sending heartbeat status for a
-// period of time.  Sessions cannot be terminated which still have connections
-// that are not closed.
+// TerminateSession sets a session's termination reason and it's state to
+// "terminated" Sessions cannot be terminated which still have connections that
+// are not closed.
 func (r *Repository) TerminateSession(ctx context.Context, sessionId string, sessionVersion uint32, reason TerminationReason) (*Session, error) {
 	if sessionId == "" {
 		return nil, fmt.Errorf("terminate session: missing session id: %w", db.ErrInvalidParameter)
@@ -310,7 +303,7 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(terminateSessionCte, []interface{}{sessionId, sessionVersion})
+			rowsAffected, err := w.Exec(ctx, terminateSessionCte, []interface{}{sessionId, sessionVersion})
 			if err != nil {
 				return fmt.Errorf("unable to terminate session %s: %w", sessionId, err)
 			}
@@ -338,6 +331,33 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 	return &updatedSession, nil
 }
 
+// TerminateCompletedSessions will terminate sessions in the repo based on:
+//  * sessions that have exhausted their connection limit and all their connections are closed.
+//	* sessions that are expired and all their connections are closed.
+//	* sessions that are canceling and all their connections are closed
+// This function should called on a periodic basis a Controllers via it's
+// "ticker" pattern.
+func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error) {
+	var rowsAffected int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			var err error
+			rowsAffected, err = w.Exec(ctx, termSessionsUpdate, nil)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("terminate completed sessions: %w", err)
+	}
+	return rowsAffected, nil
+}
+
 // AuthorizeConnection will check to see if a connection is allowed.  Currently,
 // that authorization checks:
 // * the hasn't expired based on the session.Expiration
@@ -362,7 +382,7 @@ func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(authorizeConnectionCte, []interface{}{sessionId, connectionId})
+			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{sessionId, connectionId})
 			if err != nil {
 				return status.Errorf(codes.Internal, "unable to authorize connection %s: %v", sessionId, err)
 			}
@@ -396,11 +416,7 @@ type ConnectionAuthzSummary struct {
 }
 
 func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) (*ConnectionAuthzSummary, error) {
-	tx, err := r.reader.DB()
-	if err != nil {
-		return nil, fmt.Errorf("session summary: unable to get DB: %w", err)
-	}
-	rows, err := tx.QueryContext(ctx, remainingConnectionsCte, sessionId)
+	rows, err := r.reader.Query(ctx, remainingConnectionsCte, []interface{}{sessionId})
 	if err != nil {
 		return nil, fmt.Errorf("session summary: query failed: %w", err)
 	}
@@ -566,7 +582,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(activateStateCte, []interface{}{sessionId, sessionVersion})
+			rowsAffected, err := w.Exec(ctx, activateStateCte, []interface{}{sessionId, sessionVersion})
 			if err != nil {
 				return fmt.Errorf("unable to activate session %s: %w", sessionId, err)
 			}
@@ -662,7 +678,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 				updatedSession.CtTofuToken = nil
 			}
 
-			rowsAffected, err = w.Exec(updateSessionState, []interface{}{sessionId, s.String()})
+			rowsAffected, err = w.Exec(ctx, updateSessionState, []interface{}{sessionId, s.String()})
 			if err != nil {
 				return fmt.Errorf("unable to update session %s state to %s: %w", sessionId, s.String(), err)
 			}

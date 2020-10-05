@@ -6,13 +6,8 @@ https://hashicorp.atlassian.net/wiki/spaces/ICU/pages/866976600/API+Actions+and+
 speaking of which: TODO: put that chart in public docs.
 
 Anyways, from that page you can see that there are really only a few patterns of
-ACLs that are ever allowed:
-
-* type=<resource.type>;actions=<action>
-* id=<resource.id>;actions=<action>
-* id=<pin>;type=<resource.type>;actions=<action>
-
-and of course a matching scope.
+ACLs that are ever allowed; see the Allowed function for a description along
+with the code.
 
 This makes it actually quite simple to perform the ACL checking. Much of ACL
 construction is thus synthesizing something reasonable from a set of Grants.
@@ -81,24 +76,65 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			continue
 		}
 		switch {
-		// type=<resource.type>;actions=<action>
-		case grant.id == "" &&
-			grant.typ == r.Type:
-			results.Allowed = true
-			return
-
-		// id=<resource.id>;actions=<action>
-		case (grant.id == r.Id || grant.id == "*") &&
+		// id=<resource.id>;actions=<action> where ID cannot be a wildcard
+		case grant.id == r.Id &&
+			grant.id != "" &&
+			grant.id != "*" &&
 			grant.typ == resource.Unknown:
+
 			results.Allowed = true
 			return
 
-		// id=<pin>;type=<resource.type>;actions=<action>
-		case grant.id == r.Pin &&
-			grant.typ == r.Type:
+		// type=<resource.type>;actions=<action> when action is list or create.
+		// Must be a top level collection, otherwise must be one of the two
+		// formats specified below.
+		case grant.id == "" &&
+			r.Id == "" &&
+			grant.typ == r.Type &&
+			grant.typ != resource.Unknown &&
+			topLevelType(r.Type) &&
+			(aType == action.List || aType == action.Create):
+
+			results.Allowed = true
+			return
+
+		// id=*;type=<resource.type>;actions=<action> where type cannot be
+		// unknown but can be a wildcard to allow any resource at all
+		case grant.id == "*" &&
+			grant.typ != resource.Unknown &&
+			(grant.typ == r.Type ||
+				grant.typ == resource.All):
+
+			results.Allowed = true
+			return
+
+		// id=<pin>;type=<resource.type>;actions=<action> where type can be a
+		// wildcard and this this is operating on a non-top-level type
+		case grant.id != "" &&
+			grant.id == r.Pin &&
+			grant.typ != resource.Unknown &&
+			(grant.typ == r.Type || grant.typ == resource.All) &&
+			!topLevelType(r.Type):
+
 			results.Allowed = true
 			return
 		}
 	}
 	return
+}
+
+func topLevelType(typ resource.Type) bool {
+	switch typ {
+	case resource.AuthMethod,
+		resource.AuthToken,
+		resource.Group,
+		resource.HostCatalog,
+		resource.Role,
+		resource.Scope,
+		resource.Session,
+		resource.Target,
+		resource.User:
+		return true
+	}
+	return false
 }

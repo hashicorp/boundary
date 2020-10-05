@@ -182,7 +182,7 @@ func (c *Command) Run(args []string) int {
 
 	if len(grants) > 0 {
 		for _, grant := range grants {
-			_, err := perms.Parse("global", "", grant)
+			_, err := perms.Parse("global", grant)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Grant %q could not be parsed successfully: %w", grant, err).Error())
 				return 1

@@ -110,7 +110,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 			id := testId(t)
 			s, err := NewOrg(WithName(id))
 			require.NoError(err)
-			s, err = repo.CreateScope(context.Background(), s, user.GetPublicId(), WithSkipRoleCreation(skipCreate))
+			s, err = repo.CreateScope(context.Background(), s, user.GetPublicId(), WithSkipAdminRoleCreation(skipCreate), WithSkipDefaultRoleCreation(skipCreate))
 			require.NoError(err)
 			require.NotNil(s)
 			assert.NotEmpty(s.GetPublicId())
@@ -122,7 +122,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 
 			foundRoles, err := repo.ListRoles(context.Background(), foundScope.GetPublicId())
 			require.NoError(err)
-			numFound := 1
+			numFound := 2
 			if skipCreate {
 				numFound = 0
 			}

@@ -99,7 +99,7 @@ layers:
   - name: go-modules
     source-include: go.mod go.sum
     dockerfile: |
-      RUN --mount=type=ssh go mod download -x
+      RUN --mount=type=ssh go mod download
   - name: copy-source
     source-include: "*.go"
     dockerfile: |

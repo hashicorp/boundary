@@ -2,8 +2,8 @@ package config
 
 import (
 	"fmt"
-	"net/textproto"
 
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -16,10 +16,14 @@ type TokenCommand struct {
 	*base.Command
 
 	Func string
+
+	flagUserId       bool
+	flagAccountId    bool
+	flagAuthMethodId bool
 }
 
 func (c *TokenCommand) Synopsis() string {
-	return fmt.Sprintf("%s sensitive values in Boundary's configuration file", textproto.CanonicalMIMEHeaderKey(c.Func))
+	return fmt.Sprintf("Get the stored token, or its properties")
 }
 
 func (c *TokenCommand) Help() string {
@@ -57,6 +61,24 @@ func (c *TokenCommand) Flags() *base.FlagSets {
 		Usage:  `If specified, the given value will be used as the name when loading the token from the system credential store. This must correspond to a name used when authenticating.`,
 	})
 
+	f.BoolVar(&base.BoolVar{
+		Name:   "user-id",
+		Target: &c.flagUserId,
+		Usage:  `If specified, print out the user ID associated with the token instead of the token itself.`,
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "account-id",
+		Target: &c.flagAccountId,
+		Usage:  `If specified, print out the account ID associated with the token instead of the token itself.`,
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "auth-method-id",
+		Target: &c.flagAuthMethodId,
+		Usage:  `If specified, print out the auth method ID associated with the token instead of the token itself.`,
+	})
+
 	return set
 }
 
@@ -75,13 +97,70 @@ func (c *TokenCommand) Run(args []string) (ret int) {
 		return 1
 	}
 
-	client, err := c.Client()
-	if err != nil {
-		c.UI.Error(err.Error())
+	var optCount int
+	if c.flagUserId {
+		optCount++
+	}
+	if c.flagAccountId {
+		optCount++
+	}
+	if c.flagAuthMethodId {
+		optCount++
+	}
+
+	if optCount > 1 {
+		c.UI.Error("Only zero or one output option can be specified.")
 		return 1
 	}
 
-	c.UI.Output(client.Token())
+	// Read from keyring first
+	var authToken *authtokens.AuthToken
+	tokenName := "default"
+	if c.FlagTokenName != "" {
+		tokenName = c.FlagTokenName
+	}
+	if tokenName != "none" {
+		at := c.ReadTokenFromKeyring(tokenName)
+		if at != nil {
+			authToken = at
+		}
+	}
+
+	if authToken == nil {
+		// Fallback to env/CLI
+		client, err := c.Client()
+		if err != nil {
+			c.UI.Error(err.Error())
+			return 1
+		}
+		authToken = &authtokens.AuthToken{Token: client.Token()}
+	}
+
+	switch {
+	case c.flagUserId:
+		if authToken.UserId == "" {
+			return 1
+		}
+		c.UI.Output(authToken.UserId)
+
+	case c.flagAccountId:
+		if authToken.AccountId == "" {
+			return 1
+		}
+		c.UI.Output(authToken.AccountId)
+
+	case c.flagAuthMethodId:
+		if authToken.AuthMethodId == "" {
+			return 1
+		}
+		c.UI.Output(authToken.AuthMethodId)
+
+	default:
+		if authToken.Token == "" {
+			return 1
+		}
+		c.UI.Output(authToken.Token)
+	}
 
 	return 0
 }

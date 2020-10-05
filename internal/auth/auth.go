@@ -292,6 +292,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	_ = retErr
 	scopeInfo = new(scopes.ScopeInfo)
 	userId = "u_anon"
+	var accountId string
 
 	// Validate the token and fetch the corresponding user ID
 	switch v.requestInfo.TokenFormat {
@@ -321,6 +322,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 			break
 		}
 		if at != nil {
+			accountId = at.GetAuthAccountId()
 			userId = at.GetIamUserId()
 			if userId == "" {
 				v.logger.Warn("perform auth check: valid token did not map to a user, likely because no account is associated with the user any longer; continuing as u_anon", "token_id", at.GetPublicId())
@@ -385,7 +387,12 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	}
 	parsedGrants = make([]perms.Grant, 0, len(grantPairs))
 	for _, pair := range grantPairs {
-		parsed, err := perms.Parse(pair.ScopeId, userId, pair.Grant)
+		parsed, err := perms.Parse(
+			pair.ScopeId,
+			pair.Grant,
+			perms.WithUserId(userId),
+			perms.WithAccountId(accountId),
+			perms.WithSkipFinalValidation(true))
 		if err != nil {
 			retErr = fmt.Errorf("perform auth check: failed to parse grant %#v: %w", pair.Grant, err)
 			return

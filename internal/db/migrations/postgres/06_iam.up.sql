@@ -427,24 +427,6 @@ before
 insert on iam_role_grant
   for each row execute procedure default_create_time();
 
-create or replace function
-  disallow_r_default_deletion()
-  returns trigger
-as $$
-begin
-  if old.public_id = 'r_default' then
-    raise exception 'deletion of r_default not allowed';
-  end if;
-  return old;
-end;
-$$ language plpgsql;
-
-create trigger
-  iam_role_disallow_global_deletion
-before
-delete on iam_role
-  for each row execute procedure disallow_r_default_deletion();
-
 create trigger 
   update_version_column
 after update on iam_role
@@ -580,17 +562,6 @@ begin
 	return principal_scope || ':' || principal_id;
 end;
 $$ language plpgsql;
-
-insert into iam_role (public_id, name, description, scope_id)
-  values('r_default', 'default', 'Default role created on first instantiation of Boundary. It is meant to provide enough permissions for users to successfully authenticate via various client types.', 'global');
-insert into iam_role_grant (role_id, canonical_grant, raw_grant)
-  values
-    ('r_default', 'type=scope;actions=list', 'type=scope;actions=list'),
-    ('r_default', 'type=auth-method;actions=authenticate,list', 'type=auth-method;actions=authenticate,list');
-insert into iam_user_role (role_id, principal_id)
-  values 
-    ('r_default', 'u_anon'),
-    ('r_default', 'u_auth');
 
 -- iam_principle_role provides a consolidated view all principal roles assigned
 -- (user and group roles).

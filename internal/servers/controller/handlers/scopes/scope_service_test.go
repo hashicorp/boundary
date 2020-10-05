@@ -609,10 +609,17 @@ func TestCreate(t *testing.T) {
 						require.NoError(err)
 						roles, err := repo.ListRoles(ctx, got.GetItem().GetId())
 						require.NoError(err)
-						require.Len(roles, 1)
-						role := roles[0]
-						assert.Equal("on-scope-creation", role.GetName())
-						assert.Equal(fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", got.GetItem().GetId(), userId), role.GetDescription())
+						require.Len(roles, 2)
+						for _, role := range roles {
+							switch role.GetName() {
+							case "Administration":
+								assert.Equal(fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", got.GetItem().GetId(), userId), role.GetDescription())
+							case "Login and Default Grants":
+								assert.Equal(fmt.Sprintf("Role created for login capability and account self-management for users of scope %s at its creation time", got.GetItem().GetId()), role.GetDescription())
+							default:
+								t.Fatal("unexpected role name", role.GetName())
+							}
+						}
 					}
 
 					// Clear all values which are hard to compare against.

@@ -15,6 +15,58 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 )
 
+func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) {
+	rw := db.New(b.Database)
+
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms repository: %w", err)
+	}
+	kmsCache, err := kms.NewKms(kmsRepo, kms.WithLogger(b.Logger.Named("kms")))
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		kms.WithRootWrapper(b.RootKms),
+	); err != nil {
+		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+	cancelCtx, cancel := context.WithCancel(ctx)
+	go func() {
+		<-b.ShutdownCh
+		cancel()
+	}()
+
+	iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
+	if err != nil {
+		return nil, fmt.Errorf("unable to create repo for initial login role: %w", err)
+	}
+
+	pr, err := iam.NewRole(scope.Global.String(),
+		iam.WithName("Login and Default Grants"),
+		iam.WithDescription(`Role created for login capability and account self-management for users of the global scope at its creation time`),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
+	}
+	role, err := iamRepo.CreateRole(cancelCtx, pr)
+	if err != nil {
+		return nil, fmt.Errorf("error creating role for default generated grants: %w", err)
+	}
+	if _, err := iamRepo.AddRoleGrants(cancelCtx, role.PublicId, role.Version, []string{
+		"type=scope;actions=list",
+		"id=*;type=auth-method;actions=authenticate,list",
+		"id={{account.id}};actions=read,change-password",
+	}); err != nil {
+		return nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
+	}
+	if _, err := iamRepo.AddPrincipalRoles(cancelCtx, role.PublicId, role.Version+1, []string{"u_anon"}, nil); err != nil {
+		return nil, fmt.Errorf("error adding principal to role for default generated grants: %w", err)
+	}
+
+	return role, nil
+}
+
 func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMethod, *iam.User, error) {
 	rw := db.New(b.Database)
 
@@ -122,7 +174,7 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 	}
 	// Create a role tying them together
 	pr, err := iam.NewRole(scope.Global.String(),
-		iam.WithName("Generated global scope admin role"),
+		iam.WithName("Administration"),
 		iam.WithDescription(`Provides admin grants within the "global" scope to the initial user`),
 	)
 	if err != nil {
@@ -132,7 +184,7 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating role for default generated grants: %w", err)
 	}
-	if _, err := iamRepo.AddRoleGrants(cancelCtx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;actions=*"}); err != nil {
+	if _, err := iamRepo.AddRoleGrants(cancelCtx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;type=*;actions=*"}); err != nil {
 		return nil, nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
 	}
 	if _, err := iamRepo.AddPrincipalRoles(cancelCtx, defPermsRole.PublicId, defPermsRole.Version+1, []string{u.GetPublicId()}, nil); err != nil {

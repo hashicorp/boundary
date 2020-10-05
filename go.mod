@@ -11,13 +11,13 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-bindata/go-bindata/v3 v3.1.3
 	github.com/go-swagger/go-swagger v0.25.0
-	github.com/golang-migrate/migrate/v4 v4.12.2
+	github.com/golang-migrate/migrate/v4 v4.13.0
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.0-beta.5
-	github.com/hashicorp/dbassert v0.0.0-20200928193136-88d5f2091187
-	github.com/hashicorp/errwrap v1.0.0
+	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
+	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-kms-wrapping v0.5.16
@@ -31,14 +31,14 @@ require (
 	github.com/hashicorp/shared-secure-libs v0.0.2
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200916184745-5576096032f8
 	github.com/iancoleman/strcase v0.1.2
-	github.com/jackc/pgx/v4 v4.8.1
+	github.com/jackc/pgx/v4 v4.9.0
 	github.com/jinzhu/gorm v1.9.16
 	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.8.0
 	github.com/mattn/go-colorable v0.1.7
 	github.com/mitchellh/cli v1.1.2
-	github.com/mitchellh/go-wordwrap v1.0.0
+	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/gox v1.0.1
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/mr-tron/base58 v1.2.0
@@ -53,10 +53,10 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/zalando/go-keyring v0.1.0
 	go.uber.org/atomic v1.7.0
-	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
+	golang.org/x/crypto v0.0.0-20200930160638-afb6bcd081ae
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
-	golang.org/x/tools v0.0.0-20200924224222-8d73f17870ce
-	google.golang.org/genproto v0.0.0-20200925023002-c2d885f95484
+	golang.org/x/tools v0.0.0-20201001104356-43ebab892c4c
+	google.golang.org/genproto v0.0.0-20201001141541-efaab9d3c4f7
 	google.golang.org/grpc v1.32.0
 	google.golang.org/protobuf v1.25.0
 	nhooyr.io/websocket v1.8.6

@@ -264,7 +264,7 @@ func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId stri
 	require.NotEmpty(acct.PublicId)
 
 	if userId == "" {
-		dbassert := dbassert.New(t, rw)
+		dbassert := dbassert.New(t, conn.DB())
 		dbassert.IsNull(acct, "IamUserId")
 	}
 	return acct

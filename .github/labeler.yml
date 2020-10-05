@@ -1,110 +1,119 @@
 api:
-  - api/*
+  - api/**/*
 
 api/authmethods:
-  - api/authmethods/*
+  - api/authmethods/**/*
 
 api/authtokens:
-  - api/authtokens/*
+  - api/authtokens/**/*
 
 api/groups:
-  - api/groups/*
+  - api/groups/**/*
 
 api/hostcatalogs:
-  - api/hostcatalogs/*
+  - api/hostcatalogs/**/*
 
 api/hosts:
-  - api/hosts/*
+  - api/hosts/**/*
 
 api/hostsets:
-  - api/hostsets/*
+  - api/hostsets/**/*
 
 api/roles:
-  - api/roles/*
+  - api/roles/**/*
 
 api/scopes:
-  - api/scopes/*
+  - api/scopes/**/*
 
 api/sessions:
-  - api/sessions/*
+  - api/sessions/**/*
 
 api/targets:
-  - api/targets/*
+  - api/targets/**/*
 
 api/users:
-  - api/users/*
+  - api/users/**/*
 
 core:
-  - internal/*
+  - internal/**/*
 
 core/auth:
-  - internal/auth/*
+  - internal/auth/**/*
 
 core/authtoken:
-  - internal/authtoken/*
+  - internal/authtoken/**/
 
 core/cmd:
-  - internal/cmd/*
+  - internal/cmd/**/8
 
 core/db:
-  - internal/db/*
+  - internal/db/**/*
 
 core/gen:
-  - internal/gen/*
+  - internal/gen/**/*
 
 core/host:
-  - internal/host/*
+  - internal/host/**/*
 
 core/iam:
-  - internal/iam/*
+  - internal/iam/**/*
 
 core/kms:
-  - internal/kms/*
+  - internal/kms/**/*
 
 core/lib:
-  - internal/libs/*
+  - internal/libs/**/*
 
 core/oplog:
-  - internal/oplog/*
+  - internal/oplog/**/*
 
 core/perms:
-  - internal/perms/*
+  - internal/perms/**/*
 
 core/proto:
-  - internal/proto/*
+  - internal/proto/**/*
 
 core/proxy:
-  - internal/proxy/*
+  - internal/proxy/**/*
 
 core/servers:
-  - internal/servers/*
+  - internal/servers/**/*
 
 core/session:
-  - internal/session/*
+  - internal/session/**/*
 
 core/target:
-  - internal/target/*
+  - internal/target/**/*
 
 core/types:
-  - internal/types/*
+  - internal/types/**/*
 
 core/ui:
-  - internal/ui/*
+  - internal/ui/**/*
 
 website:
-  - website/*
+  - website/**/*
 
 docs/concepts:
-  - website/content/docs/concepts/*
+  - website/content/docs/concepts/**/*
 
 docs/getting-started:
-  - website/content/docs/getting-started/*
+  - website/content/docs/getting-started/**/*
 
 docs/installing:
-  - website/content/docs/installing/*
+  - website/content/docs/installing/**/*
 
 docs/configuration:
-  - website/content/docs/configuration/*
+  - website/content/docs/configuration/**/*
 
 docs/releases:
-  - website/content/docs/releases/*
+  - website/content/docs/releases/**/*
+
+docs/workflows:
+  - website/content/docs/common-workflows/**/*
+
+docs/roadmap:
+  - website/content/docs/roadmap/**/*
+
+
+

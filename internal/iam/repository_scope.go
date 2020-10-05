@@ -80,16 +80,16 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		scopeMetadata["op-type"] = []string{oplog.OpType_OP_TYPE_CREATE.String()}
 	}
 
-	var rolePublicId string
-	var roleMetadata oplog.Metadata
-	var role *Role
-	var roleRaw interface{}
+	var adminRolePublicId string
+	var adminRoleMetadata oplog.Metadata
+	var adminRole *Role
+	var adminRoleRaw interface{}
 	switch {
 	case userId == "",
 		userId == "u_anon",
 		userId == "u_auth",
 		userId == "u_recovery",
-		opts.withSkipRoleCreation:
+		opts.withSkipAdminRoleCreation:
 		// TODO: Cause a log entry. The repo doesn't have a logger right now,
 		// and ideally we will be using context to pass around log info scoped
 		// to this request for grouped display in the server log. The only
@@ -97,23 +97,49 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		// recovery workflow so it's already a special case.
 
 		// Also, stop linter from complaining
-		_ = role
+		_ = adminRole
 
 	default:
-		role, err = NewRole(scopePublicId)
+		adminRole, err = NewRole(scopePublicId)
 		if err != nil {
-			return nil, fmt.Errorf("create scope: error instantiating new role: %w", err)
+			return nil, fmt.Errorf("create scope: error instantiating new admin role: %w", err)
 		}
-		rolePublicId, err = newRoleId()
+		adminRolePublicId, err = newRoleId()
 		if err != nil {
-			return nil, fmt.Errorf("create scope: error generating public id for new role: %w", err)
+			return nil, fmt.Errorf("create scope: error generating public id for new admin role: %w", err)
 		}
-		role.PublicId = rolePublicId
-		role.Name = "on-scope-creation"
-		role.Description = fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId)
-		roleRaw = role
-		roleMetadata = oplog.Metadata{
-			"resource-public-id": []string{rolePublicId},
+		adminRole.PublicId = adminRolePublicId
+		adminRole.Name = "Administration"
+		adminRole.Description = fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId)
+		adminRoleRaw = adminRole
+		adminRoleMetadata = oplog.Metadata{
+			"resource-public-id": []string{adminRolePublicId},
+			"scope-id":           []string{scopePublicId},
+			"scope-type":         []string{s.Type},
+			"resource-type":      []string{resource.Role.String()},
+			"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+		}
+	}
+
+	var defaultRolePublicId string
+	var defaultRoleMetadata oplog.Metadata
+	var defaultRole *Role
+	var defaultRoleRaw interface{}
+	if !opts.withSkipDefaultRoleCreation {
+		defaultRole, err = NewRole(scopePublicId)
+		if err != nil {
+			return nil, fmt.Errorf("create scope: error instantiating new default role: %w", err)
+		}
+		defaultRolePublicId, err = newRoleId()
+		if err != nil {
+			return nil, fmt.Errorf("create scope: error generating public id for new default role: %w", err)
+		}
+		defaultRole.PublicId = defaultRolePublicId
+		defaultRole.Name = "Login and Default Grants"
+		defaultRole.Description = fmt.Sprintf("Role created for login capability and account self-management for users of scope %s at its creation time", scopePublicId)
+		defaultRoleRaw = defaultRole
+		defaultRoleMetadata = oplog.Metadata{
+			"resource-public-id": []string{defaultRolePublicId},
 			"scope-id":           []string{scopePublicId},
 			"scope-type":         []string{s.Type},
 			"resource-type":      []string{resource.Role.String()},
@@ -159,26 +185,26 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			// We create a new role, then set grants and principals on it. This
 			// turns into a bunch of stuff sadly because the role is the
 			// aggregate.
-			if roleRaw != nil {
+			if adminRoleRaw != nil {
 				if err := w.Create(
 					ctx,
-					roleRaw,
-					db.WithOplog(childOplogWrapper, roleMetadata),
+					adminRoleRaw,
+					db.WithOplog(childOplogWrapper, adminRoleMetadata),
 				); err != nil {
 					return fmt.Errorf("error creating role: %w", err)
 				}
 
-				role = roleRaw.(*Role)
+				adminRole = adminRoleRaw.(*Role)
 
 				msgs := make([]*oplog.Message, 0, 3)
-				roleTicket, err := w.GetTicket(role)
+				roleTicket, err := w.GetTicket(adminRole)
 				if err != nil {
 					return fmt.Errorf("unable to get ticket: %w", err)
 				}
 
 				// We need to update the role version as that's the aggregate
 				var roleOplogMsg oplog.Message
-				rowsUpdated, err := w.Update(ctx, role, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&role.Version))
+				rowsUpdated, err := w.Update(ctx, adminRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&adminRole.Version))
 				if err != nil {
 					return fmt.Errorf("unable to update role version for adding grant: %w", err)
 				}
@@ -188,7 +214,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				msgs = append(msgs, &roleOplogMsg)
 
-				roleGrant, err := NewRoleGrant(rolePublicId, "id=*;actions=*")
+				roleGrant, err := NewRoleGrant(adminRolePublicId, "id=*;type=*;actions=*")
 				if err != nil {
 					return fmt.Errorf("unable to create in memory role grant: %w", err)
 				}
@@ -198,7 +224,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				}
 				msgs = append(msgs, roleGrantOplogMsgs...)
 
-				rolePrincipal, err := NewUserRole(rolePublicId, userId)
+				rolePrincipal, err := NewUserRole(adminRolePublicId, userId)
 				if err != nil {
 					return fmt.Errorf("unable to create in memory role user: %w", err)
 				}
@@ -212,7 +238,92 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 					"scope-id":           []string{s.PublicId},
 					"scope-type":         []string{s.Type},
-					"resource-public-id": []string{role.PublicId},
+					"resource-public-id": []string{adminRole.PublicId},
+				}
+				if err := w.WriteOplogEntryWith(ctx, childOplogWrapper, roleTicket, metadata, msgs); err != nil {
+					return fmt.Errorf("unable to write oplog: %w", err)
+				}
+			}
+
+			// We create a new role, then set grants and principals on it. This
+			// turns into a bunch of stuff sadly because the role is the
+			// aggregate.
+			if defaultRoleRaw != nil {
+				if err := w.Create(
+					ctx,
+					defaultRoleRaw,
+					db.WithOplog(childOplogWrapper, defaultRoleMetadata),
+				); err != nil {
+					return fmt.Errorf("error creating role: %w", err)
+				}
+
+				defaultRole = defaultRoleRaw.(*Role)
+
+				msgs := make([]*oplog.Message, 0, 6)
+				roleTicket, err := w.GetTicket(defaultRole)
+				if err != nil {
+					return fmt.Errorf("unable to get ticket: %w", err)
+				}
+
+				// We need to update the role version as that's the aggregate
+				var roleOplogMsg oplog.Message
+				rowsUpdated, err := w.Update(ctx, defaultRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&defaultRole.Version))
+				if err != nil {
+					return fmt.Errorf("unable to update role version for adding grant: %w", err)
+				}
+				if rowsUpdated != 1 {
+					return fmt.Errorf("updated role but %d rows updated", rowsUpdated)
+				}
+				msgs = append(msgs, &roleOplogMsg)
+
+				// Grants
+				{
+					grants := []interface{}{}
+					roleGrant, err := NewRoleGrant(defaultRolePublicId, "type=scope;actions=list")
+					if err != nil {
+						return fmt.Errorf("unable to create in memory role grant: %w", err)
+					}
+					grants = append(grants, roleGrant)
+
+					roleGrant, err = NewRoleGrant(defaultRolePublicId, "id=*;type=auth-method;actions=authenticate,list")
+					if err != nil {
+						return fmt.Errorf("unable to create in memory role grant: %w", err)
+					}
+					grants = append(grants, roleGrant)
+					roleGrant, err = NewRoleGrant(defaultRolePublicId, "id={{account.id}};actions=read,change-password")
+					if err != nil {
+						return fmt.Errorf("unable to create in memory role grant: %w", err)
+					}
+					grants = append(grants, roleGrant)
+
+					roleGrantOplogMsgs := make([]*oplog.Message, 0, 3)
+					if err := w.CreateItems(ctx, grants, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
+						return fmt.Errorf("unable to add grants: %w", err)
+					}
+					msgs = append(msgs, roleGrantOplogMsgs...)
+				}
+
+				// Principals
+				{
+					principals := []interface{}{}
+					rolePrincipal, err := NewUserRole(defaultRolePublicId, "u_anon")
+					if err != nil {
+						return fmt.Errorf("unable to create in memory role user: %w", err)
+					}
+					principals = append(principals, rolePrincipal)
+
+					roleUserOplogMsgs := make([]*oplog.Message, 0, 2)
+					if err := w.CreateItems(ctx, principals, db.NewOplogMsgs(&roleUserOplogMsgs)); err != nil {
+						return fmt.Errorf("unable to add grants: %w", err)
+					}
+					msgs = append(msgs, roleUserOplogMsgs...)
+				}
+
+				metadata := oplog.Metadata{
+					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+					"scope-id":           []string{s.PublicId},
+					"scope-type":         []string{s.Type},
+					"resource-public-id": []string{defaultRole.PublicId},
 				}
 				if err := w.WriteOplogEntryWith(ctx, childOplogWrapper, roleTicket, metadata, msgs); err != nil {
 					return fmt.Errorf("unable to write oplog: %w", err)

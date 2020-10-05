@@ -185,8 +185,8 @@ func TestList(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	oNoRoles, pWithRoles := iam.TestScopes(t, iamRepo)
-	oWithRoles, pNoRoles := iam.TestScopes(t, iamRepo)
+	oNoRoles, pWithRoles := iam.TestScopes(t, iamRepo, iam.WithSkipDefaultRoleCreation(true))
+	oWithRoles, pNoRoles := iam.TestScopes(t, iamRepo, iam.WithSkipDefaultRoleCreation(true))
 	var wantOrgRoles []*pb.Role
 	var wantProjRoles []*pb.Role
 	for i := 0; i < 10; i++ {
@@ -278,14 +278,6 @@ func TestDelete(t *testing.T) {
 				Id: iam.RolePrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
-		},
-		{
-			name:    "Delete default role",
-			scopeId: "global",
-			req: &pbs.DeleteRoleRequest{
-				Id: "r_default",
-			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Bad Role Id formatting",
@@ -503,8 +495,8 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	grantString := "id=*;actions=*"
-	g, err := perms.Parse("global", "", grantString)
+	grantString := "id=*;type=*;actions=*"
+	g, err := perms.Parse("global", grantString)
 	require.NoError(t, err)
 	_, actions := g.Actions()
 	grant := &pb.Grant{
@@ -1339,7 +1331,7 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 	require.Equal(len(expected), len(got.GrantStrings))
 	require.Equal(len(expected), len(got.Grants))
 	for i, v := range expected {
-		parsed, err := perms.Parse("o_abc123", "", v)
+		parsed, err := perms.Parse("o_abc123", v)
 		require.NoError(err)
 		assert.Equal(expected[i], got.GrantStrings[i])
 		assert.Equal(expected[i], got.Grants[i].GetRaw())
@@ -1372,19 +1364,19 @@ func TestAddGrants(t *testing.T) {
 	}{
 		{
 			name:   "Add grant on empty role",
-			add:    []string{"id=*;actions=delete"},
-			result: []string{"id=*;actions=delete"},
+			add:    []string{"id=*;type=*;actions=delete"},
+			result: []string{"id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add grant on role with grant",
 			existing: []string{"id=1;actions=read"},
-			add:      []string{"id=*;actions=delete"},
-			result:   []string{"id=1;actions=read", "id=*;actions=delete"},
+			add:      []string{"id=*;type=*;actions=delete"},
+			result:   []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add grant matching existing grant",
-			existing: []string{"id=1;actions=read", "id=*;actions=delete"},
-			add:      []string{"id=*;actions=delete"},
+			existing: []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			add:      []string{"id=*;type=*;actions=delete"},
 			wantErr:  true,
 		},
 	}
@@ -1429,7 +1421,7 @@ func TestAddGrants(t *testing.T) {
 			name: "Bad Version",
 			req: &pbs.AddRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;actions=create"},
+				GrantStrings: []string{"id=*;type=*;actions=create"},
 				Version:      role.GetVersion() + 2,
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
@@ -1438,7 +1430,7 @@ func TestAddGrants(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.AddRoleGrantsRequest{
 				Id:           "bad id",
-				GrantStrings: []string{"id=*;actions=create"},
+				GrantStrings: []string{"id=*;type=*;actions=create"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1476,24 +1468,24 @@ func TestSetGrants(t *testing.T) {
 	}{
 		{
 			name:   "Set grant on empty role",
-			set:    []string{"id=*;actions=delete"},
-			result: []string{"id=*;actions=delete"},
+			set:    []string{"id=*;type=*;actions=delete"},
+			result: []string{"id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set grant on role with grant",
 			existing: []string{"id=1;actions=read"},
-			set:      []string{"id=*;actions=delete"},
-			result:   []string{"id=*;actions=delete"},
+			set:      []string{"id=*;type=*;actions=delete"},
+			result:   []string{"id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set grant matching existing grant",
-			existing: []string{"id=1;actions=read", "id=*;actions=delete"},
-			set:      []string{"id=*;actions=delete"},
-			result:   []string{"id=*;actions=delete"},
+			existing: []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			set:      []string{"id=*;type=*;actions=delete"},
+			result:   []string{"id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set empty on role",
-			existing: []string{"id=1;actions=read", "id=*;actions=delete"},
+			existing: []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
 			set:      nil,
 			result:   nil,
 		},
@@ -1541,7 +1533,7 @@ func TestSetGrants(t *testing.T) {
 			name: "Bad Version",
 			req: &pbs.SetRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;actions=create"},
+				GrantStrings: []string{"id=*;type=*;actions=create"},
 				Version:      role.GetVersion() + 2,
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
@@ -1550,7 +1542,7 @@ func TestSetGrants(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.SetRoleGrantsRequest{
 				Id:           "bad id",
-				GrantStrings: []string{"id=*;actions=create"},
+				GrantStrings: []string{"id=*;type=*;actions=create"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),

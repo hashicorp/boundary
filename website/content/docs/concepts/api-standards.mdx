@@ -75,8 +75,6 @@ The following method conventions are used within Boundary's API:
 * Passing a JSON `null` for a parameter has the effect of reverting that parameter to its default. For some parameters (e.g. `name`) this will simply clear the value (as the default `name` for a resource is empty); for other parameters this will revert to the current defaults within Boundary.
 * All parameters specified as part of a `PATCH` operation will be considered to be parameters that should be updated.
 
-For clients that have difficulty choosing which parameters to include in a request, for most paths an alternative form is allowed where the parameters of the resource can be specified in a JSON object under the key `item` and an `update_mask` parameter containing a comma-separate list of field names that should actually be used for the update operation is included.
-
 ### DELETE
 
 `DELETE` is used for deleting a specific resource, and is only used against a particular resource path.

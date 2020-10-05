@@ -1602,11 +1602,16 @@
             }
           },
           {
-            "name": "skip_role_creation",
+            "name": "skip_admin_role_creation",
             "in": "query",
             "required": false,
-            "type": "boolean",
-            "format": "boolean"
+            "type": "boolean"
+          },
+          {
+            "name": "skip_default_role_creation",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [

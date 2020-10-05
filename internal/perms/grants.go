@@ -230,7 +230,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 //
 // The scope must be the org and project where this grant originated, not the
 // request.
-func Parse(scopeId, userId, grantString string) (Grant, error) {
+func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 	if len(grantString) == 0 {
 		return Grant{}, errors.New("grant string is empty")
 	}
@@ -266,21 +266,25 @@ func Parse(scopeId, userId, grantString string) (Grant, error) {
 		}
 	}
 
-	// Check for templated user ID, and subtitute in with the authenticated user
+	opts := getOpts(opt...)
+
+	// Check for templated values ID, and subtitute in with the authenticated values
 	// if so
-	if grant.id != "" && userId != "" && strings.HasPrefix(grant.id, "{{") {
+	if grant.id != "" && strings.HasPrefix(grant.id, "{{") {
 		id := strings.TrimSuffix(strings.TrimPrefix(grant.id, "{{"), "}}")
 		id = strings.ToLower(strings.TrimSpace(id))
 		switch id {
 		case "user.id":
-			grant.id = userId
+			if opts.withUserId != "" {
+				grant.id = opts.withUserId
+			}
+		case "account.id":
+			if opts.withAccountId != "" {
+				grant.id = opts.withAccountId
+			}
 		default:
 			return Grant{}, fmt.Errorf("unknown template %q in grant %q value", grant.id, "id")
 		}
-	}
-
-	if grant.id == "" && grant.typ == resource.Unknown {
-		return Grant{}, errors.New(`"id" and "type" cannot both be empty`)
 	}
 
 	if err := grant.validateType(); err != nil {
@@ -289,6 +293,30 @@ func Parse(scopeId, userId, grantString string) (Grant, error) {
 
 	if err := grant.parseAndValidateActions(); err != nil {
 		return Grant{}, err
+	}
+
+	if !opts.withSkipFinalValidation {
+		// Validate the grant. Create a dummy resource and pass it through
+		// Allowed and ensure that we get allowed.
+		acl := NewACL(grant)
+		r := Resource{
+			ScopeId: scopeId,
+			Id:      grant.id,
+			Type:    grant.typ,
+		}
+		if !topLevelType(grant.typ) {
+			r.Pin = grant.id
+		}
+		var allowed bool
+		for k := range grant.actions {
+			results := acl.Allowed(r, k)
+			if results.Allowed {
+				allowed = true
+			}
+		}
+		if !allowed {
+			return Grant{}, errors.New("parsed grant string would not result in any action being authorized")
+		}
 	}
 
 	return grant, nil
@@ -307,7 +335,8 @@ func (g Grant) validateType() error {
 		resource.HostCatalog,
 		resource.HostSet,
 		resource.Host,
-		resource.Target:
+		resource.Target,
+		resource.Session:
 		return nil
 	}
 	return fmt.Errorf("unknown type specifier %q", g.typ)

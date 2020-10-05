@@ -34,7 +34,7 @@ func NewRoleGrant(roleId string, grant string, opt ...Option) (*RoleGrant, error
 	// Validate that the grant parses successfully. Note that we fake the scope
 	// here to avoid a lookup as the scope is only relevant at actual ACL
 	// checking time and we just care that it parses correctly.
-	perm, err := perms.Parse("o_abcd1234", "", grant)
+	perm, err := perms.Parse("o_abcd1234", grant)
 	if err != nil {
 		return nil, fmt.Errorf("new role grant: error parsing grant string: %w", err)
 	}
@@ -73,7 +73,7 @@ func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpTy
 	// checking time and we just care that it parses correctly. We may have
 	// already done this in NewRoleGrant, but we re-check and set it here
 	// anyways because it should still be part of the vetting process.
-	perm, err := perms.Parse("o_abcd1234", "", g.RawGrant)
+	perm, err := perms.Parse("o_abcd1234", g.RawGrant)
 	if err != nil {
 		return fmt.Errorf("vet role grant for writing: error parsing grant string: %w", err)
 	}

@@ -16,6 +16,8 @@ const (
 	Terminated         TerminationReason = "terminated"
 	NetworkError       TerminationReason = "network error"
 	SystemError        TerminationReason = "system error"
+	ConnectionLimit    TerminationReason = "connection limit"
+	SessionCanceled    TerminationReason = "canceled"
 )
 
 // String representation of the termination reason
@@ -36,6 +38,8 @@ func convertToReason(s string) (TerminationReason, error) {
 		return NetworkError, nil
 	case SystemError.String():
 		return SystemError, nil
+	case ConnectionLimit.String():
+		return ConnectionLimit, nil
 	default:
 		return "", fmt.Errorf("termination reason: %s is not a valid reason: %w", s, db.ErrInvalidParameter)
 	}

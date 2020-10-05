@@ -64,10 +64,10 @@ comment on domain wt_scope_id is
 create domain wt_role_id as text
 not null
 check(
-  length(trim(value)) > 10 or value = 'r_default'
+  length(trim(value)) > 10
 );
 comment on domain wt_scope_id is
-'"r_default", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_timestamp as
   timestamp with time zone
@@ -945,24 +945,6 @@ before
 insert on iam_role_grant
   for each row execute procedure default_create_time();
 
-create or replace function
-  disallow_r_default_deletion()
-  returns trigger
-as $$
-begin
-  if old.public_id = 'r_default' then
-    raise exception 'deletion of r_default not allowed';
-  end if;
-  return old;
-end;
-$$ language plpgsql;
-
-create trigger
-  iam_role_disallow_global_deletion
-before
-delete on iam_role
-  for each row execute procedure disallow_r_default_deletion();
-
 create trigger 
   update_version_column
 after update on iam_role
@@ -1098,17 +1080,6 @@ begin
 	return principal_scope || ':' || principal_id;
 end;
 $$ language plpgsql;
-
-insert into iam_role (public_id, name, description, scope_id)
-  values('r_default', 'default', 'Default role created on first instantiation of Boundary. It is meant to provide enough permissions for users to successfully authenticate via various client types.', 'global');
-insert into iam_role_grant (role_id, canonical_grant, raw_grant)
-  values
-    ('r_default', 'type=scope;actions=list', 'type=scope;actions=list'),
-    ('r_default', 'type=auth-method;actions=authenticate,list', 'type=auth-method;actions=authenticate,list');
-insert into iam_user_role (role_id, principal_id)
-  values 
-    ('r_default', 'u_anon'),
-    ('r_default', 'u_auth');
 
 -- iam_principle_role provides a consolidated view all principal roles assigned
 -- (user and group roles).
@@ -3427,7 +3398,9 @@ begin;
           'closed by end-user',
           'terminated',
           'network error',
-          'system error'
+          'system error',
+          'connection limit',
+          'canceled'
         )
       )
   );
@@ -3439,7 +3412,9 @@ begin;
     ('closed by end-user'),
     ('terminated'),
     ('network error'),
-    ('system error');
+    ('system error'),
+    ('connection limit'),
+    ('canceled');
 
   create table session (
     public_id wt_public_id primary key,
@@ -3592,18 +3567,26 @@ begin;
   as $$
   begin
     if new.termination_reason is not null then
-      -- check to see if there are any open connections.
-      perform from
-        session_connection sc,
-        session_connection_state scs
-      where
-        sc.public_id = scs.connection_id and 
-        scs.state != 'closed' and
-        sc.session_id = new.public_id;
-      if found then 
-        raise 'session %s has existing open connections', new.public_id;
+      perform  from 
+        session
+      where 
+        public_id = new.public_id and 
+        public_id not in (
+            select session_id 
+              from session_connection
+            where
+              public_id in (
+                select connection_id
+                  from session_connection_state
+                where 
+                  state != 'closed' and 
+                  end_time is null
+              )
+        );
+      if not found then 
+        raise 'session %s has open connections', new.public_id;
       end if;
-      
+
       -- check to see if there's a terminated state already, before inserting a
       -- new one.
       perform from
@@ -4027,7 +4010,7 @@ begin;
   after insert on session_connection
     for each row execute procedure insert_new_connection_state();
 
-  -- update_connection_state_on_closed_reason() is used in an update insert trigger on the
+  -- update_connection_state_on_closed_reason() is used in an update trigger on the
   -- session_connection table.  it will insert a state of "closed" in
   -- session_connection_state for the closed session connection. 
   create or replace function 
@@ -4048,6 +4031,9 @@ begin;
         values
           (new.public_id, 'closed');
       end if;
+      -- whenever we close a connection, we want to terminate the session if
+      -- possible.  
+      perform terminate_session_if_possible(new.session_id);
     end if;
     return new;
   end;
@@ -4132,6 +4118,1236 @@ begin;
 
   create trigger insert_session_connection_state before insert on session_connection_state
     for each row execute procedure insert_session_connection_state();
+
+-- terminate_session_if_possible takes a session id and terminates the session
+-- if the following conditions are met:
+--    * the session is expired and all its connections are closed.
+--    * the session is canceling and all its connections are closed
+--    * the session has exhausted its connection limit and all its connections
+--      are closed.  
+--
+--      Note: this function should align closely with the domain function
+--      TerminateCompletedSessions 
+create or replace function 
+    terminate_session_if_possible(terminate_session_id text)
+    returns void
+  as $$
+  begin 
+    -- is terminate_session_id in a canceling state
+    with canceling_session(session_id) as
+    (
+      select 
+        session_id
+      from
+        session_state ss
+      where 
+        ss.session_id = terminate_session_id and
+        ss.state = 'canceling' and 
+        ss.end_time is null
+    )
+    update session us
+      set termination_reason = 
+      case 
+        -- timed out sessions
+        when now() > us.expiration_time then 'timed out'
+        -- canceling sessions
+        when us.public_id in(
+          select 
+            session_id 
+          from 
+            canceling_session cs 
+          where
+            us.public_id = cs.session_id
+          ) then 'canceled' 
+        -- default: session connection limit reached.
+        else 'connection limit'
+      end
+    where
+      -- limit update to just the terminating_session_id
+      us.public_id = terminate_session_id and
+      termination_reason is null and
+      -- session expired or connection limit reached
+      (
+        -- expired sessions...
+        now() > us.expiration_time or 
+        -- connection limit reached...
+        (
+          select count (*) 
+            from session_connection sc 
+          where 
+            sc.session_id = us.public_id
+        ) >= connection_limit or 
+        -- canceled sessions
+        us.public_id in (
+          select 
+            session_id
+          from
+            canceling_session cs
+          where 
+            us.public_id = cs.session_id 
+        )
+      ) and 
+      -- make sure there are no existing connections
+      us.public_id not in (
+        select 
+          session_id 
+        from 
+            session_connection
+          where public_id in (
+          select 
+            connection_id
+          from 
+            session_connection_state
+          where 
+            state != 'closed' and
+            end_time is null
+        )
+    );
+ end;
+  $$ language plpgsql;
+
+
+commit;
+
+`),
+	},
+	"migrations/60_wh_domain_types.down.sql": {
+		name: "60_wh_domain_types.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop function wh_current_time_id;
+  drop function wh_current_date_id;
+  drop function wh_time_id;
+  drop function wh_date_id;
+  drop domain wh_dim_text;
+  drop domain wh_timestamp;
+  drop domain wh_public_id;
+  drop domain wh_dim_id;
+  drop function wh_dim_id;
+  drop domain wh_bytes_transmitted;
+  drop domain wh_inet_port;
+
+commit;
+
+`),
+	},
+	"migrations/60_wh_domain_types.up.sql": {
+		name: "60_wh_domain_types.up.sql",
+		bytes: []byte(`
+begin;
+
+  create extension if not exists "pgcrypto";
+
+  create domain wh_inet_port as integer
+  check(
+    value > 0
+    and
+    value <= 65535
+  );
+  comment on domain wh_inet_port is
+  'An ordinal number between 1 and 65535 representing a network port';
+
+  create domain wh_bytes_transmitted as bigint
+  check(
+    value >= 0
+  );
+  comment on domain wh_bytes_transmitted is
+  'A non-negative integer representing the number of bytes transmitted';
+
+  -- wh_dim_id generates and returns a random ID which should be considered as
+  -- universally unique.
+  create or replace function wh_dim_id()
+    returns text
+  as $$
+    select encode(digest(gen_random_bytes(16), 'sha256'), 'base64');
+  $$ language sql;
+
+  create domain wh_dim_id as text
+  check(
+    length(trim(value)) > 0
+  );
+  comment on domain wh_dim_id is
+  'Random ID generated with pgcrypto';
+
+  create domain wh_public_id as text
+  check(
+    value = 'None'
+    or
+    length(trim(value)) > 10
+  );
+  comment on domain wh_public_id is
+  'Equivalent to wt_public_id but also allows the value to be ''None''';
+
+  create domain wh_timestamp as timestamp with time zone not null;
+  comment on domain wh_timestamp is
+  'Timestamp used in warehouse tables';
+
+  create domain wh_dim_text as text not null
+  check(
+    length(trim(value)) > 0
+  );
+  comment on domain wh_dim_text is
+  'Text fields in dimension tables are always not null and always not empty strings';
+
+  -- wh_date_id returns the wh_date_dimension id for ts.
+  create or replace function wh_date_id(ts wh_timestamp)
+    returns integer
+  as $$
+    select to_char(ts, 'YYYYMMDD')::integer;
+  $$ language sql;
+
+  -- wh_time_id returns the wh_time_of_day_dimension id for ts.
+  create or replace function wh_time_id(ts wh_timestamp)
+    returns integer
+  as $$
+    select to_char(ts, 'SSSS')::integer;
+  $$ language sql;
+
+  -- wh_date_id returns the wh_date_dimension id for current_timestamp.
+  create or replace function wh_current_date_id()
+    returns integer
+  as $$
+    select wh_date_id(current_timestamp);
+  $$ language sql;
+
+  -- wh_time_id returns the wh_time_of_day_dimension id for current_timestamp.
+  create or replace function wh_current_time_id()
+    returns integer
+  as $$
+    select wh_time_id(current_timestamp);
+  $$ language sql;
+
+commit;
+
+`),
+	},
+	"migrations/62_wh_datetime.down.sql": {
+		name: "62_wh_datetime.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table wh_time_of_day_dimension;
+  drop table wh_date_dimension;
+
+commit;
+
+`),
+	},
+	"migrations/62_wh_datetime.up.sql": {
+		name: "62_wh_datetime.up.sql",
+		bytes: []byte(`
+begin;
+
+  create table wh_date_dimension (
+    id                            integer      primary key,
+    date                          date         not null,
+    calendar_quarter              wh_dim_text,
+    calendar_month                wh_dim_text,
+    calendar_year                 smallint     not null,
+    day_of_week                   wh_dim_text,
+    day_of_week_number            smallint     not null,
+    day_of_week_number_iso        smallint     not null,
+    day_of_week_number_zero_based smallint     not null,
+    day_number_in_calendar_month  smallint     not null,
+    day_number_in_calendar_year   smallint     not null,
+    weekday_indicator             wh_dim_text
+  );
+
+  insert into wh_date_dimension (
+    id, date,
+    calendar_quarter, calendar_month, calendar_year,
+    day_of_week, day_of_week_number, day_of_week_number_iso, day_of_week_number_zero_based,
+    day_number_in_calendar_month, day_number_in_calendar_year,
+    weekday_indicator
+  ) values (
+    -1, 'infinity',
+    'None', 'None', -1,
+    'None', -1, -1, -1,
+    -1, -1,
+    'None'
+  );
+
+  insert
+    into wh_date_dimension
+  select to_char(t.day, 'YYYYMMDD')::integer as id,
+         t.day::date                         as date,
+         'Q' || to_char(t.day, 'Q')          as calendar_quarter,
+         to_char(t.day, 'Month')             as calendar_month,
+         extract(year from t.day)            as calendar_year,
+         to_char(t.day, 'Day')               as day_of_week,
+         to_char(t.day, 'D')::int            as day_of_week_number,
+         extract(isodow from t.day)          as day_of_week_number_iso,
+         extract(dow from t.day)             as day_of_week_number_zero_based,
+         extract(day from t.day)             as day_number_in_calendar_month,
+         extract(doy from t.day)             as day_number_in_calendar_year,
+         case extract(isodow from t.day)
+           when 6 then 'Weekend'
+           when 7 then 'Weekend'
+           else 'Weekday'
+         end                                 as weekday_indicator
+    from generate_series(
+           date_trunc('day', timestamp '2019-10-09'),
+           date_trunc('day', timestamp '2019-10-09' + interval '50 years'),
+           interval '1 day'
+         ) as t(day);
+
+  create table wh_time_of_day_dimension (
+    id                 integer      primary key,
+    time_no_zone       time         not null,
+    time_at_utc        timetz       not null,
+    hour_of_day        smallint     not null,
+    minute_of_hour     smallint     not null,
+    second_of_minute   smallint     not null,
+    display_time_24    wh_dim_text,
+    display_time_12    wh_dim_text,
+    meridiem_indicator wh_dim_text
+  );
+
+  set timezone = 'UTC';
+
+  insert into wh_time_of_day_dimension (
+    id, time_no_zone, time_at_utc,
+    hour_of_day, minute_of_hour, second_of_minute,
+    display_time_24, display_time_12, meridiem_indicator
+  ) values (
+    -1, 'allballs', 'allballs',
+    -1, -1, -1,
+    'None', 'None', 'None'
+  );
+
+  insert
+    into wh_time_of_day_dimension
+  select to_char(t.second, 'SSSS')::integer as id,
+         t.second::time                     as time_no_zone,
+         t.second::time                     as time_at_utc,
+         extract(hour from t.second)        as hour_of_day,
+         extract(minute from t.second)      as minute_of_hour,
+         extract(second from t.second)      as second_of_minute,
+         to_char(t.second, 'HH24:MI:SS')    as display_time_24,
+         to_char(t.second, 'HH12:MI:SS AM') as display_time_12,
+         to_char(t.second, 'PM')            as meridiem_indicator
+    from generate_series(
+           date_trunc('day', current_timestamp),
+           date_trunc('day', current_timestamp) + interval '24 hours' - interval '1 second',
+           interval '1 second'
+         ) as t(second);
+
+commit;
+
+`),
+	},
+	"migrations/65_wh_session_dimensions.down.sql": {
+		name: "65_wh_session_dimensions.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop view whx_user_dimension_target;
+  drop view whx_user_dimension_source;
+  drop view whx_host_dimension_target;
+  drop view whx_host_dimension_source;
+  drop table wh_user_dimension;
+  drop table wh_host_dimension;
+
+commit;
+
+`),
+	},
+	"migrations/65_wh_session_dimensions.up.sql": {
+		name: "65_wh_session_dimensions.up.sql",
+		bytes: []byte(`
+begin;
+
+  create table wh_host_dimension (
+    -- random id generated using encode(digest(gen_random_bytes(16), 'sha256'), 'base64')
+    -- this is done to prevent conflicts with rows in other clusters
+    -- which enables warehouse data from multiple clusters to be loaded into a
+    -- single database instance
+    id                              wh_dim_id     primary key default wh_dim_id(),
+
+    host_id                         wh_public_id  not null,
+    host_type                       wh_dim_text,
+    host_name                       wh_dim_text,
+    host_description                wh_dim_text,
+    host_address                    wh_dim_text,
+
+    host_set_id                     wh_public_id  not null,
+    host_set_type                   wh_dim_text,
+    host_set_name                   wh_dim_text,
+    host_set_description            wh_dim_text,
+
+    host_catalog_id                 wh_public_id  not null,
+    host_catalog_type               wh_dim_text,
+    host_catalog_name               wh_dim_text,
+    host_catalog_description        wh_dim_text,
+
+    target_id                       wh_public_id  not null,
+    target_type                     wh_dim_text,
+    target_name                     wh_dim_text,
+    target_description              wh_dim_text,
+    target_default_port_number      integer       not null,
+    target_session_max_seconds      integer       not null,
+    target_session_connection_limit integer       not null,
+
+    project_id                      wt_scope_id   not null,
+    project_name                    wh_dim_text,
+    project_description             wh_dim_text,
+
+    host_organization_id            wt_scope_id   not null,
+    host_organization_name          wh_dim_text,
+    host_organization_description   wh_dim_text,
+
+    current_row_indicator           wh_dim_text,
+    row_effective_time              wh_timestamp,
+    row_expiration_time             wh_timestamp
+  );
+
+  -- https://www.postgresql.org/docs/current/indexes-partial.html
+  create unique index wh_host_dim_current_constraint
+    on wh_host_dimension (target_id, host_set_id, host_id)
+    where current_row_indicator = 'Current';
+
+  -- The whx_host_dimension_source and whx_host_dimension_target views are used
+  -- by an insert trigger to determine if the current row for the dimension has
+  -- changed and new one needs to be inserted. The first column in the target
+  -- view must be the current warehouse id and all remaining columns must match
+  -- the columns in the source view.
+
+  -- The whx_host_dimension_source view shows the current values in the
+  -- operational tables of the host dimension.
+  create view whx_host_dimension_source as
+  select -- id is the first column in the target view
+         h.public_id                     as host_id,
+         'static host'                   as host_type,
+         coalesce(h.name, 'None')        as host_name,
+         coalesce(h.description, 'None') as host_description,
+         coalesce(h.address, 'Unknown')  as host_address,
+         s.public_id                     as host_set_id,
+         'static host set'               as host_set_type,
+         coalesce(s.name, 'None')        as host_set_name,
+         coalesce(s.description, 'None') as host_set_description,
+         c.public_id                     as host_catalog_id,
+         'static host catalog'           as host_catalog_type,
+         coalesce(c.name, 'None')        as host_catalog_name,
+         coalesce(c.description, 'None') as host_catalog_description,
+         t.public_id                     as target_id,
+         'tcp target'                    as target_type,
+         coalesce(t.name, 'None')        as target_name,
+         coalesce(t.description, 'None') as target_description,
+         coalesce(t.default_port, 0)     as target_default_port_number,
+         t.session_max_seconds           as target_session_max_seconds,
+         t.session_connection_limit      as target_session_connection_limit,
+         p.public_id                     as project_id,
+         coalesce(p.name, 'None')        as project_name,
+         coalesce(p.description, 'None') as project_description,
+         o.public_id                     as host_organization_id,
+         coalesce(o.name, 'None')        as host_organization_name,
+         coalesce(o.description, 'None') as host_organization_description
+    from static_host as h,
+         static_host_catalog as c,
+         static_host_set_member as m,
+         static_host_set as s,
+         target_host_set as ts,
+         target_tcp as t,
+         iam_scope as p,
+         iam_scope as o
+   where h.catalog_id = c.public_id
+     and h.public_id = m.host_id
+     and s.public_id = m.set_id
+     and t.public_id = ts.target_id
+     and s.public_id = ts.host_set_id
+     and p.public_id = t.scope_id
+     and p.type = 'project'
+     and o.public_id = p.parent_id
+     and o.type = 'org'
+  ;
+
+  -- The whx_host_dimension_target view shows the rows in the wh_host_dimension
+  -- table marked as 'Current'.
+  create view whx_host_dimension_target as
+  select id,
+         host_id,
+         host_type,
+         host_name,
+         host_description,
+         host_address,
+         host_set_id,
+         host_set_type,
+         host_set_name,
+         host_set_description,
+         host_catalog_id,
+         host_catalog_type,
+         host_catalog_name,
+         host_catalog_description,
+         target_id,
+         target_type,
+         target_name,
+         target_description,
+         target_default_port_number,
+         target_session_max_seconds,
+         target_session_connection_limit,
+         project_id,
+         project_name,
+         project_description,
+         host_organization_id,
+         host_organization_name,
+         host_organization_description
+    from wh_host_dimension
+   where current_row_indicator = 'Current'
+  ;
+
+  create table wh_user_dimension (
+    -- random id generated using encode(digest(gen_random_bytes(16), 'sha256'), 'base64')
+    -- this is done to prevent conflicts with rows in other clusters
+    -- which enables warehouse data from multiple clusters to be loaded into a
+    -- single database instance
+    id                            wh_dim_id     primary key default wh_dim_id(),
+
+    user_id                       wt_user_id    not null,
+    user_name                     wh_dim_text,
+    user_description              wh_dim_text,
+
+    auth_account_id               wh_public_id  not null,
+    auth_account_type             wh_dim_text,
+    auth_account_name             wh_dim_text,
+    auth_account_description      wh_dim_text,
+
+    auth_method_id                wh_public_id  not null,
+    auth_method_type              wh_dim_text,
+    auth_method_name              wh_dim_text,
+    auth_method_description       wh_dim_text,
+
+    user_organization_id          wt_scope_id   not null,
+    user_organization_name        wh_dim_text,
+    user_organization_description wh_dim_text,
+
+    current_row_indicator         wh_dim_text,
+    row_effective_time            wh_timestamp,
+    row_expiration_time           wh_timestamp
+  );
+
+  -- The whx_user_dimension_source and whx_user_dimension_target views are used
+  -- by an insert trigger to determine if the current row for the dimension has
+  -- changed and new one needs to be inserted. The first column in the target
+  -- view must be the current warehouse id and all remaining columns must match
+  -- the columns in the source view.
+
+  -- The whx_user_dimension_source view shows the current values in the
+  -- operational tables of the user dimension.
+  create view whx_user_dimension_source as
+       select -- id is the first column in the target view
+              u.public_id                       as user_id,
+              coalesce(u.name, 'None')          as user_name,
+              coalesce(u.description, 'None')   as user_description,
+              coalesce(aa.public_id, 'None')    as auth_account_id,
+              case when aa.public_id is null then 'None'
+                   else 'password auth account'
+                   end                          as auth_account_type,
+              coalesce(apa.name, 'None')        as auth_account_name,
+              coalesce(apa.description, 'None') as auth_account_description,
+              coalesce(am.public_id, 'None')    as auth_method_id,
+              case when am.public_id is null then 'None'
+                   else 'password auth method'
+                   end                          as auth_method_type,
+              coalesce(apm.name, 'None')        as auth_method_name,
+              coalesce(apm.description, 'None') as auth_method_description,
+              org.public_id                     as user_organization_id,
+              coalesce(org.name, 'None')        as user_organization_name,
+              coalesce(org.description, 'None') as user_organization_description
+         from iam_user as u
+    left join auth_account as aa on           u.public_id = aa.iam_user_id
+    left join auth_method as am on            aa.auth_method_id = am.public_id
+    left join auth_password_account as apa on aa.public_id = apa.public_id
+    left join auth_password_method as apm on  am.public_id = apm.public_id
+         join iam_scope as org on             u.scope_id = org.public_id
+  ;
+
+  -- The whx_user_dimension_target view shows the rows in the wh_user_dimension
+  -- table marked as 'Current'.
+  create view whx_user_dimension_target as
+    select id,
+           user_id,
+           user_name,
+           user_description,
+           auth_account_id,
+           auth_account_type,
+           auth_account_name,
+           auth_account_description,
+           auth_method_id,
+           auth_method_type,
+           auth_method_name,
+           auth_method_description,
+           user_organization_id,
+           user_organization_name,
+           user_organization_description
+      from wh_user_dimension
+     where current_row_indicator = 'Current'
+  ;
+
+commit;
+
+`),
+	},
+	"migrations/66_wh_session_dimensions.down.sql": {
+		name: "66_wh_session_dimensions.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop function wh_upsert_user;
+  drop function wh_upsert_host;
+
+commit;
+
+`),
+	},
+	"migrations/66_wh_session_dimensions.up.sql": {
+		name: "66_wh_session_dimensions.up.sql",
+		bytes: []byte(`
+begin;
+
+  -- wh_upsert_host returns the wh_host_dimension id for p_host_id,
+  -- p_host_set_id, and p_target_id. wh_upsert_host compares the current values
+  -- in the wh_host_dimension with the current values in the operational tables
+  -- for the provide parameters. If the values between the operational tables
+  -- and the wh_host_dimension differ, a new row is inserted in the
+  -- wh_host_dimension to match the current values in the operational tables and
+  -- the new id is returned. If the values do not differ, the current id is
+  -- returned.
+  create or replace function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
+    returns wh_dim_id
+  as $$
+  declare
+    src     whx_host_dimension_target%rowtype;
+    target  whx_host_dimension_target%rowtype;
+    new_row wh_host_dimension%rowtype;
+  begin
+    select * into target
+      from whx_host_dimension_target as t
+     where t.host_id               = p_host_id
+       and t.host_set_id           = p_host_set_id
+       and t.target_id             = p_target_id;
+
+    select target.id, t.* into src
+      from whx_host_dimension_source as t
+     where t.host_id               = p_host_id
+       and t.host_set_id           = p_host_set_id
+       and t.target_id             = p_target_id;
+
+    if src is distinct from target then
+
+      -- expire the current row
+      update wh_host_dimension
+         set current_row_indicator = 'Expired',
+             row_expiration_time   = current_timestamp
+       where host_id               = p_host_id
+         and host_set_id           = p_host_set_id
+         and target_id             = p_target_id
+         and current_row_indicator = 'Current';
+
+      -- insert a new row
+      insert into wh_host_dimension (
+             host_id,                    host_type,                  host_name,                       host_description,         host_address,
+             host_set_id,                host_set_type,              host_set_name,                   host_set_description,
+             host_catalog_id,            host_catalog_type,          host_catalog_name,               host_catalog_description,
+             target_id,                  target_type,                target_name,                     target_description,
+             target_default_port_number, target_session_max_seconds, target_session_connection_limit,
+             project_id,                 project_name,               project_description,
+             host_organization_id,       host_organization_name,     host_organization_description,
+             current_row_indicator,      row_effective_time,         row_expiration_time
+      )
+      select host_id,                    host_type,                  host_name,                       host_description,         host_address,
+             host_set_id,                host_set_type,              host_set_name,                   host_set_description,
+             host_catalog_id,            host_catalog_type,          host_catalog_name,               host_catalog_description,
+             target_id,                  target_type,                target_name,                     target_description,
+             target_default_port_number, target_session_max_seconds, target_session_connection_limit,
+             project_id,                 project_name,               project_description,
+             host_organization_id,       host_organization_name,     host_organization_description,
+             'Current',                  current_timestamp,          'infinity'::timestamptz
+        from whx_host_dimension_source
+       where host_id               = p_host_id
+         and host_set_id           = p_host_set_id
+         and target_id             = p_target_id
+      returning * into new_row;
+
+      return new_row.id;
+    end if;
+    return target.id;
+
+  end;
+  $$ language plpgsql;
+
+  -- wh_upsert_user returns the wh_user_dimension id for p_user_id and
+  -- p_auth_token_id. wh_upsert_user compares the current values in the
+  -- wh_user_dimension with the current values in the operational tables for the
+  -- provide parameters. If the values between the operational tables and the
+  -- wh_user_dimension differ, a new row is inserted in the wh_user_dimension to
+  -- match the current values in the operational tables and the new id is
+  -- returned. If the values do not differ, the current id is returned.
+  create or replace function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id)
+    returns wh_dim_id
+  as $$
+  declare
+    src     whx_user_dimension_target%rowtype;
+    target  whx_user_dimension_target%rowtype;
+    new_row wh_user_dimension%rowtype;
+    acct_id wt_public_id;
+  begin
+    select auth_account_id into strict acct_id
+      from auth_token
+     where public_id = p_auth_token_id;
+
+    select * into target
+      from whx_user_dimension_target as t
+     where t.user_id               = p_user_id
+       and t.auth_account_id       = acct_id;
+
+    select target.id, t.* into src
+      from whx_user_dimension_source as t
+     where t.user_id               = p_user_id
+       and t.auth_account_id       = acct_id;
+
+    if src is distinct from target then
+
+      -- expire the current row
+      update wh_user_dimension
+         set current_row_indicator = 'Expired',
+             row_expiration_time   = current_timestamp
+       where user_id               = p_user_id
+         and auth_account_id       = acct_id
+         and current_row_indicator = 'Current';
+
+      -- insert a new row
+      insert into wh_user_dimension (
+             user_id,               user_name,              user_description,
+             auth_account_id,       auth_account_type,      auth_account_name,             auth_account_description,
+             auth_method_id,        auth_method_type,       auth_method_name,              auth_method_description,
+             user_organization_id,  user_organization_name, user_organization_description,
+             current_row_indicator, row_effective_time,     row_expiration_time
+      )
+      select user_id,               user_name,              user_description,
+             auth_account_id,       auth_account_type,      auth_account_name,             auth_account_description,
+             auth_method_id,        auth_method_type,       auth_method_name,              auth_method_description,
+             user_organization_id,  user_organization_name, user_organization_description,
+             'Current',             current_timestamp,      'infinity'::timestamptz
+        from whx_user_dimension_source
+       where user_id               = p_user_id
+         and auth_account_id       = acct_id
+      returning * into new_row;
+
+      return new_row.id;
+    end if;
+    return target.id;
+
+  end;
+  $$ language plpgsql;
+commit;
+
+`),
+	},
+	"migrations/68_wh_session_facts.down.sql": {
+		name: "68_wh_session_facts.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table wh_session_connection_accumulating_fact;
+  drop table wh_session_accumulating_fact;
+
+commit;
+
+`),
+	},
+	"migrations/68_wh_session_facts.up.sql": {
+		name: "68_wh_session_facts.up.sql",
+		bytes: []byte(`
+begin;
+
+  -- Column names for numeric fields that are not a measurement end in id or
+  -- number. This naming convention enables automatic field type detection in
+  -- certain data analysis tools.
+  -- https://help.tableau.com/current/pro/desktop/en-us/data_clean_adm.htm
+
+  -- The wh_session_accumulating_fact table is an accumulating snapshot.
+  -- The table wh_session_accumulating_fact is an accumulating fact table.
+  -- The grain of the fact table is one row per session.
+  create table wh_session_accumulating_fact (
+    session_id wt_public_id primary key,
+    -- auth token id is a degenerate dimension
+    auth_token_id wt_public_id not null,
+
+    -- foreign keys to the dimension tables
+    host_id wh_dim_id not null
+      references wh_host_dimension (id)
+      on delete restrict
+      on update cascade,
+    user_id wh_dim_id not null
+      references wh_user_dimension (id)
+      on delete restrict
+      on update cascade,
+
+    -- TODO(mgaffney) 09/2020: add dimension and foreign key for the session
+    -- termination reason
+
+    -- date and time foreign keys
+    session_pending_date_id integer not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_pending_time_id integer not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_pending_time wh_timestamp,
+
+    session_active_date_id integer default -1 not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_active_time_id integer default -1 not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_active_time wh_timestamp default 'infinity'::timestamptz,
+
+    session_canceling_date_id integer default -1 not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_canceling_time_id integer default -1 not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_canceling_time wh_timestamp default 'infinity'::timestamptz,
+
+    session_terminated_date_id integer default -1 not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_terminated_time_id integer default -1 not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    session_terminated_time wh_timestamp default 'infinity'::timestamptz,
+
+    -- TODO(mgaffney) 09/2020: add columns for session expiration
+
+    -- TODO(mgaffney) 09/2020: add connection limit. This may need a dimension
+    -- table and foreign key column to represent unlimited connections.
+
+    -- The total number of connections made during the session.
+    total_connection_count bigint, -- will be null until the first connection is created
+
+    -- The total number of bytes received by workers from the client and sent
+    -- to the endpoint for this session.
+    -- total_bytes_up is a fully additive measurement.
+    total_bytes_up wh_bytes_transmitted, -- will be null until the first connection is closed
+    -- The total number of bytes received by workers from the endpoint and sent
+    -- to the client for this session.
+    -- total_bytes_down is a fully additive measurement.
+    total_bytes_down wh_bytes_transmitted -- will be null until the first connection is closed
+  );
+
+  -- The wh_session_connection_accumulating_fact table is an accumulating fact table.
+  -- The grain of the fact table is one row per session connection.
+  create table wh_session_connection_accumulating_fact  (
+    connection_id wt_public_id primary key,
+    -- session_id is a degenerate dimension
+    session_id wt_public_id not null
+      references wh_session_accumulating_fact (session_id)
+      on delete cascade
+      on update cascade,
+
+    -- foreign keys to the dimension tables
+    host_id wh_dim_id not null
+      references wh_host_dimension (id)
+      on delete restrict
+      on update cascade,
+    user_id wh_dim_id not null
+      references wh_user_dimension (id)
+      on delete restrict
+      on update cascade,
+
+    -- TODO(mgaffney) 09/2020: add dimension and foreign key for the connection
+    -- closed reason
+
+    -- date and time foreign keys and timestamps
+    connection_authorized_date_id integer not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_authorized_time_id integer not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_authorized_time wh_timestamp,
+
+    connection_connected_date_id integer default -1 not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_connected_time_id integer default -1 not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_connected_time wh_timestamp default 'infinity'::timestamptz,
+
+    connection_closed_date_id integer default -1 not null
+      references wh_date_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_closed_time_id integer default -1 not null
+      references wh_time_of_day_dimension (id)
+      on delete restrict
+      on update cascade,
+    connection_closed_time wh_timestamp default 'infinity'::timestamptz,
+
+    -- TODO(mgaffney) 09/2020: add a connection_duration_in_seconds column
+
+    -- The client address and port are degenerate dimensions
+    client_tcp_address inet, -- can be null
+    client_tcp_port_number wh_inet_port, -- can be null
+
+    -- The endpoint address and port are degenerate dimensions
+    endpoint_tcp_address inet, -- can be null
+    endpoint_tcp_port_number wh_inet_port, -- can be null
+
+    -- the connection_count must always be 1
+    -- this is a common pattern in data warehouse models
+    -- See The Data Warehouse Toolkit, Third Edition
+    -- by Ralph Kimball and Margy Ross for more information
+    connection_count smallint default 1 not null
+      constraint connection_count_must_be_1
+      check(connection_count = 1),
+
+    -- The total number of bytes received by the worker from the client and sent
+    -- to the endpoint for this connection.
+    -- bytes_up is a fully additive measurement.
+    bytes_up wh_bytes_transmitted, -- can be null
+    -- The total number of bytes received by the worker from the endpoint and sent
+    -- to the client for this connection.
+    -- bytes_down is a fully additive measurement.
+    bytes_down wh_bytes_transmitted -- can be null
+  );
+
+  -- TODO(mgaffney) 09/2020: Research and test if the comment fields are used by
+  -- data analysis tools.
+  comment on table wh_session_connection_accumulating_fact is
+    'The Wh Session Connection Accumulating Fact table is an accumulating fact table. '
+    'The grain of the fact table is one row per session connection.';
+  comment on column wh_session_connection_accumulating_fact.bytes_up is
+    'Bytes Up is the total number of bytes received by the worker from the '
+    'client and sent to the endpoint for this connection. Bytes Up is a fully '
+    'additive measurement.';
+  comment on column wh_session_connection_accumulating_fact.bytes_down is
+    'Bytes Down is the total number of bytes received by the worker from the '
+    'endpoint and sent to the client for this connection. Bytes Down is a fully '
+    'additive measurement.';
+
+  create index on wh_session_connection_accumulating_fact(session_id);
+
+commit;
+
+`),
+	},
+	"migrations/69_wh_session_facts.down.sql": {
+		name: "69_wh_session_facts.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop trigger wh_insert_session_connection_state on session_connection_state;
+  drop function wh_insert_session_connection_state;
+
+  drop trigger wh_insert_session_state on session_state;
+  drop function wh_insert_session_state;
+
+  drop trigger wh_update_session_connection on session_connection;
+  drop function wh_update_session_connection;
+
+  drop trigger wh_insert_session_connection on session_connection;
+  drop function wh_insert_session_connection;
+
+  drop trigger wh_insert_session on session;
+  drop function wh_insert_session;
+
+  drop function wh_rollup_connections;
+
+commit;
+
+`),
+	},
+	"migrations/69_wh_session_facts.up.sql": {
+		name: "69_wh_session_facts.up.sql",
+		bytes: []byte(`
+begin;
+
+  -- wh_rollup_connections calculates the aggregate values from
+  -- wh_session_connection_accumulating_fact for p_session_id and updates
+  -- wh_session_accumulating_fact for p_session_id with those values.
+  create or replace function wh_rollup_connections(p_session_id wt_public_id)
+    returns void
+  as $$
+  declare
+    session_row wh_session_accumulating_fact%rowtype;
+  begin
+    with
+    session_totals (session_id, total_connection_count, total_bytes_up, total_bytes_down) as (
+      select session_id,
+             sum(connection_count),
+             sum(bytes_up),
+             sum(bytes_down)
+        from wh_session_connection_accumulating_fact
+       where session_id = p_session_id
+       group by session_id
+    )
+    update wh_session_accumulating_fact
+       set total_connection_count = session_totals.total_connection_count,
+           total_bytes_up         = session_totals.total_bytes_up,
+           total_bytes_down       = session_totals.total_bytes_down
+      from session_totals
+     where wh_session_accumulating_fact.session_id = session_totals.session_id
+    returning wh_session_accumulating_fact.* into strict session_row;
+  end;
+  $$ language plpgsql;
+
+  --
+  -- Session triggers
+  --
+
+  -- wh_insert_session returns an after insert trigger for the session table
+  -- which inserts a row in wh_session_accumulating_fact for the new session.
+  -- wh_insert_session also calls the wh_upsert_host and wh_upsert_user
+  -- functions which can result in new rows in wh_host_dimension and
+  -- wh_user_dimension respectively.
+  create or replace function wh_insert_session()
+    returns trigger
+  as $$
+  declare
+    new_row wh_session_accumulating_fact%rowtype;
+  begin
+    with
+    pending_timestamp (date_dim_id, time_dim_id, ts) as (
+      select wh_date_id(start_time), wh_time_id(start_time), start_time
+        from session_state
+       where session_id = new.public_id
+         and state = 'pending'
+    )
+    insert into wh_session_accumulating_fact (
+           session_id,
+           auth_token_id,
+           host_id,
+           user_id,
+           session_pending_date_id,
+           session_pending_time_id,
+           session_pending_time
+    )
+    select new.public_id,
+           new.auth_token_id,
+           wh_upsert_host(new.host_id, new.host_set_id, new.target_id),
+           wh_upsert_user(new.user_id, new.auth_token_id),
+           pending_timestamp.date_dim_id,
+           pending_timestamp.time_dim_id,
+           pending_timestamp.ts
+      from pending_timestamp
+      returning * into strict new_row;
+    return null;
+  end;
+  $$ language plpgsql;
+
+  create trigger wh_insert_session
+    after insert on session
+    for each row
+    execute function wh_insert_session();
+
+  --
+  -- Session Connection triggers
+  --
+
+  -- wh_insert_session_connection returns an after insert trigger for the
+  -- session_connection table which inserts a row in
+  -- wh_session_connection_accumulating_fact for the new session connection.
+  -- wh_insert_session_connection also calls wh_rollup_connections which can
+  -- result in updates to wh_session_accumulating_fact.
+  create or replace function wh_insert_session_connection()
+    returns trigger
+  as $$
+  declare
+    new_row wh_session_connection_accumulating_fact%rowtype;
+  begin
+    with
+    authorized_timestamp (date_dim_id, time_dim_id, ts) as (
+      select wh_date_id(start_time), wh_time_id(start_time), start_time
+        from session_connection_state
+       where connection_id = new.public_id
+         and state = 'authorized'
+    ),
+    session_dimension (host_dim_id, user_dim_id) as (
+      select host_id, user_id
+        from wh_session_accumulating_fact
+       where session_id = new.session_id
+    )
+    insert into wh_session_connection_accumulating_fact (
+           connection_id,
+           session_id,
+           host_id,
+           user_id,
+           connection_authorized_date_id,
+           connection_authorized_time_id,
+           connection_authorized_time,
+           client_tcp_address,
+           client_tcp_port_number,
+           endpoint_tcp_address,
+           endpoint_tcp_port_number,
+           bytes_up,
+           bytes_down
+    )
+    select new.public_id,
+           new.session_id,
+           session_dimension.host_dim_id,
+           session_dimension.user_dim_id,
+           authorized_timestamp.date_dim_id,
+           authorized_timestamp.time_dim_id,
+           authorized_timestamp.ts,
+           new.client_tcp_address,
+           new.client_tcp_port,
+           new.endpoint_tcp_address,
+           new.endpoint_tcp_port,
+           new.bytes_up,
+           new.bytes_down
+      from authorized_timestamp,
+           session_dimension
+      returning * into strict new_row;
+    perform wh_rollup_connections(new.session_id);
+    return null;
+  end;
+  $$ language plpgsql;
+
+  create trigger wh_insert_session_connection
+    after insert on session_connection
+    for each row
+    execute function wh_insert_session_connection();
+
+  -- wh_update_session_connection returns an after update trigger for the
+  -- session_connection table which updates a row in
+  -- wh_session_connection_accumulating_fact for the session connection.
+  -- wh_update_session_connection also calls wh_rollup_connections which can
+  -- result in updates to wh_session_accumulating_fact.
+  create or replace function wh_update_session_connection()
+    returns trigger
+  as $$
+  declare
+    updated_row wh_session_connection_accumulating_fact%rowtype;
+  begin
+        update wh_session_connection_accumulating_fact
+           set client_tcp_address       = new.client_tcp_address,
+               client_tcp_port_number   = new.client_tcp_port,
+               endpoint_tcp_address     = new.endpoint_tcp_address,
+               endpoint_tcp_port_number = new.endpoint_tcp_port,
+               bytes_up                 = new.bytes_up,
+               bytes_down               = new.bytes_down
+         where connection_id = new.public_id
+     returning * into strict updated_row;
+    perform wh_rollup_connections(new.session_id);
+    return null;
+  end;
+  $$ language plpgsql;
+
+  create trigger wh_update_session_connection
+    after update on session_connection
+    for each row
+    execute function wh_update_session_connection();
+
+  --
+  -- Session State trigger
+  --
+
+  -- wh_insert_session_state returns an after insert trigger for the
+  -- session_state table which updates wh_session_accumulating_fact.
+  create or replace function wh_insert_session_state()
+    returns trigger
+  as $$
+  declare
+    date_col text;
+    time_col text;
+    ts_col text;
+    q text;
+    session_row wh_session_accumulating_fact%rowtype;
+  begin
+    if new.state = 'pending' then
+      -- The pending state is the first state which is handled by the
+      -- wh_insert_session trigger. The update statement in this trigger will
+      -- fail for the pending state because the row for the session has not yet
+      -- been inserted into the wh_session_accumulating_fact table.
+      return null;
+    end if;
+
+    date_col = 'session_' || new.state || '_date_id';
+    time_col = 'session_' || new.state || '_time_id';
+    ts_col   = 'session_' || new.state || '_time';
+
+    q = format('update wh_session_accumulating_fact
+                   set (%I, %I, %I) = (select wh_date_id(%L), wh_time_id(%L), %L::timestamptz)
+                 where session_id = %L
+                returning *',
+                date_col,       time_col,       ts_col,
+                new.start_time, new.start_time, new.start_time,
+                new.session_id);
+    execute q into strict session_row;
+
+    return null;
+  end;
+  $$ language plpgsql;
+
+  create trigger wh_insert_session_state
+    after insert on session_state
+    for each row
+    execute function wh_insert_session_state();
+
+  --
+  -- Session Connection State trigger
+  --
+
+  -- wh_insert_session_connection_state returns an after insert trigger for the
+  -- session_connection_state table which updates
+  -- wh_session_connection_accumulating_fact.
+  create or replace function wh_insert_session_connection_state()
+    returns trigger
+  as $$
+  declare
+    date_col text;
+    time_col text;
+    ts_col text;
+    q text;
+    connection_row wh_session_connection_accumulating_fact%rowtype;
+  begin
+    if new.state = 'authorized' then
+      -- The authorized state is the first state which is handled by the
+      -- wh_insert_session_connection trigger. The update statement in this
+      -- trigger will fail for the authorized state because the row for the
+      -- session connection has not yet been inserted into the
+      -- wh_session_connection_accumulating_fact table.
+      return null;
+    end if;
+
+    date_col = 'connection_' || new.state || '_date_id';
+    time_col = 'connection_' || new.state || '_time_id';
+    ts_col   = 'connection_' || new.state || '_time';
+
+    q = format('update wh_session_connection_accumulating_fact
+                   set (%I, %I, %I) = (select wh_date_id(%L), wh_time_id(%L), %L::timestamptz)
+                 where connection_id = %L
+                returning *',
+                date_col,       time_col,       ts_col,
+                new.start_time, new.start_time, new.start_time,
+                new.connection_id);
+    execute q into strict connection_row;
+
+    return null;
+  end;
+  $$ language plpgsql;
+
+  create trigger wh_insert_session_connection_state
+    after insert on session_connection_state
+    for each row
+    execute function wh_insert_session_connection_state();
 
 commit;
 

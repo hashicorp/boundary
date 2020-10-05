@@ -162,7 +162,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 			deleteRoleGrants := make([]interface{}, 0, len(grants))
 			for _, grant := range grants {
 				// Use a fake scope, just want to get out a canonical string
-				perm, err := perms.Parse("o_abcd1234", "", grant)
+				perm, err := perms.Parse("o_abcd1234", grant, perms.WithSkipFinalValidation(true))
 				if err != nil {
 					return fmt.Errorf("delete role grants: error parsing grant string: %w", err)
 				}
@@ -253,7 +253,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	deleteRoleGrants := make([]interface{}, 0, len(grants))
 	for _, grant := range grants {
 		// Use a fake scope, just want to get out a canonical string
-		perm, err := perms.Parse("o_abcd1234", "", grant)
+		perm, err := perms.Parse("o_abcd1234", grant, perms.WithSkipFinalValidation(true))
 		if err != nil {
 			return nil, db.NoRowsAffected, fmt.Errorf("set role grants: error parsing grant string: %w", err)
 		}
@@ -448,11 +448,7 @@ select role_scope as scope_id, role_grant as grant from final;
 	}
 
 	var grants []perms.GrantPair
-	tx, err := r.reader.DB()
-	if err != nil {
-		return nil, err
-	}
-	rows, err := tx.Query(query, userId)
+	rows, err := r.reader.Query(ctx, query, []interface{}{userId})
 	if err != nil {
 		return nil, err
 	}
