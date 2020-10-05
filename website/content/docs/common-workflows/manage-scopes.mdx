@@ -21,7 +21,7 @@ In this example, we're going to create two scopes, a project and an organization
 generated resources in `dev` mode. Please make sure to use the resource ID's that are generated when running this example. For example, if you run
 `boundary users create`, use the resource ID of the user seen in stdout, not the ID in the example command.
 
-## Create a Organization
+## Create an Organization
 
 An organization lives in the global scope. In this example, we're going to create an organization. In doing so, we're going to opt for automated role creation during scope generation in order to simplify management of the scope by the user.
 
@@ -62,6 +62,7 @@ Click save and view the org in the main Boundary landing page:
 </Tab>
 <Tab heading="Terraform">
 
+
 ```hcl
 resource "boundary_scope" "org" {
   scope_id         = "global"
@@ -74,12 +75,14 @@ resource "boundary_scope" "org" {
 </Tab>
 </Tabs>
 
+
 ## Create a Project
 
 Next, we're going to add a project scope to our organization. Again, we're going to opt for automated role creation to simplify management of this scope.
 
 <Tabs>
 <Tab heading="CLI">
+
 
 ```bash
 $ boundary scopes create -scope-id o_0MkQUfE9jA -name my_project -description 'My frist project'
@@ -102,6 +105,7 @@ Scope information:
 </Tab>
 <Tab heading="Admin Console">
 
+
 Navigate to your org in the UI and click `new` project:
 ![](/img/manage-scopes-project-undefined.png)
 
@@ -113,6 +117,7 @@ View the newly created project:
 
 </Tab>
 <Tab heading="Terraform">
+
 
 ```hcl
 resource "boundary_scope" "project" {
@@ -127,3 +132,4 @@ resource "boundary_scope" "project" {
 
 </Tab>
 </Tabs>
+
