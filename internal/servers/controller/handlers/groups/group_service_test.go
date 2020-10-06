@@ -1009,8 +1009,8 @@ func TestAddMember(t *testing.T) {
 		{
 			name: "Invalid user id in member list",
 			req: &pbs.AddGroupMembersRequest{
-				Id:      grp.GetPublicId(),
-				Version: grp.GetVersion(),
+				Id:        grp.GetPublicId(),
+				Version:   grp.GetVersion(),
 				MemberIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1018,8 +1018,8 @@ func TestAddMember(t *testing.T) {
 		{
 			name: "u_recovery",
 			req: &pbs.AddGroupMembersRequest{
-				Id:      grp.GetPublicId(),
-				Version: grp.GetVersion(),
+				Id:        grp.GetPublicId(),
+				Version:   grp.GetVersion(),
 				MemberIds: []string{"u_recovery"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1139,8 +1139,8 @@ func TestSetMember(t *testing.T) {
 		{
 			name: "Invalid user id in member list",
 			req: &pbs.SetGroupMembersRequest{
-				Id:      grp.GetPublicId(),
-				Version: grp.GetVersion(),
+				Id:        grp.GetPublicId(),
+				Version:   grp.GetVersion(),
 				MemberIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1148,8 +1148,8 @@ func TestSetMember(t *testing.T) {
 		{
 			name: "u_recovery",
 			req: &pbs.SetGroupMembersRequest{
-				Id:      grp.GetPublicId(),
-				Version: grp.GetVersion(),
+				Id:        grp.GetPublicId(),
+				Version:   grp.GetVersion(),
 				MemberIds: []string{"u_recovery"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1278,8 +1278,8 @@ func TestRemoveMember(t *testing.T) {
 		{
 			name: "Invalid user id in member list",
 			req: &pbs.RemoveGroupMembersRequest{
-				Id:      grp.GetPublicId(),
-				Version: grp.GetVersion(),
+				Id:        grp.GetPublicId(),
+				Version:   grp.GetVersion(),
 				MemberIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
