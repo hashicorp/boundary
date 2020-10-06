@@ -282,7 +282,7 @@ func (c *Command) Run(args []string) int {
 		result, err = targetClient.RemoveHostSets(c.Context, c.FlagId, version, hostSets, opts...)
 	case "set-host-sets":
 		result, err = targetClient.SetHostSets(c.Context, c.FlagId, version, hostSets, opts...)
-	case "authorize":
+	case "authorize-session":
 		sar, err = targetClient.AuthorizeSession(c.Context, c.FlagId, opts...)
 	}
 
