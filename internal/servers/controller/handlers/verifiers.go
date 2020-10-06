@@ -149,6 +149,8 @@ func ValidateDeleteRequest(prefix string, r DeleteRequest, fn CustomValidatorFun
 
 var reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 
+// ValidId verifies the resource prefix to ensure it's a valid resource in the
+// Boundary domain model
 func ValidId(prefix, id string) bool {
 	prefix = prefix + "_"
 	if !strings.HasPrefix(id, prefix) {

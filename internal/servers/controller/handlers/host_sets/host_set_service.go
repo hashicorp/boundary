@@ -412,6 +412,10 @@ func toProto(in *static.HostSet, hs []*static.Host) *pb.HostSet {
 	return &out
 }
 
+func invalidResourcePrefix(r, p string) string {
+	return fmt.Sprintf("The resource ID prefix is incorrectly formatted, '%s' resources begin with '%s'", r, p)
+}
+
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
 //  * The path passed in is correctly formatted
@@ -426,13 +430,14 @@ func validateGetRequest(req *pbs.GetHostSetRequest) error {
 func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostCatalogPrefix, req.GetItem().GetHostCatalogId()) {
-			badFields["host_catalog_id"] = "The field is incorrectly formatted."
-		}
+
 		switch host.SubtypeFromId(req.GetItem().GetHostCatalogId()) {
 		case host.StaticSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
 				badFields["type"] = "Doesn't match the parent resource's type."
+			}
+			if !handlers.ValidId(static.HostCatalogPrefix, req.GetItem().GetHostCatalogId()) {
+				badFields["host_catalog_id"] = invalidResourcePrefix("Host Catalog", static.HostCatalogPrefix)
 			}
 		}
 		return badFields
@@ -458,8 +463,11 @@ func validateDeleteRequest(req *pbs.DeleteHostSetRequest) error {
 
 func validateListRequest(req *pbs.ListHostSetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
-		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	switch host.SubtypeFromId(req.GetItem().GetHostCatalogId()) {
+	case host.StaticSubtype:
+		if !handlers.ValidId(static.HostCatalogPrefix, req.GetItem().GetHostCatalogId()) {
+			badFields["host_catalog_id"] = invalidResourcePrefix("Host Catalog", static.HostCatalogPrefix)
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
