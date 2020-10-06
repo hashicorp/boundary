@@ -98,38 +98,38 @@ module.exports = [
 
   // below is for adding new accounts to an auth-method
   {
-    source: '/help/admin-ui/new-account',
+    source: '/help/admin-ui/accounts/new',
     destination: '/docs/common-workflows/manage-identities#create-account',
     permanent: false,
   },
   // below for adding new scopes
   {
-    source: '/help/admin-ui/new-org',
+    source: '/help/admin-ui/orgs/new',
     destination: '/docs/common-workflows/manage-scopes',
     permanent: false,
   },
   {
-    source: '/help/admin-ui/new-project',
+    source: '/help/admin-ui/projects/new',
     destination: '/docs/common-workflows/manage-scopes',
     permanent: false,
   },
   {
-    source: '/help/admin-ui/new-target',
+    source: '/help/admin-ui/targets/new',
     destination: '/docs/common-workflows/manage-targets',
     permanent: false,
   },
   {
-    source: '/help/admin-ui/new-host-catalog',
+    source: '/help/admin-ui/host-catalogs/new',
     destination: '/docs/common-workflows/manage-targets',
     permanent: false,
   },
   {
-    source: '/help/admin-ui/new-host-sets',
+    source: '/help/admin-ui/host-sets/new',
     destination: '/docs/common-workflows/manage-targets#define-a-host-set',
     permanent: false,
   },
   {
-    source: '/help/admin-ui/new-hosts',
+    source: '/help/admin-ui/hosts/new',
     destination: '/docs/common-workflows/manage-targets#define-a-host',
     permanent: false,
   },
