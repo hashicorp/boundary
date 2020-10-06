@@ -47,6 +47,13 @@ func IsUniqueError(err error) bool {
 		return false
 	}
 
+	var dbError *Error
+	if errors.As(err, &dbError) {
+		if *dbError.Code == ErrCodeUnique {
+			return true
+		}
+	}
+
 	var pqError *pq.Error
 	if errors.As(err, &pqError) {
 		if pqError.Code.Name() == "unique_violation" {
@@ -64,6 +71,13 @@ func IsCheckConstraintError(err error) bool {
 		return false
 	}
 
+	var dbError *Error
+	if errors.As(err, &dbError) {
+		if *dbError.Code == ErrCodeCheckConstraint {
+			return true
+		}
+	}
+
 	var pqError *pq.Error
 	if errors.As(err, &pqError) {
 		if pqError.Code.Name() == "check_violation" {
@@ -79,6 +93,13 @@ func IsCheckConstraintError(err error) bool {
 func IsNotNullError(err error) bool {
 	if err == nil {
 		return false
+	}
+
+	var dbError *Error
+	if errors.As(err, &dbError) {
+		if *dbError.Code == ErrCodeNotNull {
+			return true
+		}
 	}
 
 	var pqError *pq.Error
@@ -123,14 +144,24 @@ func NewError(opt ...Option) error {
 // the error.
 func (e *Error) Error() string {
 	var msgs []string
+	// try to use the error msg first...
 	if e.Msg != "" {
 		msgs = append(msgs, e.Msg)
 	}
+
+	// since there's no err msg, let's try the err class/code...
 	if e.Msg == "" && e.Code != nil {
 		if info, ok := errorCodeInfo[*e.Code]; ok {
 			msgs = append(msgs, info.Message, info.Class.String())
 		}
 	}
+
+	// if there's still nada, how about the wrapped error...
+	if len(msgs) == 0 && e.Wrapped != nil {
+		msgs = append(msgs, e.Wrapped.Error())
+	}
+
+	// okay, we have to output something...
 	if len(msgs) == 0 {
 		msgs = append(msgs, "unknown")
 	}
