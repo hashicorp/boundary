@@ -456,8 +456,8 @@ func (c *Command) Run(args []string) (retCode int) {
 
 		sar, err := targetClient.AuthorizeSession(c.Context, c.flagTargetId, opts...)
 		if err != nil {
-			if api.AsServerError(err) != nil {
-				c.UI.Error(fmt.Sprintf("Error from controller when performing authorize-session against target: %s", err.Error()))
+			if apiErr := api.AsServerError(err); apiErr != nil {
+				c.UI.Error(fmt.Sprintf("Error from controller when performing authorize-session against target: %s", base.PrintApiError(apiErr)))
 				return 1
 			}
 			c.UI.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))

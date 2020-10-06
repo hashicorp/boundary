@@ -194,8 +194,8 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	plural := "password-type auth-method"
 	if err != nil {
-		if api.AsServerError(err) != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
+		if apiErr := api.AsServerError(err); apiErr != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, base.PrintApiError(apiErr)))
 			return 1
 		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
