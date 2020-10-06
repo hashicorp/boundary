@@ -8,15 +8,15 @@ description: |-
 
 # High Availability Installation
 
-Installing Boundary as a high availability service requires certain infrastructure considerations. At the most basic level, running 3 controller and worker instances gives a fundamental level of high availability for the control plane (controller), as well as bandwith for number of sessions on the data plane (worker). Both server types should be run in a fault tolerant setting, that is, in a self-healing environment such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.
+Installing Boundary as a high availability service requires certain infrastructure considerations. At the most basic level, running 3 controller and worker instances gives a fundamental level of high availability for the control plane (controller), as well as bandwidth for number of sessions on the data plane (worker). Both server types should be run in a fault-tolerant setting, that is, in a self-healing environment such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.
 
 ## Network Requirements
 
 The following ports should be available:
 
-- Client must have access to the Controller's port 9200
-- Worker must have access to the Controller's port 9201
-- Client must have access to Worker's port (defaults to 9202)
+- Client must have access to the Controller's port (default 9200)
+- Client must have access to the Worker's port (defaults 9202)
+- Worker must have access to the Controller's port (default 9201)
 - Workers must have a route and port access to the targets which they service
 
 ## Architecture
