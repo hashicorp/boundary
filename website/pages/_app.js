@@ -8,7 +8,6 @@ import HashiHead from '@hashicorp/react-head'
 import Head from 'next/head'
 import { ErrorBoundary } from '@hashicorp/nextjs-scripts/lib/bugsnag'
 import ConditionalAuthProvider from 'components/conditional-auth-provider'
-import MegaNav from '@hashicorp/react-mega-nav'
 import ProductSubnav from '../components/subnav'
 import Footer from 'components/footer'
 import Error from './_error'
@@ -33,7 +32,6 @@ function App({ Component, pageProps }) {
           image="https://www.boundaryproject.io/img/og-image.png"
           icon={[{ href: '/favicon.ico' }]}
         />
-        <MegaNav product={productName} />
         <ProductSubnav />
         <div className="content">
           <Component {...pageProps} />
