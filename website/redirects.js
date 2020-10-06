@@ -74,23 +74,23 @@ module.exports = [
     ////////////////////////////////////////////
       // below for add principals workflow within roles
      {
-       source: '/help/admin-ui/principals/add',
+       source: '/help/admin-ui/add-principals',
        destination: '/docs/common-workflows/manage-identities',
        permanent: false,
      },
       // below for add members workflow within groups
      {
-       source: '/help/admin-ui/members/add',
+       source: '/help/admin-ui/add-members',
        destination: '/docs/common-workflows/manage-identities',
        permanent: false,
      },
      {
-       source: '/help/admin-ui/host-sets/add',
+       source: '/help/admin-ui/add-host-sets',
        destination: '/docs/concepts/domain-model/host-sets',
        permanent: false,
      },
      {
-       source: '/help/admin-ui/hosts/add',
+       source: '/help/admin-ui/add-hosts',
        destination: '/docs/concepts/domain-model/hosts',
        permanent: false,
      },  
@@ -101,38 +101,38 @@ module.exports = [
     
      // below is for adding new accounts to an auth-method
      {
-       source: '/help/admin-ui/account/new',
+       source: '/help/admin-ui/new-account',
        destination: '/docs/common-workflows/manage-identities#create-account',
        permanent: false,
      },
       // below for adding new scopes
      {
-       source: '/help/admin-ui/org/new',
+       source: '/help/admin-ui/new-org',
        destination: '/docs/common-workflows/manage-scopes',
        permanent: false,
      },
      {
-       source: '/help/admin-ui/project/new',
+       source: '/help/admin-ui/new-project',
        destination: '/docs/common-workflows/manage-scopes',
        permanent: false,
      },
      {
-       source: '/help/admin-ui/target/new',
+       source: '/help/admin-ui/new-target',
        destination: '/docs/common-workflows/manage-targets',
        permanent: false,
      },
        {
-       source: '/help/admin-ui/host-catalog/new',
+       source: '/help/admin-ui/new-host-catalog',
        destination: '/docs/common-workflows/manage-targets',
        permanent: false,
      },
        {
-       source: '/help/admin-ui/host-sets/new',
+       source: '/help/admin-ui/new-host-sets',
        destination: '/docs/common-workflows/manage-targets#define-a-host-set',
        permanent: false,
      },
        {
-       source: '/help/admin-ui/hosts/new',
+       source: '/help/admin-ui/new-hosts',
        destination: '/docs/common-workflows/manage-targets#define-a-host',
        permanent: false,
      }
