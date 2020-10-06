@@ -6,11 +6,11 @@ export default function CommunityPage() {
   return (
     <div id="p-community">
       <Head>
-        <title key="title">Community | Consul by HashiCorp</title>
+        <title key="title">Community | Boundary by HashiCorp</title>
       </Head>
       <SectionHeader
         headline="Community"
-        description="Consul is a large project with a growing community. There are active, dedicated users willing to help you through various mediums."
+        description="Boundary is a newly-launched open source project.  The project team depends on the community’s engagement and feedback.  Get involved today."
         use_h1={true}
       />
       <VerticalTextBlockList
@@ -18,27 +18,12 @@ export default function CommunityPage() {
           {
             header: 'Community Forum',
             body:
-              '[Consul Community Forum](https://discuss.hashicorp.com/c/consul)',
+              '[Boundary Community Forum](https://discuss.hashicorp.com/c/boundary)',
           },
           {
             header: 'Bug Tracker',
             body:
-              '[Issue tracker on GitHub](https://github.com/hashicorp/consul/issues). Please only use this for reporting bugs. Do not ask for general help here; use Gitter or the mailing list for that.',
-          },
-          {
-            header: 'Community Tools',
-            body:
-              '[Download Community Tools](/docs/download-tools). Please check out some of the awesome Consul tooling our amazing community has helped build.',
-          },
-          {
-            header: 'Training',
-            body:
-              'Paid [HashiCorp training courses](https://www.hashicorp.com/training) are also available in a city near you. Private training courses are also available.',
-          },
-          {
-            header: 'Certification',
-            body:
-              "Learn more about our [Cloud Engineer Certification program](https://www.hashicorp.com/certification/) and [HashiCorp's Networking Automation Certification ](https://www.hashicorp.com/certification/consul-associate/) exams.",
+              '[Issue tracker on GitHub](https://github.com/hashicorp/boundary/issues). Please only use this for reporting bugs. Do not ask for general help here; use the Community Form for that.',
           },
         ]}
       />
