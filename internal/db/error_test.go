@@ -5,6 +5,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestError_IsUnique(t *testing.T) {
@@ -178,6 +179,43 @@ func TestError_IsNotNullError(t *testing.T) {
 			err := tt.in
 			got := IsNotNullError(err)
 			assert.Equal(tt.want, got)
+		})
+	}
+}
+
+func Test_NewError(t *testing.T) {
+	tests := []struct {
+		name string
+		opt  []Option
+		want error
+	}{
+		{
+			name: "all-options",
+			opt: []Option{
+				WithWrap(ErrRecordNotFound),
+				WithErrorMsg("test msg"),
+				WithErrCode(ErrCodeInvalidParameter),
+			},
+			want: &Error{
+				Wrapped: ErrRecordNotFound,
+				Msg:     "test msg",
+				Code:    func() *ErrCode { c := ErrCodeInvalidParameter; return &c }(),
+			},
+		},
+		{
+			name: "no-options",
+			opt:  nil,
+			want: &Error{
+				Msg: "unknown error",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			err := NewError(tt.opt...)
+			require.Error(err)
+			assert.Equal(tt.want, err)
 		})
 	}
 }
