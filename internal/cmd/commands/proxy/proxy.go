@@ -371,14 +371,15 @@ func (c *Command) Run(args []string) (retCode int) {
 		if c.flagExec == "" {
 			c.flagExec = strings.ToLower(c.flagRdpStyle)
 			switch c.flagExec {
-			case "mstsc", "mstsc.exe":
-				c.flagExec = "mstsc.exe"
 			case "":
 				switch runtime.GOOS {
 				case "windows":
-					c.flagExec = "mstsc.exe"
+					c.flagExec = "mstsc"
 				case "darwin":
 					c.flagExec = "open"
+				default:
+					// We may want to support rdesktop and/or xfreerdp at some point soon
+					c.flagExec = "mstsc"
 				}
 			}
 		}
@@ -843,7 +844,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 
 	case "rdp":
 		switch c.flagRdpStyle {
-		case "mstsc.exe":
+		case "mstsc":
 			args = append(args, "/v", addr)
 		case "open":
 			args = append(args, fmt.Sprintf("rdp://full%saddress=s:%s", "%20", addr))
