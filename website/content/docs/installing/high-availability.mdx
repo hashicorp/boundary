@@ -1,14 +1,14 @@
 ---
 layout: docs
-page_title: High-Availability Installation
-sidebar_title: High-Availability Install
+page_title: High Availability Installation
+sidebar_title: High Availability Install
 description: |-
-  How to install Boundary as a high-availability service
+  How to install Boundary as a high availability service
 ---
 
-# High-Availability Installation
+# High Availability Installation
 
-Installing Boundary as a high-availability service requires certain infrastructure considerations. At the most basic level, running 3 controller and worker instances gives a fundamental level of high availability for the control plane (controller), as well as bandwith for number of sessions on the data plane (worker). Both server types should be run in a fault tolerant setting, that is, in a self-healing environment such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.
+Installing Boundary as a high availability service requires certain infrastructure considerations. At the most basic level, running 3 controller and worker instances gives a fundamental level of high availability for the control plane (controller), as well as bandwith for number of sessions on the data plane (worker). Both server types should be run in a fault tolerant setting, that is, in a self-healing environment such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.
 
 ## Network Requirements
 
