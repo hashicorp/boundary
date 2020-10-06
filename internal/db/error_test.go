@@ -32,6 +32,25 @@ func TestError_IsUnique(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "ErrCodeUnique",
+			in:   ErrNotUnique,
+			want: true,
+		},
+		{
+			name: "wrapped-pq-is-unique",
+			in: NewError(
+				WithWrap(&pq.Error{
+					Code: pq.ErrorCode("23505"),
+				}),
+			),
+			want: true,
+		},
+		{
+			name: "ErrRecordNotFound",
+			in:   ErrRecordNotFound,
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -68,6 +87,25 @@ func TestError_IsCheckConstraint(t *testing.T) {
 				Code: pq.ErrorCode("23514"),
 			},
 			want: true,
+		},
+		{
+			name: "ErrCodeCheckConstraint",
+			in:   NewError(WithErrCode(ErrCodeCheckConstraint)),
+			want: true,
+		},
+		{
+			name: "wrapped-pq-is-check-constraint",
+			in: NewError(
+				WithWrap(&pq.Error{
+					Code: pq.ErrorCode("23514"),
+				}),
+			),
+			want: true,
+		},
+		{
+			name: "ErrRecordNotFound",
+			in:   ErrRecordNotFound,
+			want: false,
 		},
 	}
 	for _, tt := range tests {
@@ -112,6 +150,25 @@ func TestError_IsNotNullError(t *testing.T) {
 				Code: pq.ErrorCode("23502"),
 			},
 			want: true,
+		},
+		{
+			name: "ErrCodeNotNull",
+			in:   NewError(WithErrCode(ErrCodeNotNull)),
+			want: true,
+		},
+		{
+			name: "wrapped-pq-is-not-null",
+			in: NewError(
+				WithWrap(&pq.Error{
+					Code: pq.ErrorCode("23502"),
+				}),
+			),
+			want: true,
+		},
+		{
+			name: "ErrRecordNotFound",
+			in:   ErrRecordNotFound,
+			want: false,
 		},
 	}
 	for _, tt := range tests {
