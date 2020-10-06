@@ -35,7 +35,7 @@ where
 		from 
 			session_state 
 		where 
-			-- already canceling
+			-- already in the updated state
 			(
 				session_id = $1::text and 
 				state = $2
