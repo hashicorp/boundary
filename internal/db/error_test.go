@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/lib/pq"
@@ -253,6 +254,40 @@ func TestError_Error(t *testing.T) {
 			assert := assert.New(t)
 			got := tt.err.Error()
 			assert.Equal(tt.want, got)
+		})
+	}
+}
+
+func TestError_Unwrap(t *testing.T) {
+	testErr := NewError(WithErrorMsg("test error"))
+
+	tests := []struct {
+		name      string
+		err       error
+		want      error
+		wantIsErr error
+	}{
+		{
+			name:      "ErrInvalidParameter",
+			err:       NewError(WithWrap(ErrInvalidParameter)),
+			want:      ErrInvalidParameter,
+			wantIsErr: ErrInvalidParameter,
+		},
+		{
+			name:      "testErr",
+			err:       testErr,
+			want:      nil,
+			wantIsErr: testErr,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			err := tt.err.(interface {
+				Unwrap() error
+			}).Unwrap()
+			assert.Equal(tt.want, err)
+			assert.True(errors.Is(tt.err, tt.wantIsErr))
 		})
 	}
 }
