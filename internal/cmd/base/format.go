@@ -168,7 +168,7 @@ func PrintApiError(in *api.Error) string {
 			)
 			for _, field := range in.Details.RequestFields {
 				ret = append(ret,
-					fmt.Sprintf("    Name:              %s", strings.ReplaceAll(field.Name, "_", "-")),
+					fmt.Sprintf("    Name:              -%s", strings.ReplaceAll(field.Name, "_", "-")),
 					fmt.Sprintf("      Error:           %s", field.Description),
 				)
 			}
