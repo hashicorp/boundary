@@ -170,9 +170,9 @@ func WithErrCode(c ErrCode) Option {
 
 // WithErrCode provides an option to provide an error to wrap when creating a
 // new error.
-func WithWrap(e Error) Option {
+func WithWrap(e error) Option {
 	return func(o *Options) {
-		o.withErrWrapped = &e
+		o.withErrWrapped = e
 	}
 }
 
