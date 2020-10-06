@@ -13,11 +13,7 @@ export default [
   },
   {
     category: 'installing',
-    content: [
-		  'systemd',
-		  'postgres',
-		  'high-availability',
-		],
+    content: ['systemd', 'postgres', 'high-availability'],
   },
   {
     category: 'developing',
@@ -40,7 +36,7 @@ export default [
       {
         category: 'domain-model',
         content: [
-				  'accounts',
+          'accounts',
           'actions',
           'auth-methods',
           'grants',
@@ -48,7 +44,7 @@ export default [
           'hosts',
           'host-catalogs',
           'host-sets',
-          'organization',
+          'organizations',
           'principals',
           'projects',
           'resources',
@@ -108,5 +104,4 @@ export default [
       },
     ],
   },
-
 ]

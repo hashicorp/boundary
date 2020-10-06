@@ -1,2 +1,2 @@
-d13e711626a148f46d753a1c8cf79387f88b8088 Merge pull request #277 from hashicorp/target-name-is-not-optional
+778c0082a1df52e6787a3626cc8771a33517ef4b Merge pull request #292 from hashicorp/chore-ember-lts-upgrade
 # Above commit is used for production builds.
