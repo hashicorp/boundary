@@ -47,10 +47,10 @@ func TestAuthenticate(t *testing.T) {
 	require.NotNil(t, acct)
 
 	cases := []struct {
-		name    string
-		request *pbs.AuthenticateRequest
+		name     string
+		request  *pbs.AuthenticateRequest
 		wantType string
-		wantErr error
+		wantErr  error
 	}{
 		{
 			name: "basic",

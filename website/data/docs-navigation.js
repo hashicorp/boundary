@@ -13,7 +13,7 @@ export default [
   },
   {
     category: 'installing',
-    content: ['high-availability'],
+    content: ['systemd', 'postgres', 'high-availability'],
   },
   {
     category: 'developing',
@@ -93,14 +93,14 @@ export default [
   '---',
   {
     category: 'roadmap',
-    content: ['0_2_0'],
+    content: ['v0_2_0'],
   },
   {
     category: 'releases',
     content: [
       {
         category: 'release-notes',
-        content: ['0_1_0'],
+        content: ['v0_1_0'],
       },
     ],
   },

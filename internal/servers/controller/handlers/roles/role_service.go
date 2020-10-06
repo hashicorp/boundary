@@ -655,7 +655,7 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 		badFields["principal_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetPrincipalIds() {
-		if !handlers.ValidId(iam.GroupPrefix, id) && ! handlers.ValidId(iam.UserPrefix, id) {
+		if !handlers.ValidId(iam.GroupPrefix, id) && !handlers.ValidId(iam.UserPrefix, id) {
 			badFields["principal_ids"] = "Must only have valid group and/or user ids."
 			break
 		}
@@ -679,7 +679,7 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 		badFields["version"] = "Required field."
 	}
 	for _, id := range req.GetPrincipalIds() {
-		if !handlers.ValidId(iam.GroupPrefix, id) && ! handlers.ValidId(iam.UserPrefix, id) {
+		if !handlers.ValidId(iam.GroupPrefix, id) && !handlers.ValidId(iam.UserPrefix, id) {
 			badFields["principal_ids"] = "Must only have valid group and/or user ids."
 			break
 		}
