@@ -49,7 +49,7 @@ func IsUniqueError(err error) bool {
 
 	var dbError *Error
 	if errors.As(err, &dbError) {
-		if *dbError.Code == ErrCodeUnique {
+		if dbError.Code != nil && *dbError.Code == ErrCodeUnique {
 			return true
 		}
 	}
@@ -73,7 +73,7 @@ func IsCheckConstraintError(err error) bool {
 
 	var dbError *Error
 	if errors.As(err, &dbError) {
-		if *dbError.Code == ErrCodeCheckConstraint {
+		if dbError.Code != nil && *dbError.Code == ErrCodeCheckConstraint {
 			return true
 		}
 	}
@@ -97,7 +97,7 @@ func IsNotNullError(err error) bool {
 
 	var dbError *Error
 	if errors.As(err, &dbError) {
-		if *dbError.Code == ErrCodeNotNull {
+		if dbError.Code != nil && *dbError.Code == ErrCodeNotNull {
 			return true
 		}
 	}
@@ -170,7 +170,7 @@ func (e *Error) Error() string {
 
 // Unwrap implements the errors.Unwrap interface and allows callers to use the
 // errors.Is() and errors.As() functions effectively for any wrapped errors.
-func (e *Error) Unwrap(err error) error {
+func (e *Error) Unwrap() error {
 	return e.Wrapped
 }
 
