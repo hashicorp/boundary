@@ -17,7 +17,6 @@
 @import '~@hashicorp/react-subnav/dist/style.css';
 @import '~@hashicorp/react-tabs/dist/style.css';
 @import '~@hashicorp/react-enterprise-alert/dist/style.css';
-@import '~@hashicorp/react-mega-nav/style.css';
 @import '~@hashicorp/react-docs-page/style.css';
 @import '~@hashicorp/react-product-features-list/style.css';
 @import '~@hashicorp/react-use-cases/dist/style.css';
@@ -47,12 +46,6 @@
  */
 .g-subnav ~ * :target {
   scroll-margin-top: calc(64px + 0.5em);
-}
-
-/* Expand content so Footer is sticky at the bottom */
-#__next > .content {
-  /* 100% height - nav - footer - meganav */
-  min-height: calc(100vh - (64px + 77px + 48px));
 }
 
 /* Web Fonts */
