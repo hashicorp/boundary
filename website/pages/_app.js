@@ -35,7 +35,7 @@ function App({ Component, pageProps }) {
           icon={[{ href: '/favicon.ico' }]}
         />
         {ALERT_BANNER_ACTIVE && (
-          <AlertBanner {...alertBannerData} theme="blue" />
+          <AlertBanner {...alertBannerData} theme="red" />
         )}
         <ProductSubnav />
         <div className="content">
