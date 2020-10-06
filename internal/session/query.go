@@ -19,7 +19,8 @@ select * from not_active;
 `
 
 	// updateSessionState checks that we don't already have a row for the new
-	// state before inserting a new state.
+	// state or it's not already terminated (final state) before inserting a new
+	// state.
 	updateSessionState = `
 insert into session_state(session_id, state) 
 select
@@ -34,8 +35,21 @@ where
 		from 
 			session_state 
 		where 
-			session_id = $1::text and 
-			state = $2
+			-- already in the updated state
+			(
+				session_id = $1::text and 
+				state = $2
+			) or
+			-- already terminated
+			session_id in (
+				select 
+					session_id 
+				from 
+					session_state 
+				where 
+					session_id = $1::text and 
+					state = 'terminated'
+			)
 	) 
 `
 
