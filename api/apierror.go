@@ -2,9 +2,7 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"strings"
 
 	"google.golang.org/grpc/codes"
 )
@@ -28,27 +26,7 @@ func AsServerError(in error) *Error {
 
 // Error satisfies the error interface.
 func (e *Error) Error() string {
-	res := fmt.Sprintf("Status: %d, Code: %q, Error: %q", e.Status, e.Code, e.Message)
-	var dets []string
-	if e.Details != nil {
-		if e.Details.ErrorId != "" {
-			dets = append(dets, fmt.Sprintf("error_id: %q", e.Details.ErrorId))
-		}
-		if e.Details.RequestId != "" {
-			dets = append(dets, fmt.Sprintf("request_id: %q", e.Details.RequestId))
-		}
-		if e.Details.TraceId != "" {
-			dets = append(dets, fmt.Sprintf("TraceId: %q", e.Details.TraceId))
-		}
-		for _, rf := range e.Details.RequestFields {
-			dets = append(dets, fmt.Sprintf("request_field: {name: %q, desc: %q}", rf.Name, rf.Description))
-		}
-	}
-	if len(dets) > 0 {
-		det := strings.Join(dets, ", ")
-		res = fmt.Sprintf("%s, Details: {%s}", res, det)
-	}
-	return res
+	return e.responseBody.String()
 }
 
 // Errors are considered the same iff they are both api.Errors and their statuses are the same.
