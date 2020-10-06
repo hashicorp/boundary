@@ -29,7 +29,12 @@ export default [
   {
     category: 'concepts',
     content: [
-      'security-model',
+		  {
+        category: 'security-model',
+			  content: [
+				  'permissions-model',
+				]
+			},
       {
         category: 'domain-model',
         content: [
@@ -52,13 +57,12 @@ export default [
         ],
       },
 			{
-        category: 'standards',
+        category: 'api-standards',
 				content: [
-          'api-standards',
+          'http-standards',
           'cli-standards',
 				]
 			},
-      'permissions',
     ],
   },
   '---',
