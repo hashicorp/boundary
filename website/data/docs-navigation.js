@@ -13,7 +13,11 @@ export default [
   },
   {
     category: 'installing',
-    content: ['production'],
+    content: [
+		  'systemd',
+		  'postgres',
+		  'high-availability',
+		],
   },
   {
     category: 'developing',
