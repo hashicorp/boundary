@@ -851,7 +851,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		case "mstsc.exe":
 			args = append(args, "/v", addr)
 		case "open":
-			args = append(args, fmt.Sprintf("rdp://full%saddress=s:%s", "%20", addr))
+			args = append(args, "-n", "-W", fmt.Sprintf("rdp://full%saddress=s:%s", "%20", addr))
 		}
 	}
 
