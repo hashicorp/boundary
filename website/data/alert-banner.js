@@ -1,4 +1,4 @@
-export const ALERT_BANNER_ACTIVE = true
+export const ALERT_BANNER_ACTIVE = false
 
 export default {
   tag: 'ANNOUNCING',
