@@ -3,19 +3,20 @@ layout: docs
 page_title: High Availability Installation
 sidebar_title: High Availability Install
 description: |-
-  How to install Boundary in a high availability environment
+  How to install Boundary as a high availability service
 ---
 
 # High Availability Installation
 
-Installing Boundary in a high availability setting requires prerequisits for infrastructure. At the most basic level, Boundary operators should run a minimum of 3 controllers and 3 workers. Running 3 of each server type gives a fundamental level of high availability for the control plane (controller), as well as bandwith for number of sessions on the data plane (worker). Both server type should be ran in a fault tolerant setting, that is, in a self-healing environmnet such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.
+Installing Boundary as a high availability service requires certain infrastructure considerations. At the most basic level, running 3 controller and worker instances gives a fundamental level of high availability for the control plane (controller), as well as bandwidth for number of sessions on the data plane (worker). Both server types should be run in a fault-tolerant setting, that is, in a self-healing environment such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.
 
 ## Network Requirements
 
-- Client -> Controller port is :9200
-- Controller -> Worker port is :9201
-- Client must have access to Controller on :9200
-- :9201 must be open between Worker and Controller
+The following ports should be available:
+
+- Client must have access to the Controller's port (default 9200)
+- Client must have access to the Worker's port (defaults 9202)
+- Worker must have access to the Controller's port (default 9201)
 - Workers must have a route and port access to the targets which they service
 
 ## Architecture
