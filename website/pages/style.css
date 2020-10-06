@@ -49,12 +49,6 @@
   scroll-margin-top: calc(64px + 0.5em);
 }
 
-/* Expand content so Footer is sticky at the bottom */
-#__next > .content {
-  /* 100% height - nav - footer - meganav */
-  min-height: calc(100vh - (64px + 77px + 48px));
-}
-
 /* Web Fonts */
 @font-face {
   font-family: 'klavika-web';
