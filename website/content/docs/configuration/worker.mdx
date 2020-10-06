@@ -23,3 +23,47 @@ worker {
 - `description` - Specifies a friendly description of this worker.
 
 - `public_addr` - Specifies the public IP address for the worker to be reached on. This is useful for cloud environemnts that do not bind a publically accessible IP to a NIC on the host directly, such as an Amazon EIP.
+
+- `controllers` - A list of IP addresses for reaching controllers on port :9202.
+
+- KMS block designated for `worker-auth` - This is the KMS configuration for authentication between the workers and controllers and must be present. Example:
+```hcl
+kms "aead" {
+	purpose = "worker-auth"
+	aead_type = "aes-gcm"
+	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id = "global_worker-auth"
+}
+```
+
+# Complete Configuration Example
+
+```hcl
+listener "tcp" {
+	purpose = "proxy"
+	tls_disable = true
+	proxy_protocol_behavior = "allow_authorized"
+	proxy_protocol_authorized_addrs = "127.0.0.1"
+}
+
+worker {
+  # Name attr must be unique across workers if running in HA mode
+	name = "demo-worker-1"
+	description = "A default worker created demonstration"
+
+  # Workers must be able to reach controllers on :9202
+	controllers = [
+    "10.0.0.1",
+    "10.0.0.2",
+    "10.0.0.3",
+  ]
+}
+
+# must be same key as used on controller config
+kms "aead" {
+	purpose = "worker-auth"
+	aead_type = "aes-gcm"
+	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id = "global_worker-auth"
+}
+```
