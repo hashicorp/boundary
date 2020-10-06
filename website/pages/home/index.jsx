@@ -103,6 +103,43 @@ export default function HomePage() {
         ]}
       />
 
+      <div className="use-cases-section">
+        <div className="g-grid-container">
+          <h2 className="g-type-display-2">Use cases</h2>
+          <UseCases
+            items={[
+              {
+                title: 'Identity-based access',
+                description:
+                  'Securely connect trusted identities to applications, systems, and data.',
+                image: {
+                  url: require('./img/red-usecase-accessprivileges.png?url'),
+                },
+                link: { title: 'Learn more', url: '#TODO' },
+              },
+              {
+                title: 'Automate access',
+                description:
+                  'Enables secure access across dynamic infrastructure.',
+                image: {
+                  url: require('./img/red-usecase-accessmgmt.png?url'),
+                },
+                link: { title: 'Learn more', url: '#TODO' },
+              },
+              {
+                title: 'Session visibility',
+                description:
+                  'Monitor user sessions created with Boundary with your preferred analytics tool.',
+                image: {
+                  url: require('./img/red-usecase-sessionvisibility.png?url'),
+                },
+                link: { title: 'Learn more', url: '#TODO' },
+              },
+            ]}
+          />
+        </div>
+      </div>
+
       <div className="break-section">
         <SectionBreakCta
           heading="Have you tried Boundary?"
@@ -155,43 +192,6 @@ export default function HomePage() {
           },
         ]}
       />
-
-      <div className="use-cases-section">
-        <div className="g-grid-container">
-          <h2 className="g-type-display-2">Use cases</h2>
-          <UseCases
-            items={[
-              {
-                title: 'Identity-based access',
-                description:
-                  'Securely connect trusted identities to applications, systems, and data.',
-                image: {
-                  url: require('./img/red-usecase-accessprivileges.png?url'),
-                },
-                link: { title: 'Learn more', url: '#TODO' },
-              },
-              {
-                title: 'Automate access',
-                description:
-                  'Enables secure access across dynamic infrastructure.',
-                image: {
-                  url: require('./img/red-usecase-accessmgmt.png?url'),
-                },
-                link: { title: 'Learn more', url: '#TODO' },
-              },
-              {
-                title: 'Session visibility',
-                description:
-                  'Monitor user sessions created with Boundary with your preferred analytics tool.',
-                image: {
-                  url: require('./img/red-usecase-sessionvisibility.png?url'),
-                },
-                link: { title: 'Learn more', url: '#TODO' },
-              },
-            ]}
-          />
-        </div>
-      </div>
 
       <BrandedCta
         heading="Ready to get started?"
