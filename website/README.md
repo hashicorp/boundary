@@ -2,7 +2,7 @@
 
 [![Netlify Status](https://img.shields.io/netlify/<NETLIFY-API-ID>?style=flat-square)](https://app.netlify.com/sites/<NETLIFY-SLUG>/deploys)
 
-This subdirectory contains the entire source for the [Boundary Website](https://example.com/). This is a [NextJS](https://nextjs.org/) project, which builds a static site from these source files.
+This subdirectory contains the entire source for the [Boundary Website](https://hashicorp.com/boundary). This is a [NextJS](https://nextjs.org/) project, which builds a static site from these source files.
 
 <!--
   This readme file contains several blocks of generated text, to make it easier to share common information
@@ -19,6 +19,7 @@ This subdirectory contains the entire source for the [Boundary Website](https://
 - [Running the Site Locally](#running-the-site-locally)
 - [Editing Markdown Content](#editing-markdown-content)
 - [Editing Navigation Sidebars](#editing-navigation-sidebars)
+- [Editing/Enabling the Alert Banner](#editingenabling-the-alert-banner)
 - [Changing the Release Version](#changing-the-release-version)
 - [Redirects](#redirects)
 - [Browser Support](#browser-support)
@@ -305,6 +306,15 @@ export default {
 If the link provided in the `href` property is external, it will display a small icon indicating this. If it's internal, it will appear the same way as any other direct file link.
 
 <!-- END: editing-docs-sidebars -->
+
+## Editing/Enabling the Alert Banner
+
+The data and visibility of the alert banner are controlled by the `alert-banner.js` file in the [`/data` directory](data). The following data can be edited in this file:
+
+- `ALERT_BANNER_ACTIVE`: Determines if the banner is visible (when set to `true`) or not (when set to `false`).
+- `tag`: Copy for the bordered text on the left side of the alert.
+- `text`: Copy for the center text of the alert.
+- `url`: Where the alert links to when clicked.
 
 <!-- BEGIN: releases -->
 <!-- Generated text, do not edit directly -->
