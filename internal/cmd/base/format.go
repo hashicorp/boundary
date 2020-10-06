@@ -9,6 +9,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
@@ -131,6 +132,50 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 	}
 
 	return strings.Join(ret, "\n")
+}
+
+func PrintApiError(in *api.Error) string {
+	nonAttributeMap := map[string]interface{}{
+		"Status":  in.Status,
+		"Code":    in.Code,
+		"Message": in.Message,
+	}
+	if in.Details != nil {
+		if in.Details.TraceId != "" {
+			nonAttributeMap["Trace ID"] = in.Details.TraceId
+		}
+		if in.Details.RequestId != "" {
+			nonAttributeMap["Request ID"] = in.Details.RequestId
+		}
+		if in.Details.ErrorId != "" {
+			nonAttributeMap["Error ID"] = in.Details.ErrorId
+		}
+	}
+
+	maxLength := MaxAttributesLength(nonAttributeMap, nil, nil)
+
+	ret := []string{
+		"",
+		"Error information:",
+		WrapMap(2, maxLength+2, nonAttributeMap),
+	}
+
+	if in.Details != nil {
+		if len(in.Details.RequestFields) > 0 {
+			ret = append(ret,
+				"",
+				"  Field-specific Errors:",
+			)
+			for _, field := range in.Details.RequestFields {
+				ret = append(ret,
+					fmt.Sprintf("    Name:              %s", strings.ReplaceAll(field.Name, "_", "-")),
+					fmt.Sprintf("      Error:           %s", field.Description),
+				)
+			}
+		}
+	}
+
+	return WrapForHelpText(ret)
 }
 
 // An output formatter for json output of an object

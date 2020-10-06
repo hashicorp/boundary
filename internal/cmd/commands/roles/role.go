@@ -244,12 +244,23 @@ func (c *Command) Run(args []string) int {
 		plural = "roles"
 	}
 	if err != nil {
-		if api.AsServerError(err) != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
-			return 1
+		switch base.Format(c.UI) {
+		case "json":
+			if apiErr := api.AsServerError(err); apiErr != nil {
+				c.UI.Error(apiErr.Error())
+				return 1
+			}
+			c.UI.Error(fmt.Sprintf(`{"error": %q}`, err.Error()))
+			return 2
+
+		default:
+			if apiErr := api.AsServerError(err); apiErr != nil {
+				c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s\n%s", c.Func, plural, base.PrintApiError(apiErr)))
+				return 1
+			}
+			c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
+			return 2
 		}
-		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
-		return 2
 	}
 
 	switch c.Func {
