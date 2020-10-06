@@ -167,6 +167,10 @@ func PrintApiError(in *api.Error) string {
 				"  Field-specific Errors:",
 			)
 			for _, field := range in.Details.RequestFields {
+				if field.Name == "update_mask" {
+					// TODO: Report useful error messages related to "update_mask".
+					continue
+				}
 				ret = append(ret,
 					fmt.Sprintf("    Name:              -%s", strings.ReplaceAll(field.Name, "_", "-")),
 					fmt.Sprintf("      Error:           %s", field.Description),
