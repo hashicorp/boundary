@@ -219,3 +219,40 @@ func Test_NewError(t *testing.T) {
 		})
 	}
 }
+
+func TestError_Error(t *testing.T) {
+
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{
+			name: "msg",
+			err:  NewError(WithErrorMsg("test msg")),
+			want: "test msg",
+		},
+		{
+			name: "code",
+			err:  NewError(WithErrCode(ErrCodeCheckConstraint)),
+			want: "constraint check failed: integrity violation",
+		},
+		{
+			name: "msg-and-code",
+			err:  NewError(WithErrorMsg("test msg"), WithErrCode(ErrCodeCheckConstraint)),
+			want: "test msg",
+		},
+		{
+			name: "unknown",
+			err:  NewError(),
+			want: "unknown error",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got := tt.err.Error()
+			assert.Equal(tt.want, got)
+		})
+	}
+}

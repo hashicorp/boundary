@@ -165,7 +165,7 @@ func (e *Error) Error() string {
 	if len(msgs) == 0 {
 		msgs = append(msgs, "unknown")
 	}
-	return strings.Join(msgs, ":")
+	return strings.Join(msgs, ": ")
 }
 
 // Unwrap implements the errors.Unwrap interface and allows callers to use the
