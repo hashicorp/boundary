@@ -709,8 +709,8 @@ func TestAddAccount(t *testing.T) {
 		{
 			name: "Bad account Id",
 			req: &pbs.AddUserAccountsRequest{
-				Id:      usr.GetPublicId(),
-				Version: usr.GetVersion(),
+				Id:         usr.GetPublicId(),
+				Version:    usr.GetVersion(),
 				AccountIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -832,8 +832,8 @@ func TestSetAccount(t *testing.T) {
 		{
 			name: "Bad account Id",
 			req: &pbs.SetUserAccountsRequest{
-				Id:      usr.GetPublicId(),
-				Version: usr.GetVersion(),
+				Id:         usr.GetPublicId(),
+				Version:    usr.GetVersion(),
 				AccountIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -965,8 +965,8 @@ func TestRemoveAccount(t *testing.T) {
 		{
 			name: "Bad account Id",
 			req: &pbs.RemoveUserAccountsRequest{
-				Id:      usr.GetPublicId(),
-				Version: usr.GetVersion(),
+				Id:         usr.GetPublicId(),
+				Version:    usr.GetVersion(),
 				AccountIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),

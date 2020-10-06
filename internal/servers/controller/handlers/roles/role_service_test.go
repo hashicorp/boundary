@@ -1054,8 +1054,8 @@ func TestAddPrincipal(t *testing.T) {
 		{
 			name: "Bad Principal Id",
 			req: &pbs.AddRolePrincipalsRequest{
-				Id:      role.GetPublicId(),
-				Version: role.GetVersion(),
+				Id:           role.GetPublicId(),
+				Version:      role.GetVersion(),
 				PrincipalIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1063,8 +1063,8 @@ func TestAddPrincipal(t *testing.T) {
 		{
 			name: "u_recovery Id",
 			req: &pbs.AddRolePrincipalsRequest{
-				Id:      role.GetPublicId(),
-				Version: role.GetVersion(),
+				Id:           role.GetPublicId(),
+				Version:      role.GetVersion(),
 				PrincipalIds: []string{"u_recovery"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1209,8 +1209,8 @@ func TestSetPrincipal(t *testing.T) {
 		{
 			name: "Bad Principal Id",
 			req: &pbs.SetRolePrincipalsRequest{
-				Id:      role.GetPublicId(),
-				Version: role.GetVersion(),
+				Id:           role.GetPublicId(),
+				Version:      role.GetVersion(),
 				PrincipalIds: []string{"invalid"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1218,8 +1218,8 @@ func TestSetPrincipal(t *testing.T) {
 		{
 			name: "u_recovery",
 			req: &pbs.SetRolePrincipalsRequest{
-				Id:      role.GetPublicId(),
-				Version: role.GetVersion(),
+				Id:           role.GetPublicId(),
+				Version:      role.GetVersion(),
 				PrincipalIds: []string{"u_recovery"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1386,8 +1386,8 @@ func TestRemovePrincipal(t *testing.T) {
 		{
 			name: "Bad User Id",
 			req: &pbs.RemoveRolePrincipalsRequest{
-				Id:      role.GetPublicId(),
-				Version: role.GetVersion(),
+				Id:           role.GetPublicId(),
+				Version:      role.GetVersion(),
 				PrincipalIds: []string{"g_validgroup", "invaliduser"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1395,8 +1395,8 @@ func TestRemovePrincipal(t *testing.T) {
 		{
 			name: "Bad Group Id",
 			req: &pbs.RemoveRolePrincipalsRequest{
-				Id:      role.GetPublicId(),
-				Version: role.GetVersion(),
+				Id:           role.GetPublicId(),
+				Version:      role.GetVersion(),
 				PrincipalIds: []string{"u_validuser", "invalidgroup"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),

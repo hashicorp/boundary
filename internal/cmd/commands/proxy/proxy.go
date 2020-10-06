@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -312,9 +313,8 @@ func (c *Command) Flags() *base.FlagSets {
 			Name:       "style",
 			Target:     &c.flagRdpStyle,
 			EnvVar:     "BOUNDARY_CONNECT_RDP_STYLE",
-			Completion: complete.PredictSet("mstsc"),
-			Default:    "mstsc",
-			Usage:      `Specifies how the CLI will attempt to invoke an RDP client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "mstsc".`,
+			Completion: complete.PredictSet("mstsc", "open"),
+			Usage:      `Specifies how the CLI will attempt to invoke an RDP client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "mstsc", which is the default on Windows and launches the Windows client, and "open", which is the default on Mac and launches via an rdp:// URL.`,
 		})
 	}
 
@@ -369,7 +369,23 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	case "rdp":
 		if c.flagExec == "" {
-			c.flagExec = strings.ToLower(c.flagRdpStyle)
+			c.flagRdpStyle = strings.ToLower(c.flagRdpStyle)
+			switch c.flagRdpStyle {
+			case "":
+				switch runtime.GOOS {
+				case "windows":
+					c.flagRdpStyle = "mstsc"
+				case "darwin":
+					c.flagRdpStyle = "open"
+				default:
+					// We may want to support rdesktop and/or xfreerdp at some point soon
+					c.flagRdpStyle = "mstsc"
+				}
+			}
+			if c.flagRdpStyle == "mstsc" {
+				c.flagRdpStyle = "mstsc.exe"
+			}
+			c.flagExec = c.flagRdpStyle
 		}
 	}
 
@@ -832,8 +848,10 @@ func (c *Command) handleExec(passthroughArgs []string) {
 
 	case "rdp":
 		switch c.flagRdpStyle {
-		case "mstsc":
+		case "mstsc.exe":
 			args = append(args, "/v", addr)
+		case "open":
+			args = append(args, "-n", "-W", fmt.Sprintf("rdp://full%saddress=s:%s", "%20", addr))
 		}
 	}
 
