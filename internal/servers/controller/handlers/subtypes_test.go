@@ -6,6 +6,7 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/go-cmp/cmp"
 	accountspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
+	authmethodspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	hostspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	targetspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	"github.com/stretchr/testify/assert"
@@ -23,17 +24,22 @@ func TestStructToProtoToStruct(t *testing.T) {
 		wantJson string
 	}{
 		{
-			name:     "password",
+			name:     "password accounts",
 			pb:       &accountspb.PasswordAccountAttributes{LoginName: "testun", Password: &wrapperspb.StringValue{Value: "testpw"}},
 			wantJson: `{"login_name": "testun", "password": "testpw"}`,
 		},
 		{
-			name:     "tcp",
+			name:     "password auth-methods",
+			pb:       &authmethodspb.PasswordAuthMethodAttributes{MinLoginNameLength: 4, MinPasswordLength: 2},
+			wantJson: `{"min_login_name_length": 4, "min_password_length": 2}`,
+		},
+		{
+			name:     "tcp target",
 			pb:       &targetspb.TcpTargetAttributes{DefaultPort: &wrapperspb.UInt32Value{Value: 22}},
 			wantJson: `{"default_port": 22}`,
 		},
 		{
-			name:     "host",
+			name:     "static host",
 			pb:       &hostspb.StaticHostAttributes{Address: &wrapperspb.StringValue{Value: "::1"}},
 			wantJson: `{"address": "::1"}`,
 		},
