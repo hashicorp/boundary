@@ -13,14 +13,10 @@ export default function HomePage() {
         description="Access any system from anywhere based on user identity."
         links={[
           {
-            text: 'Download',
-            url: '/download',
-            type: 'download',
-          },
-          {
-            text: 'Documentation',
-            url: '/docs',
-            type: 'inbound',
+            text: 'Get Started',
+            url:
+              'https://learn.hashicorp.com/collections/boundary/getting-started',
+            type: 'outbound',
           },
         ]}
         // TODO Replace URL with finalized URL
@@ -124,7 +120,7 @@ export default function HomePage() {
           {
             title: 'Identity-based access',
             content:
-              'Enables privileged sessions for users and  applications based on user identity and role.',
+              'Enables privileged sessions for users and applications based on user identity and role.',
             icon: require('./img/boundary-identitybasedaccess.jpg?url'),
           },
           {
@@ -134,7 +130,7 @@ export default function HomePage() {
             icon: require('./img/boundary-sessionmanagement.jpg?url'),
           },
           {
-            title: 'Platform agnostic',
+            title: 'Platform-agnosticity',
             content:
               'One workflow for identity-based access across clouds, kubernetes clusters, and on-prem infrastructure.',
             icon: require('./img/boundary-platformagnosticity.jpg?url'),
@@ -201,7 +197,12 @@ export default function HomePage() {
         heading="Ready to get started?"
         content="Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments."
         links={[
-          { text: 'Download', url: '/download', type: 'download' },
+          {
+            text: 'Get Started',
+            url:
+              'https://learn.hashicorp.com/collections/boundary/getting-started',
+            type: 'outbound',
+          },
           { text: 'Explore documentation', url: '/docs' },
         ]}
       />
