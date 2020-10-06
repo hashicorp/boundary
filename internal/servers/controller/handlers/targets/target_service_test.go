@@ -469,7 +469,7 @@ func TestUpdate(t *testing.T) {
 					Description:            wrapperspb.String("desc"),
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					Type: target.TcpSubType.String(),
+					Type:                   target.TcpSubType.String(),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -500,7 +500,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Target{
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
-					Type: target.TcpSubType.String(),
+					Type:        target.TcpSubType.String(),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -786,10 +786,10 @@ func TestUpdate_BadVersion(t *testing.T) {
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	upTar, err := tested.UpdateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), &pbs.UpdateTargetRequest{
-		Id:         gtar.GetPublicId(),
-		Item:       &pb.Target{
-			Description:            wrapperspb.String("updated"),
-			Version:                72,
+		Id: gtar.GetPublicId(),
+		Item: &pb.Target{
+			Description: wrapperspb.String("updated"),
+			Version:     72,
 		},
 		UpdateMask: &field_mask.FieldMask{Paths: []string{"description"}},
 	})
@@ -890,8 +890,8 @@ func TestAddTargetHostSets(t *testing.T) {
 		{
 			name: "Incorrect host set ids",
 			req: &pbs.AddTargetHostSetsRequest{
-				Id:      tar.GetPublicId(),
-				Version: tar.GetVersion(),
+				Id:         tar.GetPublicId(),
+				Version:    tar.GetVersion(),
 				HostSetIds: []string{"incorrect"},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),

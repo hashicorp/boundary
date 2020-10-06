@@ -317,7 +317,7 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"new_password": "New password equal to current password."})
 		}
-		return nil, fmt.Errorf( "unable to change password: %w", err)
+		return nil, fmt.Errorf("unable to change password: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "Failed to change password.")

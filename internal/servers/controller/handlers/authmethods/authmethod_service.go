@@ -192,7 +192,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	}
 	out, err := repo.CreateAuthMethod(ctx, u)
 	if err != nil {
-		return nil,fmt.Errorf("unable to create auth method: %w", err)
+		return nil, fmt.Errorf("unable to create auth method: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
