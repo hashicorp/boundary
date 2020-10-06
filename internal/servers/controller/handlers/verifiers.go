@@ -83,7 +83,7 @@ func ValidateUpdateRequest(prefix string, r UpdateRequest, i ApiResource, fn Cus
 	if i.GetDescription() != nil {
 		trimmed := strings.TrimSpace(i.GetDescription().GetValue())
 		if trimmed == "" {
-			badFields["name"] = "Cannot set empty string as description"
+			badFields["description"] = "Cannot set empty string as description"
 		} else {
 			i.GetDescription().Value = trimmed
 		}
