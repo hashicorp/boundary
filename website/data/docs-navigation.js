@@ -33,9 +33,6 @@ export default [
   {
     category: 'concepts',
     content: [
-      'api-standards',
-      'cli-standards',
-      'permissions',
       'security-model',
       {
         category: 'domain-model',
@@ -58,6 +55,14 @@ export default [
           'users',
         ],
       },
+			{
+        category: 'standards',
+				content: [
+          'api-standards',
+          'cli-standards',
+				]
+			},
+      'permissions',
     ],
   },
   '---',
