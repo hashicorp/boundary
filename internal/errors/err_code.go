@@ -11,18 +11,18 @@ type ErrInfo struct {
 }
 
 const (
-	UnknownErrClass ErrClass = 0
-	ParameterError  ErrClass = 1
-	IntegrityError  ErrClass = 2
-	SearchError     ErrClass = 3
+	UnknownErrClass ErrClass = iota
+	ParameterError
+	IntegrityError
+	SearchError
 )
 
 func (e ErrClass) String() string {
-	return [...]string{
-		"unknown",
-		"parameter violation",
-		"integrity violation",
-		"search issue",
+	return map[ErrClass]string{
+		UnknownErrClass: "unknown",
+		ParameterError:  "parameter violation",
+		IntegrityError:  "integrity violation",
+		SearchError:     "search issue",
 	}[e]
 }
 
