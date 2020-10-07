@@ -20,4 +20,9 @@ export default [
     url: '/api-docs',
     type: 'inbound',
   },
+  {
+    text: 'Community',
+    url: '/community',
+    type: 'inbound',
+  },
 ]
