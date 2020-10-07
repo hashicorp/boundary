@@ -198,6 +198,12 @@ func TestList(t *testing.T) {
 			req:     &pbs.ListScopesRequest{ScopeId: oNoProjects.GetPublicId()},
 			res:     &pbs.ListScopesResponse{},
 		},
+		{
+			name:    "Cant List Project Scopes",
+			scopeId: p1.GetPublicId(),
+			req:     &pbs.ListScopesRequest{ScopeId: p1.GetPublicId()},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
