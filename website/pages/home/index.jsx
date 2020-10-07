@@ -167,7 +167,7 @@ export default function HomePage() {
             icon: require('./img/features/session-management.svg?url'),
           },
           {
-            title: 'Platform-agnosticity',
+            title: 'Platform agnostic',
             content:
               'One workflow for identity-based access across clouds, kubernetes clusters, and on-prem infrastructure.',
             icon: require('./img/features/platform-agnosticity.svg?url'),
