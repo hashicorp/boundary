@@ -2,7 +2,7 @@
 
 set -e
 
-ui_commitish="${UI_COMMITISH:-develop}"
+ui_commitish="${UI_COMMITISH:-main}"
 
 targetdir="internal/ui"
 shafile="${targetdir}/VERSION"
