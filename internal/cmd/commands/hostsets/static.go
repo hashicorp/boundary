@@ -36,22 +36,22 @@ func (c *StaticCommand) Help() string {
 	switch c.Func {
 	case "create":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary host-sets static create [options] [args]",
+			"Usage: boundary host-sets create static [options] [args]",
 			"",
 			"  Create a static-type host-set. Example:",
 			"",
-			`    $ boundary host-sets static create -name prodops -description "Static host-set for ProdOps"`,
+			`    $ boundary host-sets create static -name prodops -description "Static host-set for ProdOps"`,
 			"",
 			"",
 		})
 
 	case "update":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary host-sets static update [options] [args]",
+			"Usage: boundary host-sets update static [options] [args]",
 			"",
 			"  Update a static-type host-set given its ID. Example:",
 			"",
-			`    $ boundary host-sets static update -id hsst_1234567890 -name "devops" -description "Static host-set for DevOps"`,
+			`    $ boundary host-sets update static -id hsst_1234567890 -name "devops" -description "Static host-set for DevOps"`,
 			"",
 			"",
 		})
