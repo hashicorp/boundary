@@ -1,12 +1,21 @@
 .root {
   padding: 88px 0;
 
-  & > h2 {
-    text-align: center;
-    margin-top: 0;
-    margin-bottom: 64px;
-    @media (--small) {
-      margin-bottom: 0;
+  & .headerWrapper {
+    & h2 {
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 32px;
+      @media (--small) {
+        margin-bottom: 0;
+      }
+    }
+
+    & p {
+      max-width: 818px;
+      text-align: center;
+      margin-left: auto;
+      margin-right: auto;
     }
   }
 }
@@ -47,21 +56,13 @@
 .features {
   & > li {
     list-style: none;
-    padding: 235px 0;
+    padding: 135px 0;
 
     &:first-child {
       padding-top: 108px;
 
       @media (width < 1120px) {
         padding-top: 64px;
-      }
-    }
-
-    &:last-child {
-      padding-bottom: 160px;
-
-      @media (width < 1120px) {
-        padding-bottom: 64px;
       }
     }
 

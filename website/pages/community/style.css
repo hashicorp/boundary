@@ -5,4 +5,17 @@
   & .g-section-header {
     margin-bottom: 100px;
   }
+
+  & .g-vertical-text-block-list {
+    & .list {
+      & .body-text {
+        & a {
+          color: var(--red);
+          &::after {
+            background-color: var(--red);
+          }
+        }
+      }
+    }
+  }
 }
