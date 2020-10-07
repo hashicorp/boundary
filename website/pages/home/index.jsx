@@ -24,6 +24,8 @@ export default function HomePage() {
       />
 
       <HowItWorks
+        title="Secure access to hosts and services"
+        description="Traditional solutions require you to distribute and manage SSH keys, VPN credentials, and bastion hosts causing credential sprawl and opening user’s access to entire networks and systems. Boundary provides a secure way to access to hosts and critical systems without having to manage credentials or expose your network, and is entirely open source."
         features={[
           {
             title: 'Authenticate',
@@ -109,31 +111,37 @@ export default function HomePage() {
           <UseCases
             items={[
               {
-                title: 'Identity-based access',
+                title: 'Onboard new users effortlessly',
                 description:
-                  'Securely connect trusted identities to applications, systems, and data.',
-                image: {
-                  url: require('./img/red-usecase-accessprivileges.png?url'),
-                },
-                link: { title: 'Learn more', url: '#TODO' },
-              },
-              {
-                title: 'Automate access',
-                description:
-                  'Enables secure access across dynamic infrastructure.',
+                  'Enables and secures access across dynamic environments.',
                 image: {
                   url: require('./img/red-usecase-accessmgmt.png?url'),
                 },
                 link: { title: 'Learn more', url: '#TODO' },
               },
               {
-                title: 'Session visibility',
+                title: 'Connect to private resources easily',
                 description:
-                  'Monitor user sessions created with Boundary with your preferred analytics tool.',
+                  'Securely connect trusted identities to applications, systems, and data.',
+                image: {
+                  url: require('./img/red-usecase-accessprivileges.png?url'),
+                },
+                link: {
+                  title: 'Learn more',
+                  url: '/docs/common-workflows/manage-identities',
+                },
+              },
+              {
+                title: 'Security and compliance without overhead',
+                description:
+                  'Provides session visibility that enables teams to stay compliant.',
                 image: {
                   url: require('./img/red-usecase-sessionvisibility.png?url'),
                 },
-                link: { title: 'Learn more', url: '#TODO' },
+                link: {
+                  title: 'Learn more',
+                  url: '/docs/common-workflows/manage-sessions',
+                },
               },
             ]}
           />
@@ -151,47 +159,49 @@ export default function HomePage() {
         />
       </div>
 
-      <ProductFeaturesList
-        heading="Boundary Features"
-        features={[
-          {
-            title: 'Identity-based access',
-            content:
-              'Enables privileged sessions for users and applications based on user identity and role.',
-            icon: require('./img/features/identity-based-access.svg?url'),
-          },
-          {
-            title: 'Session management',
-            content:
-              'Ensures access control regardless of user or operators’ infrastructure.',
-            icon: require('./img/features/session-management.svg?url'),
-          },
-          {
-            title: 'Platform-agnosticity',
-            content:
-              'One workflow for identity-based access across clouds, kubernetes clusters, and on-prem infrastructure.',
-            icon: require('./img/features/platform-agnosticity.svg?url'),
-          },
-          {
-            title: 'Session visibility',
-            content:
-              'Visibility into session metrics, events, logs, and traces with the ability to export data to business intelligence and event monitoring tools.',
-            icon: require('./img/features/session-visibility.svg?url'),
-          },
-          {
-            title: 'Configuration as code',
-            content:
-              'Ability to establish secure access controls and route resources dynamically.',
-            icon: require('./img/features/config-as-code.svg?url'),
-          },
-          {
-            title: 'Managing dynamic environments',
-            content:
-              'Secure access to dynamic systems and applications with automated controls.',
-            icon: require('./img/features/managing-dynamic-environments.svg?url'),
-          },
-        ]}
-      />
+      <section className="features-section">
+        <ProductFeaturesList
+          heading="Boundary Features"
+          features={[
+            {
+              title: 'Identity-based access',
+              content:
+                'Enables privileged sessions for users and applications based on user identity and role.',
+              icon: require('./img/features/identity-based-access.svg?url'),
+            },
+            {
+              title: 'Session management',
+              content:
+                'Ensures access control regardless of user or operators’ infrastructure.',
+              icon: require('./img/features/session-management.svg?url'),
+            },
+            {
+              title: 'Platform agnostic',
+              content:
+                'One workflow for identity-based access across clouds, kubernetes clusters, and on-prem infrastructure.',
+              icon: require('./img/features/platform-agnosticity.svg?url'),
+            },
+            {
+              title: 'Session visibility',
+              content:
+                'Visibility into session metrics, events, logs, and traces with the ability to export data to business intelligence and event monitoring tools.',
+              icon: require('./img/features/session-visibility.svg?url'),
+            },
+            {
+              title: 'Configuration as code',
+              content:
+                'Ability to establish secure access controls and route resources dynamically.',
+              icon: require('./img/features/config-as-code.svg?url'),
+            },
+            {
+              title: 'Managing dynamic environments',
+              content:
+                'Secure access to dynamic systems and applications with automated controls.',
+              icon: require('./img/features/managing-dynamic-environments.svg?url'),
+            },
+          ]}
+        />
+      </section>
 
       <BrandedCta
         heading="Ready to get started?"

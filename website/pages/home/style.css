@@ -1,7 +1,3 @@
-p {
-  color: gray-7;
-}
-
 .p-home {
   & .break-section {
     background: linear-gradient(
@@ -10,6 +6,19 @@ p {
       var(--white) 50%,
       var(--white) 100%
     );
+  }
+
+  & .features-section {
+    padding: 128px 0;
+
+    @media (max-width: 800px) {
+      padding: 88px 0;
+    }
+
+    & > * {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
   }
 
   & .use-cases-section {

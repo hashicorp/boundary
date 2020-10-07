@@ -3,6 +3,7 @@ import '@hashicorp/nextjs-scripts/lib/nprogress/style.css'
 import NProgress from '@hashicorp/nextjs-scripts/lib/nprogress'
 import createConsentManager from '@hashicorp/nextjs-scripts/lib/consent-manager'
 import useAnchorLinkAnalytics from '@hashicorp/nextjs-scripts/lib/anchor-link-analytics'
+import HashiStackMenu from '@hashicorp/react-hashi-stack-menu'
 import Router from 'next/router'
 import HashiHead from '@hashicorp/react-head'
 import Head from 'next/head'
@@ -30,13 +31,14 @@ function App({ Component, pageProps }) {
           is={Head}
           title={`${productName} by HashiCorp`}
           siteName={`${productName} by HashiCorp`}
-          description="Write your description here"
-          image="https://www.boundaryproject.io/img/og-image.png"
+          description="Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments."
+          image="https://boundaryproject.io/img/og-image.png"
           icon={[{ href: '/favicon.ico' }]}
         />
         {ALERT_BANNER_ACTIVE && (
           <AlertBanner {...alertBannerData} theme="red" />
         )}
+        <HashiStackMenu />
         <ProductSubnav />
         <div className="content">
           <Component {...pageProps} />
