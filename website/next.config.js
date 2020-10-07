@@ -17,6 +17,7 @@ module.exports = withHashicorp({
   async redirects() {
     return await redirects
   },
+  svgo: { plugins: [{ removeViewBox: false }] },
   experimental: { modern: true },
   env: {
     HASHI_ENV: process.env.HASHI_ENV || 'development',
