@@ -25,7 +25,6 @@
 @import '../components/footer/style.css';
 
 /* Local Pages */
-@import './downloads/style.css';
 @import './home/style.css';
 
 /* Print Styles */
