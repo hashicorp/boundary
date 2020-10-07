@@ -39,13 +39,13 @@ func (c *Command) Synopsis() string {
 }
 
 var flagsMap = map[string][]string{
-	"authorize":        {"id", "host-id"},
-	"read":             {"id"},
-	"delete":           {"id"},
-	"list":             {"scope-id"},
-	"add-host-sets":    {"id", "host-set", "version"},
-	"remove-host-sets": {"id", "host-set", "version"},
-	"set-host-sets":    {"id", "host-set", "version"},
+	"authorize-session": {"id", "host-id"},
+	"read":              {"id"},
+	"delete":            {"id"},
+	"list":              {"scope-id"},
+	"add-host-sets":     {"id", "host-set", "version"},
+	"remove-host-sets":  {"id", "host-set", "version"},
+	"set-host-sets":     {"id", "host-set", "version"},
 }
 
 func (c *Command) Help() string {
@@ -118,15 +118,15 @@ func (c *Command) Help() string {
 			"",
 			`      $ boundary targets set-host-sets -id ttcp_1234567890 -host-set hsst_1234567890`,
 		})
-	case "authorize":
+	case "authorize-session":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary target authorize [options] [args]",
+			"Usage: boundary target authorize-session [options] [args]",
 			"",
 			"  This command allows fetching session authorization credentials against a target. Example:",
 			"",
 			"    Set host-set resources on a tcp-type target:",
 			"",
-			`      $ boundary targets authorize -id ttcp_1234567890`,
+			`      $ boundary targets authorize-session -id ttcp_1234567890`,
 		})
 	default:
 		helpStr = helpMap[c.Func]()
@@ -237,7 +237,7 @@ func (c *Command) Run(args []string) int {
 				hostSets = nil
 			}
 		}
-	case "authorize":
+	case "authorize-session":
 		if len(c.flagHostId) != 0 {
 			opts = append(opts, targets.WithHostId(c.flagHostId))
 		}
@@ -282,20 +282,20 @@ func (c *Command) Run(args []string) int {
 		result, err = targetClient.RemoveHostSets(c.Context, c.FlagId, version, hostSets, opts...)
 	case "set-host-sets":
 		result, err = targetClient.SetHostSets(c.Context, c.FlagId, version, hostSets, opts...)
-	case "authorize":
-		sar, err = targetClient.Authorize(c.Context, c.FlagId, opts...)
+	case "authorize-session":
+		sar, err = targetClient.AuthorizeSession(c.Context, c.FlagId, opts...)
 	}
 
 	plural := "target"
 	switch c.Func {
 	case "list":
 		plural = "targets"
-	case "authorize":
+	case "authorize-session":
 		plural = "a session against target"
 	}
 	if err != nil {
-		if api.AsServerError(err) != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
+		if apiErr := api.AsServerError(err); apiErr != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, base.PrintApiError(apiErr)))
 			return 1
 		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
@@ -370,7 +370,7 @@ func (c *Command) Run(args []string) int {
 		}
 		return 0
 
-	case "authorize":
+	case "authorize-session":
 		sa := sar.GetItem().(*targets.SessionAuthorization)
 		switch base.Format(c.UI) {
 		case "table":

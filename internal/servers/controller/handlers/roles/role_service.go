@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -355,7 +356,7 @@ func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, princip
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.AddPrincipalRoles(ctx, roleId, version, principalIds)
+	_, err = repo.AddPrincipalRoles(ctx, roleId, version, strutil.RemoveDuplicates(principalIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add principals to role: %v.", err)
@@ -375,7 +376,7 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, princip
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = repo.SetPrincipalRoles(ctx, roleId, version, principalIds)
+	_, _, err = repo.SetPrincipalRoles(ctx, roleId, version, strutil.RemoveDuplicates(principalIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set principals on role: %v.", err)
@@ -395,7 +396,7 @@ func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, prin
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeletePrincipalRoles(ctx, roleId, version, principalIds)
+	_, err = repo.DeletePrincipalRoles(ctx, roleId, version, strutil.RemoveDuplicates(principalIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove principals from role: %v.", err)
@@ -415,7 +416,7 @@ func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []st
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.AddRoleGrants(ctx, roleId, version, grants)
+	_, err = repo.AddRoleGrants(ctx, roleId, version, strutil.RemoveDuplicates(grants, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add grants to role: %v.", err)
@@ -439,7 +440,7 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 	if grants == nil {
 		grants = []string{}
 	}
-	_, _, err = repo.SetRoleGrants(ctx, roleId, version, grants)
+	_, _, err = repo.SetRoleGrants(ctx, roleId, version, strutil.RemoveDuplicates(grants, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set grants on role: %v.", err)
@@ -459,7 +460,7 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeleteRoleGrants(ctx, roleId, version, grants)
+	_, err = repo.DeleteRoleGrants(ctx, roleId, version, strutil.RemoveDuplicates(grants, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove grants from role: %v", err)
@@ -654,8 +655,13 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 		badFields["principal_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetPrincipalIds() {
+		if !handlers.ValidId(iam.GroupPrefix, id) && !handlers.ValidId(iam.UserPrefix, id) {
+			badFields["principal_ids"] = "Must only have valid group and/or user ids."
+			break
+		}
 		if id == "u_recovery" {
 			badFields["principal_ids"] = "u_recovery cannot be assigned to a role"
+			break
 		}
 	}
 	if len(badFields) > 0 {
@@ -673,8 +679,13 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 		badFields["version"] = "Required field."
 	}
 	for _, id := range req.GetPrincipalIds() {
+		if !handlers.ValidId(iam.GroupPrefix, id) && !handlers.ValidId(iam.UserPrefix, id) {
+			badFields["principal_ids"] = "Must only have valid group and/or user ids."
+			break
+		}
 		if id == "u_recovery" {
 			badFields["principal_ids"] = "u_recovery cannot be assigned to a role"
+			break
 		}
 	}
 	if len(badFields) > 0 {
@@ -694,6 +705,12 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 	if len(req.GetPrincipalIds()) == 0 {
 		badFields["principal_ids"] = "Must be non-empty."
 	}
+	for _, id := range req.GetPrincipalIds() {
+		if !handlers.ValidId(iam.GroupPrefix, id) && !handlers.ValidId(iam.UserPrefix, id) {
+			badFields["principal_ids"] = "Must only have valid group and/or user ids."
+			break
+		}
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
@@ -711,6 +728,16 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 	if len(req.GetGrantStrings()) == 0 {
 		badFields["grant_strings"] = "Must be non-empty."
 	}
+	for _, v := range req.GetGrantStrings() {
+		if len(v) == 0 {
+			badFields["grant_strings"] = "Grant strings must not be empty."
+			break
+		}
+		if _, err := perms.Parse("p_anything", v); err != nil {
+			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
+			break
+		}
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
@@ -724,6 +751,16 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
+	}
+	for _, v := range req.GetGrantStrings() {
+		if len(v) == 0 {
+			badFields["grant_strings"] = "Grant strings must not be empty."
+			break
+		}
+		if _, err := perms.Parse("p_anything", v); err != nil {
+			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
+			break
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -741,6 +778,16 @@ func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 	}
 	if len(req.GetGrantStrings()) == 0 {
 		badFields["grant_strings"] = "Must be non-empty."
+	}
+	for _, v := range req.GetGrantStrings() {
+		if len(v) == 0 {
+			badFields["grant_strings"] = "Grant strings must not be empty."
+			break
+		}
+		if _, err := perms.Parse("p_anything", v); err != nil {
+			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
+			break
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

@@ -1963,7 +1963,7 @@
         ]
       }
     },
-    "/v1/targets/{id}:authorize": {
+    "/v1/targets/{id}:authorize-session": {
       "post": {
         "summary": "Authorizes a Session.",
         "operationId": "TargetService_AuthorizeSession",

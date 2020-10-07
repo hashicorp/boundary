@@ -13,15 +13,15 @@ Scopes are a foundational part of Boundary. They allow users to segregate resour
 2. Organization
 3. Project
 
-Some resources can only be associated with a specific level of scope. Targets for example can only be project scope. Other resources can be of multiple scopes. For example, users can be both global and organization level scoped. See the [domain model](/docs/domain-model) for detailed resource specific information.
+Some resources can only be associated with a specific level of scope. Targets for example can only be project scope. Other resources can be of multiple scopes. For example, users can be both global and organization level scoped. See the [domain model](/docs/concepts/domain-model) for detailed resource specific information.
 
 In this example, we're going to create two scopes, a project and an organization.
 
-~> Note that all resource ID's in this example are illustration only - ID's are uniquely generated for every resource upon creation with the exception being
-generated resources in `dev mode`. Please make sure to use the resource ID's that are generated when running this example. For example, if you run
+~> All resource ID's in this example are illustration only - ID's are uniquely generated for every resource upon creation with the exception being
+generated resources in `dev` mode. Please make sure to use the resource ID's that are generated when running this example. For example, if you run
 `boundary users create`, use the resource ID of the user seen in stdout, not the ID in the example command.
 
-## Create a Organization
+## Create an Organization
 
 An organization lives in the global scope. In this example, we're going to create an organization. In doing so, we're going to opt for automated role creation during scope generation in order to simplify management of the scope by the user.
 

@@ -29,9 +29,8 @@ var envAuthMethodId = "BOUNDARY_AUTHENTICATE_AUTH_METHOD_ID"
 type PasswordCommand struct {
 	*base.Command
 
-	flagLoginName    string
-	flagPassword     string
-	flagAuthMethodId string
+	flagLoginName string
+	flagPassword  string
 }
 
 func (c *PasswordCommand) Synopsis() string {
@@ -69,9 +68,9 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 
 	f.StringVar(&base.StringVar{
 		Name:   "auth-method-id",
-		Target: &c.flagAuthMethodId,
-		EnvVar: envAuthMethodId,
-		Usage:  "Specifies the ID of the auth method against which to authenticate",
+		EnvVar: "BOUNDARY_AUTH_METHOD_ID",
+		Target: &c.FlagAuthMethodId,
+		Usage:  "The auth-method resource to use for the operation",
 	})
 
 	return set
@@ -97,7 +96,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	case c.flagLoginName == "":
 		c.UI.Error("Login name must be provided via -login-name")
 		return 1
-	case c.flagAuthMethodId == "":
+	case c.FlagAuthMethodId == "":
 		c.UI.Error("Auth method ID must be provided via -auth-method-id")
 		return 1
 	}
@@ -122,14 +121,14 @@ func (c *PasswordCommand) Run(args []string) int {
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
-	result, err := authmethods.NewClient(client).Authenticate(c.Context, c.flagAuthMethodId,
+	result, err := authmethods.NewClient(client).Authenticate(c.Context, c.FlagAuthMethodId,
 		map[string]interface{}{
 			"login_name": c.flagLoginName,
 			"password":   c.flagPassword,
 		})
 	if err != nil {
-		if api.AsServerError(err) != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing authentication: %s", err.Error()))
+		if apiErr := api.AsServerError(err); apiErr != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing authentication: %s", base.PrintApiError(apiErr)))
 			return 1
 		}
 		c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))

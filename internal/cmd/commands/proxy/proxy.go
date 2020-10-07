@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -135,7 +136,7 @@ func (c *Command) Help() string {
 		return base.WrapForHelpText([]string{
 			"Usage: boundary connect [options] [args]",
 			"",
-			`  This command performs a target authorization and proxy launch in one command; it is equivalent to sending the output of "boundary targets authorize" into "boundary proxy". See the help output for those commands for more information.`,
+			`  This command performs a target authorization and proxy launch in one command; it is equivalent to sending the output of "boundary targets authorize-session" into "boundary proxy". See the help output for those commands for more information.`,
 			"",
 			"  Example:",
 			"",
@@ -312,9 +313,8 @@ func (c *Command) Flags() *base.FlagSets {
 			Name:       "style",
 			Target:     &c.flagRdpStyle,
 			EnvVar:     "BOUNDARY_CONNECT_RDP_STYLE",
-			Completion: complete.PredictSet("mstsc"),
-			Default:    "mstsc",
-			Usage:      `Specifies how the CLI will attempt to invoke an RDP client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "mstsc".`,
+			Completion: complete.PredictSet("mstsc", "open"),
+			Usage:      `Specifies how the CLI will attempt to invoke an RDP client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "mstsc", which is the default on Windows and launches the Windows client, and "open", which is the default on Mac and launches via an rdp:// URL.`,
 		})
 	}
 
@@ -369,7 +369,23 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	case "rdp":
 		if c.flagExec == "" {
-			c.flagExec = strings.ToLower(c.flagRdpStyle)
+			c.flagRdpStyle = strings.ToLower(c.flagRdpStyle)
+			switch c.flagRdpStyle {
+			case "":
+				switch runtime.GOOS {
+				case "windows":
+					c.flagRdpStyle = "mstsc"
+				case "darwin":
+					c.flagRdpStyle = "open"
+				default:
+					// We may want to support rdesktop and/or xfreerdp at some point soon
+					c.flagRdpStyle = "mstsc"
+				}
+			}
+			if c.flagRdpStyle == "mstsc" {
+				c.flagRdpStyle = "mstsc.exe"
+			}
+			c.flagExec = c.flagRdpStyle
 		}
 	}
 
@@ -412,8 +428,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 
 		if authzString[0] == '{' {
-			// Attempt to decode the JSON output of an authorize call and pull the
-			// token out of there
+			// Attempt to decode the JSON output of an authorize-session call
+			// and pull the token out of there
 			c.sessionAuthz = new(targets.SessionAuthorization)
 			if err := json.Unmarshal([]byte(authzString), c.sessionAuthz); err == nil {
 				authzString = c.sessionAuthz.AuthorizationToken
@@ -438,10 +454,10 @@ func (c *Command) Run(args []string) (retCode int) {
 			opts = append(opts, targets.WithHostId(c.flagHostId))
 		}
 
-		sar, err := targetClient.Authorize(c.Context, c.flagTargetId, opts...)
+		sar, err := targetClient.AuthorizeSession(c.Context, c.flagTargetId, opts...)
 		if err != nil {
-			if api.AsServerError(err) != nil {
-				c.UI.Error(fmt.Sprintf("Error from controller when performing authorize on a session against target: %s", err.Error()))
+			if apiErr := api.AsServerError(err); apiErr != nil {
+				c.UI.Error(fmt.Sprintf("Error from controller when performing authorize-session against target: %s", base.PrintApiError(apiErr)))
 				return 1
 			}
 			c.UI.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))
@@ -832,8 +848,10 @@ func (c *Command) handleExec(passthroughArgs []string) {
 
 	case "rdp":
 		switch c.flagRdpStyle {
-		case "mstsc":
+		case "mstsc.exe":
 			args = append(args, "/v", addr)
+		case "open":
+			args = append(args, "-n", "-W", fmt.Sprintf("rdp://full%saddress=s:%s", "%20", addr))
 		}
 	}
 

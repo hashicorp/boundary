@@ -1,0 +1,1302 @@
+---
+layout: docs
+page_title: Permissions Model
+sidebar_title: Permissions Model
+description: |-
+  Boundary's permissions model
+---
+
+# Boundary Permissions Model 
+
+Boundary's permissions model is a composable, RBAC, allow-only model that
+attempts to marry flexibility with usability. This page discusses the permission
+model's fundamental concepts, provides examples of the specific forms of allowed
+grants, and contains a table that acts as an easy cheat sheet to help those new
+to its grant syntax with crafting roles.
+
+Each grant is a mapping that describes a resource or set of resources and the actions that should be allowed on them. Thus, each grant contains one or more of:
+
+* An `id` field that indicates a specific resource or a wildcard to match all
+* A `type` field that indicates a specific resource type or a wildcard to match all
+* An `actions` field indicating which actions to allow the client to perform on the resources matched by `id` and `type`
+
+Grant strings can be supplied via a human-friendly string syntax or via JSON.
+
+Roles are composable; a user's final set of grants will be composed of various
+roles that each contribute grants to a set of principals that include that user
+or groups of which that user is a member.
+
+## Applicable Resource Types
+
+Boundary's [domain model](/docs/concepts/domain-model) is based on resource
+types. These can be implemented directly, such as with targets, or they can be
+abstract types that are implemented by concrete types within the system. As an
+example of the latter, a host catalog is an abstract type and a Static host
+catalog is a concrete type.
+
+From a permissions standpoint, however, all actions take place against directly
+implemented or abstract types. There may be actions that are only implemented by
+some concrete types (e.g., not all auth methods will support a `change-password`
+action), but the permissions model still defines these at the abstract level.
+This helps keep the overall system relatively simple and predictable.
+
+## Scopes are Permission Boundaries
+
+Every role assigns grants within a specific scope: either the scope in which the
+role exists, or a scope that is a child of the scope in which the role exists.
+This is controlled by the role's "grant scope ID".
+
+When a request is made, the scope in which to discover grants is either provided
+by the client (if against specific collection types) or is looked up using the
+resource's ID. This scope ID, along with the user's ID and the IDs of the groups
+the user belongs to, controls which roles are fetched to provide grants for the
+request.
+
+A role provides grants for a request if the grant scope ID matches the request's
+scope ID and one or more of the following are true:
+
+* The user's ID is contained in the principal IDs set on the role
+* A group the user belongs to is contained in the principal IDs set on the role
+* The user is logged in and the `u_auth` user is contained in the principal IDs set on the role
+* The role contains the `u_anon` user in the in the principal IDs set on the role
+
+## Permission Grant Formats
+
+Because of the aforementioned properties of the permissions model, grants are
+relatively simple. All grants take one of four forms. These examples use the
+canonical string syntax; the JSON equivalents are simply an object with a string
+`id` value, a string `type` value, and a string array `actions` value.
+
+### ID Only
+
+This is the simplest form: for a given specific resource, allow these actions.
+Example:
+
+`id=hsst_1234567890;actions=read,update`
+
+This grants `read` and `update` actions to that single resource.
+
+### Type Only
+
+For a given type, allow these actions. Example:
+
+`type=host-catalog;actions=create,list`
+
+Because type specifies only a collection as opposed to specific resources within
+that collection, only collection actions are allowed in this format. Currently,
+this is `create` and `list`. 
+
+There is one additional restriction: this is only valid against "top-level"
+resource types, which currently are:
+
+* Auth Methods
+* Auth Tokens
+* Groups
+* Host Catalogs
+* Roles
+* Scopes
+* Sessions
+* Targets
+* Users
+
+The reason for this is that other types of resources are contained within one of
+these resource types; for instance, accounts are instantiated within an auth
+method. To specify actions against those, you must also specify to which
+specific containing resource you want the grants to apply. This can be done with
+the pinned format shown below.
+
+### Pinned ID
+
+This form "pins" actions to a non-top-level type within a specific ID. It's
+easiest to explain with an example:
+
+`id=hcst_1234567890;type=host-set;actions=create,read,update`
+
+In this example, the user is able to create, read, or update host sets within
+the scope, but *only the host sets belonging to host catalog hcst_1234567890*.
+Pinning is essentially a way to use top-level resources to create mini
+permission boundaries for their subordinate resources.
+
+### Templates
+
+A few template possibilities exist, which will at grant evaluation time
+subsitute the given value into the ID field of the grant string:
+
+* `{{account.id}}`: The substituted value is the account ID associated with the
+token used to perform the action. As an example,
+`id={{account.id}};actions=read,change-password"` is one of Boundary's default
+grants to allow users that have authenticated with the Password auth method to
+change their own password.
+
+* `{{user.id}}`: The substituted value is the user ID associated with the token
+used to perform the action.
+
+### Wildcard ID
+
+Various wildcard possibilities are allowed:
+
+#### Wildcard ID
+
+When just the ID is `*`, it matches all IDs of the given type. This can be used
+with both top-level resource types and not. Example:
+
+`id=*;type=host-set;actions=create,read,update,set-hosts`
+
+#### Wildcard Type
+
+For non-top-level resources with pinned IDs, the `type` can be a wildcard:
+
+`id=hcst_1234567890;type=*;actions=create,read,update`
+
+This would allow `create`, `read`, and `update` actions for all types of
+subordinate resources (in this case host sets and hosts) underneath the host
+catalog with ID `hcst_1234567890`.
+
+#### Wildcard ID and Type
+
+If ID and type are both a wildcard, the grant is essentially a catch-all that
+will match any resource of any type within the scope and allow the given
+actions.
+
+`id=*;type=*;actions=read,list`
+
+#### Wildcard ID, Type, and Actions
+
+Finally, ID, type, and actions can all be wildcards:
+
+`id=*;type=*;actions=*`
+
+Such a grant is essentially a full administrator grant for a scope.
+
+## Resource Table
+
+The following table works as a quick cheat-sheet to help you manage your
+permissions. Note that it's not exhaustive; for brevity it does _not_ show
+wildcard or templated grant strings.
+
+<!-- BEGIN TABLE -->
+
+<table>
+  <thead>
+    <tr>
+      <th>Resource Type</th>
+      <th>Applicable Scopes</th>
+      <th>API Endpoint</th>
+      <th>Parameters into Permissions Engine</th>
+      <th>Available Actions / Examples</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="2">Account</td>
+      <td rowspan="2">
+        <ul>
+          <li>Global</li>
+          <li>Org</li>
+        </ul>
+      </td>
+      <td>
+        <code>/accounts</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>accounts</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create an account
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=create</code></li>
+            </ul>
+          <li>
+            <code>list</code>: List accounts
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=list</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/accounts/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Pin</li>
+            <ul>
+              <li>
+                <code>&lt;auth-method-id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>account</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read an account
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=read</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=read</code></li>
+            </ul>
+          <li>
+            <code>update</code>: Update an account
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=update</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=update</code></li>
+            </ul>
+          <li>
+            <code>delete</code>: Delete an account
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=delete</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=delete</code></li>
+            </ul>
+          <li>
+            <code>set-password</code>: Set a password on an account, without requring the current password
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=set-password</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=set-password</code></li>
+            </ul>
+          <li>
+            <code>change-password</code>: Change a password on an account given the current password
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=change-password</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=change-password</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowspan="2">Auth Method</td>
+      <td rowspan="2">
+        <ul>
+          <li>Global</li>
+          <li>Org</li>
+        </ul>
+      </td>
+      <td>
+        <code>/auth-methods</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>auth-method</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create an auth method
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=create</code></li>
+            </ul>
+          <li>
+            <code>list</code>: List auth methods
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=list</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/auth-methods/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>auth-method</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read an auth method
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=read</code></li>
+            </ul>
+          <li>
+            <code>update</code>: Update an auth method
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=update</code></li>
+            </ul>
+          <li>
+            <code>delete</code>: Delete an auth method
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=delete</code></li>
+            </ul>
+          <li>
+            <code>authenticate</code>: Authenticate to an auth method
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=authenticate</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowspan="2">Auth Token</td>
+      <td rowspan="2">
+        <ul>
+          <li>Global</li>
+          <li>Org</li>
+        </ul>
+      </td>
+      <td>
+        <code>/auth-tokens</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>auth-token</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>list</code>: List auth tokens
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=list</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/auth-tokens/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>auth-token</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read an auth token
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=read</code></li>
+            </ul>
+          <li>
+            <code>delete</code>: Delete an auth token
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=delete</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowspan="2">Group</td>
+      <td rowspan="2">
+        <ul>
+          <li>Global</li>
+          <li>Org</li>
+          <li>Project</li>
+        </ul>
+      </td>
+      <td>
+        <code>/groups</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>group</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create a group
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=create</code></li>
+            </ul>
+          <li>
+            <code>list</code>: List groups
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=list</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/groups/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>group</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a group
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=read</code></li>
+            </ul>
+          <li>
+            <code>update</code>: Update a group
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=update</code></li>
+            </ul>
+          <li>
+            <code>delete</code>: Delete a group
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=delete</code></li>
+            </ul>
+          <li>
+            <code>add-members</code>: Add members to a group
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=add-members</code></li>
+            </ul>
+          <li>
+            <code>set-members</code>: Set the full set of members on a group
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=set-members</code></li>
+            </ul>
+          <li>
+            <code>remove-members</code>: Remove members from a group
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=remove-members</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowspan="2">Host</td>
+      <td rowspan="2">
+        <ul>
+          <li>Project</li>
+        </ul>
+      </td>
+      <td>
+        <code>/hosts</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>host</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create a host
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=create</code></li>
+            </ul>
+          <li>
+            <code>list</code>: List hosts
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=list</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/hosts/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Pin</li>
+            <ul>
+              <li>
+                <code>&lt;host-catalog-id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>host</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a host
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=read</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=read</code></li>
+            </ul>
+          <li>
+            <code>update</code>: Update a host
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=update</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=update</code></li>
+            </ul>
+          <li>
+            <code>delete</code>: Delete a host
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=delete</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=delete</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowspan="2">Host Catalog</td>
+      <td rowspan="2">
+        <ul>
+          <li>Project</li>
+        </ul>
+      </td>
+      <td>
+        <code>/host-catalogs</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>host-catalog</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create a host catalog
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=create</code></li>
+            </ul>
+          <li>
+            <code>list</code>: List host catalogs
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=list</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/host-catalogs/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>host-catalog</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a host catalog
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=read</code></li>
+            </ul>
+          <li>
+            <code>update</code>: Update a host catalog
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=update</code></li>
+            </ul>
+          <li>
+            <code>delete</code>: Delete a host catalog
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=delete</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowspan="2">Host Set</td>
+      <td rowspan="2">
+        <ul>
+          <li>Project</li>
+        </ul>
+      </td>
+      <td>
+        <code>/host-sets</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>host-set</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create a host set
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=create</code></li>
+            </ul>
+          <li>
+            <code>list</code>: List host sets
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=list</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/targets/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Pin</li>
+            <ul>
+              <li>
+                <code>&lt;host-catalog-id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>host-set</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a host set
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=read</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=read</code></li>
+            </ul>
+          <li>
+            <code>update</code>: Update a host set
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=update</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=update</code></li>
+            </ul>
+          <li>
+            <code>delete</code>: Delete a host set
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=delete</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=delete</code></li>
+            </ul>
+          <li>
+            <code>add-hosts</code>: Add hosts to a host-set
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=add-hosts</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=add-hosts</code></li>
+            </ul>
+          <li>
+            <code>set-hosts</code>: Set the full set of hosts on a host set
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=set-hosts</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=set-hosts</code></li>
+            </ul>
+          <li>
+            <code>remove-hosts</code>: Remove hosts from a host set
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=remove-hosts</code></li>
+              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=remove-hosts</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowspan="2">Role</td>
+      <td rowspan="2">
+        <ul>
+          <li>Global</li>
+          <li>Org</li>
+          <li>Project</li>
+        </ul>
+      </td>
+      <td>
+        <code>/roles</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>role</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create a role
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=create</code></li>
+            </ul>
+          <li>
+            <code>list</code>: List roles
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=list</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/roles/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>role</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a role
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=read</code></li>
+            </ul>
+          <li>
+            <code>update</code>: Update a role
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=update</code></li>
+            </ul>
+          <li>
+            <code>delete</code>: Delete a role
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=delete</code></li>
+            </ul>
+          <li>
+            <code>add-principals</code>: Add principals to a role
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=add-principals</code></li>
+            </ul>
+          <li>
+            <code>set-principals</code>: Set the full set of principals on a role
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=set-principals</code></li>
+            </ul>
+          <li>
+            <code>remove-principals</code>: Remove principals from a role
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=remove-principals</code></li>
+            </ul>
+          <li>
+            <code>add-grants</code>: Add grants to a role
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=add-grants</code></li>
+            </ul>
+          <li>
+            <code>set-grants</code>: Set the full set of grants on a role
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=set-grants</code></li>
+            </ul>
+          <li>
+            <code>remove-grants</code>: Remove grants from a role
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=remove-grants</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowspan="2">Scope</td>
+      <td rowspan="2">
+        <ul>
+          <li>Global</li>
+          <li>Org</li>
+        </ul>
+      </td>
+      <td>
+        <code>/scopes</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>scope</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create a scope
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=create</code></li>
+            </ul>
+          <li>
+            <code>list</code>: List scopes
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=list</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/scopes/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>scope</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a scope
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=read</code></li>
+            </ul>
+          <li>
+            <code>update</code>: Update a scope
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=update</code></li>
+            </ul>
+          <li>
+            <code>delete</code>: Delete a scope
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=delete</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowspan="2">Session</td>
+      <td rowspan="2">
+        <ul>
+          <li>Project</li>
+        </ul>
+      </td>
+      <td>
+        <code>/sessions</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>session</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>list</code>: List sessions
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=list</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/session/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>session</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a session
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=read</code></li>
+            </ul>
+          <li>
+            <code>cancel</code>: Cancel a session
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=cancel</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowspan="2">Target</td>
+      <td rowspan="2">
+        <ul>
+          <li>Project</li>
+        </ul>
+      </td>
+      <td>
+        <code>/targets</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>target</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create a target
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=create</code></li>
+            </ul>
+          <li>
+            <code>list</code>: List targets
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=list</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/targets/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>target</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a target
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=read</code></li>
+            </ul>
+          <li>
+            <code>update</code>: Update a target
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=update</code></li>
+            </ul>
+          <li>
+            <code>delete</code>: Delete a target
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=delete</code></li>
+            </ul>
+          <li>
+            <code>add-host-sets</code>: Add host sets to a target
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=add-host-sets</code></li>
+            </ul>
+          <li>
+            <code>set-host-sets</code>: Set the full set of host sets on a target
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=set-host-sets</code></li>
+            </ul>
+          <li>
+            <code>remove-host-sets</code>: Remove host sets from a target
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=remove-host-sets</code></li>
+            </ul>
+          <li>
+            <code>authorize-session</code>: Authorize a session via the target
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=authorize-session</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowspan="2">User</td>
+      <td rowspan="2">
+        <ul>
+          <li>Global</li>
+          <li>Org</li>
+        </ul>
+      </td>
+      <td>
+        <code>/users</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>user</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create a user
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=create</code></li>
+            </ul>
+          <li>
+            <code>list</code>: List users
+          </li>
+            <ul>
+              <li><code>type=&lt;type&gt;;actions=list</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/users/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+            <ul>
+              <li>
+                <code>&lt;id&gt;</code>
+              </li>
+            </ul>
+          <li>Type</li>
+            <ul>
+              <li>
+                <code>user</code>
+              </li>
+            </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a user
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=read</code></li>
+            </ul>
+          <li>
+            <code>update</code>: Update a user
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=update</code></li>
+            </ul>
+          <li>
+            <code>delete</code>: Delete a user
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=delete</code></li>
+            </ul>
+          <li>
+            <code>add-accounts</code>: Add accounts to a user
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=add-accounts</code></li>
+            </ul>
+          <li>
+            <code>set-accounts</code>: Set the full set of accounts on a user
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=set-accounts</code></li>
+            </ul>
+          <li>
+            <code>remove-accounts</code>: Remove accounts from a user
+          </li>
+            <ul>
+              <li><code>id=&lt;id&gt;;actions=remove-accounts</code></li>
+            </ul>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- END TABLE -->

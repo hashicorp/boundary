@@ -44,8 +44,8 @@ func TestAction(t *testing.T) {
 			want:   "*",
 		},
 		{
-			action: Authorize,
-			want:   "authorize",
+			action: AuthorizeSession,
+			want:   "authorize-session",
 		},
 		{
 			action: AddGrants,

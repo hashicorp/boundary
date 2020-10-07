@@ -13,7 +13,7 @@ export default [
   },
   {
     category: 'installing',
-    content: ['production'],
+    content: ['systemd', 'postgres', 'high-availability'],
   },
   {
     category: 'developing',
@@ -29,13 +29,16 @@ export default [
   {
     category: 'concepts',
     content: [
-      'api-standards',
-      'cli-standards',
-      'permissions',
-      'security-model',
+		  {
+        category: 'security-model',
+			  content: [
+				  'permissions-model',
+				]
+			},
       {
         category: 'domain-model',
         content: [
+          'accounts',
           'actions',
           'auth-methods',
           'grants',
@@ -43,7 +46,7 @@ export default [
           'hosts',
           'host-catalogs',
           'host-sets',
-          'organization',
+          'organizations',
           'principals',
           'projects',
           'resources',
@@ -53,6 +56,13 @@ export default [
           'users',
         ],
       },
+			{
+        category: 'api-standards',
+				content: [
+          'http-standards',
+          'cli-standards',
+				]
+			},
     ],
   },
   '---',
@@ -92,16 +102,15 @@ export default [
   '---',
   {
     category: 'roadmap',
-    content: ['0_2_0'],
+    content: ['v0_2_0'],
   },
   {
     category: 'releases',
     content: [
       {
         category: 'release-notes',
-        content: ['0_1_0'],
+        content: ['v0_1_0'],
       },
     ],
   },
-
 ]

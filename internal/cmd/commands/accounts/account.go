@@ -25,7 +25,6 @@ type Command struct {
 
 	Func string
 
-	flagAuthMethodId    string
 	flagPassword        string
 	flagCurrentPassword string
 	flagNewPassword     string
@@ -127,12 +126,6 @@ func (c *Command) Flags() *base.FlagSets {
 
 	for _, name := range flagsMap[c.Func] {
 		switch name {
-		case "auth-method-id":
-			f.StringVar(&base.StringVar{
-				Name:   "auth-method-id",
-				Target: &c.flagAuthMethodId,
-				Usage:  "The auth-method resource in which to create or update the account resource",
-			})
 		case "password":
 			f.StringVar(&base.StringVar{
 				Name:   "password",
@@ -182,7 +175,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
-	if strutil.StrListContains(flagsMap[c.Func], "auth-method-id") && c.flagAuthMethodId == "" {
+	if strutil.StrListContains(flagsMap[c.Func], "auth-method-id") && c.FlagAuthMethodId == "" {
 		c.UI.Error("Auth Method ID must be passed in via -auth-method-id")
 		return 1
 	}
@@ -274,7 +267,7 @@ func (c *Command) Run(args []string) int {
 			err = nil
 		}
 	case "list":
-		listResult, err = accountClient.List(c.Context, c.flagAuthMethodId, opts...)
+		listResult, err = accountClient.List(c.Context, c.FlagAuthMethodId, opts...)
 	case "set-password":
 		result, err = accountClient.SetPassword(c.Context, c.FlagId, c.flagPassword, version, opts...)
 	case "change-password":
@@ -286,8 +279,8 @@ func (c *Command) Run(args []string) int {
 		plural = "accounts"
 	}
 	if err != nil {
-		if api.AsServerError(err) != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
+		if apiErr := api.AsServerError(err); apiErr != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, base.PrintApiError(apiErr)))
 			return 1
 		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))

@@ -21,8 +21,7 @@ type StaticCommand struct {
 
 	Func string
 
-	flagHostCatalogId string
-	flagAddress       string
+	flagAddress string
 }
 
 func (c *StaticCommand) Synopsis() string {
@@ -71,17 +70,6 @@ func (c *StaticCommand) Flags() *base.FlagSets {
 		common.PopulateCommonFlags(c.Command, f, "static-type host", staticFlagsMap[c.Func])
 	}
 
-	for _, name := range staticFlagsMap[c.Func] {
-		switch name {
-		case "host-catalog-id":
-			f.StringVar(&base.StringVar{
-				Name:   "host-catalog-id",
-				Target: &c.flagHostCatalogId,
-				Usage:  "The host-catalog resource in which to create or update the host resource",
-			})
-		}
-	}
-
 	f = set.NewFlagSet("Static Host Options")
 
 	for _, name := range staticFlagsMap[c.Func] {
@@ -122,7 +110,7 @@ func (c *StaticCommand) Run(args []string) int {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
-	if strutil.StrListContains(staticFlagsMap[c.Func], "host-catalog-id") && c.flagHostCatalogId == "" {
+	if strutil.StrListContains(staticFlagsMap[c.Func], "host-catalog-id") && c.FlagHostCatalogId == "" {
 		c.UI.Error("Host Catalog ID must be passed in via -host-catalog-id")
 		return 1
 	}
@@ -183,15 +171,15 @@ func (c *StaticCommand) Run(args []string) int {
 
 	switch c.Func {
 	case "create":
-		result, err = hostClient.Create(c.Context, c.flagHostCatalogId, opts...)
+		result, err = hostClient.Create(c.Context, c.FlagHostCatalogId, opts...)
 	case "update":
 		result, err = hostClient.Update(c.Context, c.FlagId, version, opts...)
 	}
 
 	plural := "static-type host"
 	if err != nil {
-		if api.AsServerError(err) != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, err.Error()))
+		if apiErr := api.AsServerError(err); apiErr != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, base.PrintApiError(apiErr)))
 			return 1
 		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
