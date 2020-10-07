@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "author": "HashiCorp",
   "dependencies": {
+    "@hashicorp/mktg-assets": "^1.0.0-alpha.20",
     "@hashicorp/nextjs-scripts": "13.0.0-canary.1",
     "@hashicorp/react-button": "^3.0.1",
     "@hashicorp/react-content": "5.1.0",
@@ -15,6 +16,7 @@
     "@hashicorp/react-product-features-list": "^2.1.0",
     "@hashicorp/react-section-header": "2.0.2",
     "@hashicorp/react-subnav": "3.3.1",
+    "@hashicorp/react-tabs": "^0.6.1",
     "@hashicorp/react-use-cases": "2.0.1",
     "@hashicorp/react-vertical-text-block-list": "2.0.3",
     "babel-plugin-import-glob-array": "0.2.0",
@@ -28,9 +30,10 @@
     "next-mdx-remote": "1.0.0",
     "react": "16.13.1",
     "react-dom": "16.13.1",
-    "react-player": "^2.6.2",
     "react-intersection-observer": "^8.29.0",
-    "readdirp": "3.4.0"
+    "react-player": "^2.6.2",
+    "readdirp": "3.4.0",
+    "semver": "^7.3.2"
   },
   "devDependencies": {
     "dart-linkcheck": "2.0.15",

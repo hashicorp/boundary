@@ -11,9 +11,7 @@ p {
       var(--white) 100%
     );
   }
-}
 
-.p-home {
   & .use-cases-section {
     padding-top: 128px;
     padding-bottom: 128px;
