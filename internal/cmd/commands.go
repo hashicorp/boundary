@@ -256,6 +256,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "get-token",
 			}, nil
 		},
+		"config autocomplete": func() (cli.Command, error) {
+			return &config.AutocompleteCommand{
+				Command: base.NewCommand(ui),
+				Func:    "base",
+			}, nil
+		},
+		"config autocomplete install": func() (cli.Command, error) {
+			return &config.AutocompleteCommand{
+				Command: base.NewCommand(ui),
+				Func:    "install",
+			}, nil
+		},
+		"config autocomplete uninstall": func() (cli.Command, error) {
+			return &config.AutocompleteCommand{
+				Command: base.NewCommand(ui),
+				Func:    "uninstall",
+			}, nil
+		},
 
 		"database": func() (cli.Command, error) {
 			return &database.Command{
