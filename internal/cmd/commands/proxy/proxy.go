@@ -595,7 +595,7 @@ func (c *Command) Run(args []string) (retCode int) {
 				case <-c.Context.Done():
 					return
 				default:
-					// When this hits zero we tigger listener close so this
+					// When this hits zero we trigger listener close so this
 					// isn't actually an error condition
 					if c.connectionsLeft.Load() == 0 {
 						return
