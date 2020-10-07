@@ -137,36 +137,19 @@
  * TODO, eventually remove:
  * Temporary Boundary Branding
  */
-:root {
-  --boundary: #f04e54;
-}
 .g-docs-sidenav {
-  --highlight-color: var(--boundary);
+  --highlight-color: var(--red);
 }
 
 .g-subnav {
   & a.variant-primary {
-    border-color: var(--boundary);
-    background-color: var(--boundary);
+    border-color: var(--red);
+    background-color: var(--red);
   }
   & .g-subnav-inner {
     & .style-menu-item {
       & .text::after {
-        background: var(--boundary);
-      }
-    }
-  }
-}
-
-.g-content {
-  --highlight-color: var(--boundary);
-}
-
-.g-vertical-text-block-list {
-  & .list {
-    & .body-text {
-      & a {
-        color: var(--boundary) !important;
+        background: var(--red);
       }
     }
   }
