@@ -45,8 +45,8 @@
 
       & a {
         &:global(.variant-primary) {
-          border-color: var(--boundary);
-          background-color: var(--boundary);
+          border-color: var(--red);
+          background-color: var(--red);
           margin-right: 16px;
 
           @media (width < 405px) {
