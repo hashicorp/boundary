@@ -30,6 +30,14 @@ var (
 	// to the repository resulted in a unique constraint violation.
 	ErrNotUnique = NewError(WithErrorMsg("unique constraint violation"), WithErrCode(ErrCodeUnique))
 
+	// ErrNotNull is returned by methods when a write to the repository resulted
+	// in a check constraint violation
+	ErrCheckConstraint = NewError(WithErrorMsg("check constraint violated"), WithErrCode(ErrCodeCheckConstraint))
+
+	// ErrNotNull is returned by methods when a write to the repository resulted
+	// in a not null constraint violation
+	ErrNotNull = NewError(WithErrorMsg("not null constraint violated"), WithErrCode(ErrCodeNotNull))
+
 	// ErrRecordNotFound returns a "record not found" error and it only occurs
 	// when attempting to read from the database into struct.
 	// When reading into a slice it won't return this error.
@@ -139,6 +147,37 @@ func NewError(opt ...Option) error {
 		Msg:     opts.withErrMsg,
 		Code:    opts.withErrCode,
 	}
+}
+
+// ConvertError will convert the error to Error (if that's not possible, it just
+// returns the error as is) and it will attempt to add a helpful error msg too.
+func ConvertError(e error) error {
+	// nothing to convert.
+	if e == nil {
+		return nil
+	}
+
+	var alreadyConverted *Error
+	if errors.As(e, &alreadyConverted) {
+		return alreadyConverted
+	}
+
+	var pqError *pq.Error
+	if errors.As(e, &pqError) {
+		if pqError.Code.Name() == "unique_violation" {
+			return NewError(WithErrorMsg(pqError.Detail), WithErrCode(ErrCodeUnique), WithWrap(ErrNotUnique))
+		}
+		if pqError.Code.Name() == "not_null_violation" {
+			msg := fmt.Sprintf("%s must not be empty", pqError.Column)
+			return NewError(WithErrorMsg(msg), WithErrCode(ErrCodeNotNull), WithWrap(ErrNotNull))
+		}
+		if pqError.Code.Name() == "check_violation" {
+			msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
+			return NewError(WithErrorMsg(msg), WithErrCode(ErrCodeCheckConstraint), WithWrap(ErrCheckConstraint))
+		}
+	}
+	// unfortunately, we can't help.
+	return e
 }
 
 // Error satisfies the error interface and returns a string representation of
