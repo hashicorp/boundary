@@ -111,31 +111,37 @@ export default function HomePage() {
           <UseCases
             items={[
               {
-                title: 'Identity-based access',
+                title: 'Onboard new users effortlessly',
                 description:
-                  'Securely connect trusted identities to applications, systems, and data.',
-                image: {
-                  url: require('./img/red-usecase-accessprivileges.png?url'),
-                },
-                link: { title: 'Learn more', url: '#TODO' },
-              },
-              {
-                title: 'Automate access',
-                description:
-                  'Enables secure access across dynamic infrastructure.',
+                  'Enables and secures access across dynamic environments.',
                 image: {
                   url: require('./img/red-usecase-accessmgmt.png?url'),
                 },
                 link: { title: 'Learn more', url: '#TODO' },
               },
               {
-                title: 'Session visibility',
+                title: 'Connect to private resources easily',
                 description:
-                  'Monitor user sessions created with Boundary with your preferred analytics tool.',
+                  'Securely connect trusted identities to applications, systems, and data.',
+                image: {
+                  url: require('./img/red-usecase-accessprivileges.png?url'),
+                },
+                link: {
+                  title: 'Learn more',
+                  url: '/docs/common-workflows/manage-identities',
+                },
+              },
+              {
+                title: 'Security and compliance without overhead',
+                description:
+                  'Provides session visibility that enables teams to stay compliant.',
                 image: {
                   url: require('./img/red-usecase-sessionvisibility.png?url'),
                 },
-                link: { title: 'Learn more', url: '#TODO' },
+                link: {
+                  title: 'Learn more',
+                  url: '/docs/common-workflows/manage-sessions',
+                },
               },
             ]}
           />
