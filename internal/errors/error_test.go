@@ -236,12 +236,12 @@ func TestError_Error(t *testing.T) {
 		{
 			name: "code",
 			err:  NewError(WithErrCode(ErrCodeCheckConstraint)),
-			want: "constraint check failed: integrity violation",
+			want: "constraint check failed: integrity violation: error #1000",
 		},
 		{
 			name: "msg-and-code",
 			err:  NewError(WithErrorMsg("test msg"), WithErrCode(ErrCodeCheckConstraint)),
-			want: "test msg",
+			want: "test msg: error #1000",
 		},
 		{
 			name: "unknown",

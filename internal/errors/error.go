@@ -2,6 +2,7 @@ package errors
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/lib/pq"
@@ -154,6 +155,9 @@ func (e *Error) Error() string {
 		if info, ok := errorCodeInfo[*e.Code]; ok {
 			msgs = append(msgs, info.Message, info.Class.String())
 		}
+	}
+	if e.Code != nil {
+		msgs = append(msgs, fmt.Sprintf("error #%d", *e.Code))
 	}
 
 	// if there's still nada, how about the wrapped error...
