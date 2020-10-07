@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
-	stdErrors "errors"
+	stderrors "errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -391,7 +391,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		return NoRowsAffected, fmt.Errorf("update: interface is missing %w", errors.ErrInvalidParameter)
 	}
 	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
-		return NoRowsAffected, stdErrors.New("update: both fieldMaskPaths and setToNullPaths are missing")
+		return NoRowsAffected, stderrors.New("update: both fieldMaskPaths and setToNullPaths are missing")
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
@@ -655,7 +655,7 @@ func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, er
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
-		return nil, stdErrors.New("error not a replayable message for WithOplog")
+		return nil, stderrors.New("error not a replayable message for WithOplog")
 	}
 	return replayable, nil
 }
@@ -858,7 +858,7 @@ func (rw *Db) newOplogMessage(ctx context.Context, opType OpType, i interface{},
 	opts := GetOpts(opt...)
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
-		return nil, stdErrors.New("error not a replayable interface")
+		return nil, stderrors.New("error not a replayable interface")
 	}
 	msg := oplog.Message{
 		Message:  i.(proto.Message),
@@ -885,7 +885,7 @@ func (rw *Db) newOplogMessage(ctx context.Context, opType OpType, i interface{},
 // be reset before retry
 func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error) {
 	if w.underlying == nil {
-		return RetryInfo{}, stdErrors.New("do underlying db is nil")
+		return RetryInfo{}, stderrors.New("do underlying db is nil")
 	}
 	info := RetryInfo{}
 	for attempts := uint(1); ; attempts++ {
@@ -901,7 +901,7 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 			if err := newTx.Rollback().Error; err != nil {
 				return info, err
 			}
-			if stdErrors.Is(err, oplog.ErrTicketAlreadyRedeemed) {
+			if stderrors.Is(err, oplog.ErrTicketAlreadyRedeemed) {
 				d := backOff.Duration(attempts)
 				info.Retries++
 				info.Backoff = info.Backoff + d
@@ -924,13 +924,13 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 // LookupByName will lookup resource my its friendly name which must be unique
 func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error {
 	if rw.underlying == nil {
-		return stdErrors.New("error underlying db nil for lookup by name")
+		return stderrors.New("error underlying db nil for lookup by name")
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return stdErrors.New("error interface parameter must to be a pointer for lookup by name")
+		return stderrors.New("error interface parameter must to be a pointer for lookup by name")
 	}
 	if resource.GetName() == "" {
-		return stdErrors.New("error name empty string for lookup by name")
+		return stderrors.New("error name empty string for lookup by name")
 	}
 	if err := rw.underlying.Where("name = ?", resource.GetName()).First(resource).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -990,10 +990,10 @@ func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder,
 // LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)
 func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
 	if rw.underlying == nil {
-		return stdErrors.New("error underlying db nil for lookup by")
+		return stderrors.New("error underlying db nil for lookup by")
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return stdErrors.New("error interface parameter must to be a pointer for lookup by")
+		return stderrors.New("error interface parameter must to be a pointer for lookup by")
 	}
 	if err := rw.underlying.Where(where, args...).First(resource).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -1011,10 +1011,10 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	opts := GetOpts(opt...)
 	if rw.underlying == nil {
-		return stdErrors.New("error underlying db nil for search by")
+		return stderrors.New("error underlying db nil for search by")
 	}
 	if reflect.ValueOf(resources).Kind() != reflect.Ptr {
-		return stdErrors.New("error interface parameter must to be a pointer for search by")
+		return stderrors.New("error interface parameter must to be a pointer for search by")
 	}
 	var err error
 	db := rw.underlying.Order(opts.withOrder)

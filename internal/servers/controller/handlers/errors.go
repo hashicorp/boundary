@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	stdErrors "errors"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -42,7 +42,7 @@ func (e *apiError) Error() string {
 
 func (e *apiError) Is(target error) bool {
 	var tApiErr *apiError
-	if !stdErrors.As(target, &tApiErr) {
+	if !stderrors.As(target, &tApiErr) {
 		return false
 	}
 	return tApiErr.inner.Code == e.inner.Code && tApiErr.inner.Status == e.inner.Status
@@ -102,7 +102,7 @@ func UnauthenticatedError() error {
 func InvalidArgumentErrorf(msg string, fields map[string]string) error {
 	err := ApiErrorWithCodeAndMessage(codes.InvalidArgument, msg)
 	var apiErr *apiError
-	if !stdErrors.As(err, &apiErr) {
+	if !stderrors.As(err, &apiErr) {
 		hclog.L().Error("Unable to build invalid argument api error.", "original error", err)
 	}
 
@@ -123,7 +123,7 @@ func backendErrorToApiError(inErr error) error {
 	stErr := status.Convert(inErr)
 
 	switch {
-	case stdErrors.Is(inErr, runtime.ErrNotMatch):
+	case stderrors.Is(inErr, runtime.ErrNotMatch):
 		// grpc gateway uses this error when the path was not matched, but the error uses codes.Unimplemented which doesn't match the intention.
 		// Overwrite the error to match our expected behavior.
 		return &apiError{inner: &pb.Error{
@@ -138,11 +138,11 @@ func backendErrorToApiError(inErr error) error {
 			Code:    codes.Unimplemented.String(),
 			Message: stErr.Message(),
 		}}
-	case stdErrors.Is(inErr, errors.ErrRecordNotFound):
+	case stderrors.Is(inErr, errors.ErrRecordNotFound):
 		return NotFoundErrorf(genericNotFoundMsg)
-	case stdErrors.Is(inErr, errors.ErrInvalidFieldMask), stdErrors.Is(inErr, errors.ErrEmptyFieldMask):
+	case stderrors.Is(inErr, errors.ErrInvalidFieldMask), stderrors.Is(inErr, errors.ErrEmptyFieldMask):
 		return InvalidArgumentErrorf("Error in provided request", map[string]string{"update_mask": "Invalid update mask provided."})
-	case errors.IsUniqueError(inErr), stdErrors.Is(inErr, errors.ErrNotUnique):
+	case errors.IsUniqueError(inErr), stderrors.Is(inErr, errors.ErrNotUnique):
 		return InvalidArgumentErrorf(genericUniquenessMsg, nil)
 	}
 	return nil
@@ -169,9 +169,9 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 	return func(ctx context.Context, _ *runtime.ServeMux, mar runtime.Marshaler, w http.ResponseWriter, r *http.Request, inErr error) {
 		// API specified error, otherwise we need to translate repo/db errors.
 		var apiErr *apiError
-		isApiErr := stdErrors.As(inErr, &apiErr)
+		isApiErr := stderrors.As(inErr, &apiErr)
 		if !isApiErr {
-			if err := backendErrorToApiError(inErr); err != nil && !stdErrors.As(err, &apiErr) {
+			if err := backendErrorToApiError(inErr); err != nil && !stderrors.As(err, &apiErr) {
 				logger.Error("failed to cast error to api error", "error", err)
 			}
 		}

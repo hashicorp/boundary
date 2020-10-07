@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	stdErrors "errors"
+	stderrors "errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -88,7 +88,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Unknown error",
-			err:  stdErrors.New("Some random error"),
+			err:  stderrors.New("Some random error"),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
 				Code:    "Internal",

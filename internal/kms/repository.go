@@ -2,7 +2,7 @@ package kms
 
 import (
 	"context"
-	stdErrors "errors"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -25,10 +25,10 @@ type Repository struct {
 // which sets a default limit on results returned by repo operations.
 func NewRepository(r db.Reader, w db.Writer, opt ...Option) (*Repository, error) {
 	if r == nil {
-		return nil, stdErrors.New("error creating db repository with nil reader")
+		return nil, stderrors.New("error creating db repository with nil reader")
 	}
 	if w == nil {
-		return nil, stdErrors.New("error creating db repository with nil writer")
+		return nil, stderrors.New("error creating db repository with nil writer")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {

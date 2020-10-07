@@ -2,7 +2,7 @@ package iam
 
 import (
 	"context"
-	stdErrors "errors"
+	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -64,7 +64,7 @@ func (r *Role) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface.
 func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if role.PublicId == "" {
-		return stdErrors.New("error public id is empty string for role write")
+		return stderrors.New("error public id is empty string for role write")
 	}
 	if err := validateScopeForWrite(ctx, r, role, opType, opt...); err != nil {
 		return err

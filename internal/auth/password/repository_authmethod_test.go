@@ -2,7 +2,7 @@ package password
 
 import (
 	"context"
-	stdErrors "errors"
+	stderrors "errors"
 	"strings"
 	"testing"
 	"time"
@@ -140,7 +140,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.CreateAuthMethod(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stdErrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -179,7 +179,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateAuthMethod(context.Background(), in)
-		assert.Truef(stdErrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -252,7 +252,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		got, err := repo.CreateAuthMethod(context.Background(), &in, WithPublicId("invalid_idwithabadprefix"))
 		assert.Error(err)
 		assert.Nil(got)
-		assert.True(stdErrors.Is(err, errors.ErrInvalidPublicId))
+		assert.True(stderrors.Is(err, errors.ErrInvalidPublicId))
 	})
 }
 
@@ -297,7 +297,7 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.LookupAuthMethod(context.Background(), tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(stdErrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -349,7 +349,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.DeleteAuthMethod(context.Background(), o.GetPublicId(), tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(stdErrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
 				return
 			}
@@ -401,7 +401,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.ListAuthMethods(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stdErrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}

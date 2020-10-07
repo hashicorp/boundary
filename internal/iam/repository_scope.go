@@ -3,7 +3,7 @@ package iam
 import (
 	"context"
 	"crypto/rand"
-	stdErrors "errors"
+	stderrors "errors"
 	"fmt"
 	"strings"
 
@@ -413,7 +413,7 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, opt .
 	scope.PublicId = withPublicId
 	rowsDeleted, err := r.delete(ctx, &scope)
 	if err != nil {
-		if stdErrors.Is(err, ErrMetadataScopeNotFound) {
+		if stderrors.Is(err, ErrMetadataScopeNotFound) {
 			return 0, nil
 		}
 		return db.NoRowsAffected, fmt.Errorf("delete scope: failed %w for %s", err, withPublicId)
