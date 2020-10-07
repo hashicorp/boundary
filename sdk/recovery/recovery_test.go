@@ -2,19 +2,43 @@ package recovery
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/db"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func testWrapper(t *testing.T) wrapping.Wrapper {
+	rootKey := make([]byte, 32)
+	n, err := rand.Read(rootKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 32 {
+		t.Fatal(n)
+	}
+	root := aead.NewWrapper(nil)
+	_, err = root.SetConfig(map[string]string{
+		"key_id": base64.StdEncoding.EncodeToString(rootKey),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := root.SetAESGCMKeyBytes(rootKey); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 func TestRecoveryTokens(t *testing.T) {
 	ctx := context.Background()
-	wrapper := db.TestWrapper(t)
+	wrapper := testWrapper(t)
 	b, err := uuid.GenerateRandomBytes(nonceLength)
 	require.NoError(t, err)
 	assert.Len(t, b, 32)
