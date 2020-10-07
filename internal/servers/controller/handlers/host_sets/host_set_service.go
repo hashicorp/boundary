@@ -2,11 +2,11 @@ package host_sets
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
@@ -218,7 +218,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	out, err := repo.CreateSet(ctx, scopeId, h)
 	if err != nil {
-		if db.IsUniqueError(err) || errors.Is(err, db.ErrNotUnique) {
+		if errors.IsUniqueError(err) || stderrors.Is(err, errors.ErrNotUnique) {
 			// Push this error through so the error interceptor can interpret it correctly.
 			return nil, err
 		}

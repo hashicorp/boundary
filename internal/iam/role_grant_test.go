@@ -2,11 +2,12 @@ package iam
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,7 +42,7 @@ func TestRoleGrant_Create(t *testing.T) {
 				grant:  "id=*;type=*;actions=*",
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-grant",
@@ -50,7 +51,7 @@ func TestRoleGrant_Create(t *testing.T) {
 				grant:  "",
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 			create:    true,
 		},
 		{
@@ -91,7 +92,7 @@ func TestRoleGrant_Create(t *testing.T) {
 			got, err := NewRoleGrant(tt.args.roleId, tt.args.grant, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(stderrors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)

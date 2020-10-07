@@ -2,11 +2,12 @@ package password
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -268,7 +269,7 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 				return
 			}
 			require.Error(got)
-			assert.Truef(errors.Is(got, tt.want), "want err: %q got: %q", tt.want, got)
+			assert.Truef(stderrors.Is(got, tt.want), "want err: %q got: %q", tt.want, got)
 		})
 	}
 }
@@ -329,7 +330,7 @@ func TestArgon2Credential_New(t *testing.T) {
 				conf:      confs[0],
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "blank-password",
@@ -339,7 +340,7 @@ func TestArgon2Credential_New(t *testing.T) {
 				conf:      confs[0],
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-configuration",
@@ -349,7 +350,7 @@ func TestArgon2Credential_New(t *testing.T) {
 				conf:      nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "valid-password",
@@ -400,7 +401,7 @@ func TestArgon2Credential_New(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := newArgon2Credential(tt.args.accountId, tt.args.password, tt.args.conf)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}

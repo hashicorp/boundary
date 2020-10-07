@@ -2,10 +2,11 @@ package iam
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -49,13 +50,13 @@ type ResourceWithScope interface {
 // LookupScope looks up the resource's  scope
 func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithScope) (*Scope, error) {
 	if reader == nil {
-		return nil, errors.New("error reader is nil for LookupScope")
+		return nil, stderrors.New("error reader is nil for LookupScope")
 	}
 	if resource == nil {
-		return nil, errors.New("error resource is nil for LookupScope")
+		return nil, stderrors.New("error resource is nil for LookupScope")
 	}
 	if resource.GetPublicId() == "" {
-		return nil, fmt.Errorf("LookupScope: scope id is unset %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("LookupScope: scope id is unset %w", errors.ErrInvalidParameter)
 	}
 	if resource.GetScopeId() == "" {
 		// try to retrieve it from db with it's scope id
@@ -64,7 +65,7 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 		}
 		// if it's still not set after getting it from the db...
 		if resource.GetScopeId() == "" {
-			return nil, errors.New("error scope is unset for LookupScope")
+			return nil, stderrors.New("error scope is unset for LookupScope")
 		}
 	}
 	var p Scope
@@ -80,12 +81,12 @@ func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWi
 
 	if opType == db.CreateOp {
 		if resource.GetScopeId() == "" {
-			return errors.New("error scope id not set for user write")
+			return stderrors.New("error scope id not set for user write")
 		}
 		ps, err := LookupScope(ctx, r, resource)
 		if err != nil {
-			if errors.Is(err, db.ErrRecordNotFound) {
-				return errors.New("scope is not found")
+			if stderrors.Is(err, errors.ErrRecordNotFound) {
+				return stderrors.New("scope is not found")
 			}
 			return err
 		}
@@ -102,7 +103,7 @@ func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWi
 	}
 	if opType == db.UpdateOp && resource.GetScopeId() != "" {
 		if contains(opts.WithFieldMaskPaths, "ScopeId") || contains(opts.WithNullPaths, "ScopeId") {
-			return errors.New("not allowed to change a resource's scope")
+			return stderrors.New("not allowed to change a resource's scope")
 		}
 	}
 	return nil

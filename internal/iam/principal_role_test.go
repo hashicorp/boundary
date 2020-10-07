@@ -2,10 +2,11 @@ package iam
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,7 +69,7 @@ func TestNewUserRole(t *testing.T) {
 			},
 			want:      nil,
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-user-id",
@@ -78,7 +79,7 @@ func TestNewUserRole(t *testing.T) {
 			},
 			want:      nil,
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -87,7 +88,7 @@ func TestNewUserRole(t *testing.T) {
 			got, err := NewUserRole(tt.args.roleId, tt.args.userId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(stderrors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -207,7 +208,7 @@ func TestUserRole_Create(t *testing.T) {
 			},
 			wantErr:    true,
 			wantErrMsg: "create: vet for write failed: new user role: missing role id invalid parameter",
-			wantIsErr:  db.ErrInvalidParameter,
+			wantIsErr:  errors.ErrInvalidParameter,
 		},
 		{
 			name: "missing-user-id",
@@ -224,7 +225,7 @@ func TestUserRole_Create(t *testing.T) {
 			},
 			wantErr:    true,
 			wantErrMsg: "create: vet for write failed: new user role: missing user id invalid parameter",
-			wantIsErr:  db.ErrInvalidParameter,
+			wantIsErr:  errors.ErrInvalidParameter,
 		},
 		{
 			name: "dup-at-org",
@@ -258,7 +259,7 @@ func TestUserRole_Create(t *testing.T) {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				if tt.wantIsErr != nil {
-					assert.True(errors.Is(err, tt.wantIsErr))
+					assert.True(stderrors.Is(err, tt.wantIsErr))
 				}
 				return
 			}
@@ -345,7 +346,7 @@ func TestUserRole_Delete(t *testing.T) {
 			found := allocUserRole()
 			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.role.GetRoleId(), tt.role.GetPrincipalId())
 			require.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }
@@ -431,7 +432,7 @@ func TestNewGroupRole(t *testing.T) {
 			},
 			want:      nil,
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-group-id",
@@ -441,7 +442,7 @@ func TestNewGroupRole(t *testing.T) {
 			},
 			want:      nil,
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -450,7 +451,7 @@ func TestNewGroupRole(t *testing.T) {
 			got, err := NewGroupRole(tt.args.roleId, tt.args.groupId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(stderrors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -570,7 +571,7 @@ func TestGroupRole_Create(t *testing.T) {
 			},
 			wantErr:    true,
 			wantErrMsg: "create: vet for write failed: new group role: missing role id invalid parameter",
-			wantIsErr:  db.ErrInvalidParameter,
+			wantIsErr:  errors.ErrInvalidParameter,
 		},
 		{
 			name: "missing-user-id",
@@ -587,7 +588,7 @@ func TestGroupRole_Create(t *testing.T) {
 			},
 			wantErr:    true,
 			wantErrMsg: "create: vet for write failed: new group role: missing user id invalid parameter",
-			wantIsErr:  db.ErrInvalidParameter,
+			wantIsErr:  errors.ErrInvalidParameter,
 		},
 		{
 			name: "dup-at-org",
@@ -636,7 +637,7 @@ func TestGroupRole_Create(t *testing.T) {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				if tt.wantIsErr != nil {
-					assert.True(errors.Is(err, tt.wantIsErr))
+					assert.True(stderrors.Is(err, tt.wantIsErr))
 				}
 				return
 			}
@@ -728,7 +729,7 @@ func TestGroupRole_Delete(t *testing.T) {
 			found := allocGroupRole()
 			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.role.GetRoleId(), tt.role.GetPrincipalId())
 			require.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

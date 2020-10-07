@@ -2,7 +2,7 @@ package session
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 	"time"
 
@@ -17,7 +17,9 @@ import (
 	targetStore "github.com/hashicorp/boundary/internal/target/store"
 	"github.com/lib/pq"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
+
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
 
 	"github.com/hashicorp/boundary/internal/kms"
@@ -203,7 +205,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-hostId",
@@ -215,7 +217,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-targetId",
@@ -227,7 +229,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-hostSetId",
@@ -239,7 +241,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-authTokenId",
@@ -251,7 +253,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-scopeId",
@@ -263,7 +265,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -285,7 +287,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				assert.Error(err)
 				assert.Nil(ses)
 				if tt.wantIsError != nil {
-					assert.True(errors.Is(err, tt.wantIsError))
+					assert.True(stderrors.Is(err, tt.wantIsError))
 				}
 				return
 			}
@@ -371,7 +373,7 @@ func TestRepository_updateState(t *testing.T) {
 				return &v
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "bad-sessionId",
@@ -392,7 +394,7 @@ func TestRepository_updateState(t *testing.T) {
 				return &s
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -417,7 +419,7 @@ func TestRepository_updateState(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -503,7 +505,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 				// TODO (jimlambrt 9/2020): add in tests for errorsIs once we
 				// remove the grpc errors from the repo.
 				// if tt.wantIsError != nil {
-				// 	assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+				// 	assert.Truef(stderrors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
 				// }
 				return
 			}
@@ -565,7 +567,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-ClientTcpAddress",
@@ -575,7 +577,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-ClientTcpPort",
@@ -585,7 +587,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-EndpointTcpAddress",
@@ -595,7 +597,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-EndpointTcpPort",
@@ -605,7 +607,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -616,7 +618,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -672,7 +674,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 			}(),
 			reason:      ClosedByUser,
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-session-version",
@@ -683,7 +685,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 			}(),
 			reason:      ClosedByUser,
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "open-connection",
@@ -703,7 +705,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -979,7 +981,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 			closeWith:   []CloseWith{},
 			reason:      ClosedByUser,
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "missing-ConnectionId",
@@ -991,7 +993,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 			}(),
 			reason:      ClosedByUser,
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1001,7 +1003,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -1060,7 +1062,7 @@ func TestRepository_CancelSession(t *testing.T) {
 				return &id
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name:    "bad-version-id",
@@ -1079,7 +1081,7 @@ func TestRepository_CancelSession(t *testing.T) {
 				return &v
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1103,7 +1105,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -1278,7 +1280,7 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 			rowsDeleted, err := rw.Delete(context.Background(), tt.cancelFk.fkType)
 			if err != nil {
 				var pqError *pq.Error
-				if errors.As(err, &pqError) {
+				if stderrors.As(err, &pqError) {
 					t.Log(pqError.Message)
 					t.Log(pqError.Detail)
 					t.Log(pqError.Where)
@@ -1367,7 +1369,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 				return &id
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name:    "empty-session-version",
@@ -1377,7 +1379,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 				return &v
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1401,7 +1403,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -1498,7 +1500,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.session.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)

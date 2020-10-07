@@ -2,7 +2,7 @@ package iam
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -172,7 +173,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update user: update: lookup after write: record not found for 1",
-			wantIsErr:      db.ErrRecordNotFound,
+			wantIsErr:      errors.ErrRecordNotFound,
 		},
 		{
 			name: "null-name",
@@ -341,7 +342,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsErr != nil {
-					assert.True(errors.Is(err, db.ErrRecordNotFound))
+					assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
 				}
 				assert.Nil(userAfterUpdate)
 				assert.Equal(0, updatedRows)
@@ -591,7 +592,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 				withAccountId: newAuthAcctWithoutVivify.PublicId,
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrRecordNotFound,
+			wantErrIs: errors.ErrRecordNotFound,
 		},
 		{
 			name: "missing auth acct id",
@@ -599,7 +600,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 				withAccountId: "",
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "existing-auth-account",
@@ -628,7 +629,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 				withAccountId: id,
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrRecordNotFound,
+			wantErrIs: errors.ErrRecordNotFound,
 		},
 		{
 			name: "bad-auth-account-id-with-vivify",
@@ -639,7 +640,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrRecordNotFound,
+			wantErrIs: errors.ErrRecordNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -651,7 +652,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 				require.Error(err)
 				assert.Nil(got)
 				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				if tt.args.withAccountId != "" && tt.args.withAccountId != id {
 					// need to assert that userid in auth_account is still null
@@ -729,7 +730,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "missing-userId",
@@ -740,7 +741,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "already-properly-assoc",
@@ -764,7 +765,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "assoc-with-diff-user-withDisassociateOption",
@@ -777,7 +778,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "bad-acct-id",
@@ -789,7 +790,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrRecordNotFound,
+			wantErrIs: errors.ErrRecordNotFound,
 		},
 		{
 			name: "bad-user-id-not-associated-account",
@@ -822,7 +823,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -885,7 +886,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "missing-userId",
@@ -896,7 +897,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "already-properly-disassoc",
@@ -908,7 +909,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "assoc-with-diff-user",
@@ -921,7 +922,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "bad-acct-id",
@@ -933,7 +934,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrRecordNotFound,
+			wantErrIs: errors.ErrRecordNotFound,
 		},
 		{
 			name: "bad-user-id-not-associated-account",
@@ -945,7 +946,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "bad-user-id",
@@ -968,7 +969,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -1100,7 +1101,7 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -1230,7 +1231,7 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -1411,7 +1412,7 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}

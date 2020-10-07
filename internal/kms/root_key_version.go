@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
@@ -24,10 +25,10 @@ type RootKeyVersion struct {
 // currently supported.
 func NewRootKeyVersion(rootKeyId string, key []byte, opt ...Option) (*RootKeyVersion, error) {
 	if rootKeyId == "" {
-		return nil, fmt.Errorf("new root key version: missing root key id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new root key version: missing root key id: %w", errors.ErrInvalidParameter)
 	}
 	if len(key) == 0 {
-		return nil, fmt.Errorf("new root key version: missing key: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new root key version: missing key: %w", errors.ErrInvalidParameter)
 	}
 
 	k := &RootKeyVersion{
@@ -58,18 +59,18 @@ func (k *RootKeyVersion) Clone() interface{} {
 // version before it's written.
 func (k *RootKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if k.PrivateId == "" {
-		return fmt.Errorf("root key version vet for write: missing private id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("root key version vet for write: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.CtKey == nil {
-			return fmt.Errorf("root key version vet for write: missing key: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("root key version vet for write: missing key: %w", errors.ErrInvalidParameter)
 		}
 		if k.RootKeyId == "" {
-			return fmt.Errorf("root key version vet for write: missing root key id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("root key version vet for write: missing root key id: %w", errors.ErrInvalidParameter)
 		}
 	case db.UpdateOp:
-		return fmt.Errorf("root key version vet for write: key is immutable: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("root key version vet for write: key is immutable: %w", errors.ErrInvalidParameter)
 	}
 	return nil
 }

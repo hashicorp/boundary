@@ -2,7 +2,7 @@ package static
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 	"time"
 
@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -37,19 +38,19 @@ func TestRepository_CreateSet(t *testing.T) {
 	}{
 		{
 			name:      "nil-HostSet",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-HostSet",
 			in:        &HostSet{},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-catalog-id",
 			in: &HostSet{
 				HostSet: &store.HostSet{},
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-public-id-set",
@@ -59,7 +60,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					PublicId:  "abcd_OOOOOOOOOO",
 				},
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "valid-no-options",
@@ -115,7 +116,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -157,7 +158,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
-		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -273,7 +274,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-embedded-host-set",
@@ -282,7 +283,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "no-public-id",
@@ -291,7 +292,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     deletePublicId(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "updating-non-existent-host-set",
@@ -302,7 +303,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
 			masks:     []string{"Name"},
-			wantIsErr: db.ErrRecordNotFound,
+			wantIsErr: errors.ErrRecordNotFound,
 		},
 		{
 			name: "empty-field-mask",
@@ -312,7 +313,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				},
 			},
 			chgFn:     changeName("test-update-name-repo"),
-			wantIsErr: db.ErrEmptyFieldMask,
+			wantIsErr: errors.ErrEmptyFieldMask,
 		},
 		{
 			name: "read-only-fields-in-field-mask",
@@ -323,7 +324,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "CatalogId"},
-			wantIsErr: db.ErrInvalidFieldMask,
+			wantIsErr: errors.ErrInvalidFieldMask,
 		},
 		{
 			name: "unknown-field-in-field-mask",
@@ -334,7 +335,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"Bilbo"},
-			wantIsErr: db.ErrInvalidFieldMask,
+			wantIsErr: errors.ErrInvalidFieldMask,
 		},
 		{
 			name: "change-name",
@@ -481,7 +482,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			}
 			got, gotHosts, gotCount, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
@@ -540,12 +541,12 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 		sB.Name = name
 		got2, gotHosts, gotCount2, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sB, 1, []string{"name"})
-		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, sB.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
-		assert.True(errors.Is(db.ErrRecordNotFound, err))
+		assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 		assert.Empty(gotHosts)
 	})
 
@@ -728,7 +729,7 @@ func TestRepository_LookupSet(t *testing.T) {
 	}{
 		{
 			name:      "with-no-public-id",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "with-non-existing-host-set-id",
@@ -757,7 +758,7 @@ func TestRepository_LookupSet(t *testing.T) {
 			require.NotNil(repo)
 			got, gotHosts, err := repo.LookupSet(context.Background(), tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -868,7 +869,7 @@ func TestRepository_ListSets(t *testing.T) {
 	}{
 		{
 			name:      "with-no-catalog-id",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "Catalog-with-no-host-sets",
@@ -891,7 +892,7 @@ func TestRepository_ListSets(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.ListSets(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -996,7 +997,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 	}{
 		{
 			name:      "With no public id",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "With non existing host set id",
@@ -1019,7 +1020,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.DeleteSet(context.Background(), prj.PublicId, tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
 				return
 			}

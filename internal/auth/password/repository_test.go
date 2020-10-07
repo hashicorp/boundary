@@ -1,10 +1,11 @@
 package password
 
 import (
-	"errors"
+	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,7 +68,7 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-writer",
@@ -77,7 +78,7 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-wrapper",
@@ -87,7 +88,7 @@ func TestRepository_New(t *testing.T) {
 				kms: nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "all-nils",
@@ -97,7 +98,7 @@ func TestRepository_New(t *testing.T) {
 				kms: nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -106,7 +107,7 @@ func TestRepository_New(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}

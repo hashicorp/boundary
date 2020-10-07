@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -74,10 +75,10 @@ var _ db.VetForWriter = (*UserRole)(nil)
 // currently.
 func NewUserRole(roleId, userId string, opt ...Option) (*UserRole, error) {
 	if roleId == "" {
-		return nil, fmt.Errorf("new user role: missing role id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new user role: missing role id %w", errors.ErrInvalidParameter)
 	}
 	if userId == "" {
-		return nil, fmt.Errorf("new user role: missing user id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new user role: missing user id %w", errors.ErrInvalidParameter)
 	}
 	return &UserRole{
 		UserRole: &store.UserRole{
@@ -104,10 +105,10 @@ func (r *UserRole) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface for user roles.
 func (role *UserRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if role.RoleId == "" {
-		return fmt.Errorf("new user role: missing role id %w", db.ErrInvalidParameter)
+		return fmt.Errorf("new user role: missing role id %w", errors.ErrInvalidParameter)
 	}
 	if role.PrincipalId == "" {
-		return fmt.Errorf("new user role: missing user id %w", db.ErrInvalidParameter)
+		return fmt.Errorf("new user role: missing user id %w", errors.ErrInvalidParameter)
 	}
 	return nil
 }
@@ -147,10 +148,10 @@ var _ db.VetForWriter = (*GroupRole)(nil)
 // currently.
 func NewGroupRole(roleId, groupId string, opt ...Option) (*GroupRole, error) {
 	if roleId == "" {
-		return nil, fmt.Errorf("new group role: missing role id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new group role: missing role id %w", errors.ErrInvalidParameter)
 	}
 	if groupId == "" {
-		return nil, fmt.Errorf("new group role: missing group id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new group role: missing group id %w", errors.ErrInvalidParameter)
 	}
 	return &GroupRole{
 		GroupRole: &store.GroupRole{
@@ -177,10 +178,10 @@ func (r *GroupRole) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface for group roles.
 func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if role.RoleId == "" {
-		return fmt.Errorf("new group role: missing role id %w", db.ErrInvalidParameter)
+		return fmt.Errorf("new group role: missing role id %w", errors.ErrInvalidParameter)
 	}
 	if role.PrincipalId == "" {
-		return fmt.Errorf("new group role: missing user id %w", db.ErrInvalidParameter)
+		return fmt.Errorf("new group role: missing user id %w", errors.ErrInvalidParameter)
 	}
 	return nil
 }

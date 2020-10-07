@@ -2,10 +2,11 @@ package session
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // LookupConnection will look up a connection in the repository and return the connection
@@ -13,7 +14,7 @@ import (
 // No options are currently supported.
 func (r *Repository) LookupConnection(ctx context.Context, connectionId string, opt ...Option) (*Connection, []*ConnectionState, error) {
 	if connectionId == "" {
-		return nil, nil, fmt.Errorf("lookup connection: missing connectionId id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("lookup connection: missing connectionId id: %w", errors.ErrInvalidParameter)
 	}
 	connection := AllocConnection()
 	connection.PublicId = connectionId
@@ -34,7 +35,7 @@ func (r *Repository) LookupConnection(ctx context.Context, connectionId string, 
 		},
 	)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stderrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil, nil
 		}
 		return nil, nil, fmt.Errorf("lookup connection: %w", err)
@@ -56,7 +57,7 @@ func (r *Repository) ListConnections(ctx context.Context, sessionId string, opt 
 // DeleteConnection will delete a connection from the repository.
 func (r *Repository) DeleteConnection(ctx context.Context, publicId string, opt ...Option) (int, error) {
 	if publicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete connection: missing public id %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete connection: missing public id %w", errors.ErrInvalidParameter)
 	}
 	connection := AllocConnection()
 	connection.PublicId = publicId
@@ -78,7 +79,7 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, opt 
 			)
 			if err == nil && rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
-				return errors.New("error more than 1 connection would have been deleted")
+				return stderrors.New("error more than 1 connection would have been deleted")
 			}
 			return err
 		},

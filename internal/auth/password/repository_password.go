@@ -3,10 +3,12 @@ package password
 import (
 	"context"
 	"crypto/subtle"
-	"errors"
+	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
+
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"golang.org/x/crypto/argon2"
@@ -32,16 +34,16 @@ type authAccount struct {
 // the stored values are not using the current password settings.
 func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, loginName, password string) (*Account, error) {
 	if authMethodId == "" {
-		return nil, fmt.Errorf("password authenticate: no authMethodId: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("password authenticate: no authMethodId: %w", errors.ErrInvalidParameter)
 	}
 	if loginName == "" {
-		return nil, fmt.Errorf("password authenticate: no loginName: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("password authenticate: no loginName: %w", errors.ErrInvalidParameter)
 	}
 	if password == "" {
-		return nil, fmt.Errorf("password authenticate: no password: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("password authenticate: no password: %w", errors.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("password authenticate: no scopeId: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("password authenticate: no scopeId: %w", errors.ErrInvalidParameter)
 	}
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
@@ -85,7 +87,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 			func(_ db.Reader, w db.Writer) error {
 				rowsUpdated, err := w.Update(ctx, cred, fields, nil, db.WithOplog(oplogWrapper, metadata))
 				if err == nil && rowsUpdated > 1 {
-					return db.ErrMultipleRecords
+					return errors.ErrMultipleRecords
 				}
 				return err
 			},
@@ -106,22 +108,22 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 // Returns nil, ErrPasswordsEqual if old and new are equal.
 func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old, new string, version uint32) (*Account, error) {
 	if accountId == "" {
-		return nil, fmt.Errorf("change password: no account id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("change password: no account id: %w", errors.ErrInvalidParameter)
 	}
 	if old == "" {
-		return nil, fmt.Errorf("change password: no old password: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("change password: no old password: %w", errors.ErrInvalidParameter)
 	}
 	if new == "" {
-		return nil, fmt.Errorf("change password: no new password: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("change password: no new password: %w", errors.ErrInvalidParameter)
 	}
 	if old == new {
 		return nil, fmt.Errorf("change password: %w", ErrPasswordsEqual)
 	}
 	if version == 0 {
-		return nil, fmt.Errorf("change password: no version supplied: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("change password: no version supplied: %w", errors.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("change password: no scopeId: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("change password: no scopeId: %w", errors.ErrInvalidParameter)
 	}
 
 	authAccount, err := r.LookupAccount(ctx, accountId)
@@ -129,7 +131,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 		return nil, fmt.Errorf("change password: lookup account: %w", err)
 	}
 	if authAccount == nil {
-		return nil, fmt.Errorf("change password: lookup account: account not found: %w", db.ErrRecordNotFound)
+		return nil, fmt.Errorf("change password: lookup account: account not found: %w", errors.ErrRecordNotFound)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
@@ -183,7 +185,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 
 			rowsDeleted, err := w.Delete(ctx, oldCred, db.WithOplog(oplogWrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err == nil && rowsDeleted > 1 {
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			if err != nil {
 				return err
@@ -249,13 +251,13 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 // contains an empty string, the password for accountId will be deleted.
 func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, password string, version uint32) (*Account, error) {
 	if accountId == "" {
-		return nil, fmt.Errorf("set password: no accountId: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("set password: no accountId: %w", errors.ErrInvalidParameter)
 	}
 	if version == 0 {
-		return nil, fmt.Errorf("set password: no version supplied: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("set password: no version supplied: %w", errors.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("set password: no scopeId: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("set password: no scopeId: %w", errors.ErrInvalidParameter)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
@@ -274,7 +276,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 			return nil, fmt.Errorf("set password: retrieve current configuration: %w", err)
 		}
 		if cc == nil {
-			return nil, fmt.Errorf("set password: retrieve current configuration: %w", db.ErrRecordNotFound)
+			return nil, fmt.Errorf("set password: retrieve current configuration: %w", errors.ErrRecordNotFound)
 		}
 		if cc.MinPasswordLength > len(password) {
 			return nil, fmt.Errorf("set password: new password: %w", ErrTooShort)
@@ -305,7 +307,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 
 			oldCred := allocCredential()
 			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", accountId); err != nil {
-				if !errors.Is(err, db.ErrRecordNotFound) {
+				if !stderrors.Is(err, errors.ErrRecordNotFound) {
 					return err
 				}
 			}
@@ -313,7 +315,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 				dCred := oldCred.clone()
 				rowsDeleted, err := w.Delete(ctx, dCred, db.WithOplog(oplogWrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
 				if err == nil && rowsDeleted > 1 {
-					return db.ErrMultipleRecords
+					return errors.ErrMultipleRecords
 				}
 				if err != nil {
 					return err

@@ -2,12 +2,13 @@ package target
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -67,7 +68,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				target: nil,
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-target-store",
@@ -78,7 +79,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "public-id-not-empty",
@@ -93,7 +94,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-scope-id",
@@ -106,7 +107,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -117,7 +118,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				assert.Error(err)
 				assert.Nil(target)
 				if tt.wantIsError != nil {
-					assert.True(errors.Is(err, tt.wantIsError))
+					assert.True(stderrors.Is(err, tt.wantIsError))
 				}
 				return
 			}
@@ -220,7 +221,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update tcp target: update: lookup after write: record not found for 1",
-			wantIsError:    db.ErrRecordNotFound,
+			wantIsError:    errors.ErrRecordNotFound,
 		},
 		{
 			name: "null-name",
@@ -258,7 +259,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update tcp target: empty field mask",
-			wantIsError:    db.ErrEmptyFieldMask,
+			wantIsError:    errors.ErrEmptyFieldMask,
 		},
 		{
 			name: "nil-fieldmask",
@@ -271,7 +272,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update tcp target: empty field mask",
-			wantIsError:    db.ErrEmptyFieldMask,
+			wantIsError:    errors.ErrEmptyFieldMask,
 		},
 		{
 			name: "read-only-fields",
@@ -284,7 +285,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update tcp target: field: CreateTime: invalid field mask",
-			wantIsError:    db.ErrInvalidFieldMask,
+			wantIsError:    errors.ErrInvalidFieldMask,
 		},
 		{
 			name: "unknown-fields",
@@ -297,7 +298,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update tcp target: field: Alice: invalid field mask",
-			wantIsError:    db.ErrInvalidFieldMask,
+			wantIsError:    errors.ErrInvalidFieldMask,
 		},
 		{
 			name: "no-public-id",
@@ -310,7 +311,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantErrMsg:     "update tcp target: missing target public id invalid parameter",
-			wantIsError:    db.ErrInvalidParameter,
+			wantIsError:    errors.ErrInvalidParameter,
 			wantRowsUpdate: 0,
 		},
 		{
@@ -322,7 +323,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			newScopeId:  proj.PublicId,
 			wantErr:     true,
 			wantErrMsg:  "update tcp target: empty field mask",
-			wantIsError: db.ErrEmptyFieldMask,
+			wantIsError: errors.ErrEmptyFieldMask,
 		},
 		{
 			name: "empty-scope-id-with-name-mask",
@@ -346,7 +347,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			wantErr:     true,
 			wantDup:     true,
 			wantErrMsg:  " already exists in scope " + proj.PublicId,
-			wantIsError: db.ErrNotUnique,
+			wantIsError: errors.ErrNotUnique,
 		},
 	}
 	for _, tt := range tests {
@@ -382,14 +383,14 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				if tt.wantIsError != nil {
-					assert.True(errors.Is(err, tt.wantIsError))
+					assert.True(stderrors.Is(err, tt.wantIsError))
 				}
 				assert.Nil(targetAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, target.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)

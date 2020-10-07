@@ -2,7 +2,7 @@ package db
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db/db_test"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -443,7 +444,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.True(errors.Is(err, ErrInvalidParameter))
+		assert.True(stderrors.Is(err, errors.ErrInvalidParameter))
 	})
 	t.Run("valid-NewOplogMsg", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -590,20 +591,20 @@ func (u *testUserWithVet) TableName() string {
 }
 func (u *testUserWithVet) VetForWrite(ctx context.Context, r Reader, opType OpType, opt ...Option) error {
 	if u.PublicId == "" {
-		return errors.New("public id is empty string for user write")
+		return stderrors.New("public id is empty string for user write")
 	}
 	if opType == UpdateOp {
 		dbOptions := GetOpts(opt...)
 		for _, path := range dbOptions.WithFieldMaskPaths {
 			switch path {
 			case "PublicId":
-				return errors.New("you cannot change the public id")
+				return stderrors.New("you cannot change the public id")
 			}
 		}
 	}
 	if opType == CreateOp {
 		if u.Id != 0 {
-			return errors.New("id is a db sequence")
+			return stderrors.New("id is a db sequence")
 		}
 	}
 	return nil
@@ -683,7 +684,7 @@ func TestDb_Create(t *testing.T) {
 			WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}),
 		)
 		require.Error(err)
-		assert.True(errors.Is(err, ErrInvalidParameter))
+		assert.True(stderrors.Is(err, errors.ErrInvalidParameter))
 	})
 	t.Run("valid-NewOplogMsg", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -836,7 +837,7 @@ func TestDb_LookupByName(t *testing.T) {
 		foundUser.Name = "fn-" + id
 		err = w.LookupByName(context.Background(), foundUser)
 		require.Error(err)
-		assert.Equal(ErrRecordNotFound, err)
+		assert.Equal(errors.ErrRecordNotFound, err)
 	})
 }
 
@@ -891,7 +892,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 		foundUser.PublicId = id
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		require.Error(err)
-		assert.Equal(ErrRecordNotFound, err)
+		assert.Equal(errors.ErrRecordNotFound, err)
 	})
 }
 
@@ -932,8 +933,8 @@ func TestDb_LookupWhere(t *testing.T) {
 		var foundUser db_test.TestUser
 		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", id)
 		require.Error(err)
-		assert.Equal(ErrRecordNotFound, err)
-		assert.True(errors.Is(err, ErrRecordNotFound))
+		assert.Equal(errors.ErrRecordNotFound, err)
+		assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
 	})
 	t.Run("bad-where", func(t *testing.T) {
 		require := require.New(t)
@@ -1175,7 +1176,7 @@ func TestDb_DoTx(t *testing.T) {
 	t.Run("not-a-retry-err", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
-		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { return errors.New("not a retry error") })
+		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { return stderrors.New("not a retry error") })
 		require.Error(err)
 		assert.Equal(RetryInfo{}, got)
 		assert.NotEqual(err, oplog.ErrTicketAlreadyRedeemed)
@@ -1330,7 +1331,7 @@ func TestDb_Delete(t *testing.T) {
 			wantOplog: true,
 			want:      0,
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "nil-metadata",
@@ -1343,7 +1344,7 @@ func TestDb_Delete(t *testing.T) {
 			wantOplog: true,
 			want:      0,
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "nil-underlying",
@@ -1354,7 +1355,7 @@ func TestDb_Delete(t *testing.T) {
 			},
 			want:      0,
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "not-found",
@@ -1384,7 +1385,7 @@ func TestDb_Delete(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "received unexpected error: %v", err)
+					assert.Truef(stderrors.Is(err, tt.wantErrIs), "received unexpected error: %v", err)
 				}
 				err := TestVerifyOplog(t, rw, tt.args.i.GetPublicId(), WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(5*time.Second))
 				assert.Error(err)
@@ -1397,7 +1398,7 @@ func TestDb_Delete(t *testing.T) {
 			foundUser.PublicId = tt.args.i.PublicId
 			err = rw.LookupByPublicId(context.Background(), foundUser)
 			assert.Error(err)
-			assert.Equal(ErrRecordNotFound, err)
+			assert.Equal(errors.ErrRecordNotFound, err)
 
 			err = TestVerifyOplog(t, rw, tt.args.i.GetPublicId(), WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(5*time.Second))
 			switch {
@@ -1427,7 +1428,7 @@ func TestDb_Delete(t *testing.T) {
 			rowsDeleted, err := w.Delete(context.Background(), user, NewOplogMsg(&deleteMsg), WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}))
 			require.Error(err)
 			assert.Equal(0, rowsDeleted)
-			assert.True(errors.Is(err, ErrInvalidParameter))
+			assert.True(stderrors.Is(err, errors.ErrInvalidParameter))
 		})
 		t.Run("valid-NewOplogMsg", func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
@@ -1459,7 +1460,7 @@ func TestDb_Delete(t *testing.T) {
 			foundUser.PublicId = user.PublicId
 			err = w.LookupByPublicId(context.Background(), foundUser)
 			require.Error(err)
-			assert.True(errors.Is(err, ErrRecordNotFound))
+			assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
 
 			metadata := oplog.Metadata{
 				"resource-public-id": []string{user.PublicId},
@@ -1622,7 +1623,7 @@ func TestDb_CreateItems(t *testing.T) {
 					),
 				},
 			},
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 			wantErr:   true,
 		},
 		{
@@ -1632,7 +1633,7 @@ func TestDb_CreateItems(t *testing.T) {
 				createItems: createMixedFn(),
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "bad oplog opt: nil metadata",
@@ -1647,7 +1648,7 @@ func TestDb_CreateItems(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "bad oplog opt: nil wrapper",
@@ -1665,7 +1666,7 @@ func TestDb_CreateItems(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "bad opt: WithLookup",
@@ -1675,7 +1676,7 @@ func TestDb_CreateItems(t *testing.T) {
 				opt:         []Option{WithLookup(true)},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "nil underlying",
@@ -1684,7 +1685,7 @@ func TestDb_CreateItems(t *testing.T) {
 				createItems: createFn(),
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "empty items",
@@ -1693,7 +1694,7 @@ func TestDb_CreateItems(t *testing.T) {
 				createItems: []interface{}{},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "nil items",
@@ -1702,7 +1703,7 @@ func TestDb_CreateItems(t *testing.T) {
 				createItems: nil,
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1715,7 +1716,7 @@ func TestDb_CreateItems(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
 				}
 				return
 			}
@@ -1810,7 +1811,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "withOplog",
@@ -1844,7 +1845,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "bad oplog opt: nil wrapper",
@@ -1862,7 +1863,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "bad opt: WithLookup",
@@ -1872,7 +1873,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				opt:         []Option{WithLookup(true)},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "nil underlying",
@@ -1881,7 +1882,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				deleteItems: createFn(),
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "empty items",
@@ -1890,7 +1891,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				deleteItems: []interface{}{},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "nil items",
@@ -1899,7 +1900,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				deleteItems: nil,
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1912,7 +1913,7 @@ func TestDb_DeleteItems(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
 				}
 				return
 			}
@@ -1923,7 +1924,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				u.PublicId = item.(*db_test.TestUser).PublicId
 				err := rw.LookupByPublicId(context.Background(), &u)
 				require.Error(err)
-				require.Truef(errors.Is(err, ErrRecordNotFound), "found item %s that should be deleted", u.PublicId)
+				require.Truef(stderrors.Is(err, errors.ErrRecordNotFound), "found item %s that should be deleted", u.PublicId)
 			}
 			if tt.wantOplogId != "" {
 				err = TestVerifyOplog(t, rw, tt.wantOplogId, WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(10*time.Second))
@@ -2052,7 +2053,7 @@ func TestDb_LookupById(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantIsErr: ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "missing-private-id",
@@ -2063,7 +2064,7 @@ func TestDb_LookupById(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantIsErr: ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "not-an-ider",
@@ -2072,7 +2073,7 @@ func TestDb_LookupById(t *testing.T) {
 				resourceWithIder: &db_test.NotIder{},
 			},
 			wantErr:   true,
-			wantIsErr: ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "missing-underlying-db",
@@ -2081,7 +2082,7 @@ func TestDb_LookupById(t *testing.T) {
 				resourceWithIder: user,
 			},
 			wantErr:   true,
-			wantIsErr: ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -2096,7 +2097,7 @@ func TestDb_LookupById(t *testing.T) {
 			err := rw.LookupById(context.Background(), cp, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				require.True(errors.Is(err, tt.wantIsErr))
+				require.True(stderrors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -2110,7 +2111,7 @@ func TestDb_LookupById(t *testing.T) {
 		}
 		err := rw.LookupById(context.Background(), *u)
 		require.Error(t, err)
-		assert.True(t, errors.Is(err, ErrInvalidParameter))
+		assert.True(t, stderrors.Is(err, errors.ErrInvalidParameter))
 	})
 }
 
@@ -2135,21 +2136,21 @@ func TestDb_GetTicket(t *testing.T) {
 			underlying:    db,
 			aggregateType: &notReplayable{},
 			wantErr:       true,
-			wantErrIs:     ErrInvalidParameter,
+			wantErrIs:     errors.ErrInvalidParameter,
 		},
 		{
 			name:          "nil-aggregate-type",
 			underlying:    db,
 			aggregateType: nil,
 			wantErr:       true,
-			wantErrIs:     ErrInvalidParameter,
+			wantErrIs:     errors.ErrInvalidParameter,
 		},
 		{
 			name:          "no-underlying",
 			underlying:    nil,
 			aggregateType: &db_test.TestUser{},
 			wantErr:       true,
-			wantErrIs:     ErrInvalidParameter,
+			wantErrIs:     errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -2162,7 +2163,7 @@ func TestDb_GetTicket(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error type: %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error type: %s", err.Error())
 				}
 				return
 			}
@@ -2245,7 +2246,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 				msgs:     []*oplog.Message{&createMsg},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "missing-db",
@@ -2257,7 +2258,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 				msgs:     []*oplog.Message{&createMsg},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "missing-wrapper",
@@ -2269,7 +2270,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 				msgs:     []*oplog.Message{&createMsg},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "nil-metadata",
@@ -2281,7 +2282,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 				msgs:     []*oplog.Message{&createMsg},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name:       "empty-metadata",
@@ -2293,7 +2294,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 				msgs:     []*oplog.Message{&createMsg},
 			},
 			wantErr:   true,
-			wantErrIs: ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -2306,7 +2307,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
@@ -2345,7 +2346,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: ErrInvalidParameter,
+			err: errors.ErrInvalidParameter,
 		},
 		{
 			name: "string",
@@ -2354,7 +2355,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: ErrInvalidParameter,
+			err: errors.ErrInvalidParameter,
 		},
 		{
 			name: "pointer-to-nil-struct",
@@ -2363,7 +2364,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: ErrInvalidParameter,
+			err: errors.ErrInvalidParameter,
 		},
 		{
 			name: "pointer-to-string",
@@ -2372,7 +2373,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: ErrInvalidParameter,
+			err: errors.ErrInvalidParameter,
 		},
 		{
 			name: "not-pointer",
@@ -2383,7 +2384,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: ErrInvalidParameter,
+			err: errors.ErrInvalidParameter,
 		},
 		{
 			name: "map",
@@ -2395,7 +2396,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: ErrInvalidParameter,
+			err: errors.ErrInvalidParameter,
 		},
 		{
 			name: "pointer-to-struct",
@@ -2862,7 +2863,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 				items:  nil,
 			},
 			wantErr:   true,
-			wantIsErr: ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "zero items",
@@ -2871,7 +2872,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 				items:  []interface{}{},
 			},
 			wantErr:   true,
-			wantIsErr: ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "mixed items",
@@ -2880,7 +2881,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 				items:  mixed,
 			},
 			wantErr:   true,
-			wantIsErr: ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "bad op",
@@ -2898,7 +2899,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsErr != nil {
-					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
 				}
 				return
 			}

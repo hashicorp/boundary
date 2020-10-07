@@ -2,11 +2,12 @@ package kms_test
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -57,7 +58,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 				keyWrapper: rkvWrapper,
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-key",
@@ -67,7 +68,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 				key:        []byte(""),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-wrapper",
@@ -77,7 +78,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 				keyWrapper: nil,
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "not-rkv-wrapper",
@@ -87,7 +88,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 				keyWrapper: wrapper,
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "wrapper-missing-id",
@@ -104,7 +105,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -115,7 +116,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 				assert.Error(err)
 				assert.Nil(tk)
 				if tt.wantIsError != nil {
-					assert.True(errors.Is(err, tt.wantIsError))
+					assert.True(stderrors.Is(err, tt.wantIsError))
 				}
 				return
 			}
@@ -128,7 +129,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 			// make sure there was no session written
 			err = db.TestVerifyOplog(t, rw, tk.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(errors.Is(err, db.ErrRecordNotFound))
+			assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
 
 			assert.NotNil(tv.CreateTime)
 			foundKeyVersion, err := repo.LookupSessionKeyVersion(context.Background(), tt.args.keyWrapper, tv.PrivateId)
@@ -138,7 +139,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 			// make sure there was no session written
 			err = db.TestVerifyOplog(t, rw, tv.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(errors.Is(err, db.ErrRecordNotFound))
+			assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
 		})
 	}
 }
@@ -183,7 +184,7 @@ func TestRepository_DeleteSessionKey(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsError:     db.ErrInvalidParameter,
+			wantIsError:     errors.ErrInvalidParameter,
 		},
 		{
 			name: "not-found",
@@ -199,7 +200,7 @@ func TestRepository_DeleteSessionKey(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsError:     db.ErrRecordNotFound,
+			wantIsError:     errors.ErrRecordNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -210,12 +211,12 @@ func TestRepository_DeleteSessionKey(t *testing.T) {
 				require.Error(err)
 				assert.Equal(0, deletedRows)
 				if tt.wantIsError != nil {
-					assert.True(errors.Is(err, tt.wantIsError))
+					assert.True(stderrors.Is(err, tt.wantIsError))
 				}
 				// make sure there was no session written
 				err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)
@@ -223,12 +224,12 @@ func TestRepository_DeleteSessionKey(t *testing.T) {
 			foundKey, err := repo.LookupSessionKey(context.Background(), tt.args.key.PrivateId)
 			assert.Error(err)
 			assert.Nil(foundKey)
-			assert.True(errors.Is(err, db.ErrRecordNotFound))
+			assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
 
 			// make sure there was no session written
 			err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 )
 
@@ -17,7 +18,7 @@ func NewPublicId(prefix string) (string, error) {
 
 func newId(prefix string) (string, error) {
 	if prefix == "" {
-		return "", fmt.Errorf("missing prefix %w", ErrInvalidParameter)
+		return "", fmt.Errorf("missing prefix %w", errors.ErrInvalidParameter)
 	}
 	publicId, err := base62.Random(10)
 	if err != nil {

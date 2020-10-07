@@ -2,7 +2,7 @@ package targets_test
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -126,7 +126,7 @@ func TestGet(t *testing.T) {
 			got, gErr := s.GetTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "GetTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "GetTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 
 			if tc.res != nil {
@@ -192,7 +192,7 @@ func TestList(t *testing.T) {
 			got, gErr := s.ListTargets(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListTargetsRequest{ScopeId: tc.scopeId})
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "ListTargets(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "ListTargets(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.err)
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListTargets(%q) got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
@@ -249,7 +249,7 @@ func TestDelete(t *testing.T) {
 			got, gErr := s.DeleteTarget(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "DeleteTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "DeleteTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteTarget(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -277,7 +277,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteTarget(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
+	assert.True(stderrors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -385,7 +385,7 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "CreateTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "CreateTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
@@ -469,7 +469,7 @@ func TestUpdate(t *testing.T) {
 					Description:            wrapperspb.String("desc"),
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					Type: target.TcpSubType.String(),
+					Type:                   target.TcpSubType.String(),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -500,7 +500,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Target{
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
-					Type: target.TcpSubType.String(),
+					Type:        target.TcpSubType.String(),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -735,7 +735,7 @@ func TestUpdate(t *testing.T) {
 			got, gErr := tested.UpdateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "UpdateTarget(%+v) got error %v, wanted %v", req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "UpdateTarget(%+v) got error %v, wanted %v", req, gErr, tc.err)
 			}
 
 			if tc.err == nil {
@@ -786,16 +786,16 @@ func TestUpdate_BadVersion(t *testing.T) {
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	upTar, err := tested.UpdateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), &pbs.UpdateTargetRequest{
-		Id:         gtar.GetPublicId(),
-		Item:       &pb.Target{
-			Description:            wrapperspb.String("updated"),
-			Version:                72,
+		Id: gtar.GetPublicId(),
+		Item: &pb.Target{
+			Description: wrapperspb.String("updated"),
+			Version:     72,
 		},
 		UpdateMask: &field_mask.FieldMask{Paths: []string{"description"}},
 	})
 	assert.Nil(t, upTar)
 	assert.Error(t, err)
-	assert.True(t, errors.Is(err, handlers.NotFoundError()), "Got %v, wanted not found error.", err)
+	assert.True(t, stderrors.Is(err, handlers.NotFoundError()), "Got %v, wanted not found error.", err)
 }
 
 func TestAddTargetHostSets(t *testing.T) {
@@ -888,7 +888,7 @@ func TestAddTargetHostSets(t *testing.T) {
 			_, gErr := s.AddTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "AddTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "AddTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}
@@ -978,7 +978,7 @@ func TestSetTargetHostSets(t *testing.T) {
 			_, gErr := s.SetTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "SetTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "SetTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}
@@ -1086,7 +1086,7 @@ func TestRemoveTargetHostSets(t *testing.T) {
 			_, gErr := s.RemoveTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "RemoveTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "RemoveTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}

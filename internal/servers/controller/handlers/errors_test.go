@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"errors"
+	stdErrors "errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
@@ -88,7 +88,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Unknown error",
-			err:  errors.New("Some random error"),
+			err:  stdErrors.New("Some random error"),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
 				Code:    "Internal",
@@ -97,7 +97,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Db invalid public id error",
-			err:  fmt.Errorf("test error: %w", db.ErrInvalidPublicId),
+			err:  fmt.Errorf("test error: %w", errors.ErrInvalidPublicId),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
 				Code:    "Internal",
@@ -106,7 +106,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Db invalid parameter",
-			err:  fmt.Errorf("test error: %w", db.ErrInvalidParameter),
+			err:  fmt.Errorf("test error: %w", errors.ErrInvalidParameter),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
 				Code:    "Internal",
@@ -115,7 +115,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Db invalid field mask",
-			err:  fmt.Errorf("test error: %w", db.ErrInvalidFieldMask),
+			err:  fmt.Errorf("test error: %w", errors.ErrInvalidFieldMask),
 			expected: &pb.Error{
 				Status:  http.StatusBadRequest,
 				Code:    "InvalidArgument",
@@ -125,7 +125,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Db empty field mask",
-			err:  fmt.Errorf("test error: %w", db.ErrEmptyFieldMask),
+			err:  fmt.Errorf("test error: %w", errors.ErrEmptyFieldMask),
 			expected: &pb.Error{
 				Status:  http.StatusBadRequest,
 				Code:    "InvalidArgument",
@@ -135,7 +135,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Db not unique",
-			err:  fmt.Errorf("test error: %w", db.ErrNotUnique),
+			err:  fmt.Errorf("test error: %w", errors.ErrNotUnique),
 			expected: &pb.Error{
 				Status:  http.StatusBadRequest,
 				Code:    "InvalidArgument",
@@ -144,7 +144,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Db record not found",
-			err:  fmt.Errorf("test error: %w", db.ErrRecordNotFound),
+			err:  fmt.Errorf("test error: %w", errors.ErrRecordNotFound),
 			expected: &pb.Error{
 				Status:  http.StatusNotFound,
 				Code:    "NotFound",
@@ -153,7 +153,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Db multiple records",
-			err:  fmt.Errorf("test error: %w", db.ErrMultipleRecords),
+			err:  fmt.Errorf("test error: %w", errors.ErrMultipleRecords),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
 				Code:    "Internal",

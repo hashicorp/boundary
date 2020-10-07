@@ -4,12 +4,13 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/subtle"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"google.golang.org/grpc/codes"
@@ -22,46 +23,46 @@ import (
 // currently supported.
 func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, opt ...Option) (*Session, ed25519.PrivateKey, error) {
 	if newSession == nil {
-		return nil, nil, fmt.Errorf("create session: missing session: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: missing session: %w", errors.ErrInvalidParameter)
 	}
 	if newSession.PublicId != "" {
-		return nil, nil, fmt.Errorf("create session: public id is not empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: public id is not empty: %w", errors.ErrInvalidParameter)
 	}
 	if len(newSession.Certificate) != 0 {
-		return nil, nil, fmt.Errorf("create session: certificate is not empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: certificate is not empty: %w", errors.ErrInvalidParameter)
 	}
 	if newSession.TargetId == "" {
-		return nil, nil, fmt.Errorf("create session: target id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: target id is empty: %w", errors.ErrInvalidParameter)
 	}
 	if newSession.HostId == "" {
-		return nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: user id is empty: %w", errors.ErrInvalidParameter)
 	}
 	if newSession.UserId == "" {
-		return nil, nil, fmt.Errorf("create session: user id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: user id is empty: %w", errors.ErrInvalidParameter)
 	}
 	if newSession.HostSetId == "" {
-		return nil, nil, fmt.Errorf("create session: host set id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: host set id is empty: %w", errors.ErrInvalidParameter)
 	}
 	if newSession.AuthTokenId == "" {
-		return nil, nil, fmt.Errorf("create session: auth token id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: auth token id is empty: %w", errors.ErrInvalidParameter)
 	}
 	if newSession.ScopeId == "" {
-		return nil, nil, fmt.Errorf("create session: scope id is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: scope id is empty: %w", errors.ErrInvalidParameter)
 	}
 	if newSession.ServerId != "" {
-		return nil, nil, fmt.Errorf("create session: server id must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: server id must be empty: %w", errors.ErrInvalidParameter)
 	}
 	if newSession.ServerType != "" {
-		return nil, nil, fmt.Errorf("create session: server type must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: server type must be empty: %w", errors.ErrInvalidParameter)
 	}
 	if newSession.CtTofuToken != nil {
-		return nil, nil, fmt.Errorf("create session: ct must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: ct must be empty: %w", errors.ErrInvalidParameter)
 	}
 	if newSession.TofuToken != nil {
-		return nil, nil, fmt.Errorf("create session: tofu token must be empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: tofu token must be empty: %w", errors.ErrInvalidParameter)
 	}
 	if newSession.ExpirationTime == nil || newSession.ExpirationTime.Timestamp.AsTime().IsZero() {
-		return nil, nil, fmt.Errorf("create session: expiration is empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session: expiration is empty: %w", errors.ErrInvalidParameter)
 	}
 
 	id, err := newId()
@@ -116,7 +117,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 // supported.
 func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ...Option) (*Session, *ConnectionAuthzSummary, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("lookup session: missing sessionId id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("lookup session: missing sessionId id: %w", errors.ErrInvalidParameter)
 	}
 	session := AllocSession()
 	session.PublicId = sessionId
@@ -137,7 +138,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 		},
 	)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stderrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil, nil
 		}
 		return nil, nil, fmt.Errorf("lookup session: %w", err)
@@ -231,7 +232,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 // DeleteSession will delete a session from the repository.
 func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...Option) (int, error) {
 	if publicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete session: missing public id %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete session: missing public id %w", errors.ErrInvalidParameter)
 	}
 	session := AllocSession()
 	session.PublicId = publicId
@@ -253,7 +254,7 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...
 			)
 			if err == nil && rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
-				return errors.New("error more than 1 session would have been deleted")
+				return stderrors.New("error more than 1 session would have been deleted")
 			}
 			return err
 		},
@@ -271,10 +272,10 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, opt ...
 // idempotent.
 func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, error) {
 	if sessionId == "" {
-		return nil, fmt.Errorf("cancel session: missing session id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("cancel session: missing session id: %w", errors.ErrInvalidParameter)
 	}
 	if sessionVersion == 0 {
-		return nil, fmt.Errorf("cancel session: missing session version: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("cancel session: missing session version: %w", errors.ErrInvalidParameter)
 	}
 	s, ss, err := r.updateState(ctx, sessionId, sessionVersion, StatusCanceling)
 	if err != nil {
@@ -289,10 +290,10 @@ func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessio
 // are not closed.
 func (r *Repository) TerminateSession(ctx context.Context, sessionId string, sessionVersion uint32, reason TerminationReason) (*Session, error) {
 	if sessionId == "" {
-		return nil, fmt.Errorf("terminate session: missing session id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("terminate session: missing session id: %w", errors.ErrInvalidParameter)
 	}
 	if sessionVersion == 0 {
-		return nil, fmt.Errorf("terminate session: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("terminate session: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 
 	updatedSession := AllocSession()
@@ -367,7 +368,7 @@ func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error
 // an error of ErrInvalidStateForOperation.
 func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) (*Connection, []*ConnectionState, *ConnectionAuthzSummary, error) {
 	if sessionId == "" {
-		return nil, nil, nil, status.Errorf(codes.FailedPrecondition, "authorize connection: missing session id: %v", db.ErrInvalidParameter)
+		return nil, nil, nil, status.Errorf(codes.FailedPrecondition, "authorize connection: missing session id: %v", errors.ErrInvalidParameter)
 	}
 	connectionId, err := newConnectionId()
 	if err != nil {
@@ -466,7 +467,7 @@ func (r *Repository) ConnectConnection(ctx context.Context, c ConnectWith) (*Con
 			}
 			if err == nil && rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
-				return errors.New("error more than 1 connection would have been updated ")
+				return stderrors.New("error more than 1 connection would have been updated ")
 			}
 			newState, err := NewConnectionState(connection.PublicId, StatusConnected)
 			if err != nil {
@@ -500,7 +501,7 @@ type CloseConnectionResp struct {
 // endpoint
 func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith, opt ...Option) ([]CloseConnectionResp, error) {
 	if len(closeWith) == 0 {
-		return nil, fmt.Errorf("close connections: missing connections to close: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("close connections: missing connections to close: %w", errors.ErrInvalidParameter)
 	}
 	for _, cw := range closeWith {
 		if err := cw.validate(); err != nil {
@@ -559,19 +560,19 @@ func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith
 // was canceled or terminated.
 func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, serverId, serverType string, tofuToken []byte) (*Session, []*State, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("activate session: missing session id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("activate session: missing session id: %w", errors.ErrInvalidParameter)
 	}
 	if sessionVersion == 0 {
-		return nil, nil, fmt.Errorf("activate session: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("activate session: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	if serverId == "" {
-		return nil, nil, fmt.Errorf("activate session: missing server id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("activate session: missing server id: %w", errors.ErrInvalidParameter)
 	}
 	if serverType == "" {
-		return nil, nil, fmt.Errorf("activate session: missing server type: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("activate session: missing server type: %w", errors.ErrInvalidParameter)
 	}
 	if len(tofuToken) == 0 {
-		return nil, nil, fmt.Errorf("activate session: missing tofu token: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("activate session: missing tofu token: %w", errors.ErrInvalidParameter)
 	}
 
 	updatedSession := AllocSession()
@@ -614,7 +615,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			}
 			if err == nil && rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
-				return errors.New("error more than 1 session would have been updated ")
+				return stderrors.New("error more than 1 session would have been updated ")
 			}
 
 			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
@@ -635,16 +636,16 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 // descending. No options are currently supported.
 func (r *Repository) updateState(ctx context.Context, sessionId string, sessionVersion uint32, s Status, opt ...Option) (*Session, []*State, error) {
 	if sessionId == "" {
-		return nil, nil, fmt.Errorf("update session state: missing session id %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("update session state: missing session id %w", errors.ErrInvalidParameter)
 	}
 	if sessionVersion == 0 {
-		return nil, nil, fmt.Errorf("update session state: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("update session state: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	if s == "" {
-		return nil, nil, fmt.Errorf("update session state: missing session status: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("update session state: missing session status: %w", errors.ErrInvalidParameter)
 	}
 	if s == StatusActive {
-		return nil, nil, fmt.Errorf("update session: you must call ActivateSession to update a session's state to active: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("update session: you must call ActivateSession to update a session's state to active: %w", errors.ErrInvalidParameter)
 	}
 
 	var rowsAffected int

@@ -2,17 +2,18 @@ package target
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
 var (
-	ErrMetadataScopeNotFound = errors.New("scope not found for metadata")
+	ErrMetadataScopeNotFound = stderrors.New("scope not found for metadata")
 )
 
 // Clonable provides a cloning interface
@@ -34,13 +35,13 @@ type Repository struct {
 // which sets a default limit on results returned by repo operations.
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	if r == nil {
-		return nil, errors.New("error creating db repository with nil reader")
+		return nil, stderrors.New("error creating db repository with nil reader")
 	}
 	if w == nil {
-		return nil, errors.New("error creating db repository with nil writer")
+		return nil, stderrors.New("error creating db repository with nil writer")
 	}
 	if kms == nil {
-		return nil, errors.New("error creating db repository with nil kms")
+		return nil, stderrors.New("error creating db repository with nil kms")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
@@ -60,7 +61,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 // No options are currently supported.
 func (r *Repository) LookupTarget(ctx context.Context, publicId string, opt ...Option) (Target, []*TargetSet, error) {
 	if publicId == "" {
-		return nil, nil, fmt.Errorf("lookup target: missing private id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("lookup target: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	target := allocTargetView()
 	target.PublicId = publicId
@@ -81,7 +82,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicId string, opt ...O
 		},
 	)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stderrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil, nil
 		}
 		return nil, nil, fmt.Errorf("lookup target: %w", err)
@@ -108,7 +109,7 @@ func fetchSets(ctx context.Context, r db.Reader, targetId string) ([]*TargetSet,
 func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, error) {
 	opts := getOpts(opt...)
 	if opts.withScopeId == "" && opts.withUserId == "" {
-		return nil, fmt.Errorf("list targets: must specify either a scope id or user id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("list targets: must specify either a scope id or user id: %w", errors.ErrInvalidParameter)
 	}
 	// TODO (jimlambrt 8/2020) - implement WithUserId() optional filtering.
 	var where []string
@@ -155,7 +156,7 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 // DeleteTarget will delete a target from the repository.
 func (r *Repository) DeleteTarget(ctx context.Context, publicId string, opt ...Option) (int, error) {
 	if publicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete target: missing public id %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete target: missing public id %w", errors.ErrInvalidParameter)
 	}
 	t := allocTargetView()
 	t.PublicId = publicId
@@ -194,7 +195,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, opt ...O
 			)
 			if err == nil && rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			return err
 		},
@@ -206,14 +207,14 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, opt ...O
 // It currently supports no options.
 func (r *Repository) update(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (Target, []*TargetSet, int, error) {
 	if version == 0 {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	if target == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: target is nil: %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: target is nil: %w", errors.ErrInvalidParameter)
 	}
 	cloner, ok := target.(Cloneable)
 	if !ok {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: target is not Cloneable: %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update: target is not Cloneable: %w", errors.ErrInvalidParameter)
 	}
 	dbOpts := []db.Option{
 		db.WithVersion(&version),
@@ -255,7 +256,7 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 			}
 			if err == nil && rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
-				return fmt.Errorf("error more than 1 target would have been updated: %w", db.ErrMultipleRecords)
+				return fmt.Errorf("error more than 1 target would have been updated: %w", errors.ErrMultipleRecords)
 			}
 			var err error
 			if hostSets, err = fetchSets(ctx, reader, target.GetPublicId()); err != nil {
@@ -274,13 +275,13 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 // for the WithVersion option and will return an error.
 func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, opt ...Option) (Target, []*TargetSet, error) {
 	if targetId == "" {
-		return nil, nil, fmt.Errorf("add target host sets: missing target id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("add target host sets: missing target id: %w", errors.ErrInvalidParameter)
 	}
 	if targetVersion == 0 {
-		return nil, nil, fmt.Errorf("add target host sets: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("add target host sets: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	if len(hostSetIds) == 0 {
-		return nil, nil, fmt.Errorf("add target host sets: missing host set ids: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("add target host sets: missing host set ids: %w", errors.ErrInvalidParameter)
 	}
 	newHostSets := make([]interface{}, 0, len(hostSetIds))
 	for _, id := range hostSetIds {
@@ -363,13 +364,13 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 // error.
 func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, opt ...Option) (int, error) {
 	if targetId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete target host sets: missing target id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete target host sets: missing target id: %w", errors.ErrInvalidParameter)
 	}
 	if targetVersion == 0 {
-		return db.NoRowsAffected, fmt.Errorf("delete target host sets: version cannot be zero: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete target host sets: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	if len(hostSetIds) == 0 {
-		return db.NoRowsAffected, fmt.Errorf("delete target host sets: missing host set ids: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete target host sets: missing host set ids: %w", errors.ErrInvalidParameter)
 	}
 	deleteTargeHostSets := make([]interface{}, 0, len(hostSetIds))
 	for _, id := range hostSetIds {
@@ -455,10 +456,10 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 // is not a valid value for the WithVersion option and will return an error.
 func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, opt ...Option) ([]*TargetSet, int, error) {
 	if targetId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("set target host sets: missing target id: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set target host sets: missing target id: %w", errors.ErrInvalidParameter)
 	}
 	if targetVersion == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("set target host sets: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set target host sets: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	t := allocTargetView()
 	t.PublicId = targetId

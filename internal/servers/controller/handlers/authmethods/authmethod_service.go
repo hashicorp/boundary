@@ -2,13 +2,13 @@ package authmethods
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/auth/password/store"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -143,7 +143,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 	}
 	u, err := repo.LookupAuthMethod(ctx, id)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stderrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
 		}
 		return nil, err
@@ -192,7 +192,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	}
 	out, err := repo.CreateAuthMethod(ctx, u)
 	if err != nil {
-		return nil,fmt.Errorf("unable to create auth method: %w", err)
+		return nil, fmt.Errorf("unable to create auth method: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
@@ -252,7 +252,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	}
 	rows, err := repo.DeleteAuthMethod(ctx, scopeId, id)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stderrors.Is(err, errors.ErrRecordNotFound) {
 			return false, nil
 		}
 		return false, fmt.Errorf("unable to delete auth method: %w", err)

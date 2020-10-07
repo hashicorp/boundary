@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
@@ -24,13 +25,13 @@ type DatabaseKeyVersion struct {
 // currently supported.
 func NewDatabaseKeyVersion(databaseKeyId string, key []byte, rootKeyVersionId string, opt ...Option) (*DatabaseKeyVersion, error) {
 	if databaseKeyId == "" {
-		return nil, fmt.Errorf("new database key version: missing database key id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new database key version: missing database key id: %w", errors.ErrInvalidParameter)
 	}
 	if len(key) == 0 {
-		return nil, fmt.Errorf("new database key version: missing key: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new database key version: missing key: %w", errors.ErrInvalidParameter)
 	}
 	if rootKeyVersionId == "" {
-		return nil, fmt.Errorf("new database key version: missing root key version id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new database key version: missing root key version id: %w", errors.ErrInvalidParameter)
 	}
 
 	k := &DatabaseKeyVersion{
@@ -62,21 +63,21 @@ func (k *DatabaseKeyVersion) Clone() interface{} {
 // version before it's written.
 func (k *DatabaseKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if k.PrivateId == "" {
-		return fmt.Errorf("database key version vet for write: missing private id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("database key version vet for write: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.CtKey == nil {
-			return fmt.Errorf("database key version vet for write: missing key: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("database key version vet for write: missing key: %w", errors.ErrInvalidParameter)
 		}
 		if k.DatabaseKeyId == "" {
-			return fmt.Errorf("database key version vet for write: missing database key id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("database key version vet for write: missing database key id: %w", errors.ErrInvalidParameter)
 		}
 		if k.RootKeyVersionId == "" {
-			return fmt.Errorf("database key version vet for write: missing root key version id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("database key version vet for write: missing root key version id: %w", errors.ErrInvalidParameter)
 		}
 	case db.UpdateOp:
-		return fmt.Errorf("database key version vet for write: key is immutable: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("database key version vet for write: key is immutable: %w", errors.ErrInvalidParameter)
 	}
 	return nil
 }

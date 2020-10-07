@@ -2,15 +2,15 @@ package targets
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"math/rand"
 	"net/url"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
@@ -257,7 +257,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 	t, hostSets, err := repo.LookupTarget(ctx, req.GetId())
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stderrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", req.GetId())
 		}
 		return nil, err
@@ -341,7 +341,7 @@ HostSetIterationLoop:
 		}
 		endpointHost = h.Address
 		if endpointHost == "" {
-			return nil, errors.New("host had empty address")
+			return nil, stderrors.New("host had empty address")
 		}
 	}
 	if defaultPort != 0 {
@@ -424,7 +424,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error)
 	}
 	u, m, err := repo.LookupTarget(ctx, id)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stderrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 		}
 		return nil, err
@@ -523,7 +523,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	}
 	rows, err := repo.DeleteTarget(ctx, id)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stderrors.Is(err, errors.ErrRecordNotFound) {
 			return false, nil
 		}
 		return false, fmt.Errorf("unable to delete target: %w", err)

@@ -2,12 +2,13 @@ package iam
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -72,7 +73,7 @@ func TestNewGroup(t *testing.T) {
 			},
 			wantErr:    true,
 			wantErrMsg: "new group: missing scope id invalid parameter",
-			wantIsErr:  db.ErrInvalidParameter,
+			wantIsErr:  errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -83,7 +84,7 @@ func TestNewGroup(t *testing.T) {
 				require.Error(err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				if tt.wantIsErr != nil {
-					assert.True(errors.Is(err, tt.wantIsErr))
+					assert.True(stderrors.Is(err, tt.wantIsErr))
 				}
 				return
 			}
@@ -427,7 +428,7 @@ func Test_GroupDelete(t *testing.T) {
 			foundGrp.PublicId = tt.group.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundGrp)
 			require.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

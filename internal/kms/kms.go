@@ -2,7 +2,7 @@ package kms
 
 import (
 	"context"
-	"errors"
+	stdErrors "errors"
 	"fmt"
 	"sync"
 
@@ -62,7 +62,7 @@ type Kms struct {
 // NewKms takes in a repo and returns a Kms. Supported options: WithLogger.
 func NewKms(repo *Repository, opt ...Option) (*Kms, error) {
 	if repo == nil {
-		return nil, errors.New("new kms created without an underlying repo")
+		return nil, stdErrors.New("new kms created without an underlying repo")
 	}
 
 	opts := getOpts(opt...)
@@ -147,13 +147,13 @@ func generateKeyId(scopeId string, purpose KeyPurpose, version uint32) string {
 // decryption.
 func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, opt ...Option) (wrapping.Wrapper, error) {
 	if scopeId == "" {
-		return nil, errors.New("no scope ID provided")
+		return nil, stdErrors.New("no scope ID provided")
 	}
 
 	switch purpose {
 	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions:
 	case KeyPurposeUnknown:
-		return nil, errors.New("key purpose not specified")
+		return nil, stdErrors.New("key purpose not specified")
 	default:
 		return nil, fmt.Errorf("unsupported purpose %q", purpose)
 	}
@@ -219,7 +219,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	externalWrappers := k.externalScopeCache[scope.Global.String()]
 	k.externalScopeCacheMutex.Unlock()
 	if externalWrappers == nil {
-		return nil, "", errors.New("could not find kms information at either the needed scope or global fallback")
+		return nil, "", stdErrors.New("could not find kms information at either the needed scope or global fallback")
 	}
 
 	externalWrappers.m.RLock()

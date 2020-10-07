@@ -2,7 +2,7 @@ package host_sets_test
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -104,7 +104,7 @@ func TestGet(t *testing.T) {
 			got, gErr := s.GetHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "GetHostSet(%+v) got error %v, wanted %v", req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "GetHostSet(%+v) got error %v, wanted %v", req, gErr, tc.err)
 			}
 
 			if tc.res != nil {
@@ -168,7 +168,7 @@ func TestList(t *testing.T) {
 			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), &pbs.ListHostSetsRequest{HostCatalogId: tc.hostCatalogId})
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "ListHostSets(%q) got error %v, wanted %v", tc.hostCatalogId, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "ListHostSets(%q) got error %v, wanted %v", tc.hostCatalogId, gErr, tc.err)
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostSets(%q) got response %q, wanted %q", tc.hostCatalogId, got, tc.res)
 		})
@@ -239,7 +239,7 @@ func TestDelete(t *testing.T) {
 			got, gErr := s.DeleteHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "DeleteHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "DeleteHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -272,7 +272,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteHostSet(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
+	assert.True(stderrors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -383,7 +383,7 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "CreateHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "CreateHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
@@ -739,7 +739,7 @@ func TestUpdate(t *testing.T) {
 			got, gErr := tested.UpdateHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "UpdateHostSet(%+v) got error %v, wanted %v", req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "UpdateHostSet(%+v) got error %v, wanted %v", req, gErr, tc.err)
 			}
 
 			if tc.err == nil {
@@ -854,7 +854,7 @@ func TestAddHostSetHosts(t *testing.T) {
 			_, gErr := s.AddHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "AddHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "AddHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}
@@ -945,7 +945,7 @@ func TestSetHostSetHosts(t *testing.T) {
 			_, gErr := s.SetHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "SetHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "SetHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}
@@ -1054,7 +1054,7 @@ func TestRemoveHostSetHosts(t *testing.T) {
 			_, gErr := s.RemoveHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "RemoveHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "RemoveHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}

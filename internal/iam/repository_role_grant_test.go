@@ -2,13 +2,14 @@ package iam
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -87,7 +88,7 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -271,7 +272,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       db.ErrInvalidParameter,
+			wantIsErr:       errors.ErrInvalidParameter,
 		},
 
 		{
@@ -295,7 +296,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       db.ErrInvalidParameter,
+			wantIsErr:       errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-grant-strings",
@@ -376,11 +377,11 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
 				if tt.wantIsErr != nil {
-					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+					assert.Truef(stderrors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)

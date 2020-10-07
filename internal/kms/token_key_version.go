@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
@@ -24,13 +25,13 @@ type TokenKeyVersion struct {
 // currently supported.
 func NewTokenKeyVersion(tokenKeyId string, key []byte, rootKeyVersionId string, opt ...Option) (*TokenKeyVersion, error) {
 	if tokenKeyId == "" {
-		return nil, fmt.Errorf("new token key version: missing token key id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new token key version: missing token key id: %w", errors.ErrInvalidParameter)
 	}
 	if len(key) == 0 {
-		return nil, fmt.Errorf("new token key version: missing key: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new token key version: missing key: %w", errors.ErrInvalidParameter)
 	}
 	if rootKeyVersionId == "" {
-		return nil, fmt.Errorf("new token key version: missing root key version id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new token key version: missing root key version id: %w", errors.ErrInvalidParameter)
 	}
 
 	k := &TokenKeyVersion{
@@ -62,17 +63,17 @@ func (k *TokenKeyVersion) Clone() interface{} {
 // version before it's written.
 func (k *TokenKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if k.PrivateId == "" {
-		return fmt.Errorf("token key version vet for write: missing private id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("token key version vet for write: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	if opType == db.CreateOp {
 		if k.CtKey == nil {
-			return fmt.Errorf("token key version vet for write: missing key: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("token key version vet for write: missing key: %w", errors.ErrInvalidParameter)
 		}
 		if k.TokenKeyId == "" {
-			return fmt.Errorf("token key version vet for write: missing token key id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("token key version vet for write: missing token key id: %w", errors.ErrInvalidParameter)
 		}
 		if k.RootKeyVersionId == "" {
-			return fmt.Errorf("token key version vet for write: missing root key version id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("token key version vet for write: missing root key version id: %w", errors.ErrInvalidParameter)
 		}
 	}
 	return nil

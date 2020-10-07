@@ -2,12 +2,13 @@ package static
 
 import (
 	"context"
-	"errors"
+	stdErrors "errors"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -23,19 +24,19 @@ import (
 // unique within h.CatalogId.
 func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, opt ...Option) (*Host, error) {
 	if h == nil {
-		return nil, fmt.Errorf("create: static host: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: static host: %w", errors.ErrInvalidParameter)
 	}
 	if h.Host == nil {
-		return nil, fmt.Errorf("create: static host: embedded Host: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: static host: embedded Host: %w", errors.ErrInvalidParameter)
 	}
 	if h.CatalogId == "" {
-		return nil, fmt.Errorf("create: static host: no catalog id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: static host: no catalog id: %w", errors.ErrInvalidParameter)
 	}
 	if h.PublicId != "" {
-		return nil, fmt.Errorf("create: static host: public id not empty: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: static host: public id not empty: %w", errors.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("create: static host: no scopeId: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: static host: no scopeId: %w", errors.ErrInvalidParameter)
 	}
 	h.Address = strings.TrimSpace(h.Address)
 	if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
@@ -47,7 +48,7 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, HostPrefix+"_") {
-			return nil, fmt.Errorf("create: static host: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, HostPrefix, db.ErrInvalidPublicId)
+			return nil, fmt.Errorf("create: static host: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, HostPrefix, errors.ErrInvalidPublicId)
 		}
 		h.PublicId = opts.withPublicId
 	} else {
@@ -72,11 +73,11 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 	)
 
 	if err != nil {
-		if db.IsUniqueError(err) {
+		if errors.IsUniqueError(err) {
 			return nil, fmt.Errorf("create: static host: in catalog: %s: name %s already exists: %w",
-				h.CatalogId, h.Name, db.ErrNotUnique)
+				h.CatalogId, h.Name, errors.ErrNotUnique)
 		}
-		if db.IsCheckConstraintError(err) || db.IsNotNullError(err) {
+		if errors.IsCheckConstraintError(err) || errors.IsNotNullError(err) {
 			return nil, fmt.Errorf("create: static host: in catalog: %s: %q: %w",
 				h.CatalogId, h.Address, ErrInvalidAddress)
 		}
@@ -99,19 +100,19 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 // in h is the zero value and it is included in fieldMaskPaths.
 func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, version uint32, fieldMaskPaths []string, opt ...Option) (*Host, int, error) {
 	if h == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: %w", errors.ErrInvalidParameter)
 	}
 	if h.Host == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: embedded Host: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: embedded Host: %w", errors.ErrInvalidParameter)
 	}
 	if h.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: missing public id: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: missing public id: %w", errors.ErrInvalidParameter)
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: no version supplied: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: no version supplied: %w", errors.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: no scopeId: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: no scopeId: %w", errors.ErrInvalidParameter)
 	}
 
 	for _, f := range fieldMaskPaths {
@@ -124,7 +125,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 				return nil, db.NoRowsAffected, fmt.Errorf("update: static host: bad address: %w", ErrInvalidAddress)
 			}
 		default:
-			return nil, db.NoRowsAffected, fmt.Errorf("update: static host: field: %s: %w", f, db.ErrInvalidFieldMask)
+			return nil, db.NoRowsAffected, fmt.Errorf("update: static host: field: %s: %w", f, errors.ErrInvalidFieldMask)
 		}
 	}
 	var dbMask, nullFields []string
@@ -138,7 +139,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: %w", db.ErrEmptyFieldMask)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: %w", errors.ErrEmptyFieldMask)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
@@ -156,18 +157,18 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 				db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_UPDATE)),
 				db.WithVersion(&version))
 			if err == nil && rowsUpdated > 1 {
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			return err
 		},
 	)
 
 	if err != nil {
-		if db.IsUniqueError(err) {
+		if errors.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update: static host: %s: name %s already exists: %w",
-				h.PublicId, h.Name, db.ErrNotUnique)
+				h.PublicId, h.Name, errors.ErrNotUnique)
 		}
-		if db.IsCheckConstraintError(err) || db.IsNotNullError(err) {
+		if errors.IsCheckConstraintError(err) || errors.IsNotNullError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update: static host: %s: %q: %w", h.PublicId, h.Address, ErrInvalidAddress)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: %s: %w", h.PublicId, err)
@@ -180,12 +181,12 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 // found, it will return nil, nil. All options are ignored.
 func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Option) (*Host, error) {
 	if publicId == "" {
-		return nil, fmt.Errorf("lookup: static host: missing public id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup: static host: missing public id %w", errors.ErrInvalidParameter)
 	}
 	h := allocHost()
 	h.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, h); err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stdErrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("lookup: static host: failed %w for %s", err, publicId)
@@ -197,7 +198,7 @@ func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Opt
 // WithLimit is the only option supported.
 func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Option) ([]*Host, error) {
 	if catalogId == "" {
-		return nil, fmt.Errorf("list: static host: missing catalog id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("list: static host: missing catalog id: %w", errors.ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -218,7 +219,7 @@ func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Opt
 // ignored.
 func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId string, opt ...Option) (int, error) {
 	if publicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete: static host: missing public id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete: static host: missing public id: %w", errors.ErrInvalidParameter)
 	}
 	h := allocHost()
 	h.PublicId = publicId
@@ -235,7 +236,7 @@ func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId st
 			dh := h.clone()
 			rowsDeleted, err = w.Delete(ctx, dh, db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err == nil && rowsDeleted > 1 {
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			return err
 		},

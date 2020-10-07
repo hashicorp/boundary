@@ -2,7 +2,7 @@ package authenticate
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"strings"
 	"testing"
 
@@ -47,10 +47,10 @@ func TestAuthenticate(t *testing.T) {
 	require.NotNil(t, acct)
 
 	cases := []struct {
-		name    string
-		request *pbs.AuthenticateRequest
+		name     string
+		request  *pbs.AuthenticateRequest
 		wantType string
-		wantErr error
+		wantErr  error
 	}{
 		{
 			name: "basic",
@@ -164,7 +164,7 @@ func TestAuthenticate(t *testing.T) {
 			resp, err := s.Authenticate(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
-				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
+				assert.Truef(stderrors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
 				return
 			}
 			require.NoError(err)

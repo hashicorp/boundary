@@ -2,13 +2,14 @@ package password
 
 import (
 	"context"
-	"errors"
+	stdErrors "errors"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -27,22 +28,22 @@ import (
 // unique within a.AuthMethodId.
 func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Account, opt ...Option) (*Account, error) {
 	if a == nil {
-		return nil, fmt.Errorf("create: password account: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password account: %w", errors.ErrInvalidParameter)
 	}
 	if a.Account == nil {
-		return nil, fmt.Errorf("create: password account: embedded Account: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password account: embedded Account: %w", errors.ErrInvalidParameter)
 	}
 	if a.AuthMethodId == "" {
-		return nil, fmt.Errorf("create: password account: no auth method id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password account: no auth method id: %w", errors.ErrInvalidParameter)
 	}
 	if a.PublicId != "" {
-		return nil, fmt.Errorf("create: password account: public id not empty: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password account: public id not empty: %w", errors.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("create: password account: scope id empty: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password account: scope id empty: %w", errors.ErrInvalidParameter)
 	}
 	if !validLoginName(a.LoginName) {
-		return nil, fmt.Errorf("create: password account: invalid login name; must be all-lowercase alphanumeric: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password account: invalid login name; must be all-lowercase alphanumeric: %w", errors.ErrInvalidParameter)
 	}
 
 	cc, err := r.currentConfig(ctx, a.AuthMethodId)
@@ -105,9 +106,9 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	)
 
 	if err != nil {
-		if db.IsUniqueError(err) {
+		if errors.IsUniqueError(err) {
 			return nil, fmt.Errorf("create: password account: in auth method: %s: name %q or loginName %q already exists: %w",
-				a.AuthMethodId, a.Name, a.LoginName, db.ErrNotUnique)
+				a.AuthMethodId, a.Name, a.LoginName, errors.ErrNotUnique)
 		}
 		return nil, fmt.Errorf("create: password account: in auth method: %s: %w", a.AuthMethodId, err)
 	}
@@ -118,12 +119,12 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 // found, it will return nil, nil.  All options are ignored.
 func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt ...Option) (*Account, error) {
 	if withPublicId == "" {
-		return nil, fmt.Errorf("lookup: password account: missing public id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup: password account: missing public id %w", errors.ErrInvalidParameter)
 	}
 	a := allocAccount()
 	a.PublicId = withPublicId
 	if err := r.reader.LookupByPublicId(ctx, a); err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stdErrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("lookup: password account: failed %w for %s", err, withPublicId)
@@ -134,7 +135,7 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt
 // ListAccounts in an auth method and supports WithLimit option.
 func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*Account, error) {
 	if withAuthMethodId == "" {
-		return nil, fmt.Errorf("list: password account: missing auth method id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("list: password account: missing auth method id %w", errors.ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -154,10 +155,10 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 // number of records deleted.  All options are ignored.
 func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId string, opt ...Option) (int, error) {
 	if withPublicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete: password account: missing public id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete: password account: missing public id: %w", errors.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete: password account: scope id empty: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete: password account: scope id empty: %w", errors.ErrInvalidParameter)
 	}
 	ac := allocAccount()
 	ac.PublicId = withPublicId
@@ -177,7 +178,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 			dAc := ac.clone()
 			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
 			if err == nil && rowsDeleted > 1 {
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			return err
 		},
@@ -214,19 +215,19 @@ func validLoginName(u string) bool {
 // cannot be set to NULL.
 func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Account, version uint32, fieldMaskPaths []string, opt ...Option) (*Account, int, error) {
 	if a == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", errors.ErrInvalidParameter)
 	}
 	if a.Account == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: embedded Account: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: embedded Account: %w", errors.ErrInvalidParameter)
 	}
 	if a.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: missing public id: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: missing public id: %w", errors.ErrInvalidParameter)
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: no version supplied: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: no version supplied: %w", errors.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: scope id empty: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: scope id empty: %w", errors.ErrInvalidParameter)
 	}
 
 	var changeLoginName bool
@@ -236,11 +237,11 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		case strings.EqualFold("Description", f):
 		case strings.EqualFold("LoginName", f):
 			if !validLoginName(a.LoginName) {
-				return nil, db.NoRowsAffected, fmt.Errorf("update: password account: invalid user name: %w", db.ErrInvalidParameter)
+				return nil, db.NoRowsAffected, fmt.Errorf("update: password account: invalid user name: %w", errors.ErrInvalidParameter)
 			}
 			changeLoginName = true
 		default:
-			return nil, db.NoRowsAffected, fmt.Errorf("update: password account: field: %s: %w", f, db.ErrInvalidFieldMask)
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password account: field: %s: %w", f, errors.ErrInvalidFieldMask)
 		}
 	}
 	var dbMask, nullFields []string
@@ -254,7 +255,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", db.ErrEmptyFieldMask)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", errors.ErrEmptyFieldMask)
 	}
 
 	if changeLoginName {
@@ -284,16 +285,16 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 			var err error
 			rowsUpdated, err = w.Update(ctx, returnedAccount, dbMask, nullFields, db.WithOplog(oplogWrapper, metadata), db.WithVersion(&version))
 			if err == nil && rowsUpdated > 1 {
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			return err
 		},
 	)
 
 	if err != nil {
-		if db.IsUniqueError(err) {
+		if errors.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %s: name %s already exists: %w",
-				a.PublicId, a.Name, db.ErrNotUnique)
+				a.PublicId, a.Name, errors.ErrNotUnique)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %s: %w", a.PublicId, err)
 	}

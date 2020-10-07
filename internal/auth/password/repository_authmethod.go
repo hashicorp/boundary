@@ -2,12 +2,13 @@ package password
 
 import (
 	"context"
-	"errors"
+	stdErrors "errors"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -24,16 +25,16 @@ import (
 // unique within m.ScopeId.
 func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ...Option) (*AuthMethod, error) {
 	if m == nil {
-		return nil, fmt.Errorf("create: password auth method: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password auth method: %w", errors.ErrInvalidParameter)
 	}
 	if m.AuthMethod == nil {
-		return nil, fmt.Errorf("create: password auth method: embedded AuthMethod: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password auth method: embedded AuthMethod: %w", errors.ErrInvalidParameter)
 	}
 	if m.ScopeId == "" {
-		return nil, fmt.Errorf("create: password auth method: no scope id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password auth method: no scope id: %w", errors.ErrInvalidParameter)
 	}
 	if m.PublicId != "" {
-		return nil, fmt.Errorf("create: password auth method: public id not empty: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password auth method: public id not empty: %w", errors.ErrInvalidParameter)
 	}
 	m = m.clone()
 
@@ -41,7 +42,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, AuthMethodPrefix+"_") {
-			return nil, fmt.Errorf("create: password auth method: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, AuthMethodPrefix, db.ErrInvalidPublicId)
+			return nil, fmt.Errorf("create: password auth method: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, AuthMethodPrefix, errors.ErrInvalidPublicId)
 		}
 		m.PublicId = opts.withPublicId
 	} else {
@@ -86,9 +87,9 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	)
 
 	if err != nil {
-		if db.IsUniqueError(err) {
+		if errors.IsUniqueError(err) {
 			return nil, fmt.Errorf("create: password auth method: in scope: %s: name %s already exists: %w",
-				m.ScopeId, m.Name, db.ErrNotUnique)
+				m.ScopeId, m.Name, errors.ErrNotUnique)
 		}
 		return nil, fmt.Errorf("create: password auth method: in scope: %s: %w", m.ScopeId, err)
 	}
@@ -99,12 +100,12 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 // found, it will return nil, nil.  All options are ignored.
 func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt ...Option) (*AuthMethod, error) {
 	if publicId == "" {
-		return nil, fmt.Errorf("lookup: password auth method: missing public id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup: password auth method: missing public id %w", errors.ErrInvalidParameter)
 	}
 	a := allocAuthMethod()
 	a.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, &a); err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stdErrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("lookup: password auth method: failed %w for %s", err, publicId)
@@ -115,7 +116,7 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 // ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit is the only option supported.
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeId string, opt ...Option) ([]*AuthMethod, error) {
 	if scopeId == "" {
-		return nil, fmt.Errorf("list: password auth method: missing scope id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("list: password auth method: missing scope id: %w", errors.ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -135,7 +136,7 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeId string, opt ..
 // number of records deleted.  All options are ignored.
 func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId string, opt ...Option) (int, error) {
 	if publicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete: password auth method: missing public id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete: password auth method: missing public id: %w", errors.ErrInvalidParameter)
 	}
 	am := allocAuthMethod()
 	am.PublicId = publicId
@@ -155,7 +156,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 			dAc := am.clone()
 			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
 			if err == nil && rowsDeleted > 1 {
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			return err
 		},
@@ -182,13 +183,13 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 // are included in the fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, version uint32, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
 	if authMethod == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod: %w", errors.ErrInvalidParameter)
 	}
 	if authMethod.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod public id: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod public id: %w", errors.ErrInvalidParameter)
 	}
 	if authMethod.ScopeId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: scope id empty: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: scope id empty: %w", errors.ErrInvalidParameter)
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
@@ -197,7 +198,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		case strings.EqualFold("MinLoginNameLength", f):
 		case strings.EqualFold("MinPasswordLength", f):
 		default:
-			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: field: %s: %w", f, db.ErrInvalidFieldMask)
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: field: %s: %w", f, errors.ErrInvalidFieldMask)
 		}
 	}
 	var dbMask, nullFields []string
@@ -212,7 +213,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w", db.ErrEmptyFieldMask)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w", errors.ErrEmptyFieldMask)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, authMethod.ScopeId, kms.KeyPurposeOplog)
@@ -240,14 +241,14 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 				dbOpts...,
 			)
 			if err == nil && rowsUpdated > 1 {
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			return err
 		},
 	)
 	if err != nil {
-		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: authMethod %s already exists in scope %s: %w", authMethod.Name, authMethod.ScopeId, db.ErrNotUnique)
+		if errors.IsUniqueError(err) {
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: authMethod %s already exists in scope %s: %w", authMethod.Name, authMethod.ScopeId, errors.ErrNotUnique)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w for %s", err, authMethod.PublicId)
 	}

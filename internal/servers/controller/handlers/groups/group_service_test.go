@@ -2,7 +2,7 @@ package groups_test
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -197,7 +197,7 @@ func TestGet(t *testing.T) {
 			got, gErr := s.GetGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "GetGroup(%+v) got error %v, wanted %v", req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "GetGroup(%+v) got error %v, wanted %v", req, gErr, tc.err)
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetGroup(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
@@ -272,7 +272,7 @@ func TestList(t *testing.T) {
 			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListGroupsRequest{ScopeId: tc.scopeId})
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "ListGroups(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "ListGroups(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.err)
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListGroups(%q) got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
@@ -339,7 +339,7 @@ func TestDelete(t *testing.T) {
 			got, gErr := s.DeleteGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "DeleteGroup(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "DeleteGroup(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 			assert.EqualValuesf(tc.res, got, "DeleteGroup(%+v) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -361,7 +361,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteGroup(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
+	assert.True(stderrors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 
 	scopeId = pg.GetScopeId()
 	projReq := &pbs.DeleteGroupRequest{
@@ -372,7 +372,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteGroup(ctx, projReq)
 	assert.Error(gErr, "Second attempt")
-	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
+	assert.True(stderrors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -480,7 +480,7 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(req.GetItem().GetScopeId())), req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "CreateGroup(%+v) got error %v, wanted %v", req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "CreateGroup(%+v) got error %v, wanted %v", req, gErr, tc.err)
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
@@ -877,7 +877,7 @@ func TestUpdate(t *testing.T) {
 			got, gErr := tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "UpdateGroup(%+v) got error %v, wanted %v", req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "UpdateGroup(%+v) got error %v, wanted %v", req, gErr, tc.err)
 			}
 
 			if tc.err == nil {
@@ -1005,7 +1005,7 @@ func TestAddMember(t *testing.T) {
 			_, gErr := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(grp.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}
@@ -1109,7 +1109,7 @@ func TestSetMember(t *testing.T) {
 			_, gErr := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(grp.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "SetGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "SetGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}
@@ -1221,7 +1221,7 @@ func TestRemoveMember(t *testing.T) {
 			_, gErr := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(grp.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}

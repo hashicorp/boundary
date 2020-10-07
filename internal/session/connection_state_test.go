@@ -2,10 +2,11 @@ package session
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,7 +51,7 @@ func TestConnectionState_Create(t *testing.T) {
 				status: StatusClosed,
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-status",
@@ -58,7 +59,7 @@ func TestConnectionState_Create(t *testing.T) {
 				connectionId: connection.PublicId,
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -67,7 +68,7 @@ func TestConnectionState_Create(t *testing.T) {
 			got, err := NewConnectionState(tt.args.connectionId, tt.args.status)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(stderrors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -150,7 +151,7 @@ func TestConnectionState_Delete(t *testing.T) {
 			foundState := allocConnectionState()
 			err = rw.LookupWhere(context.Background(), &foundState, "connection_id = ? and start_time = ?", tt.state.ConnectionId, initialState.StartTime)
 			require.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

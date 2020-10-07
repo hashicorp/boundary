@@ -13,6 +13,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -200,7 +201,7 @@ func (s *Session) Clone() interface{} {
 func (s *Session) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	opts := db.GetOpts(opt...)
 	if s.PublicId == "" {
-		return fmt.Errorf("session vet for write: missing public id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("session vet for write: missing public id: %w", errors.ErrInvalidParameter)
 	}
 	switch opType {
 	case db.CreateOp:
@@ -208,37 +209,37 @@ func (s *Session) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 			return err
 		}
 		if len(s.Certificate) == 0 {
-			return fmt.Errorf("session vet for write: certificate is missing: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: certificate is missing: %w", errors.ErrInvalidParameter)
 		}
 	case db.UpdateOp:
 		switch {
 		case contains(opts.WithFieldMaskPaths, "PublicId"):
-			return fmt.Errorf("session vet for write: public id is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: public id is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "UserId"):
-			return fmt.Errorf("session vet for write: user id is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: user id is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "HostId"):
-			return fmt.Errorf("session vet for write: host id is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: host id is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "TargetId"):
-			return fmt.Errorf("session vet for write: target id is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: target id is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "HostSetId"):
-			return fmt.Errorf("session vet for write: host set id is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: host set id is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "AuthTokenId"):
-			return fmt.Errorf("session vet for write: auth token id is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: auth token id is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "Certificate"):
-			return fmt.Errorf("session vet for write: certificate is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: certificate is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "CreateTime"):
-			return fmt.Errorf("session vet for write: create time is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: create time is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
-			return fmt.Errorf("session vet for write: update time is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: update time is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "Endpoint"):
-			return fmt.Errorf("session vet for write: endpoint is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: endpoint is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "ExpirationTime"):
-			return fmt.Errorf("session vet for write: expiration time is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: expiration time is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "ConnectionLimit"):
-			return fmt.Errorf("session vet for write: connection limit is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("session vet for write: connection limit is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
 			if _, err := convertToReason(s.TerminationReason); err != nil {
-				return fmt.Errorf("session vet for write: termination reason '%s' is invalid: %w", s.TerminationReason, db.ErrInvalidParameter)
+				return fmt.Errorf("session vet for write: termination reason '%s' is invalid: %w", s.TerminationReason, errors.ErrInvalidParameter)
 			}
 		}
 	}
@@ -263,43 +264,43 @@ func (s *Session) SetTableName(n string) {
 // validateNewSession checks everything but the session's PublicId
 func (s *Session) validateNewSession(errorPrefix string) error {
 	if s.UserId == "" {
-		return fmt.Errorf("%s missing user id: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing user id: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.HostId == "" {
-		return fmt.Errorf("%s missing host id: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing host id: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.TargetId == "" {
-		return fmt.Errorf("%s missing target id: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing target id: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.HostSetId == "" {
-		return fmt.Errorf("%s missing host set id: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing host set id: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.AuthTokenId == "" {
-		return fmt.Errorf("%s missing auth token id: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing auth token id: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.ScopeId == "" {
-		return fmt.Errorf("%s missing scope id: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing scope id: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.Endpoint == "" {
-		return fmt.Errorf("%s missing endpoint: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing endpoint: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.ExpirationTime.GetTimestamp().AsTime().IsZero() {
-		return fmt.Errorf("%s missing expiration time: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing expiration time: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.TerminationReason != "" {
-		return fmt.Errorf("%s termination reason must be empty: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s termination reason must be empty: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.ServerId != "" {
-		return fmt.Errorf("%s server id must be empty: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s server id must be empty: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.ServerType != "" {
-		return fmt.Errorf("%s server type must be empty: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s server type must be empty: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.TofuToken != nil {
-		return fmt.Errorf("%s tofu token must be empty: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s tofu token must be empty: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.CtTofuToken != nil {
-		return fmt.Errorf("%s ct must be empty: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s ct must be empty: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	return nil
 }
@@ -315,13 +316,13 @@ func contains(ss []string, t string) bool {
 
 func newCert(wrapper wrapping.Wrapper, userId, jobId string, exp time.Time) (ed25519.PrivateKey, []byte, error) {
 	if wrapper == nil {
-		return nil, nil, fmt.Errorf("new session cert: missing wrapper: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("new session cert: missing wrapper: %w", errors.ErrInvalidParameter)
 	}
 	if userId == "" {
-		return nil, nil, fmt.Errorf("new session cert: missing user id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("new session cert: missing user id: %w", errors.ErrInvalidParameter)
 	}
 	if jobId == "" {
-		return nil, nil, fmt.Errorf("new session cert: missing job id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("new session cert: missing job id: %w", errors.ErrInvalidParameter)
 	}
 	pubKey, privKey, err := DeriveED25519Key(wrapper, userId, jobId)
 	if err != nil {

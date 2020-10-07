@@ -2,10 +2,11 @@ package session
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,7 +50,7 @@ func TestState_Create(t *testing.T) {
 				status: StatusPending,
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-status",
@@ -57,7 +58,7 @@ func TestState_Create(t *testing.T) {
 				sessionId: session.PublicId,
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -66,7 +67,7 @@ func TestState_Create(t *testing.T) {
 			got, err := NewState(tt.args.sessionId, tt.args.status)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(stderrors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -148,7 +149,7 @@ func TestState_Delete(t *testing.T) {
 			foundState := allocState()
 			err = rw.LookupWhere(context.Background(), &foundState, "session_id = ? and start_time = ?", tt.state.SessionId, initialState.StartTime)
 			require.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

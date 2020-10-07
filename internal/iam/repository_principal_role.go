@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -17,17 +18,17 @@ import (
 // the WithVersion option and will return an error.
 func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, opt ...Option) ([]PrincipalRole, error) {
 	if roleId == "" {
-		return nil, fmt.Errorf("add principal roles: missing role id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add principal roles: missing role id: %w", errors.ErrInvalidParameter)
 	}
 	if roleVersion == 0 {
-		return nil, fmt.Errorf("add principal roles: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add principal roles: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	userIds, groupIds, err := splitPrincipals(principalIds)
 	if err != nil {
 		return nil, fmt.Errorf("add principal roles: error parsing principals: %w", err)
 	}
 	if len(userIds) == 0 && len(groupIds) == 0 {
-		return nil, fmt.Errorf("add principal roles: missing either user or groups to add: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add principal roles: missing either user or groups to add: %w", errors.ErrInvalidParameter)
 	}
 
 	newUserRoles := make([]interface{}, 0, len(userIds))
@@ -133,10 +134,10 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 // return an error.
 func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, opt ...Option) ([]PrincipalRole, int, error) {
 	if roleId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: missing role id: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: missing role id: %w", errors.ErrInvalidParameter)
 	}
 	if roleVersion == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -276,17 +277,17 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 // and will return an error.
 func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, opt ...Option) (int, error) {
 	if roleId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing role id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing role id: %w", errors.ErrInvalidParameter)
 	}
 	userIds, groupIds, err := splitPrincipals(principalIds)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("remove principal roles: error parsing principals: %w", err)
 	}
 	if len(userIds) == 0 && len(groupIds) == 0 {
-		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing either user or groups to delete: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing either user or groups to delete: %w", errors.ErrInvalidParameter)
 	}
 	if roleVersion == 0 {
-		return db.NoRowsAffected, fmt.Errorf("delete principal roles: version cannot be zero: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete principal roles: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -385,7 +386,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 // ListPrincipalRoles returns the principal roles for the roleId and supports the WithLimit option.
 func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt ...Option) ([]PrincipalRole, error) {
 	if roleId == "" {
-		return nil, fmt.Errorf("lookup principal roles: missing role id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup principal roles: missing role id: %w", errors.ErrInvalidParameter)
 	}
 	var roles []PrincipalRole
 	if err := r.list(ctx, &roles, "role_id = ?", []interface{}{roleId}, opt...); err != nil {
@@ -410,7 +411,7 @@ type principalSet struct {
 func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, groupIds []string) (*principalSet, error) {
 	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
 	if role == nil {
-		return nil, fmt.Errorf("missing role: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("missing role: %w", errors.ErrInvalidParameter)
 	}
 	existing, err := r.ListPrincipalRoles(ctx, role.PublicId)
 	if err != nil {
@@ -497,7 +498,7 @@ func splitPrincipals(principals []string) ([]string, []string, error) {
 		case strings.HasPrefix(principal, GroupPrefix):
 			groups = append(groups, principal)
 		default:
-			return nil, nil, fmt.Errorf("invalid principal ID %q: %w", principal, db.ErrInvalidParameter)
+			return nil, nil, fmt.Errorf("invalid principal ID %q: %w", principal, errors.ErrInvalidParameter)
 		}
 	}
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
@@ -28,7 +28,7 @@ func allocAuthMethod() AuthMethod {
 // default values of 5 and 8 respectively.
 func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
 	if scopeId == "" {
-		return nil, fmt.Errorf("new: password auth method: no scope id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new: password auth method: no scope id: %w", errors.ErrInvalidParameter)
 	}
 
 	opts := getOpts(opt...)

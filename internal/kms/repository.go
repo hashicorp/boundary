@@ -2,11 +2,12 @@ package kms
 
 import (
 	"context"
-	"errors"
+	stdErrors "errors"
 	"fmt"
 	"io"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/go-uuid"
@@ -24,10 +25,10 @@ type Repository struct {
 // which sets a default limit on results returned by repo operations.
 func NewRepository(r db.Reader, w db.Writer, opt ...Option) (*Repository, error) {
 	if r == nil {
-		return nil, errors.New("error creating db repository with nil reader")
+		return nil, stdErrors.New("error creating db repository with nil reader")
 	}
 	if w == nil {
-		return nil, errors.New("error creating db repository with nil writer")
+		return nil, stdErrors.New("error creating db repository with nil writer")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
@@ -78,19 +79,19 @@ type Keys map[KeyType]KeyIder
 // allows this capability to be shared with the iam repo.
 func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string) (Keys, error) {
 	if dbReader == nil {
-		return nil, fmt.Errorf("create keys: missing db reader: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create keys: missing db reader: %w", errors.ErrInvalidParameter)
 	}
 	if dbWriter == nil {
-		return nil, fmt.Errorf("create keys: missing db writer: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create keys: missing db writer: %w", errors.ErrInvalidParameter)
 	}
 	if rootWrapper == nil {
-		return nil, fmt.Errorf("create keys: missing root wrapper: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create keys: missing root wrapper: %w", errors.ErrInvalidParameter)
 	}
 	if randomReader == nil {
-		return nil, fmt.Errorf("create keys: missing random reader: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create keys: missing random reader: %w", errors.ErrInvalidParameter)
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("create keys: missing scope id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create keys: missing scope id: %w", errors.ErrInvalidParameter)
 	}
 	k, err := generateKey(randomReader)
 	if err != nil {

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
@@ -117,13 +117,13 @@ type Argon2Credential struct {
 
 func newArgon2Credential(accountId string, password string, conf *Argon2Configuration) (*Argon2Credential, error) {
 	if accountId == "" {
-		return nil, fmt.Errorf("new: password argon2 credential: no accountId: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new: password argon2 credential: no accountId: %w", errors.ErrInvalidParameter)
 	}
 	if password == "" {
-		return nil, fmt.Errorf("new: password argon2 credential: no password: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new: password argon2 credential: no password: %w", errors.ErrInvalidParameter)
 	}
 	if conf == nil {
-		return nil, fmt.Errorf("new: password argon2 credential: no argon2 configuration: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new: password argon2 credential: no argon2 configuration: %w", errors.ErrInvalidParameter)
 	}
 
 	id, err := newArgon2CredentialId()

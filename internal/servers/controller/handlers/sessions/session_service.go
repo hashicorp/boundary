@@ -2,11 +2,11 @@ package sessions
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -97,7 +97,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	}
 	sess, _, err := repo.LookupSession(ctx, id)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stderrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", id)
 		}
 		return nil, err
@@ -176,7 +176,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		parentId = t.ScopeId
 		opts = append(opts, auth.WithId(id))
 	default:
-		res.Error = errors.New("unsupported action")
+		res.Error = stderrors.New("unsupported action")
 		return res
 	}
 	opts = append(opts, auth.WithScopeId(parentId))

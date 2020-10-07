@@ -2,12 +2,13 @@ package iam
 
 import (
 	"context"
-	"errors"
+	stdErrors "errors"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -16,10 +17,10 @@ import (
 // CreateUser will create a user in the repository and return the written user
 func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) (*User, error) {
 	if user == nil {
-		return nil, fmt.Errorf("create user: missing user %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create user: missing user %w", errors.ErrInvalidParameter)
 	}
 	if user.PublicId != "" {
-		return nil, fmt.Errorf("create user: public id is not empty %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create user: public id is not empty %w", errors.ErrInvalidParameter)
 	}
 	u := user.Clone().(*User)
 
@@ -27,7 +28,7 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, UserPrefix+"_") {
-			return nil, fmt.Errorf("create user: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, UserPrefix, db.ErrInvalidPublicId)
+			return nil, fmt.Errorf("create user: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, UserPrefix, errors.ErrInvalidPublicId)
 		}
 		u.PublicId = opts.withPublicId
 	} else {
@@ -40,7 +41,7 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 
 	resource, err := r.create(ctx, u)
 	if err != nil {
-		if db.IsUniqueError(err) {
+		if errors.IsUniqueError(err) {
 			return nil, fmt.Errorf("create user: user %s already exists in org %s: %w", user.Name, user.ScopeId, err)
 		}
 		return nil, fmt.Errorf("create user: %w for %s", err, u.PublicId)
@@ -56,17 +57,17 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 // fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32, fieldMaskPaths []string, opt ...Option) (*User, []string, int, error) {
 	if user == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: missing user %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: missing user %w", errors.ErrInvalidParameter)
 	}
 	if user.PublicId == "" {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: missing user public id %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: missing user public id %w", errors.ErrInvalidParameter)
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
 		default:
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: field: %s: %w", f, db.ErrInvalidFieldMask)
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: field: %s: %w", f, errors.ErrInvalidFieldMask)
 		}
 	}
 	var dbMask, nullFields []string
@@ -79,7 +80,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: %w", db.ErrEmptyFieldMask)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: %w", errors.ErrEmptyFieldMask)
 	}
 
 	u := user.Clone().(*User)
@@ -126,7 +127,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 			)
 			if err == nil && rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
-				return errors.New("error more than 1 resource would have been updated ")
+				return stdErrors.New("error more than 1 resource would have been updated ")
 			}
 			if err != nil {
 				return err
@@ -147,7 +148,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 		},
 	)
 	if err != nil {
-		if db.IsUniqueError(err) {
+		if errors.IsUniqueError(err) {
 			return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: user %s already exists in org %s", user.Name, user.ScopeId)
 		}
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: %w for %s", err, user.PublicId)
@@ -159,13 +160,13 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 // repository.  If the user is not found, it will return nil, nil, nil.
 func (r *Repository) LookupUser(ctx context.Context, userId string, opt ...Option) (*User, []string, error) {
 	if userId == "" {
-		return nil, nil, fmt.Errorf("lookup user: missing public id %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("lookup user: missing public id %w", errors.ErrInvalidParameter)
 	}
 
 	user := allocUser()
 	user.PublicId = userId
 	if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stdErrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil, nil
 		}
 		return nil, nil, fmt.Errorf("lookup user: failed %w for %s", err, userId)
@@ -180,7 +181,7 @@ func (r *Repository) LookupUser(ctx context.Context, userId string, opt ...Optio
 // DeleteUser will delete a user from the repository
 func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
 	if withPublicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete user: missing public id %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete user: missing public id %w", errors.ErrInvalidParameter)
 	}
 	user := allocUser()
 	user.PublicId = withPublicId
@@ -197,7 +198,7 @@ func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, opt ..
 // ListUsers in an org and supports the WithLimit option.
 func (r *Repository) ListUsers(ctx context.Context, withOrgId string, opt ...Option) ([]*User, error) {
 	if withOrgId == "" {
-		return nil, fmt.Errorf("list users: missing org id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("list users: missing org id %w", errors.ErrInvalidParameter)
 	}
 	var users []*User
 	err := r.list(ctx, &users, "scope_id = ?", []interface{}{withOrgId}, opt...)
@@ -216,7 +217,7 @@ func (r *Repository) ListUsers(ctx context.Context, withOrgId string, opt ...Opt
 func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, opt ...Option) (*User, error) {
 	opts := getOpts(opt...)
 	if accountId == "" {
-		return nil, fmt.Errorf("lookup user with login: missing account id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup user with login: missing account id %w", errors.ErrInvalidParameter)
 	}
 	u, err := r.getUserWithAccount(ctx, accountId)
 	if err != nil {
@@ -226,7 +227,7 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 		return u, nil
 	}
 	if !opts.withAutoVivify {
-		return nil, fmt.Errorf("lookup user with login: user not found for account %s: %w", accountId, db.ErrRecordNotFound)
+		return nil, fmt.Errorf("lookup user with login: user not found for account %s: %w", accountId, errors.ErrRecordNotFound)
 	}
 
 	acct := allocAccount()
@@ -302,7 +303,7 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 
 func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId string, opt ...Option) (*User, error) {
 	if withAccountId == "" {
-		return nil, fmt.Errorf("missing account id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("missing account id %w", errors.ErrInvalidParameter)
 	}
 	rows, err := r.reader.Query(ctx, whereUserAccount, []interface{}{withAccountId})
 	if err != nil {
@@ -331,7 +332,7 @@ func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId strin
 // WithLimit option. Returns nil, nil when no associated accounts are found.
 func (r *Repository) ListUserAccounts(ctx context.Context, userId string, opt ...Option) ([]string, error) {
 	if userId == "" {
-		return nil, fmt.Errorf("list auth account ids: missing user id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("list auth account ids: missing user id: %w", errors.ErrInvalidParameter)
 	}
 	var accounts []*authAccount
 	if err := r.list(ctx, &accounts, "iam_user_id = ?", []interface{}{userId}, opt...); err != nil {
@@ -353,13 +354,13 @@ func (r *Repository) ListUserAccounts(ctx context.Context, userId string, opt ..
 // supported.
 func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
 	if userId == "" {
-		return nil, fmt.Errorf("associate accounts: missing user public id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("associate accounts: missing user public id %w", errors.ErrInvalidParameter)
 	}
 	if userVersion == 0 {
-		return nil, fmt.Errorf("associate accounts: missing user version %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("associate accounts: missing user version %w", errors.ErrInvalidParameter)
 	}
 	if len(accountIds) == 0 {
-		return nil, fmt.Errorf("associate accounts: missing account id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("associate accounts: missing account id %w", errors.ErrInvalidParameter)
 	}
 
 	user := allocUser()
@@ -434,13 +435,13 @@ func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVer
 // supported.
 func (r *Repository) DeleteUserAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
 	if userId == "" {
-		return nil, fmt.Errorf("disassociate accounts: missing user public id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("disassociate accounts: missing user public id %w", errors.ErrInvalidParameter)
 	}
 	if userVersion == 0 {
-		return nil, fmt.Errorf("disassociate accounts: missing user version %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("disassociate accounts: missing user version %w", errors.ErrInvalidParameter)
 	}
 	if len(accountIds) == 0 {
-		return nil, fmt.Errorf("disassociate accounts: missing account id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("disassociate accounts: missing account id %w", errors.ErrInvalidParameter)
 	}
 
 	user := allocUser()
@@ -514,10 +515,10 @@ func (r *Repository) DeleteUserAccounts(ctx context.Context, userId string, user
 // supported.
 func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
 	if userId == "" {
-		return nil, fmt.Errorf("set associated accounts: missing user public id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("set associated accounts: missing user public id %w", errors.ErrInvalidParameter)
 	}
 	if userVersion == 0 {
-		return nil, fmt.Errorf("set associated accounts: missing user version %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("set associated accounts: missing user version %w", errors.ErrInvalidParameter)
 	}
 
 	user := allocUser()
@@ -619,19 +620,19 @@ func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVer
 // the user (userId) within the writer's database
 func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.Reader, writer db.Writer, userId string, accountIds []string, opt ...Option) error {
 	if repoKms == nil {
-		return fmt.Errorf("associate user with accounts: kms is nil: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("associate user with accounts: kms is nil: %w", errors.ErrInvalidParameter)
 	}
 	if reader == nil {
-		return fmt.Errorf("associate user with accounts: db reader is nil: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("associate user with accounts: db reader is nil: %w", errors.ErrInvalidParameter)
 	}
 	if writer == nil {
-		return fmt.Errorf("associate user with accounts: db writer is nil: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("associate user with accounts: db writer is nil: %w", errors.ErrInvalidParameter)
 	}
 	if userId == "" {
-		return fmt.Errorf("associate user with accounts: user id is empty: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("associate user with accounts: user id is empty: %w", errors.ErrInvalidParameter)
 	}
 	if len(accountIds) == 0 {
-		return fmt.Errorf("associate user with accounts: missing account id %w", db.ErrInvalidParameter)
+		return fmt.Errorf("associate user with accounts: missing account id %w", errors.ErrInvalidParameter)
 	}
 	authAccounts := make([]*authAccount, 0, len(accountIds))
 	for _, accountId := range accountIds {
@@ -642,7 +643,7 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 			return fmt.Errorf("associate user with accounts: unable to lookup account %s: %w", accountId, err)
 		}
 		if acct.IamUserId != "" && acct.IamUserId != userId {
-			return fmt.Errorf("associate user with accounts: %s account is associated with a user %s: %w", accountId, acct.IamUserId, db.ErrInvalidParameter)
+			return fmt.Errorf("associate user with accounts: %s account is associated with a user %s: %w", accountId, acct.IamUserId, errors.ErrInvalidParameter)
 		}
 		authAccounts = append(authAccounts, &acct)
 	}
@@ -682,19 +683,19 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 // user.  No options are currently supported.
 func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db.Reader, writer db.Writer, userId string, accountIds []string, opt ...Option) error {
 	if repoKms == nil {
-		return fmt.Errorf("dissociate user from accounts: kms is nil: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("dissociate user from accounts: kms is nil: %w", errors.ErrInvalidParameter)
 	}
 	if reader == nil {
-		return fmt.Errorf("dissociate user from accounts: db reader is nil: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("dissociate user from accounts: db reader is nil: %w", errors.ErrInvalidParameter)
 	}
 	if writer == nil {
-		return fmt.Errorf("dissociate user from accounts: db writer is nil: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("dissociate user from accounts: db writer is nil: %w", errors.ErrInvalidParameter)
 	}
 	if userId == "" {
-		return fmt.Errorf("dissociate user from accounts: missing user public id %w", db.ErrInvalidParameter)
+		return fmt.Errorf("dissociate user from accounts: missing user public id %w", errors.ErrInvalidParameter)
 	}
 	if len(accountIds) == 0 {
-		return fmt.Errorf("dissociate user from accounts: missing account id %w", db.ErrInvalidParameter)
+		return fmt.Errorf("dissociate user from accounts: missing account id %w", errors.ErrInvalidParameter)
 	}
 	authAccounts := make([]*authAccount, 0, len(accountIds))
 	for _, accountId := range accountIds {
@@ -705,7 +706,7 @@ func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db
 			return fmt.Errorf("dissociate user from accounts: unable to lookup account %s: %w", accountId, err)
 		}
 		if acct.IamUserId != userId {
-			return fmt.Errorf("dissociate user from accounts: %s account is not associated with user %s: %w", accountId, userId, db.ErrInvalidParameter)
+			return fmt.Errorf("dissociate user from accounts: %s account is not associated with user %s: %w", accountId, userId, errors.ErrInvalidParameter)
 		}
 		authAccounts = append(authAccounts, &acct)
 	}

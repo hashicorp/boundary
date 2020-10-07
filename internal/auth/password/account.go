@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
@@ -31,7 +31,7 @@ func NewAccount(authMethodId string, opt ...Option) (*Account, error) {
 	// NOTE(mgaffney): The scopeId in the embedded *store.Account is
 	// populated by a trigger in the database.
 	if authMethodId == "" {
-		return nil, fmt.Errorf("new: password account: no auth method id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new: password account: no auth method id: %w", errors.ErrInvalidParameter)
 	}
 
 	opts := getOpts(opt...)

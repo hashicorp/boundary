@@ -2,7 +2,7 @@ package hosts_test
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -97,7 +97,7 @@ func TestGet(t *testing.T) {
 			got, gErr := s.GetHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "GetHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "GetHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 
 			if tc.res != nil {
@@ -163,7 +163,7 @@ func TestList(t *testing.T) {
 			got, gErr := s.ListHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), &pbs.ListHostsRequest{HostCatalogId: tc.hostCatalogId})
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "ListHosts(%q) got error %v, wanted %v", tc.hostCatalogId, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "ListHosts(%q) got error %v, wanted %v", tc.hostCatalogId, gErr, tc.err)
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHosts(%q) got response %q, wanted %q", tc.hostCatalogId, got, tc.res)
 		})
@@ -226,7 +226,7 @@ func TestDelete(t *testing.T) {
 			got, gErr := s.DeleteHost(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "DeleteHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "DeleteHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -259,7 +259,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteHost(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
+	assert.True(stderrors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -404,7 +404,7 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "CreateHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "CreateHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
@@ -796,7 +796,7 @@ func TestUpdate(t *testing.T) {
 			got, gErr := tested.UpdateHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "UpdateHost(%+v) got error %v, wanted %v", req, gErr, tc.err)
+				assert.True(stderrors.Is(gErr, tc.err), "UpdateHost(%+v) got error %v, wanted %v", req, gErr, tc.err)
 			}
 
 			if tc.err == nil {

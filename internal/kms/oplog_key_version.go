@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
@@ -24,13 +25,13 @@ type OplogKeyVersion struct {
 // currently supported.
 func NewOplogKeyVersion(oplogKeyId string, key []byte, rootKeyVersionId string, opt ...Option) (*OplogKeyVersion, error) {
 	if oplogKeyId == "" {
-		return nil, fmt.Errorf("new oplog key version: missing oplog key id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new oplog key version: missing oplog key id: %w", errors.ErrInvalidParameter)
 	}
 	if len(key) == 0 {
-		return nil, fmt.Errorf("new oplog key version: missing key: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new oplog key version: missing key: %w", errors.ErrInvalidParameter)
 	}
 	if rootKeyVersionId == "" {
-		return nil, fmt.Errorf("new oplog key version: missing root key version id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new oplog key version: missing root key version id: %w", errors.ErrInvalidParameter)
 	}
 
 	k := &OplogKeyVersion{
@@ -62,17 +63,17 @@ func (k *OplogKeyVersion) Clone() interface{} {
 // version before it's written.
 func (k *OplogKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if k.PrivateId == "" {
-		return fmt.Errorf("oplog key version vet for write: missing private id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("oplog key version vet for write: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	if opType == db.CreateOp {
 		if k.CtKey == nil {
-			return fmt.Errorf("oplog key version vet for write: missing key: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("oplog key version vet for write: missing key: %w", errors.ErrInvalidParameter)
 		}
 		if k.OplogKeyId == "" {
-			return fmt.Errorf("oplog key version vet for write: missing oplog key id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("oplog key version vet for write: missing oplog key id: %w", errors.ErrInvalidParameter)
 		}
 		if k.RootKeyVersionId == "" {
-			return fmt.Errorf("oplog key version vet for write: missing root key version id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("oplog key version vet for write: missing root key version id: %w", errors.ErrInvalidParameter)
 		}
 	}
 	return nil

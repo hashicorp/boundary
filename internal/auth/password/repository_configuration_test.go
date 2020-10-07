@@ -2,12 +2,13 @@ package password
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -145,12 +146,12 @@ func TestRepository_GetConfiguration(t *testing.T) {
 		{
 			name:         "invalid-no-authMethodId",
 			authMethodId: "",
-			wantIsErr:    db.ErrInvalidParameter,
+			wantIsErr:    errors.ErrInvalidParameter,
 		},
 		{
 			name:         "invalid-authMethodId",
 			authMethodId: "abcdefghijk",
-			wantIsErr:    db.ErrRecordNotFound,
+			wantIsErr:    errors.ErrRecordNotFound,
 		},
 		{
 			name:         "valid-authMethodId",
@@ -164,7 +165,7 @@ func TestRepository_GetConfiguration(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := repo.GetConfiguration(ctx, tt.authMethodId)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got, "returned configuration")
 				return
 			}
@@ -216,17 +217,17 @@ func TestRepository_SetConfiguration(t *testing.T) {
 	}{
 		{
 			name:      "invalid-nil-config",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-config",
 			in:        &Argon2Configuration{},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "invalid-no-authMethodId",
 			in:        NewArgon2Configuration(),
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "unknown-configuration-type",
@@ -291,7 +292,7 @@ func TestRepository_SetConfiguration(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := repo.SetConfiguration(context.Background(), o.GetPublicId(), tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got, "returned configuration")
 				return
 			}

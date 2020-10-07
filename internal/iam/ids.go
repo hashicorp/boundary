@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
@@ -40,7 +41,7 @@ func newGroupId() (string, error) {
 
 func newScopeId(scopeType scope.Type) (string, error) {
 	if scopeType == scope.Unknown {
-		return "", fmt.Errorf("new scope id: unknown is not supported %w", db.ErrInvalidParameter)
+		return "", fmt.Errorf("new scope id: unknown is not supported %w", errors.ErrInvalidParameter)
 	}
 	id, err := db.NewPublicId(scopeType.Prefix())
 	if err != nil {

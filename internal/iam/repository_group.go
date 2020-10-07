@@ -2,12 +2,13 @@ package iam
 
 import (
 	"context"
-	"errors"
+	stdErrors "errors"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -16,16 +17,16 @@ import (
 // group.  No options are currently supported.
 func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Option) (*Group, error) {
 	if group == nil {
-		return nil, fmt.Errorf("create group: missing group %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create group: missing group %w", errors.ErrInvalidParameter)
 	}
 	if group.Group == nil {
-		return nil, fmt.Errorf("create group: missing group store %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create group: missing group store %w", errors.ErrInvalidParameter)
 	}
 	if group.PublicId != "" {
-		return nil, fmt.Errorf("create group: public id not empty: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create group: public id not empty: %w", errors.ErrInvalidParameter)
 	}
 	if group.ScopeId == "" {
-		return nil, fmt.Errorf("create group: missing group scope id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create group: missing group scope id: %w", errors.ErrInvalidParameter)
 	}
 	id, err := newGroupId()
 	if err != nil {
@@ -35,8 +36,8 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Optio
 	g.PublicId = id
 	resource, err := r.create(ctx, g)
 	if err != nil {
-		if db.IsUniqueError(err) {
-			return nil, fmt.Errorf("create group: group %s already exists in scope %s: %w", group.Name, group.ScopeId, db.ErrNotUnique)
+		if errors.IsUniqueError(err) {
+			return nil, fmt.Errorf("create group: group %s already exists in scope %s: %w", group.Name, group.ScopeId, errors.ErrNotUnique)
 		}
 		return nil, fmt.Errorf("create group: %w for %s", err, g.PublicId)
 	}
@@ -50,20 +51,20 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Optio
 // If no updatable fields are included in the fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint32, fieldMaskPaths []string, opt ...Option) (*Group, []*GroupMember, int, error) {
 	if group == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group %w", errors.ErrInvalidParameter)
 	}
 	if group.Group == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group store %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group store %w", errors.ErrInvalidParameter)
 	}
 	if group.PublicId == "" {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group public id %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group public id %w", errors.ErrInvalidParameter)
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
 		default:
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: field: %s: %w", f, db.ErrInvalidFieldMask)
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: field: %s: %w", f, errors.ErrInvalidFieldMask)
 		}
 	}
 	var dbMask, nullFields []string
@@ -76,7 +77,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: %w", db.ErrEmptyFieldMask)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: %w", errors.ErrEmptyFieldMask)
 	}
 	var resource Resource
 	var rowsUpdated int
@@ -104,8 +105,8 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 		},
 	)
 	if err != nil {
-		if db.IsUniqueError(err) {
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: group %s already exists in org %s: %w", group.Name, group.ScopeId, db.ErrNotUnique)
+		if errors.IsUniqueError(err) {
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: group %s already exists in org %s: %w", group.Name, group.ScopeId, errors.ErrNotUnique)
 		}
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: %w for %s", err, group.PublicId)
 	}
@@ -116,7 +117,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 // found, it will return nil, nil.
 func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, opt ...Option) (*Group, []*GroupMember, error) {
 	if withPublicId == "" {
-		return nil, nil, fmt.Errorf("lookup group: missing public id %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("lookup group: missing public id %w", errors.ErrInvalidParameter)
 	}
 	g := allocGroup()
 	g.PublicId = withPublicId
@@ -141,7 +142,7 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, opt .
 		},
 	)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stdErrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil, nil
 		}
 		return nil, nil, fmt.Errorf("lookup group: failed %w for %s", err, withPublicId)
@@ -152,7 +153,7 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, opt .
 // DeleteGroup will delete a group from the repository.
 func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
 	if withPublicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete group: missing public id %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete group: missing public id %w", errors.ErrInvalidParameter)
 	}
 	g := allocGroup()
 	g.PublicId = withPublicId
@@ -169,7 +170,7 @@ func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, opt .
 // ListGroups in a scope and supports WithLimit option.
 func (r *Repository) ListGroups(ctx context.Context, withScopeId string, opt ...Option) ([]*Group, error) {
 	if withScopeId == "" {
-		return nil, fmt.Errorf("list groups: missing scope id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("list groups: missing scope id %w", errors.ErrInvalidParameter)
 	}
 	var grps []*Group
 	err := r.list(ctx, &grps, "scope_id = ?", []interface{}{withScopeId}, opt...)
@@ -182,7 +183,7 @@ func (r *Repository) ListGroups(ctx context.Context, withScopeId string, opt ...
 // ListGroupMembers of a group and supports WithLimit option.
 func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, opt ...Option) ([]*GroupMember, error) {
 	if withGroupId == "" {
-		return nil, fmt.Errorf("list group members: missing group id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("list group members: missing group id: %w", errors.ErrInvalidParameter)
 	}
 	members := []*GroupMember{}
 	if err := r.list(ctx, &members, "group_id = ?", []interface{}{withGroupId}, opt...); err != nil {
@@ -197,13 +198,13 @@ func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, o
 // and will return an error.
 func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, opt ...Option) ([]*GroupMember, error) {
 	if groupId == "" {
-		return nil, fmt.Errorf("add group members: missing group id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add group members: missing group id %w", errors.ErrInvalidParameter)
 	}
 	if len(userIds) == 0 {
-		return nil, fmt.Errorf("add group members: missing user ids to add %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add group members: missing user ids to add %w", errors.ErrInvalidParameter)
 	}
 	if groupVersion == 0 {
-		return nil, fmt.Errorf("add group members: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add group members: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	group := allocGroup()
 	group.PublicId = groupId
@@ -289,13 +290,13 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 // value for the WithVersion option and will return an error.
 func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, opt ...Option) (int, error) {
 	if groupId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete group members: missing group id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete group members: missing group id: %w", errors.ErrInvalidParameter)
 	}
 	if len(userIds) == 0 {
-		return db.NoRowsAffected, fmt.Errorf("delete group members: missing either user or groups to delete %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete group members: missing either user or groups to delete %w", errors.ErrInvalidParameter)
 	}
 	if groupVersion == 0 {
-		return db.NoRowsAffected, fmt.Errorf("delete group members: version cannot be zero: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete group members: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	group := allocGroup()
 	group.PublicId = groupId
@@ -374,10 +375,10 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 // and will return an error.
 func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, opt ...Option) ([]*GroupMember, int, error) {
 	if groupId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("set group members: missing group id: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set group members: missing group id: %w", errors.ErrInvalidParameter)
 	}
 	if groupVersion == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("set group members: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set group members: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	group := allocGroup()
 	group.PublicId = groupId

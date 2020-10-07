@@ -3,7 +3,7 @@ package session
 import (
 	"fmt"
 
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // ClosedReason of the connection
@@ -37,6 +37,6 @@ func convertToClosedReason(s string) (ClosedReason, error) {
 	case ConnectionSystemError.String():
 		return ConnectionSystemError, nil
 	default:
-		return "", fmt.Errorf("closed reason: %s is not a valid reason: %w", s, db.ErrInvalidParameter)
+		return "", fmt.Errorf("closed reason: %s is not a valid reason: %w", s, errors.ErrInvalidParameter)
 	}
 }

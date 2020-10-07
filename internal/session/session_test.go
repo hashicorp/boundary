@@ -2,13 +2,14 @@ package session
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,7 +68,7 @@ func TestSession_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-hostId",
@@ -79,7 +80,7 @@ func TestSession_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-targetId",
@@ -91,7 +92,7 @@ func TestSession_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-hostSetId",
@@ -103,7 +104,7 @@ func TestSession_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-authTokenId",
@@ -115,7 +116,7 @@ func TestSession_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-scopeId",
@@ -127,7 +128,7 @@ func TestSession_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -136,7 +137,7 @@ func TestSession_Create(t *testing.T) {
 			got, err := New(tt.args.composedOf)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(stderrors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -213,7 +214,7 @@ func TestSession_Delete(t *testing.T) {
 			foundSession.PublicId = tt.session.PublicId
 			err = rw.LookupById(context.Background(), &foundSession)
 			require.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

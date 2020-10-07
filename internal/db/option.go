@@ -40,10 +40,6 @@ type Options struct {
 	withWhereClause     string
 	withWhereClauseArgs []interface{}
 	withOrder           string
-
-	withErrWrapped error
-	withErrMsg     string
-	withErrCode    *ErrCode
 }
 
 type oplogOpts struct {
@@ -157,29 +153,5 @@ func WithWhere(whereClause string, args ...interface{}) Option {
 func WithOrder(withOrder string) Option {
 	return func(o *Options) {
 		o.withOrder = withOrder
-	}
-}
-
-// WithErrCode provides an option to provide an ErrCode when creating a new
-// error.
-func WithErrCode(c ErrCode) Option {
-	return func(o *Options) {
-		o.withErrCode = &c
-	}
-}
-
-// WithErrCode provides an option to provide an error to wrap when creating a
-// new error.
-func WithWrap(e error) Option {
-	return func(o *Options) {
-		o.withErrWrapped = e
-	}
-}
-
-// WithErrorMsg provides an option to provide a message when creating a new
-// error.
-func WithErrorMsg(msg string) Option {
-	return func(o *Options) {
-		o.withErrMsg = msg
 	}
 }

@@ -3,7 +3,7 @@ package session
 import (
 	"fmt"
 
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // TerminationReason of the session
@@ -41,6 +41,6 @@ func convertToReason(s string) (TerminationReason, error) {
 	case ConnectionLimit.String():
 		return ConnectionLimit, nil
 	default:
-		return "", fmt.Errorf("termination reason: %s is not a valid reason: %w", s, db.ErrInvalidParameter)
+		return "", fmt.Errorf("termination reason: %s is not a valid reason: %w", s, errors.ErrInvalidParameter)
 	}
 }

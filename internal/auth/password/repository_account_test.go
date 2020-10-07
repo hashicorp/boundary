@@ -2,13 +2,14 @@ package password
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -57,19 +58,19 @@ func TestRepository_CreateAccount(t *testing.T) {
 	}{
 		{
 			name:      "nil-Account",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-Account",
 			in:        &Account{},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-scope-id",
 			in: &Account{
 				Account: &store.Account{},
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-public-id-set",
@@ -79,7 +80,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 					PublicId:     "hcst_OOOOOOOOOO",
 				},
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-loginname-uppercase",
@@ -89,7 +90,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    "KaZmiErcZak11",
 				},
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-loginname-leading-space",
@@ -99,7 +100,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    " kazmierczak12",
 				},
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-loginname-trailing-space",
@@ -109,7 +110,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    "kazmierczak13 ",
 				},
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-loginname-space-in-name",
@@ -119,7 +120,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    "kazmier czak14",
 				},
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-loginname-too-short",
@@ -222,7 +223,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -274,7 +275,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
-		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -339,7 +340,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 	}{
 		{
 			name:      "With no public id",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "With non existing account id",
@@ -361,7 +362,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.LookupAccount(context.Background(), tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -393,7 +394,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	}{
 		{
 			name:      "With no public id",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "With non existing account id",
@@ -416,7 +417,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.DeleteAccount(context.Background(), org.GetPublicId(), tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
 				return
 			}
@@ -449,7 +450,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 	}{
 		{
 			name:      "With no auth method id",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "With no accounts id",
@@ -472,7 +473,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -633,7 +634,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-embedded-Account",
@@ -642,7 +643,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "no-public-id",
@@ -651,7 +652,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     deletePublicId(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "updating-non-existent-Account",
@@ -662,7 +663,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
 			masks:     []string{"Name"},
-			wantIsErr: db.ErrRecordNotFound,
+			wantIsErr: errors.ErrRecordNotFound,
 		},
 		{
 			name: "empty-field-mask",
@@ -672,7 +673,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				},
 			},
 			chgFn:     changeName("test-update-name-repo"),
-			wantIsErr: db.ErrEmptyFieldMask,
+			wantIsErr: errors.ErrEmptyFieldMask,
 		},
 		{
 			name: "read-only-fields-in-field-mask",
@@ -683,7 +684,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "AuthMethodId"},
-			wantIsErr: db.ErrInvalidFieldMask,
+			wantIsErr: errors.ErrInvalidFieldMask,
 		},
 		{
 			name: "unknown-field-in-field-mask",
@@ -694,7 +695,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"Bilbo"},
-			wantIsErr: db.ErrInvalidFieldMask,
+			wantIsErr: errors.ErrInvalidFieldMask,
 		},
 		{
 			name: "change-name",
@@ -841,7 +842,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     changeLoginName("KaZmIeRcZaK"),
 			masks:     []string{"LoginName"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "change-login-name-to-short",
@@ -863,7 +864,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     changeLoginName(""),
 			masks:     []string{"LoginName"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 
@@ -891,7 +892,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			}
 			got, gotCount, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
@@ -949,12 +950,12 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 		ab.Name = name
 		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"name"})
-		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
-		assert.True(errors.Is(db.ErrRecordNotFound, err))
+		assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 	})
 
 	t.Run("valid-duplicate-names-diff-AuthMethods", func(t *testing.T) {
@@ -1027,12 +1028,12 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 		ab.LoginName = loginName
 		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"LoginName"})
-		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
-		assert.True(errors.Is(db.ErrRecordNotFound, err))
+		assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 	})
 
 	t.Run("valid-duplicate-loginnames-diff-AuthMethods", func(t *testing.T) {

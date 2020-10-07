@@ -2,28 +2,29 @@ package iam
 
 import (
 	"context"
-	"errors"
+	stdErrors "errors"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // CreateRole will create a role in the repository and return the written
 // role.  No options are currently supported.
 func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) (*Role, error) {
 	if role == nil {
-		return nil, fmt.Errorf("create role: missing role %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create role: missing role %w", errors.ErrInvalidParameter)
 	}
 	if role.Role == nil {
-		return nil, fmt.Errorf("create role: missing role store %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create role: missing role store %w", errors.ErrInvalidParameter)
 	}
 	if role.PublicId != "" {
-		return nil, fmt.Errorf("create role: public id not empty: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create role: public id not empty: %w", errors.ErrInvalidParameter)
 	}
 	if role.ScopeId == "" {
-		return nil, fmt.Errorf("create role: missing role scope id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create role: missing role scope id: %w", errors.ErrInvalidParameter)
 	}
 	id, err := newRoleId()
 	if err != nil {
@@ -33,8 +34,8 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 	c.PublicId = id
 	resource, err := r.create(ctx, c)
 	if err != nil {
-		if db.IsUniqueError(err) {
-			return nil, fmt.Errorf("create role: role %s already exists in scope %s: %w", role.Name, role.ScopeId, db.ErrNotUnique)
+		if errors.IsUniqueError(err) {
+			return nil, fmt.Errorf("create role: role %s already exists in scope %s: %w", role.Name, role.ScopeId, errors.ErrNotUnique)
 		}
 		return nil, fmt.Errorf("create role: %w for %s", err, c.PublicId)
 	}
@@ -49,13 +50,13 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 // then an error is returned.
 func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32, fieldMaskPaths []string, opt ...Option) (*Role, []PrincipalRole, []*RoleGrant, int, error) {
 	if role == nil {
-		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role %w", db.ErrInvalidParameter)
+		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role %w", errors.ErrInvalidParameter)
 	}
 	if role.Role == nil {
-		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role store %w", db.ErrInvalidParameter)
+		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role store %w", errors.ErrInvalidParameter)
 	}
 	if role.PublicId == "" {
-		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role public id %w", db.ErrInvalidParameter)
+		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role public id %w", errors.ErrInvalidParameter)
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
@@ -63,7 +64,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		case strings.EqualFold("description", f):
 		case strings.EqualFold("grantscopeid", f):
 		default:
-			return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: field: %s: %w", f, db.ErrInvalidFieldMask)
+			return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: field: %s: %w", f, errors.ErrInvalidFieldMask)
 		}
 	}
 	var dbMask, nullFields []string
@@ -77,7 +78,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: %w", db.ErrEmptyFieldMask)
+		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: %w", errors.ErrEmptyFieldMask)
 	}
 	var resource Resource
 	var rowsUpdated int
@@ -110,8 +111,8 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		},
 	)
 	if err != nil {
-		if db.IsUniqueError(err) {
-			return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: role %s already exists in org %s: %w", role.Name, role.ScopeId, db.ErrNotUnique)
+		if errors.IsUniqueError(err) {
+			return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: role %s already exists in org %s: %w", role.Name, role.ScopeId, errors.ErrNotUnique)
 		}
 		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: %w for %s", err, role.PublicId)
 	}
@@ -122,7 +123,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 // found, it will return nil, nil.
 func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ...Option) (*Role, []PrincipalRole, []*RoleGrant, error) {
 	if withPublicId == "" {
-		return nil, nil, nil, fmt.Errorf("lookup role: missing public id %w", db.ErrInvalidParameter)
+		return nil, nil, nil, fmt.Errorf("lookup role: missing public id %w", errors.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = withPublicId
@@ -152,7 +153,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		},
 	)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if stdErrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil, nil, nil
 		}
 		return nil, nil, nil, err
@@ -163,7 +164,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 // DeleteRole will delete a role from the repository.
 func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
 	if withPublicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete role: missing public id %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete role: missing public id %w", errors.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = withPublicId
@@ -180,7 +181,7 @@ func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, opt ..
 // ListRoles in a scope and supports WithLimit option.
 func (r *Repository) ListRoles(ctx context.Context, withScopeId string, opt ...Option) ([]*Role, error) {
 	if withScopeId == "" {
-		return nil, fmt.Errorf("list roles: missing scope id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("list roles: missing scope id %w", errors.ErrInvalidParameter)
 	}
 	var roles []*Role
 	err := r.list(ctx, &roles, "scope_id = ?", []interface{}{withScopeId}, opt...)

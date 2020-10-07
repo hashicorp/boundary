@@ -2,12 +2,13 @@ package target
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ func TestTcpTarget_Create(t *testing.T) {
 			name:      "empty-scopeId",
 			args:      args{},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "valid-proj-scope",
@@ -62,7 +63,7 @@ func TestTcpTarget_Create(t *testing.T) {
 			got, err := NewTcpTarget(tt.args.scopeId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(stderrors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -138,7 +139,7 @@ func TestTcpTarget_Delete(t *testing.T) {
 			foundTarget.PublicId = tt.target.PublicId
 			err = rw.LookupById(context.Background(), &foundTarget)
 			require.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

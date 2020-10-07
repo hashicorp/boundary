@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -15,13 +16,13 @@ import (
 // the WithVersion option and will return an error.
 func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, opt ...Option) ([]*RoleGrant, error) {
 	if roleId == "" {
-		return nil, fmt.Errorf("add role grants: missing role id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add role grants: missing role id %w", errors.ErrInvalidParameter)
 	}
 	if len(grants) == 0 {
-		return nil, fmt.Errorf("add role grants: missing grants: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add role grants: missing grants: %w", errors.ErrInvalidParameter)
 	}
 	if roleVersion == 0 {
-		return nil, fmt.Errorf("add role grants: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add role grants: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -103,13 +104,13 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 // error.
 func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, opt ...Option) (int, error) {
 	if roleId == "" {
-		return 0, fmt.Errorf("delete role grants: missing role id %w", db.ErrInvalidParameter)
+		return 0, fmt.Errorf("delete role grants: missing role id %w", errors.ErrInvalidParameter)
 	}
 	if len(grants) == 0 {
-		return 0, fmt.Errorf("delete role grants: missing grants: %w", db.ErrInvalidParameter)
+		return 0, fmt.Errorf("delete role grants: missing grants: %w", errors.ErrInvalidParameter)
 	}
 	if roleVersion == 0 {
-		return 0, fmt.Errorf("delete role grants: version cannot be zero: %w", db.ErrInvalidParameter)
+		return 0, fmt.Errorf("delete role grants: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -217,15 +218,15 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 // value for the WithVersion option and will return an error.
 func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, opt ...Option) ([]*RoleGrant, int, error) {
 	if roleId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: missing role id %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: missing role id %w", errors.ErrInvalidParameter)
 	}
 	if roleVersion == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: version cannot be zero: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: version cannot be zero: %w", errors.ErrInvalidParameter)
 	}
 
 	// Explicitly set to zero clears, but treat nil as a mistake
 	if grants == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: nil grants: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: nil grants: %w", errors.ErrInvalidParameter)
 	}
 
 	role := allocRole()
@@ -371,7 +372,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 // option.
 func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...Option) ([]*RoleGrant, error) {
 	if roleId == "" {
-		return nil, fmt.Errorf("add role grants: missing role id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add role grants: missing role id %w", errors.ErrInvalidParameter)
 	}
 	var roleGrants []*RoleGrant
 	if err := r.list(ctx, &roleGrants, "role_id = ?", []interface{}{roleId}, opt...); err != nil {
@@ -382,7 +383,7 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 
 func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Option) ([]perms.GrantPair, error) {
 	if userId == "" {
-		return nil, fmt.Errorf("get grants for user: missing user id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("get grants for user: missing user id: %w", errors.ErrInvalidParameter)
 	}
 
 	const (

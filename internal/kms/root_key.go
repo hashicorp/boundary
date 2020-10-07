@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -24,7 +25,7 @@ type RootKey struct {
 // are currently supported.
 func NewRootKey(scopeId string, opt ...Option) (*RootKey, error) {
 	if scopeId == "" {
-		return nil, fmt.Errorf("new root key: missing scope id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new root key: missing scope id: %w", errors.ErrInvalidParameter)
 	}
 	c := &RootKey{
 		RootKey: &store.RootKey{
@@ -53,15 +54,15 @@ func (k *RootKey) Clone() interface{} {
 // before it's written.
 func (k *RootKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if k.PrivateId == "" {
-		return fmt.Errorf("root key vet for write: missing private id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("root key vet for write: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.ScopeId == "" {
-			return fmt.Errorf("root key vet for write: missing scope id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("root key vet for write: missing scope id: %w", errors.ErrInvalidParameter)
 		}
 	case db.UpdateOp:
-		return fmt.Errorf("root key vet for write: key is immutable: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("root key vet for write: key is immutable: %w", errors.ErrInvalidParameter)
 	}
 	return nil
 }

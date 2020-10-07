@@ -2,13 +2,14 @@ package static
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -57,7 +58,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-set-id",
@@ -66,7 +67,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -75,7 +76,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-host-ids",
@@ -84,7 +85,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				version: set.Version,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-version",
@@ -117,7 +118,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.AddSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 				return
@@ -248,7 +249,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-set-id",
@@ -257,7 +258,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -266,7 +267,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-host-ids",
@@ -275,7 +276,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				version: set.Version,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-version",
@@ -309,7 +310,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.DeleteSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
 				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 				return
@@ -446,7 +447,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-set-id",
@@ -455,7 +456,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -464,7 +465,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-version",
@@ -498,7 +499,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 			require.NotNil(repo)
 			got, gotCount, err := repo.SetSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				assert.Equal(tt.wantCount, gotCount)
 				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))

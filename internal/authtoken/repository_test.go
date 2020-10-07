@@ -2,7 +2,7 @@ package authtoken
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"sort"
 	"testing"
 	"time"
@@ -18,6 +18,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 )
 
@@ -77,7 +78,7 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-writer",
@@ -87,7 +88,7 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-kms",
@@ -97,7 +98,7 @@ func TestRepository_New(t *testing.T) {
 				kms: nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "all-nils",
@@ -107,7 +108,7 @@ func TestRepository_New(t *testing.T) {
 				kms: nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -116,7 +117,7 @@ func TestRepository_New(t *testing.T) {
 			assert := assert.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -253,7 +254,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 			name:    "bad-public-id",
 			id:      "",
 			want:    nil,
-			wantErr: db.ErrInvalidParameter,
+			wantErr: errors.ErrInvalidParameter,
 		},
 	}
 
@@ -267,7 +268,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 
 			got, err := repo.LookupAuthToken(context.Background(), tt.id)
 			if tt.wantErr != nil {
-				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
 			assert.NoError(err)
@@ -347,7 +348,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 			id:      at.GetPublicId(),
 			token:   "",
 			want:    nil,
-			wantErr: db.ErrInvalidParameter,
+			wantErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:    "mismatched-token",
@@ -364,7 +365,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 			got, err := repo.ValidateToken(context.Background(), tt.id, tt.token)
 
 			if tt.wantErr != nil {
-				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
 			assert.NoError(err)
@@ -522,7 +523,7 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 			name:    "empty-public-id",
 			id:      "",
 			want:    0,
-			wantErr: db.ErrInvalidParameter,
+			wantErr: errors.ErrInvalidParameter,
 		},
 	}
 
@@ -536,7 +537,7 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 
 			got, err := repo.DeleteAuthToken(context.Background(), tt.id)
 			if tt.wantErr != nil {
-				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
 			assert.NoError(err)
@@ -588,7 +589,7 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 			name:    "empty-org-id",
 			orgId:   "",
 			want:    nil,
-			wantErr: db.ErrInvalidParameter,
+			wantErr: errors.ErrInvalidParameter,
 		},
 	}
 
@@ -602,7 +603,7 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 
 			got, err := repo.ListAuthTokens(context.Background(), tt.orgId)
 			if tt.wantErr != nil {
-				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				assert.Truef(stderrors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
 			assert.NoError(err)
