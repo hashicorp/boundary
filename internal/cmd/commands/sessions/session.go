@@ -156,7 +156,7 @@ func (c *Command) Run(args []string) int {
 
 		case "table":
 			if len(listedSessions) == 0 {
-				c.UI.Output("No auth tokens found")
+				c.UI.Output("No sessions found")
 				return 0
 			}
 			var output []string

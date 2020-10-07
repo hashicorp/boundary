@@ -1605,13 +1605,15 @@
             "name": "skip_admin_role_creation",
             "in": "query",
             "required": false,
-            "type": "boolean"
+            "type": "boolean",
+            "format": "boolean"
           },
           {
             "name": "skip_default_role_creation",
             "in": "query",
             "required": false,
-            "type": "boolean"
+            "type": "boolean",
+            "format": "boolean"
           }
         ],
         "tags": [
@@ -3047,6 +3049,11 @@
           "type": "string",
           "format": "byte",
           "description": "Output only. The certificate generated for the session. Raw DER bytes.",
+          "readOnly": true
+        },
+        "termination_reason": {
+          "type": "string",
+          "description": "Output only. If the session is terminated, this provides a short description as to why.",
           "readOnly": true
         }
       },
