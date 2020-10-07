@@ -161,13 +161,3 @@
 .g-content {
   --highlight-color: var(--boundary);
 }
-
-.g-vertical-text-block-list {
-  & .list {
-    & .body-text {
-      & a {
-        color: var(--boundary) !important;
-      }
-    }
-  }
-}
