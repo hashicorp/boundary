@@ -8,15 +8,15 @@ description: |-
 
 # High Availability Installation
 
-Installing Boundary as a high availability service requires certain infrastructure considerations. At the most basic level, running 3 controller and worker instances gives a fundamental level of high availability for the control plane (controller), as well as bandwidth for number of sessions on the data plane (worker). Both server types should be run in a fault-tolerant setting, that is, in a self-healing environment such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.
+Installing Boundary as a high availability service requires certain infrastructure considerations. At the most basic level, running 3 controller and 3 worker instances gives a fundamental level of high availability for the control plane (controller), as well as bandwidth for a number of sessions on the data plane (worker). Both server types should be run in a fault-tolerant setting, that is, in a self-healing environment such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.
 
 ## Network Requirements
 
 The following ports should be available:
 
-- Client must have access to the Controller's port (default 9200)
-- Client must have access to the Worker's port (defaults 9202)
-- Worker must have access to the Controller's port (default 9201)
+- Clients must have access to the Controller's port (default 9200)
+- Clients must have access to the Worker's port (defaults 9202)
+- Workers must have access to the Controller's port (default 9201)
 - Workers must have a route and port access to the targets which they service
 
 ## Architecture
@@ -37,7 +37,7 @@ Boundary requires an external [Postgres](https://www.postgresql.org/) and [KMS](
 
 ### API and Console Load Balancer
 
-Load balancing the controller allows operators to secure the ingress to the Boundary system. We recommend placing all Boundary server's in private networks and using load balancing tecniques to expose services such as the API and administrative console to public networks. In the high availability architecture, we recommend load balancing using a layer 7 load balancer and further constraining ingress to that load balancer with layer 4 constraints such as [security groups](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html) or [IP tables](https://wiki.archlinux.org/index.php/Iptables).
+Load balancing the controller allows operators to secure the ingress to the Boundary system. We recommend placing all Boundary server's in private networks and using load balancing techniques to expose services such as the API and administrative console to public networks. In the high availability architecture, we recommend load balancing using a layer 7 load balancer and further constraining ingress to that load balancer with layer 4 constraints such as [security groups](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html) or [IP tables](https://wiki.archlinux.org/index.php/Iptables).
 
 For general configuration, we recommend the following:
 
