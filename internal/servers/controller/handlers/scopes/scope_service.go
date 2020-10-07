@@ -478,6 +478,9 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 
 func validateListRequest(req *pbs.ListScopesRequest) error {
 	badFields := map[string]string{}
+	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) {
+		badFields["scope_id"] = "Must be 'global' or a valid org scope id when listing."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
