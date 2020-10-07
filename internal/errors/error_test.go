@@ -335,7 +335,7 @@ func TestConvertError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := errors.ConvertError(tt.e)
+			err := errors.ConvertDBError(tt.e)
 			if tt.wantErr == nil {
 				assert.Nil(err)
 				return
@@ -353,7 +353,7 @@ func TestConvertError(t *testing.T) {
 		_, err = rw.Exec(ctx, insert, []interface{}{"alice", "dup coworker", nil})
 		require.Error(err)
 
-		e := errors.ConvertError(err)
+		e := errors.ConvertDBError(err)
 		require.NotNil(e)
 		assert.True(stderrors.Is(e, errors.ErrNotUnique))
 		assert.Equal("Key (name)=(alice) already exists.: error #1002", e.Error())
@@ -365,7 +365,7 @@ func TestConvertError(t *testing.T) {
 		_, err = rw.Exec(ctx, insert, []interface{}{"alice", nil, nil})
 		require.Error(err)
 
-		e := errors.ConvertError(err)
+		e := errors.ConvertDBError(err)
 		require.NotNil(e)
 		assert.True(stderrors.Is(e, errors.ErrNotNull))
 		assert.Equal("description must not be empty: error #1001", e.Error())
@@ -378,7 +378,7 @@ func TestConvertError(t *testing.T) {
 		_, err = rw.Exec(ctx, insert, []interface{}{"alice", "coworker", "one"})
 		require.Error(err)
 
-		e := errors.ConvertError(err)
+		e := errors.ConvertDBError(err)
 		require.NotNil(e)
 		assert.True(stderrors.Is(e, errors.ErrCheckConstraint))
 		assert.Equal("test_table_five_check constraint failed: error #1000", e.Error())

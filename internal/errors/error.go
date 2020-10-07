@@ -149,9 +149,9 @@ func NewError(opt ...Option) error {
 	}
 }
 
-// ConvertError will convert the error to Error (if that's not possible, it just
+// ConvertDBError will convert the error to Error (if that's not possible, it just
 // returns the error as is) and it will attempt to add a helpful error msg too.
-func ConvertError(e error) error {
+func ConvertDBError(e error) error {
 	// nothing to convert.
 	if e == nil {
 		return nil
