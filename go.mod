@@ -18,8 +18,8 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.0-beta.5
-	github.com/hashicorp/boundary/api v0.0.0-20201007180342-5cbfcf8eb6c2
-	github.com/hashicorp/boundary/sdk v0.0.0-20201007180342-5cbfcf8eb6c2
+	github.com/hashicorp/boundary/api v0.0.1
+	github.com/hashicorp/boundary/sdk v0.0.1
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.1
