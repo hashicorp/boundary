@@ -63,7 +63,6 @@
     "generate:readme": "next-hashicorp markdown-blocks README.md",
     "lint": "next-hashicorp lint",
     "start": "next dev",
-    "dev:auth": "HASHI_ENV=preview npm start",
     "static": "npm run build && npm run export && cp _redirects out/.",
     "linkcheck": "linkcheck <website url>"
   }
