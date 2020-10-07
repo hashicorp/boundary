@@ -1,12 +1,21 @@
 .root {
   padding: 88px 0;
 
-  & > h2 {
-    text-align: center;
-    margin-top: 0;
-    margin-bottom: 64px;
-    @media (--small) {
-      margin-bottom: 0;
+  & .headerWrapper {
+    & h2 {
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 32px;
+      @media (--small) {
+        margin-bottom: 0;
+      }
+    }
+
+    & p {
+      max-width: 818px;
+      text-align: center;
+      margin-left: auto;
+      margin-right: auto;
     }
   }
 }

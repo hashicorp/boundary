@@ -24,6 +24,8 @@ export default function HomePage() {
       />
 
       <HowItWorks
+        title="Secure access to hosts and services"
+        description="Traditional solutions require you to distribute and manage SSH keys, VPN credentials, and bastion hosts causing credential sprawl and opening user’s access to entire networks and systems. Boundary provides a secure way to access to hosts and critical systems without having to manage credentials or expose your network, and is entirely open source."
         features={[
           {
             title: 'Authenticate',
