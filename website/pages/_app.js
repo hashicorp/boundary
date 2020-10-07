@@ -12,6 +12,8 @@ import ProductSubnav from '../components/subnav'
 import Footer from 'components/footer'
 import Error from './_error'
 import { productName } from '../data/metadata'
+import AlertBanner from '@hashicorp/react-alert-banner'
+import alertBannerData, { ALERT_BANNER_ACTIVE } from 'data/alert-banner'
 
 NProgress({ Router })
 const { ConsentManager, openConsentManager } = createConsentManager({
@@ -32,6 +34,9 @@ function App({ Component, pageProps }) {
           image="https://www.boundaryproject.io/img/og-image.png"
           icon={[{ href: '/favicon.ico' }]}
         />
+        {ALERT_BANNER_ACTIVE && (
+          <AlertBanner {...alertBannerData} theme="red" />
+        )}
         <ProductSubnav />
         <div className="content">
           <Component {...pageProps} />
