@@ -2,6 +2,13 @@ module.exports = [
   // define your custom redirects within this file.
   // vercel's redirect documentation: https://vercel.com/docs/configuration#project/redirects
 
+  // Top level redirect
+  {
+    source: '/help/admin-ui',
+    destination: '/docs',
+    permanent: false,
+  },
+
   /////////////////////////////////
   // DOMAIN MODEL CONCEPTS
   /////////////////////////////////
