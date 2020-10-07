@@ -2,6 +2,9 @@ export default [
   {
     text: 'Docs',
     url: '/docs/getting-started',
-    type: 'inbound',
+  },
+  {
+    text: 'API',
+    url: '/api',
   },
 ]
