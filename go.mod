@@ -32,6 +32,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/shared-secure-libs v0.0.2
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200916184745-5576096032f8
+	github.com/iancoleman/strcase v0.1.2
 	github.com/jackc/pgx/v4 v4.9.0
 	github.com/jinzhu/gorm v1.9.16
 	github.com/kr/pretty v0.2.1

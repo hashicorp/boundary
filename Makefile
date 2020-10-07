@@ -13,7 +13,7 @@ CGO_ENABLED?=0
 export GEN_BASEPATH := $(shell pwd)
 
 api:
-	$(MAKE) --environment-overrides -C api/internal/genapi api
+	$(MAKE) --environment-overrides -C internal/api/genapi api
 
 tools:
 	go generate -tags tools tools/tools.go
