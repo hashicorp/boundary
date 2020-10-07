@@ -41,11 +41,11 @@ func (c *TcpCommand) Help() string {
 	switch c.Func {
 	case "create":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary targets tcp create [options] [args]",
+			"Usage: boundary targets create tcp [options] [args]",
 			"",
 			"  Create a tcp-type target. Example:",
 			"",
-			`    $ boundary targets tcp create -name prodops -description "Tcp target for ProdOps"`,
+			`    $ boundary targets create tcp -name prodops -description "Tcp target for ProdOps"`,
 			"",
 			"",
 		})

@@ -36,22 +36,22 @@ func (c *StaticCommand) Help() string {
 	switch c.Func {
 	case "create":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary host-catalogs static create [options] [args]",
+			"Usage: boundary host-catalogs create static [options] [args]",
 			"",
 			"  Create a static-type host-catalog. Example:",
 			"",
-			`    $ boundary host-catalogs static create -name prodops -description "Static host-catalog for ProdOps"`,
+			`    $ boundary host-catalogs create static -name prodops -description "Static host-catalog for ProdOps"`,
 			"",
 			"",
 		})
 
 	case "update":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary host-catalogs static update [options] [args]",
+			"Usage: boundary host-catalogs update static [options] [args]",
 			"",
 			"  Update a static-type host-catalog given its ID. Example:",
 			"",
-			`    $ boundary host-catalogs static update -id hcst_1234567890 -name "devops" -description "Static host-catalog for DevOps"`,
+			`    $ boundary host-catalogs update static -id hcst_1234567890 -name "devops" -description "Static host-catalog for DevOps"`,
 			"",
 			"",
 		})

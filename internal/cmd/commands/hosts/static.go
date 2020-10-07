@@ -49,11 +49,11 @@ func (c *StaticCommand) Help() string {
 
 	case "update":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary hosts static update [options] [args]",
+			"Usage: boundary hosts update static [options] [args]",
 			"",
 			"  Update a static-type host given its ID. Example:",
 			"",
-			`    $ boundary hosts static update -id hst_1234567890 -name "devops" -description "Static host for DevOps" -address "10.20.30.40"`,
+			`    $ boundary hosts update static -id hst_1234567890 -name "devops" -description "Static host for DevOps" -address "10.20.30.40"`,
 			"",
 			"",
 		})
