@@ -6,6 +6,7 @@
   "dependencies": {
     "@hashicorp/mktg-assets": "^1.0.0-alpha.20",
     "@hashicorp/nextjs-scripts": "13.0.0-canary.1",
+    "@hashicorp/react-alert-banner": "^4.1.0",
     "@hashicorp/react-button": "^3.0.1",
     "@hashicorp/react-content": "5.1.0",
     "@hashicorp/react-docs-page": "6.2.0",
