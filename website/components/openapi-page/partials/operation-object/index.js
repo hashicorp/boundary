@@ -66,7 +66,7 @@ function OperationObject({
           <TwoColumnLayout
             columnOne={
               <div>
-                <ColumnHeading title="Request" />
+                <p className={styles.columnHeading}>Request</p>
                 {pathParams.length > 0 ? (
                   <Parameters title="Path Parameters" params={pathParams} />
                 ) : null}
@@ -80,10 +80,14 @@ function OperationObject({
             }
             columnTwo={
               <div>
-                <ColumnHeading title="Response" />
+                <p className={styles.columnHeading}>Response</p>
                 {!!successResponse ? (
                   <div>
-                    <ColumnSectionHeading title="Successful Response" />
+                    <p
+                      className={`${styles.columnSectionHeading} g-type-label-strong`}
+                    >
+                      Successful Response
+                    </p>
                     <ResponseObject data={successResponse} />
                   </div>
                 ) : (
@@ -117,59 +121,12 @@ function getBodyParamProps(bodyParam) {
   return bodyProps
 }
 
-function ColumnHeading({ title }) {
-  return (
-    <p
-      style={{
-        margin: '0 0 1em 0',
-        fontWeight: 'bold',
-      }}
-    >
-      {title}
-    </p>
-  )
-}
-
-function ColumnSectionHeading({ title }) {
-  return (
-    <p
-      style={{
-        margin: 0,
-        paddingBottom: '8px',
-        borderBottom: '1px solid var(--gray-6)',
-        color: 'var(--gray-4)',
-      }}
-      className="g-type-label-strong"
-    >
-      {title}
-    </p>
-  )
-}
-
 function TwoColumnLayout({ columnOne, columnTwo }) {
   return (
-    <div style={{ display: 'flex' }}>
-      <div
-        style={{
-          width: 'calc(50% - 16px)',
-          position: 'relative',
-        }}
-      >
-        {columnOne}
-      </div>
-      <div
-        style={{
-          width: '32px',
-        }}
-      ></div>
-      <div
-        style={{
-          width: 'calc(50% - 16px)',
-          position: 'relative',
-        }}
-      >
-        {columnTwo}
-      </div>
+    <div className={styles.twoColumnLayout}>
+      <div>{columnOne}</div>
+      <div></div>
+      <div>{columnTwo}</div>
     </div>
   )
 }
@@ -177,7 +134,9 @@ function TwoColumnLayout({ columnOne, columnTwo }) {
 function Parameters({ title, params }) {
   return (
     <div>
-      <ColumnSectionHeading title={title} />
+      <p className={`${styles.columnSectionHeading} g-type-label-strong`}>
+        {title}
+      </p>
       {params.map((parameter, idx) => {
         return (
           <PropertyObject

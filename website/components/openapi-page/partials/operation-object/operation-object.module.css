@@ -116,4 +116,30 @@
     color: var(--gray-2);
     margin: 8px 0 24px 0;
   }
+
+  & .columnHeading {
+    margin: 0 0 1em 0;
+    font-weight: bold;
+  }
+
+  & .columnSectionHeading {
+    margin: 0 !important; /* Needed to override ".g-content p" margins */
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--gray-6);
+    color: var(--gray-4);
+  }
+}
+
+.twoColumnLayout {
+  display: flex;
+
+  & > div:nth-child(1),
+  & > div:nth-child(3) {
+    position: relative;
+    width: calc(50% - 16px);
+  }
+
+  & > div:nth-child(2) {
+    width: 32px;
+  }
 }
