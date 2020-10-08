@@ -40,7 +40,6 @@ variable "users" {
     "susmitha",
     "jeff",
     "pete",
-    "jt",
     "harold",
   ]
 }
@@ -50,7 +49,7 @@ resource "boundary_user" "user" {
   name        = each.key
   description = "User resource for ${each.key}"
   account_ids = [boundary_account.user[each.value].id]
-  scope_id    = var.default_org_id
+  scope_id    = "global"
 }
 
 resource "boundary_account" "user" {
