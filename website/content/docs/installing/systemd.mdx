@@ -12,7 +12,7 @@ This section covers how to install Boundary under the [Systemd]() init system on
 
 ## Filesystem Configuration 
 
-`TYPE` below can be either `worker` or `controller`.
+`TYPE` below can be either `worker` or `controller` if you want to run them independently, e.g. for high availability. If you want to run combined nodes, modify as desired.
 
 1. `/etc/boundary-${TYPE}.hcl`: Configuration file for the boundary service
    See above example configurations.
