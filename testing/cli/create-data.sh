@@ -4,9 +4,11 @@ terraform apply
 export BOUNDARY_ADDR=http://127.0.0.1:9200
 
 PG_IMAGE=$(docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=dbpass -e POSTGRES_USER=user -e POSTGRES_DB=demo --rm --name postgres postgres)
+CASSANDRA_IMAGE=$(docker run -d -p 7000:7000 --rm --name cassandra bitnami/cassandra:latest)
 function cleanup() {
   echo 'cleaning up docker images..'
   docker kill $PG_IMAGE
+  docker kill $CASSANDRA_IMAGE
 }
 trap cleanup SIGKILL SIGINT EXIT
 

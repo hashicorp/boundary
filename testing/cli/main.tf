@@ -81,6 +81,7 @@ resource "boundary_role" "proj_admin" {
     ["u_auth"]
   )
 }
+
 resource "boundary_target" "postgres" {
   type                     = "tcp"
   name                     = "postgres"
@@ -89,6 +90,31 @@ resource "boundary_target" "postgres" {
   session_connection_limit = -1
   session_max_seconds      = 2
   default_port             = 5432
+  host_set_ids = [
+    var.default_host_set
+  ]
+}
+
+resource "boundary_target" "cassandra" {
+  type                     = "tcp"
+  name                     = "cassandra"
+  description              = "Cassandra server"
+  scope_id                 = var.default_project_id
+  session_connection_limit = -1
+  session_max_seconds      = 2
+  default_port             = 7000
+  host_set_ids = [
+    var.default_host_set
+  ]
+}
+resource "boundary_target" "ssh" {
+  type                     = "tcp"
+  name                     = "ssh"
+  description              = "SSH server"
+  scope_id                 = var.default_project_id
+  session_connection_limit = -1
+  session_max_seconds      = 2
+  default_port             = 22
   host_set_ids = [
     var.default_host_set
   ]
