@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import Collapsible from '../collapsible'
 import SvgrChevronDown from '../chevron-down/black'
 import styles from './property-object.module.css'

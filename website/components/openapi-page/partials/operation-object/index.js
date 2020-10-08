@@ -1,4 +1,3 @@
-import React from 'react'
 import Collapsible from '../collapsible'
 import ResponseObject from '../response-object'
 import PropertyObject from '../property-object'

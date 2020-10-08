@@ -1,4 +1,3 @@
-import React from 'react'
 import PropertyObject from '../property-object'
 
 function ResponseObject({ data }) {
