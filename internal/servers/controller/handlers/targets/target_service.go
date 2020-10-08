@@ -396,6 +396,7 @@ HostSetIterationLoop:
 		Type:            t.GetType(),
 		Certificate:     sess.Certificate,
 		PrivateKey:      privKey,
+		HostId:          chosenId.hostId,
 		WorkerInfo:      workers,
 		ConnectionLimit: t.GetSessionConnectionLimit(),
 	}

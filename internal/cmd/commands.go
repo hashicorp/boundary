@@ -53,12 +53,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
-		"proxy": func() (cli.Command, error) {
-			return &proxy.Command{
-				Command: base.NewCommand(ui),
-				Func:    "proxy",
-			}, nil
-		},
 		"connect": func() (cli.Command, error) {
 			return &proxy.Command{
 				Command: base.NewCommand(ui),
