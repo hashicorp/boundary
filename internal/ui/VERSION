@@ -1,2 +1,4 @@
 31f7b575a981f92629dfe1ba8006054ae8b22eff Merge pull request #311 from hashicorp/release
-# Above commit is used for production builds.
+# This file determines the version of the UI to embed in the boundary binary.
+# Update this file by running 'make update-ui-version' from the root of this repo.
+# Set UI_COMMITISH when running the above target to update to a specific version.
