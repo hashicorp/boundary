@@ -1,0 +1,18 @@
+.root {
+  /* currently only supports "boundary", may want to extend to support other product themes */
+  &[data-theme='boundary'] {
+    --brand: var(--boundary);
+  }
+
+  & .pageHeading {
+    margin: 0;
+  }
+
+  & .categoryHeading {
+    margin: 32px 0 16px 0;
+  }
+
+  & .landingPlaceholder {
+    color: var(--gray-2);
+  }
+}
