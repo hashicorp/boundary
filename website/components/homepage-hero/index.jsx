@@ -29,7 +29,8 @@ export default function HomepageHero({ title, description, links, videoUrl }) {
           <ReactPlayer
             url={videoUrl}
             width="596px"
-            height="376px"
+            height="335px"
+            controls={true}
             style={{
               maxWidth: '100%',
             }}
