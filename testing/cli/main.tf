@@ -119,3 +119,39 @@ resource "boundary_target" "ssh" {
     var.default_host_set
   ]
 }
+resource "boundary_target" "mysql" {
+  type                     = "tcp"
+  name                     = "mysql"
+  description              = "MySQL server"
+  scope_id                 = var.default_project_id
+  session_connection_limit = -1
+  session_max_seconds      = 2
+  default_port             = 3306
+  host_set_ids = [
+    var.default_host_set
+  ]
+}
+resource "boundary_target" "redis" {
+  type                     = "tcp"
+  name                     = "redis"
+  description              = "Redis server"
+  scope_id                 = var.default_project_id
+  session_connection_limit = -1
+  session_max_seconds      = 2
+  default_port             = 6379
+  host_set_ids = [
+    var.default_host_set
+  ]
+}
+resource "boundary_target" "mssql" {
+  type                     = "tcp"
+  name                     = "mssql"
+  description              = "Microsoft SQL server"
+  scope_id                 = var.default_project_id
+  session_connection_limit = -1
+  session_max_seconds      = 2
+  default_port             = 1433
+  host_set_ids = [
+    var.default_host_set
+  ]
+}
