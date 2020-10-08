@@ -117,7 +117,11 @@ export default function HomePage() {
                 image: {
                   url: require('./img/red-usecase-accessmgmt.png?url'),
                 },
-                link: { title: 'Learn more', url: '#TODO' },
+                link: {
+                  title: 'Learn more',
+                  url:
+                    'https://learn.hashicorp.com/tutorials/boundary/getting-started-config',
+                },
               },
               {
                 title: 'Connect to private resources easily',
