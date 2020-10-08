@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
@@ -178,7 +179,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields["auth_method_id"] = "This is a required field."
-	} else if validId(req.GetAuthMethodId(), "am") {
+	} else if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	// TODO: Update this when we enable different auth method types.
@@ -200,12 +201,4 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
 	}
 	return nil
-}
-
-func validId(id, prefix string) bool {
-	if !strings.HasPrefix(id, prefix) {
-		return false
-	}
-	id = strings.TrimPrefix(id, prefix)
-	return !reInvalidID.Match([]byte(id))
 }

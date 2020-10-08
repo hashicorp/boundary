@@ -587,7 +587,7 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 		}
 		if item.GetGrantScopeId() != nil && handlers.ValidId(scope.Project.Prefix(), item.GetScopeId()) {
 			if item.GetGrantScopeId().GetValue() != item.GetScopeId() {
-				badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
+				badFields["grant_scope_id"] = "If set to a project scope, it must match the parent scope of this role."
 			}
 		}
 		if item.GetPrincipals() != nil {
@@ -617,7 +617,7 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 		}
 		if req.GetItem().GetGrantScopeId() != nil && handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) {
 			if req.GetItem().GetGrantScopeId().GetValue() != req.GetItem().GetScopeId() {
-				badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
+				badFields["grant_scope_id"] = "If set to a project scope, it must match the parent scope of this role."
 			}
 		}
 		return badFields
