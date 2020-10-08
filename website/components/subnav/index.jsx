@@ -22,7 +22,7 @@ export default function ProductSubnav() {
           url: 'https://github.com/hashicorp/boundary/releases',
         },
       ]}
-      currentPath={router.pathname}
+      currentPath={router.asPath}
       menuItemsAlign="right"
       menuItems={subnavItems}
       constrainWidth
