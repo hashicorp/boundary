@@ -41,7 +41,7 @@ UI_TARGETS := update-ui-version build-ui build-ui-ifne
 $(UI_TARGETS): export UI_CLONE_DIR      := internal/ui/.tmp/boundary-ui
 $(UI_TARGETS): export UI_VERSION_FILE   := internal/ui/VERSION
 $(UI_TARGETS): export UI_ASSETS_FILE    := internal/ui/assets.go
-$(UI_TARGETS): export UI_DEFAULT_BRANCH := develop
+$(UI_TARGETS): export UI_DEFAULT_BRANCH := main
 $(UI_TARGETS): export UI_CURRENT_COMMIT := $(shell head -n1 < "$(UI_VERSION_FILE)" | cut -d' ' -f1)
 $(UI_TARGETS): export UI_COMMITISH ?=
 
