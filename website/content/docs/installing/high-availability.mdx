@@ -15,14 +15,18 @@ Installing Boundary as a high availability service requires certain infrastructu
 The following ports should be available:
 
 - Clients must have access to the Controller's port (default 9200)
-- Clients must have access to the Worker's port (defaults 9202)
+- Clients must have access to the Worker's port (default 9202)
 - Workers must have access to the Controller's port (default 9201)
-- Workers must have a route and port access to the targets which they service
+- Workers must have a route and port access to the hosts defined within the system, in order to provide connectivity
 
 ## Architecture
 
-The general architecture for the server infrastructure requires 3 controllers and 3 workers. The documentation here uses virtual machines running on Amazon EC2 as the example environment, but this use
-case can be extrapolated to almost any cloud platform to suit operator needs:
+The general architecture for the server infrastructure requires 3 controllers
+and 3 workers. Note that it is possible to a controller and worker within the
+same process, but the guide here assumes separate deployments. The documentation
+here uses virtual machines running on Amazon EC2 as the example environment, but
+this use case can be extrapolated to almost any cloud platform to suit operator
+needs:
 
 ![](/img/production.png)
 
