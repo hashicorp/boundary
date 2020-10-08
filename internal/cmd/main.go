@@ -21,6 +21,18 @@ import (
 // setupEnv parses args and may replace them and sets some env vars to known
 // values based on format options
 func setupEnv(args []string) (retArgs []string, format string, outputCurlString bool) {
+	// handle the workaround for autocomplete install/uninstall not being exported
+	if len(args) == 3 &&
+		args[0] == "config" &&
+		args[1] == "autocomplete" {
+		switch args[2] {
+		case "install":
+			return []string{"-autocomplete-install"}, "table", false
+		case "uninstall":
+			return []string{"-autocomplete-uninstall"}, "table", false
+		}
+	}
+
 	var nextArgFormat bool
 
 	for _, arg := range args {

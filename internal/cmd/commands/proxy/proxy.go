@@ -61,7 +61,7 @@ var _ cli.CommandAutocomplete = (*Command)(nil)
 type Command struct {
 	*base.Command
 
-	flagAuthz      string
+	flagAuthzToken string
 	flagListenAddr string
 	flagListenPort int
 	flagTargetId   string
@@ -87,7 +87,7 @@ type Command struct {
 
 	Func string
 
-	sessionAuthz *targets.SessionAuthorization
+	sessionAuthzData *targetspb.SessionAuthorizationData
 
 	connWg             *sync.WaitGroup
 	listenerCloseOnce  sync.Once
@@ -103,10 +103,8 @@ type Command struct {
 
 func (c *Command) Synopsis() string {
 	switch c.Func {
-	case "proxy":
-		return "Launch the Boundary CLI in proxy mode"
 	case "connect":
-		return "Authorize a session against a target and launch a proxied connection"
+		return "Authorize a session against a target (or consume an existing authorization token) and launch a proxied connection"
 	case "http":
 		return "Authorize a session against a target and invoke an HTTP client to connect"
 	case "ssh":
@@ -121,22 +119,11 @@ func (c *Command) Synopsis() string {
 
 func (c *Command) Help() string {
 	switch c.Func {
-	case "proxy":
-		return base.WrapForHelpText([]string{
-			"Usage: boundary proxy [options] [args]",
-			"",
-			"  This command allows launching the Boundary CLI in proxy mode. In this mode, the CLI expects to take in an authorization string returned from a Boundary controller. The CLI will then create a connection to a Boundary worker and ready a listening port for a local connection.",
-			"",
-			"  Example:",
-			"",
-			`      $ boundary proxy -auth "UgxzX29mVEpwNUt6QlGiAQ..."`,
-		}) + c.Flags().Help()
-
 	case "connect":
 		return base.WrapForHelpText([]string{
 			"Usage: boundary connect [options] [args]",
 			"",
-			`  This command performs a target authorization and proxy launch in one command; it is equivalent to sending the output of "boundary targets authorize-session" into "boundary proxy". See the help output for those commands for more information.`,
+			`  This command performs a target authorization (or consumes an existing authorization token) and launches a proxied connection.`,
 			"",
 			"  Example:",
 			"",
@@ -154,41 +141,23 @@ func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(bits)
 
 	switch c.Func {
-	case "proxy":
-		f := set.NewFlagSet("Proxy Options")
-
-		f.StringVar(&base.StringVar{
-			Name:       "authz",
-			Target:     &c.flagAuthz,
-			EnvVar:     "BOUNDARY_PROXY_AUTHZ",
-			Completion: complete.PredictAnything,
-			Usage:      `The authorization string returned from the Boundary controller. If set to "-", the command will attempt to read in the authorization string from standard input.`,
-		})
-
-		f.StringVar(&base.StringVar{
-			Name:       "listen-addr",
-			Target:     &c.flagListenAddr,
-			EnvVar:     "BOUNDARY_PROXY_LISTEN_ADDR",
-			Completion: complete.PredictAnything,
-			Usage:      `If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot, the command will error. If not set, defaults to the IPv4 loopback address (127.0.0.1).`,
-		})
-
-		f.IntVar(&base.IntVar{
-			Name:       "listen-port",
-			Target:     &c.flagListenPort,
-			EnvVar:     "BOUNDARY_PROXY_LISTEN_PORT",
-			Completion: complete.PredictAnything,
-			Usage:      `If set, the CLI will attempt to bind its listening port to the given value. If it cannot, the command will error.`,
-		})
-
 	case "connect", "http", "ssh", "rdp", "postgres":
 		f := set.NewFlagSet("Connect Options")
 
 		f.StringVar(&base.StringVar{
+			Name:       "authz-token",
+			Target:     &c.flagAuthzToken,
+			EnvVar:     "BOUNDARY_CONNECT_AUTHZ_TOKEN",
+			Completion: complete.PredictNothing,
+			Usage:      `Only needed if -target-id is not set. The authorization string returned from the Boundary controller via an "authorize-session" action against a target. If set to "-", the command will attempt to read in the authorization string from standard input.`,
+		})
+
+		f.StringVar(&base.StringVar{
 			Name:   "target-id",
 			Target: &c.flagTargetId,
-			Usage:  "The ID of the target to authorize against.",
+			Usage:  "The ID of the target to authorize against. Cannot be used with -authz-token.",
 		})
+
 		f.StringVar(&base.StringVar{
 			Name:   "host-id",
 			Target: &c.flagHostId,
@@ -318,15 +287,6 @@ func (c *Command) Flags() *base.FlagSets {
 		})
 	}
 
-	/*
-		f.BoolVar(&base.BoolVar{
-			Name:       "verbose",
-			Target:     &c.flagVerbose,
-			Completion: complete.PredictAnything,
-			Usage:      "Turns on some extra verbosity in the command output.",
-		})
-	*/
-
 	return set
 }
 
@@ -351,6 +311,15 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	if err := f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
+		return 1
+	}
+
+	switch {
+	case c.flagAuthzToken != "" && c.flagTargetId != "":
+		c.UI.Error(`-target-id and -authz-token cannot both be specified`)
+		return 1
+	case c.flagAuthzToken == "" && c.flagTargetId == "":
+		c.UI.Error(`One of -target-id and -authz-token must be set`)
 		return 1
 	}
 
@@ -406,9 +375,9 @@ func (c *Command) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	authzString := c.flagAuthz
-	switch c.Func {
-	case "proxy":
+	authzString := c.flagAuthzToken
+	switch {
+	case authzString != "":
 		if authzString == "-" {
 			authBytes, err := ioutil.ReadAll(os.Stdin)
 			if err != nil {
@@ -430,18 +399,13 @@ func (c *Command) Run(args []string) (retCode int) {
 		if authzString[0] == '{' {
 			// Attempt to decode the JSON output of an authorize-session call
 			// and pull the token out of there
-			c.sessionAuthz = new(targets.SessionAuthorization)
-			if err := json.Unmarshal([]byte(authzString), c.sessionAuthz); err == nil {
-				authzString = c.sessionAuthz.AuthorizationToken
+			sessionAuthz := new(targets.SessionAuthorization)
+			if err := json.Unmarshal([]byte(authzString), sessionAuthz); err == nil {
+				authzString = sessionAuthz.AuthorizationToken
 			}
 		}
 
-	case "connect", "http", "ssh", "postgres", "rdp":
-		if c.flagTargetId == "" {
-			c.UI.Error("Target ID must be provided")
-			return 1
-		}
-
+	default:
 		client, err := c.Client()
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
@@ -463,8 +427,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.UI.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))
 			return 2
 		}
-		c.sessionAuthz = sar.GetItem().(*targets.SessionAuthorization)
-		authzString = c.sessionAuthz.AuthorizationToken
+		authzString = sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken
 	}
 
 	marshaled, err := base58.FastBase58Decoding(authzString)
@@ -477,21 +440,21 @@ func (c *Command) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	data := new(targetspb.SessionAuthorizationData)
-	if err := proto.Unmarshal(marshaled, data); err != nil {
+	c.sessionAuthzData = new(targetspb.SessionAuthorizationData)
+	if err := proto.Unmarshal(marshaled, c.sessionAuthzData); err != nil {
 		c.UI.Error(fmt.Errorf("Unable to proto-decode authorization data: %w", err).Error())
 		return 1
 	}
 
-	if len(data.GetWorkerInfo()) == 0 {
+	if len(c.sessionAuthzData.GetWorkerInfo()) == 0 {
 		c.UI.Error("No workers found in authorization string")
 		return 1
 	}
 
-	c.connectionsLeft.Store(data.ConnectionLimit)
-	workerAddr := data.GetWorkerInfo()[0].GetAddress()
+	c.connectionsLeft.Store(c.sessionAuthzData.ConnectionLimit)
+	workerAddr := c.sessionAuthzData.GetWorkerInfo()[0].GetAddress()
 
-	parsedCert, err := x509.ParseCertificate(data.Certificate)
+	parsedCert, err := x509.ParseCertificate(c.sessionAuthzData.Certificate)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Unable to decode mTLS certificate: %w", err).Error())
 		return 1
@@ -516,8 +479,8 @@ func (c *Command) Run(args []string) (retCode int) {
 	tlsConf := &tls.Config{
 		Certificates: []tls.Certificate{
 			{
-				Certificate: [][]byte{data.Certificate},
-				PrivateKey:  ed25519.PrivateKey(data.PrivateKey),
+				Certificate: [][]byte{c.sessionAuthzData.Certificate},
+				PrivateKey:  ed25519.PrivateKey(c.sessionAuthzData.PrivateKey),
 				Leaf:        parsedCert,
 			},
 		},
@@ -564,8 +527,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			Address:         c.listenerAddr.IP.String(),
 			Port:            c.listenerAddr.Port,
 			Expiration:      c.expiration,
-			ConnectionLimit: data.GetConnectionLimit(),
-			SessionId:       data.GetSessionId(),
+			ConnectionLimit: c.sessionAuthzData.GetConnectionLimit(),
+			SessionId:       c.sessionAuthzData.GetSessionId(),
 		}
 
 		switch base.Format(c.UI) {
@@ -742,7 +705,14 @@ func (c *Command) handleConnection(
 			c.connsLeftCh <- 0
 			return errors.New("Unable to authorize connection")
 		}
-		return fmt.Errorf("error reading handshake result: %w", err)
+		switch {
+		case strings.Contains(err.Error(), "tofu token not allowed"):
+			// Nothing will be able to be done here, so cancel the context too
+			c.proxyCancel()
+			return errors.New("Session is already in use")
+		default:
+			return fmt.Errorf("error reading handshake result: %w", err)
+		}
 	}
 
 	if handshakeResult.GetConnectionsLeft() != -1 {
@@ -829,7 +799,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		switch c.flagSshStyle {
 		case "ssh":
 			args = append(args, "-p", port, ip)
-			args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthz.HostId))
+			args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthzData.HostId))
 		case "putty":
 			args = append(args, "-P", port, ip)
 		}
