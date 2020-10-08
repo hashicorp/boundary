@@ -41,6 +41,22 @@ variable "users" {
     "jeff",
     "pete",
     "harold",
+    "patrick",
+    "jonathan",
+    "yoko",
+    "brandon",
+    "kyle",
+    "justin",
+    "melissa",
+    "paul",
+    "mitchell",
+    "armon",
+    "andy",
+    "ben",
+    "kristopher",
+    "kris",
+    "chris",
+    "swarna",
   ]
 }
 

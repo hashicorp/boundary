@@ -36,7 +36,7 @@ function connect_nc() {
   echo "foo" | boundary connect -exec nc -target-id $id -- {{boundary.ip}} {{boundary.port}}
 }
 
-for USR in  "jim" "mike" "todd" "randy" "susmitha" "jeff" "pete" "harold" 
+for USR in  "jim" "mike" "todd" "randy" "susmitha" "jeff" "pete" "harold" "patrick" "jonathan-thomas" "yoko" "brandon" "kyle" "justin" "melissa" "paul" "mitchell" "armon" "andy" "ben" "kristopher" "kris" "chris" "swarna" 
 do
   login $USR
   for TGT in $(list_targets); do
