@@ -31,8 +31,8 @@ handling. A normal Boundary installation will consist of one or more
 Controllers paired with one or more Workers. A single Boundary binary can act
 in either of these two modes.
 
-Additionally, Boundary desktop clients are provided that simplify providing
-access to request and connect to authorized sessions from desktop machines.
+Additionally, Boundary provides a client that provides access to request and
+connect to authorized sessions.
 
 Boundary does _not_ require software to be installed on the endpoint hosts
 and services.
@@ -45,20 +45,22 @@ on-premise technologies as well.
 
 * The database contains Boundary's configuration and session information and
   must be accessible by Controller nodes. Values that are secrets (such as
-  credentials) are encrypted in the database. Currently, PostgreSQL is
-  supported as a database. This need can be satisfied by both hosted and
-  self-run instances. For more information on specific requirements and setup,
-  see our [Database Guide], however, in most instances all that is needed is a
-  database endpoint and appropriate credentials.
+  credentials) are encrypted in the database. Currently, PostgreSQL is supported
+  as a database and has been tested with Postgres 11 and above. Boundary uses
+  only common extensions and both hosted and self-run instances are supported.
+  In most instances all that is needed is a database endpoint and appropriate
+  credentials.
 
-* Any cloud KMS or Vault's Transit Secrets Engine can be used to satisfy the
-  KMS requirement. Currently, two keys within the KMS are needed: one for
+* Any cloud KMS or Vault's Transit Secrets Engine can be used to satisfy the KMS
+  requirement. Currently, two keys within the KMS are required: one for
   authenticating other cluster components, which must be accessible by both
-  Controllers and Workers; and one for encrypting secret values in the
-  database, which need only be accessible to Controllers. These keys can be
-  changed over time (so long as the original key remains available for any
-  decryption needs), and key derivation is used extensively to avoid key sprawl
-  of these high-value keys.
+  Controllers and Workers; and one for encrypting secret values in the database,
+  which need only be accessible to Controllers. These keys can be changed over
+  time (so long as the original key remains available for any decryption needs),
+  and key derivation is used extensively to avoid key sprawl of these high-value
+  keys. If available, other keys can be used for other purposes, such as
+  recovery functionality and encryption of sensitive values in Boundary's config
+  file.
 
 Boundary has a `dev` mode that can be used for testing. In this mode both a
 Controller and Worker are started with a single command, and they have the
@@ -67,9 +69,10 @@ following properties:
 * The Controller will start a PostgreSQL Docker container to use as storage.
   This container will be shut down and removed (if possible) when the
   Controller is (gracefully) shut down.
-* The Controller will use an internal KMS with an ephemeral key
+* The Controller will use an internal KMS with ephemeral keys
 
 ## Trying out Boundary
+
 Running Boundary in a more permanent context requires a few more steps, such
 as writing some simple configuration files to tell the nodes how to reach their
 database and KMS. The steps below, along with the extra information needed
@@ -85,26 +88,29 @@ You can get up and running with Boundary quickly. Simply run:
 
   ```make dev```
 
-This will build Boundary. Once complete, run Boundary in `dev` mode:
+This will build Boundary. (The first time this is run it will fetch and compile
+UI assets; which will take a few extra minutes.) Once complete, run Boundary in
+`dev` mode:
 
   ```./$GOPATH/bin/boundary dev```
 
 #### Specify a UI Commitish at Build Time
 
-The default UI build branch is `develop` from [the UI
+By default the UI will be built from a preselected commit ID from [the UI
 repo](https://github.com/hashicorp/boundary-ui). A different commitish from
 which to build UI assets may be specified via the UI_COMMITISH environment
 variable. For example:
 
-  ```UI_COMMITISH=feature-branch make dev```
+  ```UI_COMMITISH=feature-branch make build-ui```
+
+will update your local UI assets.
 
 #### UI Development
 
 It would be impractical to rebuild the binary on every change when actively
-developing the UI.  To make UI development more convenient, the binary
-supports a _passthrough directory_.  This is an arbitrary local
-directory from which UI assets are served.  Note this option is only available
-in dev mode.  For example:
+developing the UI. To make UI development more convenient, the binary supports a
+_passthrough directory_. This is an arbitrary local directory from which UI
+assets are served. Note this option is only available in dev mode. For example:
 
   ```BOUNDARY_DEV_PASSTHROUGH_DIRECTORY=/boundary-ui/ui/core/dist ~/go/bin/boundary dev```
 
@@ -120,69 +126,47 @@ Start the server binary with:
   ```boundary dev```
 
 This will start a Controller service listening on `http://127.0.0.1:9200` for
-incoming API requests and a Worker service listening on the same address/port for
-incoming session requests. It will also create various default Catalogs and Sets,
-and display various bits of information, such as a login name and password that can
-be used to log in.
+incoming API requests and a Worker service listening on `http://127.0.0.1:9202`
+for incoming session requests. It will also create various default resources and
+display various useful pieces of information, such as a login name and password
+that can be used to authenticate.
 
 ### Configuring Resources
 
 For a simple test of Boundary in `dev` mode you don't generally need to
 configure any resources at all! But it's useful to understand what `dev` mode
-did for you so you can then take further steps:
+did for you so you can then take further steps. By default, `dev` mode will
+create:
 
-In Boundary, a Set is a grouping of resources that share a similarity
-suitable for using in configuration; for instance, a User Set combines groups
-of users that should have equivalent permissions. Most Sets are automatically
-created and managed by Catalogs; for instance, an AWS Catalog can create Host
-Sets from EC2 instance, or a Consul Catalog can create Host Sets from Consul
-service catalogs. Although you can test out the full functionality of Catalogs
-and Sets in `dev` mode, this mode will automatically create some resources for
-you suitable for local testing:
-
-* A Host Catalog with a default Host Set containing the local machine
-  (`127.0.0.1`) and defining an SSH service on port 22
-* A Password User Method with a default User Set containing a user with the
-  given login name and associated password. This can be used to log in to the
-  web UI and the desktop client.
-* A Permissions Set mapping the given User Set to a set of permissions, in this
-  case granting access to make connections to resources
-* A Credentials Catalog with a default Credential Set that is empty (meaning
-  Boundary will require and use the user's credentials when connecting to the
-  networked resource; in other words, in this situation it will run in a
-  TCP-only mode)
-
-To actually make the connection to the networked resource, a Target must be
-defined. Targets group a Host Set, a Credential Set, and a User Set, which,
-along with validation against the permissions defined by relevant Permissions
-Sets, together allow Boundary to understand what user principals are allowed
-to connect where and using what authentication information. A `dev` Boundary
-will create a default Target that allows the generated user to make SSH
-connections to the local machine on port 22.
+* The `global` Scope for initial authentication, containing a Password-type
+  Auth Method, along with an Account for login.
+* An organization Scope under `global`, and a project Scope inside the
+  organization.
+* A Host Catalog with a default Host Set, which itself contains a Host with the
+  address of the the local machine (`127.0.0.1`)
+* A Target mapping the Host Set to a set of connection parameters, with a
+  default port of `22` (e.g. SSH)
 
 You can of course go into Boundary's web UI or use its API to change these
-default values, for instance if you instead want to connect to a different host
-or need to modify the port to connect to, or want to test out the capabilities
-of Boundary to supply the credentials for the session without user
-input/knowledge.
+default values, for instance if you want to connect to a different host or need
+to modify the port on which to to connect.
 
 ### Making the Connection
 
 Next, let's actually make a connection to your local SSH daemon via Boundary:
 
-1. Start the desktop client and point it at the local Boundary `dev` session.
-   Log in with the generated login name and password.
-2. You can now select the Target that grants access to the local machine and
-   hit "Request Session". Doing so will cause Boundary to check whether this
-   action is allowed, and if so, send session information back to the client,
-   allowing it to start a local authenticated proxy to the Worker. You will be
-   shown a CLI command that can be copied and pasted into the CLI to connect to
-   the local machine via Boundary.
-3. Paste the CLI command into your terminal, or use the given address and port
-   in the SSH client of your choice, and connect!
-4. When the session has ended, look in the given temporary directory to see
-   session information; or navigate to the Sessions page in the web UI to see
-   the same information
+1. Authenticate to Boundary; using default `dev` values, this would be `boundary
+   authenticate password -auth-method-id ampw_1234567890 -login-name admin
+   -password password`. (Note that if you do not include the `password` flag you
+   will be prompted for it.)
+2. Run `boundary connect ssh -target-id ttcp_1234567890`. If you want to adjust
+   the username, pass `-username <name>` to the command.
+
+A lot more is possible with Boundary, even at this early stage. Check out the
+possibilities for target configuration to test out limiting (or increasing) the
+number of connections per session or setting a maximum time limit; try canceling
+an active session from the sessions page or via `boundary sessions`, make your
+own commands with `boundary connect -exec`, and so on.
 
 ### Going Further
 
@@ -190,17 +174,13 @@ This example is a simple way to get started but omits several key steps that
 could be taken in a production context:
 
 * Using a firewall or other means to restrict the set of hosts allowed to
-  connect to a local SSH daemon to only Boundary Worker nodes, thereby making
+  connect to a local service to only Boundary Worker nodes, thereby making
   Boundary the _only_ means of ingress to a host
-* Using credentials specified within Boundary rather than the client's own
-  credentials. Because these credentials are not divulged to users, even if a
-  user gets around some network-level firewall or other restriction to gain
-  direct network access to a host, they will be unable to authenticate.
-* Recording the session for later auditing or incident management purposes
+* Using the Boundary Terraform provider to easily integrate Boundary with your
+  existing code-based infrastructure
+* Pointing a BI tool (PowerBI, Tableau, etc.) at Boundary's session warehouse to
+  generate insights and look for anomalies with respect to session access
 
-`dev` mode by default is operating in a direct proxying mode, where it is
-simply passing the network streams along once the session has been authorized.
-However, Boundary is built to be flexible and eventually able to understand a
-variety of networked protocols, with more capabilities to come in the future.
-We have a long roadmap planned out so stay tuned for information about new
-features and capabilities!
+There are many, many more things that Boundary will do in the future in terms of
+integrations, features, and more. We have a long roadmap planned out, so stay
+tuned for information about new features and capabilities!

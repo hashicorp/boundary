@@ -2,41 +2,26 @@
 
 set -e
 
-ui_commitish="${UI_COMMITISH:-develop}"
+if [ -z "$UI_CLONE_DIR" ]; then
+	echo "Must set UI_CLONE_DIR"; exit 1
+fi
 
-targetdir="internal/ui"
-shafile="${targetdir}/VERSION"
-shafileabs="$(pwd)/${shafile}"
-tempdir="${targetdir}/source"
-uirepodir="${tempdir}/boundary-ui"
-mkdir -p "${tempdir}"
-echo "*" > "${tempdir}/.gitignore"
-
-if ! [ -d "${uirepodir}/.git" ]; then
-	git clone https://github.com/hashicorp/boundary-ui "${uirepodir}"
+if [ -z "$UI_ASSETS_FILE" ]; then
+	echo "Must set UI_ASSETS_FILE"; exit 1
 fi
 
 (
-	cd "${uirepodir}"
-	git reset --hard
-	git fetch origin "${ui_commitish}"
-	git checkout "${ui_commitish}"
+	cd "$UI_CLONE_DIR"
 	if ! docker-compose -f docker-compose-embedding.yml run build; then
 		echo "==> UI build failed."
 		exit 1
 	fi
-	git log -n1 --pretty=oneline > "${shafileabs}"
-	echo "# Above commit is used for production builds." >> "${shafileabs}"
 )
 
-uidir="${uirepodir}/ui/core/dist"
+uidir="${UI_CLONE_DIR}/ui/core/dist"
 
-target="${targetdir}/assets.go"
+go-bindata -fs -o "$UI_ASSETS_FILE.tmp" -pkg ui -prefix "${uidir}" "${uidir}" "${uidir}/assets"
 
-go-bindata -fs -o "${target}.tmp" -pkg ui -prefix "${uidir}" "${uidir}" "${uidir}/assets"
-
-printf "// +build ui\n" > "${target}"
-cat "${target}.tmp" >> "${target}"
-rm "${target}.tmp"
-
-rm -rf "$tempdir"
+printf "// +build ui\n" > "$UI_ASSETS_FILE"
+cat "$UI_ASSETS_FILE.tmp" >> "$UI_ASSETS_FILE"
+rm "$UI_ASSETS_FILE.tmp"
