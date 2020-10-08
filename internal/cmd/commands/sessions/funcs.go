@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/api/sessions"
@@ -23,6 +24,9 @@ func generateSessionTableOutput(in *sessions.Session) string {
 		"Host ID":         in.HostId,
 		"Endpoint":        in.Endpoint,
 		"Status":          in.Status,
+	}
+	if len(strings.TrimSpace(in.TerminationReason)) > 0 {
+		nonAttributeMap["Termination Reason"] = in.TerminationReason
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)

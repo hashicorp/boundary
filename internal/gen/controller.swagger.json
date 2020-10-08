@@ -3048,6 +3048,11 @@
           "format": "byte",
           "description": "Output only. The certificate generated for the session. Raw DER bytes.",
           "readOnly": true
+        },
+        "termination_reason": {
+          "type": "string",
+          "description": "Output only. If the session is terminated, this provides a short description as to why.",
+          "readOnly": true
         }
       },
       "title": "Session contains all fields related to a Session resource"
