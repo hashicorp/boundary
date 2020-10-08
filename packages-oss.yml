@@ -34,10 +34,6 @@ meta:
   templates:
     BUILD_JOB_NAME: >-
       {{.GOOS}}_{{.GOARCH}}_package
-    POST_PROCESSORS: '
-      {{- if and (eq .GOOS "darwin") (eq .GOARCH "amd64")}}apple-notarize {{end -}}
-      {{- if and (eq .GOOS "windows") (eq .GOARCH "amd64")}}microsoft-notarize {{end -}}
-      av-scan'
     BUNDLE_NAME: "boundary_{{.PRODUCT_VERSION}}"
 
 package-aliases:
@@ -78,6 +74,7 @@ layers:
           && git config --global url."git@github.com:".insteadOf https://github.com/ \
           && go get github.com/go-bindata/go-bindata/v3/go-bindata \
           && go-bindata --version
+
   - name: ui
     source-include: internal/ui/VERSION
     dockerfile: |
@@ -96,10 +93,12 @@ layers:
           && go-bindata -fs -o "$TARGET" -pkg ui \
              -prefix "$UIDIR" "$UIDIR" "$UIDIR/assets" \
           && rm -rf "$DIR"
+
   - name: go-modules
-    source-include: go.mod go.sum
+    source-include: "go.mod go.sum */go.mod */go.sum"
     dockerfile: |
       RUN --mount=type=ssh go mod download
+
   - name: copy-source
     source-include: "*.go"
     dockerfile: |
