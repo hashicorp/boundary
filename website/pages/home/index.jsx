@@ -19,8 +19,7 @@ export default function HomePage() {
             type: 'outbound',
           },
         ]}
-        // TODO Replace URL with finalized URL
-        videoUrl="https://www.youtube.com/watch?v=Y7c_twmDxQ4"
+        videoUrl="https://www.youtube.com/watch?v=tUMe7EsXYBQ"
       />
 
       <HowItWorks
