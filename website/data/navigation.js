@@ -5,6 +5,6 @@ export default [
   },
   {
     text: 'API',
-    url: '/api',
+    url: '/api-docs',
   },
 ]

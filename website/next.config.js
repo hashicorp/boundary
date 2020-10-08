@@ -1,7 +1,6 @@
 const withHashicorp = require('@hashicorp/nextjs-scripts')
 const path = require('path')
 const redirects = require('./redirects.js')
-const rewrites = require('./rewrites.js')
 
 // log out our primary environment variables for clarity in build logs
 console.log(`HASHI_ENV: ${process.env.HASHI_ENV}`)
@@ -17,9 +16,6 @@ module.exports = withHashicorp({
 })({
   async redirects() {
     return await redirects
-  },
-  async rewrites() {
-    return await rewrites
   },
   experimental: { modern: true },
   env: {
