@@ -34,10 +34,6 @@ meta:
   templates:
     BUILD_JOB_NAME: >-
       {{.GOOS}}_{{.GOARCH}}_package
-    POST_PROCESSORS: '
-      {{- if and (eq .GOOS "darwin") (eq .GOARCH "amd64")}}apple-notarize {{end -}}
-      {{- if and (eq .GOOS "windows") (eq .GOARCH "amd64")}}microsoft-notarize {{end -}}
-      av-scan'
     BUNDLE_NAME: "boundary_{{.PRODUCT_VERSION}}"
 
 package-aliases:
