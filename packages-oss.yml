@@ -57,7 +57,6 @@ layers:
         GOPATH= \
         GOBIN=/usr/local/bin \
         GO111MODULE=on \
-        GOPRIVATE=github.com/hashicorp/* \
         GOCACHE=/go/cache \
         CGO_ENABLED=0
       RUN --mount=type=ssh \
