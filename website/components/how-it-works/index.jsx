@@ -32,7 +32,7 @@ export default function HowItWorks({ title, description, features }) {
                   // Calculate the first element in focus, set that as
                   // our new activeExampleIndex. If it's been updated
                   // notify the subscriber.
-                  const newExampleIndex = newStatusArray.indexOf(true)
+                  const newExampleIndex = newStatusArray.lastIndexOf(true)
                   if (
                     activeExampleIndex != newExampleIndex &&
                     newExampleIndex != -1
