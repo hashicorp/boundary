@@ -66,7 +66,7 @@ export default function DownloadsPage({ releaseData, previousVersions }) {
 
       <ReleaseInformation
         brand="red"
-        productId="vault"
+        productId="boundary"
         productName={productName}
         releases={previousVersions}
         latestVersion={releaseData.version}
@@ -76,8 +76,7 @@ export default function DownloadsPage({ releaseData, previousVersions }) {
 }
 
 export async function getStaticProps() {
-  // NOTE: make sure to change "vault" here to your product slug
-  return fetch(`https://releases.hashicorp.com/vault/${VERSION}/index.json`)
+  return fetch(`https://releases.hashicorp.com/boundary/${VERSION}/index.json`)
     .then((r) => r.json())
     .then((releaseData) => ({ props: { releaseData } }))
     .catch(() => {
