@@ -1,10 +1,7 @@
 # Boundary CHANGELOG
-Canonical reference for changes, improvments, and bugfixes for Boundary.
 
-## 0.0.1 
+Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-CHANGES: 
+## v0.1.0
 
-IMPROVEMENTS:
-
-BUG FIXES:
+v0.1.0 is the first release of Boundary. As a result there are no changes, improvements, or bugfixes from past versions.
