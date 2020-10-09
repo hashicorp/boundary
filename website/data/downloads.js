@@ -1,5 +1,3 @@
-// TODO: This file is entirely placeholder content
-
 export const packageManagers = {
   homebrew: {
     label: 'Homebrew',
@@ -49,28 +47,6 @@ export const packageManagersByOs = {
     packageManagers.amazonLinux,
   ],
 }
-
-export const containers = [
-  {
-    label: 'Docker',
-    url: '#',
-  },
-]
-
-export const tutorials = [
-  {
-    label: 'Windows',
-    url: '#',
-  },
-  {
-    label: 'macOS',
-    url: '#',
-  },
-  {
-    label: 'Linux',
-    url: '#',
-  },
-]
 
 export const getStartedLinks = [
   {

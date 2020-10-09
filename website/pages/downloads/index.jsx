@@ -4,13 +4,7 @@ import Head from 'next/head'
 import HashiHead from '@hashicorp/react-head'
 
 import { productName, productSlug } from 'data/metadata'
-import {
-  packageManagers,
-  tutorials,
-  containers,
-  packageManagersByOs,
-  getStartedLinks,
-} from 'data/downloads'
+import { packageManagersByOs, getStartedLinks } from 'data/downloads'
 import ReleaseInformation from 'components/downloader/release-information'
 import { sortPlatforms, detectOs } from 'components/downloader/utils/downloader'
 import DownloadCards from 'components/downloader/cards'
@@ -71,9 +65,6 @@ export default function DownloadsPage({ releaseData, previousVersions }) {
         productName={productName}
         releases={previousVersions}
         latestVersion={releaseData.version}
-        packageManagers={Object.values(packageManagers)}
-        containers={containers}
-        tutorials={tutorials}
       />
     </div>
   )
