@@ -35,7 +35,10 @@ export default [
       },
       {
         category: 'security',
-        content: ['permissions-model'],
+        content: [
+          'permissions-model',
+          'tls',
+        ]
       },
       {
         category: 'domain-model',
