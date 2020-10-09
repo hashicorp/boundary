@@ -9,7 +9,7 @@ export default function HomePage() {
   return (
     <div className="p-home">
       <HomepageHero
-        title="Identity-based secure access management"
+        title="Simple and secure remote access"
         description="Access any system from anywhere based on user identity."
         links={[
           {
@@ -24,12 +24,12 @@ export default function HomePage() {
 
       <HowItWorks
         title="Secure access to hosts and services"
-        description="Traditional solutions require you to distribute and manage SSH keys, VPN credentials, and bastion hosts causing credential sprawl and opening user’s access to entire networks and systems. Boundary provides a secure way to access to hosts and critical systems without having to manage credentials or expose your network, and is entirely open source."
+        description="Traditional approaches like SSH bastion hosts or VPNs require distributing and managing credentials, configure network controls like firewalls, and expose the private network. Boundary provides a secure way to access to hosts and critical systems without having to manage credentials or expose your network, and is entirely open source."
         features={[
           {
             title: 'Authenticate',
             description:
-              'Authenticate with trusted identity provider access to hosts and services.',
+              'Authenticate with any trusted identity provider you are already using. No need to distribute new credentials and manage them.',
             logos: [
               {
                 alt: 'GitHub',
@@ -64,7 +64,7 @@ export default function HomePage() {
           {
             title: 'Authorize',
             description:
-              'Authorize access to services and hosts based on roles and logical services.',
+              'Authorize access based on logical roles and services, instead of physical IP addresses. Manage dynamic infrastructure and integrate service registries so hosts and service catalogs are kept up-to-date.',
             logos: [
               {
                 alt: 'Consul',
@@ -99,7 +99,7 @@ export default function HomePage() {
           {
             title: 'Access',
             description:
-              'Securely connect with just-in-time access without exposing or distributing credentials.',
+              'Automate credential injection to securely access services and hosts with HashiCorp Vault. Reduce risk of leaking credentials with dynamic secrets and just-in-time credentials.',
           },
         ]}
       />
@@ -110,9 +110,9 @@ export default function HomePage() {
           <UseCases
             items={[
               {
-                title: 'Onboard new users effortlessly',
+                title: 'Easily onboard and manage users',
                 description:
-                  'Enables and secures access across dynamic environments.',
+                  'Leverage SSO to manage onboarding and off-boarding users.',
                 image: {
                   url: require('./img/red-usecase-accessmgmt.png?url'),
                 },
@@ -123,9 +123,9 @@ export default function HomePage() {
                 },
               },
               {
-                title: 'Connect to private resources easily',
+                title: 'Open and extensible remote access',
                 description:
-                  'Securely connect trusted identities to applications, systems, and data.',
+                  'Integrate with existing tooling and APIs to simplify access.',
                 image: {
                   url: require('./img/red-usecase-accessprivileges.png?url'),
                 },
@@ -135,9 +135,9 @@ export default function HomePage() {
                 },
               },
               {
-                title: 'Security and compliance without overhead',
+                title: 'Compliance without overhead',
                 description:
-                  'Provides session visibility that enables teams to stay compliant.',
+                  'Provide session visibility that enables teams to stay compliant.',
                 image: {
                   url: require('./img/red-usecase-sessionvisibility.png?url'),
                 },
@@ -191,13 +191,13 @@ export default function HomePage() {
               icon: require('./img/features/session-visibility.svg?url'),
             },
             {
-              title: 'Configuration as code',
+              title: 'Infrastructure as code',
               content:
                 'Ability to establish secure access controls and route resources dynamically.',
               icon: require('./img/features/config-as-code.svg?url'),
             },
             {
-              title: 'Managing dynamic environments',
+              title: 'Manage dynamic environments',
               content:
                 'Secure access to dynamic systems and applications with automated controls.',
               icon: require('./img/features/managing-dynamic-environments.svg?url'),
