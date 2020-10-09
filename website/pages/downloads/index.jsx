@@ -61,7 +61,7 @@ export default function DownloadsPage({ releaseData, previousVersions }) {
 
       <ReleaseInformation
         brand="red"
-        productId={productSlug}
+        productId="vault"
         productName={productName}
         releases={previousVersions}
         latestVersion={releaseData.version}
