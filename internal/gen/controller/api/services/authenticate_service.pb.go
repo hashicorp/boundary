@@ -7,15 +7,11 @@
 package services
 
 import (
-	context "context"
 	proto "github.com/golang/protobuf/proto"
 	_struct "github.com/golang/protobuf/ptypes/struct"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	authtokens "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
-	grpc "google.golang.org/grpc"
-	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -371,86 +367,4 @@ func file_controller_api_services_v1_authenticate_service_proto_init() {
 	file_controller_api_services_v1_authenticate_service_proto_rawDesc = nil
 	file_controller_api_services_v1_authenticate_service_proto_goTypes = nil
 	file_controller_api_services_v1_authenticate_service_proto_depIdxs = nil
-}
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConnInterface
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
-
-// AuthenticationServiceClient is the client API for AuthenticationService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type AuthenticationServiceClient interface {
-	// Authenticate validates credentials provided and returns an Auth Token.
-	Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error)
-}
-
-type authenticationServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewAuthenticationServiceClient(cc grpc.ClientConnInterface) AuthenticationServiceClient {
-	return &authenticationServiceClient{cc}
-}
-
-func (c *authenticationServiceClient) Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error) {
-	out := new(AuthenticateResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.AuthenticationService/Authenticate", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// AuthenticationServiceServer is the server API for AuthenticationService service.
-type AuthenticationServiceServer interface {
-	// Authenticate validates credentials provided and returns an Auth Token.
-	Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
-}
-
-// UnimplementedAuthenticationServiceServer can be embedded to have forward compatible implementations.
-type UnimplementedAuthenticationServiceServer struct {
-}
-
-func (*UnimplementedAuthenticationServiceServer) Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Authenticate not implemented")
-}
-
-func RegisterAuthenticationServiceServer(s *grpc.Server, srv AuthenticationServiceServer) {
-	s.RegisterService(&_AuthenticationService_serviceDesc, srv)
-}
-
-func _AuthenticationService_Authenticate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AuthenticateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthenticationServiceServer).Authenticate(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.AuthenticationService/Authenticate",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthenticationServiceServer).Authenticate(ctx, req.(*AuthenticateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-var _AuthenticationService_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "controller.api.services.v1.AuthenticationService",
-	HandlerType: (*AuthenticationServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Authenticate",
-			Handler:    _AuthenticationService_Authenticate_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "controller/api/services/v1/authenticate_service.proto",
 }

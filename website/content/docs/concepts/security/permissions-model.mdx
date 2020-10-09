@@ -117,20 +117,6 @@ the scope, but *only the host sets belonging to host catalog hcst_1234567890*.
 Pinning is essentially a way to use top-level resources to create mini
 permission boundaries for their subordinate resources.
 
-### Templates
-
-A few template possibilities exist, which will at grant evaluation time
-subsitute the given value into the ID field of the grant string:
-
-* `{{account.id}}`: The substituted value is the account ID associated with the
-token used to perform the action. As an example,
-`id={{account.id}};actions=read,change-password"` is one of Boundary's default
-grants to allow users that have authenticated with the Password auth method to
-change their own password.
-
-* `{{user.id}}`: The substituted value is the user ID associated with the token
-used to perform the action.
-
 ### Wildcard ID
 
 Various wildcard possibilities are allowed:
@@ -167,6 +153,20 @@ Finally, ID, type, and actions can all be wildcards:
 `id=*;type=*;actions=*`
 
 Such a grant is essentially a full administrator grant for a scope.
+
+### Templates
+
+A few template possibilities exist, which will at grant evaluation time
+subsitute the given value into the ID field of the grant string:
+
+* `{{account.id}}`: The substituted value is the account ID associated with the
+token used to perform the action. As an example,
+`id={{account.id}};actions=read,change-password"` is one of Boundary's default
+grants to allow users that have authenticated with the Password auth method to
+change their own password.
+
+* `{{user.id}}`: The substituted value is the user ID associated with the token
+used to perform the action.
 
 ## Resource Table
 

@@ -2,9 +2,9 @@
 //
 // - A string refers to the name of a file
 // - A "category" value refers to the name of a directory
-// - All directories must have an "index.mdx" file to serve as
-//   the landing page for the category, or a "name" property to
-//   serve as the category title in the sidebar
+// - All directories must have an "index.mdx" file to serve as the landing page
+//   for the category, or a "name" property to serve as the category title in
+//   the sidebar
 
 export default [
   {
@@ -29,12 +29,19 @@ export default [
   {
     category: 'concepts',
     content: [
-		  {
-        category: 'security-model',
-			  content: [
-				  'permissions-model',
-				]
-			},
+      {
+        category: 'api',
+        content: [
+          'http-api-model',
+          'cli-behavior',
+        ]
+      },
+      {
+        category: 'security',
+        content: [
+          'permissions-model',
+        ]
+      },
       {
         category: 'domain-model',
         content: [
@@ -56,13 +63,6 @@ export default [
           'users',
         ],
       },
-			{
-        category: 'api-standards',
-				content: [
-          'http-standards',
-          'cli-standards',
-				]
-			},
     ],
   },
   '---',
