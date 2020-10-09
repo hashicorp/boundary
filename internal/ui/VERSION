@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 31f7b575a981f92629dfe1ba8006054ae8b22eff Merge pull request #311 from hashicorp/release
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
+=======
+b1d0467ea0c8ef496375f1e28643e707075b6e72 Merge pull request #310 from hashicorp/fix-dropdown-wrap
+# Above commit is used for production builds.
+>>>>>>> b1571220339e8cedd2d75f90bb196b7ec3b1abb4

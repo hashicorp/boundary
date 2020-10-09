@@ -125,3 +125,6 @@ update-ui-assets*
 test*.hcl
 
 # vim: set filetype=conf :
+
+.terraform/
+terraform.tfstate*

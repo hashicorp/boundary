@@ -29,12 +29,10 @@ export default [
   {
     category: 'concepts',
     content: [
-		  {
+      {
         category: 'security-model',
-			  content: [
-				  'permissions-model',
-				]
-			},
+        content: ['permissions-model'],
+      },
       {
         category: 'domain-model',
         content: [
@@ -56,13 +54,10 @@ export default [
           'users',
         ],
       },
-			{
+      {
         category: 'api-standards',
-				content: [
-          'http-standards',
-          'cli-standards',
-				]
-			},
+        content: ['http-standards', 'cli-standards'],
+      },
     ],
   },
   '---',
@@ -100,10 +95,7 @@ export default [
     ],
   },
   '---',
-  {
-    category: 'roadmap',
-    content: ['v0_2_0'],
-  },
+  'roadmap',
   {
     category: 'releases',
     content: [
