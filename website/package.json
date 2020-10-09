@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "author": "HashiCorp",
   "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "^9.0.6",
     "@hashicorp/nextjs-scripts": "13.0.0-canary.1",
     "@hashicorp/react-content": "4.0.2",
     "@hashicorp/react-docs-page": "5.0.3",
@@ -16,6 +17,7 @@
     "@hashicorp/react-subnav": "3.3.1",
     "@hashicorp/react-vertical-text-block-list": "2.0.3",
     "babel-plugin-import-glob-array": "0.2.0",
+    "change-case": "^4.1.1",
     "fs-exists-sync": "0.1.0",
     "gray-matter": "4.0.2",
     "js-yaml": "3.14.0",

@@ -9,6 +9,12 @@ module.exports = [
     permanent: false,
   },
 
+  // `/<path>/index.html` to /<path>
+  {
+    source: '/:splat*/index.html',
+    destination: '/:splat*',
+    permanent: true,
+  },
   /////////////////////////////////
   // DOMAIN MODEL CONCEPTS
   /////////////////////////////////
