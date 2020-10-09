@@ -31,16 +31,11 @@ export default [
     content: [
       {
         category: 'api',
-        content: [
-          'http-api-model',
-          'cli-behavior',
-        ]
+        content: ['http-api-model', 'cli-behavior'],
       },
       {
         category: 'security',
-        content: [
-          'permissions-model',
-        ]
+        content: ['permissions-model'],
       },
       {
         category: 'domain-model',
@@ -100,10 +95,8 @@ export default [
     ],
   },
   '---',
-  {
-    category: 'roadmap',
-    content: ['v0_2_0'],
-  },
+  'roadmap',
+
   {
     category: 'releases',
     content: [
