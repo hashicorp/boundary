@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessions"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targets"
 	"github.com/hashicorp/boundary/internal/cmd/commands/users"
+	"github.com/hashicorp/boundary/internal/cmd/commands/version"
 
 	"github.com/mitchellh/cli"
 )
@@ -53,6 +54,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
+		"version": func() (cli.Command, error) {
+			return &version.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+
 		"connect": func() (cli.Command, error) {
 			return &proxy.Command{
 				Command: base.NewCommand(ui),

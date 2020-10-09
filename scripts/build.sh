@@ -52,7 +52,7 @@ echo "==> Building..."
 gox \
     -osarch="${XC_OSARCH}" \
     -gcflags "${GCFLAGS}" \
-    -ldflags "${LD_FLAGS}-X github.com/hashicorp/boundary/version.GitCommit='${GIT_COMMIT}${GIT_DIRTY}'" \
+    -ldflags "${LD_FLAGS}-X github.com/hashicorp/boundary/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY}" \
     -output "pkg/{{.OS}}_{{.Arch}}/boundary" \
     ${GOX_PARALLEL_BUILDS+-parallel="${GOX_PARALLEL_BUILDS}"} \
     -tags="${BUILD_TAGS}" \
