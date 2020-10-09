@@ -184,5 +184,10 @@
 }
 
 .boundary-clickthrough-video {
+  display: block;
   width: 100%;
+  max-width: 500px;
+  margin: 0 auto 3rem auto;
+  border-radius: 3px;
+  box-shadow: 0 14.3254px 14.3254px rgba(37, 41, 55, 0.16);
 }
