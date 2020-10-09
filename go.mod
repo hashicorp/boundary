@@ -55,7 +55,7 @@ require (
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/tools v0.0.0-20201009032223-96877f285f7e
 	google.golang.org/genproto v0.0.0-20201009135657-4d944d34d83c
-	google.golang.org/grpc v1.33.0
+	google.golang.org/grpc v1.32.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v0.0.0-20200527211525-6c9e30c09db2
 	google.golang.org/protobuf v1.25.0
 	nhooyr.io/websocket v1.8.6
