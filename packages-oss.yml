@@ -25,7 +25,19 @@ inputs:
 
 packages:
   - inputs: { GOOS: darwin, GOARCH: amd64 }
+  - inputs: { GOOS: freebsd, GOARCH: 386 }
+  - inputs: { GOOS: freebsd, GOARCH: amd64 }
+  - inputs: { GOOS: freebsd, GOARCH: arm }
+  - inputs: { GOOS: linux, GOARCH: 386 }
   - inputs: { GOOS: linux, GOARCH: amd64 }
+  - inputs: { GOOS: linux, GOARCH: arm }
+  - inputs: { GOOS: linux, GOARCH: arm64 }
+  - inputs: { GOOS: netbsd, GOARCH: 386 }
+  - inputs: { GOOS: netbsd, GOARCH: amd64 }
+  - inputs: { GOOS: openbsd, GOARCH: 386 }
+  - inputs: { GOOS: openbsd, GOARCH: amd64 }
+  - inputs: { GOOS: solaris, GOARCH: amd64 }
+  - inputs: { GOOS: windows, GOARCH: 386 }
   - inputs: { GOOS: windows, GOARCH: amd64 }
 
 meta:
