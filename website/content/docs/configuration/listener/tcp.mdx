@@ -117,10 +117,6 @@ advertise the correct address to other nodes.
 - `tls_client_ca_file` `(string: "")` – PEM-encoded Certificate Authority file
   used for checking the authenticity of client.
 
-- `tls_disable_client_certs` `(string: "false")` – Turns off client
-  authentication for this listener. The default behavior (when this is false)
-  is for Boundary to request client certificates when available.
-
 - `x_forwarded_for_authorized_addrs` `(string: <required-to-enable>)` –
   Specifies the list of source IP CIDRs for which an X-Forwarded-For header
   will be trusted. Comma-separated list or JSON array. This turns on

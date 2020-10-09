@@ -46,7 +46,9 @@ func setupEnv(args []string) (retArgs []string, format string, outputCurlString 
 			break
 		}
 
-		if len(args) == 1 && arg == "-version" {
+		if len(args) == 1 &&
+			(arg == "-version" ||
+				arg == "-v") {
 			args = []string{"version"}
 			break
 		}
