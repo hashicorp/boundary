@@ -70,7 +70,7 @@
 
     &:last-child {
       & > div {
-        padding-bottom: 385px;
+        padding-bottom: 355px;
         margin-bottom: -200px;
       }
     }
