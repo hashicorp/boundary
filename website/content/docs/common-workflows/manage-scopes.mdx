@@ -30,11 +30,11 @@ An organization lives in the global scope. In this example, we're going to creat
 
 
 ```bash
-$ boundary scopes create -scope-id global -name my_org -description 'My frist org'
+$ boundary scopes create -scope-id global -name my_org -description 'My first org'
 
 Scope information:
   Created Time:        Tue, 29 Sep 2020 05:48:22 PDT
-  Description:         My frist org
+  Description:         My first org
   ID:                  o_y0fEd8iY2J
   Name:                my_org
   Updated Time:        Tue, 29 Sep 2020 05:48:22 PDT
@@ -50,14 +50,17 @@ Scope information:
 <Tab heading="Admin Console">
 
 
-Navigate to the main boundary landing page and choose `new` organization:
-![](/img/manage-scopes-org-undefined.png)
+1. Navigate to the Boundary landing page.
+1. Choose the **New** button.
+1. Fill organization details.
+1. Choose **Save** and view the organization on the Boundary landing page.
 
-Fill in the orgnaization details:
-![](/img/manage-scopes-org-settings.png)
-
-Click save and view the org in the main Boundary landing page:
-![](/img/manage-scopes-org-defined.png)
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602266941-boundary-clickthrough-manage-scopes-create-org.mp4"
+  />
+</video>
 
 </Tab>
 <Tab heading="Terraform">
@@ -85,11 +88,11 @@ Next, we're going to add a project scope to our organization. Again, we're going
 
 
 ```bash
-$ boundary scopes create -scope-id o_0MkQUfE9jA -name my_project -description 'My frist project'
+$ boundary scopes create -scope-id o_0MkQUfE9jA -name my_project -description 'My first project'
 
 Scope information:
   Created Time:        Tue, 29 Sep 2020 05:57:45 PDT
-  Description:         My frist project
+  Description:         My first project
   ID:                  p_jqCwqjSTQ4
   Name:                my_project
   Updated Time:        Tue, 29 Sep 2020 05:57:45 PDT
@@ -106,14 +109,18 @@ Scope information:
 <Tab heading="Admin Console">
 
 
-Navigate to your org in the UI and click `new` project:
-![](/img/manage-scopes-project-undefined.png)
+1. Navigate to an organization, which leads to an overview of projects within that organization.
+1. Choose the **New** button.
+1. Fill project details.
+1. Choose **Save** and view the project edit form page.
+1. _Note_: by default, edit forms are disabled to help prevent unintended edits. To edit your new project choose **Edit Form**.
 
-Add the project settings:
-![](/img/manage-scopes-project-settings.png)
-
-View the newly created project:
-![](/img/manage-scopes-project-defined.png)
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602267080-boundary-clickthrough-manage-scopes-create-project.mp4"
+  />
+</video>
 
 </Tab>
 <Tab heading="Terraform">

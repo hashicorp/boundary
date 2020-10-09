@@ -55,14 +55,17 @@ Auth Method information:
 <Tab heading="Admin Console">
 
 
-Navigate to the generated org, then auth methods and select `new` auth method:
-![](/img/manage-id-auth-method-undefined.png)
+1. Navigate to an organization, then to auth methods.
+1. Choose the **New** button.
+1. Fill the auth method details.
+1. Choose **Save** and view the auth method edit form page.
 
-Fill in the auth method settings:
-![](/img/manage-id-auth-method-setting.png)
-
-See the new auth method for the organization in the auth method panel:
-![](/img/manage-id-auth-method-defined.png)
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602261000-boundary-clickthrough-manage-identities-create-auth-method.mp4"
+  />
+</video>
 
 </Tab>
 <Tab heading="Terraform">
@@ -115,16 +118,17 @@ Account information:
 <Tab heading="Admin Console">
 
 
-Navigate to the generated org, then auth methods, the auth method created above, then the accounts tab.
+1. Navigate to organizations > auth methods > auth method, then to the **Accounts** tab.
+1. Choose the **New** button.
+1. Fill the account details.
+1. Choose **Save** and view the account edit form page.
 
-Select `new` account:
-![](/img/manage-id-acct-undefined.png)
-
-Fill in the account settings:
-![](/img/manage-id-acct-settings.png)
-
-See the new account for the password auth method:
-![](/img/manage-id-acct-defined.png)
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602260998-boundary-clickthrough-manage-identities-create-account.mp4"
+  />
+</video>
 
 </Tab>
 <Tab heading="Terraform">
@@ -201,16 +205,31 @@ User information:
 <Tab heading="Admin Console">
 
 
-Navigate to the generated org, then accounts and select `new` account:
-![](/img/manage-id-user-undefined.png)
+1. Navigate to an organization, then to users.
+1. Choose the **New** button.
+1. Fill the user details.
+1. Choose **Save** and view the user edit form page.
 
-Fill in the user settings:
-![](/img/manage-id-user-settings.png)
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602261002-boundary-clickthrough-manage-identities-create-user.mp4"
+  />
+</video>
 
-See the new user for the organization in the users panel:
-![](/img/manage-id-user-defined.png)
+Then associate the user with an account:
 
-Associate the user with the account: this can only be done in the CLI or via Terraform currently.
+1. From the user edit form, navigate to the **Accounts** tab.
+1. Choose **Add Accounts** from the **Manage** dropdown.
+1. Select one or more accounts to associate with the user.
+1. Choose the **Add Accounts** button and view the user accounts list.
+
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602260997-boundary-clickthrough-manage-identities-assign-account-to-user.mp4"
+  />
+</video>
 
 </Tab>
 <Tab heading="Terraform">
@@ -247,10 +266,17 @@ $ boundary authenticate password -login-name myuser -password supersecure -auth-
 <Tab heading="Admin Console">
 
 
-Navigate to the login page and select the generated org from the organizations dropdown, then enter in your
-username and password for your account that you created above:
+1. Navigate to the authenticate page.
+1. Choose an organization scope with which to authenticate.
+1. Fill the credentials.
+1. Choose **Authenticate** and view the projects overview for the organization.
 
-![](/img/manage-id-login.png)
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602261004-boundary-clickthrough-manage-identities-login.mp4"
+  />
+</video>
 
 </Tab>
 <Tab heading="Terraform">
