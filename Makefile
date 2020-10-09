@@ -90,7 +90,12 @@ protobuild:
 		"--proto_path=internal/proto/local" \
 		"--proto_include_path=internal/proto/third_party" \
 		"--plugin_name=go" \
-		"--plugin_out=plugins=grpc:${TMP_DIR}"
+		"--plugin_out=${TMP_DIR}"
+	@bash scripts/protoc_gen_plugin.bash \
+		"--proto_path=internal/proto/local" \
+		"--proto_include_path=internal/proto/third_party" \
+		"--plugin_name=go-grpc" \
+		"--plugin_out=${TMP_DIR}"
 	@bash scripts/protoc_gen_plugin.bash \
 		"--proto_path=internal/proto/local/" \
 		"--proto_include_path=internal/proto/third_party" \
