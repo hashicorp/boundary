@@ -56,19 +56,32 @@
 .features {
   & > li {
     list-style: none;
-    padding: 135px 0;
 
-    &:first-child {
-      padding-top: 108px;
+    & > div {
+      list-style: none;
+      padding-bottom: 285px;
 
-      @media (width < 1120px) {
-        padding-top: 64px;
+      @media (--small) {
+        padding-top: 0;
+        margin-bottom: 0;
+        padding-bottom: 100px;
       }
     }
 
-    @media (--small) {
-      padding-top: 0;
-      padding-bottom: 64px;
+    &:last-child {
+      & > div {
+        padding-bottom: 385px;
+        margin-bottom: -200px;
+      }
+    }
+
+    &:first-child {
+      & > div {
+        padding-top: 108px;
+        @media (width < 1120px) {
+          padding-top: 64px;
+        }
+      }
     }
   }
 }
