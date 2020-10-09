@@ -14,7 +14,9 @@ model's fundamental concepts, provides examples of the specific forms of allowed
 grants, and contains a table that acts as an easy cheat sheet to help those new
 to its grant syntax with crafting roles.
 
-Each grant is a mapping that describes a resource or set of resources and the actions that should be allowed on them. Thus, each grant contains one or more of:
+Each grant is a mapping that describes a resource or set of resources and the
+actions that should be allowed on them. Thus, each grant contains one or more
+of:
 
 * An `id` field that indicates a specific resource or a wildcard to match all
 * A `type` field that indicates a specific resource type or a wildcard to match all
@@ -157,7 +159,7 @@ Such a grant is essentially a full administrator grant for a scope.
 ### Templates
 
 A few template possibilities exist, which will at grant evaluation time
-subsitute the given value into the ID field of the grant string:
+substitute the given value into the ID field of the grant string:
 
 * `{{account.id}}`: The substituted value is the account ID associated with the
 token used to perform the action. As an example,
