@@ -45,14 +45,11 @@ export default function DownloadsPage({ releaseData, previousVersions }) {
         downloads={sortedDownloads}
         version={VERSION}
         logo={<div className={styles.logo}>{productName}</div>}
-        // TODO: Placeholder content
-        tutorialLink={{ href: '#', label: 'View Tutorial on HashiCorp Learn' }}
-        merchandisingSlot={
-          <div className={styles.hosting}>
-            {/* TODO: Placeholder content */}
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-          </div>
-        }
+        tutorialLink={{
+          label: 'View Tutorial on HashiCorp Learn',
+          href:
+            'https://learn.hashicorp.com/tutorials/boundary/getting-started-install',
+        }}
       />
 
       <div className="g-container">

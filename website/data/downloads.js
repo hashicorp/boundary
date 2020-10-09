@@ -3,35 +3,45 @@
 export const packageManagers = {
   homebrew: {
     label: 'Homebrew',
-    url: '#',
-    commands: ['brew install hashicorp/tap/boundary'],
-  },
-  chocolatey: {
-    label: 'Chocolatey',
-    url: '#',
-    commands: ['choco install boundary'],
+    url: '',
+    commands: ['brew tap hashicorp/tap', 'brew install hashicorp/tap/boundary'],
   },
   ubuntu: {
     label: 'Ubuntu/Debian',
-    commands: ['command one', 'command two'],
+    commands: [
+      'curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -',
+      'sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"',
+      'sudo apt-get update && sudo apt-get install boundary',
+    ],
   },
   centos: {
     label: 'CentOS/RHEL',
-    commands: ['command one', 'command two'],
+    commands: [
+      'sudo yum install -y yum-utils',
+      'sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo',
+      'sudo yum -y install boundary',
+    ],
   },
   fedora: {
     label: 'Fedora',
-    commands: ['command one'],
+    commands: [
+      'sudo dnf install -y dnf-plugins-core',
+      'sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo',
+      'sudo dnf -y install boundary',
+    ],
   },
   amazonLinux: {
     label: 'Amazon Linux',
-    commands: ['command one', 'command two'],
+    commands: [
+      'sudo yum install -y yum-utils',
+      'sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo',
+      'sudo yum -y install boundary',
+    ],
   },
 }
 
 export const packageManagersByOs = {
   darwin: packageManagers.homebrew,
-  windows: packageManagers.chocolatey,
   linux: [
     packageManagers.ubuntu,
     packageManagers.centos,
@@ -64,15 +74,17 @@ export const tutorials = [
 
 export const getStartedLinks = [
   {
-    label: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-    href: '#1',
+    label: 'Install Boundary',
+    href:
+      'https://learn.hashicorp.com/tutorials/boundary/getting-started-install',
   },
   {
-    label: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-    href: '#2',
+    label: 'Introduction to Boundary',
+    href:
+      'https://learn.hashicorp.com/tutorials/boundary/getting-started-intro',
   },
   {
-    label: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-    href: '#3',
+    label: 'Start a Development Environment',
+    href: 'https://learn.hashicorp.com/tutorials/boundary/getting-started-dev',
   },
 ]
