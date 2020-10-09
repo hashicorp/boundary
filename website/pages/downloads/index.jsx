@@ -38,7 +38,12 @@ export default function DownloadsPage({ releaseData, previousVersions }) {
         tabData={tabData}
         downloads={sortedDownloads}
         version={VERSION}
-        logo={<div className={styles.logo}>{productName}</div>}
+        logo={
+          <img
+            className={styles.logo}
+            src={require('./img/boundary-logo.svg')}
+          />
+        }
         tutorialLink={{
           label: 'View Tutorial on HashiCorp Learn',
           href:
