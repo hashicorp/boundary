@@ -5,7 +5,6 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
@@ -129,45 +128,7 @@ func (w Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error)
 		return nil, nil, err
 	}
 
-	_, caKey, err := ed25519.GenerateKey(w.conf.SecureRandomReader)
-	if err != nil {
-		return nil, nil, err
-	}
-	caHost, err := base62.Random(20)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	caCertTemplate := &x509.Certificate{
-		Subject: pkix.Name{
-			CommonName: caHost,
-		},
-		DNSNames:              []string{caHost},
-		KeyUsage:              x509.KeyUsage(x509.KeyUsageCertSign | x509.KeyUsageCRLSign),
-		SerialNumber:          big.NewInt(mathrand.Int63()),
-		NotBefore:             time.Now().Add(-30 * time.Second),
-		NotAfter:              time.Now().Add(3 * time.Minute),
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-	}
-	caBytes, err := x509.CreateCertificate(w.conf.SecureRandomReader, caCertTemplate, caCertTemplate, caKey.Public(), caKey)
-	if err != nil {
-		return nil, nil, err
-	}
-	caCertPEMBlock := &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: caBytes,
-	}
-	info.CACertPEM = pem.EncodeToMemory(caCertPEMBlock)
-	caCert, err := x509.ParseCertificate(caBytes)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	//
-	// Certs generation
-	//
-	_, key, err := ed25519.GenerateKey(w.conf.SecureRandomReader)
+	pubKey, privKey, err := ed25519.GenerateKey(w.conf.SecureRandomReader)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -175,30 +136,32 @@ func (w Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error)
 	if err != nil {
 		return nil, nil, err
 	}
-	certTemplate := &x509.Certificate{
-		Subject: pkix.Name{
-			CommonName: host,
-		},
-		DNSNames: []string{host},
+
+	template := &x509.Certificate{
 		ExtKeyUsage: []x509.ExtKeyUsage{
 			x509.ExtKeyUsageServerAuth,
 			x509.ExtKeyUsageClientAuth,
 		},
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement,
-		SerialNumber: big.NewInt(mathrand.Int63()),
-		NotBefore:    time.Now().Add(-30 * time.Second),
-		NotAfter:     time.Now().Add(2 * time.Minute),
+		DNSNames:              []string{host},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
+		SerialNumber:          big.NewInt(mathrand.Int63()),
+		NotBefore:             time.Now().Add(-30 * time.Second),
+		NotAfter:              time.Now().Add(2 * time.Minute),
+		BasicConstraintsValid: true,
+		IsCA:                  true,
 	}
-	certBytes, err := x509.CreateCertificate(w.conf.SecureRandomReader, certTemplate, caCert, key.Public(), caKey)
+	certBytes, err := x509.CreateCertificate(w.conf.SecureRandomReader, template, template, pubKey, privKey)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	certPEMBlock := &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: certBytes,
 	}
 	info.CertPEM = pem.EncodeToMemory(certPEMBlock)
-	marshaledKey, err := x509.MarshalPKCS8PrivateKey(key)
+
+	marshaledKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -233,9 +196,14 @@ func (w Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error)
 		count++
 	}
 
+	cert, err := x509.ParseCertificate(certBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// Build local tls config
 	rootCAs := x509.NewCertPool()
-	rootCAs.AddCert(caCert)
+	rootCAs.AddCert(cert)
 	tlsCert, err := tls.X509KeyPair(info.CertPEM, info.KeyPEM)
 	if err != nil {
 		return nil, nil, err
