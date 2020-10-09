@@ -32,7 +32,6 @@ type ServerListener struct {
 }
 
 type WorkerAuthInfo struct {
-	CACertPEM       []byte `json:"ca_cert"`
 	CertPEM         []byte `json:"cert"`
 	KeyPEM          []byte `json:"key"`
 	Name            string `json:"name"`

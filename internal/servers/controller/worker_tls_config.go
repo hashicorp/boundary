@@ -70,7 +70,7 @@ func (c Controller) v1WorkerAuthConfig(protos []string) (*tls.Config, *base.Work
 	}
 
 	rootCAs := x509.NewCertPool()
-	if ok := rootCAs.AppendCertsFromPEM(info.CACertPEM); !ok {
+	if ok := rootCAs.AppendCertsFromPEM(info.CertPEM); !ok {
 		return nil, info, errors.New("unable to add ca cert to cert pool")
 	}
 	tlsCert, err := tls.X509KeyPair(info.CertPEM, info.KeyPEM)
