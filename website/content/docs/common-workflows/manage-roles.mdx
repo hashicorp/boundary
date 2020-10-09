@@ -1,0 +1,76 @@
+---
+layout: docs
+page_title: Manage Roles and Permissions
+sidebar_title: Manage Roles
+description: How to manage Roles and Permissions
+---
+
+# Manage Roles and Permissions
+
+[Roles](/docs/concepts/domain-model/roles) in Boundary manage the permissions given to Principals. Roles can be defined at the global, organization, or project scope.
+
+In this example, we're going to show you how to create a role in Boundary, assign that roles grants, and assign Principals to the role.
+
+~> Note that all resource ID's in this example are illustration only - ID's are uniquely generated for every resource upon creation with the exception being
+generated resources in `dev mode`. Please make sure to use the resource ID's that are generated when running this example. For example, if you run
+`boundary roles create`, use the resource ID of the role seen in stdout, not the ID in the example command.
+
+# Create a Role
+
+Roles can live in the global, organization, or project scope. In this example we will create a role in the generated org scope.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```bash
+$ boundary roles create -scope-id o_1234567890 -name my_role -description "My first role"
+
+Role information:
+  Created Time:        Fri, 09 Oct 2020 14:19:22 PDT
+  Description:         My first role
+  Grant Scope ID:      o_1234567890
+  ID:                  r_kHY8tQteXr
+  Name:                my_role
+  Updated Time:        Fri, 09 Oct 2020 14:19:22 PDT
+  Version:             1
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   global
+    Type:              project
+```
+
+</Tab>
+<Tab heading="Admin Console">
+
+
+Navigate to the roles page and select 'new':
+![](/img/manage-roles-undefined.png)
+
+Fill in the Role details:
+![](/img/manage-roles-settings.png)
+
+Click save and next assign principals and [assign grants](/docs/common-workflows#assign-grants) to the role
+![](/img/manage-roles-defined.png)
+
+</Tab>
+<Tab heading="Terraform">
+
+
+```hcl
+resource "boundary_scope" "role" {
+  name        = "my_role"
+  description = "My first role!"
+  scope_id    = o_1234567890
+}
+```
+
+</Tab>
+</Tabs>
+
+
+# Assign Grants
+
+To assign grants to a role, see [Permission Grant Formats](https://boundaryproject.io/docs/concepts/security/permissions-model#permission-grant-formats).
