@@ -4,13 +4,7 @@ import Head from 'next/head'
 import HashiHead from '@hashicorp/react-head'
 
 import { productName, productSlug } from 'data/metadata'
-import {
-  packageManagers,
-  tutorials,
-  containers,
-  packageManagersByOs,
-  getStartedLinks,
-} from 'data/downloads'
+import { packageManagersByOs, getStartedLinks } from 'data/downloads'
 import ReleaseInformation from 'components/downloader/release-information'
 import { sortPlatforms, detectOs } from 'components/downloader/utils/downloader'
 import DownloadCards from 'components/downloader/cards'
@@ -45,14 +39,11 @@ export default function DownloadsPage({ releaseData, previousVersions }) {
         downloads={sortedDownloads}
         version={VERSION}
         logo={<div className={styles.logo}>{productName}</div>}
-        // TODO: Placeholder content
-        tutorialLink={{ href: '#', label: 'View Tutorial on HashiCorp Learn' }}
-        merchandisingSlot={
-          <div className={styles.hosting}>
-            {/* TODO: Placeholder content */}
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-          </div>
-        }
+        tutorialLink={{
+          label: 'View Tutorial on HashiCorp Learn',
+          href:
+            'https://learn.hashicorp.com/tutorials/boundary/getting-started-install',
+        }}
       />
 
       <div className="g-container">
@@ -70,13 +61,10 @@ export default function DownloadsPage({ releaseData, previousVersions }) {
 
       <ReleaseInformation
         brand="red"
-        productId={productSlug}
+        productId="vault"
         productName={productName}
         releases={previousVersions}
         latestVersion={releaseData.version}
-        packageManagers={Object.values(packageManagers)}
-        containers={containers}
-        tutorials={tutorials}
       />
     </div>
   )
