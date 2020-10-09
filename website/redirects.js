@@ -43,6 +43,11 @@ module.exports = [
     permanent: false,
   },
   {
+    source: '/help/admin-ui/accounts',
+    destination: '/docs/concepts/domain-model/accounts',
+    permanent: false,
+  },
+  {
     source: '/help/admin-ui/projects',
     destination: '/docs/concepts/domain-model/projects',
     permanent: false,
@@ -68,8 +73,13 @@ module.exports = [
     permanent: false,
   },
   {
+    source: '/help/admin-ui/targets',
+    destination: '/docs/concepts/domain-model/targets',
+    permanent: false,
+  },
+  {
     source: '/help/admin-ui/sessions',
-    destination: '/docs/common-workflows/sessions',
+    destination: '/docs/common-workflows/manage-sessions',
     permanent: false,
   },
 
@@ -94,7 +104,7 @@ module.exports = [
     permanent: false,
   },
   {
-    source: '/help/admin-ui/host-catalogs/add-hosts',
+    source: '/help/admin-ui/host-sets/add-hosts',
     destination: '/docs/concepts/domain-model/hosts',
     permanent: false,
   },
