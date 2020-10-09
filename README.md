@@ -105,6 +105,11 @@ variable. For example:
 
 will update your local UI assets.
 
+#### UI Build Troubleshooting
+
+UI assets are built within a Docker container.  If you encounter issues with
+this build step, trying increasing memory and swap available to Docker.
+
 #### UI Development
 
 It would be impractical to rebuild the binary on every change when actively
