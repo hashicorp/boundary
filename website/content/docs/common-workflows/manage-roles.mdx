@@ -17,14 +17,14 @@ generated resources in `dev mode`. Please make sure to use the resource ID's tha
 
 # Create a Role
 
-Roles can live in the global, organization, or project scope. In this example we will create a role in the generated org scope.
+Roles can live in the global, organization, or project scope. In this example we will create a role in the generated org scope in dev mode.
 
 <Tabs>
 <Tab heading="CLI">
 
 
 ```bash
-$ boundary roles create -scope-id o_1234567890 -name my_role -description "My first role"
+$ boundary roles create -scope-id $your_scope_id -name my_role -description "My first role"
 
 Role information:
   Created Time:        Fri, 09 Oct 2020 14:19:22 PDT
@@ -63,10 +63,9 @@ Click save and next [assign principals](/docs/common-workflows/manage-roles#assi
 resource "boundary_scope" "role" {
   name        = "my_role"
   description = "My first role!"
-  scope_id    = o_1234567890
-  principals  = [boundary_user.readonly.id] // optionally assign principals to the role
-  grants      = ["id=*;action=read"] // optionally assign grants to the role
-  scope_id    = boundary_scope.org.id
+  scope_id    = o_1234567890 // sets the role's scope as the default generated org. To change the role's scope provide a different scope id.
+  principals  = u_1234567890 // assigns the default generated admin user to the role. To assign a different principal provide a different principal id.
+  grants      = ["id=*;type=*;action=read,list"] // assigns grants for read and list actions on all resources to the role
 }
 ```
 
@@ -120,8 +119,17 @@ You have now added principals to the role. You can now read on to assign grants 
 
 </Tab>
 <Tab heading="Terraform">
-Principals are assigned to roles in Terraform in the role definition. See the Terraform role configuration example above.
 
+
+```hcl
+resource "boundary_scope" "role" {
+  name        = "my_role"
+  description = "My first role!"
+  scope_id    = o_1234567890 // sets the role's scope as the default generated org. To change the role's scope provide a different scope id.
+  principals  = u_1234567890 // assigns the default generated admin user to the role. To assign a different principal provide a different principal id.
+  grants      = ["id=*;type=*;action=read,list"] // assigns grants for read and list actions on all resources to the role
+}
+```
 
 </Tab>
 </Tabs>
@@ -129,7 +137,7 @@ Principals are assigned to roles in Terraform in the role definition. See the Te
 
 # Assign Grants to a Role
 
-Grants gives roles permission to perform actions. For more information on how to format grants see [Permission Grant Formats](https://boundaryproject.io/docs/concepts/security/permissions-model#permission-grant-formats).
+Grants give roles permission to perform actions. For more information on how to format grants see [Permission Grant Formats](https://boundaryproject.io/docs/concepts/security/permissions-model#permission-grant-formats).
 In this example we give a role read and list permissions to all resources.
 
 <Tabs>
@@ -177,8 +185,17 @@ You have now added grants to the role.
 
 
 <Tab heading="Terraform">
-Grants are assigned to roles in Terraform in the role definition. See the Terraform role configuration example above.
 
+
+```hcl
+resource "boundary_scope" "role" {
+  name        = "my_role"
+  description = "My first role!"
+  scope_id    = o_1234567890 // sets the role's scope as the default generated org. To change the role's scope provide a different scope id.
+  principals  = u_1234567890 // assigns the default generated admin user to the role. To assign a different principal provide a different principal id.
+  grants      = ["id=*;type=*;action=read,list"] // assigns grants for read and list actions on all resources to the role
+}
+```
 
 </Tab>
 </Tabs>
