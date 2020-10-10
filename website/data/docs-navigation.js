@@ -35,7 +35,11 @@ export default [
       },
       {
         category: 'security',
-        content: ['permissions-model', 'tls'],
+        content: [
+          'permissions',
+          'data-encryption',
+          'connections-tls',
+        ]
       },
       {
         category: 'domain-model',

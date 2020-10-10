@@ -1,7 +1,7 @@
 ---
 layout: docs
-page_title: TLS
-sidebar_title: TLS
+page_title: Connections/TLS
+sidebar_title: Connections/TLS
 description: |-
   How Boundary secures its connections
 ---
@@ -30,11 +30,11 @@ provides broad compatibility with a wide array of clients.
 ## Worker-to-Controller TLS
 
 The service exposed by the a Controller to handle Worker requests takes
-advantage of the KMS key designated for `worker-auth` within Boundary's
-configuration file, which must point to the same key on the KMS for both the
-Controller and the Worker. Security of the connection relies on secure
-transmission of a single set of allowed TLS parameters, which forms the entire
-allowable CA chain for the connection.
+advantage of the [KMS](/docs/concepts/security/data-encryption) key designated
+for `worker-auth` within Boundary's configuration file, which must point to the
+same key on the KMS for both the Controller and the Worker. Security of the
+connection relies on secure transmission of a single set of allowed TLS
+parameters, which forms the entire allowable CA chain for the connection.
 
 TLS establishment is performed as follows:
 
