@@ -13,13 +13,22 @@ export default function HomePage() {
         description="Access any system from anywhere based on user identity."
         links={[
           {
-            text: 'Get Started',
+            title: 'Get Started',
             url:
               'https://learn.hashicorp.com/collections/boundary/getting-started',
-            type: 'outbound',
+            external: true,
           },
         ]}
-        videoUrl="https://www.youtube.com/watch?v=tUMe7EsXYBQ"
+        uiVideo={{
+          url: '/videos/hero-ui.mp4',
+          srcType: 'mp4',
+          playbackRate: 2,
+        }}
+        cliVideo={{
+          url: '/videos/hero-cli.mp4',
+          srcType: 'mp4',
+          playbackRate: 1,
+        }}
       />
 
       <HowItWorks
