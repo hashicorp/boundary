@@ -35,10 +35,7 @@ export default [
       },
       {
         category: 'security',
-        content: [
-          'permissions-model',
-          'tls',
-        ]
+        content: ['permissions-model', 'tls'],
       },
       {
         category: 'domain-model',
@@ -56,6 +53,7 @@ export default [
           'projects',
           'resources',
           'scopes',
+          'sessions',
           'targets',
           'roles',
           'users',
