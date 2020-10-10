@@ -24,7 +24,7 @@ export default function HomePage() {
 
       <HowItWorks
         title="Secure access to hosts and services"
-        description="Traditional approaches like SSH bastion hosts or VPNs require distributing and managing credentials, configure network controls like firewalls, and expose the private network. Boundary provides a secure way to access to hosts and critical systems without having to manage credentials or expose your network, and is entirely open source."
+        description="Traditional approaches like SSH bastion hosts or VPNs require distributing and managing credentials, configuring network controls like firewalls, and exposing the private network. Boundary provides a secure way to access hosts and critical systems without having to manage credentials or expose your network, and is entirely open source."
         features={[
           {
             title: 'Authenticate',
@@ -112,7 +112,7 @@ export default function HomePage() {
               {
                 title: 'Easily onboard and manage users',
                 description:
-                  'Leverage SSO to manage onboarding and off-boarding users.',
+                  'Use SSO to manage onboarding and off-boarding users.',
                 image: {
                   url: require('./img/red-usecase-accessmgmt.png?url'),
                 },
@@ -191,9 +191,8 @@ export default function HomePage() {
               icon: require('./img/features/session-visibility.svg?url'),
             },
             {
-              title: 'Infrastructure as code',
-              content:
-                'Ability to establish secure access controls and route resources dynamically.',
+              title: 'Access control as code',
+              content: 'Define and deploy access control policies as code.',
               icon: require('./img/features/config-as-code.svg?url'),
             },
             {
