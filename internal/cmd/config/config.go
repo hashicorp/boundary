@@ -57,24 +57,18 @@ kms "aead" {
 listener "tcp" {
 	purpose = "api"
 	tls_disable = true
-	proxy_protocol_behavior = "allow_authorized"
-	proxy_protocol_authorized_addrs = "127.0.0.1"
 	cors_enabled = true
 	cors_allowed_origins = ["*"]
 }
 
 listener "tcp" {
 	purpose = "cluster"
-	proxy_protocol_behavior = "allow_authorized"
-	proxy_protocol_authorized_addrs = "127.0.0.1"
 }
 `
 
 	devWorkerExtraConfig = `
 listener "tcp" {
 	purpose = "proxy"
-	proxy_protocol_behavior = "allow_authorized"
-	proxy_protocol_authorized_addrs = "127.0.0.1"
 }
 
 worker {

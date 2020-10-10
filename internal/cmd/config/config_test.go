@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,33 +14,20 @@ func TestDevController(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	addr, err := sockaddr.NewIPAddr("127.0.0.1")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	exp := &Config{
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
 			Listeners: []*configutil.Listener{
 				{
-					Type:                  "tcp",
-					Purpose:               []string{"api"},
-					TLSDisable:            true,
-					ProxyProtocolBehavior: "allow_authorized",
-					ProxyProtocolAuthorizedAddrs: []*sockaddr.SockAddrMarshaler{
-						{SockAddr: addr},
-					},
+					Type:               "tcp",
+					Purpose:            []string{"api"},
+					TLSDisable:         true,
 					CorsEnabled:        true,
 					CorsAllowedOrigins: []string{"*"},
 				},
 				{
-					Type:                  "tcp",
-					Purpose:               []string{"cluster"},
-					ProxyProtocolBehavior: "allow_authorized",
-					ProxyProtocolAuthorizedAddrs: []*sockaddr.SockAddrMarshaler{
-						{SockAddr: addr},
-					},
+					Type:    "tcp",
+					Purpose: []string{"cluster"},
 				},
 			},
 			Seals: []*configutil.KMS{
@@ -102,22 +88,13 @@ func TestDevWorker(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	addr, err := sockaddr.NewIPAddr("127.0.0.1")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	exp := &Config{
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
 			Listeners: []*configutil.Listener{
 				{
-					Type:                  "tcp",
-					Purpose:               []string{"proxy"},
-					ProxyProtocolBehavior: "allow_authorized",
-					ProxyProtocolAuthorizedAddrs: []*sockaddr.SockAddrMarshaler{
-						{SockAddr: addr},
-					},
+					Type:    "tcp",
+					Purpose: []string{"proxy"},
 				},
 			},
 			Telemetry: &configutil.Telemetry{
