@@ -1,4 +1,4 @@
-package proxy
+package connect
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -70,20 +69,16 @@ type Command struct {
 	flagUsername   string
 
 	// HTTP
-	flagHttpStyle  string
-	flagHttpHost   string
-	flagHttpPath   string
-	flagHttpMethod string
-	flagHttpScheme string
-
-	// SSH
-	flagSshStyle string
+	httpFlags
 
 	// Postgres
-	flagPostgresStyle string
+	postgresFlags
 
 	// RDP
-	flagRdpStyle string
+	rdpFlags
+
+	// SSH
+	sshFlags
 
 	Func string
 
@@ -106,15 +101,16 @@ func (c *Command) Synopsis() string {
 	case "connect":
 		return "Authorize a session against a target (or consume an existing authorization token) and launch a proxied connection"
 	case "http":
-		return "Authorize a session against a target and invoke an HTTP client to connect"
-	case "ssh":
-		return "Authorize a session against a target and invoke an SSH client to connect"
+		return httpSynopsis
 	case "postgres":
-		return "Authorize a session against a target and invoke a Postgres client to connect"
+		return postgresSynopsis
 	case "rdp":
-		return "Authorize a session against a target and invoke an RDP client to connect"
+		return rdpSynopsis
+	case "ssh":
+		return sshSynopsis
+	default:
+		return ""
 	}
-	return ""
 }
 
 func (c *Command) Help() string {
@@ -128,42 +124,59 @@ func (c *Command) Help() string {
 			"  Example:",
 			"",
 			`      $ boundary connect -target-id ttcp_1234567890"`,
+			"",
+			"",
+		}) + c.Flags().Help()
+
+	default:
+		return base.WrapForHelpText([]string{
+			fmt.Sprintf("Usage: boundary connect %s [options] [args]", c.Func),
+			"",
+			fmt.Sprintf(`  This command performs a target authorization (or consumes an existing authorization token) and launches a proxied %s connection.`, c.Func),
+			"",
+			"  Example:",
+			"",
+			fmt.Sprintf(`      $ boundary connect %s -target-id ttcp_1234567890"`, c.Func),
+			"",
+			"",
 		}) + c.Flags().Help()
 	}
-	return ""
 }
 
 func (c *Command) Flags() *base.FlagSets {
-	bits := base.FlagSetOutputFormat
-	if c.Func == "connect" {
-		bits = base.FlagSetHTTP | base.FlagSetClient | bits
-	}
-	set := c.FlagSet(bits)
+	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
+	f := set.NewFlagSet("Connect Options")
+
+	f.StringVar(&base.StringVar{
+		Name:       "authz-token",
+		Target:     &c.flagAuthzToken,
+		EnvVar:     "BOUNDARY_CONNECT_AUTHZ_TOKEN",
+		Completion: complete.PredictNothing,
+		Usage:      `Only needed if -target-id is not set. The authorization string returned from the Boundary controller via an "authorize-session" action against a target. If set to "-", the command will attempt to read in the authorization string from standard input.`,
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "target-id",
+		Target: &c.flagTargetId,
+		Usage:  "The ID of the target to authorize against. Cannot be used with -authz-token.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "host-id",
+		Target: &c.flagHostId,
+		Usage:  "The ID of a specific host to connect to out of the hosts from the target's host sets. If not specified, one is chosen at random.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:       "exec",
+		Target:     &c.flagExec,
+		EnvVar:     "BOUNDARY_CONNECT_EXEC",
+		Completion: complete.PredictAnything,
+		Usage:      `If set, after connecting to the worker, the given binary will be executed. This should be a binary on your path, or an absolute path. If all command flags are followed by " -- " (space, two hyphens, space), then any arguments after that will be sent directly to the binary.`,
+	})
 
 	switch c.Func {
-	case "connect", "http", "ssh", "rdp", "postgres":
-		f := set.NewFlagSet("Connect Options")
-
-		f.StringVar(&base.StringVar{
-			Name:       "authz-token",
-			Target:     &c.flagAuthzToken,
-			EnvVar:     "BOUNDARY_CONNECT_AUTHZ_TOKEN",
-			Completion: complete.PredictNothing,
-			Usage:      `Only needed if -target-id is not set. The authorization string returned from the Boundary controller via an "authorize-session" action against a target. If set to "-", the command will attempt to read in the authorization string from standard input.`,
-		})
-
-		f.StringVar(&base.StringVar{
-			Name:   "target-id",
-			Target: &c.flagTargetId,
-			Usage:  "The ID of the target to authorize against. Cannot be used with -authz-token.",
-		})
-
-		f.StringVar(&base.StringVar{
-			Name:   "host-id",
-			Target: &c.flagHostId,
-			Usage:  "The ID of a specific host to connect to out of the hosts from the target's host sets. If not specified, one is chosen at random.",
-		})
-
+	case "connect":
 		f.StringVar(&base.StringVar{
 			Name:       "listen-addr",
 			Target:     &c.flagListenAddr,
@@ -180,111 +193,17 @@ func (c *Command) Flags() *base.FlagSets {
 			Usage:      `If set, the CLI will attempt to bind its listening port to the given value. If it cannot, the command will error.`,
 		})
 
-		f.StringVar(&base.StringVar{
-			Name:       "exec",
-			Target:     &c.flagExec,
-			EnvVar:     "BOUNDARY_CONNECT_EXEC",
-			Completion: complete.PredictAnything,
-			Usage:      `If set, after connecting to the worker, the given binary will be executed. This should be a binary on your path, or an absolute path. If all command flags are followed by " -- " (space, two hyphens, space), then any arguments after that will be sent directly to the binary.`,
-		})
-	}
-
-	switch c.Func {
 	case "http":
-		f := set.NewFlagSet("HTTP Options")
-
-		f.StringVar(&base.StringVar{
-			Name:       "style",
-			Target:     &c.flagHttpStyle,
-			EnvVar:     "BOUNDARY_CONNECT_HTTP_STYLE",
-			Completion: complete.PredictSet("curl"),
-			Default:    "curl",
-			Usage:      `Specifies how the CLI will attempt to invoke an HTTP client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "curl".`,
-		})
-
-		f.StringVar(&base.StringVar{
-			Name:       "host",
-			Target:     &c.flagHttpHost,
-			EnvVar:     "BOUNDARY_CONNECT_HTTP_HOST",
-			Completion: complete.PredictNothing,
-			Usage:      `Specifies the host value to use. The specified hostname will be passed through to the client (if supported) for use in the Host header and TLS SNI value.`,
-		})
-
-		f.StringVar(&base.StringVar{
-			Name:       "path",
-			Target:     &c.flagHttpPath,
-			EnvVar:     "BOUNDARY_CONNECT_HTTP_PATH",
-			Completion: complete.PredictNothing,
-			Usage:      `Specifies a path that will be appended to the generated URL.`,
-		})
-
-		f.StringVar(&base.StringVar{
-			Name:       "method",
-			Target:     &c.flagHttpMethod,
-			EnvVar:     "BOUNDARY_CONNECT_HTTP_METHOD",
-			Completion: complete.PredictNothing,
-			Usage:      `Specifies the method to use. If not set, will use the client's default.`,
-		})
-
-		f.StringVar(&base.StringVar{
-			Name:       "scheme",
-			Target:     &c.flagHttpScheme,
-			Default:    "https",
-			EnvVar:     "BOUNDARY_CONNECT_HTTP_SCHEME",
-			Completion: complete.PredictNothing,
-			Usage:      `Specifies the scheme to use.`,
-		})
-
-	case "ssh":
-		f := set.NewFlagSet("SSH Options")
-
-		f.StringVar(&base.StringVar{
-			Name:       "style",
-			Target:     &c.flagSshStyle,
-			EnvVar:     "BOUNDARY_CONNECT_SSH_STYLE",
-			Completion: complete.PredictSet("ssh", "putty"),
-			Default:    "ssh",
-			Usage:      `Specifies how the CLI will attempt to invoke an SSH client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "ssh" and "putty".`,
-		})
-
-		f.StringVar(&base.StringVar{
-			Name:       "username",
-			Target:     &c.flagUsername,
-			EnvVar:     "BOUNDARY_CONNECT_USERNAME",
-			Completion: complete.PredictNothing,
-			Usage:      `Specifies the username to pass through to the client`,
-		})
+		httpOptions(c, set)
 
 	case "postgres":
-		f := set.NewFlagSet("Postgres Options")
-
-		f.StringVar(&base.StringVar{
-			Name:       "style",
-			Target:     &c.flagPostgresStyle,
-			EnvVar:     "BOUNDARY_CONNECT_POSTGRES_STYLE",
-			Completion: complete.PredictSet("psql"),
-			Default:    "psql",
-			Usage:      `Specifies how the CLI will attempt to invoke a Postgres client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "psql".`,
-		})
-
-		f.StringVar(&base.StringVar{
-			Name:       "username",
-			Target:     &c.flagUsername,
-			EnvVar:     "BOUNDARY_CONNECT_USERNAME",
-			Completion: complete.PredictNothing,
-			Usage:      `Specifies the username to pass through to the client`,
-		})
+		postgresOptions(c, set)
 
 	case "rdp":
-		f := set.NewFlagSet("RDP Options")
+		rdpOptions(c, set)
 
-		f.StringVar(&base.StringVar{
-			Name:       "style",
-			Target:     &c.flagRdpStyle,
-			EnvVar:     "BOUNDARY_CONNECT_RDP_STYLE",
-			Completion: complete.PredictSet("mstsc", "open"),
-			Usage:      `Specifies how the CLI will attempt to invoke an RDP client. This will also set a suitable default for -exec if a value was not specified. Currently-understood values are "mstsc", which is the default on Windows and launches the Windows client, and "open", which is the default on Mac and launches via an rdp:// URL.`,
-		})
+	case "ssh":
+		sshOptions(c, set)
 	}
 
 	return set
@@ -323,38 +242,16 @@ func (c *Command) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	switch c.Func {
-	case "http":
-		if c.flagExec == "" {
-			c.flagExec = strings.ToLower(c.flagHttpStyle)
-		}
-	case "ssh":
-		if c.flagExec == "" {
-			c.flagExec = strings.ToLower(c.flagSshStyle)
-		}
-	case "postgres":
-		if c.flagExec == "" {
-			c.flagExec = strings.ToLower(c.flagPostgresStyle)
-		}
-	case "rdp":
-		if c.flagExec == "" {
-			c.flagRdpStyle = strings.ToLower(c.flagRdpStyle)
-			switch c.flagRdpStyle {
-			case "":
-				switch runtime.GOOS {
-				case "windows":
-					c.flagRdpStyle = "mstsc"
-				case "darwin":
-					c.flagRdpStyle = "open"
-				default:
-					// We may want to support rdesktop and/or xfreerdp at some point soon
-					c.flagRdpStyle = "mstsc"
-				}
-			}
-			if c.flagRdpStyle == "mstsc" {
-				c.flagRdpStyle = "mstsc.exe"
-			}
-			c.flagExec = c.flagRdpStyle
+	if c.flagExec == "" {
+		switch c.Func {
+		case "http":
+			c.flagExec = c.httpFlags.defaultExec()
+		case "ssh":
+			c.flagExec = c.sshFlags.defaultExec()
+		case "postgres":
+			c.flagExec = c.postgresFlags.defaultExec()
+		case "rdp":
+			c.flagExec = c.rdpFlags.defaultExec()
 		}
 	}
 
@@ -775,59 +672,19 @@ func (c *Command) handleExec(passthroughArgs []string) {
 
 	switch c.Func {
 	case "http":
-		switch c.flagHttpStyle {
-		case "curl":
-			if c.flagHttpMethod != "" {
-				args = append(args, "-X", c.flagHttpMethod)
-			}
-			var uri string
-			if c.flagHttpHost != "" {
-				c.flagHttpHost = strings.TrimSuffix(c.flagHttpHost, "/")
-				args = append(args, "-H", fmt.Sprintf("Host: %s", c.flagHttpHost))
-				args = append(args, "--resolve", fmt.Sprintf("%s:%s:%s", c.flagHttpHost, port, ip))
-				uri = fmt.Sprintf("%s://%s:%s", c.flagHttpScheme, c.flagHttpHost, port)
-			} else {
-				uri = fmt.Sprintf("%s://%s", c.flagHttpScheme, addr)
-			}
-			if c.flagHttpPath != "" {
-				uri = fmt.Sprintf("%s/%s", uri, strings.TrimPrefix(c.flagHttpPath, "/"))
-			}
-			args = append(args, uri)
-		}
-
-	case "ssh":
-		switch c.flagSshStyle {
-		case "ssh":
-			args = append(args, "-p", port, ip)
-			args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthzData.HostId))
-		case "putty":
-			args = append(args, "-P", port, ip)
-		}
-		if c.flagUsername != "" {
-			args = append(args, "-l", c.flagUsername)
-		}
+		args = append(args, c.httpFlags.buildArgs(c, port, ip, addr)...)
 
 	case "postgres":
-		switch c.flagPostgresStyle {
-		case "psql":
-			args = append(args, "-p", port, "-h", ip)
-			if c.flagUsername != "" {
-				args = append(args, "-U", c.flagUsername)
-			}
-		}
+		args = append(args, c.postgresFlags.buildArgs(c, port, ip, addr)...)
 
 	case "rdp":
-		switch c.flagRdpStyle {
-		case "mstsc.exe":
-			args = append(args, "/v", addr)
-		case "open":
-			args = append(args, "-n", "-W", fmt.Sprintf("rdp://full%saddress=s:%s", "%20", addr))
-		}
+		args = append(args, c.rdpFlags.buildArgs(c, port, ip, addr)...)
+
+	case "ssh":
+		args = append(args, c.sshFlags.buildArgs(c, port, ip, addr)...)
 	}
 
 	args = append(passthroughArgs, args...)
-
-	// Might want -t for ssh or -tt but seems fine without it for now...
 
 	stringReplacer := func(in, typ, replacer string) string {
 		for _, style := range []string{

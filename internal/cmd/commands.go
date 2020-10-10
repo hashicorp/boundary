@@ -11,13 +11,13 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
+	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/cmd/commands/database"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groups"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hosts"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsets"
-	"github.com/hashicorp/boundary/internal/cmd/commands/proxy"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
@@ -57,37 +57,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"version": func() (cli.Command, error) {
 			return &version.Command{
 				Command: base.NewCommand(ui),
-			}, nil
-		},
-
-		"connect": func() (cli.Command, error) {
-			return &proxy.Command{
-				Command: base.NewCommand(ui),
-				Func:    "connect",
-			}, nil
-		},
-		"connect http": func() (cli.Command, error) {
-			return &proxy.Command{
-				Command: base.NewCommand(ui),
-				Func:    "http",
-			}, nil
-		},
-		"connect ssh": func() (cli.Command, error) {
-			return &proxy.Command{
-				Command: base.NewCommand(ui),
-				Func:    "ssh",
-			}, nil
-		},
-		"connect rdp": func() (cli.Command, error) {
-			return &proxy.Command{
-				Command: base.NewCommand(ui),
-				Func:    "rdp",
-			}, nil
-		},
-		"connect postgres": func() (cli.Command, error) {
-			return &proxy.Command{
-				Command: base.NewCommand(ui),
-				Func:    "postgres",
 			}, nil
 		},
 
@@ -273,6 +242,37 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &config.AutocompleteCommand{
 				Command: base.NewCommand(ui),
 				Func:    "uninstall",
+			}, nil
+		},
+
+		"connect": func() (cli.Command, error) {
+			return &connect.Command{
+				Command: base.NewCommand(ui),
+				Func:    "connect",
+			}, nil
+		},
+		"connect http": func() (cli.Command, error) {
+			return &connect.Command{
+				Command: base.NewCommand(ui),
+				Func:    "http",
+			}, nil
+		},
+		"connect ssh": func() (cli.Command, error) {
+			return &connect.Command{
+				Command: base.NewCommand(ui),
+				Func:    "ssh",
+			}, nil
+		},
+		"connect rdp": func() (cli.Command, error) {
+			return &connect.Command{
+				Command: base.NewCommand(ui),
+				Func:    "rdp",
+			}, nil
+		},
+		"connect postgres": func() (cli.Command, error) {
+			return &connect.Command{
+				Command: base.NewCommand(ui),
+				Func:    "postgres",
 			}, nil
 		},
 
