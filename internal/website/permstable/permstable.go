@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const permsFile = "website/content/docs/concepts/permissions.mdx"
+const permsFile = "website/content/docs/concepts/security/permissions.mdx"
 
 var (
 	iamScopes  = []string{"Global", "Org"}
@@ -157,8 +157,8 @@ func (r *Resource) Marshal() (ret []string) {
 		ret = append(ret, fmt.Sprintf(`%s<tr>`, indent(4)))
 		if i == 0 {
 			ret = append(ret,
-				fmt.Sprintf(`%s<td rowspan="%d">%s</td>`, indent(6), len(r.Endpoints), r.Type),
-				fmt.Sprintf(`%s<td rowspan="%d">`, indent(6), len(r.Endpoints)),
+				fmt.Sprintf(`%s<td rowSpan="%d">%s</td>`, indent(6), len(r.Endpoints), r.Type),
+				fmt.Sprintf(`%s<td rowSpan="%d">`, indent(6), len(r.Endpoints)),
 				fmt.Sprintf(`%s<ul>`, indent(8)),
 			)
 			for _, s := range r.Scopes {
@@ -310,7 +310,7 @@ var account = &Resource{
 		{
 			Path: "/accounts",
 			Params: map[string]string{
-				"Type": "accounts",
+				"Type": "account",
 			},
 			Actions: clActions("an account"),
 		},
