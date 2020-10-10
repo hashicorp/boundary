@@ -61,8 +61,6 @@ listener "tcp" {
   purpose = "api"
 
   tls_disable = false
-  proxy_protocol_behavior = "allow_authorized"
-  proxy_protocol_authorized_addrs = "127.0.0.1"
 
   # Enable CORS for the Admin UI
   cors_enabled = true
@@ -77,8 +75,6 @@ listener "tcp" {
   purpose = "cluster"
 
   tls_disable = false
-  proxy_protocol_behavior = "allow_authorized"
-  proxy_protocol_authorized_addrs = "127.0.0.1"
 }
 
 # Root KMS configuration block: this is the root key for Boundary

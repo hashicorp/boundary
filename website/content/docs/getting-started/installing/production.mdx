@@ -73,10 +73,6 @@ listener "tcp" {
 	purpose = "api"
   # Should be enabled for production installs
 	tls_disable = true
-  # TODO
-	# proxy_protocol_behavior = "allow_authorized"
-  # TODO
-	# proxy_protocol_authorized_addrs = "127.0.0.1"
   # Enable CORS for the Admin UI
 	cors_enabled = true
 	cors_allowed_origins = ["*"]
@@ -90,10 +86,6 @@ listener "tcp" {
 	purpose = "cluster"
   # Should be enabled for production installs
 	tls_disable = true
-  # TODO
-	# proxy_protocol_behavior = "allow_authorized"
-  # TODO
-	# proxy_protocol_authorized_addrs = "127.0.0.1"
 }
 
 # Root KMS configuration block: this is the root key for Boundary
@@ -139,8 +131,6 @@ database {
 listener "tcp" {
 	purpose = "proxy"
 	tls_disable = true
-	#proxy_protocol_behavior = "allow_authorized"
-	#proxy_protocol_authorized_addrs = "127.0.0.1"
 }
 
 worker {
