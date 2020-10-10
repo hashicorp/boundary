@@ -1,12 +1,28 @@
 package targets
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/mitchellh/go-wordwrap"
 )
+
+func hostSetSynopsisFunc(inFunc string) string {
+	var in string
+	switch {
+	case strings.HasPrefix(inFunc, "add"):
+		in = "Add host sets to"
+	case strings.HasPrefix(inFunc, "set"):
+		in = "Set the full contents of the host sets on"
+	case strings.HasPrefix(inFunc, "remove"):
+		in = "Remove host sets from"
+	}
+	return wordwrap.WrapString(fmt.Sprintf("%s a target", in), base.TermWidth)
+}
 
 func generateTargetTableOutput(in *targets.Target) string {
 	nonAttributeMap := map[string]interface{}{

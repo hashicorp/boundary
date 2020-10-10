@@ -21,7 +21,7 @@ func SynopsisFunc(inFunc, resType string) string {
 	default:
 		articleType = fmt.Sprintf("a %s", articleType)
 	}
-	return wordwrap.WrapString(fmt.Sprintf("%s %s within Boundary", textproto.CanonicalMIMEHeaderKey(inFunc), articleType), base.TermWidth)
+	return wordwrap.WrapString(fmt.Sprintf("%s %s", textproto.CanonicalMIMEHeaderKey(inFunc), articleType), base.TermWidth)
 }
 
 func HelpMap(resType string) map[string]func() string {

@@ -25,7 +25,7 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return common.SynopsisFunc(c.Func, "auth-token")
+	return common.SynopsisFunc(c.Func, "auth token")
 }
 
 var flagsMap = map[string][]string{
@@ -35,7 +35,7 @@ var flagsMap = map[string][]string{
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("auth-token")
+	helpMap := common.HelpMap("auth token")
 	if c.Func == "" {
 		return helpMap["base"]()
 	}

@@ -26,7 +26,7 @@ func principalsGrantsSynopsisFunc(inFunc string, principals bool) string {
 	case strings.HasPrefix(inFunc, "remove"):
 		in = fmt.Sprintf("Remove %s from", switchStr)
 	}
-	return wordwrap.WrapString(fmt.Sprintf("%s a role within Boundary", in), base.TermWidth)
+	return wordwrap.WrapString(fmt.Sprintf("%s a role", in), base.TermWidth)
 }
 
 func addPrincipalsHelp() string {

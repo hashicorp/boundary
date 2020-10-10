@@ -29,10 +29,10 @@ type Command struct {
 
 func (c *Command) Synopsis() string {
 	switch c.Func {
-	case "create":
-		return "Create target resources within Boundary"
-	case "update":
-		return "Update target resources within Boundary"
+	case "add-host-sets", "set-host-sets", "remove-host-sets":
+		return hostSetSynopsisFunc(c.Func)
+	case "authorize-session":
+		return "Request session authorization against the target"
 	default:
 		return common.SynopsisFunc(c.Func, "target")
 	}
@@ -97,6 +97,8 @@ func (c *Command) Help() string {
 			"    Add host-set resources to a tcp-type target:",
 			"",
 			`      $ boundary targets add-host-sets -id ttcp_1234567890 -host-set hsst_1234567890 -host-set hsst_0987654321`,
+			"",
+			"",
 		})
 	case "remove-host-sets":
 		helpStr = base.WrapForHelpText([]string{
@@ -107,6 +109,8 @@ func (c *Command) Help() string {
 			"    Remove host-set resources from a tcp-type target:",
 			"",
 			`      $ boundary targets add-host-sets -id ttcp_1234567890 -host hsst_1234567890 -host-set hsst_0987654321`,
+			"",
+			"",
 		})
 	case "set-host-sets":
 		helpStr = base.WrapForHelpText([]string{
@@ -117,6 +121,8 @@ func (c *Command) Help() string {
 			"    Set host-set resources on a tcp-type target:",
 			"",
 			`      $ boundary targets set-host-sets -id ttcp_1234567890 -host-set hsst_1234567890`,
+			"",
+			"",
 		})
 	case "authorize-session":
 		helpStr = base.WrapForHelpText([]string{
@@ -127,6 +133,8 @@ func (c *Command) Help() string {
 			"    Set host-set resources on a tcp-type target:",
 			"",
 			`      $ boundary targets authorize-session -id ttcp_1234567890`,
+			"",
+			"",
 		})
 	default:
 		helpStr = helpMap[c.Func]()
@@ -135,8 +143,11 @@ func (c *Command) Help() string {
 }
 
 func (c *Command) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
+	if len(flagsMap[c.Func]) == 0 {
+		return c.FlagSet(base.FlagSetNone)
+	}
 
+	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, resource.Target.String(), flagsMap[c.Func])
 

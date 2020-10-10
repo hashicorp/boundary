@@ -22,7 +22,7 @@ func memberSynopsisFunc(inFunc string) string {
 	case strings.HasPrefix(inFunc, "remove"):
 		in = "Remove users from"
 	}
-	return wordwrap.WrapString(fmt.Sprintf("%s a group within Boundary", in), base.TermWidth)
+	return wordwrap.WrapString(fmt.Sprintf("%s a group", in), base.TermWidth)
 }
 
 func addMembersHelp() string {
@@ -32,6 +32,8 @@ func addMembersHelp() string {
 		`  Adds members (users) to a group given its ID. The "user" flag can be specified multiple times. Example:`,
 		"",
 		`    $ boundary groups add-members -id g_1234567890 -user u_1234567890`,
+		"",
+		"",
 	})
 }
 
@@ -42,6 +44,8 @@ func setMembersHelp() string {
 		`  Sets the complete set of members (users) on a group given its ID. The "user" flag can be specified multiple times. Example:`,
 		"",
 		`    $ boundary groups set-principals -id g_1234567890 -user u_anon -user u_1234567890`,
+		"",
+		"",
 	})
 }
 
@@ -52,6 +56,8 @@ func removeMembersHelp() string {
 		`  Removes members (users) from a group given its ID. The "user" flag can be specified multiple times. Example:`,
 		"",
 		`    $ boundary groups remove-members -id g_1234567890 -user u_1234567890`,
+		"",
+		"",
 	})
 }
 

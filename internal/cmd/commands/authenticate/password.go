@@ -44,12 +44,13 @@ func (c *PasswordCommand) Help() string {
 		"  Invoke the password auth method to authenticate the Boundary CLI:",
 		"",
 		`    $ boundary authenticate password -auth-method-id ampw_1234567890 -login-name foo -password "bar"`,
+		"",
+		"",
 	}) + c.Flags().Help()
 }
 
 func (c *PasswordCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
-
 	f := set.NewFlagSet("Command Options")
 
 	f.StringVar(&base.StringVar{
