@@ -52,7 +52,7 @@ Navigate to the roles page and select 'new':
 Fill in the Role details:
 ![](/img/manage-roles-settings.png)
 
-Click save and next assign principals and [assign grants](/docs/common-workflows#assign-grants) to the role
+Click save and next [assign principals](/docs/common-workflows/manage-roles#assign-principals-to-a-role) and [assign grants](/docs/common-workflows/manage-roles#assign-grants-to-a-role) to the role
 ![](/img/manage-roles-defined.png)
 
 </Tab>
@@ -64,6 +64,9 @@ resource "boundary_scope" "role" {
   name        = "my_role"
   description = "My first role!"
   scope_id    = o_1234567890
+  principals  = [boundary_user.readonly.id] // optionally assign principals to the role
+  grants      = ["id=*;action=read"] // optionally assign grants to the role
+  scope_id    = boundary_scope.org.id
 }
 ```
 
@@ -71,6 +74,112 @@ resource "boundary_scope" "role" {
 </Tabs>
 
 
-# Assign Grants
+# Assign Principals to a Role
 
-To assign grants to a role, see [Permission Grant Formats](https://boundaryproject.io/docs/concepts/security/permissions-model#permission-grant-formats).
+Users and groups are given permissions to perform actions by assigning them to a role.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```bash
+boundary roles add-principals -id $role_id -principal $principal_id
+
+Role information:
+  Created Time:        Fri, 09 Oct 2020 14:45:47 PDT
+  Description:         My first role
+  Grant Scope ID:      o_1234567890
+  ID:                  r_CqEl81Io1C
+  Name:                test
+  Updated Time:        Fri, 09 Oct 2020 16:31:39 PDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Principals:
+    ID:             u_gAv6YgVtVs
+      Type:         user
+      Scope ID:     o_1234567890
+```
+
+</Tab>
+<Tab heading="Admin Console">
+Select the role to which you want to add a principal. Select 'Manage':
+![](/img/manage-roles-add-principal-undefined.png)
+
+
+Select a principal to add to the role. Click 'Add principals'
+![](/img/manage-roles-add-principal-settings.png)
+
+You have now added principals to the role. You can now read on to assign grants to the role.
+![](/img/manage-roles-add-principal-defined.png)
+
+</Tab>
+<Tab heading="Terraform">
+Principals are assigned to roles in Terraform in the role definition. See the Terraform role configuration example above.
+
+
+</Tab>
+</Tabs>
+
+
+# Assign Grants to a Role
+
+Grants gives roles permission to perform actions. For more information on how to format grants see [Permission Grant Formats](https://boundaryproject.io/docs/concepts/security/permissions-model#permission-grant-formats).
+In this example we give a role read and list permissions to all resources.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```bash
+boundary roles add-grants -id $role_id -grant 'id=*;type=*;actions=read,list'
+
+Role information:
+  Created Time:        Fri, 09 Oct 2020 14:45:47 PDT
+  Description:         My first role
+  Grant Scope ID:      o_1234567890
+  ID:                  r_CqEl81Io1C
+  Name:                test
+  Updated Time:        Fri, 09 Oct 2020 17:15:47 PDT
+  Version:             3
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Principals:
+    ID:             u_gAv6YgVtVs
+      Type:         user
+      Scope ID:     o_1234567890
+
+  Canonical Grants:
+    id=*;type=*;actions=read
+
+```
+
+</Tab>
+<Tab heading="Admin Console">
+Select the role to which you want to add a grant. Select 'Grants'.
+
+
+Add the grant string to the "New Grant" box. Then select "Add" and "Save".
+You have now added grants to the role.
+![](/img/manage-roles-assign-grants-defined.png)
+
+</Tab>
+
+
+<Tab heading="Terraform">
+Grants are assigned to roles in Terraform in the role definition. See the Terraform role configuration example above.
+
+
+</Tab>
+</Tabs>
+
