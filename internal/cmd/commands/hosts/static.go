@@ -25,7 +25,7 @@ type StaticCommand struct {
 }
 
 func (c *StaticCommand) Synopsis() string {
-	return fmt.Sprintf("%s a static-type host within Boundary", textproto.CanonicalMIMEHeaderKey(c.Func))
+	return fmt.Sprintf("%s a static-type host", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
 var staticFlagsMap = map[string][]string{
@@ -63,12 +63,8 @@ func (c *StaticCommand) Help() string {
 
 func (c *StaticCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
-
 	f := set.NewFlagSet("Command Options")
-
-	if len(staticFlagsMap[c.Func]) > 0 {
-		common.PopulateCommonFlags(c.Command, f, "static-type host", staticFlagsMap[c.Func])
-	}
+	common.PopulateCommonFlags(c.Command, f, "static-type host", staticFlagsMap[c.Func])
 
 	f = set.NewFlagSet("Static Host Options")
 

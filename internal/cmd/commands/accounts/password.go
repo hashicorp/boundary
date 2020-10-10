@@ -29,7 +29,7 @@ type PasswordCommand struct {
 }
 
 func (c *PasswordCommand) Synopsis() string {
-	return fmt.Sprintf("%s a password-type account within Boundary", textproto.CanonicalMIMEHeaderKey(c.Func))
+	return fmt.Sprintf("%s a password-type account", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
 var passwordFlagsMap = map[string][]string{
@@ -67,7 +67,6 @@ func (c *PasswordCommand) Help() string {
 
 func (c *PasswordCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
-
 	f := set.NewFlagSet("Command Options")
 
 	if len(passwordFlagsMap[c.Func]) > 0 {

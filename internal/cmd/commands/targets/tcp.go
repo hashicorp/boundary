@@ -28,7 +28,7 @@ type TcpCommand struct {
 }
 
 func (c *TcpCommand) Synopsis() string {
-	return fmt.Sprintf("%s a tcp-type target within Boundary", textproto.CanonicalMIMEHeaderKey(c.Func))
+	return fmt.Sprintf("%s a tcp-type target", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
 var tcpFlagsMap = map[string][]string{
@@ -66,7 +66,6 @@ func (c *TcpCommand) Help() string {
 
 func (c *TcpCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
-
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, "tcp-type target", tcpFlagsMap[c.Func])
 

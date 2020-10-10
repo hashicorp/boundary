@@ -26,12 +26,11 @@ type Command struct {
 
 func (c *Command) Synopsis() string {
 	switch c.Func {
-	case "", "create", "update", "read", "delete", "list":
-		return common.SynopsisFunc(c.Func, "user")
 	case "add-accounts", "set-accounts", "remove-accounts":
 		return accountSynopsisFunc(c.Func)
+	default:
+		return common.SynopsisFunc(c.Func, "user")
 	}
-	return ""
 }
 
 var helpMap = func() map[string]func() string {
@@ -63,11 +62,8 @@ func (c *Command) Help() string {
 
 func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
-
-	if len(flagsMap[c.Func]) > 0 {
-		f := set.NewFlagSet("Command Options")
-		populateFlags(c, f, flagsMap[c.Func])
-	}
+	f := set.NewFlagSet("Command Options")
+	populateFlags(c, f, flagsMap[c.Func])
 
 	return set
 }

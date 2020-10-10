@@ -75,11 +75,9 @@ func (c *Command) Help() string {
 
 func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
+	f := set.NewFlagSet("Command Options")
+	populateFlags(c, f, flagsMap[c.Func])
 
-	if len(flagsMap[c.Func]) > 0 {
-		f := set.NewFlagSet("Command Options")
-		populateFlags(c, f, flagsMap[c.Func])
-	}
 	return set
 }
 
