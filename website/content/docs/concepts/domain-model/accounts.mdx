@@ -8,14 +8,37 @@ description: |-
 
 # Accounts
 
-A Boundary account is a resource
-that contains the login name and password for the password authentication method.
-Accounts are not users,
-but can be associated with users.
-A login name is a not a username and vice versa.
-Accounts are a special case for the password auth method
-because other auth methods already store account information (such as OIDC).
+An account is a resource
+that represents a unique set of credentials
+issued from a configured [authentication method][]
+which can be used to establish the identity of a user.
+A [user][] can have zero or more accounts
+but an account can only belong to a single user.
 
 ## Attributes
 
-Accounts contain a `login name` and a `password`.
+All account types have the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the account's [authentication method].
+
+- `description` - (optional)
+
+### Password Account Attributes
+
+Password account types have the following additional attributes:
+
+- `login_name` - (required)
+  Must be unique within the account's [authentication method].
+  Can only contain lower case letters.
+
+- `password` - (optional)
+  Not setting the `password` disables the account.
+
+## Referenced By
+
+- [User][]
+- [Authentication Method][]
+
+[authentication method]: /docs/concepts/domain-model/auth-methods
+[user]: /docs/concepts/domain-model/users
