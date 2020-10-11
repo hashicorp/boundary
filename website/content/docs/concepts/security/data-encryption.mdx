@@ -67,7 +67,7 @@ an immediate result.
 
 ~> It is not required for this `kms` configuration block to exist in the
 Controller's configuration file. It's best practice to leave it out except when
-actually needed; then use change control capabilities to ensure that the
+actually needed, and to use change control capabilities to ensure that the
 configuration file modification is authorized. After it's no longer needed, the
 block should be removed.
 
@@ -75,17 +75,19 @@ On the client side, a user can use the `-recovery-config` flag with any
 operation on the CLI to specify a configuration file containing a suitable `kms`
 block. This functionality is also accessible via the Go SDK.
 
-~> This mechanism cannot be used to authorize a session, as there is no user information attached to these requests. Requests authorized via this mechanism will show a user of `u_recovery`.
+~> This mechanism cannot be used to authorize a session, as there is no user
+information attached to these requests. Requests authorized via this mechanism
+will show a user of `u_recovery`.
 
 There are some other situations where this mechanism can be useful. For example,
 it is possible to use this mechanism, along with some defaults in the Terraform
 provider, to ensure that _everything_ in Boundary is created through Terraform,
-with the exception of resources that cannot themselves be deleted (that is, the
-built-in anonymous (`u_anon`), authenticated (`u_auth`), and recovery
-(`u_recovery`) users; and the `global` scope). By initializing Boundary with the
-options to skip creating default resources, Terraform can be used to create the
-specfici resources needed instead, with the `recovery` KMS used to authenticate
-setting up the initial authentication method(s).
+with the exception of resources that cannot themselves be deleted. (This
+consists of built-in anonymous (`u_anon`), authenticated (`u_auth`), and
+recovery (`u_recovery`) users and the `global` scope.). By initializing Boundary
+with the options to skip creating default resources, Terraform can be used to
+create the specfic resources needed instead, with the `recovery` KMS used to
+authenticate setting up the initial authentication method(s).
 
 ## The `config` KMS Key
 
@@ -95,5 +97,5 @@ sensitive or secret values (such as cloud API keys for KMSes) in Boundary's
 configuration file, run `boundary config encrypt` to encrypt the file, and then
 safely pass the file to a change control system. Only another operator or system
 with access to that KMS can decrypt the values. Boundary will check for a
-`config` KMS block on startup, and if it exists, it will decrypt any encrypted
-values found at startup time.
+`config` KMS block on startup, and if it exists, will use it to decrypt any
+encrypted values found at startup time.
