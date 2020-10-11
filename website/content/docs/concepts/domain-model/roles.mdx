@@ -8,39 +8,33 @@ description: |-
 
 # Roles
 
-A role is a collection of capabilities granted to any Principal the Role is assigned to.
-A Role belongs to one and only one Scope.
-A Role owns zero or more Direct Grants.
-A Role can be assigned to zero or more Principals.
-A Principal assigned a Role receives all capabilities granted by any Direct Grant owned by the Role.
-A Role is deleted when the Scope it belongs to is deleted.
-All Direct Grants owned by a Role are deleted when the Role is deleted.
-The lifecycle of a Role is not tied to the lifecycle of any Principal.
-
-```shell-session
-+---------------------------------+
-|           Organization          |
-+----------------+----------------+
-|     Role 1     |     Role 2     |
-+----------------+----------------+
-```
+A role is a resource
+that contains a collection of [permissions][]
+which are granted to any principal assigned to the role.
+[Users][] and [groups][] are principals
+which allows either to be assigned to a role.
+A role can only be defined within a [project][] [scope][].
+A role can be assigned to principals from any scope.
 
 ## Attributes
 
-### ID
+A role has the following configurable attributes:
 
-A role is prefixed with `r_` followed by ten digits.
+- `name` - (optional)
+  If set, the `name` must be unique within the role's [project][].
 
-Example: `r_0123456789`
+- `description` - (optional)
 
-### Users
+## Referenced By
 
-A role can have zero or more users associated with it.
+- [Group][]
+- [Project][]
+- [User][]
 
-### Groups
-
-A role can have zero or more groups associated with it.
-
-### Grants
-
-A role can have zero or more grants associated with it.
+[group]: /docs/concepts/domain-model/groups
+[groups]: /docs/concepts/domain-model/groups
+[permissions]: /docs/concepts/security/permissions
+[project]: /docs/concepts/domain-model/scopes#projects
+[scope]: /docs/concepts/domain-model/scopes
+[user]: /docs/concepts/domain-model/users
+[users]: /docs/concepts/domain-model/users
