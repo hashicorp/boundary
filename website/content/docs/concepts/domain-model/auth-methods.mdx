@@ -8,27 +8,39 @@ description: |-
 
 # Authentication Methods
 
-An authentication method is a method configured for an Organization to authenticate Users.
-The configuration of an Authentication Method may contain secrets.
-Zero or one Authentication Method can be configured to create Users.
-Creation of Groups may be added later.
-An Authentication Method is owned by one and only one Organization.
-An Authentication Method creates and references zero or more Users.
-An Authentication Method is deleted when the Organization it belongs to is deleted.
-The lifecycle of an Authentication Method is not tied to the lifecycle of any User.
+An authentication method is a resource
+that provides a mechanism
+for [users][] to authenticate to Boundary.
+An authentication method contains [accounts][]
+which link an individual user to a set of credentials.
+Authentication methods can be defined at either a [Global][] or [Organization][] [scope][].
 
-```shell-session
-+---------------------------------------------+
-|                Organization                 |
-+---------------------------------------------+
-| Auth OIDC 1 | Auth OIDC 2 | Auth Userpass 1 |
-+---------------------------------------------+
-```
+## Attributes
 
-# Attributes
+All authentication methods have the following configurable attributes:
 
-### ID
+- `name` - (optional)
+  If set, the `name` must be unique within the authentication method's scope.
 
-An authentication method ID has a `am_` prefix followed by ten digits.
+- `description` - (optional)
 
-Example: `am_0123456789`
+### Password Authentication Method Attributes
+
+The password authentication method has the following additional attributes:
+
+- `min_login_name_length` - (required) The default is 3.
+
+- `min_password_length` - (required) The default is 8.
+
+## Referenced By
+
+- [Global][]
+- [Organization][]
+- [Account][]
+
+[account]: /docs/concepts/domain-model/accounts
+[accounts]: /docs/concepts/domain-model/accounts
+[global]: /docs/concepts/domain-model/scopes#global
+[organization]: /docs/concepts/domain-model/scopes#organizations
+[scope]: /docs/concepts/domain-model/scopes
+[users]: /docs/concepts/domain-model/users
