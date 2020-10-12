@@ -10,7 +10,7 @@ export default function CommunityPage() {
       </Head>
       <SectionHeader
         headline="Community"
-        description="Boundary is a newly-launched open source project.  The project team depends on the community’s engagement and feedback.  Get involved today."
+        description="Boundary is a newly-launched open source project. The project team depends on the community’s engagement and feedback. Get involved today."
         use_h1={true}
       />
       <VerticalTextBlockList
