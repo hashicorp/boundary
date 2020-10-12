@@ -49,14 +49,22 @@ But the following results in an error:
 
 This applies to `-h` as well!
 
-### Clearing Values
+### Clearing/Defaulting Values
 
 On the CLI, you can use `null` as a value to indicate to Boundary that you want
 to unset a value, reverting to Boundary's default. In many cases this default
-will be empty (e.g. for a `name` or `description` parameter) but in other cases,
-such as a password auth method's minimum password length, the default is not `0`
-but rather `8`. Using `null` to clear a value ensures you'll revert to
-Boundary's recommended default.
+will be empty (e.g. for a `name` or `description` parameter) but in other cases
+it's not. For instance, for a password auth method's minimum password length,
+the default is not `0` but rather `8`. Additionally, attempting to set string
+values to the empty string `""` is usually not an allowed operation, since when
+set to a specific value it must be non-empty. Using `null` to clear a value
+ensures you'll revert to Boundary's recommended default.
+
+~> `null` is used because of the fact that the API is JSON. Using `null` as the
+value causes the key for the parameter to be inserted into the eventual API
+call's JSON object but with the value set to the JSON `null`. This in turn
+informs the Controller that this value should be set to its default. Keep in
+mind that this is not a direct translation to database `NULL` semantics!
 
 ### Connection Options
 
