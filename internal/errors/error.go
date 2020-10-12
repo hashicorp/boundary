@@ -12,41 +12,41 @@ import (
 // with errors.Is.
 var (
 	// ErrInvalidPublicId indicates an invalid PublicId.
-	ErrInvalidPublicId = NewError(WithErrorMsg("invalid publicId"), WithErrCode(ErrCodeInvalidParameter))
+	ErrInvalidPublicId = New(WithErrorMsg("invalid publicId"), WithErrCode(InvalidParameter))
 
 	// ErrInvalidParameter is returned by create and update methods if
 	// an attribute on a struct contains illegal or invalid values.
-	ErrInvalidParameter = NewError(WithErrorMsg("invalid parameter"), WithErrCode(ErrCodeInvalidParameter))
+	ErrInvalidParameter = New(WithErrorMsg("invalid parameter"), WithErrCode(InvalidParameter))
 
 	// ErrInvalidFieldMask is returned by update methods if the field mask
 	// contains unknown fields or fields that cannot be updated.
-	ErrInvalidFieldMask = NewError(WithErrorMsg("invalid field mask"), WithErrCode(ErrCodeInvalidParameter))
+	ErrInvalidFieldMask = New(WithErrorMsg("invalid field mask"), WithErrCode(InvalidParameter))
 
 	// ErrEmptyFieldMask is returned by update methods if the field mask is
 	// empty.
-	ErrEmptyFieldMask = NewError(WithErrorMsg("empty field mask"), WithErrCode(ErrCodeInvalidParameter))
+	ErrEmptyFieldMask = New(WithErrorMsg("empty field mask"), WithErrCode(InvalidParameter))
 
 	// ErrNotUnique is returned by create and update methods when a write
 	// to the repository resulted in a unique constraint violation.
-	ErrNotUnique = NewError(WithErrorMsg("unique constraint violation"), WithErrCode(ErrCodeUnique))
+	ErrNotUnique = New(WithErrorMsg("unique constraint violation"), WithErrCode(NotUnique))
 
 	// ErrNotNull is returned by methods when a write to the repository resulted
 	// in a check constraint violation
-	ErrCheckConstraint = NewError(WithErrorMsg("check constraint violated"), WithErrCode(ErrCodeCheckConstraint))
+	ErrCheckConstraint = New(WithErrorMsg("check constraint violated"), WithErrCode(CheckConstraint))
 
 	// ErrNotNull is returned by methods when a write to the repository resulted
 	// in a not null constraint violation
-	ErrNotNull = NewError(WithErrorMsg("not null constraint violated"), WithErrCode(ErrCodeNotNull))
+	ErrNotNull = New(WithErrorMsg("not null constraint violated"), WithErrCode(NotNull))
 
 	// ErrRecordNotFound returns a "record not found" error and it only occurs
 	// when attempting to read from the database into struct.
 	// When reading into a slice it won't return this error.
-	ErrRecordNotFound = NewError(WithErrorMsg("record not found"), WithErrCode(ErrCodeRecordNotFound))
+	ErrRecordNotFound = New(WithErrorMsg("record not found"), WithErrCode(RecordNotFound))
 
 	// ErrMultipleRecords is returned by update and delete methods when a
 	// write to the repository would result in more than one record being
 	// changed resulting in the transaction being rolled back.
-	ErrMultipleRecords = NewError(WithErrorMsg("multiple records"), WithErrCode(ErrCodeMultipleRecords))
+	ErrMultipleRecords = New(WithErrorMsg("multiple records"), WithErrCode(MultipleRecords))
 )
 
 // IsUniqueError returns a boolean indicating whether the error is known to
@@ -58,7 +58,7 @@ func IsUniqueError(err error) bool {
 
 	var dbError *Error
 	if errors.As(err, &dbError) {
-		if dbError.Code != nil && *dbError.Code == ErrCodeUnique {
+		if dbError.Code != nil && *dbError.Code == NotUnique {
 			return true
 		}
 	}
@@ -82,7 +82,7 @@ func IsCheckConstraintError(err error) bool {
 
 	var dbError *Error
 	if errors.As(err, &dbError) {
-		if dbError.Code != nil && *dbError.Code == ErrCodeCheckConstraint {
+		if dbError.Code != nil && *dbError.Code == CheckConstraint {
 			return true
 		}
 	}
@@ -106,7 +106,7 @@ func IsNotNullError(err error) bool {
 
 	var dbError *Error
 	if errors.As(err, &dbError) {
-		if dbError.Code != nil && *dbError.Code == ErrCodeNotNull {
+		if dbError.Code != nil && *dbError.Code == NotNull {
 			return true
 		}
 	}
@@ -126,17 +126,17 @@ type Error struct {
 	// Msg for the error
 	Msg string
 	// Code is the error's code
-	Code    *ErrCode
+	Code    *Code
 	Wrapped error
 }
 
-// NewError creates a new Error and supports the options of:
+// New creates a new Error and supports the options of:
 // WithErrorMsg() - allows you to specify an error msg.  If a msg is specified,
 // then the error class and code will be surpressed when the Error() is called.
 // WithErrorCode() - allows you to specify an error code.  If no msg is
 // specified, then the error class and code are used when Error() is called.
 // WithWrap() - allows you to specify an error to wrap
-func NewError(opt ...Option) error {
+func New(opt ...Option) error {
 	opts := GetOpts(opt...)
 	if opts.withErrMsg == "" && opts.withErrCode == nil {
 		opts.withErrMsg = "unknown error"
@@ -149,9 +149,9 @@ func NewError(opt ...Option) error {
 	}
 }
 
-// ConvertDBError will convert the error to Error (if that's not possible, it just
+// Convert will convert the error to Error (if that's not possible, it just
 // returns the error as is) and it will attempt to add a helpful error msg too.
-func ConvertDBError(e error) error {
+func Convert(e error) error {
 	// nothing to convert.
 	if e == nil {
 		return nil
@@ -165,15 +165,15 @@ func ConvertDBError(e error) error {
 	var pqError *pq.Error
 	if errors.As(e, &pqError) {
 		if pqError.Code.Name() == "unique_violation" {
-			return NewError(WithErrorMsg(pqError.Detail), WithErrCode(ErrCodeUnique), WithWrap(ErrNotUnique))
+			return New(WithErrorMsg(pqError.Detail), WithErrCode(NotUnique), WithWrap(ErrNotUnique))
 		}
 		if pqError.Code.Name() == "not_null_violation" {
 			msg := fmt.Sprintf("%s must not be empty", pqError.Column)
-			return NewError(WithErrorMsg(msg), WithErrCode(ErrCodeNotNull), WithWrap(ErrNotNull))
+			return New(WithErrorMsg(msg), WithErrCode(NotNull), WithWrap(ErrNotNull))
 		}
 		if pqError.Code.Name() == "check_violation" {
 			msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
-			return NewError(WithErrorMsg(msg), WithErrCode(ErrCodeCheckConstraint), WithWrap(ErrCheckConstraint))
+			return New(WithErrorMsg(msg), WithErrCode(CheckConstraint), WithWrap(ErrCheckConstraint))
 		}
 	}
 	// unfortunately, we can't help.
@@ -192,7 +192,7 @@ func (e *Error) Error() string {
 	// since there's no err msg, let's try the err class/code...
 	if e.Msg == "" && e.Code != nil {
 		if info, ok := errorCodeInfo[*e.Code]; ok {
-			msgs = append(msgs, info.Message, info.Class.String())
+			msgs = append(msgs, info.Message, info.Kind.String())
 		}
 	}
 	if e.Code != nil {

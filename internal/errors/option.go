@@ -16,7 +16,7 @@ type Option func(*Options)
 type Options struct {
 	withErrWrapped error
 	withErrMsg     string
-	withErrCode    *ErrCode
+	withErrCode    *Code
 }
 
 func getDefaultOptions() Options {
@@ -25,7 +25,7 @@ func getDefaultOptions() Options {
 
 // WithErrCode provides an option to provide an ErrCode when creating a new
 // error.
-func WithErrCode(c ErrCode) Option {
+func WithErrCode(c Code) Option {
 	return func(o *Options) {
 		o.withErrCode = &c
 	}

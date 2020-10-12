@@ -9,27 +9,27 @@ import (
 func TestErrClass_String(t *testing.T) {
 	tests := []struct {
 		name string
-		e    ErrClass
+		e    Kind
 		want string
 	}{
 		{
-			name: "UnknownErrClass",
-			e:    UnknownErrClass,
+			name: "Other",
+			e:    Other,
 			want: "unknown",
 		},
 		{
-			name: "ParameterError",
-			e:    ParameterError,
+			name: "Parameter",
+			e:    Parameter,
 			want: "parameter violation",
 		},
 		{
-			name: "IntegrityError",
-			e:    IntegrityError,
+			name: "Integrity",
+			e:    Integrity,
 			want: "integrity violation",
 		},
 		{
-			name: "SearchError",
-			e:    SearchError,
+			name: "Search",
+			e:    Search,
 			want: "search issue",
 		},
 	}

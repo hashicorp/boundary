@@ -44,7 +44,7 @@ func TestError_IsUnique(t *testing.T) {
 		},
 		{
 			name: "wrapped-pq-is-unique",
-			in: errors.NewError(
+			in: errors.New(
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23505"),
 				}),
@@ -95,12 +95,12 @@ func TestError_IsCheckConstraint(t *testing.T) {
 		},
 		{
 			name: "ErrCodeCheckConstraint",
-			in:   errors.NewError(errors.WithErrCode(errors.ErrCodeCheckConstraint)),
+			in:   errors.New(errors.WithErrCode(errors.CheckConstraint)),
 			want: true,
 		},
 		{
 			name: "wrapped-pq-is-check-constraint",
-			in: errors.NewError(
+			in: errors.New(
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23514"),
 				}),
@@ -158,12 +158,12 @@ func TestError_IsNotNullError(t *testing.T) {
 		},
 		{
 			name: "ErrCodeNotNull",
-			in:   errors.NewError(errors.WithErrCode(errors.ErrCodeNotNull)),
+			in:   errors.New(errors.WithErrCode(errors.NotNull)),
 			want: true,
 		},
 		{
 			name: "wrapped-pq-is-not-null",
-			in: errors.NewError(
+			in: errors.New(
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23502"),
 				}),
@@ -198,12 +198,12 @@ func Test_NewError(t *testing.T) {
 			opt: []errors.Option{
 				errors.WithWrap(errors.ErrRecordNotFound),
 				errors.WithErrorMsg("test msg"),
-				errors.WithErrCode(errors.ErrCodeInvalidParameter),
+				errors.WithErrCode(errors.InvalidParameter),
 			},
 			want: &errors.Error{
 				Wrapped: errors.ErrRecordNotFound,
 				Msg:     "test msg",
-				Code:    func() *errors.ErrCode { c := errors.ErrCodeInvalidParameter; return &c }(),
+				Code:    func() *errors.Code { c := errors.InvalidParameter; return &c }(),
 			},
 		},
 		{
@@ -217,7 +217,7 @@ func Test_NewError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := errors.NewError(tt.opt...)
+			err := errors.New(tt.opt...)
 			require.Error(err)
 			assert.Equal(tt.want, err)
 		})
@@ -233,22 +233,22 @@ func TestError_Error(t *testing.T) {
 	}{
 		{
 			name: "msg",
-			err:  errors.NewError(errors.WithErrorMsg("test msg")),
+			err:  errors.New(errors.WithErrorMsg("test msg")),
 			want: "test msg",
 		},
 		{
 			name: "code",
-			err:  errors.NewError(errors.WithErrCode(errors.ErrCodeCheckConstraint)),
+			err:  errors.New(errors.WithErrCode(errors.CheckConstraint)),
 			want: "constraint check failed: integrity violation: error #1000",
 		},
 		{
 			name: "msg-and-code",
-			err:  errors.NewError(errors.WithErrorMsg("test msg"), errors.WithErrCode(errors.ErrCodeCheckConstraint)),
+			err:  errors.New(errors.WithErrorMsg("test msg"), errors.WithErrCode(errors.CheckConstraint)),
 			want: "test msg: error #1000",
 		},
 		{
 			name: "unknown",
-			err:  errors.NewError(),
+			err:  errors.New(),
 			want: "unknown error",
 		},
 	}
@@ -263,7 +263,7 @@ func TestError_Error(t *testing.T) {
 
 func TestError_Unwrap(t *testing.T) {
 	t.Parallel()
-	testErr := errors.NewError(errors.WithErrorMsg("test error"))
+	testErr := errors.New(errors.WithErrorMsg("test error"))
 
 	tests := []struct {
 		name      string
@@ -273,7 +273,7 @@ func TestError_Unwrap(t *testing.T) {
 	}{
 		{
 			name:      "ErrInvalidParameter",
-			err:       errors.NewError(errors.WithWrap(errors.ErrInvalidParameter)),
+			err:       errors.New(errors.WithWrap(errors.ErrInvalidParameter)),
 			want:      errors.ErrInvalidParameter,
 			wantIsErr: errors.ErrInvalidParameter,
 		},
@@ -335,7 +335,7 @@ func TestConvertError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := errors.ConvertDBError(tt.e)
+			err := errors.Convert(tt.e)
 			if tt.wantErr == nil {
 				assert.Nil(err)
 				return
@@ -353,7 +353,7 @@ func TestConvertError(t *testing.T) {
 		_, err = rw.Exec(ctx, insert, []interface{}{"alice", "dup coworker", nil})
 		require.Error(err)
 
-		e := errors.ConvertDBError(err)
+		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(stderrors.Is(e, errors.ErrNotUnique))
 		assert.Equal("Key (name)=(alice) already exists.: error #1002", e.Error())
@@ -365,7 +365,7 @@ func TestConvertError(t *testing.T) {
 		_, err = rw.Exec(ctx, insert, []interface{}{"alice", nil, nil})
 		require.Error(err)
 
-		e := errors.ConvertDBError(err)
+		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(stderrors.Is(e, errors.ErrNotNull))
 		assert.Equal("description must not be empty: error #1001", e.Error())
@@ -378,7 +378,7 @@ func TestConvertError(t *testing.T) {
 		_, err = rw.Exec(ctx, insert, []interface{}{"alice", "coworker", "one"})
 		require.Error(err)
 
-		e := errors.ConvertDBError(err)
+		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(stderrors.Is(e, errors.ErrCheckConstraint))
 		assert.Equal("test_table_five_check constraint failed: error #1000", e.Error())

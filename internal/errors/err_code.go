@@ -1,70 +1,70 @@
 package errors
 
-// ErrClass specifies the class of error (unknown, parameter, integrity, etc).
-type ErrClass uint32
+// Kind specifies the kind of error (unknown, parameter, integrity, etc).
+type Kind uint32
 
-// ErrCode specifies a code for the error.
-type ErrCode uint32
-type ErrInfo struct {
-	Class   ErrClass
+// Code specifies a code for the error.
+type Code uint32
+type Info struct {
+	Kind    Kind
 	Message string
 }
 
 const (
-	UnknownErrClass ErrClass = iota
-	ParameterError
-	IntegrityError
-	SearchError
+	Other Kind = iota
+	Parameter
+	Integrity
+	Search
 )
 
-func (e ErrClass) String() string {
-	return map[ErrClass]string{
-		UnknownErrClass: "unknown",
-		ParameterError:  "parameter violation",
-		IntegrityError:  "integrity violation",
-		SearchError:     "search issue",
+func (e Kind) String() string {
+	return map[Kind]string{
+		Other:     "unknown",
+		Parameter: "parameter violation",
+		Integrity: "integrity violation",
+		Search:    "search issue",
 	}[e]
 }
 
 const (
-	ErrCodeInvalidParameter ErrCode = 100
-	ErrCodeCheckConstraint  ErrCode = 1000
-	ErrCodeNotNull          ErrCode = 1001
-	ErrCodeUnique           ErrCode = 1002
-	ErrCodeRecordNotFound   ErrCode = 1100
-	ErrCodeMultipleRecords  ErrCode = 1101
+	InvalidParameter Code = 100
+	CheckConstraint  Code = 1000
+	NotNull          Code = 1001
+	NotUnique        Code = 1002
+	RecordNotFound   Code = 1100
+	MultipleRecords  Code = 1101
 )
 
-func (e ErrCode) String() string {
+func (e Code) String() string {
 	if i, ok := errorCodeInfo[e]; ok {
 		return i.Message
 	}
 	return "unknown"
 }
 
-var errorCodeInfo = map[ErrCode]ErrInfo{
-	ErrCodeInvalidParameter: {
+var errorCodeInfo = map[Code]Info{
+	InvalidParameter: {
 		Message: "invalid parameter",
-		Class:   ParameterError,
+		Kind:    Parameter,
 	},
-	ErrCodeCheckConstraint: {
+	CheckConstraint: {
 		Message: "constraint check failed",
-		Class:   IntegrityError,
+		Kind:    Integrity,
 	},
-	ErrCodeNotNull: {
+	NotNull: {
 		Message: "must not be empty (null) violation",
-		Class:   IntegrityError,
+		Kind:    Integrity,
 	},
-	ErrCodeUnique: {
+	NotUnique: {
 		Message: "must be unique violation",
-		Class:   IntegrityError,
+		Kind:    Integrity,
 	},
-	ErrCodeRecordNotFound: {
+	RecordNotFound: {
 		Message: "record not fouind",
-		Class:   SearchError,
+		Kind:    Search,
 	},
-	ErrCodeMultipleRecords: {
+	MultipleRecords: {
 		Message: "multiple records",
-		Class:   SearchError,
+		Kind:    Search,
 	},
 }

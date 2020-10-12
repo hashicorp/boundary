@@ -18,8 +18,8 @@ func Test_getOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 
 		// try setting it
-		opts = GetOpts(WithErrCode(ErrCodeNotNull))
-		c := ErrCodeNotNull
+		opts = GetOpts(WithErrCode(NotNull))
+		c := NotNull
 		testOpts.withErrCode = &c
 		assert.Equal(opts, testOpts)
 	})
