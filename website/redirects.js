@@ -20,12 +20,12 @@ module.exports = [
   /////////////////////////////////
   {
     source: '/help/admin-ui/orgs',
-    destination: '/docs/concepts/domain-model/organizations',
+    destination: '/docs/concepts/domain-model/scopes#organizations',
     permanent: false,
   },
   {
     source: '/help/admin-ui/projects',
-    destination: '/docs/concepts/domain-model/projects',
+    destination: '/docs/concepts/domain-model/scopes#projects',
     permanent: false,
   },
   {
@@ -55,7 +55,7 @@ module.exports = [
   },
   {
     source: '/help/admin-ui/projects',
-    destination: '/docs/concepts/domain-model/projects',
+    destination: '/docs/concepts/domain-model/scopes#projects',
     permanent: false,
   },
   {
