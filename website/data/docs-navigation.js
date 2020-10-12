@@ -86,6 +86,7 @@ export default [
       'manage-scopes',
       'manage-targets',
       'manage-identities',
+      'manage-roles',
       'manage-sessions',
     ],
   },
