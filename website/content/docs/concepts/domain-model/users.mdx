@@ -12,11 +12,10 @@ A user is a resource
 that represents an individual person or entity
 for the purposes of access control.
 A user can be associated with zero or more [accounts][].
-A user authenticates to Boundary through one of the accounts associated with that user.
-However, if a user is not associated with any account,
-they will not be able to access Boundary.
+A user authenticates to Boundary through an associated account
+and must be associated with at least one account before they can access Boundary.
 
-A user is a principal
+A user is also a principal
 which allows it to be assigned to [roles][].
 A user receives all the [permissions][]
 of the roles assigned directly to the user
