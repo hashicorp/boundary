@@ -33,6 +33,10 @@ For more information regarding different ways to connect to a target behind Boun
 
 ## View Sessions
 
+<Tabs>
+<Tab heading="CLI">
+
+
 View all sessions which Boundary has for the project `p_1234567890` by listing them.
 
 ```bash
@@ -83,9 +87,29 @@ Session information:
         Status:            pending
 ```
 
+</Tab>
+<Tab heading="Admin Console">
+
+
+1.  Navigate to a project, then to sessions.
+1.  View the session information provided there.
+
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+    <source
+        type="video/mp4"
+        src="https://www.datocms-assets.com/2885/1602532864-boundary-clickthrough-manage-sessions-view-sessions.mp4"
+    />
+</video>
+</Tab>
+</Tabs>
+
+
 ## Cancel a Session
 
+<Tabs>
+<Tab heading="CLI">
 To cancel a session the person initiating the connection can disconnect all connections, or a request can be sent to Boundary to cancel it.
+
 
 ```bash
 $ boundary sessions cancel -id s_h7vBIhH5SZ
@@ -126,18 +150,23 @@ Session information:
 
 Boundary then cancels the session and move it into a "Terminated" state.
 
-### Canceling a Session via the Admin Console
+</Tab>
+<Tab heading="Admin Console">
+
 
 1. Navigate to a project, then to sessions.
 1. Choose a session and its **Cancel** button.
 1. View the session status update from _canceling_ to _terminated_.
 
 <video muted playsInline autoPlay loop class="boundary-clickthrough-video">
-  <source
-    type="video/mp4"
-    src="https://www.datocms-assets.com/2885/1602261010-boundary-clickthrough-manage-sessions-cancel-session.mp4"
-  />
+    <source
+        type="video/mp4"
+        src="https://www.datocms-assets.com/2885/1602261010-boundary-clickthrough-manage-sessions-cancel-session.mp4"
+    />
 </video>
+</Tab>
+</Tabs>
+
 
 ## Advanced Session Establishment
 
