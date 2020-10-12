@@ -258,7 +258,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete target: failed record not found for ",
+			wantErrMsg:      "delete target: failed record not found: error",
 		},
 	}
 	for _, tt := range tests {

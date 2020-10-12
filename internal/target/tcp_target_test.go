@@ -268,7 +268,7 @@ func TestTcpTarget_Update(t *testing.T) {
 				assert.Equal(tt.wantErrMsg, err.Error())
 				err = db.TestVerifyOplog(t, rw, target.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
-				assert.Equal("record not found", err.Error())
+				assert.Contains(err.Error(), "record not found: error")
 				return
 			}
 			require.NoError(err)

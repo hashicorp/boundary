@@ -185,7 +185,7 @@ func TestRepository_DeleteConnection(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete connection: failed record not found for ",
+			wantErrMsg:      "delete connection: failed record not found: error ",
 		},
 	}
 	for _, tt := range tests {

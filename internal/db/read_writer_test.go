@@ -129,7 +129,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "update: with version option is zero: invalid parameter",
+			wantErrMsg: "update: with version option is zero: invalid parameter: error #100",
 		},
 		{
 			name: "simple-with-version",
@@ -276,7 +276,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "update: not allowed on primary key field Id: invalid field mask",
+			wantErrMsg: "update: not allowed on primary key field Id: invalid field mask: error #100",
 		},
 		{
 			name: "both are missing",
@@ -304,7 +304,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "update: interface is missing invalid parameter",
+			wantErrMsg: "update: interface is missing invalid parameter: error #100",
 		},
 		{
 			name: "only read-only",
@@ -530,7 +530,7 @@ func TestDb_Update(t *testing.T) {
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: missing underlying db invalid parameter", err.Error())
+		assert.Equal("update: missing underlying db invalid parameter: error #100", err.Error())
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -552,7 +552,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed: error no wrapper WithOplog: invalid parameter", err.Error())
+		assert.Equal("update: oplog validation failed: error no wrapper WithOplog: invalid parameter: error #100", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -569,7 +569,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed: error no metadata for WithOplog: invalid parameter", err.Error())
+		assert.Equal("update: oplog validation failed: error no metadata for WithOplog: invalid parameter: error #100", err.Error())
 	})
 }
 

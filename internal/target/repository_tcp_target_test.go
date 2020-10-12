@@ -220,7 +220,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update tcp target: update: lookup after write: record not found for 1",
+			wantErrMsg:     "update tcp target: update: lookup after write: record not found",
 			wantIsError:    errors.ErrRecordNotFound,
 		},
 		{
