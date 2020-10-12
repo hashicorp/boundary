@@ -1,14 +1,26 @@
 ---
 layout: docs
-page_title: CLI Behavior
-sidebar_title: CLI Behavior
+page_title: CLI
+sidebar_title: CLI
 description: |-
   Boundary's CLI behavior
 ---
 
-# CLI Behavior
+# CLI
 
 Boundary's CLI has predictable behavior throughout its various commands. This page details the common patterns in used in order to help users make better use of the CLI.
+
+## Completion
+
+Before detailing how parameters work, it's useful to note that Boundary's CLI supports autocompletion, which allows tab completion of commands, flags, and in some cases the parameters to those flags.
+
+This can be installed via the CLI itself:
+
+`boundary config autocomplete install`
+
+If you want to install it manually, for Bash, the following line in a `~/.bash_profile` or similar file will work:
+
+`complete -C /path/to/boundary boundary`
 
 ## Parameter Handling
 
@@ -70,11 +82,3 @@ However, a target can be one of many types of targets, and a concrete implementa
 This allows the CLI to perform proper presentation and validation of parameters and functions for the given type.
 
 Similar to `read`, `update` operates on an existing target so will always take an `-id` parameter. Similar to `list`, `create` operates on a collection so will either take a `-scope-id` parameter or a parameter defining the parent resource.
-
-## Completion
-
-Boundary's CLI supports autocompletion. For Bash, the following line in a `~/.bash_profile` or similar file will work:
-
-`complete -C /path/to/boundary boundary`
-
-This will allow tab completion of commands, flags, and in some cases the parameters to those flags.
