@@ -16,23 +16,12 @@ export default [
     content: ['systemd', 'postgres', 'high-availability'],
   },
   {
-    category: 'developing',
-    content: [
-      'building',
-      'ui',
-      {
-        category: 'sdk',
-        content: ['authenticate'],
-      },
-    ],
+    category: 'api-clients',
+    content: ['api', 'cli', 'go-sdk'],
   },
   {
     category: 'concepts',
     content: [
-      {
-        category: 'api',
-        content: ['http-api-model', 'cli-behavior'],
-      },
       {
         category: 'security',
         content: [
@@ -57,6 +46,13 @@ export default [
           'users',
         ],
       },
+    ],
+  },
+  {
+    category: 'developing',
+    content: [
+      'building',
+      'ui',
     ],
   },
   '---',
