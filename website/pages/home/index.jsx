@@ -200,8 +200,9 @@ export default function HomePage() {
               icon: require('./img/features/session-visibility.svg?url'),
             },
             {
-              title: 'Access control as code',
-              content: 'Define and deploy access control policies as code.',
+              title: 'Infrastructure as code',
+              content:
+                'Define policies and manage Boundary with an Infrastructure as Code approach. Terraform provider supports the full breadth of Boundary configurations.',
               icon: require('./img/features/config-as-code.svg?url'),
             },
             {
