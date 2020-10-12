@@ -1,8 +1,12 @@
-
 function create_host() {
   local name=$1
-  local addr=$2
-  boundary hosts create static -name $name -address $addr
+  local hcid=$2
+  
+  boundary hosts create static \
+    -name $name \
+    -description 'test host' \
+    -address '1.1.1.1' \
+    -host-catalog-id $hcid
 }
 
 function read_host() {
@@ -14,11 +18,12 @@ function delete_host() {
 }
 
 function list_hosts() {
-  boundary hosts list -scope-id $1 -format json
+  boundary hosts list -host-catalog-id $1 -format json
 }
 
 function host_id() {
-  local sid=$1
-  local name=$2
-  strip $(list_hosts $sid | jq -c ".[] | select(.name | contains(\"$name\")) | .[\"id\"]")
+  local name=$1
+  local hcid=$2
+  
+  strip $(list_hosts $hcid | jq -c ".[] | select(.name | contains(\"$name\")) | .[\"id\"]")
 }
