@@ -43,6 +43,8 @@ type AuthMethodServiceClient interface {
 	// DeleteAuthMethod removes an Auth Method from Boundary. If the Auth Method id
 	// is malformed or not provided an error is returned.
 	DeleteAuthMethod(ctx context.Context, in *DeleteAuthMethodRequest, opts ...grpc.CallOption) (*DeleteAuthMethodResponse, error)
+	// Authenticate validates credentials provided and returns an Auth Token.
+	Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error)
 }
 
 type authMethodServiceClient struct {
@@ -98,6 +100,15 @@ func (c *authMethodServiceClient) DeleteAuthMethod(ctx context.Context, in *Dele
 	return out, nil
 }
 
+func (c *authMethodServiceClient) Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error) {
+	out := new(AuthenticateResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.AuthMethodService/Authenticate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthMethodServiceServer is the server API for AuthMethodService service.
 type AuthMethodServiceServer interface {
 	// GetAuthMethod returns a stored Auth Method if present.  The provided request
@@ -126,6 +137,8 @@ type AuthMethodServiceServer interface {
 	// DeleteAuthMethod removes an Auth Method from Boundary. If the Auth Method id
 	// is malformed or not provided an error is returned.
 	DeleteAuthMethod(context.Context, *DeleteAuthMethodRequest) (*DeleteAuthMethodResponse, error)
+	// Authenticate validates credentials provided and returns an Auth Token.
+	Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
 }
 
 // UnimplementedAuthMethodServiceServer can be embedded to have forward compatible implementations.
@@ -146,6 +159,9 @@ func (*UnimplementedAuthMethodServiceServer) UpdateAuthMethod(context.Context, *
 }
 func (*UnimplementedAuthMethodServiceServer) DeleteAuthMethod(context.Context, *DeleteAuthMethodRequest) (*DeleteAuthMethodResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAuthMethod not implemented")
+}
+func (*UnimplementedAuthMethodServiceServer) Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Authenticate not implemented")
 }
 
 func RegisterAuthMethodServiceServer(s *grpc.Server, srv AuthMethodServiceServer) {
@@ -242,6 +258,24 @@ func _AuthMethodService_DeleteAuthMethod_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthMethodService_Authenticate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AuthenticateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthMethodServiceServer).Authenticate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.AuthMethodService/Authenticate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthMethodServiceServer).Authenticate(ctx, req.(*AuthenticateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _AuthMethodService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "controller.api.services.v1.AuthMethodService",
 	HandlerType: (*AuthMethodServiceServer)(nil),
@@ -265,6 +299,10 @@ var _AuthMethodService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteAuthMethod",
 			Handler:    _AuthMethodService_DeleteAuthMethod_Handler,
+		},
+		{
+			MethodName: "Authenticate",
+			Handler:    _AuthMethodService_Authenticate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

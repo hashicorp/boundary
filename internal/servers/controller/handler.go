@@ -23,7 +23,6 @@ import (
 	"github.com/hashicorp/shared-secure-libs/configutil"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authenticate"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
@@ -108,14 +107,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	if err := services.RegisterAccountServiceHandlerServer(ctx, mux, accts); err != nil {
 		return nil, fmt.Errorf("failed to register account service handler: %w", err)
 	}
-	auths, err := authenticate.NewService(c.kms, c.PasswordAuthRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create authentication handler service: %w", err)
-	}
-	if err := services.RegisterAuthenticationServiceHandlerServer(ctx, mux, auths); err != nil {
-		return nil, fmt.Errorf("failed to register authenticate service handler: %w", err)
-	}
-	authMethods, err := authmethods.NewService(c.PasswordAuthRepoFn, c.IamRepoFn)
+	authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth method handler service: %w", err)
 	}
