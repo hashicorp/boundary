@@ -8,19 +8,112 @@ description: |-
 
 # Overview
 
-![](/img/boundary-domain-model-overview.jpg)
-
 Boundary has a rich domain model
 consisting of resources that represent
-IAM principals,
+[IAM][] principals,
 infrastructure,
 and the means to tie them together.
 This section contains information about the various resources within the domain
 and how they relate to each other.
 
+![](/img/boundary-domain-model-overview.jpg)
+
+## Resources
+
+A resource is any element in Boundary
+to which principals may be granted [permissions][].
+All resources have an ID which is unique within Boundary.
+
+### Summary of Resources
+
+- **[Account][]** :
+  An account is a resource
+  that represents a unique set of credentials
+  issued from a configured [authentication method][]
+  which can be used to establish the identity of a [user][].
+
+- **[Authentication Method][]** :
+  An authentication method is a resource
+  that provides a mechanism
+  for [users][] to authenticate to Boundary.
+
+- **[Group][]** :
+  A group is a resource
+  that represents a collection of [users][]
+  which can be treated equally
+  for the purposes of access control.
+
+- **[Host][]** :
+  A host is a resource
+  that represents a computing element with a network address
+  reachable from Boundary.
+
+- **[Host Catalog][]** :
+  A host catalog is a resource
+  that contains [hosts][] and [host sets][].
+
+- **[Host Set][]** :
+  A host set is a resource
+  that represents a collection of [hosts][]
+  which are considered equivalent
+  for the purposes of access control.
+
+- **[Role][]** :
+  A role is a resource
+  that contains a collection of [permissions][]
+  which are granted to any principal assigned to the role.
+
+- **[Session][]** :
+  A session is a set of related connections
+  between a [user][] and a [host][].
+
+- **[Scope][]** :
+  A scope is a [permission][] boundary modeled as a container.
+
+- **[Target][]** :
+  A target is a resource
+  that represents a networked service
+  a [user][] can connect to
+  and interact with
+  through Boundary
+  by way of a [session][].
+
+- **[User][]** :
+  A user is a resource
+  that represents an individual person or entity
+  for the purposes of access control.
+
+## Next Steps
+
 When getting started with Boundary,
-the first resource to look at should probably be [Scopes](/docs/concepts/domain-model/scopes).
+the first resource to look at should probably be [Scopes][].
 Every other resources is either contained within a scope,
 or contained within another resource
 that is itself contained within a scope.
 That page can help you understand the structure of resources within Boundary.
+
+[iam]: https://en.wikipedia.org/wiki/Identity_management
+[account]: /docs/concepts/domain-model/accounts
+[accounts]: /docs/concepts/domain-model/accounts
+[authentication method]: /docs/concepts/domain-model/auth-methods
+[authentication methods]: /docs/concepts/domain-model/auth-methods
+[group]: /docs/concepts/domain-model/groups
+[groups]: /docs/concepts/domain-model/groups
+[host catalog]: /docs/concepts/domain-model/host-catalogs
+[host catalogs]: /docs/concepts/domain-model/host-catalogs
+[host set]: /docs/concepts/domain-model/host-sets
+[host sets]: /docs/concepts/domain-model/host-sets
+[host]: /docs/concepts/domain-model/hosts
+[hosts]: /docs/concepts/domain-model/hosts
+[role]: /docs/concepts/domain-model/roles
+[roles]: /docs/concepts/domain-model/roles
+[scope]: /docs/concepts/domain-model/scopes
+[scopes]: /docs/concepts/domain-model/scopes
+[session]: /docs/concepts/domain-model/sessions
+[sessions]: /docs/concepts/domain-model/sessions
+[target]: /docs/concepts/domain-model/targets
+[targets]: /docs/concepts/domain-model/targets
+[user]: /docs/concepts/domain-model/users
+[users]: /docs/concepts/domain-model/users
+[permission]: /docs/concepts/security/permissions
+[permissions]: /docs/concepts/security/permissions
