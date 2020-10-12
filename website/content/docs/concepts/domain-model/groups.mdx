@@ -17,7 +17,7 @@ which allows it to be assigned to [roles][].
 Any role assigned to a group is indirectly assigned to the users in the group.
 This assignment is a transitive property.
 A user in a group receives all [permissions][] of the roles assigned to the group.
-Groups can be defined at either a [Global][] or [Organization][] [scope][].
+Groups can be defined at the [Global][], [Organization][], or [Project][] [scope][].
 
 ## Attributes
 
@@ -40,6 +40,7 @@ A group has the following configurable attributes:
 [groups]: /docs/concepts/domain-model/groups
 [organization]: /docs/concepts/domain-model/scopes#organizations
 [permissions]: /docs/concepts/security/permissions
+[project]: /docs/concepts/domain-model/scopes#projects
 [role]: /docs/concepts/domain-model/roles
 [roles]: /docs/concepts/domain-model/roles
 [scope]: /docs/concepts/domain-model/scopes
@@ -50,4 +51,4 @@ A group has the following configurable attributes:
 
 The following services are relevant to this resource:
 
-* [Group Service](/api-docs/group-service)
+- [Group Service](/api-docs/group-service)
