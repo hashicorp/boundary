@@ -1,8 +1,7 @@
 import styles from './branded-cta.module.css'
 import Button from '@hashicorp/react-button'
 
-export default function BrandedCta(props) {
-  const { heading, content, links } = props
+export default function BrandedCta({ heading, content, links }) {
 
   return (
     <div className={styles.brandedCta}>
