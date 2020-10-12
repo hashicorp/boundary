@@ -18,12 +18,12 @@ Authenticating to Boundary starts with an [Auth Method](/docs/concepts/domain-mo
 the basic identity delegation needed for Boundary to generate a token for a client. There are two primary methods for
 authenticating to Boundary:
 
-1. Via an authentication method
+1. Via an auth method
 1. Via the recovery KMS workflow
 
 We'll cover how to authenticate to Boundary via both of these workflows. 
 
-### Authentication Method
+### Auth Method
 
 This is the most common way for a client to authenticate to Boundary. To demonstrate this, we'll
 use the [authmethods](https://github.com/hashicorp/boundary/tree/main/api/authmethods) library to generate

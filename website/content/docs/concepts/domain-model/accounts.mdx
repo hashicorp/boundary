@@ -10,7 +10,7 @@ description: |-
 
 An account is a resource
 that represents a unique set of credentials
-issued from a configured [authentication method][]
+issued from a configured [auth method][]
 which can be used to establish the identity of a user.
 A [user][] can have zero or more accounts
 but an account can only belong to a single user.
@@ -20,7 +20,7 @@ but an account can only belong to a single user.
 All account types have the following configurable attributes:
 
 - `name` - (optional)
-  If set, the `name` must be unique within the account's [authentication method][].
+  If set, the `name` must be unique within the account's [auth method][].
 
 - `description` - (optional)
 
@@ -29,7 +29,7 @@ All account types have the following configurable attributes:
 Password account types have the following additional attributes:
 
 - `login_name` - (required)
-  Must be unique within the account's [authentication method][].
+  Must be unique within the account's [auth method][].
   Can only contain lower case letters.
 
 - `password` - (optional)
@@ -37,8 +37,8 @@ Password account types have the following additional attributes:
 
 ## Referenced By
 
-- [Authentication Method][]
+- [Auth Method][]
 - [User][]
 
-[authentication method]: /docs/concepts/domain-model/auth-methods
+[auth method]: /docs/concepts/domain-model/auth-methods
 [user]: /docs/concepts/domain-model/users

@@ -53,7 +53,7 @@ Resources themselves are defined by ID specifiers within a collection path, e.g.
 
 Depending on the resource type, various parameters may be available. Some are common across all resource types (e.g. `name` and `description`); others are available only for specific types. Further, some concrete-types of abstract resources include an opaque `attributes` JSON object with type-specific values.
 
-For instance, an authentication method is an abstract type; a `password` authentication method is a concrete implementation of that type. When creating such an auth method, a `type` parameter will indicate that it should be the `password` type, while values specific to the `password` type auth method, such as minimum password length, will be contained within an `attributes` object.
+For instance, an auth method is an abstract type; a `password` auth method is a concrete implementation of that type. When creating such an auth method, a `type` parameter will indicate that it should be the `password` type, while values specific to the `password` type auth method, such as minimum password length, will be contained within an `attributes` object.
 
 ## Methods
 
