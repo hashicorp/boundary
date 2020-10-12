@@ -30,7 +30,7 @@ function App({ Component, pageProps }) {
         title={`${productName} by HashiCorp`}
         siteName={`${productName} by HashiCorp`}
         description="Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments."
-        image="https://boundaryproject.io/img/og-image.png"
+        image="https://www.boundaryproject.io/img/og-image.png"
         icon={[{ href: '/favicon.ico' }]}
       />
       {ALERT_BANNER_ACTIVE && <AlertBanner {...alertBannerData} theme="red" />}
