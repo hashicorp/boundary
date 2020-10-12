@@ -1,9 +1,13 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "controller/api/services/v1/account_service.proto",
+    "title": "Boundary Controller HTTP API",
     "version": "version not set"
   },
+  "schemes": [
+    "https",
+    "http"
+  ],
   "consumes": [
     "application/json"
   ],
