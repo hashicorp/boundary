@@ -1,13 +1,9 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Controller API",
+    "title": "controller/api/services/v1/account_service.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "https",
-    "http"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -273,7 +269,7 @@
     "/v1/auth-methods/{auth_method_id}:authenticate": {
       "post": {
         "summary": "Authenticate a user to an scope and retrieve an authentication token.",
-        "operationId": "AuthenticationService_Authenticate",
+        "operationId": "AuthMethodService_Authenticate",
         "responses": {
           "200": {
             "description": "",
@@ -300,7 +296,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthenticationService"
+          "controller.api.services.v1.AuthMethodService"
         ]
       }
     },
