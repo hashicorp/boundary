@@ -8,7 +8,6 @@ import Router from 'next/router'
 import HashiHead from '@hashicorp/react-head'
 import Head from 'next/head'
 import { ErrorBoundary } from '@hashicorp/nextjs-scripts/lib/bugsnag'
-import ConditionalAuthProvider from 'components/conditional-auth-provider'
 import ProductSubnav from '../components/subnav'
 import Footer from 'components/footer'
 import Error from './_error'
@@ -26,26 +25,22 @@ function App({ Component, pageProps }) {
 
   return (
     <ErrorBoundary FallbackComponent={Error}>
-      <ConditionalAuthProvider session={pageProps.session}>
-        <HashiHead
-          is={Head}
-          title={`${productName} by HashiCorp`}
-          siteName={`${productName} by HashiCorp`}
-          description="Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments."
-          image="https://boundaryproject.io/img/og-image.png"
-          icon={[{ href: '/favicon.ico' }]}
-        />
-        {ALERT_BANNER_ACTIVE && (
-          <AlertBanner {...alertBannerData} theme="red" />
-        )}
-        <HashiStackMenu />
-        <ProductSubnav />
-        <div className="content">
-          <Component {...pageProps} />
-        </div>
-        <Footer openConsentManager={openConsentManager} />
-        <ConsentManager />
-      </ConditionalAuthProvider>
+      <HashiHead
+        is={Head}
+        title={`${productName} by HashiCorp`}
+        siteName={`${productName} by HashiCorp`}
+        description="Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments."
+        image="https://www.boundaryproject.io/img/og-image.png"
+        icon={[{ href: '/favicon.ico' }]}
+      />
+      {ALERT_BANNER_ACTIVE && <AlertBanner {...alertBannerData} theme="red" />}
+      <HashiStackMenu />
+      <ProductSubnav />
+      <div className="content">
+        <Component {...pageProps} />
+      </div>
+      <Footer openConsentManager={openConsentManager} />
+      <ConsentManager />
     </ErrorBoundary>
   )
 }
