@@ -7,6 +7,7 @@ export DEFAULT_O_ID='o_1234567890'
 export DEFAULT_TARGET='ttcp_1234567890'
 export DEFAULT_HOST_SET='hsst_1234567890'
 export DEFAULT_HOST_CATALOG='hcst_1234567890'
+export DEFAULT_HOST='hst_1234567890'
 
 function strip() {
   echo "$1" | tr -d '"'
