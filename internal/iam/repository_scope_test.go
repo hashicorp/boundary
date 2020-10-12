@@ -197,7 +197,7 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		require.Error(err)
 		assert.Nil(project)
 		assert.Equal(0, updatedRows)
-		assert.Equal("update scope: you cannot change a scope's parent: invalid field mask", err.Error())
+		assert.Contains(err.Error(), "update scope: you cannot change a scope's parent: invalid field mask")
 	})
 }
 
@@ -433,7 +433,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantUpdatedRows, rowsUpdated)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				return
 			}
 			require.NoError(err)

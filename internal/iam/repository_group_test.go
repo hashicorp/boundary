@@ -107,7 +107,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantErrMsg:  "create group: error getting metadata for create: unable to get scope for standard metadata: record not found for",
+			wantErrMsg:  "create group: error getting metadata for create: unable to get scope for standard metadata: record not found",
 			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
@@ -238,7 +238,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update group: update: lookup after write: record not found for 1",
+			wantErrMsg:     "update group: update: lookup after write: record not found",
 			wantIsError:    errors.ErrRecordNotFound,
 		},
 		{
@@ -520,7 +520,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete group: failed record not found for ",
+			wantErrMsg:      "delete group: failed record not found: error ",
 		},
 	}
 	for _, tt := range tests {

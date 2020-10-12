@@ -684,7 +684,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				assert.Nil(updatedAM)
 				err = db.TestVerifyOplog(t, rw, amToUpdate.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
-				assert.Equal("record not found", err.Error())
+				assert.Contains(err.Error(), "record not found")
 				return
 			}
 			require.NoError(err)

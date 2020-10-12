@@ -64,7 +64,7 @@ func TestNewUser(t *testing.T) {
 			got, err := NewUser(tt.args.orgPublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				return
 			}
 			require.NoError(err)

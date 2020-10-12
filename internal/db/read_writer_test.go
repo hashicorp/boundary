@@ -750,7 +750,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		require.Error(err)
-		assert.Equal("create: oplog validation failed: error no wrapper WithOplog: invalid parameter", err.Error())
+		assert.Contains(err.Error(), "create: oplog validation failed: error no wrapper WithOplog: invalid parameter")
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -769,7 +769,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		require.Error(err)
-		assert.Equal("create: oplog validation failed: error no metadata for WithOplog: invalid parameter", err.Error())
+		assert.Contains(err.Error(), "create: oplog validation failed: error no metadata for WithOplog: invalid parameter")
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -781,7 +781,7 @@ func TestDb_Create(t *testing.T) {
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
 		require.Error(err)
-		assert.Equal("create: missing underlying db: invalid parameter", err.Error())
+		assert.Contains(err.Error(), "create: missing underlying db: invalid parameter")
 	})
 }
 
@@ -814,7 +814,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 		require.NoError(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		require.Error(err)
-		assert.Equal("lookup by id: underlying db nil invalid parameter", err.Error())
+		assert.Contains(err.Error(), "lookup by id: underlying db nil invalid parameter")
 	})
 	t.Run("no-public-id-set", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -824,7 +824,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 		require.NoError(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		require.Error(err)
-		assert.Equal("lookup by id: primary key unset invalid parameter", err.Error())
+		assert.Contains(err.Error(), "lookup by id: primary key unset invalid parameter")
 	})
 	t.Run("not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)

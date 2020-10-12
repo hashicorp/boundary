@@ -108,7 +108,7 @@ func TestRepository_CreateRole(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantErrMsg:  "create role: error getting metadata for create: unable to get scope for standard metadata: record not found for",
+			wantErrMsg:  "create role: error getting metadata for create: unable to get scope for standard metadata: record not found: error",
 			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
@@ -239,7 +239,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update role: update: lookup after write: record not found for 1",
+			wantErrMsg:     "update role: update: lookup after write: record not found: error",
 			wantIsError:    errors.ErrRecordNotFound,
 		},
 		{
@@ -518,7 +518,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete role: failed record not found for ",
+			wantErrMsg:      "delete role: failed record not found: error",
 		},
 	}
 	for _, tt := range tests {

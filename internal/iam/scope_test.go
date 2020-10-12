@@ -42,14 +42,14 @@ func TestScope_New(t *testing.T) {
 		s, err := newScope(nil)
 		require.Error(err)
 		require.Nil(s)
-		assert.Equal("new scope: child scope is missing its parent: invalid parameter", err.Error())
+		assert.Contains(err.Error(), "new scope: child scope is missing its parent: invalid parameter")
 	})
 	t.Run("proj-scope-with-no-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		s, err := NewProject("")
 		require.Error(err)
 		require.Nil(s)
-		assert.Equal("error creating new project: new scope: child scope is missing its parent: invalid parameter", err.Error())
+		assert.Contains(err.Error(), "error creating new project: new scope: child scope is missing its parent: invalid parameter")
 	})
 }
 func TestScope_Create(t *testing.T) {
