@@ -34,7 +34,7 @@ load _helpers
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/target: default user can connect to created target" {
+@test "boundary/target/connect: default user can connect to created target" {
   local id=$(target_id $DEFAULT_P_ID $TGT_NAME)
   run connect_nc $id
   echo "connecting to $id: $output"

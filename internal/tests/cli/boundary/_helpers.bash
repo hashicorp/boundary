@@ -10,6 +10,7 @@ export DEFAULT_HOST_SET='hsst_1234567890'
 export DEFAULT_HOST_CATALOG='hcst_1234567890'
 export DEFAULT_HOST='hst_1234567890'
 export DEFAULT_USER='u_1234567890'
+export DEFAULT_GLOBAL='global'
 
 function strip() {
   echo "$1" | tr -d '"'
