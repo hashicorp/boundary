@@ -7,7 +7,7 @@ load _helpers
 export NEW_HOST_CATALOG='test'
 
 @test "boundary/login: can login as default user" {
-  run login $DEFAULT_USER
+  run login $DEFAULT_LOGIN
   echo "$output"
   [ "$status" -eq 0 ]
 }

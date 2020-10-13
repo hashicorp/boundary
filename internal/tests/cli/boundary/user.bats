@@ -8,7 +8,7 @@ load _helpers
 export NEW_USER='test'
 
 @test "boundary/login: can login as default user" {
-  run login $DEFAULT_USER
+  run login $DEFAULT_LOGIN
   [ "$status" -eq 0 ]
 }
 
@@ -57,14 +57,14 @@ export NEW_USER='test'
 }
 
 @test "boundary/user: can delete $NEW_USER user" {
-  login $DEFAULT_USER
+  login $DEFAULT_LOGIN
   local uid=$(user_id $NEW_USER)
   run delete_user $uid 
   [ "$status" -eq 0 ]
 }
 
 @test "boundary/user: can not delete already deleted $NEW_USER user" {
-  login $DEFAULT_USER
+  login $DEFAULT_LOGIN
   local uid=$(user_id $NEW_USER)
   run delete_user $uid 
   [ "$status" -eq 1 ]
