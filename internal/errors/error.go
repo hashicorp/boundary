@@ -15,9 +15,9 @@ func IsUniqueError(err error) bool {
 		return false
 	}
 
-	var dbError *Error
-	if errors.As(err, &dbError) {
-		if dbError.Code == NotUnique {
+	var domainErr *Error
+	if errors.As(err, &domainErr) {
+		if domainErr.Code == NotUnique {
 			return true
 		}
 	}
@@ -39,9 +39,9 @@ func IsCheckConstraintError(err error) bool {
 		return false
 	}
 
-	var dbError *Error
-	if errors.As(err, &dbError) {
-		if dbError.Code == CheckConstraint {
+	var domainErr *Error
+	if errors.As(err, &domainErr) {
+		if domainErr.Code == CheckConstraint {
 			return true
 		}
 	}
@@ -63,9 +63,9 @@ func IsNotNullError(err error) bool {
 		return false
 	}
 
-	var dbError *Error
-	if errors.As(err, &dbError) {
-		if dbError.Code == NotNull {
+	var domainErr *Error
+	if errors.As(err, &domainErr) {
+		if domainErr.Code == NotNull {
 			return true
 		}
 	}
