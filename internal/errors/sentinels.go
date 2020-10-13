@@ -1,8 +1,9 @@
 package errors
 
 // Errors returned from this package may be tested against these errors
-// with errors.Is. Sentinel type errors like these are deprecated in favor of
-// the new Error type that includes unique Codes and a Matching function.
+// with errors.Is. Creating new Sentinel type errors like these should be
+// deprecated in favor of the new Error type that includes unique Codes and a
+// Matching function.
 var (
 	// ErrInvalidPublicId indicates an invalid PublicId.
 	ErrInvalidPublicId = New(InvalidParameter, WithErrorMsg("invalid publicId"))
