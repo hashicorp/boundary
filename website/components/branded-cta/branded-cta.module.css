@@ -9,11 +9,11 @@
     background-position: bottom 0 right -130px;
   }
 
-  @media (462px <= width < 600px) {
+  @media (438px <= width < 600px) {
     background-position: bottom 0 right -260px;
   }
 
-  @media (width < 462px) {
+  @media (width < 438px) {
     background-position: bottom 0 right -170px;
   }
 }
