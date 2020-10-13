@@ -19,6 +19,7 @@ configuration file by providing all the required values:
 
 ```hcl
 kms "gcpckms" {
+  purpose     = "root"
   credentials = "/usr/boundary/boundary-project-user-creds.json"
   project     = "boundary-project"
   region      = "global"
@@ -30,6 +31,8 @@ kms "gcpckms" {
 ## `gcpckms` Parameters
 
 These parameters apply to the `kms` stanza in the Boundary configuration file:
+
+- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `root`, `recovery`, or `config`.
 
 - `credentials` `(string: <required>)`: The path to the credentials JSON file
   to use. May be also specified by the `GOOGLE_CREDENTIALS` or

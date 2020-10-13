@@ -77,7 +77,6 @@ export default [
       },
       'controller',
       'worker',
-      'telemetry',
     ],
   },
   {
