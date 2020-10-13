@@ -121,12 +121,25 @@ func IsNotNullError(err error) bool {
 	return false
 }
 
-// Error provides the ability to specify a msg, code and wrapped error.
+// Op represents an operation (package.function).
+// For example iam.CreateRole
+type Op string
+
+// Error provides the ability to specify a Msg, Op, Code and Wrapped error.
+// Errors must have a Msg and/or a Code and are not valid if both are empty.
 type Error struct {
 	// Msg for the error
 	Msg string
-	// Code is the error's code
-	Code    *Code
+
+	// Code is the error's code, which can be used to get the error's
+	// errorCodeInfo, which contains the error's Kind and Message
+	Code *Code
+
+	// Op represents the operation raising/propagating an error and is optional
+	Op Op
+
+	// Wrapped is the error which this Error wraps and will be nil if there's no
+	// error to wrap.
 	Wrapped error
 }
 
