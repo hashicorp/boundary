@@ -143,22 +143,29 @@ func TestList(t *testing.T) {
 			roleClient := roles.NewClient(client)
 			p1, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
-			require.Len(p1.Items, 2)
-			expected = append(expected, p1.Items[0:2]...)
+			var numBuiltIn int
+			switch tt.name {
+			case "org":
+				numBuiltIn = 2
+			case "proj":
+				numBuiltIn = 1
+			}
+			require.Len(p1.Items, numBuiltIn)
+			expected = append(expected, p1.Items[0:numBuiltIn]...)
 
-			for i := 2; i < 12; i++ {
+			for i := numBuiltIn; i < 10+numBuiltIn; i++ {
 				expected = append(expected, &roles.Role{Name: fmt.Sprint(i)})
 			}
 
-			rcr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[2].Name))
+			rcr, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[numBuiltIn].Name))
 			require.NoError(err)
-			expected[2] = rcr.Item
+			expected[numBuiltIn] = rcr.Item
 
 			p2, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
-			assert.ElementsMatch(comparableSlice(expected[0:3]), comparableSlice(p2.Items))
+			assert.ElementsMatch(comparableSlice(expected[0:numBuiltIn+1]), comparableSlice(p2.Items))
 
-			for i := 3; i < 12; i++ {
+			for i := numBuiltIn + 1; i < 10+numBuiltIn; i++ {
 				rcr, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName(expected[i].Name))
 				assert.NoError(err)
 				expected[i] = rcr.Item
