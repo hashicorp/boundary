@@ -63,7 +63,7 @@ func (c *Command) Run(args []string) int {
 		nonAttributeMap["Git Revision"] = verInfo.Revision
 	}
 	if verInfo.Version != "" {
-		nonAttributeMap["Version Number"] = verInfo.VersionNumber
+		nonAttributeMap["Version Number"] = verInfo.VersionNumber()
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
