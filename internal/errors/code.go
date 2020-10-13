@@ -4,6 +4,7 @@ package errors
 type Code uint32
 
 const (
+	Unknown          Code = 0
 	InvalidParameter Code = 100
 	CheckConstraint  Code = 1000
 	NotNull          Code = 1001
