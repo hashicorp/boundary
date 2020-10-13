@@ -39,7 +39,7 @@ Role information:
     ID:                o_1234567890
     Name:              Generated org scope
     Parent Scope ID:   global
-    Type:              org 
+    Type:              org
 ```
 
 </Tab>
@@ -141,7 +141,7 @@ resource "boundary_scope" "role" {
 
 # Assign Grants to a Role
 
-Grants give roles permission to perform actions. For more information on how to format grants see [Permission Grant Formats](https://boundaryproject.io/docs/concepts/security/permissions-model#permission-grant-formats).
+Grants give roles permission to perform actions. For more information on how to format grants see [Permission Grant Formats](https://boundaryproject.io/docs/concepts/security/permissions#permission-grant-formats).
 In this example we give a role read and list permissions to all resources.
 
 <Tabs>
@@ -172,7 +172,7 @@ Role information:
       Scope ID:     o_1234567890
 
   Canonical Grants:
-    id=*;type=*;actions=read
+    id=*;type=*;actions=list,read
 
 ```
 
@@ -210,3 +210,4 @@ resource "boundary_scope" "role" {
 
 </Tab>
 </Tabs>
+
