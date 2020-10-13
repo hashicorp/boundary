@@ -14,8 +14,10 @@ Identities in Boundary are known as [Principals](/docs/concepts/domain-model/pri
 
 Both users and groups can be granted access to resources through [grants](/docs/concepts/domain-model/grants) on [roles](/docs/concepts/domain-model/roles).
 
-In this example, we're going to show you how to create an account and user for an organization auth method to allow that user to login to Boundary. Because an
-auth method can be at the org and global scopes, we're going to create an org-level auth method in the default generated org.
+In this example, we're going to show you how to create an account and user for
+an auth method to allow that user to login to Boundary. Because an
+auth method can be at the org and global scopes, we're going to create an
+org-scoped auth method in the default generated org.
 
 ~> Note that all resource ID's in this example are illustration only - ID's are uniquely generated for every resource upon creation with the exception being
 generated resources in `dev mode`. Please make sure to use the resource ID's that are generated when running this example. For example, if you run
@@ -23,7 +25,7 @@ generated resources in `dev mode`. Please make sure to use the resource ID's tha
 
 ## Create an Auth Method
 
-Create a password auth method in the generated default organization:
+Create a password auth method in the generated default org:
 
 <Tabs>
 <Tab heading="CLI">
@@ -55,7 +57,7 @@ Auth Method information:
 <Tab heading="Admin Console">
 
 
-1. Navigate to an organization, then to auth methods.
+1. Navigate to an org, then to auth methods.
 1. Choose the **New** button.
 1. Fill the auth method details.
 1. Choose **Save** and view the auth method edit form page.
@@ -86,7 +88,7 @@ resource "boundary_auth_method" "password" {
 
 ## Create Account
 
-Create an account for the organization auth method. Note that user names must be all lowercase alphanumeric and the password must be 6 or more characters.
+Create an account for the org-scoped auth method. Note that user names must be all lowercase alphanumeric and the password must be 6 or more characters.
 
 <Tabs>
 <Tab heading="CLI">
@@ -118,7 +120,7 @@ Account information:
 <Tab heading="Admin Console">
 
 
-1. Navigate to organizations > auth methods > auth method, then to the **Accounts** tab.
+1. Navigate to orgs > auth methods > auth method, then to the **Accounts** tab.
 1. Choose the **New** button.
 1. Fill the account details.
 1. Choose **Save** and view the account edit form page.
@@ -151,7 +153,7 @@ resource "boundary_account" "my_user" {
 
 ## Create a User
 
-Next, create a user at the organization scope.
+Next, create a user at the org scope.
 
 <Tabs>
 <Tab heading="CLI">
@@ -184,7 +186,7 @@ $ boundary users set-accounts -id u_yXhZpt5PX3 -account apw_BOn3EcqQfe
 
 User information:
   Created Time:        Tue, 29 Sep 2020 08:43:43 PDT
-  Description:         My organization user
+  Description:         My org user
   ID:                  u_yXhZpt5PX3
   Name:                my_user
   Updated Time:        Tue, 29 Sep 2020 08:54:11 PDT
@@ -205,7 +207,7 @@ User information:
 <Tab heading="Admin Console">
 
 
-1. Navigate to an organization, then to users.
+1. Navigate to an org, then to users.
 1. Choose the **New** button.
 1. Fill the user details.
 1. Choose **Save** and view the user edit form page.
@@ -267,9 +269,9 @@ $ boundary authenticate password -login-name myuser -password supersecure -auth-
 
 
 1. Navigate to the authenticate page.
-1. Choose an organization scope with which to authenticate.
+1. Choose an org scope with which to authenticate.
 1. Fill the credentials.
-1. Choose **Authenticate** and view the projects overview for the organization.
+1. Choose **Authenticate** and view the projects overview for the org.
 
 <video muted playsInline autoPlay loop class="boundary-clickthrough-video">
   <source
