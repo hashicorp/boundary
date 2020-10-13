@@ -20,6 +20,7 @@ by providing all the required values:
 
 ```hcl
 kms "alicloudkms" {
+  purpose    = "root"
   region     = "us-east-1"
   access_key = "0wNEpMMlzy7szvai"
   secret_key = "PupkTg8jdmau1cXxYacgE736PJj4cA"
@@ -30,6 +31,8 @@ kms "alicloudkms" {
 ## `alicloudkms` Parameters
 
 These parameters apply to the `kms` stanza in the Boundary configuration file:
+
+- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `root`, `recovery`, or `config`.
 
 - `region` `(string: <required> "us-east-1")`: The AliCloud region where the encryption key
   lives. May also be specified by the `ALICLOUD_REGION`
@@ -48,7 +51,7 @@ These parameters apply to the `kms` stanza in the Boundary configuration file:
   part of the AliCloud profile from the AliCloud CLI or instance profile.
 
 - `kms_key_id` `(string: <required>)`: The AliCloud KMS key ID to use for encryption
-  and decryption. May also be specified by the `VAULT_ALICLOUDKMS_SEAL_KEY_ID`
+  and decryption. May also be specified by the `ALICLOUDKMS_WRAPPER_KEY_ID`
   environment variable.
 
 ## Authentication

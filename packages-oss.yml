@@ -5,23 +5,19 @@ config:
   product-id: github.com/hashicorp/boundary
   circleci-project-slug: gh/hashicorp/boundary
   circleci-host: circleci.com
+  on-publish: create-github-release
 
 inputs:
   defaults:
     PRODUCT_NAME: boundary
-    PRODUCT_VERSION: 0.1.0-beta.3
+    PRODUCT_VERSION: 0.1.0
     BUILD_TAGS: ui
     CGO_ENABLED: 0
 
   templates:
-
     BINARY_NAME: '{{.PRODUCT_NAME}}{{if eq .GOOS "windows"}}.exe{{end}}'
-
-    PRODUCT_VERSION_MMP: >-
-      {{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{index . 0}}{{end}}
-
-    PRODUCT_VERSION_PRE: >-
-      {{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{if gt (len .) 1}}{{index . 1}}{{else}}"''"{{end}}{{end}}
+    PRODUCT_VERSION_MMP: '{{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{index . 0}}{{end}}'
+    PRODUCT_VERSION_PRE: '{{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{if gt (len .) 1}}{{index . 1}}{{else}}{{end}}{{end}}'
 
 packages:
   - inputs: { GOOS: darwin, GOARCH: amd64 }
@@ -41,8 +37,6 @@ packages:
   - inputs: { GOOS: windows, GOARCH: amd64 }
 
 meta:
-  defaults:
-    # No default metadata.
   templates:
     BUILD_JOB_NAME: >-
       {{.GOOS}}_{{.GOARCH}}_package
@@ -52,12 +46,9 @@ package-aliases:
   - type: local
     template: >-
       {{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
-  - type: github-releases
+  - type: public-hc-releases
     template: >-
-      {{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
-#  - type: public-hc-releases
-#    template: >-
-#      boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
+      boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
 
 # golang@sha256:29452ef08bd0535f550c47b6034522c82ac10517b49c5f3b7a00035ecee0089e = golang:1.15.2-buster
 base-image: "golang@sha256:29452ef08bd0535f550c47b6034522c82ac10517b49c5f3b7a00035ecee0089e"
@@ -71,7 +62,7 @@ layers:
         GO111MODULE=on \
         GOCACHE=/go/cache \
         CGO_ENABLED=0
-      RUN --mount=type=ssh \
+      RUN \
           go env && mkdir -p "$GOCACHE" \
           && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg \
            | apt-key add - \
@@ -112,8 +103,6 @@ layers:
 
   - name: copy-source
     source-include: "*.go"
-    dockerfile: |
-      RUN go build -v -tags '{{.BUILD_TAGS}}' -o /dev/null ./cmd/boundary
 
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;

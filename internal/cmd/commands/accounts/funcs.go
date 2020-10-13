@@ -30,6 +30,7 @@ func generateAccountTableOutput(in *accounts.Account) string {
 		"",
 		"Account information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
+		"",
 		"  Scope:",
 		base.ScopeInfoForOutput(in.Scope, maxLength),
 	}

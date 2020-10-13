@@ -312,7 +312,8 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 		if lnConfig.MaxRequestSize == 0 {
 			lnConfig.MaxRequestSize = globals.DefaultMaxRequestSize
 		}
-		props["max_request_size"] = fmt.Sprintf("%d", lnConfig.MaxRequestSize)
+		// TODO: We don't actually limit this yet.
+		//props["max_request_size"] = fmt.Sprintf("%d", lnConfig.MaxRequestSize)
 
 		if lnConfig.MaxRequestDuration == 0 {
 			lnConfig.MaxRequestDuration = globals.DefaultMaxRequestDuration
