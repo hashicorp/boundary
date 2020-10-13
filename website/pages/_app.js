@@ -11,7 +11,6 @@ import { ErrorBoundary } from '@hashicorp/nextjs-scripts/lib/bugsnag'
 import ProductSubnav from '../components/subnav'
 import Footer from 'components/footer'
 import Error from './_error'
-import { productName } from '../data/metadata'
 import AlertBanner from '@hashicorp/react-alert-banner'
 import alertBannerData, { ALERT_BANNER_ACTIVE } from 'data/alert-banner'
 
@@ -20,6 +19,10 @@ const { ConsentManager, openConsentManager } = createConsentManager({
   preset: 'oss',
 })
 
+const title = 'Boundary by HashiCorp'
+const description =
+  'Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments.'
+
 function App({ Component, pageProps }) {
   useAnchorLinkAnalytics()
 
@@ -27,12 +30,15 @@ function App({ Component, pageProps }) {
     <ErrorBoundary FallbackComponent={Error}>
       <HashiHead
         is={Head}
-        title={`${productName} by HashiCorp`}
-        siteName={`${productName} by HashiCorp`}
-        description="Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments."
+        title={title}
+        siteName={title}
+        description={description}
         image="https://www.boundaryproject.io/img/og-image.png"
         icon={[{ href: '/favicon.ico' }]}
-      />
+      >
+        <meta name="og:title" property="og:title" content={title} />
+        <meta name="og:description" property="og:title" content={description} />
+      </HashiHead>
       {ALERT_BANNER_ACTIVE && <AlertBanner {...alertBannerData} theme="red" />}
       <HashiStackMenu />
       <ProductSubnav />
