@@ -1,7 +1,7 @@
 export BOUNDARY_ADDR="${BOUNDARY_ADDR:-http://127.0.0.1:9200}"
-export DEFAULT_PASSWORD='password'
-export DEFAULT_LOGIN='admin'
-export DEFAULT_AMPW='ampw_1234567890'
+export DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-password}"
+export DEFAULT_LOGIN="${DEFAULT_LOGIN:-admin}"
+export DEFAULT_AMPW="${DEFAULT_AMPW:-ampw_1234567890}"
 export DEFAULT_P_ID='p_1234567890'
 export DEFAULT_O_ID='o_1234567890'
 export DEFAULT_GLOBAL='global'
