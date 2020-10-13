@@ -6,6 +6,10 @@ type Info struct {
 }
 
 var errorCodeInfo = map[Code]Info{
+	Unknown: {
+		Message: "unknown",
+		Kind:    Other,
+	},
 	InvalidParameter: {
 		Message: "invalid parameter",
 		Kind:    Parameter,
