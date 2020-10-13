@@ -7,14 +7,14 @@ description: How to manage Boundary targets
 
 # Manage Targets
 
-[Targets](/docs/concepts/domain-model/targets) are Boundary resources which contain a [host-set](/docs/concepts/domain-model/host-sets). A target allows Boundary users to define an endpoint with a default-port and a protocol to establish a session. Unless specified with a `-host-id` flag, Boundary will choose one [host](/docs/concepts/domain-model/hosts) in the host-set to connect to at random.
+[Targets](/docs/concepts/domain-model/targets) are Boundary resources which contain one or more [Host Sets](/docs/concepts/domain-model/host-sets). A target allows Boundary users to define an endpoint with a default port and a protocol to establish a session. Unless specified with a `-host-id` flag, Boundary will choose one [Host](/docs/concepts/domain-model/hosts) in the host set to connect to at random.
 
-In this section, we'll show you the basics of how to define a host, host-set, and a target in Boundary on the CLI, the admin console, and using our [Terraform provider](https://github.com/hashicorp/terraform-provider-boundary).
+In this section, we'll show you the basics of how to define a host, host set, and a target in Boundary on the CLI, the admin console, and using our [Terraform provider](https://github.com/hashicorp/terraform-provider-boundary).
 
-We assume you're running Boundary in dev mode and have a default static host-catalog of `hcst_1234567890`. We also assume you've logged in on the command line and the admin console. See the output of `boundary dev` for these login values.
+We assume you're running Boundary in `dev` mode and have a default static host-catalog of `hcst_1234567890`. We also assume you've logged in on the command line and the admin console. See the output of `boundary dev` for these login values.
 
-~> Note that all resource ID's in this example are illustration only - ID's are uniquely generated for every resource upon creation with the exception being
-generated resources in `dev mode`. Please make sure to use the resource ID's that are generated when running this example. For example, if you run
+~> Note that all resource IDs in this example are illustration only - IDs are uniquely generated for every resource upon creation with the exception being
+generated resources in `dev` mode. Please make sure to use the resource IDs that are generated when running this example. For example, if you run
 `boundary users create`, use the resource ID of the user seen in stdout, not the ID in the example command.
 
 ## Define a Host
@@ -87,9 +87,9 @@ resource "boundary_host" "postgres" {
 </Tabs>
 
 
-## Define a Host-Set
+## Define a Host Set
 
-Host-sets allow us to group hosts of similar interests together. A target works off of host-sets, so even though we are only defining one host in this example, we're going to create a host-set of one host.
+Host sets allow us to group hosts providing equivalient services together. A target works off of host sets, so even though we are only defining one host in this example, we're going to create a host set of one host.
 
 <Tabs>
 <Tab heading="CLI">
@@ -149,7 +149,7 @@ Then associate the host set with a host:
 <Tab heading="Terraform">
 
 
-To define this host-set in Terraform:
+To define this host set in Terraform:
 
 ```hcl
 resource "boundary_host_set" "postgres" {
