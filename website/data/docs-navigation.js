@@ -85,7 +85,7 @@ export default [
     content: [
       'manage-scopes',
       'manage-targets',
-      'manage-identities',
+      'manage-users-groups',
       'manage-roles',
       'manage-sessions',
     ],
