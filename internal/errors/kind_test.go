@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestErrClass_String(t *testing.T) {
+func TestKind_String(t *testing.T) {
 	tests := []struct {
 		name string
 		e    Kind
