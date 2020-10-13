@@ -9,10 +9,10 @@ description: |-
 # Scopes
 
 A scope is a [permission][] boundary modeled as a container.
-There are three types of scopes in Boundary.
-A single [global][] scope which is the outermost container.
-[Organizations][] which are contained by the global scope.
-And [projects][] which are contained by organizations.
+There are three types of scopes in Boundary:
+A single [global][] scope which is the outermost container;
+[organizations][] (orgs) which are contained by the `global` scope;
+and [projects][] which are contained by orgs.
 Each scope is itself a resource.
 
 ## Global
@@ -25,15 +25,17 @@ The global scope can directly contain:
 
 ## Organizations
 
-An organization is a scope directly contained by the global scope.
-There can be multiple organizations within the global scope.
-An organization can directly contain:
-[users][], [groups][], [auth methods][], and [projects][].
+~> Within the software itself and elsewhere in the documentation, Boundary reliably uses "org" instead of "organization". Among other reasons, this removes ambiguity between different regional spellings of the word. It is spelled out here in the domain model for completeness and to ensure its intent is clear.
+
+An org is a scope directly contained by the global scope.
+There can be multiple orgs within the global scope.
+An org can directly contain:
+[users][], [groups][], [auth methods][], [roles][], and [projects][].
 
 ## Projects
 
-A project is a scope directly contained by an organization scope.
-There can be multiple projects within an organization.
+A project is a scope directly contained by an org scope.
+There can be multiple projects within an org.
 A project can directly contain:
 [roles][], [targets][], and [host catalogs][]
 

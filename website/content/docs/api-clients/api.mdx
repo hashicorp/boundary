@@ -39,7 +39,7 @@ Collections of resources are top level paths with plural English names for the r
 
 All collection operations require supplying the enclosing resource. Depending on the collection type, this will be one of the following:
 
-* A scope, indicating the scope in which an operation should take place. For instance, a POST to `/roles` would need to indicate whether the role should be created within the `global` scope or some organization scope like `o_1234567890`.
+* A scope, indicating the scope in which an operation should take place. For instance, a POST to `/roles` would need to indicate whether the role should be created within the `global` scope or an org-level scope like `o_1234567890`.
 * A parent resource of the appropriate type. For instance, hosts and host sets are child resources of host catalogs. When creating a new host set within a host catalog, a POST to `/host-sets` would need to indicate the host catalog ID with which the host-set should be associated.
 
 ### Resources
