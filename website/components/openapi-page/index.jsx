@@ -38,7 +38,7 @@ function OpenApiPage({
           description: info.description,
           siteName: `${productName} by HashiCorp`,
         }}
-        product="vault"
+        product="boundary"
         resourceURL={`https://github.com/hashicorp/${productSlug}`}
         sidenav={{
           Link,
