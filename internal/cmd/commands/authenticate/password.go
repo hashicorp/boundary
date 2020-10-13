@@ -168,9 +168,10 @@ func (c *PasswordCommand) Run(args []string) int {
 			c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to system credential store: %s", err))
 			return 1
 		}
+		// TODO: potentially look for dbus-launch in advance and don't issue a warning at all
 		if err := keyring.Set("HashiCorp Boundary Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
 			c.UI.Error(fmt.Sprintf("Error saving auth token to system credential store: %s", err))
-			return 1
+			c.UI.Warn("The token printed above must be manually passed in via the BOUNDARY_TOKEN env var or -token flag. Storing the token can also be disabled via -token-name=none.")
 		}
 	}
 
