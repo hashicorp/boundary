@@ -7,17 +7,17 @@ description: How to manage Roles and Permissions
 
 # Manage Roles and Permissions
 
-[Roles](/docs/concepts/domain-model/roles) in Boundary manage the permissions given to Principals. Roles can be defined at the global, org, or project scopes.
+[Roles](/docs/concepts/domain-model/roles) in Boundary manage the permissions given to principals ([Users](/docs/concepts/domain-model/users)/[Groups](/docs/concepts/domain-model/groups)). Roles can be defined at the global, org, or project scopes.
 
-In this example, we're going to show you how to create a role in Boundary, assign that roles grants, and assign Principals to the role.
+In this example, we're going to show you how to create a role in Boundary, assign that roles grants, and assign principals to the role.
 
-~> Note that all resource ID's in this example are illustration only - ID's are uniquely generated for every resource upon creation with the exception being
-generated resources in `dev mode`. Please make sure to use the resource ID's that are generated when running this example. For example, if you run
+~> Note that all resource IDs in this example are illustration only - IDs are uniquely generated for every resource upon creation with the exception being
+generated resources in `dev` mode. Please make sure to use the resource IDs that are generated when running this example. For example, if you run
 `boundary roles create`, use the resource ID of the role seen in stdout, not the ID in the example command.
 
 # Create a Role
 
-Roles can live in the global, org, or project scopes. In this example we will create a role in the generated org scope in dev mode.
+Roles can live in the global, org, or project scopes. In this example we will create a role in the generated org scope in `dev` mode.
 
 <Tabs>
 <Tab heading="CLI">
@@ -66,7 +66,7 @@ Role information:
 resource "boundary_scope" "role" {
   name        = "my_role"
   description = "My first role!"
-  scope_id    = o_1234567890 // sets the role's scope as the default generated org. To change the role's scope provide a different scope id.
+  scope_id    = o_1234567890
 }
 ```
 
@@ -76,7 +76,7 @@ resource "boundary_scope" "role" {
 
 # Assign Principals to a Role
 
-Users and groups are given permissions to perform actions by assigning them to a role.
+Users and groups are granted permissions to perform actions by assigning them to a role.
 
 <Tabs>
 <Tab heading="CLI">
@@ -141,7 +141,7 @@ resource "boundary_scope" "role" {
 
 # Assign Grants to a Role
 
-Grants give roles permission to perform actions. For more information on how to format grants see [Permission Grant Formats](https://boundaryproject.io/docs/concepts/security/permissions#permission-grant-formats).
+Grants describe the actions that the principals should be allowed to perform. For more information on how to format grants see [Permission Grant Formats](https://boundaryproject.io/docs/concepts/security/permissions#permission-grant-formats).
 In this example we give a role read and list permissions to all resources.
 
 <Tabs>
@@ -202,9 +202,9 @@ Role information:
 resource "boundary_scope" "role" {
   name        = "my_role"
   description = "My first role!"
-  scope_id    = o_1234567890 // sets the role's scope as the default generated org. To change the role's scope provide a different scope id.
-  principals  = u_1234567890 // assigns the default generated admin user to the role. To assign a different principal provide a different principal id.
-  grants      = ["id=*;type=*;action=read,list"] // assigns grants for read and list actions on all resources to the role
+  scope_id    = o_1234567890
+  principals  = u_1234567890
+  grants      = ["id=*;type=*;action=read,list"]
 }
 ```
 
