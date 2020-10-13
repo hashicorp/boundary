@@ -34,3 +34,21 @@ function target_id() {
   local name=$2
   strip $(list_targets $sid | jq -c ".[] | select(.name | contains(\"$name\")) | .[\"id\"]")
 }
+
+function target_host_set_ids() {
+  local tid=$1
+  boundary targets read -id $tid -format json | jq '.host_sets[].id'  
+}
+
+function target_has_host_set_id() {
+  local tid=$1
+  local hsid=$2
+
+  ids=$(target_host_set_ids $tid)  
+  for id in $ids; do
+    if [ $(strip "$id") == "$hsid" ]; then
+      return 0 
+    fi
+  done
+  return 1 
+}

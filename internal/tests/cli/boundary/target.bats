@@ -11,6 +11,12 @@ load _helpers
   [ "$status" -eq 0 ]
 }
 
+@test "boundary/target/connect: default user can connect to default target" {
+  run connect_nc $DEFAULT_TARGET
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
 @test "boundary/target: default user can create target" {
   run create_tcp_target $DEFAULT_P_ID 22 $TGT_NAME
   [ "$status" -eq 0 ]
@@ -30,6 +36,13 @@ load _helpers
 @test "boundary/target: default user can add default host set to created target" {
   local id=$(target_id $DEFAULT_P_ID $TGT_NAME)
   run assoc_host_sets $id $DEFAULT_HOST_SET  
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: created target has default host set" {
+  local id=$(target_id $DEFAULT_P_ID $TGT_NAME)
+  run target_has_host_set_id $id $DEFAULT_HOST_SET  
   echo "$output"
   [ "$status" -eq 0 ]
 }
