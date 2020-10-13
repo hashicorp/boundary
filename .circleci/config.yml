@@ -141,27 +141,27 @@ jobs:
         command: ls -lahR .buildcache
         name: List Build Cache
     - run:
-        command: cp packages*.lock/pkgs.yml lockfile-standalone.yml
+        command: cp packages*.lock/pkgs.yml lockfile-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942.yml
     - store_artifacts:
-        destination: lockfile-standalone.yml
-        path: lockfile-standalone.yml
+        destination: lockfile-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942.yml
+        path: lockfile-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942.yml
     - store_artifacts:
-        destination: packages-standalone
+        destination: packages-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942
         path: .buildcache/packages
     - run:
-        command: tar -czf packages-standalone.tar.gz .buildcache/packages lockfile-standalone.yml
+        command: tar -czf packages-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942.tar.gz .buildcache/packages lockfile-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942.yml
     - store_artifacts:
-        destination: packages-standalone.tar.gz
-        path: packages-standalone.tar.gz
+        destination: packages-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942.tar.gz
+        path: packages-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942.tar.gz
     - run:
-        command: tar -czf meta-standalone.tar.gz .buildcache/packages/store/*.json lockfile-standalone.yml
+        command: tar -czf meta-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942.tar.gz .buildcache/packages/store/*.json lockfile-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942.yml
     - store_artifacts:
-        destination: meta-standalone.tar.gz
-        path: meta-standalone.tar.gz
+        destination: meta-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942.tar.gz
+        path: meta-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942.tar.gz
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
   darwin_amd64_package:
     docker:
     - image: circleci/buildpack-deps
@@ -169,7 +169,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: dbd84730268fa080039fd3b5eaeab4cf6c5943ab
     steps:
     - setup_remote_docker:
@@ -239,7 +239,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: a6aaef546f97baed4193bfb9d92d92a3e90f89d3
     steps:
     - setup_remote_docker:
@@ -435,7 +435,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
   linux_arm64_package:
     docker:
     - image: circleci/buildpack-deps
@@ -443,7 +443,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: 903c802e7dc0445b624052aefc568ca77023747c
     steps:
     - setup_remote_docker:
@@ -513,7 +513,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: c219f16769e4587c0697a1bdd59d6b6d8af05dc0
     steps:
     - setup_remote_docker:
@@ -583,7 +583,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: f99a70b7479a08bd4c6aabd77b71623067cd9170
     steps:
     - setup_remote_docker:
@@ -653,7 +653,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: 102b465fbd9553c692b91bd8cdac5b05cf69da5c
     steps:
     - setup_remote_docker:
@@ -723,7 +723,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: 940edad905fc89e016914a2d1d72f5d6c0172aad
     steps:
     - setup_remote_docker:
@@ -793,7 +793,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: 42b4f7889c5cfb80ec69fa9860876b9b796fe850
     steps:
     - setup_remote_docker:
@@ -863,7 +863,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: 3304e2fc4eb57e5192abea117ad02a4c6818f933
     steps:
     - setup_remote_docker:
@@ -933,7 +933,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: 1c12d01fefaf99959943d8ed79003b88bc79b36b
     steps:
     - setup_remote_docker:
@@ -1143,7 +1143,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: c6952781b9ef7c728508db6e75461a975d9eef2f
     steps:
     - setup_remote_docker:
@@ -1213,7 +1213,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: 1a7cd257b59a189059a94be792ef802b2e443f9f
     steps:
     - setup_remote_docker:
@@ -1283,7 +1283,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: cd0779080863a3543bd8465db0b943fa475b14b7
     steps:
     - setup_remote_docker:
@@ -1353,7 +1353,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: f49d5da9149ca32419ee6548445c51aa45f14668
     steps:
     - setup_remote_docker:
@@ -1423,7 +1423,7 @@ jobs:
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
+    - PRODUCT_REVISION: 7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f
     - PACKAGE_SPEC_ID: 691cb1e515b5f983417d6d425a8ef04c39176889
     steps:
     - setup_remote_docker:
@@ -1487,7 +1487,7 @@ jobs:
         paths:
         - .buildcache/packages/store
 workflows:
-  build-standalone:
+  build-7b7fbfa2c1af4c7ee2f60857cedb22f19daffc4f-ccf4cf2f99886942:
     jobs:
     - build-common-layers
     - darwin_amd64_package:
