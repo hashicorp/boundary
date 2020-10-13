@@ -16,10 +16,8 @@ inputs:
 
   templates:
     BINARY_NAME: '{{.PRODUCT_NAME}}{{if eq .GOOS "windows"}}.exe{{end}}'
-    PRODUCT_VERSION_MMP: >-
-      {{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{index . 0}}{{end}}
-    PRODUCT_VERSION_PRE: >-
-      {{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{if gt (len .) 1}}{{index . 1}}{{else}}"''"{{end}}{{end}}
+    PRODUCT_VERSION_MMP: '{{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{index . 0}}{{end}}'
+    PRODUCT_VERSION_PRE: '{{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{if gt (len .) 1}}{{index . 1}}{{else}}{{end}}{{end}}'
 
 packages:
   - inputs: { GOOS: darwin, GOARCH: amd64 }
