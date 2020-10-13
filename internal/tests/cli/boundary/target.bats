@@ -7,7 +7,7 @@ load _helpers
 
 
 @test "boundary/login: can login as default user" {
-  run login $DEFAULT_USER
+  run login $DEFAULT_LOGIN
   [ "$status" -eq 0 ]
 }
 
