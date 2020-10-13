@@ -3,7 +3,7 @@ layout: docs
 page_title: Worker - Configuration
 sidebar_title: worker
 description: |-
-  The worker stanza configures worker-specifc parameters.
+  The worker stanza configures worker-specific parameters.
 ---
 
 # `worker` Stanza
@@ -18,17 +18,23 @@ worker {
 }
 ```
 
-- `name` - Specifies a unique name of this worker within the Boundary worker cluster.
+- `name` - Specifies a unique name of this worker within the Boundary worker
+cluster.
 
 - `description` - Specifies a friendly description of this worker.
 
-- `public_addr` - Specifies the public IP address for the worker to be reached on. This is useful for cloud environments that do not bind a publicly accessible IP to a NIC on the host directly, such as an Amazon EIP.
+- `public_addr` - Specifies the public host or IP address (and optionally port)
+at which the worker can be reached _by clients for proxying_. This defaults to
+the address of the listener marked for `proxy` purpose. This is especially
+useful for cloud environments that do not bind a publicly accessible IP to a NIC
+on the host directly, such as an Amazon EIP.
 
-- `controllers` - A list of IP addresses for reaching controllers on port :9202.
+- `controllers` - A list of hosts/IP addresses and optionally ports for reaching
+controllers. The port will default to :9201 if not specified.
 
-- KMS block designated for `worker-auth` - This is the KMS configuration for authentication between the workers and controllers and must be present. Example:
-```hcl
-kms "aead" {
+- KMS block designated for `worker-auth` - This is the KMS configuration for
+authentication between the workers and controllers and must be present. Example (not safe for production!):
+```hcl kms "aead" {
 	purpose = "worker-auth"
 	aead_type = "aes-gcm"
 	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
@@ -45,16 +51,18 @@ listener "tcp" {
 }
 
 worker {
-  # Name attr must be unique across workers if running in HA mode
-	name = "demo-worker-1"
-	description = "A default worker created demonstration"
+  # Name attr must be unique across workers
+  name = "demo-worker-1"
+  description = "A default worker created demonstration"
 
   # Workers must be able to reach controllers on :9202
-	controllers = [
+  controllers = [
     "10.0.0.1",
     "10.0.0.2",
     "10.0.0.3",
   ]
+
+  public_addr = "my
 }
 
 # must be same key as used on controller config

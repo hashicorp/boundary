@@ -19,6 +19,7 @@ by providing all the required values:
 
 ```hcl
 kms "transit" {
+  purpose            = "root"
   address            = "https://vault:8200"
   token              = "s.Qf1s5zigZ4OX6akYjQXJC1jY"
   disable_renewal    = "false"
@@ -41,6 +42,9 @@ kms "transit" {
 
 These parameters apply to the `kms` stanza in the Vault configuration file:
 
+- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `root`,
+`recovery`, or `config`.
+
 - `address` `(string: <required>)`: The full address to the Vault cluster.
   This may also be specified by the `VAULT_ADDR` environment variable.
 
@@ -48,11 +52,11 @@ These parameters apply to the `kms` stanza in the Vault configuration file:
   specified by the `VAULT_TOKEN` environment variable.
 
 - `key_name` `(string: <required>)`: The transit key to use for encryption and
-  decryption. This may also be supplied using the `VAULT_TRANSIT_SEAL_KEY_NAME`
+  decryption. This may also be supplied using the `TRANSIT_WRAPPER_KEY_NAME`
   environment variable.
 
 - `mount_path` `(string: <required>)`: The mount path to the transit secret engine.  
-  This may also be supplied using the `VAULT_TRANSIT_SEAL_MOUNT_PATH` environment
+  This may also be supplied using the `TRANSIT_WRAPPER_MOUNT_PATH` environment
   variable.
 
 - `namespace` `(string: "")`: The namespace path to the transit secret engine.  
@@ -61,7 +65,7 @@ These parameters apply to the `kms` stanza in the Vault configuration file:
 - `disable_renewal` `(string: "false")`: Disables the automatic renewal of the token
   in case the lifecycle of the token is managed with some other mechanism outside of
   Vault, such as Vault Agent. This may also be specified using the
-  `VAULT_TRANSIT_SEAL_DISABLE_RENEWAL` environment variable.
+  `TRANSIT_WRAPPER_DISABLE_RENEWAL` environment variable.
 
 - `tls_ca_cert` `(string: "")`: Specifies the path to the CA certificate file used
   for communication with the Vault server. This may also be specified using the
