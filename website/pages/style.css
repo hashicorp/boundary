@@ -15,7 +15,7 @@
 @import '~@hashicorp/react-vertical-text-block-list/dist/style.css';
 @import '~@hashicorp/react-docs-sidenav/style.css';
 @import '~@hashicorp/react-content/style.css';
-@import '~@hashicorp/react-subnav/dist/style.css';
+@import '~@hashicorp/react-subnav/style.css';
 @import '~@hashicorp/react-tabs/dist/style.css';
 @import '~@hashicorp/react-enterprise-alert/dist/style.css';
 @import '~@hashicorp/react-docs-page/style.css';
@@ -132,28 +132,6 @@
     url('/fonts/dejavu/mono.woff') format('woff');
   font-style: normal;
   font-weight: 400;
-}
-
-/*
- * TODO, eventually remove:
- * Temporary Boundary Branding
- */
-.g-docs-sidenav {
-  --highlight-color: var(--red);
-}
-
-.g-subnav {
-  & a.variant-primary {
-    border-color: var(--red);
-    background-color: var(--red);
-  }
-  & .g-subnav-inner {
-    & .style-menu-item {
-      & .text::after {
-        background: var(--red);
-      }
-    }
-  }
 }
 
 .boundary-clickthrough-video {
