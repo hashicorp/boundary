@@ -46,7 +46,7 @@ and services.
 
 Boundary has two external dependencies: a SQL database, and one or more
 KMSes.  Both are readily available from cloud vendors, but can be satisfied by
-on-premise technologies as well.
+on-premises technologies as well.
 
 * The database contains Boundary's configuration and session information and
   must be accessible by Controller nodes. Values that are secrets (such as
