@@ -85,29 +85,36 @@ func (e *Error) Info() Info {
 // Error satisfies the error interface and returns a string representation of
 // the error.
 func (e *Error) Error() string {
-	var msgs []string
+	var s strings.Builder
 	if e.Op != "" {
-		msgs = append(msgs, string(e.Op))
+		join(&s, ": ", string(e.Op))
 	}
-
 	if e.Msg != "" {
-		msgs = append(msgs, e.Msg)
+		join(&s, ": ", e.Msg)
 	}
 
 	if info, ok := errorCodeInfo[e.Code]; ok {
 		if e.Msg == "" {
-			// provide a default...
-			msgs = append(msgs, info.Message)
+			join(&s, ": ", info.Message) // provide a default.
+			join(&s, ", ", info.Kind.String())
+		} else {
+			join(&s, ": ", info.Kind.String())
 		}
-		msgs = append(msgs, info.Kind.String())
 	}
-	msgs = append(msgs, fmt.Sprintf("error #%d", e.Code))
+	join(&s, ": ", fmt.Sprintf("error #%d", e.Code))
 
 	if e.Wrapped != nil {
-		msgs = append(msgs, e.Error())
+		join(&s, ": \n", e.Wrapped.Error())
 	}
+	return s.String()
+}
 
-	return strings.Join(msgs, ": ")
+func join(str *strings.Builder, delim string, s string) {
+	if str.Len() == 0 {
+		_, _ = str.WriteString(s)
+		return
+	}
+	_, _ = str.WriteString(delim + s)
 }
 
 // Unwrap implements the errors.Unwrap interface and allows callers to use the
