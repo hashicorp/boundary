@@ -60,27 +60,22 @@ layers:
         GOPATH= \
         GOBIN=/usr/local/bin \
         GO111MODULE=on \
-        GOCACHE=/go/cache \
         CGO_ENABLED=0
       RUN \
-          go env && mkdir -p "$GOCACHE" \
-          && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg \
+          curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg \
            | apt-key add - \
           && echo "deb https://dl.yarnpkg.com/debian/ stable main" \
            | tee /etc/apt/sources.list.d/yarn.list \
           && apt-get update \
           && apt-get install -yq yarn zip \
-          && mkdir -m 700 /root/.ssh \
-          && touch -m 600 /root/.ssh/known_hosts \
-          && ssh-keyscan github.com > /root/.ssh/known_hosts \
-          && git config --global url."git@github.com:".insteadOf https://github.com/ \
+          && rm -rf /var/lib/apt/lists/* \
           && go get github.com/go-bindata/go-bindata/v3/go-bindata \
           && go-bindata --version
 
   - name: ui
     source-include: internal/ui/VERSION
     dockerfile: |
-      RUN --mount=type=ssh \
+      RUN \
           SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" \
           && DIR=internal/ui/source/boundary-ui \
           && mkdir -p "$(dirname "$DIR")" \
