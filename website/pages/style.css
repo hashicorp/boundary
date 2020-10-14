@@ -134,28 +134,6 @@
   font-weight: 400;
 }
 
-/*
- * TODO, eventually remove:
- * Temporary Boundary Branding
- */
-.g-docs-sidenav {
-  --highlight-color: var(--red);
-}
-
-.g-subnav {
-  & a.variant-primary {
-    border-color: var(--red);
-    background-color: var(--red);
-  }
-  & .g-subnav-inner {
-    & .style-menu-item {
-      & .text::after {
-        background: var(--red);
-      }
-    }
-  }
-}
-
 .boundary-clickthrough-video {
   display: block;
   width: 100%;
