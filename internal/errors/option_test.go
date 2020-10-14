@@ -9,21 +9,7 @@ import (
 // Test_getOpts provides unit tests for GetOpts and all the options
 func Test_getOpts(t *testing.T) {
 	t.Parallel()
-	t.Run("WithErrCode", func(t *testing.T) {
-		assert := assert.New(t)
-		// test default
-		opts := GetOpts()
-		testOpts := getDefaultOptions()
-		testOpts.withErrCode = nil
-		assert.Equal(opts, testOpts)
-
-		// try setting it
-		opts = GetOpts(WithErrCode(NotNull))
-		c := NotNull
-		testOpts.withErrCode = &c
-		assert.Equal(opts, testOpts)
-	})
-	t.Run("WithErrorMsg", func(t *testing.T) {
+	t.Run("WithMsg", func(t *testing.T) {
 		assert := assert.New(t)
 		// test default
 		opts := GetOpts()
@@ -32,7 +18,7 @@ func Test_getOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 
 		// try setting it
-		opts = GetOpts(WithErrorMsg("test msg"))
+		opts = GetOpts(WithMsg("test msg"))
 		testOpts.withErrMsg = "test msg"
 		assert.Equal(opts, testOpts)
 	})

@@ -59,15 +59,15 @@ func Convert(e error) error {
 	var pqError *pq.Error
 	if errors.As(e, &pqError) {
 		if pqError.Code.Name() == "unique_violation" {
-			return New(NotUnique, WithErrorMsg(pqError.Detail), WithWrap(ErrNotUnique))
+			return New(NotUnique, WithMsg(pqError.Detail), WithWrap(ErrNotUnique))
 		}
 		if pqError.Code.Name() == "not_null_violation" {
 			msg := fmt.Sprintf("%s must not be empty", pqError.Column)
-			return New(NotNull, WithErrorMsg(msg), WithWrap(ErrNotNull))
+			return New(NotNull, WithMsg(msg), WithWrap(ErrNotNull))
 		}
 		if pqError.Code.Name() == "check_violation" {
 			msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
-			return New(CheckConstraint, WithErrorMsg(msg), WithWrap(ErrCheckConstraint))
+			return New(CheckConstraint, WithMsg(msg), WithWrap(ErrCheckConstraint))
 		}
 	}
 	// unfortunately, we can't help.

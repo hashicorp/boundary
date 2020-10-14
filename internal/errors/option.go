@@ -16,19 +16,10 @@ type Option func(*Options)
 type Options struct {
 	withErrWrapped error
 	withErrMsg     string
-	withErrCode    *Code
 }
 
 func getDefaultOptions() Options {
 	return Options{}
-}
-
-// WithErrCode provides an option to provide an ErrCode when creating a new
-// error.
-func WithErrCode(c Code) Option {
-	return func(o *Options) {
-		o.withErrCode = &c
-	}
 }
 
 // WithErrCode provides an option to provide an error to wrap when creating a
@@ -39,9 +30,9 @@ func WithWrap(e error) Option {
 	}
 }
 
-// WithErrorMsg provides an option to provide a message when creating a new
+// WithMsg provides an option to provide a message when creating a new
 // error.
-func WithErrorMsg(msg string) Option {
+func WithMsg(msg string) Option {
 	return func(o *Options) {
 		o.withErrMsg = msg
 	}

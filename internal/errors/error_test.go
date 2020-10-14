@@ -95,7 +95,7 @@ func TestError_IsCheckConstraint(t *testing.T) {
 		},
 		{
 			name: "ErrCodeCheckConstraint",
-			in:   errors.New(errors.CheckConstraint, errors.WithErrCode(errors.CheckConstraint)),
+			in:   errors.New(errors.CheckConstraint),
 			want: true,
 		},
 		{
@@ -158,7 +158,7 @@ func TestError_IsNotNullError(t *testing.T) {
 		},
 		{
 			name: "ErrCodeNotNull",
-			in:   errors.New(errors.NotNull, errors.WithErrCode(errors.NotNull)),
+			in:   errors.New(errors.NotNull),
 			want: true,
 		},
 		{
@@ -199,7 +199,7 @@ func Test_NewError(t *testing.T) {
 			code: errors.InvalidParameter,
 			opt: []errors.Option{
 				errors.WithWrap(errors.ErrRecordNotFound),
-				errors.WithErrorMsg("test msg"),
+				errors.WithMsg("test msg"),
 			},
 			want: &errors.Error{
 				Wrapped: errors.ErrRecordNotFound,
@@ -234,17 +234,17 @@ func TestError_Error(t *testing.T) {
 	}{
 		{
 			name: "msg",
-			err:  errors.New(errors.Unknown, errors.WithErrorMsg("test msg")),
+			err:  errors.New(errors.Unknown, errors.WithMsg("test msg")),
 			want: "test msg: unknown: unknown: error #0",
 		},
 		{
 			name: "code",
-			err:  errors.New(errors.CheckConstraint, errors.WithErrCode(errors.CheckConstraint)),
+			err:  errors.New(errors.CheckConstraint),
 			want: "constraint check failed: integrity violation: error #1000",
 		},
 		{
 			name: "msg-and-code",
-			err:  errors.New(errors.CheckConstraint, errors.WithErrorMsg("test msg")),
+			err:  errors.New(errors.CheckConstraint, errors.WithMsg("test msg")),
 			want: "test msg: constraint check failed: integrity violation: error #1000",
 		},
 		{
@@ -264,7 +264,7 @@ func TestError_Error(t *testing.T) {
 
 func TestError_Unwrap(t *testing.T) {
 	t.Parallel()
-	testErr := errors.New(errors.Unknown, errors.WithErrorMsg("test error"))
+	testErr := errors.New(errors.Unknown, errors.WithMsg("test error"))
 
 	tests := []struct {
 		name      string
