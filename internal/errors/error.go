@@ -32,7 +32,8 @@ type Error struct {
 
 // New creates a new Error and supports the options of:
 // WithMsg() - allows you to specify an optional error msg, if the default
-// msg for the error Code is not sufficient. WithWrap() - allows you to specify
+// msg for the error Code is not sufficient.
+// WithWrap() - allows you to specify
 // an error to wrap
 func New(c Code, opt ...Option) error {
 	opts := GetOpts(opt...)
