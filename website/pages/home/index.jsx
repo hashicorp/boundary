@@ -140,7 +140,7 @@ export default function HomePage() {
                 },
                 link: {
                   title: 'Learn more',
-                  url: '/docs/common-workflows/manage-identities',
+                  url: '/docs/common-workflows/manage-users-groups',
                 },
               },
               {
