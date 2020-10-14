@@ -8,78 +8,6 @@ import (
 	"github.com/lib/pq"
 )
 
-// IsUniqueError returns a boolean indicating whether the error is known to
-// report a unique constraint violation.
-func IsUniqueError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	var domainErr *Error
-	if errors.As(err, &domainErr) {
-		if domainErr.Code == NotUnique {
-			return true
-		}
-	}
-
-	var pqError *pq.Error
-	if errors.As(err, &pqError) {
-		if pqError.Code.Name() == "unique_violation" {
-			return true
-		}
-	}
-
-	return false
-}
-
-// IsCheckConstraintError returns a boolean indicating whether the error is
-// known to report a check constraint violation.
-func IsCheckConstraintError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	var domainErr *Error
-	if errors.As(err, &domainErr) {
-		if domainErr.Code == CheckConstraint {
-			return true
-		}
-	}
-
-	var pqError *pq.Error
-	if errors.As(err, &pqError) {
-		if pqError.Code.Name() == "check_violation" {
-			return true
-		}
-	}
-
-	return false
-}
-
-// IsNotNullError returns a boolean indicating whether the error is known
-// to report a not-null constraint violation.
-func IsNotNullError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	var domainErr *Error
-	if errors.As(err, &domainErr) {
-		if domainErr.Code == NotNull {
-			return true
-		}
-	}
-
-	var pqError *pq.Error
-	if errors.As(err, &pqError) {
-		if pqError.Code.Name() == "not_null_violation" {
-			return true
-		}
-	}
-
-	return false
-}
-
 // Op represents an operation (package.function).
 // For example iam.CreateRole
 type Op string
@@ -146,18 +74,38 @@ func Convert(e error) error {
 	return e
 }
 
+// Info about the Error
+func (e *Error) Info() Info {
+	if info, ok := errorCodeInfo[e.Code]; ok {
+		return info
+	}
+	return errorCodeInfo[Unknown]
+}
+
 // Error satisfies the error interface and returns a string representation of
 // the error.
 func (e *Error) Error() string {
 	var msgs []string
-	// try to use the error msg first...
+	if e.Op != "" {
+		msgs = append(msgs, string(e.Op))
+	}
+
 	if e.Msg != "" {
 		msgs = append(msgs, e.Msg)
 	}
+
 	if info, ok := errorCodeInfo[e.Code]; ok {
-		msgs = append(msgs, info.Message, info.Kind.String())
+		if e.Msg == "" {
+			// provide a default...
+			msgs = append(msgs, info.Message)
+		}
+		msgs = append(msgs, info.Kind.String())
 	}
 	msgs = append(msgs, fmt.Sprintf("error #%d", e.Code))
+
+	if e.Wrapped != nil {
+		msgs = append(msgs, e.Error())
+	}
 
 	return strings.Join(msgs, ": ")
 }
