@@ -54,7 +54,7 @@ update-ui-version:
 	fi; \
 	./scripts/uiclone.sh && ./scripts/uiupdate.sh
 
-build-ui:
+build-ui: tools
 	@if [ -z "$(UI_COMMITISH)" ]; then \
 		echo "==> Building default UI version from $(UI_VERSION_FILE): $(UI_CURRENT_COMMIT)"; \
 		export UI_COMMITISH="$(UI_CURRENT_COMMIT)"; \
