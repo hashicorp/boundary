@@ -38,7 +38,7 @@ method, login name, and password are pre-configured.
 First, we need to create a client from the Boundary API and set the address to reach Boundary:
 
 ```go
-import github.com/boundary/api
+import "github.com/hashicorp/boundary/api"
 
 // The default address points to the default dev mode address
 client, err := api.NewClient(nil)
@@ -64,7 +64,7 @@ credentials := map[string]interface{}{
 Now let's create an auth method client using the base client from above:
 
 ```go
-import "github.com/boundary/api/authmethods"
+import "github.com/hashicorp/boundary/api/authmethods"
 
 am := authmethods.NewClient(client)
 ```
@@ -107,8 +107,8 @@ Putting this all together:
 
 ```go
 import (
-  github.com/boundary/api
-  github.com/boundary/api/authmethods
+  "github.com/hashicorp/boundary/api"
+  "github.com/hashicorp/boundary/api/authmethods"
 )
 
 credentials := map[string]interface{}{
