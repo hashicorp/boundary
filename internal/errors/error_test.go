@@ -235,22 +235,22 @@ func TestError_Error(t *testing.T) {
 		{
 			name: "msg",
 			err:  errors.New(errors.Unknown, errors.WithMsg("test msg")),
-			want: "test msg: unknown: unknown: error #0",
+			want: "test msg: unknown: error #0",
 		},
 		{
 			name: "code",
 			err:  errors.New(errors.CheckConstraint),
-			want: "constraint check failed: integrity violation: error #1000",
+			want: "constraint check failed, integrity violation: error #1000",
 		},
 		{
 			name: "msg-and-code",
 			err:  errors.New(errors.CheckConstraint, errors.WithMsg("test msg")),
-			want: "test msg: constraint check failed: integrity violation: error #1000",
+			want: "test msg: integrity violation: error #1000",
 		},
 		{
 			name: "unknown",
 			err:  errors.New(errors.Unknown),
-			want: "unknown: unknown: error #0",
+			want: "unknown, unknown: error #0",
 		},
 	}
 	for _, tt := range tests {
@@ -357,7 +357,7 @@ func TestConvertError(t *testing.T) {
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(stderrors.Is(e, errors.ErrNotUnique))
-		assert.Equal("Key (name)=(alice) already exists.: must be unique violation: integrity violation: error #1002", e.Error())
+		assert.Equal("Key (name)=(alice) already exists.: integrity violation: error #1002: \nunique constraint violation: integrity violation: error #1002", e.Error())
 	})
 	t.Run("ErrCodeNotNull", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -369,7 +369,7 @@ func TestConvertError(t *testing.T) {
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(stderrors.Is(e, errors.ErrNotNull))
-		assert.Equal("description must not be empty: must not be empty (null) violation: integrity violation: error #1001", e.Error())
+		assert.Equal("description must not be empty: integrity violation: error #1001: \nnot null constraint violated: integrity violation: error #1001", e.Error())
 	})
 	t.Run("ErrCodeCheckConstraint", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -382,6 +382,6 @@ func TestConvertError(t *testing.T) {
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(stderrors.Is(e, errors.ErrCheckConstraint))
-		assert.Equal("test_table_five_check constraint failed: constraint check failed: integrity violation: error #1000", e.Error())
+		assert.Equal("test_table_five_check constraint failed: integrity violation: error #1000: \ncheck constraint violated: integrity violation: error #1000", e.Error())
 	})
 }
