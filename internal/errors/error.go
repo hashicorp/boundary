@@ -44,8 +44,8 @@ func New(c Code, opt ...Option) error {
 	}
 }
 
-// Convert will convert the error to Error (if that's not possible, it just
-// returns the error as is) and it will attempt to add a helpful error msg too.
+/// Convert will convert the error to a Boundary Error and attempt to add a
+//helpful error msg as well. If that's not possible, it return nil
 func Convert(e error) error {
 	// nothing to convert.
 	if e == nil {
