@@ -16,9 +16,3 @@ export NEW_USER='test'
   echo "$output"
   [ "$status" -eq 0 ]
 }
-
-@test "boundary/version: revision output is valid" {
-  run revision_is_valid 
-  echo "$output"
-  [ "$status" -eq 0 ]
-}
