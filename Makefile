@@ -23,7 +23,7 @@ cleangen:
 
 dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui
-dev: build-ui-ifne
+dev: tools build-ui-ifne
 	@echo "==> Building Boundary with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
@@ -54,7 +54,7 @@ update-ui-version:
 	fi; \
 	./scripts/uiclone.sh && ./scripts/uiupdate.sh
 
-build-ui: tools
+build-ui:
 	@if [ -z "$(UI_COMMITISH)" ]; then \
 		echo "==> Building default UI version from $(UI_VERSION_FILE): $(UI_CURRENT_COMMIT)"; \
 		export UI_COMMITISH="$(UI_CURRENT_COMMIT)"; \
