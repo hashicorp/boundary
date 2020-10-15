@@ -4,6 +4,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## vNext
 
+### What's New
+
+### Improvements
+
+### Bug Fixes
+
 * cli: Fix hyphenation in help output for resources with compound names
   ([Issue](https://github.com/hashicorp/boundary/issues/686))
   ([PR](https://github.com/hashicorp/boundary/pull/689))
