@@ -81,7 +81,7 @@ following properties:
 Running Boundary in a more permanent context requires a few more steps, such
 as writing some simple configuration files to tell the nodes how to reach their
 database and KMS. The steps below, along with the extra information needed
-for permanent installations, are detailed in our [Installation Guide].
+for permanent installations, are detailed in our [Installation Guide](https://www.boundaryproject.io/docs/installing).
 
 ### Build and Start Boundary in Dev Mode
 
