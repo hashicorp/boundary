@@ -7,15 +7,11 @@
 package services
 
 import (
-	context "context"
 	proto "github.com/golang/protobuf/proto"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	scopes "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
-	grpc "google.golang.org/grpc"
-	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -660,13 +656,15 @@ var file_controller_api_services_v1_scope_service_proto_rawDesc = []byte{
 	0x74, 0x65, 0x53, 0x63, 0x6f, 0x70, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
 	0x2c, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x11, 0x2a, 0x0f, 0x2f, 0x76, 0x31, 0x2f, 0x73, 0x63, 0x6f,
 	0x70, 0x65, 0x73, 0x2f, 0x7b, 0x69, 0x64, 0x7d, 0x92, 0x41, 0x12, 0x12, 0x10, 0x44, 0x65, 0x6c,
-	0x65, 0x74, 0x65, 0x73, 0x20, 0x61, 0x20, 0x53, 0x63, 0x6f, 0x70, 0x65, 0x2e, 0x42, 0x4d, 0x5a,
+	0x65, 0x74, 0x65, 0x73, 0x20, 0x61, 0x20, 0x53, 0x63, 0x6f, 0x70, 0x65, 0x2e, 0x42, 0x74, 0x5a,
 	0x4b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68,
 	0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69,
 	0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74,
 	0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69,
-	0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x92, 0x41, 0x24, 0x12,
+	0x1e, 0x0a, 0x1c, 0x42, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x20, 0x43, 0x6f, 0x6e, 0x74,
+	0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x20, 0x48, 0x54, 0x54, 0x50, 0x20, 0x41, 0x50, 0x49, 0x2a,
+	0x02, 0x02, 0x01, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -866,270 +864,4 @@ func file_controller_api_services_v1_scope_service_proto_init() {
 	file_controller_api_services_v1_scope_service_proto_rawDesc = nil
 	file_controller_api_services_v1_scope_service_proto_goTypes = nil
 	file_controller_api_services_v1_scope_service_proto_depIdxs = nil
-}
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConnInterface
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
-
-// ScopeServiceClient is the client API for ScopeService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type ScopeServiceClient interface {
-	// GetScope returns a stored Scope if present.  The provided request
-	// must include the scope ID for the scope being retrieved. If
-	// that ID is missing, malformed or references a non existing
-	// resource an error is returned.
-	GetScope(ctx context.Context, in *GetScopeRequest, opts ...grpc.CallOption) (*GetScopeResponse, error)
-	// ListScopes returns a list of stored Scopes which exist inside the provided
-	// parent Scope id.
-	ListScopes(ctx context.Context, in *ListScopesRequest, opts ...grpc.CallOption) (*ListScopesResponse, error)
-	// CreateScope creates and stores a Scope in boundary.  The provided request
-	// must include the Scope ID in which the new scope will be created. If the Scope
-	// ID is missing, malformed or references a non existing scope, an error is
-	// returned. If a name is provided that is in use in another Scope in the same
-	// parent scope, an error is returned.
-	CreateScope(ctx context.Context, in *CreateScopeRequest, opts ...grpc.CallOption) (*CreateScopeResponse, error)
-	// UpdateScope updates an existing Scope in boundary.  The provided
-	// Scope must not have any read only fields set.  The update mask must be
-	// included in the request and contain at least 1 mutable field.  To unset
-	// a field's value, include the field in the update mask and don't set it
-	// in the provided scope. An error is returned if the Scope Id is
-	// missing or reference a non-existing resource.  An error
-	// is also returned if the request attempts to update the name to one that is
-	// already in use by another scope in the parent scope.
-	UpdateScope(ctx context.Context, in *UpdateScopeRequest, opts ...grpc.CallOption) (*UpdateScopeResponse, error)
-	// DeleteScope remotes a Scope and all child resources from Boundary. If the
-	// provided Scope IDs are malformed or not provided an error is returned.
-	DeleteScope(ctx context.Context, in *DeleteScopeRequest, opts ...grpc.CallOption) (*DeleteScopeResponse, error)
-}
-
-type scopeServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewScopeServiceClient(cc grpc.ClientConnInterface) ScopeServiceClient {
-	return &scopeServiceClient{cc}
-}
-
-func (c *scopeServiceClient) GetScope(ctx context.Context, in *GetScopeRequest, opts ...grpc.CallOption) (*GetScopeResponse, error) {
-	out := new(GetScopeResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.ScopeService/GetScope", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *scopeServiceClient) ListScopes(ctx context.Context, in *ListScopesRequest, opts ...grpc.CallOption) (*ListScopesResponse, error) {
-	out := new(ListScopesResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.ScopeService/ListScopes", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *scopeServiceClient) CreateScope(ctx context.Context, in *CreateScopeRequest, opts ...grpc.CallOption) (*CreateScopeResponse, error) {
-	out := new(CreateScopeResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.ScopeService/CreateScope", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *scopeServiceClient) UpdateScope(ctx context.Context, in *UpdateScopeRequest, opts ...grpc.CallOption) (*UpdateScopeResponse, error) {
-	out := new(UpdateScopeResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.ScopeService/UpdateScope", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *scopeServiceClient) DeleteScope(ctx context.Context, in *DeleteScopeRequest, opts ...grpc.CallOption) (*DeleteScopeResponse, error) {
-	out := new(DeleteScopeResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.ScopeService/DeleteScope", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// ScopeServiceServer is the server API for ScopeService service.
-type ScopeServiceServer interface {
-	// GetScope returns a stored Scope if present.  The provided request
-	// must include the scope ID for the scope being retrieved. If
-	// that ID is missing, malformed or references a non existing
-	// resource an error is returned.
-	GetScope(context.Context, *GetScopeRequest) (*GetScopeResponse, error)
-	// ListScopes returns a list of stored Scopes which exist inside the provided
-	// parent Scope id.
-	ListScopes(context.Context, *ListScopesRequest) (*ListScopesResponse, error)
-	// CreateScope creates and stores a Scope in boundary.  The provided request
-	// must include the Scope ID in which the new scope will be created. If the Scope
-	// ID is missing, malformed or references a non existing scope, an error is
-	// returned. If a name is provided that is in use in another Scope in the same
-	// parent scope, an error is returned.
-	CreateScope(context.Context, *CreateScopeRequest) (*CreateScopeResponse, error)
-	// UpdateScope updates an existing Scope in boundary.  The provided
-	// Scope must not have any read only fields set.  The update mask must be
-	// included in the request and contain at least 1 mutable field.  To unset
-	// a field's value, include the field in the update mask and don't set it
-	// in the provided scope. An error is returned if the Scope Id is
-	// missing or reference a non-existing resource.  An error
-	// is also returned if the request attempts to update the name to one that is
-	// already in use by another scope in the parent scope.
-	UpdateScope(context.Context, *UpdateScopeRequest) (*UpdateScopeResponse, error)
-	// DeleteScope remotes a Scope and all child resources from Boundary. If the
-	// provided Scope IDs are malformed or not provided an error is returned.
-	DeleteScope(context.Context, *DeleteScopeRequest) (*DeleteScopeResponse, error)
-}
-
-// UnimplementedScopeServiceServer can be embedded to have forward compatible implementations.
-type UnimplementedScopeServiceServer struct {
-}
-
-func (*UnimplementedScopeServiceServer) GetScope(context.Context, *GetScopeRequest) (*GetScopeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetScope not implemented")
-}
-func (*UnimplementedScopeServiceServer) ListScopes(context.Context, *ListScopesRequest) (*ListScopesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListScopes not implemented")
-}
-func (*UnimplementedScopeServiceServer) CreateScope(context.Context, *CreateScopeRequest) (*CreateScopeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateScope not implemented")
-}
-func (*UnimplementedScopeServiceServer) UpdateScope(context.Context, *UpdateScopeRequest) (*UpdateScopeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateScope not implemented")
-}
-func (*UnimplementedScopeServiceServer) DeleteScope(context.Context, *DeleteScopeRequest) (*DeleteScopeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteScope not implemented")
-}
-
-func RegisterScopeServiceServer(s *grpc.Server, srv ScopeServiceServer) {
-	s.RegisterService(&_ScopeService_serviceDesc, srv)
-}
-
-func _ScopeService_GetScope_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetScopeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ScopeServiceServer).GetScope(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.ScopeService/GetScope",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScopeServiceServer).GetScope(ctx, req.(*GetScopeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ScopeService_ListScopes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListScopesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ScopeServiceServer).ListScopes(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.ScopeService/ListScopes",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScopeServiceServer).ListScopes(ctx, req.(*ListScopesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ScopeService_CreateScope_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateScopeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ScopeServiceServer).CreateScope(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.ScopeService/CreateScope",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScopeServiceServer).CreateScope(ctx, req.(*CreateScopeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ScopeService_UpdateScope_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateScopeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ScopeServiceServer).UpdateScope(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.ScopeService/UpdateScope",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScopeServiceServer).UpdateScope(ctx, req.(*UpdateScopeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ScopeService_DeleteScope_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteScopeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ScopeServiceServer).DeleteScope(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.ScopeService/DeleteScope",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScopeServiceServer).DeleteScope(ctx, req.(*DeleteScopeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-var _ScopeService_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "controller.api.services.v1.ScopeService",
-	HandlerType: (*ScopeServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "GetScope",
-			Handler:    _ScopeService_GetScope_Handler,
-		},
-		{
-			MethodName: "ListScopes",
-			Handler:    _ScopeService_ListScopes_Handler,
-		},
-		{
-			MethodName: "CreateScope",
-			Handler:    _ScopeService_CreateScope_Handler,
-		},
-		{
-			MethodName: "UpdateScope",
-			Handler:    _ScopeService_UpdateScope_Handler,
-		},
-		{
-			MethodName: "DeleteScope",
-			Handler:    _ScopeService_DeleteScope_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "controller/api/services/v1/scope_service.proto",
 }

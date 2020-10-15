@@ -1,11 +1,84 @@
 ---
 layout: docs
-page_title: Configuration
+page_title: Domain Model - Scopes
 sidebar_title: Scopes
 description: |-
-  The annatomy of a Boundary scope
+  The anatomy of a Boundary scope
 ---
 
-# Scope
+# Scopes
 
-A scope is a permission boundary modeled as a container. A Scope can contain Scopes forming a tree. A Scope can own zero to many Groups, Roles, Policies, Targets, Host Catalogs and Credential Stores. Scope is abstract. Organization and Project are concrete Scopes. All resources owned by a Scope are deleted when the Scope is deleted.
+A scope is a [permission][] boundary modeled as a container.
+There are three types of scopes in Boundary:
+A single [global][] scope which is the outermost container;
+[organizations][] (orgs) which are contained by the `global` scope;
+and [projects][] which are contained by orgs.
+Each scope is itself a resource.
+
+## Global
+
+The global scope is the outermost scope.
+There is always a single global scope
+and it cannot be deleted.
+The global scope can directly contain:
+[users][], [groups][], [auth methods][], and [organizations][].
+
+## Organizations
+
+~> Within the software itself and elsewhere in the documentation, Boundary reliably uses "org" instead of "organization". Among other reasons, this removes ambiguity between different regional spellings of the word. It is spelled out here in the domain model for completeness and to ensure its intent is clear.
+
+An org is a scope directly contained by the global scope.
+There can be multiple orgs within the global scope.
+An org can directly contain:
+[users][], [groups][], [auth methods][], [roles][], and [projects][].
+
+## Projects
+
+A project is a scope directly contained by an org scope.
+There can be multiple projects within an org.
+A project can directly contain:
+[roles][], [targets][], and [host catalogs][]
+
+## Attributes
+
+A scope has the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the scope's parent scope.
+
+- `description` - (optional)
+
+## Referenced By
+
+- [Auth Method][]
+- [Group][]
+- [Host Catalog][]
+- [Role][]
+- [Target][]
+- [User][]
+
+[auth method]: /docs/concepts/domain-model/auth-methods
+[auth methods]: /docs/concepts/domain-model/auth-methods
+[global]: /docs/concepts/domain-model/scopes#global
+[group]: /docs/concepts/domain-model/groups
+[groups]: /docs/concepts/domain-model/groups
+[host catalog]: /docs/concepts/domain-model/host-catalogs
+[host catalogs]: /docs/concepts/domain-model/host-catalogs
+[organization]: /docs/concepts/domain-model/scopes#organizations
+[organizations]: /docs/concepts/domain-model/scopes#organizations
+[permission]: /docs/concepts/security/permissions
+[permissions]: /docs/concepts/security/permissions
+[project]: /docs/concepts/domain-model/scopes#projects
+[projects]: /docs/concepts/domain-model/scopes#projects
+[role]: /docs/concepts/domain-model/roles
+[roles]: /docs/concepts/domain-model/roles
+[target]: /docs/concepts/domain-model/targets
+[targets]: /docs/concepts/domain-model/targets
+[user]: /docs/concepts/domain-model/users
+[users]: /docs/concepts/domain-model/users
+
+## Service API Docs
+
+The following services are relevant to this resource:
+
+* [Scope Service](/api-docs/scope-service)

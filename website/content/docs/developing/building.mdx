@@ -9,7 +9,7 @@ description: Building Boundary
 
 Building Boundary from source requires:
 
-- [Golang](https://golang.org/dl/) 1.15 or greater
+- [Go](https://golang.org/dl/) 1.14 or greater. (Note that HashiCorp currently develops against Go 1.15.)
 - `make` installed
 - [Docker](https://docs.docker.com/get-docker/) installed
 - Basic development environment (git, xcode if you're on Mac, etc)
@@ -18,6 +18,10 @@ Building Boundary from source requires:
    github, `$ git clone git@github.com:hashicorp/boundary`
 2. `$ cd boundary`
 3. `$ make dev`
+
+The first time you run `make dev` it will build UI assets, which will take a
+long time. After the initial build, you can update those assets to the
+currently-pinned version via `make build-ui`.
 
 Once you've built Boundary, the binary will be available at `<repo path>/bin/boundary`. Move this
 binary to somewhere in your `$PATH` such as `/usr/local/bin`.
@@ -28,3 +32,8 @@ If you need to cross compile boundary for another OS or architecture, use the [X
 environment variable to set this. Example: `$ XC_OSARCH=linux/amd64 make dev`
 
 For more details, please consult the [Boundary project on GitHub](https://github.com/hashicorp/boundary#build-and-start-boundary-in-dev-mode).
+
+## Troubleshooting
+
+UI assets are built inside a Docker container. If this build step fails, try
+increasing memory and swap available to Docker.

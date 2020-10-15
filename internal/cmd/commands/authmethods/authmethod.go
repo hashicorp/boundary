@@ -24,14 +24,7 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	switch c.Func {
-	case "create":
-		return "Create auth-method resources within Boundary"
-	case "update":
-		return "Update auth-method resources within Boundary"
-	default:
-		return common.SynopsisFunc(c.Func, "auth-method")
-	}
+	return common.SynopsisFunc(c.Func, "auth method")
 }
 
 var flagsMap = map[string][]string{
@@ -41,16 +34,16 @@ var flagsMap = map[string][]string{
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("auth-method")
+	helpMap := common.HelpMap("auth method")
 	var helpStr string
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
 			"Usage: boundary auth-methods [sub command] [options] [args]",
 			"",
-			"  This command allows operations on Boundary auth-method resources. Example:",
+			"  This command allows operations on Boundary auth method resources. Example:",
 			"",
-			"    Read an auth-method:",
+			"    Read an auth method:",
 			"",
 			`      $ boundary auth-methods read -id ampw_1234567890`,
 			"",
@@ -60,9 +53,9 @@ func (c *Command) Help() string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary auth-methods create [type] [sub command] [options] [args]",
 			"",
-			"  This command allows create operations on Boundary auth-method resources. Example:",
+			"  This command allows create operations on Boundary auth method resources. Example:",
 			"",
-			"    Create a password-type auth-method:",
+			"    Create a password-type auth method:",
 			"",
 			`      $ boundary auth-methods create password -name prodops -description "For ProdOps usage"`,
 			"",
@@ -72,9 +65,9 @@ func (c *Command) Help() string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary auth-methods update [type] [sub command] [options] [args]",
 			"",
-			"  This command allows update operations on Boundary auth-method resources. Example:",
+			"  This command allows update operations on Boundary auth method resources. Example:",
 			"",
-			"    Update a password-type auth-method:",
+			"    Update a password-type auth method:",
 			"",
 			`      $ boundary auth-methods update password -id ampw_1234567890 -name devops -description "For DevOps usage"`,
 			"",
@@ -87,12 +80,13 @@ func (c *Command) Help() string {
 }
 
 func (c *Command) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
-
-	if len(flagsMap[c.Func]) > 0 {
-		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.AuthMethod.String(), flagsMap[c.Func])
+	if len(flagsMap[c.Func]) == 0 {
+		return c.FlagSet(base.FlagSetNone)
 	}
+
+	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
+	f := set.NewFlagSet("Command Options")
+	common.PopulateCommonFlags(c.Command, f, resource.AuthMethod.String(), flagsMap[c.Func])
 
 	return set
 }

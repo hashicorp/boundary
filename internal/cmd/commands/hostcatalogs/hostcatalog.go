@@ -24,14 +24,7 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	switch c.Func {
-	case "create":
-		return "Create host-catalog resources within Boundary"
-	case "update":
-		return "Update host-catalog resources within Boundary"
-	default:
-		return common.SynopsisFunc(c.Func, "host-catalog")
-	}
+	return common.SynopsisFunc(c.Func, "host catalog")
 }
 
 var flagsMap = map[string][]string{
@@ -41,16 +34,16 @@ var flagsMap = map[string][]string{
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("host-catalog")
+	helpMap := common.HelpMap("host catalog")
 	var helpStr string
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
 			"Usage: boundary host-catalogs [sub command] [options] [args]",
 			"",
-			"  This command allows operations on Boundary host-catalog resources. Example:",
+			"  This command allows operations on Boundary host catalog resources. Example:",
 			"",
-			"    Read a host-catalog:",
+			"    Read a host catalog:",
 			"",
 			`      $ boundary host-catalogs read -id hcst_1234567890`,
 			"",
@@ -60,9 +53,9 @@ func (c *Command) Help() string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-catalogs create [type] [sub command] [options] [args]",
 			"",
-			"  This command allows create operations on Boundary host-catalog resources. Example:",
+			"  This command allows create operations on Boundary host catalog resources. Example:",
 			"",
-			"    Create a static-type host-catalog:",
+			"    Create a static-type host catalog:",
 			"",
 			`      $ boundary host-catalogs create static -name prodops -description "For ProdOps usage"`,
 			"",
@@ -72,9 +65,9 @@ func (c *Command) Help() string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-catalogs update [type] [sub command] [options] [args]",
 			"",
-			"  This command allows update operations on Boundary host-catalog resources. Example:",
+			"  This command allows update operations on Boundary host catalog resources. Example:",
 			"",
-			"    Update a static-type host-catalog:",
+			"    Update a static-type host catalog:",
 			"",
 			`      $ boundary host-catalogs update static -id hcst_1234567890 -name devops -description "For DevOps usage"`,
 			"",
@@ -87,12 +80,14 @@ func (c *Command) Help() string {
 }
 
 func (c *Command) Flags() *base.FlagSets {
+	if len(flagsMap[c.Func]) == 0 {
+		return c.FlagSet(base.FlagSetNone)
+	}
+
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
-	if len(flagsMap[c.Func]) > 0 {
-		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.HostCatalog.String(), flagsMap[c.Func])
-	}
+	f := set.NewFlagSet("Command Options")
+	common.PopulateCommonFlags(c.Command, f, resource.HostCatalog.String(), flagsMap[c.Func])
 
 	return set
 }

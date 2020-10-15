@@ -20,6 +20,7 @@ configuration file by providing all the required values:
 
 ```hcl
 kms "azurekeyvault" {
+  purpose        = "root"
   tenant_id      = "46646709-b63e-4747-be42-516edeaf1e14"
   client_id      = "03dc33fc-16d9-4b77-8152-3ec568f8af6e"
   client_secret  = "DUJDS3..."
@@ -31,6 +32,8 @@ kms "azurekeyvault" {
 ## `azurekeyvault` Parameters
 
 These parameters apply to the `kms` stanza in the Vault configuration file:
+
+- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `root`, `recovery`, or `config`.
 
 - `tenant_id` `(string: <required>)`: The tenant id for the Azure Active Directory organization. May
   also be specified by the `AZURE_TENANT_ID` environment variable.
@@ -45,10 +48,10 @@ These parameters apply to the `kms` stanza in the Vault configuration file:
   be specified by the `AZURE_ENVIRONMENT` environment variable.
 
 - `vault_name` `(string: <required>)`: The Key Vault vault to use the encryption keys for encryption and
-  decryption. May also be specified by the `VAULT_AZUREKEYVAULT_VAULT_NAME` environment variable.
+  decryption. May also be specified by the `AZUREKEYVAULT_WRAPPER_VAULT_NAME` environment variable.
 
 - `key_name` `(string: <required>)`: The Key Vault key to use for encryption and decryption. May also be specified by the
-  `VAULT_AZUREKEYVAULT_KEY_NAME` environment variable.
+  `AZUREKEYVAULT_WRAPPER_KEY_NAME` environment variable.
 
 ## Authentication
 

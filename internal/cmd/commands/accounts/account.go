@@ -32,10 +32,10 @@ type Command struct {
 
 func (c *Command) Synopsis() string {
 	switch c.Func {
-	case "create":
-		return "Create account resources within Boundary"
-	case "update":
-		return "Update account resources within Boundary"
+	case "set-password":
+		return "Directly set the password on an account resource"
+	case "change-password":
+		return "Change the password on an account resource"
 	default:
 		return common.SynopsisFunc(c.Func, "account")
 	}
@@ -98,6 +98,8 @@ func (c *Command) Help() string {
 			"    Set the password on a password-type account:",
 			"",
 			`      $ boundary accounts set-password -id apw_1234567890 -password <empty, to be read by stdin>`,
+			"",
+			"",
 		})
 	case "change-password":
 		helpStr = base.WrapForHelpText([]string{
@@ -108,6 +110,8 @@ func (c *Command) Help() string {
 			"    Change the password on a password-type account:",
 			"",
 			`      $ boundary accounts change-password -id apw_1234567890 -current-password <empty, to be read by stdin> -new-password <empty, to be read by stdin>`,
+			"",
+			"",
 		})
 	default:
 		helpStr = helpMap[c.Func]()
@@ -116,13 +120,13 @@ func (c *Command) Help() string {
 }
 
 func (c *Command) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
-
-	f := set.NewFlagSet("Command Options")
-
-	if len(flagsMap[c.Func]) > 0 {
-		common.PopulateCommonFlags(c.Command, f, resource.Account.String(), flagsMap[c.Func])
+	if len(flagsMap[c.Func]) == 0 {
+		return c.FlagSet(base.FlagSetNone)
 	}
+
+	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
+	f := set.NewFlagSet("Command Options")
+	common.PopulateCommonFlags(c.Command, f, resource.Account.String(), flagsMap[c.Func])
 
 	for _, name := range flagsMap[c.Func] {
 		switch name {

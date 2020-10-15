@@ -48,22 +48,20 @@ func (c *Command) Help() string {
 
 func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
+	f := set.NewFlagSet("Command Options")
+	common.PopulateCommonFlags(c.Command, f, resource.Scope.String(), flagsMap[c.Func])
 
-	if len(flagsMap[c.Func]) > 0 {
-		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.Scope.String(), flagsMap[c.Func])
-		if c.Func == "create" {
-			f.BoolVar(&base.BoolVar{
-				Name:   "skip-admin-role-creation",
-				Target: &c.flagSkipAdminRoleCreation,
-				Usage:  "If set, a role granting the current user access to administer the newly-created scope will not automatically be created",
-			})
-			f.BoolVar(&base.BoolVar{
-				Name:   "skip-default-role-creation",
-				Target: &c.flagSkipDefaultRoleCreation,
-				Usage:  "If set, a role granting the anonymous user access to log into auth methods and a few other actions within the newly-created scope will not automatically be created",
-			})
-		}
+	if c.Func == "create" {
+		f.BoolVar(&base.BoolVar{
+			Name:   "skip-admin-role-creation",
+			Target: &c.flagSkipAdminRoleCreation,
+			Usage:  "If set, a role granting the current user access to administer the newly-created scope will not automatically be created",
+		})
+		f.BoolVar(&base.BoolVar{
+			Name:   "skip-default-role-creation",
+			Target: &c.flagSkipDefaultRoleCreation,
+			Usage:  "If set, a role granting the anonymous user access to log into auth methods and a few other actions within the newly-created scope will not automatically be created",
+		})
 	}
 
 	return set

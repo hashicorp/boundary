@@ -19,10 +19,10 @@ export default function ProductSubnav() {
         },
         {
           text: 'Download',
-          url: 'https://github.com/hashicorp/boundary/releases',
+          url: '/downloads',
         },
       ]}
-      currentPath={router.pathname}
+      currentPath={router.asPath}
       menuItemsAlign="right"
       menuItems={subnavItems}
       constrainWidth

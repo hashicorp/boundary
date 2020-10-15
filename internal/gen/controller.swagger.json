@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Controller API",
+    "title": "Boundary Controller HTTP API",
     "version": "version not set"
   },
   "schemes": [
@@ -273,7 +273,7 @@
     "/v1/auth-methods/{auth_method_id}:authenticate": {
       "post": {
         "summary": "Authenticate a user to an scope and retrieve an authentication token.",
-        "operationId": "AuthenticationService_Authenticate",
+        "operationId": "AuthMethodService_Authenticate",
         "responses": {
           "200": {
             "description": "",
@@ -300,7 +300,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthenticationService"
+          "controller.api.services.v1.AuthMethodService"
         ]
       }
     },
@@ -3047,6 +3047,11 @@
           "type": "string",
           "format": "byte",
           "description": "Output only. The certificate generated for the session. Raw DER bytes.",
+          "readOnly": true
+        },
+        "termination_reason": {
+          "type": "string",
+          "description": "Output only. If the session is terminated, this provides a short description as to why.",
           "readOnly": true
         }
       },

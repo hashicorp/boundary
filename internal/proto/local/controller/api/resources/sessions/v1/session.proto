@@ -82,4 +82,7 @@ message Session {
 
   // Output only. The certificate generated for the session. Raw DER bytes.
   bytes certificate = 200;
+
+  // Output only. If the session is terminated, this provides a short description as to why.
+  string termination_reason = 210 [json_name = "termination_reason"];
 }

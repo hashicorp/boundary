@@ -234,7 +234,9 @@ func (c *Command) ReadTokenFromKeyring(tokenName string) *authtokens.AuthToken {
 		if err == keyring.ErrNotFound {
 			c.UI.Info("No saved credential found, continuing without")
 		} else {
+			// TODO: potentially look for dbus-launch in advance and don't issue a warning at all
 			c.UI.Error(fmt.Sprintf("Error reading auth token from system credential store: %s", err))
+			c.UI.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -token-name=none.")
 		}
 		token = ""
 	}

@@ -1,43 +1,54 @@
 ---
 layout: docs
-page_title: Configuration
+page_title: Domain Model - Groups
 sidebar_title: Groups
 description: |-
-  How to configure a Boundary group
+  The anatomy of a Boundary group
 ---
 
-# Group
+# Groups
 
-Groups are collections of Users used only for access control purposes. A Group is owned by one and only one Scope. A Group can contain zero or more Users. A Group inherits from Principal ("is-a" Principal) allowing it to be associated with zero or more Roles. All Users in a Group are granted the capabilities of all Roles the Group is associated with. A Group is deleted when the Scope it belongs to is deleted. The lifecycle of a Group is not tied to the lifecycle of any User or Role.
+A group is a resource
+that represents a collection of [users][]
+which can be treated equally
+for the purposes of access control.
+A group is a principal
+which allows it to be assigned to [roles][].
+Any role assigned to a group is indirectly assigned to the users in the group.
+This assignment is a transitive property.
+A user in a group receives all [permissions][] of the roles assigned to the group.
+Groups can be defined at the [Global][], [Organization][], or [Project][] [scope][].
 
-```shell-session
-+-------------------------------------+
-|           Organization              |
-+--------------------------+----------+
-| Group 1                  | Group 2  |
-+--------+--------+-------------------+
-| User 1 | User 2 | User 3 | User 4   |
-+--------+--------+--------+----------+
-```
+## Attributes
 
-# Attributes
+A group has the following configurable attributes:
 
-### ID
+- `name` - (optional)
+  If set, the `name` must be unique within the group's immediate parent [scope][].
 
-A group ID has a `g_` prefix followed by ten digits.
+- `description` - (optional)
 
-Example: `g_0123456789`
+## Referenced By
 
-### Name
+- [Global][]
+- [Organization][]
+- [Role][]
+- [User][]
 
-A group name is the friendly name of a group resource.
+[global]: /docs/concepts/domain-model/scopes#global
+[group]: /docs/concepts/domain-model/groups
+[groups]: /docs/concepts/domain-model/groups
+[organization]: /docs/concepts/domain-model/scopes#organizations
+[permissions]: /docs/concepts/security/permissions
+[project]: /docs/concepts/domain-model/scopes#projects
+[role]: /docs/concepts/domain-model/roles
+[roles]: /docs/concepts/domain-model/roles
+[scope]: /docs/concepts/domain-model/scopes
+[user]: /docs/concepts/domain-model/users
+[users]: /docs/concepts/domain-model/users
 
-### Description
+## Service API Docs
 
-A group description is the friendly description of the group resource.
+The following services are relevant to this resource:
 
-# Referenced By
-
-- [User]()
-- [Role]()
-- [Organization]()
+- [Group Service](/api-docs/group-service)

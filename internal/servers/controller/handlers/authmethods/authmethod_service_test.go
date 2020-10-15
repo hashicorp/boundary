@@ -1,6 +1,7 @@
 package authmethods_test
 
 import (
+	"context"
 	stderrors "errors"
 	"fmt"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
@@ -29,6 +31,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testPassword  = "thetestpassword"
+	testLoginName = "default"
+)
+
 func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -37,8 +44,11 @@ func TestGet(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -101,7 +111,7 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := authmethods.NewService(repoFn, iamRepoFn)
+			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			got, gErr := s.GetAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
@@ -122,8 +132,11 @@ func TestList(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -195,7 +208,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(repoFn, iamRepoFn)
+			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListAuthMethodsRequest{ScopeId: tc.scopeId})
@@ -216,15 +229,18 @@ func TestDelete(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
-	s, err := authmethods.NewService(repoFn, iamRepoFn)
+	s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	cases := []struct {
@@ -277,15 +293,18 @@ func TestDelete_twice(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
-	s, err := authmethods.NewService(repoFn, iamRepoFn)
+	s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(err, "Error when getting new auth_method service.")
 
 	req := &pbs.DeleteAuthMethodRequest{
@@ -306,8 +325,11 @@ func TestCreate(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -445,7 +467,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := authmethods.NewService(repoFn, iamRepoFn)
+			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Error when getting new auth_method service.")
 
 			got, gErr := s.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetItem().GetScopeId())), tc.req)
@@ -485,13 +507,16 @@ func TestUpdate(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(repoFn, iamRepoFn)
+	tested, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()}
@@ -862,4 +887,224 @@ func TestUpdate(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
+}
+
+func TestAuthenticate(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kms)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+
+	acct, err := password.NewAccount(am.GetPublicId(), password.WithLoginName(testLoginName))
+	require.NoError(t, err)
+
+	pwRepo, err := pwRepoFn()
+	require.NoError(t, err)
+	acct, err = pwRepo.CreateAccount(context.Background(), o.GetPublicId(), acct, password.WithPassword(testPassword))
+	require.NoError(t, err)
+	require.NotNil(t, acct)
+
+	cases := []struct {
+		name     string
+		request  *pbs.AuthenticateRequest
+		wantType string
+		wantErr  error
+	}{
+		{
+			name: "basic",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: am.GetPublicId(),
+				TokenType:    "token",
+				Credentials: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
+			},
+			wantType: "token",
+		},
+		{
+			name: "cookie-type",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: am.GetPublicId(),
+				TokenType:    "cookie",
+				Credentials: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
+			},
+			wantType: "cookie",
+		},
+		{
+			name: "no-token-type",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: am.GetPublicId(),
+				Credentials: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
+			},
+		},
+		{
+			name: "bad-token-type",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: am.GetPublicId(),
+				TokenType:    "email",
+				Credentials: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "no-authmethod",
+			request: &pbs.AuthenticateRequest{
+				Credentials: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "wrong-password",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: am.GetPublicId(),
+				TokenType:    "token",
+				Credentials: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: "wrong"}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.Unauthenticated),
+		},
+		{
+			name: "wrong-login-name",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: am.GetPublicId(),
+				TokenType:    "token",
+				Credentials: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: "wrong"}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.Unauthenticated),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
+			require.NoError(err)
+
+			resp, err := s.Authenticate(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.request)
+			if tc.wantErr != nil {
+				assert.Error(err)
+				assert.Truef(stderrors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
+				return
+			}
+			require.NoError(err)
+			aToken := resp.GetItem()
+			assert.NotEmpty(aToken.GetId())
+			assert.NotEmpty(aToken.GetToken())
+			assert.True(strings.HasPrefix(aToken.GetToken(), aToken.GetId()))
+			assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
+			assert.Equal(aToken.GetCreatedTime(), aToken.GetUpdatedTime())
+			assert.Equal(aToken.GetCreatedTime(), aToken.GetApproximateLastUsedTime())
+			assert.Equal(acct.GetPublicId(), aToken.GetAccountId())
+			assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
+			assert.Equal(tc.wantType, resp.GetTokenType())
+		})
+	}
+}
+
+func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kms)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+
+	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+	acct, err := password.NewAccount(am.GetPublicId(), password.WithLoginName(testLoginName))
+	require.NoError(err)
+
+	pwRepo, err := pwRepoFn()
+	require.NoError(err)
+	acct, err = pwRepo.CreateAccount(context.Background(), o.GetPublicId(), acct, password.WithPassword(testPassword))
+	require.NoError(err)
+
+	// connected to an account.
+	iamRepo, err := iamRepoFn()
+	require.NoError(err)
+	iamUser, err := iamRepo.LookupUserWithLogin(context.Background(), acct.GetPublicId(), iam.WithAutoVivify(true))
+	require.NoError(err)
+
+	s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
+	require.NoError(err)
+	resp, err := s.Authenticate(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.AuthenticateRequest{
+		AuthMethodId: am.GetPublicId(),
+		Credentials: func() *structpb.Struct {
+			creds := map[string]*structpb.Value{
+				"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+				"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+			}
+			return &structpb.Struct{Fields: creds}
+		}(),
+	})
+	require.NoError(err)
+
+	aToken := resp.GetItem()
+	assert.Equal(iamUser.GetPublicId(), aToken.GetUserId())
+	assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
+	assert.Equal(acct.GetPublicId(), aToken.GetAccountId())
+
+	assert.NotEmpty(aToken.GetId())
+	assert.NotEmpty(aToken.GetToken())
+	assert.True(strings.HasPrefix(aToken.GetToken(), aToken.GetId()))
 }

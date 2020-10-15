@@ -67,11 +67,8 @@ func (c *Command) Help() string {
 
 func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
-
-	if len(flagsMap[c.Func]) > 0 {
-		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.Session.String(), flagsMap[c.Func])
-	}
+	f := set.NewFlagSet("Command Options")
+	common.PopulateCommonFlags(c.Command, f, resource.Session.String(), flagsMap[c.Func])
 
 	return set
 }
@@ -156,7 +153,7 @@ func (c *Command) Run(args []string) int {
 
 		case "table":
 			if len(listedSessions) == 0 {
-				c.UI.Output("No auth tokens found")
+				c.UI.Output("No sessions found")
 				return 0
 			}
 			var output []string

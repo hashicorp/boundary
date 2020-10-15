@@ -27,7 +27,7 @@ type PasswordCommand struct {
 }
 
 func (c *PasswordCommand) Synopsis() string {
-	return fmt.Sprintf("%s a password-type auth-method within Boundary", textproto.CanonicalMIMEHeaderKey(c.Func))
+	return fmt.Sprintf("%s a password type auth-method", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
 var passwordFlagsMap = map[string][]string{
@@ -40,22 +40,22 @@ func (c *PasswordCommand) Help() string {
 	switch c.Func {
 	case "create":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary auth-methods password create [options] [args]",
+			"Usage: boundary auth-methods create password [options] [args]",
 			"",
-			"  Create a password-type auth-method. Example:",
+			"  Create a password-type auth method. Example:",
 			"",
-			`    $ boundary auth-methods password create -name prodops -description "Password auth-method for ProdOps"`,
+			`    $ boundary auth-methods create password -name prodops -description "Password auth-method for ProdOps"`,
 			"",
 			"",
 		})
 
 	case "update":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary auth-methods password update [options] [args]",
+			"Usage: boundary auth-methods update password [options] [args]",
 			"",
-			"  Update a password-type auth-method given its ID. Example:",
+			"  Update a password-type auth method given its ID. Example:",
 			"",
-			`    $ boundary auth-methods password update -id ampw_1234567890 -name "devops" -description "Password auth-method for DevOps"`,
+			`    $ boundary auth-methods update password -id ampw_1234567890 -name "devops" -description "Password auth-method for DevOps"`,
 			"",
 			"",
 		})
@@ -66,12 +66,10 @@ func (c *PasswordCommand) Help() string {
 func (c *PasswordCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
-	if len(passwordFlagsMap[c.Func]) > 0 {
-		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, "password-type auth-method", passwordFlagsMap[c.Func])
-	}
+	f := set.NewFlagSet("Command Options")
+	common.PopulateCommonFlags(c.Command, f, "password-type auth method", passwordFlagsMap[c.Func])
 
-	f := set.NewFlagSet("Password Auth-Method Options")
+	f = set.NewFlagSet("Password Auth-Method Options")
 	addPasswordFlags(c, f)
 
 	return set

@@ -2,9 +2,9 @@
 //
 // - A string refers to the name of a file
 // - A "category" value refers to the name of a directory
-// - All directories must have an "index.mdx" file to serve as
-//   the landing page for the category, or a "name" property to
-//   serve as the category title in the sidebar
+// - All directories must have an "index.mdx" file to serve as the landing page
+//   for the category, or a "name" property to serve as the category title in
+//   the sidebar
 
 export default [
   {
@@ -16,53 +16,43 @@ export default [
     content: ['systemd', 'postgres', 'high-availability'],
   },
   {
-    category: 'developing',
-    content: [
-      'building',
-      'ui',
-      {
-        category: 'sdk',
-        content: ['authenticate'],
-      },
-    ],
+    category: 'api-clients',
+    content: ['api', 'cli', 'go-sdk'],
   },
   {
     category: 'concepts',
     content: [
-		  {
-        category: 'security-model',
-			  content: [
-				  'permissions-model',
-				]
-			},
+      {
+        category: 'security',
+        content: [
+          'permissions',
+          'data-encryption',
+          'connections-tls',
+        ]
+      },
       {
         category: 'domain-model',
         content: [
           'accounts',
-          'actions',
           'auth-methods',
-          'grants',
           'groups',
           'hosts',
           'host-catalogs',
           'host-sets',
-          'organizations',
-          'principals',
-          'projects',
-          'resources',
           'scopes',
+          'sessions',
           'targets',
           'roles',
           'users',
         ],
       },
-			{
-        category: 'api-standards',
-				content: [
-          'http-standards',
-          'cli-standards',
-				]
-			},
+    ],
+  },
+  {
+    category: 'developing',
+    content: [
+      'building',
+      'ui',
     ],
   },
   '---',
@@ -87,7 +77,6 @@ export default [
       },
       'controller',
       'worker',
-      'telemetry',
     ],
   },
   {
@@ -95,15 +84,14 @@ export default [
     content: [
       'manage-scopes',
       'manage-targets',
-      'manage-identities',
+      'manage-users-groups',
+      'manage-roles',
       'manage-sessions',
     ],
   },
   '---',
-  {
-    category: 'roadmap',
-    content: ['v0_2_0'],
-  },
+  'roadmap',
+
   {
     category: 'releases',
     content: [

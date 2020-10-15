@@ -1,15 +1,52 @@
 ---
 layout: docs
-page_title: Domain Model - Action
-sidebar_title: Actions
+page_title: Domain Model - Accounts
+sidebar_title: Accounts
 description: |-
-  The annatomy of a Boundary account
+  The anatomy of a Boundary account
 ---
 
-# Action
+# Accounts
 
-A Boundary account is a resource that contains the login name and password for the password authentication method. Accounts are not users, but can be associated with users. A login name is a not a username and vice versa. Accounts are a special case for the password auth method because other auth methods already store account information (such as OIDC).
+An account is a resource
+that represents a unique set of credentials
+issued from a configured [auth method][]
+which can be used to establish the identity of a user.
+A [user][] can have zero or more accounts
+but an account can only belong to a single user.
+An account can only be associated with a user
+in the same scope as the account's [auth method][].
 
 ## Attributes
 
-Accounts contain a `login name` and a `password`.
+All account types have the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the account's [auth method][].
+
+- `description` - (optional)
+
+### Password Account Attributes
+
+Password account types have the following additional attributes:
+
+- `login_name` - (required)
+  Must be unique within the account's [auth method][].
+  Can only contain lower case letters.
+
+- `password` - (optional)
+  Not setting the `password` disables the account.
+
+## Referenced By
+
+- [Auth Method][]
+- [User][]
+
+[auth method]: /docs/concepts/domain-model/auth-methods
+[user]: /docs/concepts/domain-model/users
+
+## Service API Docs
+
+The following services are relevant to this resource:
+
+- [Account Service](/api-docs/account-service)

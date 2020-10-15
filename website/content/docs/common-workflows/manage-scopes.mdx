@@ -7,34 +7,48 @@ description: How to manage Boundary scopes
 
 # Manage Scopes
 
-Scopes are a foundational part of Boundary. They allow users to segregate resources and assign ownership of resources to principals. There are three hierarchies of scopes within Boundary:
+[Scopes](/docs/concepts/domain-model/scopes) are a foundational part of Boundary. They allow users to partition resources and assign ownership of resources to principals. There are three types of scopes within Boundary:
 
-1. Global
-2. Organization
+1. Global (`global`)
+2. Org
 3. Project
 
-Some resources can only be associated with a specific level of scope. Targets for example can only be project scope. Other resources can be of multiple scopes. For example, users can be both global and organization level scoped. See the [domain model](/docs/concepts/domain-model) for detailed resource specific information.
+These are in a hierarchy:
 
-In this example, we're going to create two scopes, a project and an organization.
+* There is only one single `global` scope. It is meant as the entry point for initial administration/setup and to manage org scopes.
+* Under the `global` scope there can be many org scopes. These are used to hold IAM-related resources and project scopes.
+* Under each org scope can be many project scopes. These are used to hold infrastructure-related resources.
 
-~> All resource ID's in this example are illustration only - ID's are uniquely generated for every resource upon creation with the exception being
-generated resources in `dev` mode. Please make sure to use the resource ID's that are generated when running this example. For example, if you run
+Some resources can only be associated with a specific level of scope. As an example, [Targets](/docs/concepts/domain-model/targets) can only be contained within a project scope. Other resources can be contained by multiple scopes. For example, users can be created within the `global` scope or an org-level scope. See the [domain model](/docs/concepts/domain-model) for detailed resource specific information.
+
+In this example, we're going to create two scopes, an org and a project.
+
+~> All resource IDs in this example are illustration only - IDs are uniquely generated for every resource upon creation with the exception being
+generated resources in `dev` mode. Please make sure to use the resource IDs that are generated when running this example. For example, if you run
 `boundary users create`, use the resource ID of the user seen in stdout, not the ID in the example command.
 
-## Create an Organization
+## Create an Org
 
-An organization lives in the global scope. In this example, we're going to create an organization. In doing so, we're going to opt for automated role creation during scope generation in order to simplify management of the scope by the user.
+In this example, we're going to create an org, which lives in the `global` scope.
+
+~> The CLI and UI will default to having certain administrative roles be created
+automatically when a scope is created, so that the user that created the scope
+can immediately manage it. The Terraform provider defaults skipping creation of
+those roles so that resources are not created outside of Terraform's purview. To
+simplify this example, we are telling Terraform to allow these roles to be
+created in both this section and in the next section where we create a project
+scope.
 
 <Tabs>
 <Tab heading="CLI">
 
 
 ```bash
-$ boundary scopes create -scope-id global -name my_org -description 'My frist org'
+$ boundary scopes create -scope-id global -name my_org -description 'My first org'
 
 Scope information:
   Created Time:        Tue, 29 Sep 2020 05:48:22 PDT
-  Description:         My frist org
+  Description:         My first org
   ID:                  o_y0fEd8iY2J
   Name:                my_org
   Updated Time:        Tue, 29 Sep 2020 05:48:22 PDT
@@ -50,14 +64,17 @@ Scope information:
 <Tab heading="Admin Console">
 
 
-Navigate to the main boundary landing page and choose `new` organization:
-![](/img/manage-scopes-org-undefined.png)
+1. Navigate to the Boundary landing page.
+1. Choose the **New** button.
+1. Fill org details.
+1. Choose **Save** and view the org on the Boundary landing page.
 
-Fill in the orgnaization details:
-![](/img/manage-scopes-org-settings.png)
-
-Click save and view the org in the main Boundary landing page:
-![](/img/manage-scopes-org-defined.png)
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602266941-boundary-clickthrough-manage-scopes-create-org.mp4"
+  />
+</video>
 
 </Tab>
 <Tab heading="Terraform">
@@ -65,10 +82,11 @@ Click save and view the org in the main Boundary landing page:
 
 ```hcl
 resource "boundary_scope" "org" {
-  scope_id         = "global"
-  name             = "my_org"
-  description      = "My first org"
-  auto_create_role = true
+  scope_id                 = "global"
+  name                     = "my_org"
+  description              = "My first org"
+  auto_create_default_role = true
+  auto_create_admin_role   = true
 }
 ```
 
@@ -78,18 +96,18 @@ resource "boundary_scope" "org" {
 
 ## Create a Project
 
-Next, we're going to add a project scope to our organization. Again, we're going to opt for automated role creation to simplify management of this scope.
+Next, we're going to add a project scope to our org.
 
 <Tabs>
 <Tab heading="CLI">
 
 
 ```bash
-$ boundary scopes create -scope-id o_0MkQUfE9jA -name my_project -description 'My frist project'
+$ boundary scopes create -scope-id o_0MkQUfE9jA -name my_project -description 'My first project'
 
 Scope information:
   Created Time:        Tue, 29 Sep 2020 05:57:45 PDT
-  Description:         My frist project
+  Description:         My first project
   ID:                  p_jqCwqjSTQ4
   Name:                my_project
   Updated Time:        Tue, 29 Sep 2020 05:57:45 PDT
@@ -106,14 +124,18 @@ Scope information:
 <Tab heading="Admin Console">
 
 
-Navigate to your org in the UI and click `new` project:
-![](/img/manage-scopes-project-undefined.png)
+1. Navigate to an org, which leads to an overview of projects within that org.
+1. Choose the **New** button.
+1. Fill project details.
+1. Choose **Save** and view the project edit form page.
+1. _Note_: by default, edit forms are disabled to help prevent unintended edits. To edit your new project choose **Edit Form**.
 
-Add the project settings:
-![](/img/manage-scopes-project-settings.png)
-
-View the newly created project:
-![](/img/manage-scopes-project-defined.png)
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602267080-boundary-clickthrough-manage-scopes-create-project.mp4"
+  />
+</video>
 
 </Tab>
 <Tab heading="Terraform">
@@ -125,8 +147,9 @@ resource "boundary_scope" "project" {
   description      = "My first project"
 
   # scope_id is taken from the org resource defined above
-  scope_id         = boundary_scope.org.id
-  auto_create_role = true
+  scope_id                 = boundary_scope.org.id
+  auto_create_admin_role   = true
+  auto_create_default_role = true
 }
 ```
 

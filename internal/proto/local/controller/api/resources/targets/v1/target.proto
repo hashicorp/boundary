@@ -102,6 +102,9 @@ message SessionAuthorizationData {
 	// Output only. The private key to use when connecting. We are using Ed25519, so this is purely raw bytes, no marshaling.
 	bytes private_key = 130 [json_name="private_key"];
 
+	// Output only. The host ID...not used for security purposes, but for some special command handling (e.g. ssh host key aliasing).
+	string host_id = 140;
+
 	// Output only. Worker information. The first worker in the array should be prioritized.
 	repeated WorkerInfo worker_info = 150 [json_name="worker_info"];
 }

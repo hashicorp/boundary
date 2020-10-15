@@ -98,7 +98,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthToken, err
 		if stderrors.Is(err, errors.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
 		}
-		return nil, fmt.Errorf("unable to list auth tokens: %w", err)
+		return nil, fmt.Errorf("unable to lookup auth token: %w", err)
 	}
 	if u == nil {
 		return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
@@ -214,7 +214,7 @@ func validateListRequest(req *pbs.ListAuthTokensRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
 		req.GetScopeId() != scope.Global.String() {
-		badFields["scope_id"] = "Incorrectly formatted identifier."
+		badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

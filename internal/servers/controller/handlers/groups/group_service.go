@@ -469,7 +469,7 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 	}
 	for _, id := range req.GetMemberIds() {
 		if !handlers.ValidId(iam.UserPrefix, id) {
-			badFields["member_ids"] = "Must only contain valid user ids."
+			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}
 		if id == "u_recovery" {
@@ -493,7 +493,7 @@ func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
 	}
 	for _, id := range req.GetMemberIds() {
 		if !handlers.ValidId(iam.UserPrefix, id) {
-			badFields["member_ids"] = "Must only contain valid user ids."
+			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}
 		if id == "u_recovery" {
@@ -520,7 +520,7 @@ func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error
 	}
 	for _, id := range req.GetMemberIds() {
 		if !handlers.ValidId(iam.UserPrefix, id) {
-			badFields["member_ids"] = "Must only contain valid user ids."
+			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}
 	}

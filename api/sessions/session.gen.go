@@ -13,24 +13,25 @@ import (
 )
 
 type Session struct {
-	Id             string            `json:"id,omitempty"`
-	TargetId       string            `json:"target_id,omitempty"`
-	Scope          *scopes.ScopeInfo `json:"scope,omitempty"`
-	CreatedTime    time.Time         `json:"created_time,omitempty"`
-	UpdatedTime    time.Time         `json:"updated_time,omitempty"`
-	Version        uint32            `json:"version,omitempty"`
-	Type           string            `json:"type,omitempty"`
-	ExpirationTime time.Time         `json:"expiration_time,omitempty"`
-	AuthTokenId    string            `json:"auth_token_id,omitempty"`
-	UserId         string            `json:"user_id,omitempty"`
-	HostSetId      string            `json:"host_set_id,omitempty"`
-	HostId         string            `json:"host_id,omitempty"`
-	ScopeId        string            `json:"scope_id,omitempty"`
-	Endpoint       string            `json:"endpoint,omitempty"`
-	States         []*SessionState   `json:"states,omitempty"`
-	Status         string            `json:"status,omitempty"`
-	WorkerInfo     []*WorkerInfo     `json:"worker_info,omitempty"`
-	Certificate    []byte            `json:"certificate,omitempty"`
+	Id                string            `json:"id,omitempty"`
+	TargetId          string            `json:"target_id,omitempty"`
+	Scope             *scopes.ScopeInfo `json:"scope,omitempty"`
+	CreatedTime       time.Time         `json:"created_time,omitempty"`
+	UpdatedTime       time.Time         `json:"updated_time,omitempty"`
+	Version           uint32            `json:"version,omitempty"`
+	Type              string            `json:"type,omitempty"`
+	ExpirationTime    time.Time         `json:"expiration_time,omitempty"`
+	AuthTokenId       string            `json:"auth_token_id,omitempty"`
+	UserId            string            `json:"user_id,omitempty"`
+	HostSetId         string            `json:"host_set_id,omitempty"`
+	HostId            string            `json:"host_id,omitempty"`
+	ScopeId           string            `json:"scope_id,omitempty"`
+	Endpoint          string            `json:"endpoint,omitempty"`
+	States            []*SessionState   `json:"states,omitempty"`
+	Status            string            `json:"status,omitempty"`
+	WorkerInfo        []*WorkerInfo     `json:"worker_info,omitempty"`
+	Certificate       []byte            `json:"certificate,omitempty"`
+	TerminationReason string            `json:"termination_reason,omitempty"`
 
 	responseBody *bytes.Buffer
 	responseMap  map[string]interface{}

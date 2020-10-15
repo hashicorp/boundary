@@ -260,7 +260,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id strin
 		return nil, fmt.Errorf("unable to update auth method: %w", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", id)
+		return nil, handlers.NotFoundErrorf("Account %q doesn't exist or incorrect version provided.", id)
 	}
 	return toProto(out)
 }

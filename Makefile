@@ -13,7 +13,7 @@ CGO_ENABLED?=0
 export GEN_BASEPATH := $(shell pwd)
 
 api:
-	$(MAKE) --environment-overrides -C api/internal/genapi api
+	$(MAKE) --environment-overrides -C internal/api/genapi api
 
 tools:
 	go generate -tags tools tools/tools.go
@@ -35,13 +35,38 @@ bin: build-ui
 fmt:
 	goimports -w $$(find . -name '*.go' | grep -v pb.go | grep -v pb.gw.go)
 
+# Set env for all UI targets.
+UI_TARGETS := update-ui-version build-ui build-ui-ifne
+# Note the extra .tmp path segment in UI_CLONE_DIR is significant and required.
+$(UI_TARGETS): export UI_CLONE_DIR      := internal/ui/.tmp/boundary-ui
+$(UI_TARGETS): export UI_VERSION_FILE   := internal/ui/VERSION
+$(UI_TARGETS): export UI_ASSETS_FILE    := internal/ui/assets.go
+$(UI_TARGETS): export UI_DEFAULT_BRANCH := main
+$(UI_TARGETS): export UI_CURRENT_COMMIT := $(shell head -n1 < "$(UI_VERSION_FILE)" | cut -d' ' -f1)
+$(UI_TARGETS): export UI_COMMITISH ?=
+
+update-ui-version:
+	@if [ -z "$(UI_COMMITISH)" ]; then \
+		echo "==> Setting UI version to latest commit on branch '$(UI_DEFAULT_BRANCH)'"; \
+		export UI_COMMITISH="$(UI_DEFAULT_BRANCH)"; \
+	else \
+		echo "==> Setting to latest commit matching '$(UI_COMMITISH)'"; \
+	fi; \
+	./scripts/uiclone.sh && ./scripts/uiupdate.sh
+
 build-ui:
-	@scripts/uigen.sh
+	@if [ -z "$(UI_COMMITISH)" ]; then \
+		echo "==> Building default UI version from $(UI_VERSION_FILE): $(UI_CURRENT_COMMIT)"; \
+		export UI_COMMITISH="$(UI_CURRENT_COMMIT)"; \
+	else \
+		echo "==> Building custom UI version $(UI_COMMITISH)"; \
+	fi; \
+	./scripts/uiclone.sh && ./scripts/uigen.sh
 
 build-ui-ifne:
 ifeq (,$(wildcard internal/ui/assets.go))
 	@echo "==> No UI assets found, building..."
-	@scripts/uigen.sh
+	@$(MAKE) build-ui
 else
 	@echo "==> UI assets found, use build-ui target to update"
 endif
@@ -65,7 +90,12 @@ protobuild:
 		"--proto_path=internal/proto/local" \
 		"--proto_include_path=internal/proto/third_party" \
 		"--plugin_name=go" \
-		"--plugin_out=plugins=grpc:${TMP_DIR}"
+		"--plugin_out=${TMP_DIR}"
+	@bash scripts/protoc_gen_plugin.bash \
+		"--proto_path=internal/proto/local" \
+		"--proto_include_path=internal/proto/third_party" \
+		"--plugin_name=go-grpc" \
+		"--plugin_out=${TMP_DIR}"
 	@bash scripts/protoc_gen_plugin.bash \
 		"--proto_path=internal/proto/local/" \
 		"--proto_include_path=internal/proto/third_party" \
@@ -119,7 +149,7 @@ test-ci: install-go
 install-go:
 	./ci/goinstall.sh
 
-.PHONY: api tools gen migrations proto website ci-config ci-verify
+.PHONY: api tools gen migrations proto website ci-config ci-verify set-ui-version
 
 .NOTPARALLEL:
 

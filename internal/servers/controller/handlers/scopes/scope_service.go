@@ -265,7 +265,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope,
 		scps, err = repo.ListProjects(ctx, scopeId)
 	default:
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{"scope_id": "Invalid id for listing."})
+			map[string]string{"scope_id": "This field must be 'global' or a valid org scope id."})
 	}
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to list scopes: %v", err)
@@ -478,6 +478,9 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 
 func validateListRequest(req *pbs.ListScopesRequest) error {
 	badFields := map[string]string{}
+	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) {
+		badFields["scope_id"] = "Must be 'global' or a valid org scope id when listing."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}

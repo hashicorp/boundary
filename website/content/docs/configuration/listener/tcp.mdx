@@ -13,26 +13,22 @@ The TCP listener configures Boundary to listen on a TCP address/port.
 
 ```hcl
 listener "tcp" {
+  purpose = "api"
   address = "127.0.0.1:9200"
 }
 ```
 
 The `listener` stanza may be specified more than once to make Boundary listen on
-multiple interfaces. If you configure multiple listeners you also need to
-specify [`api_addr`][api-addr] and [`cluster_addr`][cluster-addr] so Boundary will
-advertise the correct address to other nodes.
+multiple interfaces; however, only one listener marked for `cluster` purpose is
+allowed.
 
 ## `tcp` Listener Parameters
 
+- `purpose` `(string: "")` - Specifies the purpose. Can be `api`, `cluster`, or
+`proxy`.
+
 - `address` `(string: "127.0.0.1:9200")` – Specifies the address to bind to for
   listening.
-
-- `cluster_address` `(string: "127.0.0.1:9201")` – Specifies the address to bind
-  to for cluster server-to-server requests. This defaults to one port higher
-  than the value of `address`. This does not usually need to be set, but can be
-  useful in case Boundary servers are isolated from each other in such a way that
-  they need to hop through a TCP load balancer or some other scheme in order to
-  talk.
 
 - `http_idle_timeout` `(string: "5m")` - Specifies the maximum amount of time to
   wait for the next request when keep-alives are enabled. If `http_idle_timeout`
@@ -53,30 +49,15 @@ advertise the correct address to other nodes.
   is read. The default value of `"0"` means inifinity. This is specified using a
   label suffix like `"30s"` or `"1h"`.
 
+<!-- We don't have this implemented yet
 - `max_request_size` `(int: 33554432)` – Specifies a hard maximum allowed
   request size, in bytes. Defaults to 32 MB. Specifying a number less than or
   equal to `0` turns off limiting altogether.
+!-->
 
 - `max_request_duration` `(string: "90s")` – Specifies the maximum
   request duration allowed before Boundary cancels the request. This overrides
   `default_max_request_duration` for this listener.
-
-- `proxy_protocol_behavior` `(string: "")` – When specified, enables a PROXY
-  protocol version 1 behavior for the listener.
-  Accepted Values:
-
-  - _use_always_ - The client's IP address will always be used.
-  - _allow_authorized_ - If the source IP address is in the
-    `proxy_protocol_authorized_addrs` list, the client's IP address will be used.
-    If the source IP is not in the list, the source IP address will be used.
-  - _deny_unauthorized_ - The traffic will be rejected if the source IP
-    address is not in the `proxy_protocol_authorized_addrs` list.
-
-- `proxy_protocol_authorized_addrs` `(string: <required-if-enabled> or array: <required-if-enabled> )` –
-  Specifies the list of allowed source IP addresses to be used with the PROXY protocol.
-  Not required if `proxy_protocol_behavior` is set to `use_always`. Source IPs should
-  be comma-delimited if provided as a string. At least one source IP must be provided,
-  `proxy_protocol_authorized_addrs` cannot be an empty array or string.
 
 - `tls_disable` `(string: "false")` – Specifies if TLS will be disabled. Boundary
   assumes TLS by default, so you must explicitly disable TLS to opt-in to
@@ -117,10 +98,7 @@ advertise the correct address to other nodes.
 - `tls_client_ca_file` `(string: "")` – PEM-encoded Certificate Authority file
   used for checking the authenticity of client.
 
-- `tls_disable_client_certs` `(string: "false")` – Turns off client
-  authentication for this listener. The default behavior (when this is false)
-  is for Boundary to request client certificates when available.
-
+<!-- Not enabled yet
 - `x_forwarded_for_authorized_addrs` `(string: <required-to-enable>)` –
   Specifies the list of source IP CIDRs for which an X-Forwarded-For header
   will be trusted. Comma-separated list or JSON array. This turns on
@@ -144,6 +122,7 @@ advertise the correct address to other nodes.
 
 - `unauthenticated_metrics_access` `(string: "false")` - If set to true, allows
   unauthenticated access to the `/v1/sys/metrics` endpoint.
+!-->
 
 ## `tcp` Listener Examples
 
@@ -153,6 +132,7 @@ This example shows enabling a TLS listener.
 
 ```hcl
 listener "tcp" {
+  purpose = "api"
   tls_cert_file = "/etc/certs/Boundary.crt"
   tls_key_file  = "/etc/certs/Boundary.key"
 }
@@ -164,16 +144,14 @@ This example shows Boundary listening on a private interface, as well as localho
 
 ```hcl
 listener "tcp" {
+  purpose = "api"
   address = "127.0.0.1:9200"
 }
 
 listener "tcp" {
+  purpose = "cluster"
   address = "10.0.0.5:9200"
 }
-
-# Advertise the non-loopback interface
-api_addr = "https://10.0.0.5:9200"
-cluster_addr = "https://10.0.0.5:9201"
 ```
 
 [golang-tls]: https://golang.org/src/crypto/tls/cipher_suites.go

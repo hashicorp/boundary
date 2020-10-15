@@ -1,13 +1,87 @@
 ---
 layout: docs
-page_title: Configuration
+page_title: Domain Model - Targets
 sidebar_title: Targets
 description: |-
-  The annatomy of a Boundary target
+  The anatomy of a Boundary target
 ---
 
-# Target
+# Targets
 
-A target is a networked service a User can connect to and interact with through Boundary. A Target does not directly contain any secrets. A Target contains a collection of Hosts. A Target belongs to one and only one Scope. A Target can contain zero or more Host Sets. Target is abstract. A Target is deleted when the Scope it belongs to is deleted. The lifecycle of a Target is not tied to the lifecycle of any Host Set.
+A target is a resource
+that represents a networked service
+a [user][] can connect to
+and interact with
+through Boundary
+by way of a session.
+A target can only be defined within a [project][].
+A target can contain references to [host sets][] from [host catalogs][]
+which belong to the same project as the target.
+A user can establish a session with a [host][]
+in any host set referenced by the target
+if the user has been assigned a [role][]
+with the `authorize-session` [permission][]
+for the target.
 
 ## Attributes
+
+A target has the following configurable attributes:
+
+- `name` - (required)
+  The `name` must be unique within the target's [project][].
+
+- `description` - (optional)
+
+### TCP Target Attributes
+
+TCP targets have the following additional attributes:
+
+- `default_port` - (optional)
+  A TCP port number.
+  Boundary will use the `default_port`
+  when connecting to a host in the target
+  if the user does not specify a different port
+  when establishing the session.
+
+- `session_max_seconds` - (required)
+  The maximum duration of an individual session between the user and the target.
+  All connections for a session are closed
+  and the session is terminated
+  when a session reaches the maximum duration.
+  The default is 8 hours (28800 seconds).
+  Must be greater than 0.
+
+- `session_connection_limit` - (required)
+  The cumulative number of TCP connections allowed during a session.
+  The default is 1.
+  -1 means no limit.
+  The value must be greater than 0 or -1.
+
+## Referenced By
+
+- [Host Set][]
+- [Project][]
+- [Session][]
+
+[host catalog]: /docs/concepts/domain-model/host-catalogs
+[host catalogs]: /docs/concepts/domain-model/host-catalogs
+[host set]: /docs/concepts/domain-model/host-sets
+[host sets]: /docs/concepts/domain-model/host-sets
+[host]: /docs/concepts/domain-model/hosts
+[hosts]: /docs/concepts/domain-model/hosts
+[permission]: /docs/concepts/security/permissions
+[permissions]: /docs/concepts/security/permissions
+[project]: /docs/concepts/domain-model/scopes#projects
+[projects]: /docs/concepts/domain-model/scopes#projects
+[role]: /docs/concepts/domain-model/roles
+[roles]: /docs/concepts/domain-model/roles
+[session]: /docs/concepts/domain-model/sessions
+[sessions]: /docs/concepts/domain-model/sessions
+[user]: /docs/concepts/domain-model/users
+[users]: /docs/concepts/domain-model/users
+
+## Service API Docs
+
+The following services are relevant to this resource:
+
+* [Target Service](/api-docs/target-service)

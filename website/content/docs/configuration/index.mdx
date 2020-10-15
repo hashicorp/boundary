@@ -21,38 +21,37 @@ After the configuration is written, use the `-config` flag to specify a local pa
 
 ## Parameters
 
-- `controller` <tt>([Controller][controller]: \<required\>)</tt> - Controller specific configuration. Only required when running a `boundary controller`.
+- [`controller`](/docs/configuration/controller): Controller specific
+configuration. If present, `boundary server` will start a Controller subprocess.
 
-- `worker` <tt>([Worker][worker]: \<required\>)</tt> - Worker specific configuration. Only required when running a `boundary worker`.
+- [`worker`](/docs/configuration/worker): Worker specific configuration. If
+present, `boundary server` will start a Worker subprocess.
 
-- `listener` <tt>([Listener][listener]: \<required\>)</tt> – Configures the Boundary server
-  options for controllers and workers.
+- [`listener`](/docs/configuration/listener): Configures the listeners on which
+Boundary serves traffic (API, cluster, and proxy).
 
-  Controllers will have two listener blocks, one for the API server and the other for the data-plane
-  server. By default, controller API server runs on :9200 and the data-plane (which is used for
-  worker communication) uses :9201.
+  Controllers will have two listener blocks: one marked for `api` purpose and
+  the other marked for `cluster` purpose. By default, the API listener runs on
+  :9200 and the cluster listener (currently used for worker communication) uses
+  :9201.
 
-  Workers will have only one listener.
+  Workers will have only one listener, marked for `proxy` purpose.
 
-- `kms` <tt>([KMS][kms]: \<required\>)</tt> – Configures KMS blocks for root, worker authentication, and recovery keys.
+- [`kms`](/docs/configuration/kms): Configures KMS blocks [for various
+purposes](/docs/concepts/security/data-encryption).
 
 - `disable_mlock` `(bool: false)` – Disables the server from executing the
-  `mlock` syscall. `mlock` prevents memory from being swapped to disk. Disabling
-  `mlock` is not recommended in production, but is fine for local development
-  and testing.
-
-  Disabling `mlock` is not recommended unless the systems running Vault only
-  use encrypted swap or do not use swap at all. Boundary only supports memory
-  locking on UNIX-like systems that support the mlock() syscall (Linux, FreeBSD, etc).
-  Non UNIX-like systems (e.g. Windows, NaCL, Android) lack the primitives to keep a
-  process's entire memory address space from spilling to disk and is therefore
-  automatically disabled on unsupported platforms.
+  `mlock` syscall, which prevents memory from being swapped to disk. This is
+  fine for local development and testing; in production, it is not recommended
+  unless the systems running Boundary only use encrypted swap or do not use swap
+  at all. Boundary only supports memory locking on UNIX-like systems that
+  support the mlock() syscall (Linux, FreeBSD, etc).
 
   On Linux, to give the Boundary executable the ability to use the `mlock`
   syscall without running the process as root, run:
 
   ```shell
-  sudo setcap cap_ipc_lock=+ep $(readlink -f $(which vault))
+  sudo setcap cap_ipc_lock=+ep $(readlink -f $(which boundary))
   ```
 
   If you use a Linux distribution with a modern version of systemd, you can add
@@ -62,13 +61,11 @@ After the configuration is written, use the `-config` flag to specify a local pa
   LimitMEMLOCK=infinity
   ```
 
-- `telemetry` <tt>([Telemetry][telemetry]: &lt;none&gt;)</tt> – Not yet implemented.
-
-- `log_level` `(string: "")` – Specifies the log level to use; overridden by
+- `log_level` `(string: "info")` – Specifies the log level to use; overridden by
   CLI and env var parameters. Supported log levels: Trace, Debug, Error, Warn, Info.
 
 - `log_format` `(string: "")` – Specifies the log format to use; overridden by
-  CLI and env var parameters. Supported log formats: "standard", "json".
+  CLI and env var parameters. Supported log formats: `"standard"`, `"json"`.
 
 ## Example Configurations
 

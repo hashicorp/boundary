@@ -4,13 +4,19 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/auth/password/store"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
+	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -18,6 +24,11 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+)
+
+const (
+	loginNameKey = "login_name"
+	pwKey        = "password"
 )
 
 var (
@@ -33,19 +44,24 @@ func init() {
 
 // Service handles request as described by the pbs.AuthMethodServiceServer interface.
 type Service struct {
-	repoFn    common.PasswordAuthRepoFactory
+	kms       *kms.Kms
+	pwRepoFn  common.PasswordAuthRepoFactory
 	iamRepoFn common.IamRepoFactory
+	atRepoFn  common.AuthTokenRepoFactory
 }
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
-func NewService(repo common.PasswordAuthRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
-	if repo == nil {
+func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory) (Service, error) {
+	if kms == nil {
+		return Service{}, errors.New("nil kms provided")
+	}
+	if pwRepoFn == nil {
 		return Service{}, fmt.Errorf("nil password repository provided")
 	}
 	if iamRepoFn == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
-	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
+	return Service{kms: kms, pwRepoFn: pwRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn}, nil
 }
 
 var _ pbs.AuthMethodServiceServer = Service{}
@@ -136,8 +152,25 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 	return &pbs.DeleteAuthMethodResponse{}, nil
 }
 
+// Authenticate implements the interface pbs.AuthenticationServiceServer.
+func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
+	if err := validateAuthenticateRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetAuthMethodId(), action.Authenticate)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	creds := req.GetCredentials().GetFields()
+	tok, err := s.authenticateWithRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), creds[loginNameKey].GetStringValue(), creds[pwKey].GetStringValue())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
+}
+
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, error) {
-	repo, err := s.repoFn()
+	repo, err := s.pwRepoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -151,11 +184,11 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 	if u == nil {
 		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
 	}
-	return toProto(u)
+	return toAuthMethodProto(u)
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.AuthMethod, error) {
-	repo, err := s.repoFn()
+	repo, err := s.pwRepoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +198,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.AuthMe
 	}
 	var outUl []*pb.AuthMethod
 	for _, u := range ul {
-		ou, err := toProto(u)
+		ou, err := toAuthMethodProto(u)
 		if err != nil {
 			return nil, err
 		}
@@ -186,7 +219,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method for creation: %v.", err)
 	}
-	repo, err := s.repoFn()
+	repo, err := s.pwRepoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +230,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
 	}
-	return toProto(out)
+	return toAuthMethodProto(out)
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
@@ -231,7 +264,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
-	repo, err := s.repoFn()
+	repo, err := s.pwRepoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -242,11 +275,11 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", id)
 	}
-	return toProto(out)
+	return toAuthMethodProto(out)
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
-	repo, err := s.repoFn()
+	repo, err := s.pwRepoFn()
 	if err != nil {
 		return false, err
 	}
@@ -258,6 +291,61 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		return false, fmt.Errorf("unable to delete auth method: %w", err)
 	}
 	return rows > 0, nil
+}
+
+func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId, loginName, pw string) (*pba.AuthToken, error) {
+	iamRepo, err := s.iamRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	atRepo, err := s.atRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	pwRepo, err := s.pwRepoFn()
+	if err != nil {
+		return nil, err
+	}
+
+	acct, err := pwRepo.Authenticate(ctx, scopeId, authMethodId, loginName, pw)
+	if err != nil {
+		return nil, err
+	}
+	if acct == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Unauthenticated, "Unable to authenticate.")
+	}
+
+	u, err := iamRepo.LookupUserWithLogin(ctx, acct.GetPublicId(), iam.WithAutoVivify(true))
+	if err != nil {
+		return nil, err
+	}
+	tok, err := atRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := authtoken.EncryptToken(ctx, s.kms, scopeId, tok.GetPublicId(), tok.GetToken())
+	if err != nil {
+		return nil, err
+	}
+
+	tok.Token = tok.GetPublicId() + "_" + token
+	prot := toAuthTokenProto(tok)
+
+	scp, err := iamRepo.LookupScope(ctx, u.GetScopeId())
+	if err != nil {
+		return nil, err
+	}
+	if scp == nil {
+		return nil, err
+	}
+	prot.Scope = &scopes.ScopeInfo{
+		Id:            scp.GetPublicId(),
+		Type:          scp.GetType(),
+		ParentScopeId: scp.GetParentId(),
+	}
+
+	return prot, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -283,7 +371,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 	default:
-		repo, err := s.repoFn()
+		repo, err := s.pwRepoFn()
 		if err != nil {
 			res.Error = err
 			return res
@@ -304,7 +392,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
+func toAuthMethodProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
 	out := pb.AuthMethod{
 		Id:          in.GetPublicId(),
 		ScopeId:     in.GetScopeId(),
@@ -328,6 +416,20 @@ func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
 	}
 	out.Attributes = st
 	return &out, nil
+}
+
+func toAuthTokenProto(t *authtoken.AuthToken) *pba.AuthToken {
+	return &pba.AuthToken{
+		Id:                      t.GetPublicId(),
+		Token:                   t.GetToken(),
+		UserId:                  t.GetIamUserId(),
+		AuthMethodId:            t.GetAuthMethodId(),
+		AccountId:               t.GetAuthAccountId(),
+		CreatedTime:             t.GetCreateTime().GetTimestamp(),
+		UpdatedTime:             t.GetUpdateTime().GetTimestamp(),
+		ApproximateLastUsedTime: t.GetApproximateLastAccessTime().GetTimestamp(),
+		ExpirationTime:          t.GetExpirationTime().GetTimestamp(),
+	}
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
@@ -390,6 +492,34 @@ func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+	}
+	return nil
+}
+
+func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
+	badFields := make(map[string]string)
+	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
+		badFields["auth_method_id"] = "This is a required field."
+	} else if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
+		badFields["auth_method_id"] = "Invalid formatted identifier."
+	}
+	// TODO: Update this when we enable different auth method types.
+	if req.GetCredentials() == nil {
+		badFields["credentials"] = "This is a required field."
+	}
+	creds := req.GetCredentials().GetFields()
+	if _, ok := creds[loginNameKey]; !ok {
+		badFields["credentials.login_name"] = "This is a required field."
+	}
+	if _, ok := creds[pwKey]; !ok {
+		badFields["credentials.password"] = "This is a required field."
+	}
+	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
+	if tType != "" && tType != "token" && tType != "cookie" {
+		badFields["token_type"] = `The only accepted types are "token" and "cookie".`
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
 	}
 	return nil
 }

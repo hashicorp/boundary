@@ -1,0 +1,84 @@
+---
+layout: docs
+page_title: Domain Model - Sessions
+sidebar_title: Sessions
+description: |-
+  The anatomy of a Boundary session
+---
+
+# Sessions
+
+A session is
+a set of related connections
+between a [user][] and a [host][].
+A user initiates a session
+by requesting access to a [target][].
+If a user has the proper [permissions][],
+a session is created
+and the [expiration time][] and [connection limit][]
+are set based on the [target's attributes][].
+A snapshot of the data
+relevant to authorizing the session
+is also captured and stored in the Boundary data warehouse
+when the session is created.
+
+Sessions are created in the [project][] of the corresponding [target][].
+Deleting a project will terminate all of the active sessions in the project
+but will not effect any session data in the data warehouse.
+Historical data in the data warehouse is never deleted.
+
+## Termination
+
+A session is forcefully terminated when one of the following occurs:
+
+- The session reaches the time limit and expires.
+
+- An authorized user manually cancels the session.
+
+- Any resource associated with the session is deleted
+  or removed from the [target][].
+  This includes: the [host][], the [host set][], the [host catalog][],
+  the [target][] itself, the [project][], the [organization][],
+  the [user][], the user's [account][], or the account's [authentication method][].
+
+In addition to the above,
+a session terminates non-forcefully
+when the user closes all connections
+and no additional connections are allowed
+because of a connection limit.
+
+Permissions are only evaluated at session establishment.
+Changes to a user's permissions do not effect existing sessions.
+
+## Referenced By
+
+- [Project][]
+
+[expiration time]: /docs/concepts/domain-model/targets#session_max_seconds
+[connection limit]: /docs/concepts/domain-model/targets#session_connection_limit
+[target's attributes]: /docs/concepts/domain-model/targets#tcp-target-attributes
+[account]: /docs/concepts/domain-model/accounts
+[accounts]: /docs/concepts/domain-model/accounts
+[authentication method]: /docs/concepts/domain-model/auth-methods
+[authentication methods]: /docs/concepts/domain-model/auth-methods
+[host catalog]: /docs/concepts/domain-model/host-catalogs
+[host catalogs]: /docs/concepts/domain-model/host-catalogs
+[host set]: /docs/concepts/domain-model/host-sets
+[host sets]: /docs/concepts/domain-model/host-sets
+[host]: /docs/concepts/domain-model/hosts
+[hosts]: /docs/concepts/domain-model/hosts
+[target]: /docs/concepts/domain-model/targets
+[targets]: /docs/concepts/domain-model/targets
+[user]: /docs/concepts/domain-model/users
+[users]: /docs/concepts/domain-model/users
+[organization]: /docs/concepts/domain-model/scopes#organizations
+[organizations]: /docs/concepts/domain-model/scopes#organizations
+[project]: /docs/concepts/domain-model/scopes#projects
+[projects]: /docs/concepts/domain-model/scopes#projects
+[permissions]: /docs/concepts/security/permissions
+
+## Service API Docs
+
+The following services are relevant to this resource:
+
+* [Session Service](/api-docs/session-service)

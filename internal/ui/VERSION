@@ -1,2 +1,4 @@
-778c0082a1df52e6787a3626cc8771a33517ef4b Merge pull request #292 from hashicorp/chore-ember-lts-upgrade
-# Above commit is used for production builds.
+31f7b575a981f92629dfe1ba8006054ae8b22eff Merge pull request #311 from hashicorp/release
+# This file determines the version of the UI to embed in the boundary binary.
+# Update this file by running 'make update-ui-version' from the root of this repo.
+# Set UI_COMMITISH when running the above target to update to a specific version.

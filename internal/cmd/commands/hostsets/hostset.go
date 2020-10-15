@@ -27,18 +27,14 @@ type Command struct {
 
 func (c *Command) Synopsis() string {
 	switch c.Func {
-	case "create":
-		return "Create host-set resources within Boundary"
-	case "update":
-		return "Update host-set resources within Boundary"
 	case "add-hosts":
-		return "Add hosts to the specified host-set"
+		return "Add hosts to the specified host set"
 	case "remove-hosts":
-		return "Remove hosts from the specified host-set"
+		return "Remove hosts from the specified host set"
 	case "set-hosts":
-		return "Set the full contents of the hosts on the specified host-set"
+		return "Set the full contents of the hosts on the specified host set"
 	default:
-		return common.SynopsisFunc(c.Func, "host-set")
+		return common.SynopsisFunc(c.Func, "host set")
 	}
 }
 
@@ -52,16 +48,16 @@ var flagsMap = map[string][]string{
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("host-set")
+	helpMap := common.HelpMap("host set")
 	var helpStr string
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
 			"Usage: boundary host-sets [sub command] [options] [args]",
 			"",
-			"  This command allows operations on Boundary host-set resources. Example:",
+			"  This command allows operations on Boundary host set resources. Example:",
 			"",
-			"    Read a host-set:",
+			"    Read a host set:",
 			"",
 			`      $ boundary host-sets read -id hsst_1234567890`,
 			"",
@@ -71,9 +67,9 @@ func (c *Command) Help() string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets create [type] [sub command] [options] [args]",
 			"",
-			"  This command allows create operations on Boundary host-set resources. Example:",
+			"  This command allows create operations on Boundary host set resources. Example:",
 			"",
-			"    Create a static-type host-set:",
+			"    Create a static-type host set:",
 			"",
 			`      $ boundary host-sets create static -name prodops -description "For ProdOps usage"`,
 			"",
@@ -83,9 +79,9 @@ func (c *Command) Help() string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets update [type] [sub command] [options] [args]",
 			"",
-			"  This command allows update operations on Boundary host-set resources. Example:",
+			"  This command allows update operations on Boundary host set resources. Example:",
 			"",
-			"    Update a static-type host-set:",
+			"    Update a static-type host set:",
 			"",
 			`      $ boundary host-sets update static -id hsst_1234567890 -name devops -description "For DevOps usage"`,
 			"",
@@ -95,9 +91,9 @@ func (c *Command) Help() string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets add-hosts [sub command] [options] [args]",
 			"",
-			"  This command allows adding hosts to host-set resources, if the types match and the operation is allowed by the given host-set type. Example:",
+			"  This command allows adding hosts to host set resources, if the types match and the operation is allowed by the given host set type. Example:",
 			"",
-			"    Add static-type hosts to a static-type host-set:",
+			"    Add static-type hosts to a static-type host set:",
 			"",
 			`      $ boundary host-sets add-hosts -id hsst_1234567890 -host hst_1234567890 -host hst_0987654321`,
 		})
@@ -105,9 +101,9 @@ func (c *Command) Help() string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets remove-hosts [sub command] [options] [args]",
 			"",
-			"  This command allows removing hosts from host-set resources, if the types match and the operation is allowed by the given host-set type. Example:",
+			"  This command allows removing hosts from host set resources, if the types match and the operation is allowed by the given host set type. Example:",
 			"",
-			"    Remove static-type hosts from a static-type host-set:",
+			"    Remove static-type hosts from a static-type host set:",
 			"",
 			`      $ boundary host-sets remove-hosts -id hsst_1234567890 -host hst_0987654321`,
 		})
@@ -115,9 +111,9 @@ func (c *Command) Help() string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary host-sets set-hosts [sub command] [options] [args]",
 			"",
-			"  This command allows setting the complete set of hosts on host-set resources, if the types match and the operation is allowed by the given host-set type. Example:",
+			"  This command allows setting the complete set of hosts on host set resources, if the types match and the operation is allowed by the given host set type. Example:",
 			"",
-			"    Set the complete set of static-type hosts on a static-type host-set:",
+			"    Set the complete set of static-type hosts on a static-type host set:",
 			"",
 			`      $ boundary host-sets remove-hosts -id hsst_1234567890 -host hst_1234567890`,
 		})
@@ -128,8 +124,11 @@ func (c *Command) Help() string {
 }
 
 func (c *Command) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
+	if len(flagsMap[c.Func]) == 0 {
+		return c.FlagSet(base.FlagSetNone)
+	}
 
+	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, resource.HostSet.String(), flagsMap[c.Func])
 

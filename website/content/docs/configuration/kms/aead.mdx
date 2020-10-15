@@ -1,10 +1,15 @@
 ---
 layout: docs
-page_title: KMS AEAD - Configuration
-sidebar_title: KMS AEAD
+page_title: AEAD - Configuration
+sidebar_title: AEAD
 description: |-
-  The KMS AEAD configures KMS-specifc parameters.
+  The AEAD KMS configures AEAD-specifc parameters.
 ---
+
+~> This is mostly used for `dev` workflows or testing. The key will be exposed
+to anyone that can view the configuration file. If using this KMS, consider
+using `boundary config encrypt` to encrypt all but the `config` KMS and using an
+external KMS for `config` purposes.
 
 ```hcl
 kms "aead" {
@@ -15,10 +20,10 @@ kms "aead" {
 }
 ```
 
-- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `root`, and `recovery`.
+- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `root`, `recovery`, or `config`.
 
-- `aead_type` - The type of encryption this KMS uses.
+- `aead_type` - The type of encryption this KMS uses. Currently only `aes-gcm` is implemented.
 
-- `key` - Optional, a hard coded key if not using an external KMS.
+- `key` - The base64-encoded 256-bit encryption key.
 
 - `key_id` - The unique name of this key.

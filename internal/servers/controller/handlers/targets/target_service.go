@@ -396,6 +396,7 @@ HostSetIterationLoop:
 		Type:            t.GetType(),
 		Certificate:     sess.Certificate,
 		PrivateKey:      privKey,
+		HostId:          chosenId.hostId,
 		WorkerInfo:      workers,
 		ConnectionLimit: t.GetSessionConnectionLimit(),
 	}
@@ -804,7 +805,7 @@ func validateAddRequest(req *pbs.AddTargetHostSetsRequest) error {
 	}
 	for _, id := range req.GetHostSetIds() {
 		if !handlers.ValidId(static.HostSetPrefix, id) {
-			badFields["host_set_ids"] = "Incorrectly formatted host set identifier."
+			badFields["host_set_ids"] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
 	}
@@ -824,7 +825,7 @@ func validateSetRequest(req *pbs.SetTargetHostSetsRequest) error {
 	}
 	for _, id := range req.GetHostSetIds() {
 		if !handlers.ValidId(static.HostSetPrefix, id) {
-			badFields["host_set_ids"] = "Incorrectly formatted host set identifier."
+			badFields["host_set_ids"] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
 	}
@@ -847,7 +848,7 @@ func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	}
 	for _, id := range req.GetHostSetIds() {
 		if !handlers.ValidId(static.HostSetPrefix, id) {
-			badFields["host_set_ids"] = "Incorrectly formatted host set identifier."
+			badFields["host_set_ids"] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
 	}

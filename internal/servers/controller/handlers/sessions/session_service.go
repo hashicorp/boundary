@@ -201,6 +201,7 @@ func toProto(in *session.Session) *pb.Session {
 		UpdatedTime:    in.UpdateTime.GetTimestamp(),
 		ExpirationTime: in.ExpirationTime.GetTimestamp(),
 		Certificate:    in.Certificate,
+		TerminationReason: in.TerminationReason,
 	}
 	if len(in.States) > 0 {
 		out.Status = in.States[0].Status.String()
@@ -243,7 +244,7 @@ func validateListRequest(req *pbs.ListSessionsRequest) error {
 func validateCancelRequest(req *pbs.CancelSessionRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(session.SessionPrefix, req.GetId()) {
-		badFields["id"] = "Impropperly formatted identifier."
+		badFields["id"] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."

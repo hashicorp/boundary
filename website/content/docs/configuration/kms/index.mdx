@@ -14,7 +14,7 @@ For more examples, please choose a specific KMS technology from the sidebar.
 
 ## Configuration
 
-KMS configuration can be done through the Vault configuration file using the
+KMS configuration can be done through the Boundary configuration file using the
 `kms` stanza:
 
 ```hcl
@@ -26,7 +26,7 @@ kms [NAME] {
 For example:
 
 ```hcl
-kms "pkcs11" {
+kms "transit" {
   # ...
 }
 ```

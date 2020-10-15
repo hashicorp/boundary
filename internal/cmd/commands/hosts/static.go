@@ -25,7 +25,7 @@ type StaticCommand struct {
 }
 
 func (c *StaticCommand) Synopsis() string {
-	return fmt.Sprintf("%s a static-type host within Boundary", textproto.CanonicalMIMEHeaderKey(c.Func))
+	return fmt.Sprintf("%s a static-type host", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
 var staticFlagsMap = map[string][]string{
@@ -49,11 +49,11 @@ func (c *StaticCommand) Help() string {
 
 	case "update":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary hosts static update [options] [args]",
+			"Usage: boundary hosts update static [options] [args]",
 			"",
 			"  Update a static-type host given its ID. Example:",
 			"",
-			`    $ boundary hosts static update -id hst_1234567890 -name "devops" -description "Static host for DevOps" -address "10.20.30.40"`,
+			`    $ boundary hosts update static -id hst_1234567890 -name "devops" -description "Static host for DevOps" -address "10.20.30.40"`,
 			"",
 			"",
 		})
@@ -63,12 +63,8 @@ func (c *StaticCommand) Help() string {
 
 func (c *StaticCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
-
 	f := set.NewFlagSet("Command Options")
-
-	if len(staticFlagsMap[c.Func]) > 0 {
-		common.PopulateCommonFlags(c.Command, f, "static-type host", staticFlagsMap[c.Func])
-	}
+	common.PopulateCommonFlags(c.Command, f, "static-type host", staticFlagsMap[c.Func])
 
 	f = set.NewFlagSet("Static Host Options")
 

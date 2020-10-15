@@ -13,14 +13,15 @@ Before getting started with Boundary, it's important to understand a few key con
 
 The examples in Getting Started all revolve around running in `dev mode`. There are a few requirements for running dev mode:
 
-1. Docker is installed
+1. [Docker](https://docs.docker.com/get-docker/) is installed
 2. A route to download the [Postgres Docker image](https://hub.docker.com/_/postgres) is available or a local image cache is available
+3. A [Boundary binary](https://www.boundaryproject.io/downloads) in your `$PATH`
 
 ## What is Dev Mode?
 
 Dev mode is an all-in-one installation method for getting started with Boundary quickly. As the name implies,
 dev mode is not a production installation method, but instead a way to get Boundary running with a Postgres
-database easily. Do not use dev mode in a production environment, see [Production Installation](/docs/installing/production) section for
+database easily. Do not use dev mode in a production environment, see [Production Installation](/docs/installing/high-availability) section for
 production ready deployment methods.
 
 Dev mode brings up a fully functioning instance of Boundary, including:
@@ -31,7 +32,7 @@ Dev mode brings up a fully functioning instance of Boundary, including:
 
 These components should all be considered ephemeral - no data persistence occurs across dev mode restarts. Along with these external components, dev mode also creates several resources within Boundary to make it easier and faster to connect to your first target:
 
-1. A organization [scope](/docs/concepts/domain-model/scopes) and a project scope with a default ID of `o_1234567890` and `p_1234567890` respectively.
+1. A org [scope](/docs/concepts/domain-model/scopes) and a project scope with a default ID of `o_1234567890` and `p_1234567890` respectively.
 1. An [auth method](/docs/concepts/domain-model/auth-methods) with a random login name and password with a default auth method ID of `ampw_1234567890`.
 1. A static [host catalog](/docs/concepts/domain-model/host-catalogs) with a default ID of `hcst_1234567890`.
 1. A static [host](/docs/concepts/domain-model/hosts) and [host set](/docs/concepts/domain-model/host-sets) with default ID's of `hst_1234567890` and `hsst_1234567890` respectively.

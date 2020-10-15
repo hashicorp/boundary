@@ -126,7 +126,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var defaultRoleMetadata oplog.Metadata
 	var defaultRole *Role
 	var defaultRoleRaw interface{}
-	if !opts.withSkipDefaultRoleCreation {
+	if !opts.withSkipDefaultRoleCreation && s.Type == scope.Org.String() {
 		defaultRole, err = NewRole(scopePublicId)
 		if err != nil {
 			return nil, fmt.Errorf("create scope: error instantiating new default role: %w", err)

@@ -29,12 +29,12 @@ type PasswordCommand struct {
 }
 
 func (c *PasswordCommand) Synopsis() string {
-	return fmt.Sprintf("%s a password-type account within Boundary", textproto.CanonicalMIMEHeaderKey(c.Func))
+	return fmt.Sprintf("%s a password-type account", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
 var passwordFlagsMap = map[string][]string{
 	"create": {"auth-method-id", "name", "description", "login-name", "password"},
-	"update": {"id", "name", "description", "version"},
+	"update": {"id", "name", "description", "version", "login-name"},
 }
 
 func (c *PasswordCommand) Help() string {
@@ -42,22 +42,22 @@ func (c *PasswordCommand) Help() string {
 	switch c.Func {
 	case "create":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary accounts password create [options] [args]",
+			"Usage: boundary accounts create password [options] [args]",
 			"",
 			"  Create a password-type account. Example:",
 			"",
-			`    $ boundary accounts password create -name prodops -description "Password account for ProdOps" -address "127.0.0.1"`,
+			`    $ boundary accounts create password -login-name prodops -description "Password account for ProdOps"`,
 			"",
 			"",
 		})
 
 	case "update":
 		info = base.WrapForHelpText([]string{
-			"Usage: boundary accounts password update [options] [args]",
+			"Usage: boundary accounts update password [options] [args]",
 			"",
 			"  Update a password-type account given its ID. Example:",
 			"",
-			`    $ boundary accounts password update -id hst_1234567890 -name "devops" -description "Password account for DevOps" -address "10.20.30.40"`,
+			`    $ boundary accounts update password -id apw_1234567890 -name "devops" -description "Password account for DevOps"`,
 			"",
 			"",
 		})
@@ -67,7 +67,6 @@ func (c *PasswordCommand) Help() string {
 
 func (c *PasswordCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
-
 	f := set.NewFlagSet("Command Options")
 
 	if len(passwordFlagsMap[c.Func]) > 0 {

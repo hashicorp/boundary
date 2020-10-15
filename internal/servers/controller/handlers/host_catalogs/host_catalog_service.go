@@ -147,7 +147,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, e
 		return nil, err
 	}
 	if hc == nil {
-		return nil, handlers.NotFoundErrorf("Host catalog %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist.", id)
 	}
 	return toProto(hc), nil
 }
@@ -221,7 +221,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 		return nil, fmt.Errorf("unable to update host catalog: %w", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Host catalog %q doesn't exist or incorrect version provided.", id)
+		return nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist or incorrect version provided.", id)
 	}
 	return toProto(out), nil
 }

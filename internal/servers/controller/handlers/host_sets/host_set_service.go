@@ -38,7 +38,7 @@ type Service struct {
 
 var _ pbs.HostSetServiceServer = Service{}
 
-// NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
+// NewService returns a host set Service which handles host set related requests to boundary and uses the provided
 // repositories for storage and retrieval.
 func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 	if repoFn == nil {
@@ -196,7 +196,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostSet, error
 		return nil, err
 	}
 	if h == nil {
-		return nil, handlers.NotFoundErrorf("Host set %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Host Set %q doesn't exist.", id)
 	}
 	return toProto(h, m), nil
 }
@@ -257,7 +257,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 		return nil, fmt.Errorf("unable to update host set: %w.", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Host set %q doesn't exist or incorrect version provided.", id)
+		return nil, handlers.NotFoundErrorf("Host Set %q doesn't exist or incorrect version provided.", id)
 	}
 	return toProto(out, m), nil
 }

@@ -44,12 +44,13 @@ func (c *PasswordCommand) Help() string {
 		"  Invoke the password auth method to authenticate the Boundary CLI:",
 		"",
 		`    $ boundary authenticate password -auth-method-id ampw_1234567890 -login-name foo -password "bar"`,
+		"",
+		"",
 	}) + c.Flags().Help()
 }
 
 func (c *PasswordCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
-
 	f := set.NewFlagSet("Command Options")
 
 	f.StringVar(&base.StringVar{
@@ -167,9 +168,10 @@ func (c *PasswordCommand) Run(args []string) int {
 			c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to system credential store: %s", err))
 			return 1
 		}
+		// TODO: potentially look for dbus-launch in advance and don't issue a warning at all
 		if err := keyring.Set("HashiCorp Boundary Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
 			c.UI.Error(fmt.Sprintf("Error saving auth token to system credential store: %s", err))
-			return 1
+			c.UI.Warn("The token printed above must be manually passed in via the BOUNDARY_TOKEN env var or -token flag. Storing the token can also be disabled via -token-name=none.")
 		}
 	}
 

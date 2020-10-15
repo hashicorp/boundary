@@ -39,7 +39,7 @@ type Service struct {
 
 var _ pbs.HostServiceServer = Service{}
 
-// NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
+// NewService returns a host Service which handles host related requests to boundary and uses the provided
 // repositories for storage and retrieval.
 func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 	if repoFn == nil {

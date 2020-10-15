@@ -208,9 +208,11 @@ func (b *Server) SetupMetrics(ui cli.Ui, telemetry *configutil.Telemetry) error 
 }
 
 func (b *Server) PrintInfo(ui cli.Ui) {
-	b.InfoKeys = append(b.InfoKeys, "version")
 	verInfo := version.Get()
-	b.Info["version"] = verInfo.FullVersionNumber(false)
+	if verInfo.Version != "" {
+		b.InfoKeys = append(b.InfoKeys, "version")
+		b.Info["version"] = verInfo.FullVersionNumber(false)
+	}
 	if verInfo.Revision != "" {
 		b.Info["version sha"] = strings.Trim(verInfo.Revision, "'")
 		b.InfoKeys = append(b.InfoKeys, "version sha")
@@ -310,7 +312,8 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 		if lnConfig.MaxRequestSize == 0 {
 			lnConfig.MaxRequestSize = globals.DefaultMaxRequestSize
 		}
-		props["max_request_size"] = fmt.Sprintf("%d", lnConfig.MaxRequestSize)
+		// TODO: We don't actually limit this yet.
+		//props["max_request_size"] = fmt.Sprintf("%d", lnConfig.MaxRequestSize)
 
 		if lnConfig.MaxRequestDuration == 0 {
 			lnConfig.MaxRequestDuration = globals.DefaultMaxRequestDuration

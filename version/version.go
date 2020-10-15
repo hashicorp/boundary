@@ -7,10 +7,11 @@ import (
 
 // Info
 type Info struct {
-	Revision          string
-	Version           string
-	VersionPrerelease string
-	VersionMetadata   string
+	Revision          string `json:"revision,omitempty"`
+	Version           string `json:"version,omitempty"`
+	VersionPrerelease string `json:"version_prerelease,omitempty"`
+	VersionMetadata   string `json:"version_metadata,omitempty"`
+	CgoEnabled        bool   `json:"cgo_enabled,omitempty"`
 }
 
 func Get() *Info {
@@ -25,6 +26,7 @@ func Get() *Info {
 	}
 
 	return &Info{
+		CgoEnabled:        CgoEnabled,
 		Revision:          GitCommit,
 		Version:           ver,
 		VersionPrerelease: rel,
@@ -37,7 +39,7 @@ func (c *Info) VersionNumber() string {
 		return "(version unknown)"
 	}
 
-	version := fmt.Sprintf("%s", c.Version)
+	version := c.Version
 
 	if c.VersionPrerelease != "" {
 		version = fmt.Sprintf("%s-%s", version, c.VersionPrerelease)

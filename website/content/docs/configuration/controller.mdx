@@ -26,7 +26,7 @@ controller {
 
 - `database` - Configuration block with two valid parameters for connecting to Postgres:
     - `url` - Configures the URL for connecting to Postgres
-    - `migration_url` - Can be used to specify a different URL for the migrations, as that
+    - `migration_url` - Can be used to specify a different URL for migrations, as that
        usually requires higher privileges.
 
     Either can refer to a file on disk (file://) from which a URL will be read; an env
@@ -61,12 +61,10 @@ listener "tcp" {
   purpose = "api"
 
   tls_disable = false
-  proxy_protocol_behavior = "allow_authorized"
-  proxy_protocol_authorized_addrs = "127.0.0.1"
 
   # Enable CORS for the Admin UI
   cors_enabled = true
-  cors_allowed_origins = ["*"]
+  cors_allowed_origins = ["yourcorp.yourdomain.com"]
 }
 
 # Data-plane listener configuration block (used for worker coordination)
@@ -77,8 +75,6 @@ listener "tcp" {
   purpose = "cluster"
 
   tls_disable = false
-  proxy_protocol_behavior = "allow_authorized"
-  proxy_protocol_authorized_addrs = "127.0.0.1"
 }
 
 # Root KMS configuration block: this is the root key for Boundary

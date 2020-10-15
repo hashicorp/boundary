@@ -32,7 +32,6 @@ type ServerListener struct {
 }
 
 type WorkerAuthInfo struct {
-	CACertPEM       []byte `json:"ca_cert"`
 	CertPEM         []byte `json:"cert"`
 	KeyPEM          []byte `json:"key"`
 	Name            string `json:"name"`
@@ -148,6 +147,11 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 		return alpnMux, props, nil, nil
 	}
 
+	// Don't request a client cert unless they've explicitly configured it to do
+	// so
+	if !l.TLSRequireAndVerifyClientCert {
+		l.TLSDisableClientCerts = true
+	}
 	tlsConfig, reloadFunc, err := listenerutil.TLSConfig(l, props, ui)
 	if err != nil {
 		return nil, nil, nil, err

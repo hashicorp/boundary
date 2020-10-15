@@ -1,8 +1,6 @@
 # Boundary Documentation Website
 
-[![Netlify Status](https://img.shields.io/netlify/<NETLIFY-API-ID>?style=flat-square)](https://app.netlify.com/sites/<NETLIFY-SLUG>/deploys)
-
-This subdirectory contains the entire source for the [Boundary Website](https://example.com/). This is a [NextJS](https://nextjs.org/) project, which builds a static site from these source files.
+This subdirectory contains the entire source for the [Boundary Website](https://boundaryproject.io/). This is a [NextJS](https://nextjs.org/) project, which builds a static site from these source files.
 
 <!--
   This readme file contains several blocks of generated text, to make it easier to share common information
@@ -15,14 +13,27 @@ This subdirectory contains the entire source for the [Boundary Website](https://
 
 ## Table of Contents
 
-- [Contributions](#contributions-welcome)
-- [Running the Site Locally](#running-the-site-locally)
-- [Editing Markdown Content](#editing-markdown-content)
-- [Editing Navigation Sidebars](#editing-navigation-sidebars)
-- [Changing the Release Version](#changing-the-release-version)
-- [Redirects](#redirects)
-- [Browser Support](#browser-support)
-- [Deployment](#deployment)
+- [Boundary Documentation Website](#boundary-documentation-website)
+  - [Table of Contents](#table-of-contents)
+  - [Contributions Welcome!](#contributions-welcome)
+  - [Running the Site Locally](#running-the-site-locally)
+  - [Editing Markdown Content](#editing-markdown-content)
+    - [Creating New Pages](#creating-new-pages)
+    - [Markdown Enhancements](#markdown-enhancements)
+    - [Custom Components](#custom-components)
+      - [Tabs](#tabs)
+      - [Enterprise Alert](#enterprise-alert)
+      - [Other Components](#other-components)
+    - [Syntax Highlighting](#syntax-highlighting)
+  - [Editing Navigation Sidebars](#editing-navigation-sidebars)
+    - [Index-less Categories](#index-less-categories)
+    - [Custom or External Links](#custom-or-external-links)
+  - [Editing/Enabling the Alert Banner](#editingenabling-the-alert-banner)
+  - [Changing the Release Version](#changing-the-release-version)
+    - [Displaying a Prerelease](#displaying-a-prerelease)
+  - [Redirects](#redirects)
+  - [Browser Support](#browser-support)
+  - [Deployment](#deployment)
 
 <!-- BEGIN: contributions -->
 <!-- Generated text, do not edit directly -->
@@ -306,6 +317,15 @@ If the link provided in the `href` property is external, it will display a small
 
 <!-- END: editing-docs-sidebars -->
 
+## Editing/Enabling the Alert Banner
+
+The data and visibility of the alert banner are controlled by the `alert-banner.js` file in the [`/data` directory](data). The following data can be edited in this file:
+
+- `ALERT_BANNER_ACTIVE`: Determines if the banner is visible (when set to `true`) or not (when set to `false`).
+- `tag`: Copy for the bordered text on the left side of the alert.
+- `text`: Copy for the center text of the alert.
+- `url`: Where the alert links to when clicked.
+
 <!-- BEGIN: releases -->
 <!-- Generated text, do not edit directly -->
 
@@ -348,7 +368,7 @@ This configuration would display something like the following text on the websit
 A {{ release candidate }} for <Product> {{ v1.0.0 }} is available! The release can be <a href='https://releases.hashicorp.com/<product>/{{ 1.0.0-rc1 }}'>downloaded here</a>.
 ```
 
-You may customize the parameters in any way you'd like. To remove a prerelease from the website, simply delete the `prerelease` paremeter from the above component.
+You may customize the parameters in any way you'd like. To remove a prerelease from the website, simply delete the `prerelease` parameter from the above component.
 
 <!-- END: releases -->
 
@@ -392,7 +412,7 @@ One more example - let's say that content is being moved to an external website.
 }
 ```
 
-If we no longer want the link to be in the side nav, we can simply remove it. If we do still want the link in the side nav, but pointing to an external destnation, we need to slightly change the structure as such:
+If we no longer want the link to be in the side nav, we can simply remove it. If we do still want the link in the side nav, but pointing to an external destination, we need to slightly change the structure as such:
 
 ```js
 {

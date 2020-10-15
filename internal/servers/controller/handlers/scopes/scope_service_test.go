@@ -198,6 +198,12 @@ func TestList(t *testing.T) {
 			req:     &pbs.ListScopesRequest{ScopeId: oNoProjects.GetPublicId()},
 			res:     &pbs.ListScopesResponse{},
 		},
+		{
+			name:    "Cant List Project Scopes",
+			scopeId: p1.GetPublicId(),
+			req:     &pbs.ListScopesRequest{ScopeId: p1.GetPublicId()},
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -609,7 +615,12 @@ func TestCreate(t *testing.T) {
 						require.NoError(err)
 						roles, err := repo.ListRoles(ctx, got.GetItem().GetId())
 						require.NoError(err)
-						require.Len(roles, 2)
+						switch tc.scopeId {
+						case defaultOrg.PublicId:
+							require.Len(roles, 1)
+						case "global":
+							require.Len(roles, 2)
+						}
 						for _, role := range roles {
 							switch role.GetName() {
 							case "Administration":
