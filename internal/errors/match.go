@@ -1,17 +1,16 @@
 package errors
 
 // Template that's useful constructing Match error templates, especially if you
-// want to make an error match template without a Code.  Template satisfies the
-// error interface via its embedded Error.
+// want to make an error match template without a errors.Code.
 type Template struct {
-	err  Error
+	Err
 	Kind Kind
 }
 
 // Info about the Template
 func (t *Template) Info() Info {
-	if t.err.Code != Unknown {
-		return t.err.Info()
+	if t.Code != Unknown {
+		return t.Info()
 	}
 	return Info{
 		Message: "Unknown",
@@ -20,7 +19,8 @@ func (t *Template) Info() Info {
 }
 
 // Error satisfies the error interface but intentional don't return anything of
-// value, since Templates should not be used for domain errors.
+// value, since Templates should not be used for domain errors. (We've
+// intentionally overriden the embedded Err.Error() for the same reason).
 func (t *Template) Error() string {
 	return "Template error"
 }
@@ -31,16 +31,16 @@ func T(args ...interface{}) *Template {
 	for _, a := range args {
 		switch arg := a.(type) {
 		case Code:
-			t.err.Code = arg
+			t.Code = arg
 		case string:
-			t.err.Msg = arg
+			t.Msg = arg
 		case Op:
-			t.err.Op = arg
-		case *Error: // order is important, this match must before "case error:"
+			t.Op = arg
+		case *Err: // order is important, this match must before "case error:"
 			c := *arg
-			t.err.Wrapped = &c
+			t.Wrapped = &c
 		case error:
-			t.err.Wrapped = arg
+			t.Wrapped = arg
 		case Kind:
 			t.Kind = arg
 		default:
@@ -56,28 +56,28 @@ func Match(t *Template, err error) bool {
 	if t == nil {
 		return false
 	}
-	e, ok := err.(*Error)
+	e, ok := err.(*Err)
 	if !ok {
 		return false
 	}
 
-	if t.err.Code != Unknown && t.err.Code != e.Code {
+	if t.Code != Unknown && t.Code != e.Code {
 		return false
 	}
-	if t.err.Msg != "" && t.err.Msg != e.Msg {
+	if t.Msg != "" && t.Msg != e.Msg {
 		return false
 	}
-	if t.err.Op != "" && t.err.Op != e.Op {
+	if t.Op != "" && t.Op != e.Op {
 		return false
 	}
 	if t.Info().Kind != e.Info().Kind {
 		return false
 	}
-	if t.err.Wrapped != nil {
-		if wrappedT, ok := t.err.Wrapped.(*Template); ok {
+	if t.Wrapped != nil {
+		if wrappedT, ok := t.Wrapped.(*Template); ok {
 			return Match(wrappedT, e.Wrapped)
 		}
-		if e.Wrapped != nil && t.err.Wrapped.Error() != e.Wrapped.Error() {
+		if e.Wrapped != nil && t.Wrapped.Error() != e.Wrapped.Error() {
 			return false
 		}
 	}
