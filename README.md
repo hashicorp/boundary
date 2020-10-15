@@ -99,14 +99,15 @@ UI assets; which will take a few extra minutes.) Once complete, run Boundary in
 
   ```./$GOPATH/bin/boundary dev```
 
-Please note that building the UI requires `go-bindata`, the easiest way to install
+Please note that building the UI requires `go-bindata`; the easiest way to install
 Boundary's dependent tools is to simply run:
 
   ```make tools```
 
 Without doing so, you may encounter errors while running `make dev`. It is important
-to also mention that installing tools like `go-bindata` may overwrite or take precedence
-of tools that might already be installed on the system.
+to also note that using `make tools` will install various tools used for Boundary
+development to the normal Go binary directory; this may overwrite or take precedence
+over tools that might already be installed on the system.
 
 #### Specify a UI Commitish at Build Time
 
