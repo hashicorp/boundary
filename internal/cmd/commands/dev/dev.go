@@ -123,7 +123,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:   "api-listen-address",
 		Target: &c.flagControllerAPIListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_API_LISTEN_ADDRESS",
-		Usage:  "Address to bind to for controller \"api\" purpose.",
+		Usage:  "Address to bind to for controller \"api\" purpose. If this begins with a forward slash, it will be assumed to be a Unix domain socket path.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -160,14 +160,14 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:   "cluster-listen-address",
 		Target: &c.flagControllerClusterListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
-		Usage:  "Address to bind to for controller \"cluster\" purpose.",
+		Usage:  "Address to bind to for controller \"cluster\" purpose. If this begins with a forward slash, it will be assumed to be a Unix domain socket path.",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:   "proxy-listen-address",
 		Target: &c.flagWorkerProxyListenAddr,
 		EnvVar: "BOUNDARY_DEV_WORKER_PROXY_LISTEN_ADDRESS",
-		Usage:  "Address to bind to for worker \"proxy\" purpose.",
+		Usage:  "Address to bind to for worker \"proxy\" purpose. If this begins with a forward slash, it will be assumed to be a Unix domain socket path.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -306,6 +306,9 @@ func (c *Command) Run(args []string) int {
 			if c.flagWorkerProxyListenAddr != "" {
 				l.Address = c.flagWorkerProxyListenAddr
 			}
+		}
+		if strings.HasPrefix(l.Address, "/") {
+			l.Type = "unix"
 		}
 	}
 

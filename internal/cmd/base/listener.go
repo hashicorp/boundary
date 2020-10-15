@@ -40,11 +40,12 @@ type WorkerAuthInfo struct {
 }
 
 // Factory is the factory function to create a listener.
-type ListenerFactory func(*configutil.Listener, hclog.Logger, cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error)
+type ListenerFactory func(string, *configutil.Listener, hclog.Logger, cli.Ui) (string, net.Listener, error)
 
 // BuiltinListeners is the list of built-in listener types.
 var BuiltinListeners = map[string]ListenerFactory{
-	"tcp": tcpListenerFactory,
+	"tcp":  tcpListenerFactory,
+	"unix": unixListenerFactory,
 }
 
 // New creates a new listener of the given type with the given
@@ -55,48 +56,9 @@ func NewListener(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnm
 		return nil, nil, nil, fmt.Errorf("unknown listener type: %q", l.Type)
 	}
 
-	return f(l, logger, ui)
-}
-
-func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
 	var purpose string
 	if len(l.Purpose) == 1 {
 		purpose = l.Purpose[0]
-	}
-
-	if l.Address == "" {
-		switch purpose {
-		case "cluster":
-			l.Address = "127.0.0.1:9201"
-		case "proxy":
-			l.Address = "127.0.0.1:9202"
-		default:
-			l.Address = "127.0.0.1:9200"
-		}
-	}
-
-	host, port, err := net.SplitHostPort(l.Address)
-	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			switch purpose {
-			case "cluster":
-				port = "9201"
-			case "proxy":
-				port = "9202"
-			default:
-				port = "9200"
-			}
-			host = l.Address
-		} else {
-			return nil, nil, nil, fmt.Errorf("error splitting host/port: %w", err)
-		}
-	}
-
-	if host == "" {
-		return nil, nil, nil, errors.New("could not determine host")
-	}
-	if port == "" {
-		return nil, nil, nil, errors.New("could not determine port")
 	}
 
 	switch purpose {
@@ -108,26 +70,10 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 		l.TLSDisable = true
 	}
 
-	bindProto := "tcp"
-
-	// If they've passed 0.0.0.0, we only want to bind on IPv4
-	// rather than golang's dual stack default
-	if strings.HasPrefix(l.Address, "0.0.0.0:") {
-		bindProto = "tcp4"
-	}
-
-	if l.RandomPort {
-		port = ""
-	}
-
-	finalListenAddr := fmt.Sprintf("%s:%s", host, port)
-
-	ln, err := net.Listen(bindProto, finalListenAddr)
+	finalAddr, ln, err := f(purpose, l, logger, ui)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	ln = TCPKeepAliveListener{ln.(*net.TCPListener)}
 
 	ln, err = listenerWrapProxy(ln, l)
 	if err != nil {
@@ -135,7 +81,7 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 	}
 
 	props := map[string]string{
-		"addr": finalListenAddr,
+		"addr": finalAddr,
 	}
 
 	if _, ok := os.LookupEnv("BOUNDARY_LOG_CONNECTION_MUXING"); !ok {
@@ -168,6 +114,85 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 	}
 
 	return alpnMux, props, reloadFunc, nil
+}
+
+func tcpListenerFactory(purpose string, l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (string, net.Listener, error) {
+	if l.Address == "" {
+		switch purpose {
+		case "cluster":
+			l.Address = "127.0.0.1:9201"
+		case "proxy":
+			l.Address = "127.0.0.1:9202"
+		default:
+			l.Address = "127.0.0.1:9200"
+		}
+	}
+
+	host, port, err := net.SplitHostPort(l.Address)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing port") {
+			switch purpose {
+			case "cluster":
+				port = "9201"
+			case "proxy":
+				port = "9202"
+			default:
+				port = "9200"
+			}
+			host = l.Address
+		} else {
+			return "", nil, fmt.Errorf("error splitting host/port: %w", err)
+		}
+	}
+
+	if host == "" {
+		return "", nil, errors.New("could not determine host")
+	}
+	if port == "" {
+		return "", nil, errors.New("could not determine port")
+	}
+
+	bindProto := "tcp"
+
+	// If they've passed 0.0.0.0, we only want to bind on IPv4
+	// rather than golang's dual stack default
+	if strings.HasPrefix(l.Address, "0.0.0.0:") {
+		bindProto = "tcp4"
+	}
+
+	if l.RandomPort {
+		port = ""
+	}
+
+	finalListenAddr := fmt.Sprintf("%s:%s", host, port)
+
+	ln, err := net.Listen(bindProto, finalListenAddr)
+	if err != nil {
+		return "", nil, err
+	}
+
+	ln = TCPKeepAliveListener{ln.(*net.TCPListener)}
+
+	return finalListenAddr, ln, nil
+}
+
+func unixListenerFactory(purpose string, l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (string, net.Listener, error) {
+	var uConfig *listenerutil.UnixSocketsConfig
+	if l.SocketMode != "" &&
+		l.SocketUser != "" &&
+		l.SocketGroup != "" {
+		uConfig = &listenerutil.UnixSocketsConfig{
+			Mode:  l.SocketMode,
+			User:  l.SocketUser,
+			Group: l.SocketGroup,
+		}
+	}
+	ln, err := listenerutil.UnixSocketListener(l.Address, uConfig)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return l.Address, ln, nil
 }
 
 func listenerWrapProxy(ln net.Listener, l *configutil.Listener) (net.Listener, error) {
