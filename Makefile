@@ -23,7 +23,7 @@ cleangen:
 
 dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui
-dev: tools build-ui-ifne
+dev: build-ui-ifne
 	@echo "==> Building Boundary with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
