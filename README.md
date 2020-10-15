@@ -153,7 +153,7 @@ create:
 * An organization Scope under `global`, and a project Scope inside the
   organization.
 * A Host Catalog with a default Host Set, which itself contains a Host with the
-  address of thenlocal machine (`127.0.0.1`)
+  address of the local machine (`127.0.0.1`)
 * A Target mapping the Host Set to a set of connection parameters, with a
   default port of `22` (e.g. SSH)
 
