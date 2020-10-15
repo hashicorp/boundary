@@ -42,25 +42,25 @@ func HelpMap(resType string) map[string]func() string {
 	return map[string]func() string{
 		"base": func() string {
 			return base.WrapForHelpText(subType([]string{
-				"Usage: boundary {{type}}s [sub command] [options] [args]",
+				"Usage: boundary {{hyphentype}}s [sub command] [options] [args]",
 				"",
 				"  This command allows operations on Boundary {{type}} resources. Example:",
 				"",
 				"    Create {{articletype}}:",
 				"",
-				`      $ boundary {{type}}s create -name prodops -description "For ProdOps usage"`,
+				`      $ boundary {{hyphentype}}s create -name prodops -description "For ProdOps usage"`,
 				"",
-				"  Please see the {{type}}s subcommand help for detailed usage information.",
+				"  Please see the {{hyphentype}}s subcommand help for detailed usage information.",
 			}, resType, prefixMap))
 		},
 
 		"create": func() string {
 			return base.WrapForHelpText(subType([]string{
-				"Usage: boundary {{type}}s create [options] [args]",
+				"Usage: boundary {{hyphentype}}s create [options] [args]",
 				"",
 				"  Create {{articletype}}. Example:",
 				"",
-				`    $ boundary {{type}}s create -name prodops -description "{{uppertype}} for ProdOps"`,
+				`    $ boundary {{hyphentype}}s create -name prodops -description "{{uppertype}} for ProdOps"`,
 				"",
 				"",
 			}, resType, prefixMap))
@@ -68,11 +68,11 @@ func HelpMap(resType string) map[string]func() string {
 
 		"update": func() string {
 			return base.WrapForHelpText(subType([]string{
-				"Usage: boundary {{type}}s update [options] [args]",
+				"Usage: boundary {{hyphentype}}s update [options] [args]",
 				"",
 				"  Update {{articletype}} given its ID. Example:",
 				"",
-				`    $ boundary {{type}}s update -id {{prefix}}_1234567890 -name "devops" -description "{{uppertype}} for DevOps"`,
+				`    $ boundary {{hyphentype}}s update -id {{prefix}}_1234567890 -name "devops" -description "{{uppertype}} for DevOps"`,
 				"",
 				"",
 			}, resType, prefixMap))
@@ -80,11 +80,11 @@ func HelpMap(resType string) map[string]func() string {
 
 		"read": func() string {
 			return base.WrapForHelpText(subType([]string{
-				"Usage: boundary {{type}}s read [options] [args]",
+				"Usage: boundary {{hyphentype}}s read [options] [args]",
 				"",
 				"  Read {{articletype}} given its ID. Example:",
 				"",
-				`    $ boundary {{type}}s read -id {{prefix}}_1234567890`,
+				`    $ boundary {{hyphentype}}s read -id {{prefix}}_1234567890`,
 				"",
 				"",
 			}, resType, prefixMap))
@@ -92,11 +92,11 @@ func HelpMap(resType string) map[string]func() string {
 
 		"delete": func() string {
 			return base.WrapForHelpText(subType([]string{
-				"Usage: boundary {{type}}s delete [options] [args]",
+				"Usage: boundary {{hyphentype}}s delete [options] [args]",
 				"",
 				"  Delete {{articletype}} given its ID. Example:",
 				"",
-				`    $ boundary {{type}}s delete -id {{prefix}}_1234567890`,
+				`    $ boundary {{hyphentype}}s delete -id {{prefix}}_1234567890`,
 				"",
 				"",
 			}, resType, prefixMap))
@@ -104,11 +104,11 @@ func HelpMap(resType string) map[string]func() string {
 
 		"list": func() string {
 			return base.WrapForHelpText(subType([]string{
-				"Usage: boundary {{type}}s list [options] [args]",
+				"Usage: boundary {{hyphentype}}s list [options] [args]",
 				"",
 				"  List {{type}}s within an enclosing scope or resource. Example:",
 				"",
-				`    $ boundary {{type}}s list`,
+				`    $ boundary {{hyphentype}}s list`,
 				"",
 				"",
 			}, resType, prefixMap))
@@ -117,6 +117,7 @@ func HelpMap(resType string) map[string]func() string {
 }
 
 func subType(in []string, resType string, prefixMap map[string]string) []string {
+	hyphenType := strings.ReplaceAll(resType, " ", "-")
 	articleType := resType
 	switch resType[0] {
 	case 'a', 'e', 'i', 'o':
@@ -130,7 +131,9 @@ func subType(in []string, resType string, prefixMap map[string]string) []string 
 				strings.Replace(
 					strings.Replace(
 						strings.Replace(
-							v, "{{type}}", resType, -1),
+							strings.Replace(
+								v, "{{hyphentype}}", hyphenType, -1),
+							"{{type}}", resType, -1),
 						"{{uppertype}}", textproto.CanonicalMIMEHeaderKey(resType), -1),
 					"{{prefix}}", prefixMap[resType], -1),
 				"{{articletype}}", articleType, -1)
