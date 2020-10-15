@@ -53,6 +53,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	// Set the token type to cookie and make sure the body does not contain the token anymore.
 	request["token_type"] = "cookie"
 	b, err = json.Marshal(request)
+	require.NoError(t, err)
 	resp, err = http.Post(fmt.Sprintf("%s/v1/auth-methods/ampw_1234567890:authenticate", c.ApiAddrs()[0]), "application/json", bytes.NewReader(b))
 
 	require.NoError(t, err)
