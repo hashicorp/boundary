@@ -12,7 +12,7 @@ function DocsLayout(props) {
   return (
     <DocsPage
       productName={productName}
-      productSlug="red"
+      productSlug="boundary"
       subpath={subpath}
       order={order}
       staticProps={props}
