@@ -120,11 +120,11 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 		port = ""
 	}
 
-	finalListenAddr := fmt.Sprintf("%s:%s", host, port)
+	finalListenAddr := net.JoinHostPort(host, port)
 
 	ln, err := net.Listen(bindProto, finalListenAddr)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("error creating listener with proto %s and address %s: %w", bindProto, finalListenAddr, err)
 	}
 
 	ln = TCPKeepAliveListener{ln.(*net.TCPListener)}
