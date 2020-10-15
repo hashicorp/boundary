@@ -243,9 +243,9 @@ func TestError_Error(t *testing.T) {
 			want: "constraint check failed, integrity violation: error #1000",
 		},
 		{
-			name: "msg-and-code",
-			err:  errors.New(errors.CheckConstraint, errors.WithMsg("test msg")),
-			want: "test msg: integrity violation: error #1000",
+			name: "op-msg-and-code",
+			err:  errors.New(errors.CheckConstraint, errors.WithOp("alice.bob"), errors.WithMsg("test msg")),
+			want: "alice.bob: test msg: integrity violation: error #1000",
 		},
 		{
 			name: "unknown",

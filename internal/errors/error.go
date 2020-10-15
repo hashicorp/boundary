@@ -41,6 +41,7 @@ func New(c Code, opt ...Option) error {
 	opts := GetOpts(opt...)
 	return &Err{
 		Code:    c,
+		Op:      opts.withOp,
 		Wrapped: opts.withErrWrapped,
 		Msg:     opts.withErrMsg,
 	}

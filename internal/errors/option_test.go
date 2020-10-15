@@ -35,5 +35,17 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withErrWrapped = ErrInvalidParameter
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithOp", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts.withOp = ""
+		assert.Equal(opts, testOpts)
 
+		// try setting it
+		opts = GetOpts(WithOp("alice.bob"))
+		testOpts.withOp = "alice.bob"
+		assert.Equal(opts, testOpts)
+	})
 }
