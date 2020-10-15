@@ -201,7 +201,7 @@ func Test_NewError(t *testing.T) {
 				errors.WithWrap(errors.ErrRecordNotFound),
 				errors.WithMsg("test msg"),
 			},
-			want: &errors.Error{
+			want: &errors.Err{
 				Wrapped: errors.ErrRecordNotFound,
 				Msg:     "test msg",
 				Code:    errors.InvalidParameter,
@@ -210,7 +210,7 @@ func Test_NewError(t *testing.T) {
 		{
 			name: "no-options",
 			opt:  nil,
-			want: &errors.Error{
+			want: &errors.Err{
 				Code: errors.Unknown,
 			},
 		},

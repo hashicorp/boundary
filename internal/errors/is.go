@@ -13,7 +13,7 @@ func IsUniqueError(err error) bool {
 		return false
 	}
 
-	var domainErr *Error
+	var domainErr *Err
 	if errors.As(err, &domainErr) {
 		if domainErr.Code == NotUnique {
 			return true
@@ -37,7 +37,7 @@ func IsCheckConstraintError(err error) bool {
 		return false
 	}
 
-	var domainErr *Error
+	var domainErr *Err
 	if errors.As(err, &domainErr) {
 		if domainErr.Code == CheckConstraint {
 			return true
@@ -61,7 +61,7 @@ func IsNotNullError(err error) bool {
 		return false
 	}
 
-	var domainErr *Error
+	var domainErr *Err
 	if errors.As(err, &domainErr) {
 		if domainErr.Code == NotNull {
 			return true

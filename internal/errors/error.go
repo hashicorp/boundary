@@ -12,9 +12,11 @@ import (
 // For example iam.CreateRole
 type Op string
 
-// Error provides the ability to specify a Msg, Op, Code and Wrapped error.
-// Errors must have a Code and all other fields are optional.
-type Error struct {
+// Err provides the ability to specify a Msg, Op, Code and Wrapped error.
+// Errs must have a Code and all other fields are optional. We've chosen Err
+// over Error for the identifier to support the easy embedding of Errs.  Errs
+// can be embedded without a conflict between the embedded Err and Err.Error().
+type Err struct {
 	// Code is the error's code, which can be used to get the error's
 	// errorCodeInfo, which contains the error's Kind and Message
 	Code Code
@@ -37,7 +39,7 @@ type Error struct {
 // an error to wrap
 func New(c Code, opt ...Option) error {
 	opts := GetOpts(opt...)
-	return &Error{
+	return &Err{
 		Code:    c,
 		Wrapped: opts.withErrWrapped,
 		Msg:     opts.withErrMsg,
@@ -52,7 +54,7 @@ func Convert(e error) error {
 		return nil
 	}
 
-	var alreadyConverted *Error
+	var alreadyConverted *Err
 	if errors.As(e, &alreadyConverted) {
 		return alreadyConverted
 	}
@@ -76,7 +78,7 @@ func Convert(e error) error {
 }
 
 // Info about the Error
-func (e *Error) Info() Info {
+func (e *Err) Info() Info {
 	if info, ok := errorCodeInfo[e.Code]; ok {
 		return info
 	}
@@ -85,7 +87,7 @@ func (e *Error) Info() Info {
 
 // Error satisfies the error interface and returns a string representation of
 // the error.
-func (e *Error) Error() string {
+func (e *Err) Error() string {
 	var s strings.Builder
 	if e.Op != "" {
 		join(&s, ": ", string(e.Op))
@@ -120,6 +122,6 @@ func join(str *strings.Builder, delim string, s string) {
 
 // Unwrap implements the errors.Unwrap interface and allows callers to use the
 // errors.Is() and errors.As() functions effectively for any wrapped errors.
-func (e *Error) Unwrap() error {
+func (e *Err) Unwrap() error {
 	return e.Wrapped
 }
