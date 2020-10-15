@@ -27,12 +27,12 @@ type Err struct {
 	// Op represents the operation raising/propagating an error and is optional
 	Op Op
 
-	// Wrapped is the error which this Error wraps and will be nil if there's no
+	// Wrapped is the error which this Err wraps and will be nil if there's no
 	// error to wrap.
 	Wrapped error
 }
 
-// New creates a new Error and supports the options of:
+// New creates a new Err and supports the options of:
 // WithMsg() - allows you to specify an optional error msg, if the default
 // msg for the error Code is not sufficient.
 // WithWrap() - allows you to specify
@@ -46,7 +46,7 @@ func New(c Code, opt ...Option) error {
 	}
 }
 
-/// Convert will convert the error to a Boundary Error and attempt to add a
+/// Convert will convert the error to a Boundary Err and attempt to add a
 //helpful error msg as well. If that's not possible, it return nil
 func Convert(e error) error {
 	// nothing to convert.
@@ -77,7 +77,7 @@ func Convert(e error) error {
 	return e
 }
 
-// Info about the Error
+// Info about the Err
 func (e *Err) Info() Info {
 	if info, ok := errorCodeInfo[e.Code]; ok {
 		return info

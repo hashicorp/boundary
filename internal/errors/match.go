@@ -50,7 +50,7 @@ func T(args ...interface{}) *Template {
 	return t
 }
 
-// Match the template against the err.  The err must be a *Error or match will
+// Match the template against the err.  The err must be a *Err or match will
 // return false.  Matches all non-empty fields of the template against the err.
 func Match(t *Template, err error) bool {
 	if t == nil {
