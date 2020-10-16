@@ -1,4 +1,7 @@
 {
   "version": 2,
-  "public": true
+  "public": true,
+  "github": {
+    "silent": true
+  }
 }
