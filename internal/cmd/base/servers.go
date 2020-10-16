@@ -623,6 +623,6 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 			return fmt.Errorf("Error splitting public adddress host/port: %w", err)
 		}
 	}
-	conf.Worker.PublicAddr = fmt.Sprintf("%s:%s", host, port)
+	conf.Worker.PublicAddr = net.JoinHostPort(host, port)
 	return nil
 }

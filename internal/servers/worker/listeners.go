@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -109,7 +110,14 @@ func (w *Worker) stopListeners() error {
 	if !w.conf.RawConfig.DevController {
 		for _, ln := range w.conf.Listeners {
 			if err := ln.Mux.Close(); err != nil {
-				retErr = multierror.Append(retErr, err)
+				if _, ok := err.(*os.PathError); ok && ln.Config.Type == "unix" {
+					// The rmListener probably tried to remove the file but it
+					// didn't exist, ignore the error; this is a conflict
+					// between rmListener and the default Go behavior of
+					// removing auto-vivified Unix domain sockets.
+				} else {
+					retErr = multierror.Append(retErr, err)
+				}
 			}
 		}
 	}

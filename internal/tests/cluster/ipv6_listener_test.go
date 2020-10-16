@@ -1,9 +1,12 @@
 package cluster
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
@@ -12,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMultiControllerMultiWorkerConnections(t *testing.T) {
+func TestIPv6Listener(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "ampw_1234567890"
 	user := "user"
@@ -24,6 +27,16 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	conf, err := config.DevController()
 	require.NoError(err)
 
+	for _, l := range conf.Listeners {
+		switch l.Purpose[0] {
+		case "api":
+			l.Address = "[::1]:9200"
+
+		case "cluster":
+			l.Address = "[::1]:9201"
+		}
+	}
+
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:              conf,
 		DefaultAuthMethodId: amId,
@@ -32,11 +45,6 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 		Logger:              logger.Named("c1"),
 	})
 	defer c1.Shutdown()
-
-	c2 := c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
-		Logger: c1.Config().Logger.ResetNamed("c2"),
-	})
-	defer c2.Shutdown()
 
 	expectWorkers := func(c *controller.TestController, workers ...*worker.TestWorker) {
 		updateTimes := c.Controller().WorkerStatusUpdateTimes()
@@ -52,7 +60,7 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 				// expecting it we'll see an out-of-date entry
 				return true
 			}
-			assert.WithinDuration(time.Now(), v.(time.Time), 30*time.Second)
+			assert.WithinDuration(time.Now(), v.(time.Time), 35*time.Second)
 			delete(workerMap, k.(string))
 			return true
 		})
@@ -60,9 +68,12 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	}
 
 	expectWorkers(c1)
-	expectWorkers(c2)
+
+	wconf, err := config.DevWorker()
+	require.NoError(err)
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
+		Config:             wconf,
 		WorkerAuthKms:      c1.Config().WorkerAuthKms,
 		InitialControllers: c1.ClusterAddrs(),
 		Logger:             logger.Named("w1"),
@@ -71,33 +82,27 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 
 	time.Sleep(10 * time.Second)
 	expectWorkers(c1, w1)
-	expectWorkers(c2, w1)
-
-	w2 := w1.AddClusterWorkerMember(t, &worker.TestWorkerOpts{
-		Logger: logger.Named("w2"),
-	})
-	defer w2.Shutdown()
-
-	time.Sleep(10 * time.Second)
-	expectWorkers(c1, w1, w2)
-	expectWorkers(c2, w1, w2)
 
 	require.NoError(w1.Worker().Shutdown(true))
 	time.Sleep(10 * time.Second)
-	expectWorkers(c1, w2)
-	expectWorkers(c2, w2)
-
-	require.NoError(w1.Worker().Start())
-	time.Sleep(10 * time.Second)
-	expectWorkers(c1, w1, w2)
-	expectWorkers(c2, w1, w2)
+	expectWorkers(c1)
 
 	require.NoError(c1.Controller().Shutdown(true))
 	time.Sleep(10 * time.Second)
-	expectWorkers(c2, w1, w2)
 
 	require.NoError(c1.Controller().Start())
 	time.Sleep(10 * time.Second)
-	expectWorkers(c1, w1, w2)
-	expectWorkers(c2, w1, w2)
+	expectWorkers(c1, w1)
+
+	client, err := api.NewClient(nil)
+	require.NoError(err)
+
+	addrs := c1.ApiAddrs()
+	require.Len(addrs, 1)
+
+	require.NoError(client.SetAddr(addrs[0]))
+
+	sc := scopes.NewClient(client)
+	_, err = sc.List(context.Background(), "global")
+	require.NoError(err)
 }

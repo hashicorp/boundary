@@ -8,6 +8,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -195,7 +196,14 @@ func (c *Controller) stopListeners(serversOnly bool) error {
 	var retErr *multierror.Error
 	for _, ln := range c.conf.Listeners {
 		if err := ln.Mux.Close(); err != nil {
-			retErr = multierror.Append(retErr, err)
+			if _, ok := err.(*os.PathError); ok && ln.Config.Type == "unix" {
+				// The rmListener probably tried to remove the file but it
+				// didn't exist, ignore the error; this is a conflict
+				// between rmListener and the default Go behavior of
+				// removing auto-vivified Unix domain sockets.
+			} else {
+				retErr = multierror.Append(retErr, err)
+			}
 		}
 	}
 	return retErr.ErrorOrNil()

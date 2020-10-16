@@ -123,7 +123,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:   "api-listen-address",
 		Target: &c.flagControllerAPIListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_API_LISTEN_ADDRESS",
-		Usage:  "Address to bind to for controller \"api\" purpose.",
+		Usage:  "Address to bind to for controller \"api\" purpose. If this begins with a forward slash, it will be assumed to be a Unix domain socket path.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -160,7 +160,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:   "cluster-listen-address",
 		Target: &c.flagControllerClusterListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
-		Usage:  "Address to bind to for controller \"cluster\" purpose.",
+		Usage:  "Address to bind to for controller \"cluster\" purpose. If this begins with a forward slash, it will be assumed to be a Unix domain socket path.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -296,10 +296,17 @@ func (c *Command) Run(args []string) int {
 			if c.flagControllerAPIListenAddr != "" {
 				l.Address = c.flagControllerAPIListenAddr
 			}
+			if strings.HasPrefix(l.Address, "/") {
+				l.Type = "unix"
+			}
 
 		case "cluster":
 			if c.flagControllerClusterListenAddr != "" {
 				l.Address = c.flagControllerClusterListenAddr
+				c.Config.Worker.Controllers = []string{l.Address}
+			}
+			if strings.HasPrefix(l.Address, "/") {
+				l.Type = "unix"
 			}
 
 		case "proxy":

@@ -8,11 +8,18 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Improvements
 
+* controller: Allow API/Cluster listeners to be Unix domain sockets
+  ([Issue](https://github.com/hashicorp/boundary/pull/699))
+  ([PR](https://github.com/hashicorp/boundary/pull/705))
+
 ### Bug Fixes
 
 * cli: Fix hyphenation in help output for resources with compound names
   ([Issue](https://github.com/hashicorp/boundary/issues/686))
   ([PR](https://github.com/hashicorp/boundary/pull/689))
+* controller, worker: Fix listening on IPv6 addresses
+  ([Issue](https://github.com/hashicorp/boundary/issues/701))
+  ([PR](https://github.com/hashicorp/boundary/pull/703))
 
 ## v0.1.0
 

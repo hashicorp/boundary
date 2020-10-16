@@ -42,7 +42,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 
 		clientIp, clientPort, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
-			w.logger.Error("unable to understand remote address", "error", err)
+			w.logger.Error("unable to understand remote address", "error", err, "remote_addr", r.RemoteAddr)
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
