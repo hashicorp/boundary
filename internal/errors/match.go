@@ -66,7 +66,7 @@ func (t *Template) Error() string {
 // will return false.  Matches all non-empty fields of the template against the
 // error.
 func Match(t *Template, err error) bool {
-	if t == nil {
+	if t == nil || err == nil {
 		return false
 	}
 	e, ok := err.(*Err)
@@ -83,7 +83,7 @@ func Match(t *Template, err error) bool {
 	if t.Op != "" && t.Op != e.Op {
 		return false
 	}
-	if t.Info().Kind != e.Info().Kind {
+	if t.Kind != Other && t.Info().Kind != e.Info().Kind {
 		return false
 	}
 	if t.Wrapped != nil {
