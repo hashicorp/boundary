@@ -44,6 +44,16 @@ func TestT(t *testing.T) {
 			},
 		},
 		{
+			name: "multiple Kinds",
+			args: []interface{}{
+				Search,
+				Integrity,
+			},
+			want: &Template{
+				Kind: Integrity,
+			},
+		},
+		{
 			name: "ignore",
 			args: []interface{}{
 				32,

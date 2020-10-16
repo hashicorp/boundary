@@ -9,6 +9,7 @@ type Template struct {
 }
 
 // T creates a new Template for matching Errs.  Invalid parameters are ignored.
+// If more than is one parameter for a given type, only the last one is used.
 func T(args ...interface{}) *Template {
 	t := &Template{}
 	for _, a := range args {
