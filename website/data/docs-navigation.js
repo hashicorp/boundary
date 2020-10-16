@@ -13,7 +13,7 @@ export default [
   },
   {
     category: 'installing',
-    content: ['systemd', 'postgres', 'high-availability'],
+    content: ['no-gen-resources', 'systemd', 'postgres', 'high-availability'],
   },
   {
     category: 'api-clients',
