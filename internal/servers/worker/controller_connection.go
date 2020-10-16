@@ -28,15 +28,20 @@ import (
 func (w *Worker) startControllerConnections() error {
 	initialAddrs := make([]resolver.Address, 0, len(w.conf.RawConfig.Worker.Controllers))
 	for _, addr := range w.conf.RawConfig.Worker.Controllers {
-		host, port, err := net.SplitHostPort(addr)
-		if err != nil && strings.Contains(err.Error(), "missing port in address") {
-			w.logger.Trace("missing port in controller address, using port 9201", "address", addr)
-			host, port, err = net.SplitHostPort(fmt.Sprintf("%s:%s", addr, "9201"))
+		switch {
+		case strings.HasPrefix(addr, "/"):
+			initialAddrs = append(initialAddrs, resolver.Address{Addr: addr})
+		default:
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil && strings.Contains(err.Error(), "missing port in address") {
+				w.logger.Trace("missing port in controller address, using port 9201", "address", addr)
+				host, port, err = net.SplitHostPort(net.JoinHostPort(addr, "9201"))
+			}
+			if err != nil {
+				return fmt.Errorf("error parsing controller address: %w", err)
+			}
+			initialAddrs = append(initialAddrs, resolver.Address{Addr: net.JoinHostPort(host, port)})
 		}
-		if err != nil {
-			return fmt.Errorf("error parsing controller address: %w", err)
-		}
-		initialAddrs = append(initialAddrs, resolver.Address{Addr: fmt.Sprintf("%s:%s", host, port)})
 	}
 
 	if len(initialAddrs) == 0 {
@@ -60,7 +65,13 @@ func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, 
 			return nil, fmt.Errorf("error creating tls config for worker auth: %w", err)
 		}
 		dialer := &net.Dialer{}
-		nonTlsConn, err := dialer.DialContext(ctx, "tcp", addr)
+		var nonTlsConn net.Conn
+		switch {
+		case strings.HasPrefix(addr, "/"):
+			nonTlsConn, err = dialer.DialContext(ctx, "unix", addr)
+		default:
+			nonTlsConn, err = dialer.DialContext(ctx, "tcp", addr)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("unable to dial to controller: %w", err)
 		}

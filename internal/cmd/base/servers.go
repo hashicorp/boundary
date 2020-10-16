@@ -614,15 +614,23 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 			}
 		}
 	}
-	host, port, err := net.SplitHostPort(conf.Worker.PublicAddr)
-	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			port = "9202"
-			host = conf.Worker.PublicAddr
-		} else {
-			return fmt.Errorf("Error splitting public adddress host/port: %w", err)
+	switch {
+	case strings.HasPrefix(conf.Worker.PublicAddr, "/"):
+		conf.Worker.PublicAddr = fmt.Sprintf("unix://%s", conf.Worker.PublicAddr)
+
+	case strings.HasPrefix(conf.Worker.PublicAddr, "unix://"):
+
+	default:
+		host, port, err := net.SplitHostPort(conf.Worker.PublicAddr)
+		if err != nil {
+			if strings.Contains(err.Error(), "missing port") {
+				port = "9202"
+				host = conf.Worker.PublicAddr
+			} else {
+				return fmt.Errorf("Error splitting public adddress host/port: %w", err)
+			}
 		}
+		conf.Worker.PublicAddr = net.JoinHostPort(host, port)
 	}
-	conf.Worker.PublicAddr = fmt.Sprintf("%s:%s", host, port)
 	return nil
 }

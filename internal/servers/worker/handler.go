@@ -26,6 +26,12 @@ func (w *Worker) handler(props HandlerProperties) http.Handler {
 
 	mux.Handle("/v1/proxy", w.handleProxy())
 
+	mux.Handle("/", func() http.HandlerFunc {
+		return http.HandlerFunc(func(wr http.ResponseWriter, r *http.Request) {
+			w.logger.Error("REQUEST PATH", "path", r.RequestURI)
+		})
+	}())
+
 	genericWrappedHandler := w.wrapGenericHandler(mux, props)
 
 	return genericWrappedHandler
@@ -33,6 +39,7 @@ func (w *Worker) handler(props HandlerProperties) http.Handler {
 
 func (w *Worker) handleProxy() http.HandlerFunc {
 	return http.HandlerFunc(func(wr http.ResponseWriter, r *http.Request) {
+		w.logger.Debug("IN HANDLE PROXY")
 		if r.TLS == nil {
 			w.logger.Error("no request TLS information found")
 			wr.WriteHeader(http.StatusInternalServerError)
@@ -42,7 +49,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 
 		clientIp, clientPort, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
-			w.logger.Error("unable to understand remote address", "error", err)
+			w.logger.Error("unable to understand remote address", "error", err, "remote_addr", r.RemoteAddr)
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}

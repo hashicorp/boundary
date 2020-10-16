@@ -300,6 +300,7 @@ func (c *Command) Run(args []string) int {
 		case "cluster":
 			if c.flagControllerClusterListenAddr != "" {
 				l.Address = c.flagControllerClusterListenAddr
+				c.Config.Worker.Controllers = []string{l.Address}
 			}
 
 		case "proxy":
