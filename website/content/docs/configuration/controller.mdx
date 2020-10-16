@@ -62,9 +62,10 @@ listener "tcp" {
 
   tls_disable = false
 
-  # Enable CORS for the Admin UI
-  cors_enabled = true
-  cors_allowed_origins = ["yourcorp.yourdomain.com"]
+  # Uncomment to enable CORS for the Admin UI. Be sure to set the allowed origin(s)
+  # to appropriate values.
+  #cors_enabled = true
+  #cors_allowed_origins = ["yourcorp.yourdomain.com"]
 }
 
 # Data-plane listener configuration block (used for worker coordination)
