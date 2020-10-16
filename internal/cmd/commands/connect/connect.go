@@ -12,10 +12,8 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
-	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -395,33 +393,6 @@ func (c *Command) Run(args []string) (retCode int) {
 	// hijacked, just setting for completeness
 	transport.IdleConnTimeout = 0
 
-	var hostOverride string
-	switch {
-	case strings.HasPrefix(workerAddr, "unix://"):
-		socket := strings.TrimPrefix(workerAddr, "unix://")
-		transport.DialContext = func(context.Context, string, string) (net.Conn, error) {
-			dialer := net.Dialer{}
-			return dialer.DialContext(c.proxyCtx, "unix", socket)
-		}
-		// Necessary to put a host in even though the custom dialer means it's ignored
-		hostOverride = "unixfaker"
-
-	default:
-		workerAddr = fmt.Sprintf("tcp://%s", workerAddr)
-	}
-
-	workerUrl, err := url.Parse(workerAddr)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error parsing worker address: %w", err).Error())
-		return 1
-	}
-	workerUrl.Scheme = "https"
-	if hostOverride != "" {
-		workerUrl.Host = hostOverride
-	}
-	workerUrl.Path = path.Join("v1", "proxy")
-	workerAddr = workerUrl.String()
-
 	c.listener, err = net.ListenTCP("tcp", &net.TCPAddr{
 		IP:   listenAddr,
 		Port: c.flagListenPort,
@@ -588,7 +559,7 @@ func (c *Command) handleConnection(
 
 	conn, resp, err := websocket.Dial(
 		c.proxyCtx,
-		workerAddr,
+		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
 		&websocket.DialOptions{
 			HTTPClient: &http.Client{
 				Transport: transport,
