@@ -12,6 +12,7 @@ import (
 )
 
 func Test_NewError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		code errors.Code
@@ -52,6 +53,7 @@ func Test_NewError(t *testing.T) {
 }
 
 func TestError_Info(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		err  *errors.Err
@@ -82,7 +84,7 @@ func TestError_Info(t *testing.T) {
 }
 
 func TestError_Error(t *testing.T) {
-
+	t.Parallel()
 	tests := []struct {
 		name string
 		err  error
@@ -166,6 +168,7 @@ func TestError_Unwrap(t *testing.T) {
 }
 
 func TestConvertError(t *testing.T) {
+	t.Parallel()
 	const (
 		createTable = `
 	create table if not exists test_table (

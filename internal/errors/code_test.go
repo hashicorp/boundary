@@ -7,6 +7,7 @@ import (
 )
 
 func TestCode_Both_String_Info(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		c    Code

@@ -9,6 +9,7 @@ import (
 )
 
 func TestError_IsUnique(t *testing.T) {
+	t.Parallel()
 	var tests = []struct {
 		name string
 		in   error
@@ -65,6 +66,7 @@ func TestError_IsUnique(t *testing.T) {
 }
 
 func TestError_IsCheckConstraint(t *testing.T) {
+	t.Parallel()
 	var tests = []struct {
 		name string
 		in   error
@@ -121,6 +123,7 @@ func TestError_IsCheckConstraint(t *testing.T) {
 }
 
 func TestError_IsNotNullError(t *testing.T) {
+	t.Parallel()
 	var tests = []struct {
 		name string
 		in   error

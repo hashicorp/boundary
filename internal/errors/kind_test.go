@@ -7,6 +7,7 @@ import (
 )
 
 func TestKind_String(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		e    Kind
