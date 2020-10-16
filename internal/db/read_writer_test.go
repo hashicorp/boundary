@@ -129,7 +129,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "update: with version option is zero: invalid parameter: error #100",
+			wantErrMsg: "update: with version option is zero: invalid parameter:",
 		},
 		{
 			name: "simple-with-version",
@@ -276,7 +276,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "update: not allowed on primary key field Id: invalid field mask: error #100",
+			wantErrMsg: "update: not allowed on primary key field Id: invalid field mask:",
 		},
 		{
 			name: "both are missing",
@@ -304,7 +304,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "update: interface is missing invalid parameter: error #100",
+			wantErrMsg: "update: interface is missing invalid parameter:",
 		},
 		{
 			name: "only read-only",
@@ -340,7 +340,7 @@ func TestDb_Update(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.want, rowsUpdated)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				return
 			}
 			require.NoError(err)
@@ -530,7 +530,7 @@ func TestDb_Update(t *testing.T) {
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: missing underlying db invalid parameter: error #100", err.Error())
+		assert.Contains(err.Error(), "update: missing underlying db invalid parameter:")
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -552,7 +552,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed: error no wrapper WithOplog: invalid parameter: error #100", err.Error())
+		assert.Contains(err.Error(), "update: oplog validation failed: error no wrapper WithOplog: invalid parameter:")
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -569,7 +569,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed: error no metadata for WithOplog: invalid parameter: error #100", err.Error())
+		assert.Contains(err.Error(), "update: oplog validation failed: error no metadata for WithOplog: invalid parameter:")
 	})
 }
 

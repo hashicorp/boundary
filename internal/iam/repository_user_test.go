@@ -60,7 +60,7 @@ func TestRepository_CreateUser(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create user: error getting metadata for create: unable to get scope for standard metadata: record not found: error",
+			wantErrMsg: "create user: error getting metadata for create: unable to get scope for standard metadata: record not found:",
 		},
 		{
 			name: "dup-name",
@@ -171,7 +171,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update user: update: lookup after write: record not found: error",
+			wantErrMsg:     "update user: update: lookup after write: record not found:",
 			wantIsErr:      errors.ErrRecordNotFound,
 		},
 		{

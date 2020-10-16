@@ -72,7 +72,7 @@ func TestNewGroup(t *testing.T) {
 				opt: []Option{WithName(id)},
 			},
 			wantErr:    true,
-			wantErrMsg: "new group: missing scope id invalid parameter: error #100",
+			wantErrMsg: "new group: missing scope id invalid parameter:",
 			wantIsErr:  errors.ErrInvalidParameter,
 		},
 	}
@@ -82,7 +82,7 @@ func TestNewGroup(t *testing.T) {
 			got, err := NewGroup(tt.args.scopePublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				if tt.wantIsErr != nil {
 					assert.True(stderrors.Is(err, tt.wantIsErr))
 				}

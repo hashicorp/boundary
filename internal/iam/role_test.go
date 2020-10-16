@@ -72,7 +72,7 @@ func TestNewRole(t *testing.T) {
 				opt: []Option{WithName(id)},
 			},
 			wantErr:    true,
-			wantErrMsg: "new role: missing scope id invalid parameter: error #100",
+			wantErrMsg: "new role: missing scope id invalid parameter:",
 			wantIsErr:  errors.ErrInvalidParameter,
 		},
 	}
@@ -82,7 +82,7 @@ func TestNewRole(t *testing.T) {
 			got, err := NewRole(tt.args.scopePublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				if tt.wantIsErr != nil {
 					assert.True(stderrors.Is(err, tt.wantIsErr))
 				}
@@ -428,7 +428,7 @@ func Test_RoleUpdate(t *testing.T) {
 				assert.Equal(tt.wantErrMsg, err.Error())
 				err = db.TestVerifyOplog(t, rw, role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
-				assert.Contains(err.Error(), "record not found: error ")
+				assert.Contains(err.Error(), "record not found:")
 				return
 			}
 			require.NoError(err)

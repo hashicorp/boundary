@@ -53,7 +53,7 @@ type Service struct {
 // NewService returns a auth method service which handles auth method related requests to boundary.
 func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory) (Service, error) {
 	if kms == nil {
-		return Service{}, errors.New("nil kms provided")
+		return Service{}, stderrors.New("nil kms provided")
 	}
 	if pwRepoFn == nil {
 		return Service{}, fmt.Errorf("nil password repository provided")
