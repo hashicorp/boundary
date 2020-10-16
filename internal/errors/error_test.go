@@ -22,10 +22,12 @@ func Test_NewError(t *testing.T) {
 			name: "all-options",
 			code: errors.InvalidParameter,
 			opt: []errors.Option{
+				errors.WithOp("alice.Bob"),
 				errors.WithWrap(errors.ErrRecordNotFound),
 				errors.WithMsg("test msg"),
 			},
 			want: &errors.Err{
+				Op:      "alice.Bob",
 				Wrapped: errors.ErrRecordNotFound,
 				Msg:     "test msg",
 				Code:    errors.InvalidParameter,
@@ -45,6 +47,36 @@ func Test_NewError(t *testing.T) {
 			err := errors.New(tt.code, tt.opt...)
 			require.Error(err)
 			assert.Equal(tt.want, err)
+		})
+	}
+}
+
+func TestError_Info(t *testing.T) {
+	tests := []struct {
+		name string
+		err  *errors.Err
+		want errors.Code
+	}{
+		{
+			name: "nil",
+			err:  nil,
+			want: errors.Unknown,
+		},
+		{
+			name: "Unknown",
+			err:  errors.New(errors.Unknown).(*errors.Err),
+			want: errors.Unknown,
+		},
+		{
+			name: "InvalidParameter",
+			err:  errors.New(errors.InvalidParameter).(*errors.Err),
+			want: errors.InvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			assert.Equal(tt.want.Info(), tt.err.Info())
 		})
 	}
 }
@@ -84,6 +116,12 @@ func TestError_Error(t *testing.T) {
 			assert.Equal(tt.want, got)
 		})
 	}
+	t.Run("nil *Err", func(t *testing.T) {
+		assert := assert.New(t)
+		var err *errors.Err
+		got := err.Error()
+		assert.Equal("", got)
+	})
 }
 
 func TestError_Unwrap(t *testing.T) {
@@ -119,6 +157,12 @@ func TestError_Unwrap(t *testing.T) {
 			assert.True(stderrors.Is(tt.err, tt.wantIsErr))
 		})
 	}
+	t.Run("nil *Err", func(t *testing.T) {
+		assert := assert.New(t)
+		var err *errors.Err
+		got := err.Unwrap()
+		assert.Equal(nil, got)
+	})
 }
 
 func TestConvertError(t *testing.T) {

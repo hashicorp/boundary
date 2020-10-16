@@ -33,6 +33,7 @@ type Err struct {
 }
 
 // New creates a new Err and supports the options of:
+// WithOp - allows you to specify an optional Op (operation)
 // WithMsg() - allows you to specify an optional error msg, if the default
 // msg for the error Code is not sufficient.
 // WithWrap() - allows you to specify
@@ -50,16 +51,12 @@ func New(c Code, opt ...Option) error {
 /// Convert will convert the error to a Boundary Err and attempt to add a
 //helpful error msg as well. If that's not possible, it return nil
 func Convert(e error) error {
-	// nothing to convert.
 	if e == nil {
 		return nil
 	}
-
-	var alreadyConverted *Err
-	if errors.As(e, &alreadyConverted) {
-		return alreadyConverted
+	if err, ok := e.(*Err); ok {
+		return err
 	}
-
 	var pqError *pq.Error
 	if errors.As(e, &pqError) {
 		if pqError.Code.Name() == "unique_violation" {
@@ -80,6 +77,9 @@ func Convert(e error) error {
 
 // Info about the Err
 func (e *Err) Info() Info {
+	if e == nil {
+		return errorCodeInfo[Unknown]
+	}
 	if info, ok := errorCodeInfo[e.Code]; ok {
 		return info
 	}
@@ -87,8 +87,11 @@ func (e *Err) Info() Info {
 }
 
 // Error satisfies the error interface and returns a string representation of
-// the error.
+// the Err
 func (e *Err) Error() string {
+	if e == nil {
+		return ""
+	}
 	var s strings.Builder
 	if e.Op != "" {
 		join(&s, ": ", string(e.Op))
@@ -124,5 +127,8 @@ func join(str *strings.Builder, delim string, s string) {
 // Unwrap implements the errors.Unwrap interface and allows callers to use the
 // errors.Is() and errors.As() functions effectively for any wrapped errors.
 func (e *Err) Unwrap() error {
+	if e == nil {
+		return nil
+	}
 	return e.Wrapped
 }
