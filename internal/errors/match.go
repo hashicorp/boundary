@@ -8,25 +8,6 @@ type Template struct {
 	Kind Kind
 }
 
-// Info about the Template, which is useful when matching a Template's Kind with
-// an Err's Kind.
-func (t *Template) Info() Info {
-	if t.Code != Unknown {
-		return t.Info()
-	}
-	return Info{
-		Message: "Unknown",
-		Kind:    t.Kind,
-	}
-}
-
-// Error satisfies the error interface but we intentionally don't return
-// anything of value, in an effort to stop users from substituting Templates in
-// place of Errs, when creating domain errors.
-func (t *Template) Error() string {
-	return "Template error"
-}
-
 // T creates a new Template for matching Errs
 func T(args ...interface{}) *Template {
 	t := &Template{}
@@ -86,4 +67,23 @@ func Match(t *Template, err error) bool {
 	}
 
 	return true
+}
+
+// Info about the Template, which is useful when matching a Template's Kind with
+// an Err's Kind.
+func (t *Template) Info() Info {
+	if t.Code != Unknown {
+		return t.Info()
+	}
+	return Info{
+		Message: "Unknown",
+		Kind:    t.Kind,
+	}
+}
+
+// Error satisfies the error interface but we intentionally don't return
+// anything of value, in an effort to stop users from substituting Templates in
+// place of Errs, when creating domain errors.
+func (t *Template) Error() string {
+	return "Template error"
 }
