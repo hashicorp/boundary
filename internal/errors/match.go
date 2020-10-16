@@ -4,11 +4,11 @@ package errors
 // match Errs without specifying a Code.  In other words, just Match using the
 // Errs: Kind, Op, etc.
 type Template struct {
-	Err
-	Kind Kind
+	Err       // Err embedded to support matching Errs
+	Kind Kind // Kind allows explicit matching on a Template without a Code.
 }
 
-// T creates a new Template for matching Errs
+// T creates a new Template for matching Errs.  Invalid parameters are ignored.
 func T(args ...interface{}) *Template {
 	t := &Template{}
 	for _, a := range args {
@@ -31,6 +31,25 @@ func T(args ...interface{}) *Template {
 		}
 	}
 	return t
+}
+
+// Info about the Template, which is useful when matching a Template's Kind with
+// an Err's Kind.
+func (t *Template) Info() Info {
+	if t.Code != Unknown {
+		return t.Info()
+	}
+	return Info{
+		Message: "Unknown",
+		Kind:    t.Kind,
+	}
+}
+
+// Error satisfies the error interface but we intentionally don't return
+// anything of value, in an effort to stop users from substituting Templates in
+// place of Errs, when creating domain errors.
+func (t *Template) Error() string {
+	return "Template error"
 }
 
 // Match the template against the error.  The error must be a *Err, or match
@@ -67,23 +86,4 @@ func Match(t *Template, err error) bool {
 	}
 
 	return true
-}
-
-// Info about the Template, which is useful when matching a Template's Kind with
-// an Err's Kind.
-func (t *Template) Info() Info {
-	if t.Code != Unknown {
-		return t.Info()
-	}
-	return Info{
-		Message: "Unknown",
-		Kind:    t.Kind,
-	}
-}
-
-// Error satisfies the error interface but we intentionally don't return
-// anything of value, in an effort to stop users from substituting Templates in
-// place of Errs, when creating domain errors.
-func (t *Template) Error() string {
-	return "Template error"
 }
