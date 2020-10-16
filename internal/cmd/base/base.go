@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/sdk/wrapper"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
@@ -178,14 +179,21 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	tokenName := "default"
 	switch {
 	case c.FlagRecoveryConfig != "":
-		wrapper, err := wrapper.GetWrapperFromPath(c.FlagRecoveryConfig, "recovery")
+		var wrap wrapping.Wrapper
+		recoveryConfig := strings.TrimSpace(c.FlagRecoveryConfig)
+		switch {
+		case strings.HasPrefix(recoveryConfig, "kms "):
+			wrap, err = wrapper.GetWrapperFromHcl(recoveryConfig, "recovery")
+		default:
+			wrap, err = wrapper.GetWrapperFromPath(recoveryConfig, "recovery")
+		}
 		if err != nil {
 			return nil, err
 		}
-		if wrapper == nil {
+		if wrap == nil {
 			return nil, errors.New(`No "kms" block with purpose "recovery" found`)
 		}
-		if err := wrapper.Init(c.Context); err != nil {
+		if err := wrap.Init(c.Context); err != nil {
 			return nil, fmt.Errorf("Error initializing kms: %w", err)
 		}
 		/*
@@ -203,7 +211,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			}()
 		*/
 
-		c.client.SetRecoveryKmsWrapper(wrapper)
+		c.client.SetRecoveryKmsWrapper(wrap)
 
 	case c.FlagToken != "":
 		c.client.SetToken(c.FlagToken)
@@ -363,7 +371,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:   "recovery-config",
 				Target: &c.FlagRecoveryConfig,
 				EnvVar: envRecoveryConfig,
-				Usage:  `If specified, the given config file will be parsed for a "kms" block with purpose "recovery" and will use the recovery mechanism to authorize the call."`,
+				Usage:  `If specified, the given config file will be parsed for a "kms" block with purpose "recovery" and will use the recovery mechanism to authorize the call. This can also be an HCL string, e.g. specified as heredoc, so long as its starts with "kms "`,
 			})
 
 			f.BoolVar(&BoolVar{
