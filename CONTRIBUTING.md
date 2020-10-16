@@ -1,0 +1,44 @@
+# Contributing to Boundary
+
+Thank you for contributing to Boundary! Here you can find common questions around reporting issues and opening
+pull requests to our project.
+
+## Issue Reporting
+### Reporting Security Releated Vulnerabilities
+
+We take Boundary's security and our users' trust very seriously. If you believe you have found a security issue 
+in Boundary, please responsibly disclose by contacting us at security@hashicorp.com. Do not open an issue on 
+our GitHub issue tracker if you believe you've found a security related issue, thank you!
+
+### Bug Fixes
+
+If you believe you found a bug with Boundary, please:
+
+1. Build from the latest `main` HEAD commit to attempt to reproduce the issue. It's possible we've already fixed
+the bug, and this is a first good step to ensuring that's not the case.
+1. Take a look at the [Boundary Discuss](https://discuss.hashicorp.com/c/boundary/50) to see if other folks have had
+similar issues.
+1. Ensure a similar ticket is not already opened by searching our opened issues on GitHub.
+
+
+Once you've verified the above, feel free to open a bug fix issue template type from our [issue selector](https://github.com/hashicorp/boundary/issues/new/choose)
+and we'll do our best to triage it as quickly as possible. 
+
+## Pull Requests
+
+### New Features & Improvements
+
+Before writing a line of code, please ask us about a potential improvement or feature that you want to write into Boundary. We may already be working on it; even if we aren't, we need to ensure that both the feature and its proposed implementation is aligned with our road map, vision, and standards for the project. We're happy to help walk through that via a [feature request issue](https://github.com/hashicorp/boundary/issues/new/choose).
+
+You can see a public [road map for Boundary](https://github.com/hashicorp/boundary/issues/new/choose) on our docs site and we encourage
+everyone to look this over to understaand at a high level what we're working on with Boundary.
+
+### Submitting a New Pull Request
+
+When submitting a pull request, please ensure:
+
+1. You've added a changelog line clearly describing the new addition under the correct changelog sub-section.
+1. You've followed the above guidelines for contributing to Boundary.
+
+Once you open your PR, our auto-labeling will add labels to help us triage and prioritize your contribution. Please
+allow us a couple of days to comment, request changes, or approve your PR. Thank you for your contribution!
