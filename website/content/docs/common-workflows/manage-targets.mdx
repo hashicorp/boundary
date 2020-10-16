@@ -156,7 +156,7 @@ resource "boundary_host_set" "postgres" {
   type            = "static"
   name            = "postgres"
   description     = "Host set for postgres"
-  host_catalog_id = host_catalog_id = "hcst_1234567890"
+  host_catalog_id = "hcst_1234567890"
 
   // taken from the Terraform example above
   host_ids = [ boundary_host.postgres.id ]

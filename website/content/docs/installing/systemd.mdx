@@ -33,7 +33,7 @@ We recommend running Boundary as a non-root user, and use this user to manage th
 Description=${NAME} ${TYPE}
 
 [Service]
-ExecStart=/usr/local/bin/${NAME} ${TYPE} -config /etc/${NAME}-${TYPE}.hcl
+ExecStart=/usr/local/bin/${NAME} server -config /etc/${NAME}-${TYPE}.hcl
 User=boundary
 Group=boundary
 LimitMEMLOCK=infinity

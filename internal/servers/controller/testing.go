@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -150,12 +152,23 @@ func (tc *TestController) addrs(purpose string) []string {
 	addrs := make([]string, 0, len(tc.b.Listeners))
 	for _, listener := range tc.b.Listeners {
 		if listener.Config.Purpose[0] == purpose {
-			tcpAddr, ok := listener.Mux.Addr().(*net.TCPAddr)
-			if !ok {
-				tc.t.Fatal("could not parse address as a TCP addr")
+			addr := listener.Mux.Addr()
+			switch {
+			case strings.HasPrefix(addr.String(), "/"):
+				switch purpose {
+				case "api":
+					addrs = append(addrs, fmt.Sprintf("unix://%s", addr.String()))
+				default:
+					addrs = append(addrs, addr.String())
+				}
+			default:
+				tcpAddr, ok := addr.(*net.TCPAddr)
+				if !ok {
+					tc.t.Fatal("could not parse address as a TCP addr")
+				}
+				addr := fmt.Sprintf("%s%s", prefix, net.JoinHostPort(tcpAddr.IP.String(), strconv.Itoa(tcpAddr.Port)))
+				addrs = append(addrs, addr)
 			}
-			addr := fmt.Sprintf("%s%s:%d", prefix, tcpAddr.IP.String(), tcpAddr.Port)
-			addrs = append(addrs, addr)
 		}
 	}
 
@@ -218,7 +231,12 @@ func (tc *TestController) Shutdown() {
 }
 
 type TestControllerOpts struct {
-	// Config; if not provided a dev one will be created
+	// ConfigHcl is the HCL to be parsed to generate the initial config.
+	// Overrides Config if both are set.
+	ConfigHcl string
+
+	// Config; if not provided a dev one will be created, unless ConfigHcl is
+	// set.
 	Config *config.Config
 
 	// DefaultAuthMethodId is the default auth method ID to use, if set.
@@ -313,7 +331,15 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	// Get dev config, or use a provided one
 	var err error
-	if opts.Config == nil {
+	switch {
+	case opts.ConfigHcl != "":
+		cfg, err := config.Parse(opts.ConfigHcl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		opts.Config = cfg
+
+	case opts.Config == nil:
 		opts.Config, err = config.DevController()
 		if err != nil {
 			t.Fatal(err)
