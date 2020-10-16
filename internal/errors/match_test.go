@@ -60,6 +60,41 @@ func TestT(t *testing.T) {
 	}
 }
 
+func TestTemplate_Info(t *testing.T) {
+	tests := []struct {
+		name     string
+		template *Template
+		want     Info
+	}{
+		{
+			name:     "nil",
+			template: nil,
+			want:     errorCodeInfo[Unknown],
+		},
+		{
+			name:     "Code",
+			template: T(InvalidParameter),
+			want:     errorCodeInfo[InvalidParameter],
+		},
+		{
+			name:     "Code and Kind",
+			template: T(InvalidParameter, Integrity),
+			want:     errorCodeInfo[InvalidParameter],
+		},
+		{
+			name:     "Kind without Code",
+			template: T(Integrity),
+			want:     Info{Kind: Integrity, Message: "Unknown"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			assert.Equal(tt.want, tt.template.Info())
+		})
+	}
+}
+
 func TestTemplate_Error(t *testing.T) {
 	stdErr := stderrors.New("test error")
 	tests := []struct {

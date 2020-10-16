@@ -36,12 +36,21 @@ func T(args ...interface{}) *Template {
 // Info about the Template, which is useful when matching a Template's Kind with
 // an Err's Kind.
 func (t *Template) Info() Info {
-	if t.Code != Unknown {
-		return t.Info()
+	if t == nil {
+		return errorCodeInfo[Unknown]
 	}
-	return Info{
-		Message: "Unknown",
-		Kind:    t.Kind,
+	switch {
+	case t == nil:
+		return errorCodeInfo[Unknown]
+	case t.Code != Unknown:
+		return t.Code.Info()
+	case t.Kind != Other:
+		return Info{
+			Message: "Unknown",
+			Kind:    t.Kind,
+		}
+	default:
+		return errorCodeInfo[Unknown]
 	}
 }
 
