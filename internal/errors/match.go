@@ -1,13 +1,15 @@
 package errors
 
-// Template that's useful constructing Match error templates, especially if you
-// want to make an error match template without a errors.Code.
+// Template is useful constructing Match Err templates.  Templates allow you to
+// match Errs without specifying a Code.  In other words, just Match using the
+// Errs: Kind, Op, etc.
 type Template struct {
 	Err
 	Kind Kind
 }
 
-// Info about the Template
+// Info about the Template, which is useful when matching a Template's Kind with
+// an Err's Kind.
 func (t *Template) Info() Info {
 	if t.Code != Unknown {
 		return t.Info()
@@ -18,14 +20,14 @@ func (t *Template) Info() Info {
 	}
 }
 
-// Error satisfies the error interface but intentional don't return anything of
-// value, since Templates should not be used for domain errors. (We've
-// intentionally overriden the embedded Err.Error() for the same reason).
+// Error satisfies the error interface but we intentionally don't return
+// anything of value, in an effort to stop users from substituting Templates in
+// place of Errs, when creating domain errors.
 func (t *Template) Error() string {
 	return "Template error"
 }
 
-// T creates a new Template for matching
+// T creates a new Template for matching Errs
 func T(args ...interface{}) *Template {
 	t := &Template{}
 	for _, a := range args {
@@ -50,8 +52,9 @@ func T(args ...interface{}) *Template {
 	return t
 }
 
-// Match the template against the err.  The err must be a *Err or match will
-// return false.  Matches all non-empty fields of the template against the err.
+// Match the template against the error.  The error must be a *Err, or match
+// will return false.  Matches all non-empty fields of the template against the
+// error.
 func Match(t *Template, err error) bool {
 	if t == nil {
 		return false
