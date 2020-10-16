@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -150,12 +152,23 @@ func (tc *TestController) addrs(purpose string) []string {
 	addrs := make([]string, 0, len(tc.b.Listeners))
 	for _, listener := range tc.b.Listeners {
 		if listener.Config.Purpose[0] == purpose {
-			tcpAddr, ok := listener.Mux.Addr().(*net.TCPAddr)
-			if !ok {
-				tc.t.Fatal("could not parse address as a TCP addr")
+			addr := listener.Mux.Addr()
+			switch {
+			case strings.HasPrefix(addr.String(), "/"):
+				switch purpose {
+				case "api":
+					addrs = append(addrs, fmt.Sprintf("unix://%s", addr.String()))
+				default:
+					addrs = append(addrs, addr.String())
+				}
+			default:
+				tcpAddr, ok := addr.(*net.TCPAddr)
+				if !ok {
+					tc.t.Fatal("could not parse address as a TCP addr")
+				}
+				addr := fmt.Sprintf("%s%s", prefix, net.JoinHostPort(tcpAddr.IP.String(), strconv.Itoa(tcpAddr.Port)))
+				addrs = append(addrs, addr)
 			}
-			addr := fmt.Sprintf("%s%s:%d", prefix, tcpAddr.IP.String(), tcpAddr.Port)
-			addrs = append(addrs, addr)
 		}
 	}
 

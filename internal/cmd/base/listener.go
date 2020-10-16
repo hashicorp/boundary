@@ -164,7 +164,7 @@ func tcpListenerFactory(purpose string, l *configutil.Listener, logger hclog.Log
 		port = ""
 	}
 
-	finalListenAddr := fmt.Sprintf("%s:%s", host, port)
+	finalListenAddr := net.JoinHostPort(host, port)
 
 	ln, err := net.Listen(bindProto, finalListenAddr)
 	if err != nil {
