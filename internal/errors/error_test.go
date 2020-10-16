@@ -201,7 +201,7 @@ func TestConvertError(t *testing.T) {
 		{
 			name:    "not-convertible",
 			e:       stderrors.New("test error"),
-			wantErr: stderrors.New("test error"),
+			wantErr: nil,
 		},
 	}
 	for _, tt := range tests {

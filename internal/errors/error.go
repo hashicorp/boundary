@@ -48,9 +48,10 @@ func New(c Code, opt ...Option) error {
 	}
 }
 
-/// Convert will convert the error to a Boundary Err and attempt to add a
-//helpful error msg as well. If that's not possible, it return nil
-func Convert(e error) error {
+// Convert will convert the error to a Boundary *Err (returning it as an error)
+// and attempt to add a helpful error msg as well. If that's not possible, it
+// will return nil
+func Convert(e error) *Err {
 	if e == nil {
 		return nil
 	}
@@ -60,19 +61,19 @@ func Convert(e error) error {
 	var pqError *pq.Error
 	if errors.As(e, &pqError) {
 		if pqError.Code.Name() == "unique_violation" {
-			return New(NotUnique, WithMsg(pqError.Detail), WithWrap(ErrNotUnique))
+			return New(NotUnique, WithMsg(pqError.Detail), WithWrap(ErrNotUnique)).(*Err)
 		}
 		if pqError.Code.Name() == "not_null_violation" {
 			msg := fmt.Sprintf("%s must not be empty", pqError.Column)
-			return New(NotNull, WithMsg(msg), WithWrap(ErrNotNull))
+			return New(NotNull, WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
 		}
 		if pqError.Code.Name() == "check_violation" {
 			msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
-			return New(CheckConstraint, WithMsg(msg), WithWrap(ErrCheckConstraint))
+			return New(CheckConstraint, WithMsg(msg), WithWrap(ErrCheckConstraint)).(*Err)
 		}
 	}
 	// unfortunately, we can't help.
-	return e
+	return nil
 }
 
 // Info about the Err
