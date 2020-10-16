@@ -5,6 +5,8 @@ type Info struct {
 	Message string
 }
 
+// errorCodeInfo provides a map of unique Codes (IDs) to their
+// corresponding Kind and a default Message.
 var errorCodeInfo = map[Code]Info{
 	Unknown: {
 		Message: "unknown",
@@ -27,7 +29,7 @@ var errorCodeInfo = map[Code]Info{
 		Kind:    Integrity,
 	},
 	RecordNotFound: {
-		Message: "record not fouind",
+		Message: "record not found",
 		Kind:    Search,
 	},
 	MultipleRecords: {
