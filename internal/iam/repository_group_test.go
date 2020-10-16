@@ -520,7 +520,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete group: failed record not found: error ",
+			wantErrMsg:      "delete group: failed record not found:",
 		},
 	}
 	for _, tt := range tests {

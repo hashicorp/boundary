@@ -518,7 +518,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete role: failed record not found: error",
+			wantErrMsg:      "delete role: failed record not found:",
 		},
 	}
 	for _, tt := range tests {
