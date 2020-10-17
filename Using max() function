@@ -1,0 +1,192 @@
+Python program to find the 
+
+# maximum of two numbers 
+
+  
+
+  
+
+a = 2
+
+b = 4
+
+  
+
+maximum = max(a, b) 
+
+print(maximum) 
+
+Output:
+
+4
+
+Recommended Posts:
+
+Python | Maximum and Minimum value from two lists
+
+Python - Find the Maximum of Similar Indices in two list of Tuples
+
+Highlight the maximum value in last two columns in Pandas - Python
+
+Python Dictionary | Check if binary representations of two numbers are anagram
+
+Python program to add two numbers
+
+Python Program to swap two numbers without using third variable
+
+Minimum of two numbers in Python
+
+Python Program to find the Quotient and Remainder of two numbers
+
+Find the sum and maximum value of the two column in excel file using Pandas
+
+Python program to check if the list contains three consecutive common numbers in Python
+
+What is the maximum possible value of an integer in Python ?
+
+Python - Maximum product using K elements
+
+Python program maximum of three
+
+Python Regex to extract maximum numeric value from a string
+
+Python | Maximum and minimum element's position in a list
+
+Python | Maximum sum of elements of list in a list of lists
+
+Python map function to find row with maximum number of 1's
+
+Python | Maximum and Minimum in a Set
+
+numpy.maximum() in Python
+
+Python | Pandas series.cummax() to find Cumulative maximum of a series
+
+nikhilaggarwal3
+
+Check out this Author's contributed articles.
+
+If you like GeeksforGeeks and would like to contribute, you can also write an article using contribute.geeksforgeeks.org or mail your article to contribute@geeksforgeeks.org. See your article appearing on the GeeksforGeeks main page and help other Geeks.
+
+Please Improve this article if you find anything incorrect by clicking on the "Improve Article" button below.
+
+Article Tags : 
+
+Python
+
+Python list-programs
+
+thumb_up
+
+Be the First to upvote.
+
+ 
+
+0
+
+No votes yet.
+
+Improve Article  
+
+Please write to us at contribute@geeksforgeeks.org to report any issue with the above content.
+
+Post navigation
+
+Previous
+
+first_page Matplotlib.artist.Artist.set_animated() in Python
+
+Next
+
+last_pageMinimum of two numbers in Python
+
+Writing code in comment? Please use ide.geeksforgeeks.org, generate link and share the link here.
+
+Load Comments
+
+auto
+
+Most popular in Python
+
+How to get column names in Pandas dataframe
+
+Python program to convert a list to string
+
+Reading and Writing to text files in Python
+
+Python String | replace()
+
+isupper(), islower(), lower(), upper() in Python and their applications
+
+More related articles in Python
+
+Read a file line by line in Python
+
+Print lists in Python (4 Different Ways)
+
+append() and extend() in Python
+
+Python String | split()
+
+Python | Get a list as input from user
+
+GeeksforGeeks
+
+room
+
+5th Floor, A-118,
+
+Sector-136, Noida, Uttar Pradesh - 201305
+
+email
+
+feedback@geeksforgeeks.org
+
+Company
+
+About Us
+
+Careers
+
+Privacy Policy
+
+Contact Us
+
+Learn
+
+Algorithms
+
+Data Structures
+
+Languages
+
+CS Subjects
+
+Video Tutorials
+
+Practice
+
+Courses
+
+Company-wise
+
+Topic-wise
+
+How to begin?
+
+Contribute
+
+Write an Article
+
+Write Interview Experience
+
+Internships
+
+Videos
+
+@geeksforgeeks , Some rights reserved
+
+We use cookies to ensure you have the best browsing experience on our website. By using our site, you acknowledge that you have read and understood our Cookie Policy & Privacy Policy
+
+Got It !
+
