@@ -239,7 +239,8 @@ func (c *Config) setAddr(addr string) error {
 	// Remove v1 in front or back (e.g. they could have
 	// https://boundary.example.com/myinstall/v1 which would put it at the
 	// back)
-	path = strings.Trim(path, "v1")
+	path = strings.TrimPrefix(path, "v1")
+	path = strings.TrimSuffix(path, "v1")
 	// Finally check again to make sure any slashes are removed before we join
 	// below
 	path = strings.Trim(path, "/")
