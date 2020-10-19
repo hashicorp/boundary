@@ -11,6 +11,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * controller: Allow API/Cluster listeners to be Unix domain sockets
   ([Issue](https://github.com/hashicorp/boundary/pull/699))
   ([PR](https://github.com/hashicorp/boundary/pull/705))
+* dev controller: Allow connecting to postgres when using remote docker in dev mode
+  ([Issue](https://github.com/hashicorp/boundary/issues/720)
+  ([PR](https://github.com/hashicorp/boundary/pull/732))
 
 ### Bug Fixes
 
