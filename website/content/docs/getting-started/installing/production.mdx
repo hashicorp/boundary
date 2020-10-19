@@ -8,7 +8,7 @@ description: |-
 
 # Production Installation
 
-Installing Boundary in a production setting requires prerequisits for infrastructure. At the most basic level, Boundary operators should run a minimum of 3 controllers and 3 workers. Running 3 of each server type gives a fundamental level of high availability for the control plane (controller), as well as bandwith for number of sessions on the data plane (worker). Both server type should be ran in a fault tolerant setting, that is, in a self-healing environmnet such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.
+Installing Boundary in a production setting requires prerequisits for infrastructure. At the most basic level, Boundary operators should run a minimum of 3 controllers and 3 workers. Running 3 of each server type gives a fundamental level of high availability for the control plane (controller), as well as bandwidth for number of sessions on the data plane (worker). Both server type should be ran in a fault tolerant setting, that is, in a self-healing environment such as an auto-scaling group. The documentation here does not cover self-healing infrastructure and assumes the operator has their preferred scheduling methods for these environments.
 
 ## Network Requirements
 
@@ -26,7 +26,7 @@ case can be extrapolated to almost any cloud platform to suit operator needs:
 ![](/img/production.png)
 
 As shown above, Boundary is broken up into its controller and worker server components across 3 [EC2 instances](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance), in
-3 separate [subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet), in three separate [availability zones](), with the controller API and UI being publically exposed by an [application load balancer (ALB)](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb). The worker and controller VM's are in independant [auto-scaling groups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group), allowing them to maintain their exact capacity.
+3 separate [subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet), in three separate [availability zones](), with the controller API and UI being publically exposed by an [application load balancer (ALB)](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb). The worker and controller VM's are in independent [auto-scaling groups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group), allowing them to maintain their exact capacity.
 
 Boundary requires an external [Postgres](https://www.postgresql.org/) and [KMS](https://aws.amazon.com/kms/). In the example above, we're using AWS managed services for these components. For Postgres, we're using [RDS](https://aws.amazon.com/rds/) and for KMS we're using Amazon's [Key Management Service](https://aws.amazon.com/kms/).
 
