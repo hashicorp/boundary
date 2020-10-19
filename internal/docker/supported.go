@@ -29,6 +29,9 @@ func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, con
 	case "postgres":
 		resource, err = pool.Run("postgres", "12", []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
 		url = "postgres://postgres:password@localhost:%s?sslmode=disable"
+		if err == nil {
+			url = fmt.Sprintf("postgres://postgres:password@%s?sslmode=disable", resource.GetHostPort("5432/tcp"))
+		}
 	default:
 		panic(fmt.Sprintf("unknown dialect %q", dialect))
 	}
@@ -39,8 +42,6 @@ func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, con
 	cleanup = func() error {
 		return cleanupDockerResource(pool, resource)
 	}
-
-	url = fmt.Sprintf(url, resource.GetPort("5432/tcp"))
 
 	if err := pool.Retry(func() error {
 		db, err := sql.Open(dialect, url)
