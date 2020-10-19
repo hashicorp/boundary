@@ -283,10 +283,15 @@ func (c *Command) DiscoverKeyringTokenInfo() (string, string, error) {
 	}
 
 	var available bool
-	avail := nkeyring.AvailableBackends()
-	for _, a := range avail {
-		if keyringType == string(a) {
-			available = true
+	switch keyringType {
+	case "wincred", "keychain":
+		available = true
+	case "pass", "secret-service":
+		avail := nkeyring.AvailableBackends()
+		for _, a := range avail {
+			if keyringType == string(a) {
+				available = true
+			}
 		}
 	}
 
