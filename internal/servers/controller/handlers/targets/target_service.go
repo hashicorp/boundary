@@ -230,7 +230,11 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err := validateAuthorizeSessionRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession)
+	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession,
+		target.WithName(req.GetName()),
+		target.WithScopeId(req.GetScopeId()),
+		target.WithScopeName(req.GetScopeName()),
+	)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -611,7 +615,7 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	return toProto(out, m)
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, lookupOpt ...target.Option) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	var parentId string
@@ -639,7 +643,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			res.Error = err
 			return res
 		}
-		t, _, err := repo.LookupTarget(ctx, id)
+		t, _, err := repo.LookupTarget(ctx, id, lookupOpt...)
 		if err != nil {
 			res.Error = err
 			return res
@@ -648,6 +652,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			res.Error = handlers.NotFoundError()
 			return res
 		}
+		id = t.GetPublicId()
 		parentId = t.GetScopeId()
 		opts = append(opts, auth.WithId(id))
 	}
@@ -860,8 +865,31 @@ func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 
 func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
-		badFields["id"] = "Incorrectly formatted identifier."
+	nameEmpty := req.GetName() == ""
+	scopeIdEmpty := req.GetScopeId() == ""
+	scopeNameEmpty := req.GetScopeName() == ""
+	if nameEmpty {
+		if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+			badFields["id"] = "Incorrectly formatted identifier."
+		}
+		if !scopeIdEmpty {
+			badFields["scope_id"] = "Scope ID provided when target name was empty."
+		}
+		if !scopeNameEmpty {
+			badFields["scope_id"] = "Scope name provided when target name was empty."
+		}
+	} else {
+		if req.GetName() != req.GetId() {
+			badFields["name"] = "Target name provided but does not match the given ID value from the URL."
+		}
+		switch {
+		case scopeIdEmpty && scopeNameEmpty:
+			badFields["scope_id"] = "Scope ID or scope name must be provided when target name is used."
+			badFields["scope_name"] = "Scope ID or scope name must be provided when target name is used."
+		case !scopeIdEmpty && !scopeNameEmpty:
+			badFields["scope_id"] = "Scope ID and scope name cannot both be provided when target name is used."
+			badFields["scope_name"] = "Scope ID and scope name cannot both be provided when target name is used."
+		}
 	}
 	if req.GetHostId() != "" {
 		switch host.SubtypeFromId(req.GetHostId()) {

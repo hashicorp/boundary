@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/kr/pretty"
 )
 
 var (
@@ -58,20 +60,56 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 // LookupTarget will look up a target in the repository and return the target
 // with its host set ids.  If the target is not found, it will return nil, nil, nil.
 // No options are currently supported.
-func (r *Repository) LookupTarget(ctx context.Context, publicId string, opt ...Option) (Target, []*TargetSet, error) {
-	if publicId == "" {
+func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, []*TargetSet, error) {
+	opts := getOpts(opt...)
+
+	if publicIdOrName == "" {
 		return nil, nil, fmt.Errorf("lookup target: missing private id: %w", db.ErrInvalidParameter)
 	}
+
+	var where []string
+	var whereArgs []interface{}
+	nameEmpty := opts.withName == ""
+	scopeIdEmpty := opts.withScopeId == ""
+	scopeNameEmpty := opts.withScopeName == ""
+	if !nameEmpty {
+		if opts.withName != publicIdOrName {
+			return nil, nil, fmt.Errorf("lookup target: name passed in but does not match publicId: %w", db.ErrInvalidParameter)
+		}
+		where, whereArgs = append(where, "LOWER(name) = LOWER(?)"), append(whereArgs, opts.withName)
+		switch {
+		case scopeIdEmpty && scopeNameEmpty:
+			return nil, nil, fmt.Errorf("lookup target: using name but both scope ID and scope name are empty: %w", db.ErrInvalidParameter)
+		case !scopeIdEmpty && !scopeNameEmpty:
+			return nil, nil, fmt.Errorf("lookup target: using name but both scope ID and scope name are set: %w", db.ErrInvalidParameter)
+		case !scopeIdEmpty:
+			where, whereArgs = append(where, "scope_id = ?"), append(whereArgs, opts.withScopeId)
+		case !scopeNameEmpty:
+			where, whereArgs = append(where, "scope_id = (SELECT public_id FROM iam_scope WHERE name = LOWER(?))"), append(whereArgs, opts.withScopeName)
+		default:
+			return nil, nil, fmt.Errorf("lookup target: unknown combination of parameters: %w", db.ErrInvalidParameter)
+		}
+	}
+
 	target := allocTargetView()
-	target.PublicId = publicId
+	target.PublicId = publicIdOrName
 	var hostSets []*TargetSet
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			if err := read.LookupById(ctx, &target); err != nil {
-				return fmt.Errorf("lookup target: failed %w for %s", err, publicId)
+			var lookupErr error
+			switch where {
+			case nil:
+				lookupErr = read.LookupById(ctx, &target)
+			default:
+				log.Println("where: %s", strings.Join(where, " and "))
+				log.Println("args: %s", pretty.Sprint(whereArgs))
+				lookupErr = read.LookupWhere(ctx, &target, strings.Join(where, " and "), whereArgs)
+			}
+			if lookupErr != nil {
+				return fmt.Errorf("failed %w for %s", lookupErr, publicIdOrName)
 			}
 			var err error
 			if hostSets, err = fetchSets(ctx, read, target.PublicId); err != nil {

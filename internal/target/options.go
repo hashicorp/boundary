@@ -21,6 +21,7 @@ type options struct {
 	withDefaultPort            uint32
 	withLimit                  int
 	withScopeId                string
+	withScopeName              string
 	withUserId                 string
 	withTargetType             *TargetType
 	withHostSets               []string
@@ -36,6 +37,7 @@ func getDefaultOptions() options {
 		withLimit:                  0,
 		withDefaultPort:            0,
 		withScopeId:                "",
+		withScopeName:              "",
 		withUserId:                 "",
 		withTargetType:             nil,
 		withHostSets:               nil,
@@ -79,6 +81,13 @@ func WithDefaultPort(p uint32) Option {
 func WithScopeId(scopeId string) Option {
 	return func(o *options) {
 		o.withScopeId = scopeId
+	}
+}
+
+// WithScopeId provides an option to search by a scope name
+func WithScopeName(scopeName string) Option {
+	return func(o *options) {
+		o.withScopeName = scopeName
 	}
 }
 

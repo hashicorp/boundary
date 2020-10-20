@@ -17,25 +17,33 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 				EnvVar:     "BOUNDARY_SCOPE_ID",
 				Default:    "global",
 				Completion: complete.PredictAnything,
-				Usage:      `Scope in which to make the request`,
+				Usage:      `Scope in which to make the request.`,
+			})
+		case "scope-name":
+			f.StringVar(&base.StringVar{
+				Name:       "scope-name",
+				Target:     &c.FlagScopeName,
+				EnvVar:     "BOUNDARY_SCOPE_NAME",
+				Completion: complete.PredictAnything,
+				Usage:      `Scope in which to make the request, identified by name.`,
 			})
 		case "id":
 			f.StringVar(&base.StringVar{
 				Name:   "id",
 				Target: &c.FlagId,
-				Usage:  fmt.Sprintf("ID of the %s on which to operate", resourceType),
+				Usage:  fmt.Sprintf("ID of the %s on which to operate.", resourceType),
 			})
 		case "name":
 			f.StringVar(&base.StringVar{
 				Name:   "name",
 				Target: &c.FlagName,
-				Usage:  fmt.Sprintf("Name to set on the %s", resourceType),
+				Usage:  fmt.Sprintf("Name to set on the %s.", resourceType),
 			})
 		case "description":
 			f.StringVar(&base.StringVar{
 				Name:   "description",
 				Target: &c.FlagDescription,
-				Usage:  fmt.Sprintf("Description to set on the %s", resourceType),
+				Usage:  fmt.Sprintf("Description to set on the %s.", resourceType),
 			})
 		case "version":
 			f.IntVar(&base.IntVar{
@@ -48,14 +56,14 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 				Name:   "auth-method-id",
 				EnvVar: "BOUNDARY_AUTH_METHOD_ID",
 				Target: &c.FlagAuthMethodId,
-				Usage:  "The auth-method resource to use for the operation",
+				Usage:  "The auth-method resource to use for the operation.",
 			})
 		case "host-catalog-id":
 			f.StringVar(&base.StringVar{
 				Name:   "host-catalog-id",
 				EnvVar: "BOUNDARY_HOST_CATALOG_ID",
 				Target: &c.FlagHostCatalogId,
-				Usage:  "The host-catalog resource to use for the operation",
+				Usage:  "The host-catalog resource to use for the operation.",
 			})
 		}
 	}

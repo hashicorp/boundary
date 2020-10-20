@@ -26,11 +26,24 @@ func (n SessionAuthorizationResult) GetResponseMap() map[string]interface{} {
 }
 
 func (c *Client) AuthorizeSession(ctx context.Context, targetId string, opt ...Option) (*SessionAuthorizationResult, error) {
-	if targetId == "" {
-		return nil, fmt.Errorf("empty targetId value passed into AuthorizeSession request")
-	}
-
 	opts, apiOpts := getOpts(opt...)
+
+	if targetId == "" {
+		if opts.postMap["name"] == nil {
+			return nil, fmt.Errorf("empty target name provided to AuthorizeSession request")
+		}
+		scopeIdEmpty := opts.postMap["scope_id"] == nil
+		scopeNameEmpty := opts.postMap["scope_name"] == nil
+		switch {
+		case scopeIdEmpty && scopeNameEmpty:
+			return nil, fmt.Errorf("empty targetId value and no combination of target name and scope ID/name passed into AuthorizeSession request")
+		case !scopeIdEmpty && !scopeNameEmpty:
+			return nil, fmt.Errorf("both scope ID and scope name cannot be provided in AuthorizeSession request")
+		default:
+			// Name is not empty and only one of scope ID or name set
+			targetId = opts.postMap["name"].(string)
+		}
+	}
 
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")

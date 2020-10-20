@@ -1978,6 +1978,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "The ID of the target. Required unless some combination of scope_id/scope_name and name are set.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3503,7 +3504,20 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "The ID of the target. Required unless some combination of scope_id/scope_name and name are set."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the target. When using this, scope_id or scope_name must be set."
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope ID containing the target, if specifying the target by name."
+        },
+        "scope_name": {
+          "type": "string",
+          "description": "The scope name containing the target, if specifying the target by name."
         },
         "host_id": {
           "type": "string",

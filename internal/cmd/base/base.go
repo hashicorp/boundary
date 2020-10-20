@@ -65,6 +65,7 @@ type Command struct {
 	flagOutputCurlString bool
 
 	FlagScopeId       string
+	FlagScopeName     string
 	FlagId            string
 	FlagName          string
 	FlagDescription   string
