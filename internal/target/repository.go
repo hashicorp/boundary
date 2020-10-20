@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/kr/pretty"
 )
 
 var (
@@ -76,7 +74,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 		if opts.withName != publicIdOrName {
 			return nil, nil, fmt.Errorf("lookup target: name passed in but does not match publicId: %w", db.ErrInvalidParameter)
 		}
-		where, whereArgs = append(where, "LOWER(name) = LOWER(?)"), append(whereArgs, opts.withName)
+		where, whereArgs = append(where, "lower(name) = lower(?)"), append(whereArgs, opts.withName)
 		switch {
 		case scopeIdEmpty && scopeNameEmpty:
 			return nil, nil, fmt.Errorf("lookup target: using name but both scope ID and scope name are empty: %w", db.ErrInvalidParameter)
@@ -85,7 +83,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 		case !scopeIdEmpty:
 			where, whereArgs = append(where, "scope_id = ?"), append(whereArgs, opts.withScopeId)
 		case !scopeNameEmpty:
-			where, whereArgs = append(where, "scope_id = (SELECT public_id FROM iam_scope WHERE name = LOWER(?))"), append(whereArgs, opts.withScopeName)
+			where, whereArgs = append(where, "scope_id = (select public_id from iam_scope where lower(name) = lower(?))"), append(whereArgs, opts.withScopeName)
 		default:
 			return nil, nil, fmt.Errorf("lookup target: unknown combination of parameters: %w", db.ErrInvalidParameter)
 		}
@@ -104,9 +102,8 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 			case nil:
 				lookupErr = read.LookupById(ctx, &target)
 			default:
-				log.Println("where: %s", strings.Join(where, " and "))
-				log.Println("args: %s", pretty.Sprint(whereArgs))
-				lookupErr = read.LookupWhere(ctx, &target, strings.Join(where, " and "), whereArgs)
+				target.PublicId = ""
+				lookupErr = read.LookupWhere(ctx, &target, strings.Join(where, " and "), whereArgs...)
 			}
 			if lookupErr != nil {
 				return fmt.Errorf("failed %w for %s", lookupErr, publicIdOrName)

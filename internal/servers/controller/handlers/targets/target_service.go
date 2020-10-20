@@ -238,6 +238,18 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
+
+	if authResults.RoundTripValue == nil {
+		return nil, errors.New("authorize session: expected to get a target back from auth results")
+	}
+	t, ok := authResults.RoundTripValue.(target.Target)
+	if !ok {
+		return nil, errors.New("authorize session: round tripped auth results value is not a target")
+	}
+	if t == nil {
+		return nil, errors.New("authorize session: round tripped target is nil")
+	}
+
 	// This could happen if, say, u_recovery was used or u_anon was granted. But
 	// don't allow it. It's one thing if grants give access to resources within
 	// Boundary, even if those could eventually be used to provide an unintended
@@ -261,15 +273,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, hostSets, err := repo.LookupTarget(ctx, req.GetId())
+	t, hostSets, err := repo.LookupTarget(ctx, t.GetPublicId())
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, handlers.NotFoundErrorf("Target %q not found.", req.GetId())
+			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
 		}
 		return nil, err
 	}
 	if t == nil {
-		return nil, handlers.NotFoundErrorf("Target %q not found.", req.GetId())
+		return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
 	}
 
 	// Instantiate some repos
@@ -619,6 +631,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 	res := auth.VerifyResults{}
 
 	var parentId string
+	var t target.Target
 	opts := []auth.Option{auth.WithType(resource.Target), auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
@@ -643,7 +656,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 			res.Error = err
 			return res
 		}
-		t, _, err := repo.LookupTarget(ctx, id, lookupOpt...)
+		t, _, err = repo.LookupTarget(ctx, id, lookupOpt...)
 		if err != nil {
 			res.Error = err
 			return res
@@ -657,7 +670,9 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, opts...)
+	ret := auth.Verify(ctx, opts...)
+	ret.RoundTripValue = t
+	return ret
 }
 
 func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
