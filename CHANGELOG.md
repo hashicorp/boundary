@@ -14,7 +14,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     page](https://www.boundaryproject.io/docs/api-clients/cli) for more
     information.
 
-### What's New
+### New and Improved
 
 * cli: New `keyring-type` option and `pass` keyring type for token storage
   ([Issue](https://github.com/hashicorp/boundary/issues/697))
@@ -22,9 +22,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * controller: Allow API/Cluster listeners to be Unix domain sockets
   ([Issue](https://github.com/hashicorp/boundary/pull/699))
   ([PR](https://github.com/hashicorp/boundary/pull/705))
-
-### Improvements
-
 
 ### Bug Fixes
 
