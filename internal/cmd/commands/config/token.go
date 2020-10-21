@@ -61,6 +61,14 @@ func (c *TokenCommand) Flags() *base.FlagSets {
 		Usage:  `If specified, the given value will be used as the name when loading the token from the system credential store. This must correspond to a name used when authenticating.`,
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:    "keyring-type",
+		Target:  &c.FlagKeyringType,
+		Default: "auto",
+		EnvVar:  base.EnvKeyringType,
+		Usage:   `The type of keyring to use. Defaults to "auto" which will use the Windows credential manager, OSX keychain, or cross-platform password store depending on platform. Set to "none" to disable keyring functionality. Available types, depending on platform, are: "wincred", "keychain", "pass", and "secret-service".`,
+	})
+
 	f.BoolVar(&base.BoolVar{
 		Name:   "user-id",
 		Target: &c.flagUserId,
@@ -113,27 +121,31 @@ func (c *TokenCommand) Run(args []string) (ret int) {
 		return 1
 	}
 
-	// Read from keyring first
+	// Read from client first as that will override keyring anyways
 	var authToken *authtokens.AuthToken
-	tokenName := "default"
-	if c.FlagTokenName != "" {
-		tokenName = c.FlagTokenName
+	// Fallback to env/CLI
+	client, err := c.Client()
+	if err != nil {
+		c.UI.Error(err.Error())
+		return 1
 	}
-	if tokenName != "none" {
-		at := c.ReadTokenFromKeyring(tokenName)
-		if at != nil {
-			authToken = at
-		}
+	if client.Token() != "" {
+		authToken = &authtokens.AuthToken{Token: client.Token()}
 	}
 
 	if authToken == nil {
-		// Fallback to env/CLI
-		client, err := c.Client()
+		keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
 		if err != nil {
 			c.UI.Error(err.Error())
 			return 1
 		}
-		authToken = &authtokens.AuthToken{Token: client.Token()}
+
+		authToken = c.ReadTokenFromKeyring(keyringType, tokenName)
+	}
+
+	if authToken == nil {
+		c.UI.Error("No token could be discovered")
+		return 1
 	}
 
 	switch {
