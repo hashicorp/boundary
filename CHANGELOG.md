@@ -4,10 +4,21 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## vNext
 
-### What's New
+### Changes/Deprecations
 
-### Improvements
+* cli: There are two changes to token storage handling:
+  * Specifying `none` for the `token-name` parameter has been deprecated in
+    favor of specifying `none` for the new `keyring-type` parameter.
+  * [`pass`](https://www.passwordstore.org/) is now the default keyring type on
+    non-Windows/non-macOS platforms. See the [CLI docs
+    page](https://www.boundaryproject.io/docs/api-clients/cli) for more
+    information.
 
+### New and Improved
+
+* cli: New `keyring-type` option and `pass` keyring type for token storage
+  ([Issue](https://github.com/hashicorp/boundary/issues/697))
+  ([PR](https://github.com/hashicorp/boundary/issues/731))
 * controller: Allow API/Cluster listeners to be Unix domain sockets
   ([Issue](https://github.com/hashicorp/boundary/pull/699))
   ([PR](https://github.com/hashicorp/boundary/pull/705))

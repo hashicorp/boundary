@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	nkeyring "github.com/99designs/keyring"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
@@ -16,7 +17,7 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/posener/complete"
-	"github.com/zalando/go-keyring"
+	zkeyring "github.com/zalando/go-keyring"
 )
 
 var _ cli.Command = (*PasswordCommand)(nil)
@@ -158,21 +159,55 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.UI.Output(string(jsonOut))
 	}
 
-	tokenName := "default"
-	if c.Command.FlagTokenName != "" {
-		tokenName = c.Command.FlagTokenName
-	}
-	if tokenName != "none" {
+	var gotErr bool
+	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error fetching keyring information: %s", err))
+		gotErr = true
+	} else if keyringType != "none" &&
+		tokenName != "none" &&
+		keyringType != "" &&
+		tokenName != "" {
 		marshaled, err := json.Marshal(token)
 		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to system credential store: %s", err))
-			return 1
+			c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to keyring: %s", err))
+			gotErr = true
+		} else {
+			switch keyringType {
+			case "wincred", "keychain":
+				if err := zkeyring.Set("HashiCorp Boundary Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
+					c.UI.Error(fmt.Sprintf("Error saving auth token to %q keyring: %s", keyringType, err))
+					gotErr = true
+				}
+
+			default:
+				krConfig := nkeyring.Config{
+					LibSecretCollectionName: "login",
+					PassPrefix:              "HashiCorp_Boundary",
+					AllowedBackends:         []nkeyring.BackendType{nkeyring.BackendType(keyringType)},
+				}
+
+				kr, err := nkeyring.Open(krConfig)
+				if err != nil {
+					c.UI.Error(fmt.Sprintf("Error opening %q keyring: %s", keyringType, err))
+					gotErr = true
+					break
+				}
+
+				if err := kr.Set(nkeyring.Item{
+					Key:  tokenName,
+					Data: []byte(base64.RawStdEncoding.EncodeToString(marshaled)),
+				}); err != nil {
+					c.UI.Error(fmt.Sprintf("Error storing token in %q keyring: %s", keyringType, err))
+					gotErr = true
+					break
+				}
+			}
 		}
-		// TODO: potentially look for dbus-launch in advance and don't issue a warning at all
-		if err := keyring.Set("HashiCorp Boundary Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
-			c.UI.Error(fmt.Sprintf("Error saving auth token to system credential store: %s", err))
-			c.UI.Warn("The token printed above must be manually passed in via the BOUNDARY_TOKEN env var or -token flag. Storing the token can also be disabled via -token-name=none.")
-		}
+	}
+
+	if gotErr {
+		c.UI.Warn("The token printed above must be manually passed in via the BOUNDARY_TOKEN env var or -token flag. Storing the token can also be disabled via -keyring-type=none.")
 	}
 
 	return 0
