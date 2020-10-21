@@ -6,9 +6,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Changes/Deprecations
 
+Note: in addition to changes marked below in this section, be aware that
+currently names of resources are case-sensitive, but in a future update they
+will become case-preserving but case-insensitive for comparisons (e.g. if using
+them to access targets).
+
 * cli: There are two changes to token storage handling:
-  * Specifying `none` for the `token-name` parameter has been deprecated in
-    favor of specifying `none` for the new `keyring-type` parameter.
+  * Specifying `none` for the `-token-name` parameter has been deprecated in
+    favor of specifying `none` for the new `-keyring-type` parameter.
   * [`pass`](https://www.passwordstore.org/) is now the default keyring type on
     non-Windows/non-macOS platforms. See the [CLI docs
     page](https://www.boundaryproject.io/docs/api-clients/cli) for more
@@ -16,9 +21,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* cli: New `keyring-type` option and `pass` keyring type for token storage
+* cli: New `-keyring-type` option and `pass` keyring type for token storage
   ([Issue](https://github.com/hashicorp/boundary/issues/697))
   ([PR](https://github.com/hashicorp/boundary/issues/731))
+* connect: Allow using `-target-name` in conjunction with either
+  `-target-scope-id` or `-target-scope-name` to connect to targets, rather than
+  the target's ID. ([PR](https://github.com/hashicorp/boundary/pull/737))
 * controller: Allow API/Cluster listeners to be Unix domain sockets
   ([Issue](https://github.com/hashicorp/boundary/pull/699))
   ([PR](https://github.com/hashicorp/boundary/pull/705))
