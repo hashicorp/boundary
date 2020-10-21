@@ -3,6 +3,7 @@ package handlers
 import (
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
@@ -30,10 +31,26 @@ func ValidateCreateRequest(i ApiResource, fn CustomValidatorFunc) error {
 		badFields["id"] = "This is a read only field."
 	}
 	if i.GetName() != nil {
-		i.GetName().Value = strings.TrimSpace(i.GetName().GetValue())
+		trimmed := strings.TrimSpace(i.GetName().GetValue())
+		switch {
+		case trimmed == "":
+			badFields["name"] = "Cannot set empty string as name"
+		case !ValidNameDescription(trimmed):
+			badFields["name"] = "Name contains unprintable characters"
+		default:
+			i.GetName().Value = trimmed
+		}
 	}
 	if i.GetDescription() != nil {
-		i.GetDescription().Value = strings.TrimSpace(i.GetDescription().GetValue())
+		trimmed := strings.TrimSpace(i.GetDescription().GetValue())
+		switch {
+		case trimmed == "":
+			badFields["description"] = "Cannot set empty string as description"
+		case !ValidNameDescription(trimmed):
+			badFields["description"] = "Description contains unprintable characters"
+		default:
+			i.GetDescription().Value = trimmed
+		}
 	}
 	if i.GetCreatedTime() != nil {
 		badFields["created_time"] = "This is a read only field."
@@ -74,17 +91,23 @@ func ValidateUpdateRequest(prefix string, r UpdateRequest, i ApiResource, fn Cus
 	}
 	if i.GetName() != nil {
 		trimmed := strings.TrimSpace(i.GetName().GetValue())
-		if trimmed == "" {
+		switch {
+		case trimmed == "":
 			badFields["name"] = "Cannot set empty string as name"
-		} else {
+		case !ValidNameDescription(trimmed):
+			badFields["name"] = "Name contains unprintable characters"
+		default:
 			i.GetName().Value = trimmed
 		}
 	}
 	if i.GetDescription() != nil {
 		trimmed := strings.TrimSpace(i.GetDescription().GetValue())
-		if trimmed == "" {
+		switch {
+		case trimmed == "":
 			badFields["description"] = "Cannot set empty string as description"
-		} else {
+		case !ValidNameDescription(trimmed):
+			badFields["description"] = "Description contains unprintable characters"
+		default:
 			i.GetDescription().Value = trimmed
 		}
 	}
@@ -156,4 +179,16 @@ func ValidId(prefix, id string) bool {
 	}
 	id = strings.TrimPrefix(id, prefix)
 	return !reInvalidID.Match([]byte(id))
+}
+
+func ValidNameDescription(in string) bool {
+	idx := strings.IndexFunc(in, func(c rune) bool {
+		return !unicode.IsPrint(c)
+	})
+
+	if idx != -1 {
+		return false
+	}
+
+	return true
 }
