@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/lib/pq"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -254,8 +255,14 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 				c.UI.Info("Database already initialized.")
 				return 0
 			}
-		case strings.Contains(err.Error(), "does not exist"):
-			// Doesn't exist so we continue on
+		case err != nil:
+			if err, ok := err.(*pq.Error); ok {
+				if err.Code == pq.ErrorCode("42P01") {
+					// continue with initialization
+					break
+				}
+			}
+			fallthrough
 		default:
 			c.UI.Error(fmt.Errorf("Error querying database for init status: %w", err).Error())
 			return 1
