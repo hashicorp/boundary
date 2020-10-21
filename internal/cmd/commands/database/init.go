@@ -254,7 +254,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 				c.UI.Info("Database already initialized.")
 				return 0
 			}
-		case strings.Contains(err.Error(), "does not exist"):
+		case db.IsMissingTableError(err):
 			// Doesn't exist so we continue on
 		default:
 			c.UI.Error(fmt.Errorf("Error querying database for init status: %w", err).Error())
