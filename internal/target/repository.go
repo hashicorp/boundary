@@ -87,6 +87,13 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 		default:
 			return nil, nil, fmt.Errorf("lookup target: unknown combination of parameters: %w", db.ErrInvalidParameter)
 		}
+	} else {
+		switch {
+		case !scopeIdEmpty:
+			return nil, nil, fmt.Errorf("lookup target: passed in scope ID when using target ID for lookup: %w", db.ErrInvalidParameter)
+		case !scopeNameEmpty:
+			return nil, nil, fmt.Errorf("lookup target: passed in scope name when using target ID for lookup: %w", db.ErrInvalidParameter)
+		}
 	}
 
 	target := allocTargetView()

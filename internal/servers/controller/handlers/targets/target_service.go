@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
+	"strings"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/auth"
@@ -658,7 +659,12 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 		}
 		t, _, err = repo.LookupTarget(ctx, id, lookupOpt...)
 		if err != nil {
-			res.Error = err
+			// TODO: Fix this with new/better error handling
+			if strings.Contains(err.Error(), "more than one row returned by a subquery") {
+				res.Error = handlers.ApiErrorWithCodeAndMessage(codes.FailedPrecondition, "Scope name is ambiguous (matches more than one scope), use scope ID with target name instead, or use target ID.")
+			} else {
+				res.Error = err
+			}
 			return res
 		}
 		if t == nil {

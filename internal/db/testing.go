@@ -19,14 +19,26 @@ import (
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL). Do not close the returned db.
-func TestSetup(t *testing.T, dialect string) (*gorm.DB, string) {
-	cleanup, url, _, err := StartDbInDocker(dialect)
-	if err != nil {
-		t.Fatal(err)
+func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*gorm.DB, string) {
+	var cleanup func() error
+	var url string
+	var err error
+
+	opts := getTestOpts(opt...)
+
+	switch opts.withTestDatabaseUrl {
+	case "":
+		cleanup, url, _, err = StartDbInDocker(dialect)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			assert.NoError(t, cleanup(), "Got error cleaning up db in docker.")
+		})
+	default:
+		cleanup = func() error { return nil }
+		url = opts.withTestDatabaseUrl
 	}
-	t.Cleanup(func() {
-		assert.NoError(t, cleanup(), "Got error cleaning up db in docker.")
-	})
 	_, err = InitStore(dialect, cleanup, url)
 	if err != nil {
 		t.Fatal(err)
@@ -144,6 +156,7 @@ type TestOption func(*testOptions)
 type testOptions struct {
 	withCreateNotBefore *int
 	withOperation       oplog.OpType
+	withTestDatabaseUrl string
 }
 
 func getDefaultTestOptions() testOptions {
@@ -166,5 +179,12 @@ func WithCreateNotBefore(nbfDuration time.Duration) TestOption {
 func WithOperation(op oplog.OpType) TestOption {
 	return func(o *testOptions) {
 		o.withOperation = op
+	}
+}
+
+// WithTestDatabaseUrl provides a way to specify an existing database for tests
+func WithTestDatabaseUrl(url string) TestOption {
+	return func(o *testOptions) {
+		o.withTestDatabaseUrl = url
 	}
 }

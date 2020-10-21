@@ -100,6 +100,122 @@ func TestNewRepository(t *testing.T) {
 	}
 }
 
+func TestRepository_LookupTarget(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj := iam.TestScopes(t, iamRepo)
+	proj.Name = "project-name"
+	_, _, err := iamRepo.UpdateScope(context.Background(), proj, 1, []string{"name"})
+	require.NoError(t, err)
+	rw := db.New(conn)
+	repo, err := NewRepository(rw, rw, testKms)
+	require.NoError(t, err)
+	tgt := TestTcpTarget(t, conn, proj.PublicId, "target-name")
+
+	tests := []struct {
+		testName  string
+		id        string
+		name      string
+		scopeId   string
+		scopeName string
+		wantErr   bool
+	}{
+		{
+			testName: "id",
+			id:       tgt.PublicId,
+			wantErr:  false,
+		},
+		{
+			testName: "name only",
+			name:     tgt.Name,
+			wantErr:  true,
+		},
+		{
+			testName: "scope id only",
+			scopeId:  proj.PublicId,
+			wantErr:  true,
+		},
+		{
+			testName:  "scope name only",
+			scopeName: proj.Name,
+			wantErr:   true,
+		},
+		{
+			testName:  "scope name and id",
+			scopeId:   proj.PublicId,
+			scopeName: proj.Name,
+			wantErr:   true,
+		},
+		{
+			testName:  "everything",
+			name:      tgt.Name,
+			scopeId:   proj.PublicId,
+			scopeName: proj.Name,
+			wantErr:   true,
+		},
+		{
+			testName:  "name and scope name",
+			name:      tgt.Name,
+			scopeName: proj.Name,
+			wantErr:   false,
+		},
+		{
+			testName: "name and scope id",
+			name:     tgt.Name,
+			scopeId:  proj.PublicId,
+			wantErr:  false,
+		},
+		{
+			testName: "id and name",
+			id:       tgt.PublicId,
+			name:     tgt.Name,
+			scopeId:  proj.PublicId,
+			wantErr:  true,
+		},
+		{
+			testName:  "id and scope name",
+			id:        tgt.PublicId,
+			scopeName: proj.Name,
+			wantErr:   true,
+		},
+		{
+			testName: "id and scope id",
+			id:       tgt.PublicId,
+			scopeId:  proj.PublicId,
+			wantErr:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			id := tt.id
+			if tt.name != "" && tt.id == "" {
+				id = tt.name
+			}
+			var opts []Option
+			if tt.name != "" {
+				opts = append(opts, WithName(tt.name))
+			}
+			if tt.scopeId != "" {
+				opts = append(opts, WithScopeId(tt.scopeId))
+			}
+			if tt.scopeName != "" {
+				opts = append(opts, WithScopeName(tt.scopeName))
+			}
+			got, _, err := repo.LookupTarget(context.Background(), id, opts...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tgt.PublicId, got.GetPublicId())
+		})
+	}
+}
+
 func TestRepository_ListTargets(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
