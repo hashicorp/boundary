@@ -110,7 +110,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/hosts/someid",
 			"v1/roles",
 			"v1/roles/someid",
-			"v1/scopes",
+			"400_v1/sc\u200Bopes",
+			"200_v1/scopes",
 			"v1/scopes/someid",
 			"v1/sessions/",
 			"v1/sessions/someid",
@@ -185,11 +186,28 @@ func TestHandleImplementedPaths(t *testing.T) {
 	} {
 		for _, p := range paths {
 			t.Run(fmt.Sprintf("%s/%s", verb, p), func(t *testing.T) {
+
+				var expCode int
+				if !strings.HasPrefix(p, "v1/") {
+					sp := strings.Split(p, "_")
+					require.Len(t, sp, 2)
+					switch sp[0] {
+					case "400":
+						expCode = http.StatusBadRequest
+					case "200":
+						expCode = http.StatusOK
+					}
+					p = sp[1]
+				}
+
 				url := fmt.Sprintf("%s/%s", c.ApiAddrs()[0], p)
 				req, err := http.NewRequest(verb, url, nil)
 				require.NoError(t, err)
 				resp, err := http.DefaultClient.Do(req)
 				require.NoError(t, err)
+				if expCode != 0 {
+					assert.Equal(t, expCode, resp.StatusCode)
+				}
 				assert.NotEqualf(t, resp.StatusCode, http.StatusNotFound, "Got response %v, wanted not 404", resp.StatusCode)
 			})
 		}

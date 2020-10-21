@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -53,8 +54,9 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
+	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(commonWrappedHandler, nil)
 
-	return commonWrappedHandler, nil
+	return printablePathCheckHandler, nil
 }
 
 func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, error) {
