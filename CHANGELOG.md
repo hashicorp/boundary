@@ -14,6 +14,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
+* cli: Fix database init when locale isn't english 
+  ([Issue](https://github.com/hashicorp/boundary/issues/729))
+  ([PR](https://github.com/hashicorp/boundary/pull/736))
 * cli: Fix hyphenation in help output for resources with compound names
   ([Issue](https://github.com/hashicorp/boundary/issues/686))
   ([PR](https://github.com/hashicorp/boundary/pull/689))
@@ -23,6 +26,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * controller, worker: Fix listening on IPv6 addresses
   ([Issue](https://github.com/hashicorp/boundary/issues/701))
   ([PR](https://github.com/hashicorp/boundary/pull/703))
+* worker: Fix setting controller address for worker in dev mode
+  ([Issue](https://github.com/hashicorp/boundary/issues/727))
+  ([PR](https://github.com/hashicorp/boundary/pull/705))
 
 ## v0.1.0
 
