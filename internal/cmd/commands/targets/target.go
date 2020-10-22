@@ -130,9 +130,13 @@ func (c *Command) Help() string {
 			"",
 			"  This command allows fetching session authorization credentials against a target. Example:",
 			"",
-			"    Set host-set resources on a tcp-type target:",
+			"    Request an authorized session using the target ID:",
 			"",
 			`      $ boundary targets authorize-session -id ttcp_1234567890`,
+			"",
+			"    Request an authorized session using the scope ID and target name:",
+			"",
+			`      $ boundary targets authorize-session -scope-id o_1234567890 -name prod-ssh`,
 			"",
 			"",
 		})
@@ -168,6 +172,34 @@ func (c *Command) Flags() *base.FlagSets {
 		}
 	}
 
+	if c.Func == "authorize-session" {
+		flagsMap[c.Func] = append(flagsMap[c.Func], "name", "scope-id", "scope-name")
+
+		// We put these here to change usage and change defaults (don't want
+		// them populated by default)
+		f.StringVar(&base.StringVar{
+			Name:   "name",
+			Target: &c.FlagName,
+			Usage:  "Target name, if authorizing the session via scope parameters and target name.",
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "scope-id",
+			Target:     &c.FlagScopeId,
+			EnvVar:     "BOUNDARY_SCOPE_ID",
+			Completion: complete.PredictAnything,
+			Usage:      "Target scope ID, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-name.",
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "scope-name",
+			Target:     &c.FlagScopeName,
+			EnvVar:     "BOUNDARY_SCOPE_NAME",
+			Completion: complete.PredictAnything,
+			Usage:      "Target scope name, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-id.",
+		})
+	}
+
 	return set
 }
 
@@ -197,13 +229,41 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if strutil.StrListContains(flagsMap[c.Func], "id") && c.FlagId == "" {
-		c.UI.Error("ID is required but not passed in via -id")
-		return 1
+	var opts []targets.Option
+
+	if strutil.StrListContains(flagsMap[c.Func], "id") {
+		switch c.Func {
+		case "authorize-session":
+			if c.FlagId == "" &&
+				(c.FlagName == "" ||
+					(c.FlagScopeId == "" && c.FlagScopeName == "")) {
+				c.UI.Error("ID was not passed in, but no combination of name and scope ID/name was passed in either")
+				return 1
+			}
+			if c.FlagId != "" &&
+				(c.FlagName != "" || c.FlagScopeId != "" || c.FlagScopeName != "") {
+				c.UI.Error("Cannot specify a target ID and also other lookup parameters")
+				return 1
+			}
+		default:
+			if c.FlagId == "" {
+				c.UI.Error("ID is required but not passed in via -id")
+				return 1
+			}
+		}
 	}
-	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId == "" {
-		c.UI.Error("Scope ID must be passed in via -scope-id")
-		return 1
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") {
+		switch c.Func {
+		case "list":
+			if c.FlagScopeId == "" {
+				c.UI.Error("Scope ID must be passed in via -scope-id")
+				return 1
+			}
+		default:
+			if c.FlagScopeId != "" {
+				opts = append(opts, targets.WithScopeId(c.FlagScopeId))
+			}
+		}
 	}
 
 	client, err := c.Client()
@@ -212,14 +272,18 @@ func (c *Command) Run(args []string) int {
 		return 2
 	}
 
-	var opts []targets.Option
-
 	switch c.FlagName {
 	case "":
 	case "null":
 		opts = append(opts, targets.DefaultName())
 	default:
 		opts = append(opts, targets.WithName(c.FlagName))
+	}
+
+	switch c.FlagScopeName {
+	case "":
+	default:
+		opts = append(opts, targets.WithScopeName(c.FlagScopeName))
 	}
 
 	switch c.FlagDescription {

@@ -229,7 +229,17 @@ message RemoveTargetHostSetsResponse {
 }
 
 message AuthorizeSessionRequest {
+  // The ID of the target. Required unless some combination of scope_id/scope_name and name are set.
   string id = 1;
+
+  // The name of the target. When using this, scope_id or scope_name must be set.
+  string name = 3;
+
+  // The scope ID containing the target, if specifying the target by name.
+  string scope_id = 4;
+  
+  // The scope name containing the target, if specifying the target by name.
+  string scope_name = 5;
 
   // An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session.
   string host_id = 2 [json_name="host_id"];

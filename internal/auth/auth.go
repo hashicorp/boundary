@@ -68,6 +68,11 @@ type VerifyResults struct {
 	Error       error
 	Scope       *scopes.ScopeInfo
 
+	// RoundTripValue can be set to allow the function performing authentication
+	// (often accompanied by lookup(s)) to return a result of that lookup to the
+	// calling function. It is opaque to this package.
+	RoundTripValue interface{}
+
 	// Used for additional verification
 	v *verifier
 }

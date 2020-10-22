@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
+	"strings"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/auth"
@@ -230,10 +231,26 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err := validateAuthorizeSessionRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession)
+	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession,
+		target.WithName(req.GetName()),
+		target.WithScopeId(req.GetScopeId()),
+		target.WithScopeName(req.GetScopeName()),
+	)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
+
+	if authResults.RoundTripValue == nil {
+		return nil, errors.New("authorize session: expected to get a target back from auth results")
+	}
+	t, ok := authResults.RoundTripValue.(target.Target)
+	if !ok {
+		return nil, errors.New("authorize session: round tripped auth results value is not a target")
+	}
+	if t == nil {
+		return nil, errors.New("authorize session: round tripped target is nil")
+	}
+
 	// This could happen if, say, u_recovery was used or u_anon was granted. But
 	// don't allow it. It's one thing if grants give access to resources within
 	// Boundary, even if those could eventually be used to provide an unintended
@@ -257,15 +274,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, hostSets, err := repo.LookupTarget(ctx, req.GetId())
+	t, hostSets, err := repo.LookupTarget(ctx, t.GetPublicId())
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, handlers.NotFoundErrorf("Target %q not found.", req.GetId())
+			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
 		}
 		return nil, err
 	}
 	if t == nil {
-		return nil, handlers.NotFoundErrorf("Target %q not found.", req.GetId())
+		return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
 	}
 
 	// Instantiate some repos
@@ -611,10 +628,11 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	return toProto(out, m)
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, lookupOpt ...target.Option) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	var parentId string
+	var t target.Target
 	opts := []auth.Option{auth.WithType(resource.Target), auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
@@ -639,20 +657,28 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			res.Error = err
 			return res
 		}
-		t, _, err := repo.LookupTarget(ctx, id)
+		t, _, err = repo.LookupTarget(ctx, id, lookupOpt...)
 		if err != nil {
-			res.Error = err
+			// TODO: Fix this with new/better error handling
+			if strings.Contains(err.Error(), "more than one row returned by a subquery") {
+				res.Error = handlers.ApiErrorWithCodeAndMessage(codes.FailedPrecondition, "Scope name is ambiguous (matches more than one scope), use scope ID with target name instead, or use target ID.")
+			} else {
+				res.Error = err
+			}
 			return res
 		}
 		if t == nil {
 			res.Error = handlers.NotFoundError()
 			return res
 		}
+		id = t.GetPublicId()
 		parentId = t.GetScopeId()
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, opts...)
+	ret := auth.Verify(ctx, opts...)
+	ret.RoundTripValue = t
+	return ret
 }
 
 func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
@@ -860,8 +886,31 @@ func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 
 func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
-		badFields["id"] = "Incorrectly formatted identifier."
+	nameEmpty := req.GetName() == ""
+	scopeIdEmpty := req.GetScopeId() == ""
+	scopeNameEmpty := req.GetScopeName() == ""
+	if nameEmpty {
+		if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+			badFields["id"] = "Incorrectly formatted identifier."
+		}
+		if !scopeIdEmpty {
+			badFields["scope_id"] = "Scope ID provided when target name was empty."
+		}
+		if !scopeNameEmpty {
+			badFields["scope_id"] = "Scope name provided when target name was empty."
+		}
+	} else {
+		if req.GetName() != req.GetId() {
+			badFields["name"] = "Target name provided but does not match the given ID value from the URL."
+		}
+		switch {
+		case scopeIdEmpty && scopeNameEmpty:
+			badFields["scope_id"] = "Scope ID or scope name must be provided when target name is used."
+			badFields["scope_name"] = "Scope ID or scope name must be provided when target name is used."
+		case !scopeIdEmpty && !scopeNameEmpty:
+			badFields["scope_id"] = "Scope ID and scope name cannot both be provided when target name is used."
+			badFields["scope_name"] = "Scope ID and scope name cannot both be provided when target name is used."
+		}
 	}
 	if req.GetHostId() != "" {
 		switch host.SubtypeFromId(req.GetHostId()) {
