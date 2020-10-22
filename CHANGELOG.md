@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## vNext
+## v0.1.1
 
 ### Changes/Deprecations
 
@@ -26,7 +26,7 @@ them to access targets).
   ([PR](https://github.com/hashicorp/boundary/issues/731))
 * connect: Allow using `-target-name` in conjunction with either
   `-target-scope-id` or `-target-scope-name` to connect to targets, rather than
-  the target's ID. ([PR](https://github.com/hashicorp/boundary/pull/737))
+  the target's ID ([PR](https://github.com/hashicorp/boundary/pull/737))
 * controller: Allow API/Cluster listeners to be Unix domain sockets
   ([Issue](https://github.com/hashicorp/boundary/pull/699))
   ([PR](https://github.com/hashicorp/boundary/pull/705))
