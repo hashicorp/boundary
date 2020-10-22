@@ -32,15 +32,22 @@ on the host directly, such as an Amazon EIP.
 - `controllers` - A list of hosts/IP addresses and optionally ports for reaching
 controllers. The port will default to :9201 if not specified.
 
-- KMS block designated for `worker-auth` - This is the KMS configuration for
+## KMS Configuration
+
+Workers require a KMS block designated for `worker-auth`. This is the KMS configuration for
 authentication between the workers and controllers and must be present. Example (not safe for production!):
-```hcl kms "aead" {
+
+```hcl 
+  kms "aead" {
 	purpose = "worker-auth"
 	aead_type = "aes-gcm"
 	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
 	key_id = "global_worker-auth"
 }
 ```
+
+This configuration must be the same for the worker-auth configuration for the controller if you're 
+running the controller and worker as separate servers.
 
 # Complete Configuration Example
 
