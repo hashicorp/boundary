@@ -30,6 +30,9 @@ them to access targets).
 * controller: Allow API/Cluster listeners to be Unix domain sockets
   ([Issue](https://github.com/hashicorp/boundary/pull/699))
   ([PR](https://github.com/hashicorp/boundary/pull/705))
+* ui: Allow creating and assigning a host to a host set directly from the host
+  set view ([Issue](https://github.com/hashicorp/boundary/issues/710))
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/350))
 
 ### Bug Fixes
 
