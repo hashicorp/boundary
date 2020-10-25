@@ -62,7 +62,7 @@ sudo cat << EOF > /etc/systemd/system/${NAME}-${TYPE}.service
 Description=${NAME} ${TYPE}
 
 [Service]
-ExecStart=/usr/local/bin/${NAME} ${TYPE} -config /etc/${NAME}-${TYPE}.hcl
+ExecStart=/usr/local/bin/${NAME} server -config /etc/${NAME}-${TYPE}.hcl
 User=boundary
 Group=boundary
 LimitMEMLOCK=infinity
