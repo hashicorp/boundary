@@ -14,6 +14,7 @@ The `worker` stanza configures Boundary worker-specific parameters.
 worker {
   name = "example-worker"
   description = "An example worker"
+  address = 127.0.0.1
   public_addr = "5.1.23.198"
 }
 ```
@@ -22,6 +23,9 @@ worker {
 cluster.
 
 - `description` - Specifies a friendly description of this worker.
+
+- `address` - Specifies the IP address for the worker listener to bind on. Defaults to
+127.0.0.1:9202 if not specified. If address is specified but only an IP address is given, the port will default to 9202.
 
 - `public_addr` - Specifies the public host or IP address (and optionally port)
 at which the worker can be reached _by clients for proxying_. This defaults to
@@ -76,6 +80,7 @@ worker {
   # Name attr must be unique across workers
   name = "demo-worker-1"
   description = "A default worker created demonstration"
+  address = 127.0.0.1
 
   # Workers must be able to reach controllers on :9202
   controllers = [
