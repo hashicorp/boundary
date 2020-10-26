@@ -61,7 +61,10 @@ export default [
     content: [
       {
         category: 'listener',
-        content: ['tcp'],
+        content: [
+          'tcp',
+          'unix',
+        ],
       },
       {
         category: 'kms',
