@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
@@ -226,16 +227,16 @@ func TestError_IsMissingTableError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			err := tt.in
-			got := IsMissingTableError(err)
+			got := errors.IsMissingTableError(err)
 			assert.Equal(tt.want, got)
 		})
 	}
 	t.Run("query-missing-table", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		conn, _ := TestSetup(t, "postgres")
-		rw := New(conn)
+		conn, _ := db.TestSetup(t, "postgres")
+		rw := db.New(conn)
 		_, err := rw.Query(context.Background(), "select * from non_existent_table", nil)
 		require.Error(err)
-		assert.True(IsMissingTableError(err))
+		assert.True(errors.IsMissingTableError(err))
 	})
 }
