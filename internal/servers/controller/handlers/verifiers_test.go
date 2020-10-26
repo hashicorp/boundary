@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func errorIncludesFields(t *testing.T, err error, wantFields []string) {
@@ -36,6 +37,11 @@ func TestValidId(t *testing.T) {
 	assert.False(t, ValidId("prefix", "prefix_includes-dash"))
 	assert.False(t, ValidId("prefix", "prefix_other@strange!characters"))
 	assert.False(t, ValidId("short", "prefix_short"))
+}
+
+func TestValidNameDescription(t *testing.T) {
+	assert.True(t, ValidNameDescription("foobar"))
+	assert.False(t, ValidNameDescription("foo\u200Bbar"))
 }
 
 func TestValidateGetRequest(t *testing.T) {
@@ -228,6 +234,36 @@ func TestValidateCreateRequest(t *testing.T) {
 			},
 			badFields: []string{"id", "created_time", "version", "test"},
 		},
+		{
+			name: "good name",
+			item: &pb.User{
+				Name: wrapperspb.String("foobar"),
+			},
+			valFn: NoopValidatorFn,
+		},
+		{
+			name: "bad name",
+			item: &pb.User{
+				Name: wrapperspb.String("foo\u200Bbar"),
+			},
+			valFn:     NoopValidatorFn,
+			badFields: []string{"name"},
+		},
+		{
+			name: "good description",
+			item: &pb.User{
+				Description: wrapperspb.String("foobar"),
+			},
+			valFn: NoopValidatorFn,
+		},
+		{
+			name: "bad description",
+			item: &pb.User{
+				Description: wrapperspb.String("foo\u200Bbar"),
+			},
+			valFn:     NoopValidatorFn,
+			badFields: []string{"description"},
+		},
 	}
 
 	for _, tc := range cases {
@@ -289,6 +325,60 @@ func TestValidateUpdateRequest(t *testing.T) {
 			},
 			valFn:     NoopValidatorFn,
 			badFields: []string{"id"},
+		},
+		{
+			name:   "good name",
+			prefix: "prefix",
+			req: &pbs.UpdateUserRequest{
+				Id:         "prefix_something",
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"anything"}},
+			},
+			item: &pb.User{
+				Version: 1,
+				Name:    wrapperspb.String("foobar"),
+			},
+			valFn: NoopValidatorFn,
+		},
+		{
+			name:   "bad name",
+			prefix: "prefix",
+			req: &pbs.UpdateUserRequest{
+				Id:         "prefix_something",
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"anything"}},
+			},
+			item: &pb.User{
+				Version: 1,
+				Name:    wrapperspb.String("foo\u200Bbar"),
+			},
+			valFn:     NoopValidatorFn,
+			badFields: []string{"name"},
+		},
+		{
+			name:   "good description",
+			prefix: "prefix",
+			req: &pbs.UpdateUserRequest{
+				Id:         "prefix_something",
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"anything"}},
+			},
+			item: &pb.User{
+				Version:     1,
+				Description: wrapperspb.String("foobar"),
+			},
+			valFn: NoopValidatorFn,
+		},
+		{
+			name:   "bad description",
+			prefix: "prefix",
+			req: &pbs.UpdateUserRequest{
+				Id:         "prefix_something",
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"anything"}},
+			},
+			item: &pb.User{
+				Version:     1,
+				Description: wrapperspb.String("foo\u200Bbar"),
+			},
+			valFn:     NoopValidatorFn,
+			badFields: []string{"description"},
 		},
 		{
 			name:   "missing version",

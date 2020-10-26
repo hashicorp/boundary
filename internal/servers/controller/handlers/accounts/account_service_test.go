@@ -833,6 +833,7 @@ func TestSetPassword(t *testing.T) {
 			pwAttrs.Password = wrapperspb.String(pw)
 		}
 		attrs, err := handlers.ProtoToStruct(pwAttrs)
+		require.NoError(t, err)
 		createResp, err := tested.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.CreateAccountRequest{
 			Item: &pb.Account{
 				AuthMethodId: am.GetPublicId(),
@@ -946,6 +947,7 @@ func TestChangePassword(t *testing.T) {
 			pwAttrs.Password = wrapperspb.String(pw)
 		}
 		attrs, err := handlers.ProtoToStruct(pwAttrs)
+		require.NoError(t, err)
 		createResp, err := tested.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.CreateAccountRequest{
 			Item: &pb.Account{
 				AuthMethodId: am.GetPublicId(),

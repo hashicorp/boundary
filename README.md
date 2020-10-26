@@ -137,7 +137,7 @@ assets are served. Note this option is only available in dev mode. For example:
 ### Download and Run from Release Page
 
 Download the latest release of the server binary and appropriate desktop
-client(s) from our [releases page]
+client(s) from our [releases page](https://releases.hashicorp.com/boundary/)
 
 ### Start Boundary
 

@@ -64,6 +64,7 @@ type Command struct {
 	flagListenAddr string
 	flagListenPort int
 	flagTargetId   string
+	flagTargetName string
 	flagHostId     string
 	flagExec       string
 	flagUsername   string
@@ -175,6 +176,28 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:      `If set, after connecting to the worker, the given binary will be executed. This should be a binary on your path, or an absolute path. If all command flags are followed by " -- " (space, two hyphens, space), then any arguments after that will be sent directly to the binary.`,
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:   "target-name",
+		Target: &c.flagTargetName,
+		Usage:  "Target name, if authorizing the session via scope parameters and target name.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:       "target-scope-id",
+		Target:     &c.FlagScopeId,
+		EnvVar:     "BOUNDARY_CONNECT_TARGET_SCOPE_ID",
+		Completion: complete.PredictAnything,
+		Usage:      "Target scope ID, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-name.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:       "target-scope-name",
+		Target:     &c.FlagScopeName,
+		EnvVar:     "BOUNDARY_CONNECT_TARGET_SCOPE_NAME",
+		Completion: complete.PredictAnything,
+		Usage:      "Target scope name, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-id.",
+	})
+
 	switch c.Func {
 	case "connect":
 		f.StringVar(&base.StringVar{
@@ -237,9 +260,21 @@ func (c *Command) Run(args []string) (retCode int) {
 	case c.flagAuthzToken != "" && c.flagTargetId != "":
 		c.UI.Error(`-target-id and -authz-token cannot both be specified`)
 		return 1
-	case c.flagAuthzToken == "" && c.flagTargetId == "":
-		c.UI.Error(`One of -target-id and -authz-token must be set`)
+	case c.flagAuthzToken != "" && c.flagTargetName != "":
+		c.UI.Error(`-target-name and -authz-token cannot both be specified`)
 		return 1
+	default:
+		if c.flagTargetId == "" &&
+			(c.flagTargetName == "" ||
+				(c.FlagScopeId == "" && c.FlagScopeName == "")) {
+			c.UI.Error("Target ID was not passed in, but no combination of target name and scope ID/name was passed in either")
+			return 1
+		}
+		if c.flagTargetId != "" &&
+			(c.flagTargetName != "" || c.FlagScopeId != "" || c.FlagScopeName != "") {
+			c.UI.Error("Cannot specify a target ID and also other lookup parameters")
+			return 1
+		}
 	}
 
 	if c.flagExec == "" {
@@ -313,6 +348,15 @@ func (c *Command) Run(args []string) (retCode int) {
 		var opts []targets.Option
 		if len(c.flagHostId) != 0 {
 			opts = append(opts, targets.WithHostId(c.flagHostId))
+		}
+		if len(c.flagTargetName) > 0 {
+			opts = append(opts, targets.WithName(c.flagTargetName))
+		}
+		if len(c.FlagScopeId) > 0 {
+			opts = append(opts, targets.WithScopeId(c.FlagScopeId))
+		}
+		if len(c.FlagScopeName) > 0 {
+			opts = append(opts, targets.WithScopeName(c.FlagScopeName))
 		}
 
 		sar, err := targetClient.AuthorizeSession(c.Context, c.flagTargetId, opts...)

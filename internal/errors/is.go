@@ -77,3 +77,15 @@ func IsNotNullError(err error) bool {
 
 	return false
 }
+
+// IsMissingTableError returns a boolean indicating whether the error is known
+// to report a undefined/missing table violation.
+func IsMissingTableError(err error) bool {
+	var pqError *pq.Error
+	if errors.As(err, &pqError) {
+		if pqError.Code == "42P01" {
+			return true
+		}
+	}
+	return false
+}

@@ -365,6 +365,18 @@ var inputStructs = []*structInfo{
 				FieldType:   "string",
 				SkipDefault: true,
 			},
+			{
+				Name:        "ScopeId",
+				ProtoName:   "scope_id",
+				FieldType:   "string",
+				SkipDefault: true,
+			},
+			{
+				Name:        "ScopeName",
+				ProtoName:   "scope_name",
+				FieldType:   "string",
+				SkipDefault: true,
+			},
 		},
 		versionEnabled:      true,
 		typeOnCreate:        true,

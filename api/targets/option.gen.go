@@ -111,6 +111,18 @@ func DefaultName() Option {
 	}
 }
 
+func WithScopeId(inScopeId string) Option {
+	return func(o *options) {
+		o.postMap["scope_id"] = inScopeId
+	}
+}
+
+func WithScopeName(inScopeName string) Option {
+	return func(o *options) {
+		o.postMap["scope_name"] = inScopeName
+	}
+}
+
 func WithSessionConnectionLimit(inSessionConnectionLimit int32) Option {
 	return func(o *options) {
 		o.postMap["session_connection_limit"] = inSessionConnectionLimit

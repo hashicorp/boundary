@@ -7,6 +7,7 @@ replace github.com/hashicorp/boundary/api => ./api
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
 require (
+	github.com/99designs/keyring v1.1.6
 	github.com/armon/go-metrics v0.3.4
 	github.com/bufbuild/buf v0.24.0
 	github.com/fatih/color v1.9.0
