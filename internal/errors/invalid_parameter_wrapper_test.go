@@ -1,6 +1,7 @@
 package errors_test
 
 import (
+	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -24,13 +25,13 @@ func Test_NewInvalidParameterWrapper(t *testing.T) {
 			parameterDescription: "Shamir's favorite aunt",
 			opt: []errors.Option{
 				errors.WithOp("alice.Bob"),
-				errors.WithWrap(errors.ErrRecordNotFound),
+				errors.WithWrap(errors.ErrRecordNotFound), // will be ignored and always be errors.ErrInvalidParameter
 				errors.WithMsg("test msg"),
 			},
 			want: &errors.InvalidParameterWrapper{
 				Err: &errors.Err{
 					Op:      "alice.Bob",
-					Wrapped: errors.ErrRecordNotFound,
+					Wrapped: errors.ErrInvalidParameter,
 					Msg:     "test msg",
 					Code:    errors.InvalidParameter,
 				},
@@ -43,7 +44,8 @@ func Test_NewInvalidParameterWrapper(t *testing.T) {
 			opt:  nil,
 			want: &errors.InvalidParameterWrapper{
 				Err: &errors.Err{
-					Code: errors.InvalidParameter,
+					Code:    errors.InvalidParameter,
+					Wrapped: errors.ErrInvalidParameter,
 				},
 			},
 		},
@@ -54,6 +56,13 @@ func Test_NewInvalidParameterWrapper(t *testing.T) {
 			err := errors.NewInvalidParameterWrapper(tt.parameterName, tt.parameterDescription, tt.opt...)
 			require.Error(err)
 			assert.Equal(tt.want, err)
+
+			var e *errors.InvalidParameterWrapper
+			isErr := stderrors.As(err, &e)
+			assert.True(isErr)
+
+			isErr = stderrors.Is(err, errors.ErrInvalidParameter)
+			assert.True(isErr)
 		})
 	}
 }

@@ -11,10 +11,13 @@ type InvalidParameterWrapper struct {
 }
 
 // NewInvalidParameterWrapper creates a new InvalidParameterWrapper and supports
-// the same options as errors.New for the wrapper, while adding the fields for
-// parameter name and parameter description.
+// the same options as errors.New, except for WithWrap which will always be
+// ErrInvalidParameter for the wrapper, while adding the fields for parameter
+// name and parameter
+// description.
 func NewInvalidParameterWrapper(parameterName, parameterDescription string, opt ...Option) error {
 	err := New(InvalidParameter, opt...).(*Err)
+	err.Wrapped = ErrInvalidParameter
 	e := &InvalidParameterWrapper{
 		Err:         err,
 		Name:        parameterName,
