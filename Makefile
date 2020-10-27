@@ -149,7 +149,33 @@ test-ci: install-go
 install-go:
 	./ci/goinstall.sh
 
-.PHONY: api tools gen migrations proto website ci-config ci-verify set-ui-version
+# Docker build and publish variables and targets
+REGISTRY_NAME?=docker.io/hashicorp
+IMAGE_NAME=boundary
+VERSION?=0.1.1
+IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
+IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
+DOCKER_DIR=./docker
+
+docker: docker-build docker-publish
+
+# builds from releases.hashicorp.com official binary
+docker-build:
+	docker build -t $(IMAGE_TAG) \
+	--build-arg VERSION=$(VERSION) \
+	-f $(DOCKER_DIR)/Release.dockerfile docker/ 
+
+# builds from locally generated binary in bin/
+docker-build-dev: export XC_OSARCH=linux/amd64
+docker-build-dev: dev
+	docker build -t $(IMAGE_TAG_DEV) \
+	-f $(DOCKER_DIR)/Dev.dockerfile .
+
+# requires appropriate permissions in dockerhub
+docker-publish:
+	docker push $(IMAGE_TAG)
+
+.PHONY: api tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish 
 
 .NOTPARALLEL:
 
