@@ -133,6 +133,7 @@ protobuild:
 
 protolint:
 	@buf check lint
+	@buf check breaking --against-input 'https://github.com/hashicorp/boundary.git'
 
 # must have nodejs and npm installed
 website: website-install website-start
