@@ -181,6 +181,7 @@ func TestConvertError(t *testing.T) {
 	`
 		truncateTable = `truncate test_table;`
 		insert        = `insert into test_table(name, description, five) values (?, ?, ?)`
+		missingTable  = `select * from not_a_defined_table`
 	)
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -254,7 +255,6 @@ func TestConvertError(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		_, err := rw.Exec(ctx, truncateTable, nil)
 		require.NoError(err)
-		conn.LogMode(true)
 		_, err = rw.Exec(ctx, insert, []interface{}{"alice", "coworker", "one"})
 		require.Error(err)
 
@@ -262,5 +262,14 @@ func TestConvertError(t *testing.T) {
 		require.NotNil(e)
 		assert.True(stderrors.Is(e, errors.ErrCheckConstraint))
 		assert.Equal("test_table_five_check constraint failed: integrity violation: error #1000: \ncheck constraint violated: integrity violation: error #1000", e.Error())
+	})
+	t.Run("MissingTable", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		_, err := rw.Exec(ctx, missingTable, nil)
+		require.Error(err)
+		e := errors.Convert(err)
+		require.NotNil(e)
+		assert.True(errors.Match(errors.T(errors.MissingTable), e))
+		assert.Equal("relation \"not_a_defined_table\" does not exist: integrity violation: error #1004", e.Error())
 	})
 }

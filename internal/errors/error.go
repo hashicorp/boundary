@@ -74,6 +74,9 @@ func Convert(e error) *Err {
 				return New(NotSpecificIntegrity, WithMsg(pqError.Message)).(*Err)
 			}
 		}
+		if pqError.Code == "42P01" {
+			return New(MissingTable, WithMsg(pqError.Message)).(*Err)
+		}
 	}
 	// unfortunately, we can't help.
 	return nil
