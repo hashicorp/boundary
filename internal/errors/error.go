@@ -60,16 +60,19 @@ func Convert(e error) *Err {
 	}
 	var pqError *pq.Error
 	if errors.As(e, &pqError) {
-		if pqError.Code.Name() == "unique_violation" {
-			return New(NotUnique, WithMsg(pqError.Detail), WithWrap(ErrNotUnique)).(*Err)
-		}
-		if pqError.Code.Name() == "not_null_violation" {
-			msg := fmt.Sprintf("%s must not be empty", pqError.Column)
-			return New(NotNull, WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
-		}
-		if pqError.Code.Name() == "check_violation" {
-			msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
-			return New(CheckConstraint, WithMsg(msg), WithWrap(ErrCheckConstraint)).(*Err)
+		if pqError.Code.Class() == "23" { // class of integrity constraint violations
+			switch pqError.Code {
+			case "23505": // unique_violation
+				return New(NotUnique, WithMsg(pqError.Detail), WithWrap(ErrNotUnique)).(*Err)
+			case "23502": // not_null_violation
+				msg := fmt.Sprintf("%s must not be empty", pqError.Column)
+				return New(NotNull, WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
+			case "23514": // check_violation
+				msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
+				return New(CheckConstraint, WithMsg(msg), WithWrap(ErrCheckConstraint)).(*Err)
+			default:
+				return New(NotSpecificIntegrity, WithMsg(pqError.Message)).(*Err)
+			}
 		}
 	}
 	// unfortunately, we can't help.

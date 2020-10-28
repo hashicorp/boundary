@@ -22,7 +22,7 @@ func IsUniqueError(err error) bool {
 
 	var pqError *pq.Error
 	if errors.As(err, &pqError) {
-		if pqError.Code.Name() == "unique_violation" {
+		if pqError.Code == "23505" { // unique_violation
 			return true
 		}
 	}
@@ -46,7 +46,7 @@ func IsCheckConstraintError(err error) bool {
 
 	var pqError *pq.Error
 	if errors.As(err, &pqError) {
-		if pqError.Code.Name() == "check_violation" {
+		if pqError.Code == "23514" { // check_violation
 			return true
 		}
 	}
@@ -70,7 +70,7 @@ func IsNotNullError(err error) bool {
 
 	var pqError *pq.Error
 	if errors.As(err, &pqError) {
-		if pqError.Code.Name() == "not_null_violation" {
+		if pqError.Code == "23502" { // not_null_violation
 			return true
 		}
 	}
