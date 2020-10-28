@@ -24,9 +24,10 @@ const (
 	InvalidParameter Code = 100 // InvalidParameter represents and invalid parameter for an operation.
 
 	// DB errors are resevered Codes from 1000-1999
-	CheckConstraint Code = 1000 // CheckConstraint represents a check constraint error
-	NotNull         Code = 1001 // NotNull represents a value must not be null error
-	NotUnique       Code = 1002 // NotUnique represents a value must be unique error
-	RecordNotFound  Code = 1100 // RecordNotFound represents that a record/row was not found matching the criteria
-	MultipleRecords Code = 1101 // MultipleRecords represents that multiple records/rows were found matching the criteria
+	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
+	NotNull              Code = 1001 // NotNull represents a value must not be null error
+	NotUnique            Code = 1002 // NotUnique represents a value must be unique error
+	NotSpecificIntegrity Code = 1003 // NotSpecificIntegrity represents an integrity error that has no specificy domain error code
+	RecordNotFound       Code = 1100 // RecordNotFound represents that a record/row was not found matching the criteria
+	MultipleRecords      Code = 1101 // MultipleRecords represents that multiple records/rows were found matching the criteria
 )
