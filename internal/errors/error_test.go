@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -202,6 +203,13 @@ func TestConvertError(t *testing.T) {
 			name:    "not-convertible",
 			e:       stderrors.New("test error"),
 			wantErr: nil,
+		},
+		{
+			name: "NotSpecificIntegrity",
+			e: &pq.Error{
+				Code: pq.ErrorCode("23001"),
+			},
+			wantErr: errors.New(errors.NotSpecificIntegrity),
 		},
 	}
 	for _, tt := range tests {
