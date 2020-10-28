@@ -13,36 +13,39 @@ func Test_NewInvalidParameterWrapper(t *testing.T) {
 	type args struct {
 	}
 	tests := []struct {
-		name                 string
-		parameterName        string
-		parameterDescription string
-		opt                  []errors.Option
-		want                 error
+		name    string
+		details []errors.ParamaterDetails
+		opt     []errors.Option
+		want    error
 	}{
 		{
-			name:                 "all-options",
-			parameterName:        "alice",
-			parameterDescription: "Shamir's favorite aunt",
+			name: "all-options",
+			details: []errors.ParamaterDetails{
+				{Name: "alice", Description: "Shamir's favorite aunt"},
+				{Name: "bob", Description: "Shamir's favorite uncle"},
+			},
 			opt: []errors.Option{
 				errors.WithOp("alice.Bob"),
 				errors.WithWrap(errors.ErrRecordNotFound), // will be ignored and always be errors.ErrInvalidParameter
 				errors.WithMsg("test msg"),
 			},
-			want: &errors.InvalidParameterWrapper{
+			want: &errors.InvalidParametersWrapper{
 				Err: &errors.Err{
 					Op:      "alice.Bob",
 					Wrapped: errors.ErrInvalidParameter,
 					Msg:     "test msg",
 					Code:    errors.InvalidParameter,
 				},
-				Name:        "alice",
-				Description: "Shamir's favorite aunt",
+				Details: []errors.ParamaterDetails{
+					{Name: "alice", Description: "Shamir's favorite aunt"},
+					{Name: "bob", Description: "Shamir's favorite uncle"},
+				},
 			},
 		},
 		{
 			name: "no-options",
 			opt:  nil,
-			want: &errors.InvalidParameterWrapper{
+			want: &errors.InvalidParametersWrapper{
 				Err: &errors.Err{
 					Code:    errors.InvalidParameter,
 					Wrapped: errors.ErrInvalidParameter,
@@ -53,11 +56,11 @@ func Test_NewInvalidParameterWrapper(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := errors.NewInvalidParameterWrapper(tt.parameterName, tt.parameterDescription, tt.opt...)
+			err := errors.NewInvalidParametersWrapper(tt.details, tt.opt...)
 			require.Error(err)
 			assert.Equal(tt.want, err)
 
-			var e *errors.InvalidParameterWrapper
+			var e *errors.InvalidParametersWrapper
 			isErr := stderrors.As(err, &e)
 			assert.True(isErr)
 
