@@ -20,4 +20,4 @@ lint:
       - controller/custom_options/v1/testing.proto
 breaking:
   use:
-    - FILE
+    - WIRE_JSON
