@@ -28,6 +28,14 @@ var errorCodeInfo = map[Code]Info{
 		Message: "must be unique violation",
 		Kind:    Integrity,
 	},
+	NotSpecificIntegrity: {
+		Message: "Integrity violation without specific details",
+		Kind:    Integrity,
+	},
+	MissingTable: {
+		Message: "missing table",
+		Kind:    Integrity,
+	},
 	RecordNotFound: {
 		Message: "record not found",
 		Kind:    Search,

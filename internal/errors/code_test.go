@@ -57,6 +57,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    MultipleRecords,
 			want: MultipleRecords,
 		},
+		{
+			name: "NotSpecificIntegrity",
+			c:    NotSpecificIntegrity,
+			want: NotSpecificIntegrity,
+		},
+		{
+			name: "MissingTable",
+			c:    MissingTable,
+			want: MissingTable,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
