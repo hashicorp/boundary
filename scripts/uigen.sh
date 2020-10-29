@@ -13,8 +13,7 @@ fi
 (
 	cd "$UI_CLONE_DIR"
 	if ! docker-compose -f docker-compose-embedding.yml run build; then
-		echo "==> UI build failed."
-		exit 1
+		yarn install && yarn build
 	fi
 )
 
