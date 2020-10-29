@@ -14,13 +14,13 @@ func Test_NewInvalidParameterWrapper(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		details []errors.ParamaterDetails
+		details []errors.ParameterDetails
 		opt     []errors.Option
 		want    error
 	}{
 		{
 			name: "all-options",
-			details: []errors.ParamaterDetails{
+			details: []errors.ParameterDetails{
 				{Name: "alice", Description: "Shamir's favorite aunt"},
 				{Name: "bob", Description: "Shamir's favorite uncle"},
 			},
@@ -36,7 +36,7 @@ func Test_NewInvalidParameterWrapper(t *testing.T) {
 					Msg:     "test msg",
 					Code:    errors.InvalidParameter,
 				},
-				Details: []errors.ParamaterDetails{
+				Details: []errors.ParameterDetails{
 					{Name: "alice", Description: "Shamir's favorite aunt"},
 					{Name: "bob", Description: "Shamir's favorite uncle"},
 				},

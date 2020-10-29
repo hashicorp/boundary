@@ -1,22 +1,24 @@
 package errors
 
-type ParamaterDetails struct {
+// ParameterDetails provides the Name and Description of the invalid parameter
+// error.
+type ParameterDetails struct {
 	Name        string
 	Description string
 }
 
-// InvalidParametersWrapper extends Err with Name and Description fields for the
-// invalid parameter error.
+// InvalidParametersWrapper extends Err with a list of ParameterDetails with
+// further information about which parameters are invalid and a description of
+// why.
 type InvalidParametersWrapper struct {
 	*Err
-	Details []ParamaterDetails
+	Details []ParameterDetails
 }
 
-// NewInvalidParameterWrapper creates a new InvalidParametersWrapper and supports
-// the same options as errors.New, except for WithWrap which will always be
-// ErrInvalidParameter for the wrapper, while adding the Details about list of
-// parameters that were invalid.
-func NewInvalidParametersWrapper(details []ParamaterDetails, opt ...Option) error {
+// NewInvalidParameterWrapper creates a new InvalidParametersWrapper using the
+// list of details provide and supports the same options as errors.New, except
+// for WithWrap which will always be ErrInvalidParameter for the wrapper.
+func NewInvalidParametersWrapper(details []ParameterDetails, opt ...Option) error {
 	err := New(InvalidParameter, opt...).(*Err)
 	err.Wrapped = ErrInvalidParameter
 	e := &InvalidParametersWrapper{
