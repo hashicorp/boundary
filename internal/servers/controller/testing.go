@@ -406,6 +406,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"api", "cluster"}); err != nil {
 		t.Fatal(err)
 	}
+	if err := tc.b.SetupControllerPublicClusterAddress(opts.Config, ""); err != nil {
+		t.Fatal(err)
+	}
 
 	if opts.DatabaseUrl != "" {
 		tc.b.DatabaseUrl = opts.DatabaseUrl
