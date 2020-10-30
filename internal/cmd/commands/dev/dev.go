@@ -48,6 +48,7 @@ type Command struct {
 	flagTargetSessionConnectionLimit int
 	flagControllerAPIListenAddr      string
 	flagControllerClusterListenAddr  string
+	flagControllerPublicClusterAddr  string
 	flagWorkerProxyListenAddr        string
 	flagWorkerPublicAddr             string
 	flagPassthroughDirectory         string
@@ -161,6 +162,13 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagControllerClusterListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for controller \"cluster\" purpose. If this begins with a forward slash, it will be assumed to be a Unix domain socket path.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "controller-public-cluster-address",
+		Target: &c.flagControllerPublicClusterAddr,
+		EnvVar: "BOUNDARY_DEV_CONTROLLER_PUBLIC_CLUSTER_ADDRESS",
+		Usage:  "Public address at which the controller is reachable for cluster tasks (like worker connections).",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -355,6 +363,13 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return 1
 	}
+
+	if err := c.SetupControllerPublicClusterAddress(c.Config, c.flagControllerPublicClusterAddr); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+	c.InfoKeys = append(c.InfoKeys, "controller public cluster addr")
+	c.Info["controller public cluster addr"] = c.Config.Controller.PublicClusterAddr
 
 	if err := c.SetupWorkerPublicAddress(c.Config, c.flagWorkerPublicAddr); err != nil {
 		c.UI.Error(err.Error())
