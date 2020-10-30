@@ -2,6 +2,18 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## vNext
+
+### New and Improved
+
+* docker: Official Docker image for `hashicorp/boundary`
+  ([PR](https://github.com/hashicorp/boundary/pull/755))
+
+### Bug Fixes
+
+* controller, worker: Fix IPv4-only check so `0.0.0.0` specified without a port
+  only listens on IPv4 ([PR](https://github.com/hashicorp/boundary/pull/752))
+
 ## v0.1.1
 
 ### Changes/Deprecations

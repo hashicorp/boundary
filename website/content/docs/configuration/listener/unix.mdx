@@ -1,20 +1,22 @@
 ---
 layout: docs
-page_title: TCP - Listeners - Configuration
-sidebar_title: TCP
+page_title: Unix Domain Socket - Listeners - Configuration
+sidebar_title: Unix
 description: |-
-  The TCP listener configures Boundary to listen on the specified TCP address and
-  port.
+  The Unix listener configures Boundary to listen on the specified Unix domain socket.
 ---
 
-# `tcp` Listener
+# `unix` Listener
 
-The TCP listener configures Boundary to listen on a TCP address/port.
+The Unix listener configures Boundary to listen on a Unix domain socket.
+
+~> This is only available for listeners for `"api"` and `"cluster"` purpose.
+Unix sockets cannot currently be used for `"proxy"` purpose on a Worker.
 
 ```hcl
-listener "tcp" {
+listener "unix" {
   purpose = "api"
-  address = "127.0.0.1:9200"
+  address = "/var/run/boundary-api.sock"
 }
 ```
 
@@ -22,13 +24,12 @@ The `listener` stanza may be specified more than once to make Boundary listen on
 multiple interfaces; however, only one listener marked for `cluster` purpose is
 allowed.
 
-## `tcp` Listener Parameters
+## `unix` Listener Parameters
 
-- `purpose` `(string: "")` - Specifies the purpose. Can be `api`, `cluster`, or
-`proxy`.
+- `purpose` `(string: "")` - Specifies the purpose. Can be `api` or `cluster`.
 
-- `address` `(string: "127.0.0.1:9200")` – Specifies the address to bind to for
-  listening.
+- `address` `(string: "")` – Specifies the address (filesystem path) to bind to
+  for listening.
 
 - `http_idle_timeout` `(string: "5m")` - Specifies the maximum amount of time to
   wait for the next request when keep-alives are enabled. If `http_idle_timeout`
@@ -124,15 +125,16 @@ allowed.
   unauthenticated access to the `/v1/sys/metrics` endpoint.
 !-->
 
-## `tcp` Listener Examples
+## `unix` Listener Examples
 
 ### Configuring TLS
 
 This example shows enabling a TLS listener.
 
 ```hcl
-listener "tcp" {
+listener "unix" {
   purpose = "api"
+  address = "/var/run/boundary-api.sock"
   tls_cert_file = "/etc/certs/Boundary.crt"
   tls_key_file  = "/etc/certs/Boundary.key"
 }
@@ -145,12 +147,12 @@ This example shows Boundary listening on a private interface, as well as localho
 ```hcl
 listener "tcp" {
   purpose = "api"
-  address = "127.0.0.1:9200"
+  address = "/var/run/boundary-api.sock"
 }
 
 listener "tcp" {
   purpose = "cluster"
-  address = "10.0.0.5:9200"
+  address = "/var/run/boundary-cluster.sock"
 }
 ```
 

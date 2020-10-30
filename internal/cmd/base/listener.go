@@ -156,7 +156,7 @@ func tcpListenerFactory(purpose string, l *configutil.Listener, logger hclog.Log
 
 	// If they've passed 0.0.0.0, we only want to bind on IPv4
 	// rather than golang's dual stack default
-	if strings.HasPrefix(l.Address, "0.0.0.0:") {
+	if strings.HasPrefix(l.Address, "0.0.0.0:") || l.Address == "0.0.0.0" {
 		bindProto = "tcp4"
 	}
 
