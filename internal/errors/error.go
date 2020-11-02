@@ -87,10 +87,7 @@ func (e *Err) Info() Info {
 	if e == nil {
 		return errorCodeInfo[Unknown]
 	}
-	if info, ok := errorCodeInfo[e.Code]; ok {
-		return info
-	}
-	return errorCodeInfo[Unknown]
+	return e.Code.Info()
 }
 
 // Error satisfies the error interface and returns a string representation of
@@ -146,7 +143,7 @@ func Is(err, target error) bool {
 	return errors.Is(err, target)
 }
 
-// Ass is the equivalent of the std errors.As, and allows devs to only import
+// As is the equivalent of the std errors.As, and allows devs to only import
 // this package for the capability.
 func As(err error, target interface{}) bool {
 	return errors.As(err, target)
