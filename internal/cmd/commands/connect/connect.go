@@ -100,7 +100,7 @@ type Command struct {
 func (c *Command) Synopsis() string {
 	switch c.Func {
 	case "connect":
-		return "Authorize a session against a target (or consume an existing authorization token) and launch a proxied connection"
+		return "Connect to a target through a Boundary worker"
 	case "http":
 		return httpSynopsis
 	case "postgres":

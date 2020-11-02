@@ -95,9 +95,10 @@ type Config struct {
 }
 
 type Controller struct {
-	Name        string    `hcl:"name"`
-	Description string    `hcl:"description"`
-	Database    *Database `hcl:"database"`
+	Name              string    `hcl:"name"`
+	Description       string    `hcl:"description"`
+	Database          *Database `hcl:"database"`
+	PublicClusterAddr string    `hcl:"public_cluster_addr"`
 }
 
 type Worker struct {

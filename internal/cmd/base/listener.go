@@ -171,6 +171,11 @@ func tcpListenerFactory(purpose string, l *configutil.Listener, logger hclog.Log
 		return "", nil, err
 	}
 
+	// If we used a random port, for a test, we need to save it back so we can set the public address appropriately
+	if l.RandomPort {
+		l.Address = ln.Addr().String()
+	}
+
 	ln = TCPKeepAliveListener{ln.(*net.TCPListener)}
 
 	return finalListenAddr, ln, nil
