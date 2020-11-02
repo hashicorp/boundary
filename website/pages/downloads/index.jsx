@@ -7,7 +7,7 @@ import styles from './style.module.css'
 
 export default function DownloadsPage({ releases }) {
   return (
-    <>
+    <div className={styles.root}>
       <HashiHead is={Head} title={`Downloads | ${productName} by HashiCorp`} />
       <ProductDownloader
         releases={releases}
@@ -91,7 +91,7 @@ export default function DownloadsPage({ releases }) {
             'https://learn.hashicorp.com/tutorials/boundary/getting-started-install',
         }}
       />
-    </>
+    </div>
   )
 }
 
