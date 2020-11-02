@@ -9,14 +9,14 @@ replace github.com/hashicorp/boundary/sdk => ./sdk
 require (
 	github.com/99designs/keyring v1.1.6
 	github.com/armon/go-metrics v0.3.4
-	github.com/bufbuild/buf v0.24.0
+	github.com/bufbuild/buf v0.29.0
 	github.com/fatih/color v1.9.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
 	github.com/go-bindata/go-bindata/v3 v3.1.3
 	github.com/go-swagger/go-swagger v0.25.0
 	github.com/golang-migrate/migrate/v4 v4.13.0
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
-	github.com/golang/protobuf v1.4.2
+	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.0-beta.5
 	github.com/hashicorp/boundary/api v0.0.1
@@ -52,9 +52,10 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/zalando/go-keyring v0.1.0
 	go.uber.org/atomic v1.7.0
-	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
+	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
+	golang.org/x/net v0.0.0-20200904194848-62affa334b73 // indirect
 	golang.org/x/tools v0.0.0-20201009032223-96877f285f7e
-	google.golang.org/genproto v0.0.0-20201009135657-4d944d34d83c
+	google.golang.org/genproto v0.0.0-20201030142918-24207fddd1c3
 	google.golang.org/grpc v1.32.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v0.0.0-20200527211525-6c9e30c09db2
 	google.golang.org/protobuf v1.25.0
