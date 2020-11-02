@@ -1,3 +1,7 @@
+.root {
+  --red-d1: #c03e43;
+}
+
 .logo {
   max-width: 140px;
 }
