@@ -188,6 +188,9 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 	if err := tw.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"proxy"}); err != nil {
 		t.Fatal(err)
 	}
+	if err := tw.b.SetupWorkerPublicAddress(opts.Config, ""); err != nil {
+		t.Fatal(err)
+	}
 
 	conf := &Config{
 		RawConfig: opts.Config,

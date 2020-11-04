@@ -33,7 +33,7 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 					Name:        c.conf.RawConfig.Controller.Name,
 					Type:        resource.Controller.String(),
 					Description: c.conf.RawConfig.Controller.Description,
-					Address:     c.clusterAddress,
+					Address:     c.conf.RawConfig.Controller.PublicClusterAddr,
 				}
 				repo, err := c.ServersRepoFn()
 				if err != nil {

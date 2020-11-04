@@ -8,6 +8,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * docker: Official Docker image for `hashicorp/boundary`
   ([PR](https://github.com/hashicorp/boundary/pull/755))
+* controller: Add ability to set public address for cluster purposes
+  ([Issue](https://github.com/hashicorp/boundary/pull/758))
+  ([PR](https://github.com/hashicorp/boundary/pull/761))
 
 ### Bug Fixes
 

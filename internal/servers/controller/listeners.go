@@ -114,8 +114,6 @@ func (c *Controller) startListeners() error {
 		if err != nil {
 			return fmt.Errorf("error getting sub-listener for worker proto: %w", err)
 		}
-		c.clusterAddress = l.Addr().String()
-		c.logger.Info("cluster address", "addr", c.clusterAddress)
 
 		workerServer := grpc.NewServer(
 			grpc.MaxRecvMsgSize(math.MaxInt32),
@@ -142,11 +140,7 @@ func (c *Controller) startListeners() error {
 			case "api":
 				err = configureForAPI(ln)
 			case "cluster":
-				if c.clusterAddress != "" {
-					err = errors.New("more than one cluster listener found")
-				} else {
-					err = configureForCluster(ln)
-				}
+				err = configureForCluster(ln)
 			case "proxy":
 				// Do nothing, in a dev mode we might see it here
 			default:

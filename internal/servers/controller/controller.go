@@ -47,8 +47,6 @@ type Controller struct {
 	TargetRepoFn       common.TargetRepoFactory
 
 	kms *kms.Kms
-
-	clusterAddress string
 }
 
 func New(conf *Config) (*Controller, error) {
@@ -162,7 +160,6 @@ func (c *Controller) Shutdown(serversOnly bool) error {
 	if err := c.stopListeners(serversOnly); err != nil {
 		return fmt.Errorf("error stopping controller listeners: %w", err)
 	}
-	c.clusterAddress = ""
 	c.started.Store(false)
 	return nil
 }

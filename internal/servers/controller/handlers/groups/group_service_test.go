@@ -546,6 +546,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	tested, err := groups.NewService(repoFn)
+	require.NoError(t, err, "Error creating new service")
 	cases := []struct {
 		name    string
 		scopeId string

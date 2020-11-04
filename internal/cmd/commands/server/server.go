@@ -246,6 +246,14 @@ func (c *Command) Run(args []string) int {
 		c.InfoKeys = append(c.InfoKeys, "public addr")
 		c.Info["public addr"] = c.Config.Worker.PublicAddr
 	}
+	if c.Config.Controller != nil {
+		if err := c.SetupControllerPublicClusterAddress(c.Config, ""); err != nil {
+			c.UI.Error(err.Error())
+			return 1
+		}
+		c.InfoKeys = append(c.InfoKeys, "public cluster addr")
+		c.Info["public cluster addr"] = c.Config.Controller.PublicClusterAddr
+	}
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.StorePidFile(c.Config.PidFile); err != nil {

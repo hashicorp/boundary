@@ -41,8 +41,6 @@ func (t *Template) Info() Info {
 		return errorCodeInfo[Unknown]
 	}
 	switch {
-	case t == nil:
-		return errorCodeInfo[Unknown]
 	case t.Code != Unknown:
 		return t.Code.Info()
 	case t.Kind != Other:

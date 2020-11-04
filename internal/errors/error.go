@@ -59,7 +59,7 @@ func Convert(e error) *Err {
 		return err
 	}
 	var pqError *pq.Error
-	if errors.As(e, &pqError) {
+	if As(e, &pqError) {
 		if pqError.Code.Class() == "23" { // class of integrity constraint violations
 			switch pqError.Code {
 			case "23505": // unique_violation
@@ -87,10 +87,7 @@ func (e *Err) Info() Info {
 	if e == nil {
 		return errorCodeInfo[Unknown]
 	}
-	if info, ok := errorCodeInfo[e.Code]; ok {
-		return info
-	}
-	return errorCodeInfo[Unknown]
+	return e.Code.Info()
 }
 
 // Error satisfies the error interface and returns a string representation of
@@ -138,4 +135,16 @@ func (e *Err) Unwrap() error {
 		return nil
 	}
 	return e.Wrapped
+}
+
+// Is the equivalent of the std errors.Is, but allows Devs to only import
+// this package for the capability.
+func Is(err, target error) bool {
+	return errors.Is(err, target)
+}
+
+// As is the equivalent of the std errors.As, and allows devs to only import
+// this package for the capability.
+func As(err error, target interface{}) bool {
+	return errors.As(err, target)
 }
