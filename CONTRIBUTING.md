@@ -42,3 +42,28 @@ When submitting a pull request, please ensure:
 
 Once you open your PR, our auto-labeling will add labels to help us triage and prioritize your contribution. Please
 allow us a couple of days to comment, request changes, or approve your PR. Thank you for your contribution!
+
+## Changelog
+
+The changelog is updated by PR contributors. Each contribution to Boundary should include a changelog update at the contributor or reviewer discretion. 
+The changelog should be updated when the contribution is large enough to warrent it being called out in the larger release cycle. Enhancements, bug fixes,
+and other contributions that practitioners might want to be aware of should exist in the changelog. 
+
+When contributing to the changelog, follow existing patterns for referencing PR's, issues or other ancilary context.
+
+The changelog is broken down into sections:
+
+### vNext
+
+The current release cycle. New contributions slated for the next release should go under this heading. If the contribution is being backported,
+the inclusion of the feature in the appropriate release during the backport process is handled on an as-needed basis. 
+
+### New and Improved
+
+Any enhancements, new features, etc fall into this section. 
+
+### Bug Fixes
+
+Any bug fixes fall into this section.
+
+
