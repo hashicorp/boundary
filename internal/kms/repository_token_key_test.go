@@ -2,7 +2,6 @@ package kms_test
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -116,7 +115,7 @@ func TestRepository_CreateTokenKey(t *testing.T) {
 				assert.Error(err)
 				assert.Nil(tk)
 				if tt.wantIsError != nil {
-					assert.True(stderrors.Is(err, tt.wantIsError))
+					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				return
 			}
@@ -129,7 +128,7 @@ func TestRepository_CreateTokenKey(t *testing.T) {
 			// make sure there was no token written
 			err = db.TestVerifyOplog(t, rw, tk.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
+			assert.True(errors.Is(err, errors.ErrRecordNotFound))
 
 			assert.NotNil(tv.CreateTime)
 			foundKeyVersion, err := repo.LookupTokenKeyVersion(context.Background(), tt.args.keyWrapper, tv.PrivateId)
@@ -139,7 +138,7 @@ func TestRepository_CreateTokenKey(t *testing.T) {
 			// make sure there was no token written
 			err = db.TestVerifyOplog(t, rw, tv.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
+			assert.True(errors.Is(err, errors.ErrRecordNotFound))
 		})
 	}
 }
@@ -211,12 +210,12 @@ func TestRepository_DeleteTokenKey(t *testing.T) {
 				require.Error(err)
 				assert.Equal(0, deletedRows)
 				if tt.wantIsError != nil {
-					assert.True(stderrors.Is(err, tt.wantIsError))
+					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				// make sure there was no token written
 				err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)
@@ -224,12 +223,12 @@ func TestRepository_DeleteTokenKey(t *testing.T) {
 			foundKey, err := repo.LookupTokenKey(context.Background(), tt.args.key.PrivateId)
 			assert.Error(err)
 			assert.Nil(foundKey)
-			assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
+			assert.True(errors.Is(err, errors.ErrRecordNotFound))
 
 			// make sure there was no token written
 			err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

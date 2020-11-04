@@ -1,7 +1,6 @@
 package errors_test
 
 import (
-	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -61,10 +60,10 @@ func Test_NewInvalidParameterWrapper(t *testing.T) {
 			assert.Equal(tt.want, err)
 
 			var e *errors.InvalidParametersWrapper
-			isErr := stderrors.As(err, &e)
+			isErr := errors.As(err, &e)
 			assert.True(isErr)
 
-			isErr = stderrors.Is(err, errors.ErrInvalidParameter)
+			isErr = errors.Is(err, errors.ErrInvalidParameter)
 			assert.True(isErr)
 		})
 	}

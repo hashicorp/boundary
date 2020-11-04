@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -198,7 +197,7 @@ func TestRepository_DeleteConnection(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.connection.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)

@@ -2,7 +2,6 @@ package target
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -63,7 +62,7 @@ func TestTcpTarget_Create(t *testing.T) {
 			got, err := NewTcpTarget(tt.args.scopeId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(stderrors.Is(err, tt.wantIsErr))
+				assert.True(errors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -139,7 +138,7 @@ func TestTcpTarget_Delete(t *testing.T) {
 			foundTarget.PublicId = tt.target.PublicId
 			err = rw.LookupById(context.Background(), &foundTarget)
 			require.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

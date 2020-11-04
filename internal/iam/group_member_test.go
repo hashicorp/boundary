@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -103,7 +102,7 @@ func Test_NewGroupMember(t *testing.T) {
 			got, err := NewGroupMemberUser(tt.args.groupId, tt.args.userId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(stderrors.Is(err, tt.wantIsErr))
+				assert.True(errors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -247,7 +246,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				if tt.wantIsErr != nil {
-					assert.True(stderrors.Is(err, tt.wantIsErr))
+					assert.True(errors.Is(err, tt.wantIsErr))
 				}
 				return
 			}
@@ -334,7 +333,7 @@ func Test_GroupMemberDelete(t *testing.T) {
 			found := allocGroupMember()
 			err = rw.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", tt.gm.GetGroupId(), tt.gm.GetMemberId())
 			require.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

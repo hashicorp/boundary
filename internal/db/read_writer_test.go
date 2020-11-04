@@ -444,7 +444,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.True(stderrors.Is(err, errors.ErrInvalidParameter))
+		assert.True(errors.Is(err, errors.ErrInvalidParameter))
 	})
 	t.Run("valid-NewOplogMsg", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -684,7 +684,7 @@ func TestDb_Create(t *testing.T) {
 			WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}),
 		)
 		require.Error(err)
-		assert.True(stderrors.Is(err, errors.ErrInvalidParameter))
+		assert.True(errors.Is(err, errors.ErrInvalidParameter))
 	})
 	t.Run("valid-NewOplogMsg", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -878,7 +878,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", id)
 		require.Error(err)
 		assert.Equal(errors.ErrRecordNotFound, err)
-		assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
+		assert.True(errors.Is(err, errors.ErrRecordNotFound))
 	})
 	t.Run("bad-where", func(t *testing.T) {
 		require := require.New(t)
@@ -1327,7 +1327,7 @@ func TestDb_Delete(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "received unexpected error: %v", err)
+					assert.Truef(errors.Is(err, tt.wantErrIs), "received unexpected error: %v", err)
 				}
 				err := TestVerifyOplog(t, rw, tt.args.i.GetPublicId(), WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(5*time.Second))
 				assert.Error(err)
@@ -1370,7 +1370,7 @@ func TestDb_Delete(t *testing.T) {
 			rowsDeleted, err := w.Delete(context.Background(), user, NewOplogMsg(&deleteMsg), WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}))
 			require.Error(err)
 			assert.Equal(0, rowsDeleted)
-			assert.True(stderrors.Is(err, errors.ErrInvalidParameter))
+			assert.True(errors.Is(err, errors.ErrInvalidParameter))
 		})
 		t.Run("valid-NewOplogMsg", func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
@@ -1402,7 +1402,7 @@ func TestDb_Delete(t *testing.T) {
 			foundUser.PublicId = user.PublicId
 			err = w.LookupByPublicId(context.Background(), foundUser)
 			require.Error(err)
-			assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
+			assert.True(errors.Is(err, errors.ErrRecordNotFound))
 
 			metadata := oplog.Metadata{
 				"resource-public-id": []string{user.PublicId},
@@ -1658,7 +1658,7 @@ func TestDb_CreateItems(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
 				}
 				return
 			}
@@ -1855,7 +1855,7 @@ func TestDb_DeleteItems(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
 				}
 				return
 			}
@@ -1866,7 +1866,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				u.PublicId = item.(*db_test.TestUser).PublicId
 				err := rw.LookupByPublicId(context.Background(), &u)
 				require.Error(err)
-				require.Truef(stderrors.Is(err, errors.ErrRecordNotFound), "found item %s that should be deleted", u.PublicId)
+				require.Truef(errors.Is(err, errors.ErrRecordNotFound), "found item %s that should be deleted", u.PublicId)
 			}
 			if tt.wantOplogId != "" {
 				err = TestVerifyOplog(t, rw, tt.wantOplogId, WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(10*time.Second))
@@ -2039,7 +2039,7 @@ func TestDb_LookupById(t *testing.T) {
 			err := rw.LookupById(context.Background(), cp, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				require.True(stderrors.Is(err, tt.wantIsErr))
+				require.True(errors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -2053,7 +2053,7 @@ func TestDb_LookupById(t *testing.T) {
 		}
 		err := rw.LookupById(context.Background(), *u)
 		require.Error(t, err)
-		assert.True(t, stderrors.Is(err, errors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, errors.ErrInvalidParameter))
 	})
 }
 
@@ -2105,7 +2105,7 @@ func TestDb_GetTicket(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error type: %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error type: %s", err.Error())
 				}
 				return
 			}
@@ -2249,7 +2249,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
@@ -2841,7 +2841,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsErr != nil {
-					assert.Truef(stderrors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
 				}
 				return
 			}

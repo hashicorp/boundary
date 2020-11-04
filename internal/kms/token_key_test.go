@@ -2,7 +2,6 @@ package kms_test
 
 import (
 	"context"
-	stderrors "errors"
 
 	"testing"
 
@@ -65,7 +64,7 @@ func TestTokenKey_Create(t *testing.T) {
 			got, err := kms.NewTokenKey(tt.args.rootKeyId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(stderrors.Is(err, tt.wantIsErr))
+				assert.True(errors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -143,7 +142,7 @@ func TestTokenKey_Delete(t *testing.T) {
 			foundKey.PrivateId = tt.key.PrivateId
 			err = rw.LookupById(context.Background(), &foundKey)
 			require.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

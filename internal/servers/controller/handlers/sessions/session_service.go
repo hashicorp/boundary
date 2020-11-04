@@ -97,7 +97,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	}
 	sess, _, err := repo.LookupSession(ctx, id)
 	if err != nil {
-		if stderrors.Is(err, errors.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", id)
 		}
 		return nil, err
@@ -197,10 +197,10 @@ func toProto(in *session.Session) *pb.Session {
 		Type:        target.SubtypeFromId(in.TargetId).String(),
 		// TODO: Provide the ServerType and the ServerId when that information becomes relevant in the API.
 
-		CreatedTime:    in.CreateTime.GetTimestamp(),
-		UpdatedTime:    in.UpdateTime.GetTimestamp(),
-		ExpirationTime: in.ExpirationTime.GetTimestamp(),
-		Certificate:    in.Certificate,
+		CreatedTime:       in.CreateTime.GetTimestamp(),
+		UpdatedTime:       in.UpdateTime.GetTimestamp(),
+		ExpirationTime:    in.ExpirationTime.GetTimestamp(),
+		Certificate:       in.Certificate,
 		TerminationReason: in.TerminationReason,
 	}
 	if len(in.States) > 0 {

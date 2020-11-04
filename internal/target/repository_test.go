@@ -2,7 +2,6 @@ package target
 
 import (
 	"context"
-	stderrors "errors"
 	"sort"
 	"strconv"
 	"testing"
@@ -387,7 +386,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)
@@ -492,7 +491,7 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				// test to see of the target version update oplog was not created
 				err = db.TestVerifyOplog(t, rw, projTarget.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
@@ -683,7 +682,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
 				if tt.wantIsErr != nil {
-					assert.Truef(stderrors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
 				}
 				// TODO (jimlambrt 9/2020) - unfortunately, we can currently
 				// test to make sure that the oplog entry for a target update
@@ -695,7 +694,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 
 				err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)

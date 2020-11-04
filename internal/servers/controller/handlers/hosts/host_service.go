@@ -2,7 +2,6 @@ package hosts
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"net"
 	"strings"
@@ -177,7 +176,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	out, err := repo.CreateHost(ctx, scopeId, h)
 	if err != nil {
-		if errors.IsUniqueError(err) || stderrors.Is(err, errors.ErrNotUnique) {
+		if errors.IsUniqueError(err) || errors.Is(err, errors.ErrNotUnique) {
 			// Push this error through so the error interceptor can interpret it correctly.
 			return nil, err
 		}

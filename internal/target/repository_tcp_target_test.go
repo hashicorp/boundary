@@ -2,7 +2,6 @@ package target
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -118,7 +117,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				assert.Error(err)
 				assert.Nil(target)
 				if tt.wantIsError != nil {
-					assert.True(stderrors.Is(err, tt.wantIsError))
+					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				return
 			}
@@ -383,14 +382,14 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				if tt.wantIsError != nil {
-					assert.True(stderrors.Is(err, tt.wantIsError))
+					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				assert.Nil(targetAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, target.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)

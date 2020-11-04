@@ -2,7 +2,6 @@ package kms_test
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -73,7 +72,7 @@ func TestRootKey_Create(t *testing.T) {
 			got, err := kms.NewRootKey(tt.args.scopeId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(stderrors.Is(err, tt.wantIsErr))
+				assert.True(errors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -149,7 +148,7 @@ func TestRootKey_Delete(t *testing.T) {
 			foundKey.PrivateId = tt.key.PrivateId
 			err = rw.LookupById(context.Background(), &foundKey)
 			require.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

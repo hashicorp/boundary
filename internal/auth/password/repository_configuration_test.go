@@ -2,7 +2,6 @@ package password
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -165,7 +164,7 @@ func TestRepository_GetConfiguration(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := repo.GetConfiguration(ctx, tt.authMethodId)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got, "returned configuration")
 				return
 			}
@@ -292,7 +291,7 @@ func TestRepository_SetConfiguration(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := repo.SetConfiguration(context.Background(), o.GetPublicId(), tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got, "returned configuration")
 				return
 			}

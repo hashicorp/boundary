@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"testing"
 	"time"
@@ -425,14 +424,14 @@ func TestRepository_UpdateRole(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				if tt.wantIsError != nil {
-					assert.True(stderrors.Is(err, tt.wantIsError))
+					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				assert.Nil(roleAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, r.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)
@@ -531,7 +530,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)

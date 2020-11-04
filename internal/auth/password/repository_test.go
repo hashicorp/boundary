@@ -1,7 +1,6 @@
 package password
 
 import (
-	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -107,7 +106,7 @@ func TestRepository_New(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}

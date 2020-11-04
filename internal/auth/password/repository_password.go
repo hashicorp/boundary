@@ -3,7 +3,6 @@ package password
 import (
 	"context"
 	"crypto/subtle"
-	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -307,7 +306,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 
 			oldCred := allocCredential()
 			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", accountId); err != nil {
-				if !stderrors.Is(err, errors.ErrRecordNotFound) {
+				if !errors.Is(err, errors.ErrRecordNotFound) {
 					return err
 				}
 			}

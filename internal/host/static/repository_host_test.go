@@ -2,7 +2,6 @@ package static
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -152,7 +151,7 @@ func TestRepository_CreateHost(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -195,7 +194,7 @@ func TestRepository_CreateHost(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
-		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -598,7 +597,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			}
 			got, gotCount, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
@@ -650,12 +649,12 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 		hB.Name = name
 		got2, gotCount2, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), hB, 1, []string{"name"})
-		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, hB.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
-		assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+		assert.True(errors.Is(errors.ErrRecordNotFound, err))
 	})
 
 	t.Run("valid-duplicate-names-diff-Catalogs", func(t *testing.T) {
@@ -775,7 +774,7 @@ func TestRepository_LookupHost(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.LookupHost(context.Background(), tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -830,7 +829,7 @@ func TestRepository_ListHosts(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.ListHosts(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -958,7 +957,7 @@ func TestRepository_DeleteHost(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.DeleteHost(context.Background(), catalog.ScopeId, tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
 				return
 			}

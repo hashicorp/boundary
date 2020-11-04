@@ -35,7 +35,7 @@ func (r *Repository) LookupConnection(ctx context.Context, connectionId string, 
 		},
 	)
 	if err != nil {
-		if stderrors.Is(err, errors.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil, nil
 		}
 		return nil, nil, fmt.Errorf("lookup connection: %w", err)

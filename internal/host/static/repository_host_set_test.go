@@ -2,7 +2,6 @@ package static
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -116,7 +115,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -158,7 +157,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
-		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -482,7 +481,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			}
 			got, gotHosts, gotCount, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
@@ -541,12 +540,12 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 		sB.Name = name
 		got2, gotHosts, gotCount2, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sB, 1, []string{"name"})
-		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, sB.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
-		assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+		assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		assert.Empty(gotHosts)
 	})
 
@@ -758,7 +757,7 @@ func TestRepository_LookupSet(t *testing.T) {
 			require.NotNil(repo)
 			got, gotHosts, err := repo.LookupSet(context.Background(), tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -892,7 +891,7 @@ func TestRepository_ListSets(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.ListSets(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -1020,7 +1019,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.DeleteSet(context.Background(), prj.PublicId, tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
 				return
 			}

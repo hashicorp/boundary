@@ -4,8 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	stderrors "errors"
-
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
@@ -40,6 +38,6 @@ func Test_PublicIds(t *testing.T) {
 		id, err = newScopeId(scope.Unknown)
 		require.Error(t, err)
 		assert.Empty(t, id)
-		assert.True(t, stderrors.Is(err, errors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, errors.ErrInvalidParameter))
 	})
 }

@@ -2,7 +2,6 @@ package static
 
 import (
 	"context"
-	stdErrors "errors"
 	"fmt"
 	"strings"
 
@@ -186,7 +185,7 @@ func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Opt
 	h := allocHost()
 	h.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, h); err != nil {
-		if stdErrors.Is(err, errors.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("lookup: static host: failed %w for %s", err, publicId)

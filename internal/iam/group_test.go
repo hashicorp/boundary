@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -84,7 +83,7 @@ func TestNewGroup(t *testing.T) {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				if tt.wantIsErr != nil {
-					assert.True(stderrors.Is(err, tt.wantIsErr))
+					assert.True(errors.Is(err, tt.wantIsErr))
 				}
 				return
 			}
@@ -428,7 +427,7 @@ func Test_GroupDelete(t *testing.T) {
 			foundGrp.PublicId = tt.group.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundGrp)
 			require.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -67,7 +66,7 @@ func TestState_Create(t *testing.T) {
 			got, err := NewState(tt.args.sessionId, tt.args.status)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(stderrors.Is(err, tt.wantIsErr))
+				assert.True(errors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -149,7 +148,7 @@ func TestState_Delete(t *testing.T) {
 			foundState := allocState()
 			err = rw.LookupWhere(context.Background(), &foundState, "session_id = ? and start_time = ?", tt.state.SessionId, initialState.StartTime)
 			require.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

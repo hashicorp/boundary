@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	stderrors "errors"
 	"sort"
 	"testing"
 	"time"
@@ -431,14 +430,14 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				if tt.wantIsError != nil {
-					assert.True(stderrors.Is(err, tt.wantIsError))
+					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				assert.Nil(groupAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)
@@ -533,7 +532,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)
@@ -728,7 +727,7 @@ func TestRepository_ListMembers(t *testing.T) {
 		got, err := repo.ListGroupMembers(context.Background(), "")
 		require.Error(err)
 		require.Nil(got)
-		require.Truef(stderrors.Is(err, errors.ErrInvalidParameter), "unexpected error %s", err.Error())
+		require.Truef(errors.Is(err, errors.ErrInvalidParameter), "unexpected error %s", err.Error())
 
 	})
 }
@@ -830,7 +829,7 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -981,11 +980,11 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
 				if tt.wantIsErr != nil {
-					assert.Truef(stderrors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)

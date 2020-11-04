@@ -2,7 +2,6 @@ package static
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -118,7 +117,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.AddSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 				return
@@ -310,7 +309,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.DeleteSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
 				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 				return
@@ -499,7 +498,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 			require.NotNil(repo)
 			got, gotCount, err := repo.SetSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				assert.Equal(tt.wantCount, gotCount)
 				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))

@@ -2,7 +2,6 @@ package password
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -124,7 +123,7 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt
 	a := allocAccount()
 	a.PublicId = withPublicId
 	if err := r.reader.LookupByPublicId(ctx, a); err != nil {
-		if stderrors.Is(err, errors.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("lookup: password account: failed %w for %s", err, withPublicId)

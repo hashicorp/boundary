@@ -2,7 +2,6 @@ package authtoken
 
 import (
 	"context"
-	stderrors "errors"
 	"sort"
 	"testing"
 	"time"
@@ -117,7 +116,7 @@ func TestRepository_New(t *testing.T) {
 			assert := assert.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -268,7 +267,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 
 			got, err := repo.LookupAuthToken(context.Background(), tt.id)
 			if tt.wantErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
 			assert.NoError(err)
@@ -365,7 +364,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 			got, err := repo.ValidateToken(context.Background(), tt.id, tt.token)
 
 			if tt.wantErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
 			assert.NoError(err)
@@ -537,7 +536,7 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 
 			got, err := repo.DeleteAuthToken(context.Background(), tt.id)
 			if tt.wantErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
 			assert.NoError(err)
@@ -603,7 +602,7 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 
 			got, err := repo.ListAuthTokens(context.Background(), tt.orgId)
 			if tt.wantErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
 			assert.NoError(err)

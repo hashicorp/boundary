@@ -2,7 +2,6 @@ package password
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"strings"
 
@@ -105,7 +104,7 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 	a := allocAuthMethod()
 	a.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, &a); err != nil {
-		if stderrors.Is(err, errors.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("lookup: password auth method: failed %w for %s", err, publicId)

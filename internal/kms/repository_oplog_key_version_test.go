@@ -2,7 +2,6 @@ package kms_test
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -88,7 +87,7 @@ func TestRepository_CreateOplogKeyVersion(t *testing.T) {
 				assert.Error(err)
 				assert.Nil(k)
 				if tt.wantIsError != nil {
-					assert.True(stderrors.Is(err, tt.wantIsError))
+					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				return
 			}
@@ -101,7 +100,7 @@ func TestRepository_CreateOplogKeyVersion(t *testing.T) {
 			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, k.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }
@@ -175,11 +174,11 @@ func TestRepository_DeleteOplogKeyVersion(t *testing.T) {
 				require.Error(err)
 				assert.Equal(0, deletedRows)
 				if tt.wantIsError != nil {
-					assert.True(stderrors.Is(err, tt.wantIsError))
+					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)
@@ -187,12 +186,12 @@ func TestRepository_DeleteOplogKeyVersion(t *testing.T) {
 			foundKey, err := repo.LookupOplogKeyVersion(context.Background(), wrapper, tt.args.key.PrivateId)
 			assert.Error(err)
 			assert.Nil(foundKey)
-			assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
+			assert.True(errors.Is(err, errors.ErrRecordNotFound))
 
 			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }
@@ -262,7 +261,7 @@ func TestRepository_LatestOplogKeyVersion(t *testing.T) {
 				require.Error(err)
 				assert.Nil(got)
 				if tt.wantIsError != nil {
-					assert.True(stderrors.Is(err, tt.wantIsError))
+					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				return
 			}

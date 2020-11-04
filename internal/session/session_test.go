@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -137,7 +136,7 @@ func TestSession_Create(t *testing.T) {
 			got, err := New(tt.args.composedOf)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(stderrors.Is(err, tt.wantIsErr))
+				assert.True(errors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -214,7 +213,7 @@ func TestSession_Delete(t *testing.T) {
 			foundSession.PublicId = tt.session.PublicId
 			err = rw.LookupById(context.Background(), &foundSession)
 			require.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

@@ -2,7 +2,6 @@ package password
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -105,7 +104,7 @@ func TestRepository_Authenticate(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			authAcct, err := repo.Authenticate(context.Background(), o.GetPublicId(), tt.args.authMethodId, tt.args.loginName, tt.args.password)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(authAcct, "returned account")
 				return
 			}
@@ -120,7 +119,7 @@ func TestRepository_Authenticate(t *testing.T) {
 			assert.Equal(tt.args.loginName, authAcct.LoginName, "LoginName")
 			err = db.TestVerifyOplog(t, rw, authAcct.CredentialId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }
@@ -372,7 +371,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 			chgAuthAcct, err := repo.ChangePassword(context.Background(), o.GetPublicId(), tt.args.acctId, tt.args.old, tt.args.new, authAcct1.Version)
 			if tt.wantIsErr != nil {
 				assert.Error(err)
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(chgAuthAcct, "returned account")
 				authAcct2 := authFn(passwd, "error changing password: using old password")
 				assert.Equal(authAcct1.CredentialId, authAcct2.CredentialId, "CredentialId should not change")
@@ -535,7 +534,7 @@ func TestRepository_SetPassword(t *testing.T) {
 
 			acct, err := repo.SetPassword(context.Background(), o.GetPublicId(), tt.accountId, tt.pw, tt.version)
 			assert.Error(err)
-			assert.Truef(stderrors.Is(err, tt.wantError), "want err: %q got: %q", tt.wantError, err)
+			assert.Truef(errors.Is(err, tt.wantError), "want err: %q got: %q", tt.wantError, err)
 			assert.Nil(acct)
 		})
 	}

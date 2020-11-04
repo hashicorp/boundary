@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -121,7 +120,7 @@ func TestConnection_Create(t *testing.T) {
 			)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(stderrors.Is(err, tt.wantIsErr))
+				assert.True(errors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -196,7 +195,7 @@ func TestConnection_Delete(t *testing.T) {
 			foundConnection.PublicId = tt.connection.PublicId
 			err = rw.LookupById(context.Background(), &foundConnection)
 			require.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

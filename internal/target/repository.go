@@ -124,7 +124,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 		},
 	)
 	if err != nil {
-		if stderrors.Is(err, errors.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return nil, nil, nil
 		}
 		return nil, nil, fmt.Errorf("lookup target: %w", err)

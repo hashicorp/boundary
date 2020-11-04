@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -84,7 +83,7 @@ func TestNewRole(t *testing.T) {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				if tt.wantIsErr != nil {
-					assert.True(stderrors.Is(err, tt.wantIsErr))
+					assert.True(errors.Is(err, tt.wantIsErr))
 				}
 				return
 			}
@@ -527,7 +526,7 @@ func Test_RoleDelete(t *testing.T) {
 			foundRole.PublicId = tt.role.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundRole)
 			require.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

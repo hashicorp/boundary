@@ -2,7 +2,6 @@ package groups
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
@@ -191,7 +190,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Group, error) 
 	}
 	g, m, err := repo.LookupGroup(ctx, id)
 	if err != nil {
-		if stderrors.Is(err, errors.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Group %q doesn't exist.", id)
 		}
 		return nil, fmt.Errorf("unable to get group: %w", err)
@@ -267,7 +266,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	}
 	rows, err := repo.DeleteGroup(ctx, id)
 	if err != nil {
-		if stderrors.Is(err, errors.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return false, nil
 		}
 		return false, fmt.Errorf("unable to delete group: %w", err)

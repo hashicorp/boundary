@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -88,7 +87,7 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -377,11 +376,11 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
 				if tt.wantIsErr != nil {
-					assert.Truef(stderrors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)

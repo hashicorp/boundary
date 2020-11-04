@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -88,7 +87,7 @@ func TestNewUserRole(t *testing.T) {
 			got, err := NewUserRole(tt.args.roleId, tt.args.userId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(stderrors.Is(err, tt.wantIsErr))
+				assert.True(errors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -259,7 +258,7 @@ func TestUserRole_Create(t *testing.T) {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				if tt.wantIsErr != nil {
-					assert.True(stderrors.Is(err, tt.wantIsErr))
+					assert.True(errors.Is(err, tt.wantIsErr))
 				}
 				return
 			}
@@ -346,7 +345,7 @@ func TestUserRole_Delete(t *testing.T) {
 			found := allocUserRole()
 			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.role.GetRoleId(), tt.role.GetPrincipalId())
 			require.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }
@@ -451,7 +450,7 @@ func TestNewGroupRole(t *testing.T) {
 			got, err := NewGroupRole(tt.args.roleId, tt.args.groupId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(stderrors.Is(err, tt.wantIsErr))
+				assert.True(errors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -637,7 +636,7 @@ func TestGroupRole_Create(t *testing.T) {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				if tt.wantIsErr != nil {
-					assert.True(stderrors.Is(err, tt.wantIsErr))
+					assert.True(errors.Is(err, tt.wantIsErr))
 				}
 				return
 			}
@@ -729,7 +728,7 @@ func TestGroupRole_Delete(t *testing.T) {
 			found := allocGroupRole()
 			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.role.GetRoleId(), tt.role.GetPrincipalId())
 			require.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

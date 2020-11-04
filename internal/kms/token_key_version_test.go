@@ -2,7 +2,6 @@ package kms_test
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -94,7 +93,7 @@ func TestTokenKeyVersion_Create(t *testing.T) {
 			got, err := kms.NewTokenKeyVersion(tt.args.tokenKeyId, tt.args.key, tt.args.rootKeyVersionId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(stderrors.Is(err, tt.wantIsErr))
+				assert.True(errors.Is(err, tt.wantIsErr))
 				return
 			}
 			require.NoError(err)
@@ -176,7 +175,7 @@ func TestTokenKeyVersion_Delete(t *testing.T) {
 			foundKey.PrivateId = tt.key.PrivateId
 			err = rw.LookupById(context.Background(), &foundKey)
 			require.Error(err)
-			assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

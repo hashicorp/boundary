@@ -2,7 +2,6 @@ package password
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 	"time"
 
@@ -223,7 +222,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -275,7 +274,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
-		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -362,7 +361,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.LookupAccount(context.Background(), tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -417,7 +416,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.DeleteAccount(context.Background(), org.GetPublicId(), tt.in)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
 				return
 			}
@@ -473,7 +472,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -892,7 +891,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			}
 			got, gotCount, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
@@ -950,12 +949,12 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 		ab.Name = name
 		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"name"})
-		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
-		assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+		assert.True(errors.Is(errors.ErrRecordNotFound, err))
 	})
 
 	t.Run("valid-duplicate-names-diff-AuthMethods", func(t *testing.T) {
@@ -1028,12 +1027,12 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 		ab.LoginName = loginName
 		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"LoginName"})
-		assert.Truef(stderrors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
-		assert.True(stderrors.Is(errors.ErrRecordNotFound, err))
+		assert.True(errors.Is(errors.ErrRecordNotFound, err))
 	})
 
 	t.Run("valid-duplicate-loginnames-diff-AuthMethods", func(t *testing.T) {

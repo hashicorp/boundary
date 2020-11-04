@@ -2,7 +2,6 @@ package static
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"strings"
 
@@ -218,7 +217,7 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 	c := allocCatalog()
 	c.PublicId = id
 	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
-		if stderrors.Is(err, errors.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return db.NoRowsAffected, nil
 		}
 		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: failed %w for %s", err, id)

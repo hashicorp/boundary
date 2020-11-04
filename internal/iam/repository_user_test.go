@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"sort"
 	"testing"
@@ -341,7 +340,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsErr != nil {
-					assert.True(stderrors.Is(err, errors.ErrRecordNotFound))
+					assert.True(errors.Is(err, errors.ErrRecordNotFound))
 				}
 				assert.Nil(userAfterUpdate)
 				assert.Equal(0, updatedRows)
@@ -651,7 +650,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 				require.Error(err)
 				assert.Nil(got)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				if tt.args.withAccountId != "" && tt.args.withAccountId != id {
 					// need to assert that userid in auth_account is still null
@@ -822,7 +821,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -968,7 +967,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -1100,7 +1099,7 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -1230,7 +1229,7 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}
@@ -1411,7 +1410,7 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				return
 			}

@@ -85,7 +85,7 @@ func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWi
 		}
 		ps, err := LookupScope(ctx, r, resource)
 		if err != nil {
-			if stderrors.Is(err, errors.ErrRecordNotFound) {
+			if errors.Is(err, errors.ErrRecordNotFound) {
 				return stderrors.New("scope is not found")
 			}
 			return err

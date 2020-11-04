@@ -3,7 +3,6 @@ package kms_test
 import (
 	"context"
 	"crypto/rand"
-	stderrors "errors"
 	"io"
 	"testing"
 
@@ -179,7 +178,7 @@ func TestCreateKeysTx(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
-					assert.Truef(stderrors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
 				}
 				return
 			}

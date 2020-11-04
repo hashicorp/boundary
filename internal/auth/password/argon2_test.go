@@ -2,7 +2,6 @@ package password
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
@@ -269,7 +268,7 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 				return
 			}
 			require.Error(got)
-			assert.Truef(stderrors.Is(got, tt.want), "want err: %q got: %q", tt.want, got)
+			assert.Truef(errors.Is(got, tt.want), "want err: %q got: %q", tt.want, got)
 		})
 	}
 }
@@ -401,7 +400,7 @@ func TestArgon2Credential_New(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := newArgon2Credential(tt.args.accountId, tt.args.password, tt.args.conf)
 			if tt.wantIsErr != nil {
-				assert.Truef(stderrors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
