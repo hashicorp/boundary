@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // ServerCoordinationServiceClient is the client API for ServerCoordinationService service.
 //
@@ -41,22 +41,34 @@ func (c *serverCoordinationServiceClient) Status(ctx context.Context, in *Status
 }
 
 // ServerCoordinationServiceServer is the server API for ServerCoordinationService service.
+// All implementations must embed UnimplementedServerCoordinationServiceServer
+// for forward compatibility
 type ServerCoordinationServiceServer interface {
 	// Status gets worker status requests which include the ongoing jobs the worker is handling and
 	// returns the status response which includes the changes the controller would like to make to
 	// jobs as well as provide a list of the controllers in the system.
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
+	mustEmbedUnimplementedServerCoordinationServiceServer()
 }
 
-// UnimplementedServerCoordinationServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedServerCoordinationServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedServerCoordinationServiceServer struct {
 }
 
-func (*UnimplementedServerCoordinationServiceServer) Status(context.Context, *StatusRequest) (*StatusResponse, error) {
+func (UnimplementedServerCoordinationServiceServer) Status(context.Context, *StatusRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
 }
+func (UnimplementedServerCoordinationServiceServer) mustEmbedUnimplementedServerCoordinationServiceServer() {
+}
 
-func RegisterServerCoordinationServiceServer(s *grpc.Server, srv ServerCoordinationServiceServer) {
+// UnsafeServerCoordinationServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ServerCoordinationServiceServer will
+// result in compilation errors.
+type UnsafeServerCoordinationServiceServer interface {
+	mustEmbedUnimplementedServerCoordinationServiceServer()
+}
+
+func RegisterServerCoordinationServiceServer(s grpc.ServiceRegistrar, srv ServerCoordinationServiceServer) {
 	s.RegisterService(&_ServerCoordinationService_serviceDesc, srv)
 }
 

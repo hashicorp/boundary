@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // RoleServiceClient is the client API for RoleService service.
 //
@@ -188,6 +188,8 @@ func (c *roleServiceClient) RemoveRoleGrants(ctx context.Context, in *RemoveRole
 }
 
 // RoleServiceServer is the server API for RoleService service.
+// All implementations must embed UnimplementedRoleServiceServer
+// for forward compatibility
 type RoleServiceServer interface {
 	// GetRole returns a stored Role if present. The provided request must include
 	// the Role ID for the Role being retrieved. If the ID is missing, malformed
@@ -250,47 +252,56 @@ type RoleServiceServer interface {
 	// grants will be removed. If missing, malformed, or references a non-existing
 	// resource, an error is returned.
 	RemoveRoleGrants(context.Context, *RemoveRoleGrantsRequest) (*RemoveRoleGrantsResponse, error)
+	mustEmbedUnimplementedRoleServiceServer()
 }
 
-// UnimplementedRoleServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedRoleServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedRoleServiceServer struct {
 }
 
-func (*UnimplementedRoleServiceServer) GetRole(context.Context, *GetRoleRequest) (*GetRoleResponse, error) {
+func (UnimplementedRoleServiceServer) GetRole(context.Context, *GetRoleRequest) (*GetRoleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRole not implemented")
 }
-func (*UnimplementedRoleServiceServer) ListRoles(context.Context, *ListRolesRequest) (*ListRolesResponse, error) {
+func (UnimplementedRoleServiceServer) ListRoles(context.Context, *ListRolesRequest) (*ListRolesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRoles not implemented")
 }
-func (*UnimplementedRoleServiceServer) CreateRole(context.Context, *CreateRoleRequest) (*CreateRoleResponse, error) {
+func (UnimplementedRoleServiceServer) CreateRole(context.Context, *CreateRoleRequest) (*CreateRoleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateRole not implemented")
 }
-func (*UnimplementedRoleServiceServer) UpdateRole(context.Context, *UpdateRoleRequest) (*UpdateRoleResponse, error) {
+func (UnimplementedRoleServiceServer) UpdateRole(context.Context, *UpdateRoleRequest) (*UpdateRoleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateRole not implemented")
 }
-func (*UnimplementedRoleServiceServer) DeleteRole(context.Context, *DeleteRoleRequest) (*DeleteRoleResponse, error) {
+func (UnimplementedRoleServiceServer) DeleteRole(context.Context, *DeleteRoleRequest) (*DeleteRoleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteRole not implemented")
 }
-func (*UnimplementedRoleServiceServer) AddRolePrincipals(context.Context, *AddRolePrincipalsRequest) (*AddRolePrincipalsResponse, error) {
+func (UnimplementedRoleServiceServer) AddRolePrincipals(context.Context, *AddRolePrincipalsRequest) (*AddRolePrincipalsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRolePrincipals not implemented")
 }
-func (*UnimplementedRoleServiceServer) SetRolePrincipals(context.Context, *SetRolePrincipalsRequest) (*SetRolePrincipalsResponse, error) {
+func (UnimplementedRoleServiceServer) SetRolePrincipals(context.Context, *SetRolePrincipalsRequest) (*SetRolePrincipalsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetRolePrincipals not implemented")
 }
-func (*UnimplementedRoleServiceServer) RemoveRolePrincipals(context.Context, *RemoveRolePrincipalsRequest) (*RemoveRolePrincipalsResponse, error) {
+func (UnimplementedRoleServiceServer) RemoveRolePrincipals(context.Context, *RemoveRolePrincipalsRequest) (*RemoveRolePrincipalsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveRolePrincipals not implemented")
 }
-func (*UnimplementedRoleServiceServer) AddRoleGrants(context.Context, *AddRoleGrantsRequest) (*AddRoleGrantsResponse, error) {
+func (UnimplementedRoleServiceServer) AddRoleGrants(context.Context, *AddRoleGrantsRequest) (*AddRoleGrantsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRoleGrants not implemented")
 }
-func (*UnimplementedRoleServiceServer) SetRoleGrants(context.Context, *SetRoleGrantsRequest) (*SetRoleGrantsResponse, error) {
+func (UnimplementedRoleServiceServer) SetRoleGrants(context.Context, *SetRoleGrantsRequest) (*SetRoleGrantsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetRoleGrants not implemented")
 }
-func (*UnimplementedRoleServiceServer) RemoveRoleGrants(context.Context, *RemoveRoleGrantsRequest) (*RemoveRoleGrantsResponse, error) {
+func (UnimplementedRoleServiceServer) RemoveRoleGrants(context.Context, *RemoveRoleGrantsRequest) (*RemoveRoleGrantsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveRoleGrants not implemented")
 }
+func (UnimplementedRoleServiceServer) mustEmbedUnimplementedRoleServiceServer() {}
 
-func RegisterRoleServiceServer(s *grpc.Server, srv RoleServiceServer) {
+// UnsafeRoleServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to RoleServiceServer will
+// result in compilation errors.
+type UnsafeRoleServiceServer interface {
+	mustEmbedUnimplementedRoleServiceServer()
+}
+
+func RegisterRoleServiceServer(s grpc.ServiceRegistrar, srv RoleServiceServer) {
 	s.RegisterService(&_RoleService_serviceDesc, srv)
 }
 

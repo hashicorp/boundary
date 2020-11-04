@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // UserServiceClient is the client API for UserService service.
 //
@@ -148,6 +148,8 @@ func (c *userServiceClient) RemoveUserAccounts(ctx context.Context, in *RemoveUs
 }
 
 // UserServiceServer is the server API for UserService service.
+// All implementations must embed UnimplementedUserServiceServer
+// for forward compatibility
 type UserServiceServer interface {
 	// GetUser returns a stored User if present.  The provided request
 	// must include the User ID for the User being retrieved. If
@@ -197,38 +199,47 @@ type UserServiceServer interface {
 	// will be removed from. If the provided Account ids is not associated with the
 	// provided User, an error is returned.
 	RemoveUserAccounts(context.Context, *RemoveUserAccountsRequest) (*RemoveUserAccountsResponse, error)
+	mustEmbedUnimplementedUserServiceServer()
 }
 
-// UnimplementedUserServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedUserServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedUserServiceServer struct {
 }
 
-func (*UnimplementedUserServiceServer) GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error) {
+func (UnimplementedUserServiceServer) GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUser not implemented")
 }
-func (*UnimplementedUserServiceServer) ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error) {
+func (UnimplementedUserServiceServer) ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUsers not implemented")
 }
-func (*UnimplementedUserServiceServer) CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error) {
+func (UnimplementedUserServiceServer) CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateUser not implemented")
 }
-func (*UnimplementedUserServiceServer) UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error) {
+func (UnimplementedUserServiceServer) UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateUser not implemented")
 }
-func (*UnimplementedUserServiceServer) DeleteUser(context.Context, *DeleteUserRequest) (*DeleteUserResponse, error) {
+func (UnimplementedUserServiceServer) DeleteUser(context.Context, *DeleteUserRequest) (*DeleteUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteUser not implemented")
 }
-func (*UnimplementedUserServiceServer) AddUserAccounts(context.Context, *AddUserAccountsRequest) (*AddUserAccountsResponse, error) {
+func (UnimplementedUserServiceServer) AddUserAccounts(context.Context, *AddUserAccountsRequest) (*AddUserAccountsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddUserAccounts not implemented")
 }
-func (*UnimplementedUserServiceServer) SetUserAccounts(context.Context, *SetUserAccountsRequest) (*SetUserAccountsResponse, error) {
+func (UnimplementedUserServiceServer) SetUserAccounts(context.Context, *SetUserAccountsRequest) (*SetUserAccountsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetUserAccounts not implemented")
 }
-func (*UnimplementedUserServiceServer) RemoveUserAccounts(context.Context, *RemoveUserAccountsRequest) (*RemoveUserAccountsResponse, error) {
+func (UnimplementedUserServiceServer) RemoveUserAccounts(context.Context, *RemoveUserAccountsRequest) (*RemoveUserAccountsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveUserAccounts not implemented")
 }
+func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 
-func RegisterUserServiceServer(s *grpc.Server, srv UserServiceServer) {
+// UnsafeUserServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to UserServiceServer will
+// result in compilation errors.
+type UnsafeUserServiceServer interface {
+	mustEmbedUnimplementedUserServiceServer()
+}
+
+func RegisterUserServiceServer(s grpc.ServiceRegistrar, srv UserServiceServer) {
 	s.RegisterService(&_UserService_serviceDesc, srv)
 }
 

@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // GroupServiceClient is the client API for GroupService service.
 //
@@ -143,6 +143,8 @@ func (c *groupServiceClient) RemoveGroupMembers(ctx context.Context, in *RemoveG
 }
 
 // GroupServiceServer is the server API for GroupService service.
+// All implementations must embed UnimplementedGroupServiceServer
+// for forward compatibility
 type GroupServiceServer interface {
 	// GetGroup returns a stored Group if present. The provided request must
 	// include the Group id and if it is missing, malformed or referencing a
@@ -187,38 +189,47 @@ type GroupServiceServer interface {
 	// An error is returned if any provided id is missing, malformed or
 	// references a non-existing resource.
 	RemoveGroupMembers(context.Context, *RemoveGroupMembersRequest) (*RemoveGroupMembersResponse, error)
+	mustEmbedUnimplementedGroupServiceServer()
 }
 
-// UnimplementedGroupServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedGroupServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedGroupServiceServer struct {
 }
 
-func (*UnimplementedGroupServiceServer) GetGroup(context.Context, *GetGroupRequest) (*GetGroupResponse, error) {
+func (UnimplementedGroupServiceServer) GetGroup(context.Context, *GetGroupRequest) (*GetGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroup not implemented")
 }
-func (*UnimplementedGroupServiceServer) ListGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error) {
+func (UnimplementedGroupServiceServer) ListGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListGroups not implemented")
 }
-func (*UnimplementedGroupServiceServer) CreateGroup(context.Context, *CreateGroupRequest) (*CreateGroupResponse, error) {
+func (UnimplementedGroupServiceServer) CreateGroup(context.Context, *CreateGroupRequest) (*CreateGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateGroup not implemented")
 }
-func (*UnimplementedGroupServiceServer) UpdateGroup(context.Context, *UpdateGroupRequest) (*UpdateGroupResponse, error) {
+func (UnimplementedGroupServiceServer) UpdateGroup(context.Context, *UpdateGroupRequest) (*UpdateGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateGroup not implemented")
 }
-func (*UnimplementedGroupServiceServer) DeleteGroup(context.Context, *DeleteGroupRequest) (*DeleteGroupResponse, error) {
+func (UnimplementedGroupServiceServer) DeleteGroup(context.Context, *DeleteGroupRequest) (*DeleteGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteGroup not implemented")
 }
-func (*UnimplementedGroupServiceServer) AddGroupMembers(context.Context, *AddGroupMembersRequest) (*AddGroupMembersResponse, error) {
+func (UnimplementedGroupServiceServer) AddGroupMembers(context.Context, *AddGroupMembersRequest) (*AddGroupMembersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddGroupMembers not implemented")
 }
-func (*UnimplementedGroupServiceServer) SetGroupMembers(context.Context, *SetGroupMembersRequest) (*SetGroupMembersResponse, error) {
+func (UnimplementedGroupServiceServer) SetGroupMembers(context.Context, *SetGroupMembersRequest) (*SetGroupMembersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetGroupMembers not implemented")
 }
-func (*UnimplementedGroupServiceServer) RemoveGroupMembers(context.Context, *RemoveGroupMembersRequest) (*RemoveGroupMembersResponse, error) {
+func (UnimplementedGroupServiceServer) RemoveGroupMembers(context.Context, *RemoveGroupMembersRequest) (*RemoveGroupMembersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveGroupMembers not implemented")
 }
+func (UnimplementedGroupServiceServer) mustEmbedUnimplementedGroupServiceServer() {}
 
-func RegisterGroupServiceServer(s *grpc.Server, srv GroupServiceServer) {
+// UnsafeGroupServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to GroupServiceServer will
+// result in compilation errors.
+type UnsafeGroupServiceServer interface {
+	mustEmbedUnimplementedGroupServiceServer()
+}
+
+func RegisterGroupServiceServer(s grpc.ServiceRegistrar, srv GroupServiceServer) {
 	s.RegisterService(&_GroupService_serviceDesc, srv)
 }
 

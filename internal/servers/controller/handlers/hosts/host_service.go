@@ -34,6 +34,8 @@ func init() {
 }
 
 type Service struct {
+	pbs.UnimplementedHostServiceServer
+
 	staticRepoFn common.StaticRepoFactory
 }
 

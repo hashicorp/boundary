@@ -32,6 +32,8 @@ func init() {
 
 // Service handles request as described by the pbs.AccountServiceServer interface.
 type Service struct {
+	pbs.UnimplementedAccountServiceServer
+
 	repoFn common.PasswordAuthRepoFactory
 }
 

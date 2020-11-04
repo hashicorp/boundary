@@ -20,6 +20,8 @@ import (
 
 // Service handles request as described by the pbs.SessionServiceServer interface.
 type Service struct {
+	pbs.UnimplementedSessionServiceServer
+
 	repoFn    common.SessionRepoFactory
 	iamRepoFn common.IamRepoFactory
 }
@@ -197,10 +199,10 @@ func toProto(in *session.Session) *pb.Session {
 		Type:        target.SubtypeFromId(in.TargetId).String(),
 		// TODO: Provide the ServerType and the ServerId when that information becomes relevant in the API.
 
-		CreatedTime:    in.CreateTime.GetTimestamp(),
-		UpdatedTime:    in.UpdateTime.GetTimestamp(),
-		ExpirationTime: in.ExpirationTime.GetTimestamp(),
-		Certificate:    in.Certificate,
+		CreatedTime:       in.CreateTime.GetTimestamp(),
+		UpdatedTime:       in.UpdateTime.GetTimestamp(),
+		ExpirationTime:    in.ExpirationTime.GetTimestamp(),
+		Certificate:       in.Certificate,
 		TerminationReason: in.TerminationReason,
 	}
 	if len(in.States) > 0 {

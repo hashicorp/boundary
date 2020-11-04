@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // SessionServiceClient is the client API for SessionService service.
 //
@@ -84,6 +84,8 @@ func (c *sessionServiceClient) CloseConnection(ctx context.Context, in *CloseCon
 }
 
 // SessionServiceServer is the server API for SessionService service.
+// All implementations must embed UnimplementedSessionServiceServer
+// for forward compatibility
 type SessionServiceServer interface {
 	// GetSession allows a worker to retrieve session information from the
 	// controller.
@@ -96,29 +98,38 @@ type SessionServiceServer interface {
 	ConnectConnection(context.Context, *ConnectConnectionRequest) (*ConnectConnectionResponse, error)
 	// CloseConnections updates a connection to set it to closed
 	CloseConnection(context.Context, *CloseConnectionRequest) (*CloseConnectionResponse, error)
+	mustEmbedUnimplementedSessionServiceServer()
 }
 
-// UnimplementedSessionServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedSessionServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedSessionServiceServer struct {
 }
 
-func (*UnimplementedSessionServiceServer) LookupSession(context.Context, *LookupSessionRequest) (*LookupSessionResponse, error) {
+func (UnimplementedSessionServiceServer) LookupSession(context.Context, *LookupSessionRequest) (*LookupSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LookupSession not implemented")
 }
-func (*UnimplementedSessionServiceServer) ActivateSession(context.Context, *ActivateSessionRequest) (*ActivateSessionResponse, error) {
+func (UnimplementedSessionServiceServer) ActivateSession(context.Context, *ActivateSessionRequest) (*ActivateSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ActivateSession not implemented")
 }
-func (*UnimplementedSessionServiceServer) AuthorizeConnection(context.Context, *AuthorizeConnectionRequest) (*AuthorizeConnectionResponse, error) {
+func (UnimplementedSessionServiceServer) AuthorizeConnection(context.Context, *AuthorizeConnectionRequest) (*AuthorizeConnectionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AuthorizeConnection not implemented")
 }
-func (*UnimplementedSessionServiceServer) ConnectConnection(context.Context, *ConnectConnectionRequest) (*ConnectConnectionResponse, error) {
+func (UnimplementedSessionServiceServer) ConnectConnection(context.Context, *ConnectConnectionRequest) (*ConnectConnectionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConnectConnection not implemented")
 }
-func (*UnimplementedSessionServiceServer) CloseConnection(context.Context, *CloseConnectionRequest) (*CloseConnectionResponse, error) {
+func (UnimplementedSessionServiceServer) CloseConnection(context.Context, *CloseConnectionRequest) (*CloseConnectionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CloseConnection not implemented")
 }
+func (UnimplementedSessionServiceServer) mustEmbedUnimplementedSessionServiceServer() {}
 
-func RegisterSessionServiceServer(s *grpc.Server, srv SessionServiceServer) {
+// UnsafeSessionServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to SessionServiceServer will
+// result in compilation errors.
+type UnsafeSessionServiceServer interface {
+	mustEmbedUnimplementedSessionServiceServer()
+}
+
+func RegisterSessionServiceServer(s grpc.ServiceRegistrar, srv SessionServiceServer) {
 	s.RegisterService(&_SessionService_serviceDesc, srv)
 }
 

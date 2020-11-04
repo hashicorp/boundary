@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // SessionServiceClient is the client API for SessionService service.
 //
@@ -69,6 +69,8 @@ func (c *sessionServiceClient) CancelSession(ctx context.Context, in *CancelSess
 }
 
 // SessionServiceServer is the server API for SessionService service.
+// All implementations must embed UnimplementedSessionServiceServer
+// for forward compatibility
 type SessionServiceServer interface {
 	// GetSession returns a stored Session if present.  The provided request
 	// must include the Session ID for the Session being retrieved. If
@@ -84,23 +86,32 @@ type SessionServiceServer interface {
 	// is returned if the request attempts to cancel a Session that does
 	// not exist.
 	CancelSession(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error)
+	mustEmbedUnimplementedSessionServiceServer()
 }
 
-// UnimplementedSessionServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedSessionServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedSessionServiceServer struct {
 }
 
-func (*UnimplementedSessionServiceServer) GetSession(context.Context, *GetSessionRequest) (*GetSessionResponse, error) {
+func (UnimplementedSessionServiceServer) GetSession(context.Context, *GetSessionRequest) (*GetSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSession not implemented")
 }
-func (*UnimplementedSessionServiceServer) ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error) {
+func (UnimplementedSessionServiceServer) ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSessions not implemented")
 }
-func (*UnimplementedSessionServiceServer) CancelSession(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error) {
+func (UnimplementedSessionServiceServer) CancelSession(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelSession not implemented")
 }
+func (UnimplementedSessionServiceServer) mustEmbedUnimplementedSessionServiceServer() {}
 
-func RegisterSessionServiceServer(s *grpc.Server, srv SessionServiceServer) {
+// UnsafeSessionServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to SessionServiceServer will
+// result in compilation errors.
+type UnsafeSessionServiceServer interface {
+	mustEmbedUnimplementedSessionServiceServer()
+}
+
+func RegisterSessionServiceServer(s grpc.ServiceRegistrar, srv SessionServiceServer) {
 	s.RegisterService(&_SessionService_serviceDesc, srv)
 }
 

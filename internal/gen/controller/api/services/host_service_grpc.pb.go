@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // HostServiceClient is the client API for HostService service.
 //
@@ -101,6 +101,8 @@ func (c *hostServiceClient) DeleteHost(ctx context.Context, in *DeleteHostReques
 }
 
 // HostServiceServer is the server API for HostService service.
+// All implementations must embed UnimplementedHostServiceServer
+// for forward compatibility
 type HostServiceServer interface {
 	// GetHost returns a stored Host if present.  The provided request
 	// must include the host ID for the resource being retrieved. If the ID is
@@ -130,29 +132,38 @@ type HostServiceServer interface {
 	// DeleteHost removes a Host from Boundary. If the provided Host ID
 	// is malformed or not provided an error is returned.
 	DeleteHost(context.Context, *DeleteHostRequest) (*DeleteHostResponse, error)
+	mustEmbedUnimplementedHostServiceServer()
 }
 
-// UnimplementedHostServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedHostServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedHostServiceServer struct {
 }
 
-func (*UnimplementedHostServiceServer) GetHost(context.Context, *GetHostRequest) (*GetHostResponse, error) {
+func (UnimplementedHostServiceServer) GetHost(context.Context, *GetHostRequest) (*GetHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHost not implemented")
 }
-func (*UnimplementedHostServiceServer) ListHosts(context.Context, *ListHostsRequest) (*ListHostsResponse, error) {
+func (UnimplementedHostServiceServer) ListHosts(context.Context, *ListHostsRequest) (*ListHostsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListHosts not implemented")
 }
-func (*UnimplementedHostServiceServer) CreateHost(context.Context, *CreateHostRequest) (*CreateHostResponse, error) {
+func (UnimplementedHostServiceServer) CreateHost(context.Context, *CreateHostRequest) (*CreateHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateHost not implemented")
 }
-func (*UnimplementedHostServiceServer) UpdateHost(context.Context, *UpdateHostRequest) (*UpdateHostResponse, error) {
+func (UnimplementedHostServiceServer) UpdateHost(context.Context, *UpdateHostRequest) (*UpdateHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateHost not implemented")
 }
-func (*UnimplementedHostServiceServer) DeleteHost(context.Context, *DeleteHostRequest) (*DeleteHostResponse, error) {
+func (UnimplementedHostServiceServer) DeleteHost(context.Context, *DeleteHostRequest) (*DeleteHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteHost not implemented")
 }
+func (UnimplementedHostServiceServer) mustEmbedUnimplementedHostServiceServer() {}
 
-func RegisterHostServiceServer(s *grpc.Server, srv HostServiceServer) {
+// UnsafeHostServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to HostServiceServer will
+// result in compilation errors.
+type UnsafeHostServiceServer interface {
+	mustEmbedUnimplementedHostServiceServer()
+}
+
+func RegisterHostServiceServer(s grpc.ServiceRegistrar, srv HostServiceServer) {
 	s.RegisterService(&_HostService_serviceDesc, srv)
 }
 
