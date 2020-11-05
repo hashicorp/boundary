@@ -11,6 +11,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * controller: Add ability to set public address for cluster purposes
   ([Issue](https://github.com/hashicorp/boundary/pull/758))
   ([PR](https://github.com/hashicorp/boundary/pull/761))
+* ui: Improve scope awareness and navigation, including IAM for global scope
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/355))
 * ui: Add dark mode toggle
   ([Issue](https://github.com/hashicorp/boundary/issues/719))
   ([PR](https://github.com/hashicorp/boundary-ui/pull/358))
@@ -64,7 +66,7 @@ them to access targets).
 
 ### Bug Fixes
 
-* cli: Fix database init when locale isn't English 
+* cli: Fix database init when locale isn't English
   ([Issue](https://github.com/hashicorp/boundary/issues/729))
   ([PR](https://github.com/hashicorp/boundary/pull/736))
 * cli: Fix hyphenation in help output for resources with compound names
