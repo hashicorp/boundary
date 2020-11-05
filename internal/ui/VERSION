@@ -1,4 +1,4 @@
-b2c5dded9adb5756ff06479bc0376091a775f36b Merge pull request #369 from hashicorp/chore-resolutions
+e99f3385dad8c0859d6c75cb0f53aca14d3a150b Merge pull request #370 from hashicorp/fix-org-deletion-label
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
