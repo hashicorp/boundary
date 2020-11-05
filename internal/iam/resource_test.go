@@ -49,6 +49,6 @@ func Test_LookupScope(t *testing.T) {
 		user2 := allocUser()
 		s, err = LookupScope(context.Background(), w, &user2)
 		assert.Nil(s)
-		assert.Equal("LookupScope: scope id is unset invalid parameter", err.Error())
+		assert.Contains(err.Error(), "LookupScope: scope id is unset invalid parameter")
 	})
 }

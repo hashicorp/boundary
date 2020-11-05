@@ -3,7 +3,7 @@ package session
 import (
 	"fmt"
 
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // CloseWith defines the boundary data that is saved in the repo when the
@@ -17,10 +17,10 @@ type CloseWith struct {
 
 func (c CloseWith) validate() error {
 	if c.ConnectionId == "" {
-		return fmt.Errorf("missing connection id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("missing connection id: %w", errors.ErrInvalidParameter)
 	}
 	if c.ClosedReason.String() == "" {
-		return fmt.Errorf("missing closed reason: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("missing closed reason: %w", errors.ErrInvalidParameter)
 	}
 	// 0 is valid for BytesUp and BytesDown
 	return nil

@@ -2,11 +2,11 @@ package kms_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -72,7 +72,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 				keyWrapper: wrapper,
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-wrapper",
@@ -82,7 +82,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 				keyWrapper: nil,
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -106,7 +106,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, rk.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(errors.Is(err, db.ErrRecordNotFound))
+			assert.True(errors.Is(err, errors.ErrRecordNotFound))
 
 			assert.NotNil(kv.CreateTime)
 			foundKeyVersion, err := repo.LookupRootKeyVersion(context.Background(), tt.args.keyWrapper, kv.PrivateId)
@@ -116,7 +116,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, kv.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(errors.Is(err, db.ErrRecordNotFound))
+			assert.True(errors.Is(err, errors.ErrRecordNotFound))
 		})
 	}
 }
@@ -160,7 +160,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsError:     db.ErrInvalidParameter,
+			wantIsError:     errors.ErrInvalidParameter,
 		},
 		{
 			name: "not-found",
@@ -176,7 +176,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsError:     db.ErrRecordNotFound,
+			wantIsError:     errors.ErrRecordNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -192,7 +192,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 				// make sure there was no oplog written
 				err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)
@@ -200,12 +200,12 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 			foundKey, err := repo.LookupRootKey(context.Background(), wrapper, tt.args.key.PrivateId)
 			assert.Error(err)
 			assert.Nil(foundKey)
-			assert.True(errors.Is(err, db.ErrRecordNotFound))
+			assert.True(errors.Is(err, errors.ErrRecordNotFound))
 
 			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -17,7 +16,9 @@ import (
 	targetStore "github.com/hashicorp/boundary/internal/target/store"
 	"github.com/lib/pq"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
+
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
 
 	"github.com/hashicorp/boundary/internal/kms"
@@ -203,7 +204,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-hostId",
@@ -215,7 +216,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-targetId",
@@ -227,7 +228,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-hostSetId",
@@ -239,7 +240,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-authTokenId",
@@ -251,7 +252,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-scopeId",
@@ -263,7 +264,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -371,7 +372,7 @@ func TestRepository_updateState(t *testing.T) {
 				return &v
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "bad-sessionId",
@@ -392,7 +393,7 @@ func TestRepository_updateState(t *testing.T) {
 				return &s
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -565,7 +566,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-ClientTcpAddress",
@@ -575,7 +576,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-ClientTcpPort",
@@ -585,7 +586,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-EndpointTcpAddress",
@@ -595,7 +596,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-EndpointTcpPort",
@@ -605,7 +606,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -672,7 +673,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 			}(),
 			reason:      ClosedByUser,
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-session-version",
@@ -683,7 +684,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 			}(),
 			reason:      ClosedByUser,
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "open-connection",
@@ -999,7 +1000,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 			closeWith:   []CloseWith{},
 			reason:      ClosedByUser,
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "missing-ConnectionId",
@@ -1011,7 +1012,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 			}(),
 			reason:      ClosedByUser,
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1104,7 +1105,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			}(),
 			wantStatus:  StatusCanceling,
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name:    "bad-version-id",
@@ -1125,7 +1126,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			}(),
 			wantStatus:  StatusCanceling,
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1413,7 +1414,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 				return &id
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name:    "empty-session-version",
@@ -1423,7 +1424,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 				return &v
 			}(),
 			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1531,7 +1532,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete session: failed record not found for ",
+			wantErrMsg:      "delete session: failed record not found:",
 		},
 	}
 	for _, tt := range tests {
@@ -1544,7 +1545,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.session.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)

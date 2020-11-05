@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -70,10 +71,10 @@ var _ db.VetForWriter = (*GroupMemberUser)(nil)
 // options are currently supported.
 func NewGroupMemberUser(groupId, userId string, opt ...Option) (*GroupMemberUser, error) {
 	if groupId == "" {
-		return nil, fmt.Errorf("new group member: missing group id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new group member: missing group id: %w", errors.ErrInvalidParameter)
 	}
 	if userId == "" {
-		return nil, fmt.Errorf("new group member: missing user id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new group member: missing user id: %w", errors.ErrInvalidParameter)
 	}
 	return &GroupMemberUser{
 		GroupMemberUser: &store.GroupMemberUser{
@@ -100,10 +101,10 @@ func (m *GroupMemberUser) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface for group members.
 func (m *GroupMemberUser) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if m.GroupId == "" {
-		return fmt.Errorf("group member: missing group id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("group member: missing group id: %w", errors.ErrInvalidParameter)
 	}
 	if m.MemberId == "" {
-		return fmt.Errorf("group member: missing member id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("group member: missing member id: %w", errors.ErrInvalidParameter)
 	}
 	return nil
 }

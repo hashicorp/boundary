@@ -2,15 +2,14 @@ package iam
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -60,7 +59,7 @@ func TestRepository_CreateUser(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create user: error getting metadata for create: unable to get scope for standard metadata: record not found for",
+			wantErrMsg: "create user: error getting metadata for create: unable to get scope for standard metadata: record not found:",
 		},
 		{
 			name: "dup-name",
@@ -92,7 +91,7 @@ func TestRepository_CreateUser(t *testing.T) {
 				case "dup-name":
 					assert.Contains(err.Error(), fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId))
 				default:
-					assert.True(strings.HasPrefix(err.Error(), tt.wantErrMsg))
+					assert.Contains(err.Error(), tt.wantErrMsg)
 				}
 				return
 			}
@@ -171,8 +170,8 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update user: update: lookup after write: record not found for 1",
-			wantIsErr:      db.ErrRecordNotFound,
+			wantErrMsg:     "update user: update: lookup after write: record not found:",
+			wantIsErr:      errors.ErrRecordNotFound,
 		},
 		{
 			name: "null-name",
@@ -341,7 +340,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsErr != nil {
-					assert.True(errors.Is(err, db.ErrRecordNotFound))
+					assert.True(errors.Is(err, errors.ErrRecordNotFound))
 				}
 				assert.Nil(userAfterUpdate)
 				assert.Equal(0, updatedRows)
@@ -353,7 +352,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				}
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
-				assert.Equal("record not found", err.Error())
+				assert.Contains(err.Error(), "record not found")
 				return
 			}
 			require.NoError(err)
@@ -435,7 +434,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 			},
 			wantRowsDeleted: 1,
 			wantErr:         true,
-			wantErrMsg:      "delete user: failed record not found for",
+			wantErrMsg:      "delete user: failed record not found:",
 		},
 	}
 	for _, tt := range tests {
@@ -445,10 +444,10 @@ func TestRepository_DeleteUser(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, deletedRows)
-				assert.True(strings.HasPrefix(err.Error(), tt.wantErrMsg))
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.user.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
-				assert.Equal("record not found", err.Error())
+				assert.Contains(err.Error(), "record not found")
 				return
 			}
 			require.NoError(err)
@@ -591,7 +590,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 				withAccountId: newAuthAcctWithoutVivify.PublicId,
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrRecordNotFound,
+			wantErrIs: errors.ErrRecordNotFound,
 		},
 		{
 			name: "missing auth acct id",
@@ -599,7 +598,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 				withAccountId: "",
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "existing-auth-account",
@@ -628,7 +627,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 				withAccountId: id,
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrRecordNotFound,
+			wantErrIs: errors.ErrRecordNotFound,
 		},
 		{
 			name: "bad-auth-account-id-with-vivify",
@@ -639,7 +638,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 				},
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrRecordNotFound,
+			wantErrIs: errors.ErrRecordNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -729,7 +728,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "missing-userId",
@@ -740,7 +739,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "already-properly-assoc",
@@ -764,7 +763,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "assoc-with-diff-user-withDisassociateOption",
@@ -777,7 +776,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "bad-acct-id",
@@ -789,7 +788,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrRecordNotFound,
+			wantErrIs: errors.ErrRecordNotFound,
 		},
 		{
 			name: "bad-user-id-not-associated-account",
@@ -885,7 +884,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "missing-userId",
@@ -896,7 +895,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "already-properly-disassoc",
@@ -908,7 +907,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "assoc-with-diff-user",
@@ -921,7 +920,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "bad-acct-id",
@@ -933,7 +932,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrRecordNotFound,
+			wantErrIs: errors.ErrRecordNotFound,
 		},
 		{
 			name: "bad-user-id-not-associated-account",
@@ -945,7 +944,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "bad-user-id",

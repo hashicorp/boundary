@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	workerpbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -140,19 +141,19 @@ func (s *ConnectionState) SetTableName(n string) {
 // validate checks the session state
 func (s *ConnectionState) validate(errorPrefix string) error {
 	if s.Status == "" {
-		return fmt.Errorf("%s missing status: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing status: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.ConnectionId == "" {
-		return fmt.Errorf("%s missing connection id: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing connection id: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.StartTime != nil {
-		return fmt.Errorf("%s start time is not settable: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s start time is not settable: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.EndTime != nil {
-		return fmt.Errorf("%s end time is not settable: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s end time is not settable: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if s.PreviousEndTime != nil {
-		return fmt.Errorf("%s previous end time is not settable: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s previous end time is not settable: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	return nil
 }

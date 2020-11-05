@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
@@ -35,13 +36,13 @@ func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 // a db.TxHandler and allows this capability to be shared with the iam repo.
 func createRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapper, scopeId string, key []byte) (*RootKey, *RootKeyVersion, error) {
 	if scopeId == "" {
-		return nil, nil, fmt.Errorf("create root key: missing scope id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create root key: missing scope id: %w", errors.ErrInvalidParameter)
 	}
 	if keyWrapper == nil {
-		return nil, nil, fmt.Errorf("create root key: missing key wrapper: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create root key: missing key wrapper: %w", errors.ErrInvalidParameter)
 	}
 	if len(key) == 0 {
-		return nil, nil, fmt.Errorf("create root key: missing key: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create root key: missing key: %w", errors.ErrInvalidParameter)
 	}
 	rk := AllocRootKey()
 	kv := AllocRootKeyVersion()
@@ -79,10 +80,10 @@ func createRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapp
 // found, it will return nil, nil.
 func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, opt ...Option) (*RootKey, error) {
 	if privateId == "" {
-		return nil, fmt.Errorf("lookup root key: missing private id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup root key: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	if keyWrapper == nil {
-		return nil, fmt.Errorf("lookup root key: missing key wrapper: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup root key: missing key wrapper: %w", errors.ErrInvalidParameter)
 	}
 	k := AllocRootKey()
 	k.PrivateId = privateId
@@ -97,7 +98,7 @@ func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 // are ignored.
 func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, opt ...Option) (int, error) {
 	if privateId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete root key: missing private id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete root key: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	k := AllocRootKey()
 	k.PrivateId = privateId
@@ -115,7 +116,7 @@ func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 			// no oplog entries for root keys
 			rowsDeleted, err = w.Delete(ctx, dk)
 			if err == nil && rowsDeleted > 1 {
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			return err
 		},

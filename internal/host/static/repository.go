@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
@@ -26,11 +27,11 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	switch {
 	case r == nil:
-		return nil, fmt.Errorf("db.Reader: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("db.Reader: %w", errors.ErrInvalidParameter)
 	case w == nil:
-		return nil, fmt.Errorf("db.Writer: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("db.Writer: %w", errors.ErrInvalidParameter)
 	case kms == nil:
-		return nil, fmt.Errorf("kms: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("kms: %w", errors.ErrInvalidParameter)
 	}
 
 	opts := getOpts(opt...)

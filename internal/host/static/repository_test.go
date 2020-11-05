@@ -1,13 +1,13 @@
 package static
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
@@ -67,7 +67,7 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-writer",
@@ -77,7 +77,7 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-kms",
@@ -87,7 +87,7 @@ func TestRepository_New(t *testing.T) {
 				kms: nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "all-nils",
@@ -97,7 +97,7 @@ func TestRepository_New(t *testing.T) {
 				kms: nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {

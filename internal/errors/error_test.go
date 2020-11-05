@@ -157,7 +157,7 @@ func TestError_Unwrap(t *testing.T) {
 				Unwrap() error
 			}).Unwrap()
 			assert.Equal(tt.want, err)
-			assert.True(stderrors.Is(tt.err, tt.wantIsErr))
+			assert.True(errors.Is(tt.err, tt.wantIsErr))
 		})
 	}
 	t.Run("nil *Err", func(t *testing.T) {
@@ -236,7 +236,7 @@ func TestConvertError(t *testing.T) {
 
 		e := errors.Convert(err)
 		require.NotNil(e)
-		assert.True(stderrors.Is(e, errors.ErrNotUnique))
+		assert.True(errors.Is(e, errors.ErrNotUnique))
 		assert.Equal("Key (name)=(alice) already exists.: integrity violation: error #1002: \nunique constraint violation: integrity violation: error #1002", e.Error())
 	})
 	t.Run("ErrCodeNotNull", func(t *testing.T) {
@@ -248,7 +248,7 @@ func TestConvertError(t *testing.T) {
 
 		e := errors.Convert(err)
 		require.NotNil(e)
-		assert.True(stderrors.Is(e, errors.ErrNotNull))
+		assert.True(errors.Is(e, errors.ErrNotNull))
 		assert.Equal("description must not be empty: integrity violation: error #1001: \nnot null constraint violated: integrity violation: error #1001", e.Error())
 	})
 	t.Run("ErrCodeCheckConstraint", func(t *testing.T) {
@@ -260,7 +260,7 @@ func TestConvertError(t *testing.T) {
 
 		e := errors.Convert(err)
 		require.NotNil(e)
-		assert.True(stderrors.Is(e, errors.ErrCheckConstraint))
+		assert.True(errors.Is(e, errors.ErrCheckConstraint))
 		assert.Equal("test_table_five_check constraint failed: integrity violation: error #1000: \ncheck constraint violated: integrity violation: error #1000", e.Error())
 	})
 	t.Run("MissingTable", func(t *testing.T) {

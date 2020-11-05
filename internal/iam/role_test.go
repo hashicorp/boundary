@@ -2,12 +2,12 @@ package iam
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -71,8 +71,8 @@ func TestNewRole(t *testing.T) {
 				opt: []Option{WithName(id)},
 			},
 			wantErr:    true,
-			wantErrMsg: "new role: missing scope id invalid parameter",
-			wantIsErr:  db.ErrInvalidParameter,
+			wantErrMsg: "new role: missing scope id invalid parameter:",
+			wantIsErr:  errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -81,7 +81,7 @@ func TestNewRole(t *testing.T) {
 			got, err := NewRole(tt.args.scopePublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				if tt.wantIsErr != nil {
 					assert.True(errors.Is(err, tt.wantIsErr))
 				}
@@ -427,7 +427,7 @@ func Test_RoleUpdate(t *testing.T) {
 				assert.Equal(tt.wantErrMsg, err.Error())
 				err = db.TestVerifyOplog(t, rw, role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
-				assert.Equal("record not found", err.Error())
+				assert.Contains(err.Error(), "record not found:")
 				return
 			}
 			require.NoError(err)
@@ -526,7 +526,7 @@ func Test_RoleDelete(t *testing.T) {
 			foundRole.PublicId = tt.role.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundRole)
 			require.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

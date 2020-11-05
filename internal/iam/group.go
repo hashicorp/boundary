@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -31,7 +32,7 @@ var _ db.VetForWriter = (*Group)(nil)
 // and allowed options include: withDescripion, WithName.
 func NewGroup(scopeId string, opt ...Option) (*Group, error) {
 	if scopeId == "" {
-		return nil, fmt.Errorf("new group: missing scope id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new group: missing scope id %w", errors.ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
 	g := &Group{
@@ -62,7 +63,7 @@ func allocGroup() Group {
 // before it's written.
 func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if g.PublicId == "" {
-		return fmt.Errorf("group vet for write: missing public id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("group vet for write: missing public id: %w", errors.ErrInvalidParameter)
 	}
 	if err := validateScopeForWrite(ctx, r, g, opType, opt...); err != nil {
 		return err

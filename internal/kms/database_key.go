@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -22,7 +23,7 @@ type DatabaseKey struct {
 // are currently supported.
 func NewDatabaseKey(rootKeyId string, opt ...Option) (*DatabaseKey, error) {
 	if rootKeyId == "" {
-		return nil, fmt.Errorf("new root key: missing root key id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new root key: missing root key id: %w", errors.ErrInvalidParameter)
 	}
 	c := &DatabaseKey{
 		DatabaseKey: &store.DatabaseKey{
@@ -51,15 +52,15 @@ func (k *DatabaseKey) Clone() interface{} {
 // before it's written.
 func (k *DatabaseKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if k.PrivateId == "" {
-		return fmt.Errorf("database key vet for write: missing private id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("database key vet for write: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.RootKeyId == "" {
-			return fmt.Errorf("database key vet for write: missing root key id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("database key vet for write: missing root key id: %w", errors.ErrInvalidParameter)
 		}
 	case db.UpdateOp:
-		return fmt.Errorf("database key vet for write: key is immutable: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("database key vet for write: key is immutable: %w", errors.ErrInvalidParameter)
 	}
 	return nil
 }

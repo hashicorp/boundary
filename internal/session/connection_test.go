@@ -2,10 +2,10 @@ package session
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,7 +61,7 @@ func TestConnection_Create(t *testing.T) {
 				endpointTcpPort:    2222,
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-client-address",
@@ -72,7 +72,7 @@ func TestConnection_Create(t *testing.T) {
 				endpointTcpPort:    2222,
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-client-port",
@@ -83,7 +83,7 @@ func TestConnection_Create(t *testing.T) {
 				endpointTcpPort:    2222,
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-endpoint-address",
@@ -94,7 +94,7 @@ func TestConnection_Create(t *testing.T) {
 				endpointTcpPort:  2222,
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-endpoint-port",
@@ -105,7 +105,7 @@ func TestConnection_Create(t *testing.T) {
 				endpointTcpAddress: "127.0.0.1",
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -195,7 +195,7 @@ func TestConnection_Delete(t *testing.T) {
 			foundConnection.PublicId = tt.connection.PublicId
 			err = rw.LookupById(context.Background(), &foundConnection)
 			require.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

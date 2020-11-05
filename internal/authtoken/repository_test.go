@@ -2,7 +2,6 @@ package authtoken
 
 import (
 	"context"
-	"errors"
 	"sort"
 	"testing"
 	"time"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 )
 
@@ -77,7 +77,7 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-writer",
@@ -87,7 +87,7 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-kms",
@@ -97,7 +97,7 @@ func TestRepository_New(t *testing.T) {
 				kms: nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "all-nils",
@@ -107,7 +107,7 @@ func TestRepository_New(t *testing.T) {
 				kms: nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -253,7 +253,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 			name:    "bad-public-id",
 			id:      "",
 			want:    nil,
-			wantErr: db.ErrInvalidParameter,
+			wantErr: errors.ErrInvalidParameter,
 		},
 	}
 
@@ -347,7 +347,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 			id:      at.GetPublicId(),
 			token:   "",
 			want:    nil,
-			wantErr: db.ErrInvalidParameter,
+			wantErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:    "mismatched-token",
@@ -522,7 +522,7 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 			name:    "empty-public-id",
 			id:      "",
 			want:    0,
-			wantErr: db.ErrInvalidParameter,
+			wantErr: errors.ErrInvalidParameter,
 		},
 	}
 
@@ -588,7 +588,7 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 			name:    "empty-org-id",
 			orgId:   "",
 			want:    nil,
-			wantErr: db.ErrInvalidParameter,
+			wantErr: errors.ErrInvalidParameter,
 		},
 	}
 

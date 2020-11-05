@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -21,7 +22,7 @@ type Configuration interface {
 // GetConfiguration returns the current configuration for authMethodId.
 func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) (Configuration, error) {
 	if authMethodId == "" {
-		return nil, fmt.Errorf("get password configuration: no auth method id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("get password configuration: no auth method id: %w", errors.ErrInvalidParameter)
 	}
 	cc, err := r.currentConfig(ctx, authMethodId)
 	if err != nil {
@@ -42,10 +43,10 @@ func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) 
 // updates AuthMethod to use the previous configuration.
 func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Configuration) (Configuration, error) {
 	if c == nil {
-		return nil, fmt.Errorf("set password configuration: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("set password configuration: %w", errors.ErrInvalidParameter)
 	}
 	if c.AuthMethodId() == "" {
-		return nil, fmt.Errorf("set password configuration: no auth method id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("set password configuration: no auth method id: %w", errors.ErrInvalidParameter)
 	}
 	if err := c.validate(); err != nil {
 		return nil, fmt.Errorf("set password configuration: %w", err)
@@ -89,7 +90,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 		func(rr db.Reader, w db.Writer) error {
 			where, args := c.whereDup()
 			if err := rr.LookupWhere(ctx, newArgon2Conf, where, args...); err != nil {
-				if err != db.ErrRecordNotFound {
+				if err != errors.ErrRecordNotFound {
 					return err
 				}
 				newArgon2Conf = c.clone()
@@ -101,7 +102,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 			a.PasswordConfId = newArgon2Conf.PrivateId
 			rowsUpdated, err := w.Update(ctx, a, []string{"PasswordConfId"}, nil, db.WithOplog(oplogWrapper, a.oplog(oplog.OpType_OP_TYPE_UPDATE)))
 			if err == nil && rowsUpdated > 1 {
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			return err
 		},

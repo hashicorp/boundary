@@ -2,10 +2,11 @@ package kms_test
 
 import (
 	"context"
-	"errors"
+
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +42,7 @@ func TestTokenKey_Create(t *testing.T) {
 			name:      "empty-rootKeyId",
 			args:      args{},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "valid",
@@ -141,7 +142,7 @@ func TestTokenKey_Delete(t *testing.T) {
 			foundKey.PrivateId = tt.key.PrivateId
 			err = rw.LookupById(context.Background(), &foundKey)
 			require.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

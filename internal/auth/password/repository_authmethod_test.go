@@ -2,7 +2,6 @@ package password
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -37,19 +37,19 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	}{
 		{
 			name:      "nil-AuthMethod",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-AuthMethod",
 			in:        &AuthMethod{},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-scope-id",
 			in: &AuthMethod{
 				AuthMethod: &store.AuthMethod{},
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-public-id-set",
@@ -59,7 +59,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					PublicId: "hcst_OOOOOOOOOO",
 				},
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "valid-no-options",
@@ -178,7 +178,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateAuthMethod(context.Background(), in)
-		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -251,7 +251,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		got, err := repo.CreateAuthMethod(context.Background(), &in, WithPublicId("invalid_idwithabadprefix"))
 		assert.Error(err)
 		assert.Nil(got)
-		assert.True(errors.Is(err, db.ErrInvalidPublicId))
+		assert.True(errors.Is(err, errors.ErrInvalidPublicId))
 	})
 }
 
@@ -274,7 +274,7 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 	}{
 		{
 			name:      "With no public id",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "With non existing auth method id",
@@ -325,7 +325,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 	}{
 		{
 			name:      "With no public id",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "With non existing auth method id",
@@ -377,7 +377,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 	}{
 		{
 			name:      "With no scope id",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "Scope with no auth methods",
@@ -683,7 +683,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				assert.Nil(updatedAM)
 				err = db.TestVerifyOplog(t, rw, amToUpdate.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
-				assert.Equal("record not found", err.Error())
+				assert.Contains(err.Error(), "record not found")
 				return
 			}
 			require.NoError(err)

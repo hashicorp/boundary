@@ -2,7 +2,7 @@ package authmethods
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"strings"
 
@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/authtoken"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
@@ -53,7 +53,7 @@ type Service struct {
 // NewService returns a auth method service which handles auth method related requests to boundary.
 func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory) (Service, error) {
 	if kms == nil {
-		return Service{}, errors.New("nil kms provided")
+		return Service{}, stderrors.New("nil kms provided")
 	}
 	if pwRepoFn == nil {
 		return Service{}, fmt.Errorf("nil password repository provided")
@@ -176,7 +176,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 	}
 	u, err := repo.LookupAuthMethod(ctx, id)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
 		}
 		return nil, err
@@ -285,7 +285,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	}
 	rows, err := repo.DeleteAuthMethod(ctx, scopeId, id)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return false, nil
 		}
 		return false, fmt.Errorf("unable to delete auth method: %w", err)

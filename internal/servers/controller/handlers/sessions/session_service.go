@@ -2,11 +2,11 @@ package sessions
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -97,7 +97,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	}
 	sess, _, err := repo.LookupSession(ctx, id)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", id)
 		}
 		return nil, err
@@ -176,7 +176,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		parentId = t.ScopeId
 		opts = append(opts, auth.WithId(id))
 	default:
-		res.Error = errors.New("unsupported action")
+		res.Error = stderrors.New("unsupported action")
 		return res
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
@@ -197,10 +197,10 @@ func toProto(in *session.Session) *pb.Session {
 		Type:        target.SubtypeFromId(in.TargetId).String(),
 		// TODO: Provide the ServerType and the ServerId when that information becomes relevant in the API.
 
-		CreatedTime:    in.CreateTime.GetTimestamp(),
-		UpdatedTime:    in.UpdateTime.GetTimestamp(),
-		ExpirationTime: in.ExpirationTime.GetTimestamp(),
-		Certificate:    in.Certificate,
+		CreatedTime:       in.CreateTime.GetTimestamp(),
+		UpdatedTime:       in.UpdateTime.GetTimestamp(),
+		ExpirationTime:    in.ExpirationTime.GetTimestamp(),
+		Certificate:       in.Certificate,
 		TerminationReason: in.TerminationReason,
 	}
 	if len(in.States) > 0 {

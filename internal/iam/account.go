@@ -6,6 +6,7 @@ import (
 
 	authStore "github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
@@ -43,7 +44,7 @@ func (a *authAccount) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface.
 func (a *authAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if a.PublicId == "" {
-		return fmt.Errorf("error public id is empty string for auth account write: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("error public id is empty string for auth account write: %w", errors.ErrInvalidParameter)
 	}
 	if err := validateScopeForWrite(ctx, r, a, opType, opt...); err != nil {
 		return err

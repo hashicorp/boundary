@@ -8,6 +8,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -18,16 +19,16 @@ import (
 // setId in the repository.
 func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, error) {
 	if scopeId == "" {
-		return nil, fmt.Errorf("add: static host set members: missing scope id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add: static host set members: missing scope id: %w", errors.ErrInvalidParameter)
 	}
 	if setId == "" {
-		return nil, fmt.Errorf("add: static host set members: missing set id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add: static host set members: missing set id: %w", errors.ErrInvalidParameter)
 	}
 	if version == 0 {
-		return nil, fmt.Errorf("add: static host set members: version is zero: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add: static host set members: version is zero: %w", errors.ErrInvalidParameter)
 	}
 	if len(hostIds) == 0 {
-		return nil, fmt.Errorf("add: static host set members: empty hostIds: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add: static host set members: empty hostIds: %w", errors.ErrInvalidParameter)
 	}
 
 	// Create in-memory host set members
@@ -94,7 +95,7 @@ func updateVersion(ctx context.Context, w db.Writer, wrapper wrapping.Wrapper, m
 	case err != nil:
 		return fmt.Errorf("unable to update host set version: %w", err)
 	case rowsUpdated > 1:
-		return fmt.Errorf("unable to update host set version: %w", db.ErrMultipleRecords)
+		return fmt.Errorf("unable to update host set version: %w", errors.ErrMultipleRecords)
 	}
 	msgs = append(msgs, setMsg)
 
@@ -154,16 +155,16 @@ func getHosts(ctx context.Context, reader db.Reader, setId string, limit int) ([
 // the current version of the setId in the repository.
 func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) (int, error) {
 	if scopeId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: missing scope id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: missing scope id: %w", errors.ErrInvalidParameter)
 	}
 	if setId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: missing set id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: missing set id: %w", errors.ErrInvalidParameter)
 	}
 	if version == 0 {
-		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: version is zero: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: version is zero: %w", errors.ErrInvalidParameter)
 	}
 	if len(hostIds) == 0 {
-		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: empty hostIds: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete: static host set members: empty hostIds: %w", errors.ErrInvalidParameter)
 	}
 
 	// Create in-memory host set members
@@ -216,13 +217,13 @@ func deleteMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*
 // in the repository. If hostIds is empty, all hosts will be removed setId.
 func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, int, error) {
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: missing scope id: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: missing scope id: %w", errors.ErrInvalidParameter)
 	}
 	if setId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: missing set id: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: missing set id: %w", errors.ErrInvalidParameter)
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: version is zero: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("set: static host set members: version is zero: %w", errors.ErrInvalidParameter)
 	}
 
 	// TODO(mgaffney) 08/2020: Oplog does not currently support bulk

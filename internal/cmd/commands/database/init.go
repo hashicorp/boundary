@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -254,7 +255,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 				c.UI.Info("Database already initialized.")
 				return 0
 			}
-		case db.IsMissingTableError(err):
+		case errors.IsMissingTableError(err):
 			// Doesn't exist so we continue on
 		default:
 			c.UI.Error(fmt.Errorf("Error querying database for init status: %w", err).Error())

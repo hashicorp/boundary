@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
@@ -13,20 +14,20 @@ import (
 // version with its PrivateId.  There are no valid options at this time.
 func (r *Repository) CreateSessionKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, key []byte, opt ...Option) (*SessionKeyVersion, error) {
 	if rkvWrapper == nil {
-		return nil, fmt.Errorf("create session key version: missing root key version wrapper: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create session key version: missing root key version wrapper: %w", errors.ErrInvalidParameter)
 	}
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, fmt.Errorf("create session key version: root key version id %s doesn't start with prefix %s: %w", rootKeyVersionId, RootKeyVersionPrefix, db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create session key version: root key version id %s doesn't start with prefix %s: %w", rootKeyVersionId, RootKeyVersionPrefix, errors.ErrInvalidParameter)
 	case rootKeyVersionId == "":
-		return nil, fmt.Errorf("create session key version: missing root key version id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create session key version: missing root key version id: %w", errors.ErrInvalidParameter)
 	}
 	if sessionKeyId == "" {
-		return nil, fmt.Errorf("create session key version: missing session key id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create session key version: missing session key id: %w", errors.ErrInvalidParameter)
 	}
 	if len(key) == 0 {
-		return nil, fmt.Errorf("create session key version: missing key: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create session key version: missing key: %w", errors.ErrInvalidParameter)
 	}
 	kv := AllocSessionKeyVersion()
 	id, err := newSessionKeyVersionId()
@@ -65,10 +66,10 @@ func (r *Repository) CreateSessionKeyVersion(ctx context.Context, rkvWrapper wra
 // the key version is not found, it will return nil, nil.
 func (r *Repository) LookupSessionKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, opt ...Option) (*SessionKeyVersion, error) {
 	if privateId == "" {
-		return nil, fmt.Errorf("lookup session key version: missing private id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup session key version: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	if keyWrapper == nil {
-		return nil, fmt.Errorf("lookup session key version: missing key wrapper: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup session key version: missing key wrapper: %w", errors.ErrInvalidParameter)
 	}
 	k := AllocSessionKeyVersion()
 	k.PrivateId = privateId
@@ -86,7 +87,7 @@ func (r *Repository) LookupSessionKeyVersion(ctx context.Context, keyWrapper wra
 // are ignored.
 func (r *Repository) DeleteSessionKeyVersion(ctx context.Context, privateId string, opt ...Option) (int, error) {
 	if privateId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete session key version: missing private id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete session key version: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	k := AllocSessionKeyVersion()
 	k.PrivateId = privateId
@@ -104,7 +105,7 @@ func (r *Repository) DeleteSessionKeyVersion(ctx context.Context, privateId stri
 			// no session entries for the key version
 			rowsDeleted, err = w.Delete(ctx, dk)
 			if err == nil && rowsDeleted > 1 {
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			return err
 		},
@@ -117,20 +118,20 @@ func (r *Repository) DeleteSessionKeyVersion(ctx context.Context, privateId stri
 
 // LatestSessionKeyVersion searches for the key version with the highest
 // version number.  When no results are found, it returns nil,
-// db.ErrRecordNotFound.
+// errors.ErrRecordNotFound.
 func (r *Repository) LatestSessionKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, opt ...Option) (*SessionKeyVersion, error) {
 	if sessionKeyId == "" {
-		return nil, fmt.Errorf("latest session key version: missing session key id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("latest session key version: missing session key id: %w", errors.ErrInvalidParameter)
 	}
 	if rkvWrapper == nil {
-		return nil, fmt.Errorf("latest session key version: missing root key version wrapper: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("latest session key version: missing root key version wrapper: %w", errors.ErrInvalidParameter)
 	}
 	var foundKeys []*SessionKeyVersion
 	if err := r.reader.SearchWhere(ctx, &foundKeys, "session_key_id = ?", []interface{}{sessionKeyId}, db.WithLimit(1), db.WithOrder("version desc")); err != nil {
 		return nil, fmt.Errorf("latest session key version: failed %w for %s", err, sessionKeyId)
 	}
 	if len(foundKeys) == 0 {
-		return nil, db.ErrRecordNotFound
+		return nil, errors.ErrRecordNotFound
 	}
 	if err := foundKeys[0].Decrypt(ctx, rkvWrapper); err != nil {
 		return nil, fmt.Errorf("latest session key version: %w", err)
@@ -141,10 +142,10 @@ func (r *Repository) LatestSessionKeyVersion(ctx context.Context, rkvWrapper wra
 // ListSessionKeyVersions will lists versions of a key.  Supports the WithLimit option.
 func (r *Repository) ListSessionKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, opt ...Option) ([]DekVersion, error) {
 	if sessionKeyId == "" {
-		return nil, fmt.Errorf("list session key versions: missing session key id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("list session key versions: missing session key id %w", errors.ErrInvalidParameter)
 	}
 	if rkvWrapper == nil {
-		return nil, fmt.Errorf("list session key versions: missing root key version wrapper: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("list session key versions: missing root key version wrapper: %w", errors.ErrInvalidParameter)
 	}
 	var versions []*SessionKeyVersion
 	err := r.list(ctx, &versions, "session_key_id = ?", []interface{}{sessionKeyId}, opt...)

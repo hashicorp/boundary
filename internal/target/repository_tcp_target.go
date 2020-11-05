@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/errors"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -17,26 +18,26 @@ import (
 func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt ...Option) (Target, []*TargetSet, error) {
 	opts := getOpts(opt...)
 	if target == nil {
-		return nil, nil, fmt.Errorf("create tcp target: missing target: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create tcp target: missing target: %w", errors.ErrInvalidParameter)
 	}
 	if target.TcpTarget == nil {
-		return nil, nil, fmt.Errorf("create tcp target: missing target store: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create tcp target: missing target store: %w", errors.ErrInvalidParameter)
 	}
 	if target.ScopeId == "" {
-		return nil, nil, fmt.Errorf("create tcp target: scope id empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create tcp target: scope id empty: %w", errors.ErrInvalidParameter)
 	}
 	if target.Name == "" {
-		return nil, nil, fmt.Errorf("create tcp target: name empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create tcp target: name empty: %w", errors.ErrInvalidParameter)
 	}
 	if target.PublicId != "" {
-		return nil, nil, fmt.Errorf("create tcp target: public id not empty: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create tcp target: public id not empty: %w", errors.ErrInvalidParameter)
 	}
 
 	t := target.Clone().(*TcpTarget)
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, TcpTargetPrefix+"_") {
-			return nil, nil, fmt.Errorf("create tcp target: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, TcpTargetPrefix, db.ErrInvalidPublicId)
+			return nil, nil, fmt.Errorf("create tcp target: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, TcpTargetPrefix, errors.ErrInvalidPublicId)
 		}
 		t.PublicId = opts.withPublicId
 	} else {
@@ -112,13 +113,13 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 // returned.
 func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, version uint32, fieldMaskPaths []string, opt ...Option) (Target, []*TargetSet, int, error) {
 	if target == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: missing target %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: missing target %w", errors.ErrInvalidParameter)
 	}
 	if target.TcpTarget == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: missing target store %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: missing target store %w", errors.ErrInvalidParameter)
 	}
 	if target.PublicId == "" {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: missing target public id %w", db.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: missing target public id %w", errors.ErrInvalidParameter)
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
@@ -128,7 +129,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		case strings.EqualFold("sessionmaxseconds", f):
 		case strings.EqualFold("sessionconnectionlimit", f):
 		default:
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: field: %s: %w", f, db.ErrInvalidFieldMask)
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: field: %s: %w", f, errors.ErrInvalidFieldMask)
 		}
 	}
 	var dbMask, nullFields []string
@@ -144,7 +145,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		[]string{"SessionMaxSeconds", "SessionConnectionLimit"},
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: %w", db.ErrEmptyFieldMask)
+		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: %w", errors.ErrEmptyFieldMask)
 	}
 	var returnedTarget Target
 	var rowsUpdated int
@@ -164,8 +165,8 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		},
 	)
 	if err != nil {
-		if db.IsUniqueError(err) {
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: target %s already exists in scope %s: %w", target.Name, target.ScopeId, db.ErrNotUnique)
+		if errors.IsUniqueError(err) {
+			return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: target %s already exists in scope %s: %w", target.Name, target.ScopeId, errors.ErrNotUnique)
 		}
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: %w for %s", err, target.PublicId)
 	}

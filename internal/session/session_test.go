@@ -2,13 +2,13 @@ package session
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,7 +67,7 @@ func TestSession_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-hostId",
@@ -79,7 +79,7 @@ func TestSession_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-targetId",
@@ -91,7 +91,7 @@ func TestSession_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-hostSetId",
@@ -103,7 +103,7 @@ func TestSession_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-authTokenId",
@@ -115,7 +115,7 @@ func TestSession_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-scopeId",
@@ -127,7 +127,7 @@ func TestSession_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -213,7 +213,7 @@ func TestSession_Delete(t *testing.T) {
 			foundSession.PublicId = tt.session.PublicId
 			err = rw.LookupById(context.Background(), &foundSession)
 			require.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

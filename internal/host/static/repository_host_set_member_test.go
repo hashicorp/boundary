@@ -2,13 +2,13 @@ package static
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -57,7 +57,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-set-id",
@@ -66,7 +66,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -75,7 +75,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-host-ids",
@@ -84,7 +84,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				version: set.Version,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-version",
@@ -248,7 +248,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-set-id",
@@ -257,7 +257,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -266,7 +266,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-host-ids",
@@ -275,7 +275,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				version: set.Version,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-version",
@@ -446,7 +446,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-set-id",
@@ -455,7 +455,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -464,7 +464,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				hostIds: hostIds,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-version",

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -22,7 +23,7 @@ type TokenKey struct {
 // are currently supported.
 func NewTokenKey(rootKeyId string, opt ...Option) (*TokenKey, error) {
 	if rootKeyId == "" {
-		return nil, fmt.Errorf("new root key: missing root key id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new root key: missing root key id: %w", errors.ErrInvalidParameter)
 	}
 	c := &TokenKey{
 		TokenKey: &store.TokenKey{
@@ -51,11 +52,11 @@ func (k *TokenKey) Clone() interface{} {
 // before it's written.
 func (k *TokenKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if k.PrivateId == "" {
-		return fmt.Errorf("token key vet for write: missing private id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("token key vet for write: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	if opType == db.CreateOp {
 		if k.RootKeyId == "" {
-			return fmt.Errorf("token key vet for write: missing root key id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("token key vet for write: missing root key id: %w", errors.ErrInvalidParameter)
 		}
 	}
 	return nil

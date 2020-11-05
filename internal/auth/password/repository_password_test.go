@@ -2,12 +2,12 @@ package password
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -58,7 +58,7 @@ func TestRepository_Authenticate(t *testing.T) {
 				loginName:    inAcct.LoginName,
 				password:     passwd,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-loginName",
@@ -67,7 +67,7 @@ func TestRepository_Authenticate(t *testing.T) {
 				loginName:    "",
 				password:     passwd,
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-password",
@@ -76,7 +76,7 @@ func TestRepository_Authenticate(t *testing.T) {
 				loginName:    inAcct.LoginName,
 				password:     "",
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "valid-authenticate",
@@ -119,7 +119,7 @@ func TestRepository_Authenticate(t *testing.T) {
 			assert.Equal(tt.args.loginName, authAcct.LoginName, "LoginName")
 			err = db.TestVerifyOplog(t, rw, authAcct.CredentialId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }
@@ -285,7 +285,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				old:    passwd,
 				new:    "12345678-changed",
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-current-password",
@@ -294,7 +294,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				old:    "",
 				new:    "12345678-changed",
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-new-password",
@@ -303,7 +303,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				old:    passwd,
 				new:    "",
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-same-passwords",
@@ -322,7 +322,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				new:    "12345678-changed",
 			},
 			wantAccount: false,
-			wantIsErr:   db.ErrRecordNotFound,
+			wantIsErr:   errors.ErrRecordNotFound,
 		},
 		{
 			name: "auth-failure-wrong-current-password",
@@ -512,7 +512,7 @@ func TestRepository_SetPassword(t *testing.T) {
 			name:      "no id",
 			pw:        "anylongpassword",
 			version:   1,
-			wantError: db.ErrInvalidParameter,
+			wantError: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "short pw",
@@ -525,7 +525,7 @@ func TestRepository_SetPassword(t *testing.T) {
 			name:      "no version",
 			accountId: badInputAcct.PublicId,
 			pw:        "anylongpassword",
-			wantError: db.ErrInvalidParameter,
+			wantError: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range badInputCases {
