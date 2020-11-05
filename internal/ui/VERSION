@@ -1,4 +1,4 @@
-0e5db08cfe0552de88033af8a2c44d3b09352574 Merge pull request #350 from hashicorp/ICU-811-fix-hosts-in-host-set-creation-message
+b2c5dded9adb5756ff06479bc0376091a775f36b Merge pull request #369 from hashicorp/chore-resolutions
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.

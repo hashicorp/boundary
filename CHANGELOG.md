@@ -11,11 +11,22 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * controller: Add ability to set public address for cluster purposes
   ([Issue](https://github.com/hashicorp/boundary/pull/758))
   ([PR](https://github.com/hashicorp/boundary/pull/761))
+* ui: Add dark mode toggle
+  ([Issue](https://github.com/hashicorp/boundary/issues/719))
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/358))
+* ui: Add scope grants to roles
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/357))
+* ui: Add IAM resources to global scope
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/351))
 
 ### Bug Fixes
 
 * controller, worker: Fix IPv4-only check so `0.0.0.0` specified without a port
-  only listens on IPv4 ([PR](https://github.com/hashicorp/boundary/pull/752))
+  only listens on IPv4
+  ([PR](https://github.com/hashicorp/boundary/pull/752))
+* ui: Fix grant string corruption on updates
+  ([Issue](https://github.com/hashicorp/boundary/issues/757))
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/356))
 
 ## v0.1.1
 
@@ -41,12 +52,14 @@ them to access targets).
   ([PR](https://github.com/hashicorp/boundary/issues/731))
 * connect: Allow using `-target-name` in conjunction with either
   `-target-scope-id` or `-target-scope-name` to connect to targets, rather than
-  the target's ID ([PR](https://github.com/hashicorp/boundary/pull/737))
+  the target's ID
+  ([PR](https://github.com/hashicorp/boundary/pull/737))
 * controller: Allow API/Cluster listeners to be Unix domain sockets
   ([Issue](https://github.com/hashicorp/boundary/pull/699))
   ([PR](https://github.com/hashicorp/boundary/pull/705))
 * ui: Allow creating and assigning a host to a host set directly from the host
-  set view ([Issue](https://github.com/hashicorp/boundary/issues/710))
+  set view
+  ([Issue](https://github.com/hashicorp/boundary/issues/710))
   ([PR](https://github.com/hashicorp/boundary-ui/pull/350))
 
 ### Bug Fixes
