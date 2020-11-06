@@ -2,12 +2,12 @@ package static
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -29,12 +29,12 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	}{
 		{
 			name:      "nil-catalog",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-catalog",
 			in:        &HostCatalog{},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "valid-no-options",
@@ -127,7 +127,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateCatalog(context.Background(), in)
-		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -245,7 +245,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-embedded-catalog",
@@ -254,7 +254,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "no-public-id",
@@ -263,7 +263,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     deletePublicId(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "updating-non-existent-catalog",
@@ -274,7 +274,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
 			masks:     []string{"Name"},
-			wantIsErr: db.ErrRecordNotFound,
+			wantIsErr: errors.ErrRecordNotFound,
 		},
 		{
 			name: "empty-field-mask",
@@ -284,7 +284,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				},
 			},
 			chgFn:     changeName("test-update-name-repo"),
-			wantIsErr: db.ErrEmptyFieldMask,
+			wantIsErr: errors.ErrEmptyFieldMask,
 		},
 		{
 			name: "read-only-fields-in-field-mask",
@@ -295,7 +295,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
-			wantIsErr: db.ErrInvalidFieldMask,
+			wantIsErr: errors.ErrInvalidFieldMask,
 		},
 		{
 			name: "unknown-field-in-field-mask",
@@ -306,7 +306,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"Bilbo"},
-			wantIsErr: db.ErrInvalidFieldMask,
+			wantIsErr: errors.ErrInvalidFieldMask,
 		},
 		{
 			name: "change-name",
@@ -496,7 +496,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		c2 := cats[1]
 		c2.Name = name
 		got2, gotCount2, err := repo.UpdateCatalog(context.Background(), c2, 1, []string{"name"})
-		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 	})
@@ -595,7 +595,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 			name:    "bad-public-id",
 			id:      "",
 			want:    nil,
-			wantErr: db.ErrInvalidParameter,
+			wantErr: errors.ErrInvalidParameter,
 		},
 	}
 
@@ -657,7 +657,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 			name:    "bad-public-id",
 			id:      "",
 			want:    0,
-			wantErr: db.ErrInvalidParameter,
+			wantErr: errors.ErrInvalidParameter,
 		},
 	}
 

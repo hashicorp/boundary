@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
@@ -36,17 +37,17 @@ func (r *Repository) CreateTokenKey(ctx context.Context, rkvWrapper wrapping.Wra
 // a db.TxHandler and allows this capability to be shared with the iam repo.
 func createTokenKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper wrapping.Wrapper, key []byte) (*TokenKey, *TokenKeyVersion, error) {
 	if rkvWrapper == nil {
-		return nil, nil, fmt.Errorf("create token key: missing key wrapper: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create token key: missing key wrapper: %w", errors.ErrInvalidParameter)
 	}
 	if len(key) == 0 {
-		return nil, nil, fmt.Errorf("create token key: missing key: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create token key: missing key: %w", errors.ErrInvalidParameter)
 	}
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, nil, fmt.Errorf("create token key: root key version id %s doesn't start with prefix %s: %w", rootKeyVersionId, RootKeyVersionPrefix, db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create token key: root key version id %s doesn't start with prefix %s: %w", rootKeyVersionId, RootKeyVersionPrefix, errors.ErrInvalidParameter)
 	case rootKeyVersionId == "":
-		return nil, nil, fmt.Errorf("create token key: missing root key version id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create token key: missing root key version id: %w", errors.ErrInvalidParameter)
 	}
 	rv := AllocRootKeyVersion()
 	rv.PrivateId = rootKeyVersionId
@@ -92,7 +93,7 @@ func createTokenKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper 
 // found, it will return nil, nil.
 func (r *Repository) LookupTokenKey(ctx context.Context, privateId string, opt ...Option) (*TokenKey, error) {
 	if privateId == "" {
-		return nil, fmt.Errorf("lookup token key: missing private id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup token key: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	k := AllocTokenKey()
 	k.PrivateId = privateId
@@ -107,7 +108,7 @@ func (r *Repository) LookupTokenKey(ctx context.Context, privateId string, opt .
 // are ignored.
 func (r *Repository) DeleteTokenKey(ctx context.Context, privateId string, opt ...Option) (int, error) {
 	if privateId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete token key: missing private id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete token key: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	k := AllocTokenKey()
 	k.PrivateId = privateId
@@ -125,7 +126,7 @@ func (r *Repository) DeleteTokenKey(ctx context.Context, privateId string, opt .
 			// no token entries for root keys
 			rowsDeleted, err = w.Delete(ctx, dk)
 			if err == nil && rowsDeleted > 1 {
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			return err
 		},

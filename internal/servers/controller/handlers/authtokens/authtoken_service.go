@@ -2,12 +2,11 @@ package authtokens
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -97,7 +96,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthToken, err
 	}
 	u, err := repo.LookupAuthToken(ctx, id)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
 		}
 		return nil, fmt.Errorf("unable to lookup auth token: %w", err)
@@ -115,7 +114,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	}
 	rows, err := repo.DeleteAuthToken(ctx, id)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return false, nil
 		}
 		return false, fmt.Errorf("unable to delete user: %w", err)

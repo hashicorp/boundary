@@ -2,13 +2,13 @@ package iam
 
 import (
 	"context"
-	"errors"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
@@ -71,7 +71,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 				}(),
 			},
 			wantErrMsg:  "create group: public id not empty: invalid parameter",
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 			wantErr:     true,
 		},
 		{
@@ -81,7 +81,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrMsg:  "create group: missing group invalid parameter",
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-store",
@@ -94,7 +94,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrMsg:  "create group: missing group store invalid parameter",
-			wantIsError: db.ErrInvalidParameter,
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "bad-scope-id",
@@ -106,8 +106,8 @@ func TestRepository_CreateGroup(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantErrMsg:  "create group: error getting metadata for create: unable to get scope for standard metadata: record not found for",
-			wantIsError: db.ErrInvalidParameter,
+			wantErrMsg:  "create group: error getting metadata for create: unable to get scope for standard metadata: record not found",
+			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
 			name: "dup-name",
@@ -122,7 +122,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			wantDup:     true,
 			wantErr:     true,
 			wantErrMsg:  "already exists in scope ",
-			wantIsError: db.ErrNotUnique,
+			wantIsError: errors.ErrNotUnique,
 		},
 		{
 			name: "dup-name-but-diff-scope",
@@ -237,8 +237,8 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update group: update: lookup after write: record not found for 1",
-			wantIsError:    db.ErrRecordNotFound,
+			wantErrMsg:     "update group: update: lookup after write: record not found",
+			wantIsError:    errors.ErrRecordNotFound,
 		},
 		{
 			name: "null-name",
@@ -275,7 +275,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update group: empty field mask",
-			wantIsError:    db.ErrEmptyFieldMask,
+			wantIsError:    errors.ErrEmptyFieldMask,
 		},
 		{
 			name: "nil-fieldmask",
@@ -288,7 +288,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update group: empty field mask",
-			wantIsError:    db.ErrEmptyFieldMask,
+			wantIsError:    errors.ErrEmptyFieldMask,
 		},
 		{
 			name: "read-only-fields",
@@ -301,7 +301,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update group: field: CreateTime: invalid field mask",
-			wantIsError:    db.ErrInvalidFieldMask,
+			wantIsError:    errors.ErrInvalidFieldMask,
 		},
 		{
 			name: "unknown-fields",
@@ -314,7 +314,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update group: field: Alice: invalid field mask",
-			wantIsError:    db.ErrInvalidFieldMask,
+			wantIsError:    errors.ErrInvalidFieldMask,
 		},
 		{
 			name: "no-public-id",
@@ -327,7 +327,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantErrMsg:     "update group: missing group public id invalid parameter",
-			wantIsError:    db.ErrInvalidParameter,
+			wantIsError:    errors.ErrInvalidParameter,
 			wantRowsUpdate: 0,
 		},
 		{
@@ -339,7 +339,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:  org.PublicId,
 			wantErr:     true,
 			wantErrMsg:  "update group: empty field mask",
-			wantIsError: db.ErrEmptyFieldMask,
+			wantIsError: errors.ErrEmptyFieldMask,
 		},
 		{
 			name: "empty-scope-id-with-name-mask",
@@ -376,7 +376,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			wantErr:     true,
 			wantDup:     true,
 			wantErrMsg:  " already exists in org " + org.PublicId,
-			wantIsError: db.ErrNotUnique,
+			wantIsError: errors.ErrNotUnique,
 		},
 		{
 			name: "modified-scope",
@@ -437,7 +437,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)
@@ -519,7 +519,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete group: failed record not found for ",
+			wantErrMsg:      "delete group: failed record not found:",
 		},
 	}
 	for _, tt := range tests {
@@ -532,7 +532,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)
@@ -727,7 +727,7 @@ func TestRepository_ListMembers(t *testing.T) {
 		got, err := repo.ListGroupMembers(context.Background(), "")
 		require.Error(err)
 		require.Nil(got)
-		require.Truef(errors.Is(err, db.ErrInvalidParameter), "unexpected error %s", err.Error())
+		require.Truef(errors.Is(err, errors.ErrInvalidParameter), "unexpected error %s", err.Error())
 
 	})
 }
@@ -926,7 +926,7 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       db.ErrInvalidParameter,
+			wantIsErr:       errors.ErrInvalidParameter,
 		},
 		{
 			name: "bad-version",
@@ -949,7 +949,7 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       db.ErrInvalidParameter,
+			wantIsErr:       errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -984,7 +984,7 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 				}
 				err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)

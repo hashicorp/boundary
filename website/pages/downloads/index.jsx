@@ -1,84 +1,114 @@
-import { useMemo, useState, useEffect } from 'react'
 import VERSION from 'data/version.js'
 import Head from 'next/head'
 import HashiHead from '@hashicorp/react-head'
-
 import { productName, productSlug } from 'data/metadata'
-import { packageManagersByOs, getStartedLinks } from 'data/downloads'
-import ReleaseInformation from 'components/downloader/release-information'
-import { sortPlatforms, detectOs } from 'components/downloader/utils/downloader'
-import DownloadCards from 'components/downloader/cards'
+import ProductDownloader from '@hashicorp/react-product-downloader'
 import styles from './style.module.css'
 
-export default function DownloadsPage({ releaseData, previousVersions }) {
-  const sortedDownloads = useMemo(() => sortPlatforms(releaseData), [
-    releaseData,
-  ])
-  const osKeys = Object.keys(sortedDownloads)
-  const [osIndex, setSelectedOsIndex] = useState()
-
-  const tabData = Object.keys(sortedDownloads).map((osKey) => ({
-    os: osKey,
-    packageManagers: packageManagersByOs[osKey] || null,
-  }))
-
-  useEffect(() => {
-    // if we're on the client side, detect the default platform only on initial render
-    const index = osKeys.indexOf(detectOs(window.navigator.platform))
-    setSelectedOsIndex(index)
-  }, [])
-
+export default function DownloadsPage({ releases }) {
   return (
     <div className={styles.root}>
-      <h1>Download {productName}</h1>
       <HashiHead is={Head} title={`Downloads | ${productName} by HashiCorp`} />
-      <DownloadCards
-        brand="red"
-        defaultTabIdx={osIndex}
-        tabData={tabData}
-        downloads={sortedDownloads}
-        version={VERSION}
+      <ProductDownloader
+        releases={releases}
+        packageManagers={[
+          {
+            label: 'Homebrew',
+            commands: [
+              'brew tap hashicorp/tap',
+              'brew install hashicorp/tap/boundary',
+            ],
+            os: 'darwin',
+          },
+          {
+            label: 'Ubuntu/Debian',
+            commands: [
+              'curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -',
+              'sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"',
+              'sudo apt-get update && sudo apt-get install boundary',
+            ],
+            os: 'linux',
+          },
+          {
+            label: 'CentOS/RHEL',
+            commands: [
+              'sudo yum install -y yum-utils',
+              'sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo',
+              'sudo yum -y install boundary',
+            ],
+            os: 'linux',
+          },
+          {
+            label: 'Fedora',
+            commands: [
+              'sudo dnf install -y dnf-plugins-core',
+              'sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo',
+              'sudo dnf -y install boundary',
+            ],
+            os: 'linux',
+          },
+          {
+            label: 'Amazon Linux',
+            commands: [
+              'sudo yum install -y yum-utils',
+              'sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo',
+              'sudo yum -y install boundary',
+            ],
+            os: 'linux',
+          },
+        ]}
+        productName={productName}
+        productId={productSlug}
+        latestVersion={VERSION}
+        getStartedLinks={[
+          {
+            label: 'Install Boundary',
+            href:
+              'https://learn.hashicorp.com/tutorials/boundary/getting-started-install',
+          },
+          {
+            label: 'Introduction to Boundary',
+            href:
+              'https://learn.hashicorp.com/tutorials/boundary/getting-started-intro',
+          },
+          {
+            label: 'Start a Development Environment',
+            href:
+              'https://learn.hashicorp.com/tutorials/boundary/getting-started-dev',
+          },
+        ]}
         logo={
           <img
             className={styles.logo}
+            alt="Boundary"
             src={require('./img/boundary-logo.svg')}
           />
         }
+        brand="red"
         tutorialLink={{
           label: 'View Tutorial on HashiCorp Learn',
           href:
             'https://learn.hashicorp.com/tutorials/boundary/getting-started-install',
         }}
       />
-
-      <div className="g-container">
-        <div className={styles.gettingStarted}>
-          <h2>Getting Started</h2>
-          <div className={styles.links}>
-            {getStartedLinks.map((link) => (
-              <a href={link.href} key={link.href}>
-                {link.label}
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <ReleaseInformation
-        brand="red"
-        productId="boundary"
-        productName={productName}
-        releases={previousVersions}
-        latestVersion={releaseData.version}
-      />
     </div>
   )
 }
 
 export async function getStaticProps() {
-  return fetch(`https://releases.hashicorp.com/boundary/${VERSION}/index.json`)
-    .then((r) => r.json())
-    .then((releaseData) => ({ props: { releaseData } }))
+  return fetch(`https://releases.hashicorp.com/boundary/index.json`, {
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  })
+    .then((res) => res.json())
+    .then((result) => {
+      return {
+        props: {
+          releases: result,
+        },
+      }
+    })
     .catch(() => {
       throw new Error(
         `--------------------------------------------------------

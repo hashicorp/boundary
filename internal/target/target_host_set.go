@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	hostStore "github.com/hashicorp/boundary/internal/host/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target/store"
@@ -26,10 +27,10 @@ var _ db.VetForWriter = (*TargetHostSet)(nil)
 // currently supported.
 func NewTargetHostSet(targetId, hostSetId string, opt ...Option) (*TargetHostSet, error) {
 	if targetId == "" {
-		return nil, fmt.Errorf("new target host set: missing target id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new target host set: missing target id: %w", errors.ErrInvalidParameter)
 	}
 	if hostSetId == "" {
-		return nil, fmt.Errorf("new target host set: missing hostSetId id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new target host set: missing hostSetId id: %w", errors.ErrInvalidParameter)
 	}
 	t := &TargetHostSet{
 		TargetHostSet: &store.TargetHostSet{
@@ -60,10 +61,10 @@ func (t *TargetHostSet) Clone() interface{} {
 func (t *TargetHostSet) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if opType == db.CreateOp {
 		if t.TargetId == "" {
-			return fmt.Errorf("target host set: vet for write: missing target id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("target host set: vet for write: missing target id: %w", errors.ErrInvalidParameter)
 		}
 		if t.HostSetId == "" {
-			return fmt.Errorf("target host set: vet for write: missing host set id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("target host set: vet for write: missing host set id: %w", errors.ErrInvalidParameter)
 		}
 	}
 	return nil

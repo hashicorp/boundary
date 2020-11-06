@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"google.golang.org/protobuf/proto"
@@ -28,7 +29,7 @@ var _ oplog.ReplayableMessage = (*TcpTarget)(nil)
 func NewTcpTarget(scopeId string, opt ...Option) (*TcpTarget, error) {
 	opts := getOpts(opt...)
 	if scopeId == "" {
-		return nil, fmt.Errorf("new tcp target: missing scope id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new tcp target: missing scope id: %w", errors.ErrInvalidParameter)
 	}
 	t := &TcpTarget{
 		TcpTarget: &store.TcpTarget{
@@ -62,14 +63,14 @@ func (t *TcpTarget) Clone() interface{} {
 // before it's written.
 func (t *TcpTarget) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if t.PublicId == "" {
-		return fmt.Errorf("tcp target vet for write: missing public id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("tcp target vet for write: missing public id: %w", errors.ErrInvalidParameter)
 	}
 	if opType == db.CreateOp {
 		if t.ScopeId == "" {
-			return fmt.Errorf("tcp target vet for write: missing scope id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("tcp target vet for write: missing scope id: %w", errors.ErrInvalidParameter)
 		}
 		if t.Name == "" {
-			return fmt.Errorf("tcp target vet for write: missing name id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("tcp target vet for write: missing name id: %w", errors.ErrInvalidParameter)
 		}
 	}
 	return nil

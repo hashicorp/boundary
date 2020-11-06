@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -22,7 +23,7 @@ type OplogKey struct {
 // are currently supported.
 func NewOplogKey(rootKeyId string, opt ...Option) (*OplogKey, error) {
 	if rootKeyId == "" {
-		return nil, fmt.Errorf("new root key: missing root key id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new root key: missing root key id: %w", errors.ErrInvalidParameter)
 	}
 	c := &OplogKey{
 		OplogKey: &store.OplogKey{
@@ -51,11 +52,11 @@ func (k *OplogKey) Clone() interface{} {
 // before it's written.
 func (k *OplogKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if k.PrivateId == "" {
-		return fmt.Errorf("oplog key vet for write: missing private id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("oplog key vet for write: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	if opType == db.CreateOp {
 		if k.RootKeyId == "" {
-			return fmt.Errorf("oplog key vet for write: missing root key id: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("oplog key vet for write: missing root key id: %w", errors.ErrInvalidParameter)
 		}
 	}
 	return nil

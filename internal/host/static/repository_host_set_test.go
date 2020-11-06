@@ -2,7 +2,6 @@ package static
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -37,19 +37,19 @@ func TestRepository_CreateSet(t *testing.T) {
 	}{
 		{
 			name:      "nil-HostSet",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-HostSet",
 			in:        &HostSet{},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-catalog-id",
 			in: &HostSet{
 				HostSet: &store.HostSet{},
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-public-id-set",
@@ -59,7 +59,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					PublicId:  "abcd_OOOOOOOOOO",
 				},
 			},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "valid-no-options",
@@ -157,7 +157,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
-		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -273,7 +273,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-embedded-host-set",
@@ -282,7 +282,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "no-public-id",
@@ -291,7 +291,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     deletePublicId(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "updating-non-existent-host-set",
@@ -302,7 +302,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
 			masks:     []string{"Name"},
-			wantIsErr: db.ErrRecordNotFound,
+			wantIsErr: errors.ErrRecordNotFound,
 		},
 		{
 			name: "empty-field-mask",
@@ -312,7 +312,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				},
 			},
 			chgFn:     changeName("test-update-name-repo"),
-			wantIsErr: db.ErrEmptyFieldMask,
+			wantIsErr: errors.ErrEmptyFieldMask,
 		},
 		{
 			name: "read-only-fields-in-field-mask",
@@ -323,7 +323,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "CatalogId"},
-			wantIsErr: db.ErrInvalidFieldMask,
+			wantIsErr: errors.ErrInvalidFieldMask,
 		},
 		{
 			name: "unknown-field-in-field-mask",
@@ -334,7 +334,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"Bilbo"},
-			wantIsErr: db.ErrInvalidFieldMask,
+			wantIsErr: errors.ErrInvalidFieldMask,
 		},
 		{
 			name: "change-name",
@@ -540,12 +540,12 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 		sB.Name = name
 		got2, gotHosts, gotCount2, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sB, 1, []string{"name"})
-		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, sB.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
-		assert.True(errors.Is(db.ErrRecordNotFound, err))
+		assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		assert.Empty(gotHosts)
 	})
 
@@ -728,7 +728,7 @@ func TestRepository_LookupSet(t *testing.T) {
 	}{
 		{
 			name:      "with-no-public-id",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "with-non-existing-host-set-id",
@@ -868,7 +868,7 @@ func TestRepository_ListSets(t *testing.T) {
 	}{
 		{
 			name:      "with-no-catalog-id",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "Catalog-with-no-host-sets",
@@ -996,7 +996,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 	}{
 		{
 			name:      "With no public id",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "With non existing host set id",

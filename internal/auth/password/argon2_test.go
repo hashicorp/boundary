@@ -2,11 +2,11 @@ package password
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -329,7 +329,7 @@ func TestArgon2Credential_New(t *testing.T) {
 				conf:      confs[0],
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "blank-password",
@@ -339,7 +339,7 @@ func TestArgon2Credential_New(t *testing.T) {
 				conf:      confs[0],
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-configuration",
@@ -349,7 +349,7 @@ func TestArgon2Credential_New(t *testing.T) {
 				conf:      nil,
 			},
 			want:      nil,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "valid-password",

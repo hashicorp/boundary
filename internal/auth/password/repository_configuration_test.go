@@ -2,12 +2,12 @@ package password
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -145,12 +145,12 @@ func TestRepository_GetConfiguration(t *testing.T) {
 		{
 			name:         "invalid-no-authMethodId",
 			authMethodId: "",
-			wantIsErr:    db.ErrInvalidParameter,
+			wantIsErr:    errors.ErrInvalidParameter,
 		},
 		{
 			name:         "invalid-authMethodId",
 			authMethodId: "abcdefghijk",
-			wantIsErr:    db.ErrRecordNotFound,
+			wantIsErr:    errors.ErrRecordNotFound,
 		},
 		{
 			name:         "valid-authMethodId",
@@ -216,17 +216,17 @@ func TestRepository_SetConfiguration(t *testing.T) {
 	}{
 		{
 			name:      "invalid-nil-config",
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "nil-embedded-config",
 			in:        &Argon2Configuration{},
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "invalid-no-authMethodId",
 			in:        NewArgon2Configuration(),
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name:      "unknown-configuration-type",

@@ -2,10 +2,10 @@ package iam
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -83,7 +83,7 @@ func Test_NewGroupMember(t *testing.T) {
 			},
 			want:      nil,
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "missing-user",
@@ -92,7 +92,7 @@ func Test_NewGroupMember(t *testing.T) {
 			},
 			want:      nil,
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -196,7 +196,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "missing-user-id",
@@ -212,7 +212,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
+			wantIsErr: errors.ErrInvalidParameter,
 		},
 		{
 			name: "dup-at-org",
@@ -333,7 +333,7 @@ func Test_GroupMemberDelete(t *testing.T) {
 			found := allocGroupMember()
 			err = rw.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", tt.gm.GetGroupId(), tt.gm.GetMemberId())
 			require.Error(err)
-			assert.True(errors.Is(db.ErrRecordNotFound, err))
+			assert.True(errors.Is(errors.ErrRecordNotFound, err))
 		})
 	}
 }

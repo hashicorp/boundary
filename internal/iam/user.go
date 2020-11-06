@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -33,7 +34,7 @@ var _ db.VetForWriter = (*User)(nil)
 func NewUser(scopeId string, opt ...Option) (*User, error) {
 	opts := getOpts(opt...)
 	if scopeId == "" {
-		return nil, fmt.Errorf("new user: missing scope id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new user: missing scope id %w", errors.ErrInvalidParameter)
 	}
 	u := &User{
 		User: &store.User{
@@ -63,7 +64,7 @@ func (u *User) Clone() interface{} {
 // before it's written.
 func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if u.PublicId == "" {
-		return fmt.Errorf("user vet for write: missing public id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("user vet for write: missing public id: %w", errors.ErrInvalidParameter)
 	}
 	if err := validateScopeForWrite(ctx, r, u, opType, opt...); err != nil {
 		return err

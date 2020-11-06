@@ -2,13 +2,13 @@ package iam
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -271,7 +271,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       db.ErrInvalidParameter,
+			wantIsErr:       errors.ErrInvalidParameter,
 		},
 
 		{
@@ -295,7 +295,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       db.ErrInvalidParameter,
+			wantIsErr:       errors.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-grant-strings",
@@ -380,7 +380,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 				}
 				err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)

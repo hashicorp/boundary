@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -138,11 +137,11 @@ func backendErrorToApiError(inErr error) error {
 			Code:    codes.Unimplemented.String(),
 			Message: stErr.Message(),
 		}}
-	case errors.Is(inErr, db.ErrRecordNotFound):
+	case errors.Is(inErr, errors.ErrRecordNotFound):
 		return NotFoundErrorf(genericNotFoundMsg)
-	case errors.Is(inErr, db.ErrInvalidFieldMask), errors.Is(inErr, db.ErrEmptyFieldMask):
+	case errors.Is(inErr, errors.ErrInvalidFieldMask), errors.Is(inErr, errors.ErrEmptyFieldMask):
 		return InvalidArgumentErrorf("Error in provided request", map[string]string{"update_mask": "Invalid update mask provided."})
-	case db.IsUniqueError(inErr), errors.Is(inErr, db.ErrNotUnique):
+	case errors.IsUniqueError(inErr), errors.Is(inErr, errors.ErrNotUnique):
 		return InvalidArgumentErrorf(genericUniquenessMsg, nil)
 	}
 	return nil

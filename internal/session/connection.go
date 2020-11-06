@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -109,7 +110,7 @@ func (c *Connection) Clone() interface{} {
 func (c *Connection) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	opts := db.GetOpts(opt...)
 	if c.PublicId == "" {
-		return fmt.Errorf("connection vet for write: missing public id: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("connection vet for write: missing public id: %w", errors.ErrInvalidParameter)
 	}
 	switch opType {
 	case db.CreateOp:
@@ -119,16 +120,16 @@ func (c *Connection) VetForWrite(ctx context.Context, r db.Reader, opType db.OpT
 	case db.UpdateOp:
 		switch {
 		case contains(opts.WithFieldMaskPaths, "PublicId"):
-			return fmt.Errorf("connection vet for write: public id is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("connection vet for write: public id is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "SessionId"):
-			return fmt.Errorf("connection vet for write: session id is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("connection vet for write: session id is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "CreateTime"):
-			return fmt.Errorf("connection vet for write: create time is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("connection vet for write: create time is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
-			return fmt.Errorf("connection vet for write: update time is immutable: %w", db.ErrInvalidParameter)
+			return fmt.Errorf("connection vet for write: update time is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "ClosedReason"):
 			if _, err := convertToClosedReason(c.ClosedReason); err != nil {
-				return fmt.Errorf("connection vet for write: %w", db.ErrInvalidParameter)
+				return fmt.Errorf("connection vet for write: %w", errors.ErrInvalidParameter)
 			}
 		}
 	}
@@ -153,19 +154,19 @@ func (c *Connection) SetTableName(n string) {
 // validateNewConnection checks everything but the connection's PublicId
 func (c *Connection) validateNewConnection(errorPrefix string) error {
 	if c.SessionId == "" {
-		return fmt.Errorf("%s missing session id: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing session id: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if c.ClientTcpAddress == "" {
-		return fmt.Errorf("%s missing client address: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing client address: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if c.ClientTcpPort == 0 {
-		return fmt.Errorf("%s missing client port: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing client port: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if c.EndpointTcpAddress == "" {
-		return fmt.Errorf("%s missing endpoint address: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing endpoint address: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	if c.EndpointTcpPort == 0 {
-		return fmt.Errorf("%s missing endpoint port: %w", errorPrefix, db.ErrInvalidParameter)
+		return fmt.Errorf("%s missing endpoint port: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
 	return nil
 }

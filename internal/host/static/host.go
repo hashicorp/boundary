@@ -3,7 +3,7 @@ package static
 import (
 	"fmt"
 
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -25,7 +25,7 @@ type Host struct {
 // ignored.
 func NewHost(catalogId string, opt ...Option) (*Host, error) {
 	if catalogId == "" {
-		return nil, fmt.Errorf("new: static host: no catalog id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new: static host: no catalog id: %w", errors.ErrInvalidParameter)
 	}
 
 	opts := getOpts(opt...)

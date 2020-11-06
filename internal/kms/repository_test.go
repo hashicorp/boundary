@@ -3,11 +3,11 @@ package kms_test
 import (
 	"context"
 	"crypto/rand"
-	"errors"
 	"io"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -121,7 +121,7 @@ func TestCreateKeysTx(t *testing.T) {
 				scopeId:      org.PublicId,
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-writer",
@@ -133,7 +133,7 @@ func TestCreateKeysTx(t *testing.T) {
 				scopeId:      org.PublicId,
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "nil-wrapper",
@@ -145,7 +145,7 @@ func TestCreateKeysTx(t *testing.T) {
 				scopeId:      org.PublicId,
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "empty-scope",
@@ -157,7 +157,7 @@ func TestCreateKeysTx(t *testing.T) {
 				scopeId:      "",
 			},
 			wantErr:   true,
-			wantErrIs: db.ErrInvalidParameter,
+			wantErrIs: errors.ErrInvalidParameter,
 		},
 		{
 			name: "bad-scope",

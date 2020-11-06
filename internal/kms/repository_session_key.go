@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
@@ -36,17 +37,17 @@ func (r *Repository) CreateSessionKey(ctx context.Context, rkvWrapper wrapping.W
 // a db.TxHandler and allows this capability to be shared with the iam repo.
 func createSessionKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper wrapping.Wrapper, key []byte) (*SessionKey, *SessionKeyVersion, error) {
 	if rkvWrapper == nil {
-		return nil, nil, fmt.Errorf("create session key: missing key wrapper: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session key: missing key wrapper: %w", errors.ErrInvalidParameter)
 	}
 	if len(key) == 0 {
-		return nil, nil, fmt.Errorf("create session key: missing key: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session key: missing key: %w", errors.ErrInvalidParameter)
 	}
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, nil, fmt.Errorf("create session key: root key version id %s doesn't start with prefix %s: %w", rootKeyVersionId, RootKeyVersionPrefix, db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session key: root key version id %s doesn't start with prefix %s: %w", rootKeyVersionId, RootKeyVersionPrefix, errors.ErrInvalidParameter)
 	case rootKeyVersionId == "":
-		return nil, nil, fmt.Errorf("create session key: missing root key version id: %w", db.ErrInvalidParameter)
+		return nil, nil, fmt.Errorf("create session key: missing root key version id: %w", errors.ErrInvalidParameter)
 	}
 	rv := AllocRootKeyVersion()
 	rv.PrivateId = rootKeyVersionId
@@ -92,7 +93,7 @@ func createSessionKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrappe
 // found, it will return nil, nil.
 func (r *Repository) LookupSessionKey(ctx context.Context, privateId string, opt ...Option) (*SessionKey, error) {
 	if privateId == "" {
-		return nil, fmt.Errorf("lookup session key: missing private id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup session key: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	k := AllocSessionKey()
 	k.PrivateId = privateId
@@ -107,7 +108,7 @@ func (r *Repository) LookupSessionKey(ctx context.Context, privateId string, opt
 // are ignored.
 func (r *Repository) DeleteSessionKey(ctx context.Context, privateId string, opt ...Option) (int, error) {
 	if privateId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete session key: missing private id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete session key: missing private id: %w", errors.ErrInvalidParameter)
 	}
 	k := AllocSessionKey()
 	k.PrivateId = privateId
@@ -125,7 +126,7 @@ func (r *Repository) DeleteSessionKey(ctx context.Context, privateId string, opt
 			// no session entries for root keys
 			rowsDeleted, err = w.Delete(ctx, dk)
 			if err == nil && rowsDeleted > 1 {
-				return db.ErrMultipleRecords
+				return errors.ErrMultipleRecords
 			}
 			return err
 		},

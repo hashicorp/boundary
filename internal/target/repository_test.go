@@ -2,13 +2,13 @@ package target
 
 import (
 	"context"
-	"errors"
 	"sort"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -373,7 +373,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete target: failed record not found for ",
+			wantErrMsg:      "delete target: failed record not found:",
 		},
 	}
 	for _, tt := range tests {
@@ -386,7 +386,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)
@@ -595,7 +595,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       db.ErrInvalidParameter,
+			wantIsErr:       errors.ErrInvalidParameter,
 		},
 		{
 			name: "not-found",
@@ -618,7 +618,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       db.ErrInvalidParameter,
+			wantIsErr:       errors.ErrInvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -630,7 +630,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       db.ErrInvalidParameter,
+			wantIsErr:       errors.ErrInvalidParameter,
 		},
 		{
 			name: "bad-version",
@@ -694,7 +694,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 
 				err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				assert.True(errors.Is(errors.ErrRecordNotFound, err))
 				return
 			}
 			require.NoError(err)

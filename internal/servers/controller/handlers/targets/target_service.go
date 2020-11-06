@@ -2,7 +2,7 @@ package targets
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -10,8 +10,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
@@ -243,14 +243,14 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 
 	if authResults.RoundTripValue == nil {
-		return nil, errors.New("authorize session: expected to get a target back from auth results")
+		return nil, stderrors.New("authorize session: expected to get a target back from auth results")
 	}
 	t, ok := authResults.RoundTripValue.(target.Target)
 	if !ok {
-		return nil, errors.New("authorize session: round tripped auth results value is not a target")
+		return nil, stderrors.New("authorize session: round tripped auth results value is not a target")
 	}
 	if t == nil {
-		return nil, errors.New("authorize session: round tripped target is nil")
+		return nil, stderrors.New("authorize session: round tripped target is nil")
 	}
 
 	// This could happen if, say, u_recovery was used or u_anon was granted. But
@@ -278,7 +278,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 	t, hostSets, err := repo.LookupTarget(ctx, t.GetPublicId())
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
 		}
 		return nil, err
@@ -362,7 +362,7 @@ HostSetIterationLoop:
 		}
 		endpointHost = h.Address
 		if endpointHost == "" {
-			return nil, errors.New("host had empty address")
+			return nil, stderrors.New("host had empty address")
 		}
 	}
 	if defaultPort != 0 {
@@ -446,7 +446,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error)
 	}
 	u, m, err := repo.LookupTarget(ctx, id)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 		}
 		return nil, err
@@ -545,7 +545,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	}
 	rows, err := repo.DeleteTarget(ctx, id)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if errors.Is(err, errors.ErrRecordNotFound) {
 			return false, nil
 		}
 		return false, fmt.Errorf("unable to delete target: %w", err)
