@@ -42,6 +42,7 @@ require (
 	github.com/mitchellh/cli v1.1.2
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/gox v1.0.1
+	github.com/mitchellh/pointerstructure v1.0.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oligot/go-mod-upgrade v0.2.1
 	github.com/ory/dockertest/v3 v3.6.0
