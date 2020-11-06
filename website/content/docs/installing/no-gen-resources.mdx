@@ -297,13 +297,13 @@ $ boundary roles create -name 'global_anon_listing' \
   -recovery-config /tmp/recovery.hcl \
   -scope-id 'global'
 
-$ boundary add-grants -id <global_anon_listing_id> \
+$ boundary roles add-grants -id <global_anon_listing_id> \
   -recovery-config /tmp/recovery.hcl \
   -grant 'id=*;type=auth-method;actions=list,authenticate' \
   -grant 'type=scope;actions=list' \
   -grant 'id={{account.id}};actions=read,change-password'
 
-$ boundary add-principals -id <global_anon_listing_id> \
+$ boundary roles add-principals -id <global_anon_listing_id> \
   -recovery-config /tmp/recovery.hcl \
   -principal 'u_anon'
 ```
@@ -338,13 +338,13 @@ $ boundary roles create -name 'org_anon_listing' \
   -recovery-config /tmp/recovery.hcl \
   -scope-id <org_scope_id>
 
-$ boundary add-grants -id <org_anon_listing_id> \
+$ boundary roles add-grants -id <org_anon_listing_id> \
   -recovery-config /tmp/recovery.hcl \
   -grant 'id=*;type=auth-method;actions=list,authenticate' \
   -grant 'type=scope;actions=list' \
   -grant 'id={{account.id}};actions=read,change-password'
 
-$ boundary add-principals -id <org_anon_listing_id> \
+$ boundary roles add-principals -id <org_anon_listing_id> \
   -recovery-config /tmp/recovery.hcl \
   -principal 'u_anon'
 ```
@@ -380,11 +380,11 @@ $ boundary roles create -name 'org_admin' \
   -scope-id 'global' \
   -grant-scope-id <org_scope_id>
 
-$ boundary add-grants -id <org_admin_id> \
+$ boundary roles add-grants -id <org_admin_id> \
   -recovery-config /tmp/recovery.hcl \
   -grant 'id=*;type=*;actions=*'
 
-$ boundary add-principals -id <org_admin_id> \
+$ boundary roles add-principals -id <org_admin_id> \
   -recovery-config /tmp/recovery.hcl \
   -principal <myuser_user_id>
 ```
@@ -419,11 +419,11 @@ $ boundary roles create -name 'project_admin' \
   -scope-id <org_scope_id> \
   -grant-scope-id <project_scope_id>
 
-$ boundary add-grants -id <project_admin_id> \
+$ boundary roles add-grants -id <project_admin_id> \
   -recovery-config /tmp/recovery.hcl \
   -grant 'id=*;type=*;actions=*'
 
-$ boundary add-principals -id <project_admin_id> \
+$ boundary roles add-principals -id <project_admin_id> \
   -recovery-config /tmp/recovery.hcl \
   -principal <myuser_user_id>
 ```
