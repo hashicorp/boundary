@@ -24,7 +24,7 @@ require (
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.1
-	github.com/hashicorp/go-hclog v0.14.1
+	github.com/hashicorp/go-hclog v0.15.0
 	github.com/hashicorp/go-kms-wrapping v0.5.16
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-retryablehttp v0.6.8
@@ -53,9 +53,9 @@ require (
 	github.com/zalando/go-keyring v0.1.0
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
-	golang.org/x/tools v0.0.0-20201103235415-b653051172e4
-	google.golang.org/genproto v0.0.0-20201103154000-415bd0cd5df6
-	google.golang.org/grpc v1.33.1
+	golang.org/x/tools v0.0.0-20201105220310-78b158585360
+	google.golang.org/genproto v0.0.0-20201106154455-f9bfe239b0ba
+	google.golang.org/grpc v1.33.2
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.0.1
 	google.golang.org/protobuf v1.25.0
 	nhooyr.io/websocket v1.8.6
