@@ -67,8 +67,7 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 		}
 	}
 	if r.resp.StatusCode >= 400 {
-		errStruct := inStruct.(*Error)
-		errStruct.response = r
+		apiErr.response = r
 		return apiErr, nil
 	}
 

@@ -2,15 +2,16 @@ package api
 
 import (
 	"errors"
+	"net/http"
 
 	"google.golang.org/grpc/codes"
 )
 
 var (
-	ErrNotFound         = &Error{Kind: codes.NotFound.String()}
-	ErrInvalidArgument  = &Error{Kind: codes.InvalidArgument.String()}
-	ErrPermissionDenied = &Error{Kind: codes.PermissionDenied.String()}
-	ErrUnauthorized     = &Error{Kind: codes.Unauthenticated.String()}
+	ErrNotFound         = &Error{Kind: codes.NotFound.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusNotFound}}}
+	ErrInvalidArgument  = &Error{Kind: codes.InvalidArgument.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusBadRequest}}}
+	ErrPermissionDenied = &Error{Kind: codes.PermissionDenied.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusForbidden}}}
+	ErrUnauthorized     = &Error{Kind: codes.Unauthenticated.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusUnauthorized}}}
 )
 
 // AsServerError returns an api *Error from the provided error.  If the provided error
@@ -31,5 +32,5 @@ func (e *Error) Error() string {
 // Errors are considered the same iff they are both api.Errors and their statuses are the same.
 func (e *Error) Is(target error) bool {
 	tApiErr := AsServerError(target)
-	return tApiErr != nil && tApiErr.Kind == e.Kind
+	return tApiErr != nil && tApiErr.Kind == e.Kind && e.ResponseStatus() == tApiErr.ResponseStatus()
 }
