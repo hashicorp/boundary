@@ -136,20 +136,13 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 
 func PrintApiError(in *api.Error) string {
 	nonAttributeMap := map[string]interface{}{
-		"Status":  in.Status,
-		"Code":    in.Code,
+		"Status":  in.ResponseStatus(),
+		"Kind":    in.Kind,
 		"Message": in.Message,
 	}
-	if in.Details != nil {
-		if in.Details.TraceId != "" {
-			nonAttributeMap["Trace ID"] = in.Details.TraceId
-		}
-		if in.Details.RequestId != "" {
-			nonAttributeMap["Request ID"] = in.Details.RequestId
-		}
-		if in.Details.ErrorId != "" {
-			nonAttributeMap["Error ID"] = in.Details.ErrorId
-		}
+
+	if in.ResponseTraceId() != "" {
+		nonAttributeMap["TraceId"] = in.ResponseTraceId()
 	}
 
 	maxLength := MaxAttributesLength(nonAttributeMap, nil, nil)

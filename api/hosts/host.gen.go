@@ -26,22 +26,28 @@ type Host struct {
 	HostSetIds    []string               `json:"host_set_ids,omitempty"`
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n Host) ResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n Host) ResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
+}
+
+func (n Host) ResponseStatus() int {
+	return n.response.HttpResponse().StatusCode
+}
+
+func (n Host) ResponseTraceId() string {
+	return n.response.HttpResponse().Header.Get("TraceId")
 }
 
 type HostReadResult struct {
-	Item         *Host
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Item     *Host
+	response *api.Response
 }
 
 func (n HostReadResult) GetItem() interface{} {
@@ -49,33 +55,31 @@ func (n HostReadResult) GetItem() interface{} {
 }
 
 func (n HostReadResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n HostReadResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type HostCreateResult = HostReadResult
 type HostUpdateResult = HostReadResult
 
 type HostDeleteResult struct {
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n HostDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n HostDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type HostListResult struct {
-	Items        []*Host
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Items    []*Host
+	response *api.Response
 }
 
 func (n HostListResult) GetItems() interface{} {
@@ -83,11 +87,11 @@ func (n HostListResult) GetItems() interface{} {
 }
 
 func (n HostListResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n HostListResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 // Client is a client for this collection
@@ -148,8 +152,7 @@ func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -190,8 +193,7 @@ func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*HostR
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -254,8 +256,7 @@ func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt 
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -296,8 +297,7 @@ func (c *Client) Delete(ctx context.Context, hostId string, opt ...Option) (*Hos
 	}
 
 	target := &HostDeleteResult{
-		responseBody: resp.Body,
-		responseMap:  resp.Map,
+		response: resp,
 	}
 	return target, nil
 }
@@ -339,7 +339,6 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }

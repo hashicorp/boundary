@@ -145,11 +145,11 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	require.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
 
 	_, err = tokens.Read(tc.Context(), "invalid id")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
+	assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
 }

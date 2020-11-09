@@ -36,15 +36,10 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 	// TODO Remove as we'll use the common err format for this
 	if r.resp.StatusCode == 403 {
 		// Nothing to be done
-		return &Error{
-			Status:  http.StatusForbidden,
-			Message: "Forbidden",
-		}, nil
+		return ErrPermissionDenied, nil
 	}
 
-	apiErr := &Error{
-		Status: int32(r.resp.StatusCode),
-	}
+	apiErr := &Error{}
 	if r.resp.Body != nil {
 		r.Body = new(bytes.Buffer)
 		if _, err := r.Body.ReadFrom(r.resp.Body); err != nil {
@@ -73,8 +68,7 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 	}
 	if r.resp.StatusCode >= 400 {
 		errStruct := inStruct.(*Error)
-		errStruct.responseBody = r.Body
-		errStruct.responseMap = r.Map
+		errStruct.response = r
 		return apiErr, nil
 	}
 

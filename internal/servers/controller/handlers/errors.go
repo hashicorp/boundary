@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -23,11 +22,12 @@ const (
 )
 
 type apiError struct {
-	inner *pb.Error
+	status int32
+	inner  *pb.Error
 }
 
 func (e *apiError) Error() string {
-	res := fmt.Sprintf("Status: %d, Code: %q, Error: %q", e.inner.GetStatus(), e.inner.GetCode(), e.inner.GetMessage())
+	res := fmt.Sprintf("Status: %d, Code: %q, Error: %q", e.status, e.inner.GetKind(), e.inner.GetMessage())
 	var dets []string
 	for _, rf := range e.inner.GetDetails().GetRequestFields() {
 		dets = append(dets, fmt.Sprintf("{name: %q, desc: %q}", rf.GetName(), rf.GetDescription()))
@@ -44,58 +44,64 @@ func (e *apiError) Is(target error) bool {
 	if !errors.As(target, &tApiErr) {
 		return false
 	}
-	return tApiErr.inner.Code == e.inner.Code && tApiErr.inner.Status == e.inner.Status
+	return tApiErr.inner.Kind == e.inner.Kind && tApiErr.status == e.status
 }
 
 // ApiErrorWithCode returns an api error with the provided code.
 func ApiErrorWithCode(c codes.Code) error {
-	return &apiError{inner: &pb.Error{
-		Status: int32(runtime.HTTPStatusFromCode(c)),
-		Code:   c.String(),
-	}}
+	return &apiError{
+		status: int32(runtime.HTTPStatusFromCode(c)),
+		inner: &pb.Error{
+			Kind: c.String(),
+		}}
 }
 
 // ApiErrorWithCodeAndMessage returns an api error with the provided code and message.
 func ApiErrorWithCodeAndMessage(c codes.Code, msg string, args ...interface{}) error {
-	return &apiError{inner: &pb.Error{
-		Status:  int32(runtime.HTTPStatusFromCode(c)),
-		Code:    c.String(),
-		Message: fmt.Sprintf(msg, args...),
-	}}
+	return &apiError{
+		status: int32(runtime.HTTPStatusFromCode(c)),
+		inner: &pb.Error{
+			Kind:    c.String(),
+			Message: fmt.Sprintf(msg, args...),
+		}}
 }
 
 // NotFoundError returns an ApiError indicating a resource couldn't be found.
 func NotFoundError() error {
-	return &apiError{&pb.Error{
-		Status:  http.StatusNotFound,
-		Code:    codes.NotFound.String(),
-		Message: "Resource not found.",
-	}}
+	return &apiError{
+		status: http.StatusNotFound,
+		inner: &pb.Error{
+			Kind:    codes.NotFound.String(),
+			Message: "Resource not found.",
+		}}
 }
 
 // NotFoundErrorf returns an ApiError indicating a resource couldn't be found.
 func NotFoundErrorf(msg string, a ...interface{}) error {
-	return &apiError{&pb.Error{
-		Status:  http.StatusNotFound,
-		Code:    codes.NotFound.String(),
-		Message: fmt.Sprintf(msg, a...),
-	}}
+	return &apiError{
+		status: http.StatusNotFound,
+		inner: &pb.Error{
+			Kind:    codes.NotFound.String(),
+			Message: fmt.Sprintf(msg, a...),
+		}}
 }
 
 func ForbiddenError() error {
-	return &apiError{&pb.Error{
-		Status:  http.StatusForbidden,
-		Code:    codes.PermissionDenied.String(),
-		Message: "Forbidden.",
-	}}
+	return &apiError{
+		status: http.StatusForbidden,
+		inner: &pb.Error{
+			Kind:    codes.PermissionDenied.String(),
+			Message: "Forbidden.",
+		}}
 }
 
 func UnauthenticatedError() error {
-	return &apiError{&pb.Error{
-		Status:  http.StatusUnauthorized,
-		Code:    codes.Unauthenticated.String(),
-		Message: "Unauthenticated, or invalid token.",
-	}}
+	return &apiError{
+		status: http.StatusUnauthorized,
+		inner: &pb.Error{
+			Kind:    codes.Unauthenticated.String(),
+			Message: "Unauthenticated, or invalid token.",
+		}}
 }
 
 func InvalidArgumentErrorf(msg string, fields map[string]string) error {
@@ -125,18 +131,20 @@ func backendErrorToApiError(inErr error) error {
 	case errors.Is(inErr, runtime.ErrNotMatch):
 		// grpc gateway uses this error when the path was not matched, but the error uses codes.Unimplemented which doesn't match the intention.
 		// Overwrite the error to match our expected behavior.
-		return &apiError{inner: &pb.Error{
-			Status:  http.StatusNotFound,
-			Code:    codes.NotFound.String(),
-			Message: http.StatusText(http.StatusNotFound),
-		}}
+		return &apiError{
+			status: http.StatusNotFound,
+			inner: &pb.Error{
+				Kind:    codes.NotFound.String(),
+				Message: http.StatusText(http.StatusNotFound),
+			}}
 	case status.Code(inErr) == codes.Unimplemented:
 		// Instead of returning a 501 we always want to return a 405 when a method isn't implemented.
-		return &apiError{inner: &pb.Error{
-			Status:  http.StatusMethodNotAllowed,
-			Code:    codes.Unimplemented.String(),
-			Message: stErr.Message(),
-		}}
+		return &apiError{
+			status: http.StatusMethodNotAllowed,
+			inner: &pb.Error{
+				Kind:    codes.Unimplemented.String(),
+				Message: stErr.Message(),
+			}}
 	case errors.Is(inErr, errors.ErrRecordNotFound):
 		return NotFoundErrorf(genericNotFoundMsg)
 	case errors.Is(inErr, errors.ErrInvalidFieldMask), errors.Is(inErr, errors.ErrEmptyFieldMask):
@@ -147,21 +155,12 @@ func backendErrorToApiError(inErr error) error {
 	return nil
 }
 
-func getInternalError(id string) *apiError {
-	return &apiError{&pb.Error{
-		Status:  http.StatusInternalServerError,
-		Code:    codes.Internal.String(),
-		Details: &pb.ErrorDetails{ErrorId: id},
-	}}
-}
-
-func internalErrorId() (string, error) {
-	errId, err := base62.Random(10)
-	if err != nil {
-		return "", fmt.Errorf("unable to generate id: %w", err)
+var (
+	internalError = &apiError{
+		status: http.StatusInternalServerError,
+		inner:  &pb.Error{Kind: codes.Internal.String()},
 	}
-	return errId, nil
-}
+)
 
 func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 	const errorFallback = `{"error": "failed to marshal error message"}`
@@ -175,14 +174,16 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 			}
 		}
 
-		if apiErr == nil || apiErr.inner.GetStatus() == http.StatusInternalServerError {
-			errId, err := internalErrorId()
-			if err != nil {
-				logger.Error("unable to generate internal error id", "error", err)
-				errId = "failed_to_generate_error_id"
-			}
-			logger.Error("internal error returned", "error id", errId, "error", inErr)
-			apiErr = getInternalError(errId)
+		traceId := r.Header.Get("TraceId")
+		if traceId == "" {
+			traceId = "failed_to_get_trace_id"
+		}
+		if apiErr == nil || apiErr.status == http.StatusInternalServerError {
+			logger.Error("internal error returned", "trace id", traceId, "error", inErr)
+			apiErr = internalError
+
+			// TODO: Return the traceid for more than just Internal Server errors.
+			w.Header().Set("TraceId", traceId)
 		}
 
 		buf, merr := mar.Marshal(apiErr.inner)
@@ -196,7 +197,7 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", mar.ContentType(apiErr.inner))
-		w.WriteHeader(int(apiErr.inner.GetStatus()))
+		w.WriteHeader(int(apiErr.status))
 		if _, err := w.Write(buf); err != nil {
 			logger.Error("failed to send response chunk", "error", err)
 			return

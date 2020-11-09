@@ -2,8 +2,5 @@
 package api
 
 type ErrorDetails struct {
-	TraceId       string        `json:"TraceId,omitempty"`
-	RequestId     string        `json:"request_id,omitempty"`
-	ErrorId       string        `json:"error_id,omitempty"`
 	RequestFields []*FieldError `json:"request_fields,omitempty"`
 }

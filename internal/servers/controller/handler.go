@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -22,6 +21,8 @@ import (
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/vault/sdk/helper/base62"
+	"google.golang.org/grpc/codes"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
@@ -175,6 +176,16 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	return mux, nil
 }
 
+// generatedTraceId returns a boundary generated TraceId or "" if an error occurs when generating
+// the id.
+func generatedTraceId() string {
+	t, err := base62.Random(20)
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("gtraceid_%s", t)
+}
+
 func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
 	var maxRequestDuration time.Duration
 	var maxRequestSize int64
@@ -200,6 +211,15 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if logUrls {
 			c.logger.Trace("request received", "method", r.Method, "url", r.URL.RequestURI())
+		}
+
+		// If no TraceId is provided, generate our own.
+		if r.Header.Get("TraceId") == "" {
+			// TODO: Verify that this is safe to do with OpenTracing and evaluate if we need to change the
+			// id format to be inlined with OpenTracing standards.
+			if tid := generatedTraceId(); tid != "" {
+				r.Header.Set("TraceId", tid)
+			}
 		}
 
 		// Set the Cache-Control header for all responses returned
@@ -278,10 +298,7 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
 
-			err := &api.Error{
-				Status: http.StatusForbidden,
-				Code:   "origin forbidden",
-			}
+			err := handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "origin forbidden")
 
 			enc := json.NewEncoder(w)
 			enc.Encode(err)

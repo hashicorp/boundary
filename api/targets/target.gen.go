@@ -29,22 +29,28 @@ type Target struct {
 	SessionConnectionLimit int32                  `json:"session_connection_limit,omitempty"`
 	Attributes             map[string]interface{} `json:"attributes,omitempty"`
 
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n Target) ResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n Target) ResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
+}
+
+func (n Target) ResponseStatus() int {
+	return n.response.HttpResponse().StatusCode
+}
+
+func (n Target) ResponseTraceId() string {
+	return n.response.HttpResponse().Header.Get("TraceId")
 }
 
 type TargetReadResult struct {
-	Item         *Target
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Item     *Target
+	response *api.Response
 }
 
 func (n TargetReadResult) GetItem() interface{} {
@@ -52,33 +58,31 @@ func (n TargetReadResult) GetItem() interface{} {
 }
 
 func (n TargetReadResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n TargetReadResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type TargetCreateResult = TargetReadResult
 type TargetUpdateResult = TargetReadResult
 
 type TargetDeleteResult struct {
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n TargetDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n TargetDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type TargetListResult struct {
-	Items        []*Target
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Items    []*Target
+	response *api.Response
 }
 
 func (n TargetListResult) GetItems() interface{} {
@@ -86,11 +90,11 @@ func (n TargetListResult) GetItems() interface{} {
 }
 
 func (n TargetListResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n TargetListResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 // Client is a client for this collection
@@ -156,8 +160,7 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -198,8 +201,7 @@ func (c *Client) Read(ctx context.Context, targetId string, opt ...Option) (*Tar
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -262,8 +264,7 @@ func (c *Client) Update(ctx context.Context, targetId string, version uint32, op
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -304,8 +305,7 @@ func (c *Client) Delete(ctx context.Context, targetId string, opt ...Option) (*T
 	}
 
 	target := &TargetDeleteResult{
-		responseBody: resp.Body,
-		responseMap:  resp.Map,
+		response: resp,
 	}
 	return target, nil
 }
@@ -347,8 +347,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Targ
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -415,8 +414,7 @@ func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint3
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -481,8 +479,7 @@ func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint3
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -549,7 +546,6 @@ func (c *Client) RemoveHostSets(ctx context.Context, targetId string, version ui
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
