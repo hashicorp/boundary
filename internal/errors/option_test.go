@@ -40,12 +40,14 @@ func Test_getOpts(t *testing.T) {
 		// test default
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
-		testOpts.withOp = ""
+		testOpts.withOp = nil
 		assert.Equal(opts, testOpts)
 
 		// try setting it
 		opts = GetOpts(WithOp("alice.bob"))
-		testOpts.withOp = "alice.bob"
+		assert.Equal("alice.bob", string(*opts.withOp))
+		// verify all other options are still equal
+		opts.withOp = nil
 		assert.Equal(opts, testOpts)
 	})
 }

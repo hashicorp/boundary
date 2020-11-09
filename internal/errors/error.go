@@ -3,6 +3,8 @@ package errors
 import (
 	"errors"
 	"fmt"
+	"path"
+	"runtime"
 	"strings"
 
 	"github.com/lib/pq"
@@ -33,16 +35,27 @@ type Err struct {
 }
 
 // New creates a new Err and supports the options of:
-// WithOp - allows you to specify an optional Op (operation)
+// WithOp() - allows you to specify an optional Op (operation), if not provided
+// Op will default to `package.func` of the caller
 // WithMsg() - allows you to specify an optional error msg, if the default
 // msg for the error Code is not sufficient.
 // WithWrap() - allows you to specify
 // an error to wrap
 func New(c Code, opt ...Option) error {
 	opts := GetOpts(opt...)
+	var op Op
+	if opts.withOp != nil {
+		op = *opts.withOp
+	} else {
+		pc, _, _, ok := runtime.Caller(1)
+		if ok {
+			fn := runtime.FuncForPC(pc).Name()
+			op = Op(path.Base(fn))
+		}
+	}
 	return &Err{
 		Code:    c,
-		Op:      opts.withOp,
+		Op:      op,
 		Wrapped: opts.withErrWrapped,
 		Msg:     opts.withErrMsg,
 	}
@@ -63,19 +76,19 @@ func Convert(e error) *Err {
 		if pqError.Code.Class() == "23" { // class of integrity constraint violations
 			switch pqError.Code {
 			case "23505": // unique_violation
-				return New(NotUnique, WithMsg(pqError.Detail), WithWrap(ErrNotUnique)).(*Err)
+				return New(NotUnique, WithMsg(pqError.Detail), WithWrap(ErrNotUnique), WithOp("")).(*Err)
 			case "23502": // not_null_violation
 				msg := fmt.Sprintf("%s must not be empty", pqError.Column)
-				return New(NotNull, WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
+				return New(NotNull, WithMsg(msg), WithWrap(ErrNotNull), WithOp("")).(*Err)
 			case "23514": // check_violation
 				msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
-				return New(CheckConstraint, WithMsg(msg), WithWrap(ErrCheckConstraint)).(*Err)
+				return New(CheckConstraint, WithMsg(msg), WithWrap(ErrCheckConstraint), WithOp("")).(*Err)
 			default:
-				return New(NotSpecificIntegrity, WithMsg(pqError.Message)).(*Err)
+				return New(NotSpecificIntegrity, WithMsg(pqError.Message), WithOp("")).(*Err)
 			}
 		}
 		if pqError.Code == "42P01" {
-			return New(MissingTable, WithMsg(pqError.Message)).(*Err)
+			return New(MissingTable, WithMsg(pqError.Message), WithOp("")).(*Err)
 		}
 	}
 	// unfortunately, we can't help.

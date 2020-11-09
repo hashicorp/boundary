@@ -147,10 +147,11 @@ func backendErrorToApiError(inErr error) error {
 	return nil
 }
 
-func getInternalError(id string) *apiError {
+func getInternalError(id, msg string) *apiError {
 	return &apiError{&pb.Error{
 		Status:  http.StatusInternalServerError,
 		Code:    codes.Internal.String(),
+		Message: msg,
 		Details: &pb.ErrorDetails{ErrorId: id},
 	}}
 }
@@ -182,7 +183,13 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 				errId = "failed_to_generate_error_id"
 			}
 			logger.Error("internal error returned", "error id", errId, "error", inErr)
-			apiErr = getInternalError(errId)
+			var msg string
+			if dErr := errors.Convert(inErr); dErr != nil {
+				// This is a domain error, get message to return on API
+				// Do not return the full dErr.Error() as it may contain un-scrubbed info
+				msg = dErr.Msg
+			}
+			apiErr = getInternalError(errId, msg)
 		}
 
 		buf, merr := mar.Marshal(apiErr.inner)

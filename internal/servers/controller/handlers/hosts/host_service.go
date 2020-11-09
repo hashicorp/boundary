@@ -176,8 +176,8 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	out, err := repo.CreateHost(ctx, scopeId, h)
 	if err != nil {
-		if errors.IsUniqueError(err) || errors.Is(err, errors.ErrNotUnique) {
-			// Push this error through so the error interceptor can interpret it correctly.
+		if dErr := errors.Convert(err); dErr != nil {
+			// This is a domain error, push it through so the error interceptor can interpret it correctly.
 			return nil, err
 		}
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host: %v.", err)

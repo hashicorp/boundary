@@ -39,6 +39,7 @@ func Test_NewError(t *testing.T) {
 			name: "no-options",
 			opt:  nil,
 			want: &errors.Err{
+				Op:   "errors_test.Test_NewError.func1",
 				Code: errors.Unknown,
 			},
 		},
@@ -94,12 +95,12 @@ func TestError_Error(t *testing.T) {
 		{
 			name: "msg",
 			err:  errors.New(errors.Unknown, errors.WithMsg("test msg")),
-			want: "test msg: unknown: error #0",
+			want: "errors_test.TestError_Error: test msg: unknown: error #0",
 		},
 		{
 			name: "code",
 			err:  errors.New(errors.CheckConstraint),
-			want: "constraint check failed, integrity violation: error #1000",
+			want: "errors_test.TestError_Error: constraint check failed, integrity violation: error #1000",
 		},
 		{
 			name: "op-msg-and-code",
@@ -109,7 +110,7 @@ func TestError_Error(t *testing.T) {
 		{
 			name: "unknown",
 			err:  errors.New(errors.Unknown),
-			want: "unknown, unknown: error #0",
+			want: "errors_test.TestError_Error: unknown, unknown: error #0",
 		},
 	}
 	for _, tt := range tests {
@@ -210,7 +211,7 @@ func TestConvertError(t *testing.T) {
 			e: &pq.Error{
 				Code: pq.ErrorCode("23001"),
 			},
-			wantErr: errors.New(errors.NotSpecificIntegrity),
+			wantErr: errors.New(errors.NotSpecificIntegrity, errors.WithOp("")),
 		},
 	}
 	for _, tt := range tests {
@@ -267,6 +268,7 @@ func TestConvertError(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		_, err := rw.Exec(ctx, missingTable, nil)
 		require.Error(err)
+
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(errors.Match(errors.T(errors.MissingTable), e))

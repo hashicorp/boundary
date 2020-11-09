@@ -3,6 +3,8 @@ package static
 import (
 	"fmt"
 
+	"github.com/hashicorp/boundary/internal/errors"
+
 	"github.com/hashicorp/boundary/internal/db"
 )
 
@@ -24,7 +26,7 @@ func newHostCatalogId() (string, error) {
 func newHostId() (string, error) {
 	id, err := db.NewPublicId(HostPrefix)
 	if err != nil {
-		return "", fmt.Errorf("new host id: %w", err)
+		return "", errors.New(errors.Unknown, errors.WithWrap(err))
 	}
 	return id, err
 }
