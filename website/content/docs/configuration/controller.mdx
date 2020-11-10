@@ -40,6 +40,13 @@ used by workers after initial connection to controllers via the worker's
 bind a publicly accessible IP to a NIC on the host directly, such as an Amazon
 EIP.
 
+- `auth_token_time_to_live` - Maximum time to live (TTL) for all auth tokens globally (pertains
+to all tokens from all auth methods). Valid time units are anything specified by Golang's 
+[ParseDuration()](https://golang.org/pkg/time/#ParseDuration) method. Default is 7 days.
+- `auth_token_time_to_stale` - Maximum time of inactivity for all auth tokens globally (pertains
+to all tokens from all auth methods). Valid time units are anything specified by Golang's 
+[ParseDuration()](https://golang.org/pkg/time/#ParseDuration) method. Default is 1 day.
+
 ## KMS Configuration
 
 The controller requires two KMS stanzas for `root` and `worker-auth` purposes:
