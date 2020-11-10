@@ -1,5 +1,7 @@
 package authtoken
 
+import "time"
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -14,8 +16,10 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withTokenValue bool
-	withLimit      int
+	withTokenValue               bool
+	withTokenTimeToLiveDuration  time.Duration
+	withTokenTimeToStaleDuration time.Duration
+	withLimit                    int
 }
 
 func getDefaultOptions() options {
@@ -27,6 +31,20 @@ func getDefaultOptions() options {
 func withTokenValue() Option {
 	return func(o *options) {
 		o.withTokenValue = true
+	}
+}
+
+// WithTokenTimeToLiveDuration allows setting the auth token time-to-live.
+func WithTokenTimeToLiveDuration(ttl time.Duration) Option {
+	return func(o *options) {
+		o.withTokenTimeToLiveDuration = ttl
+	}
+}
+
+// WithTokenTimeToStaleDuration allows setting the auth token staleness duration.
+func WithTokenTimeToStaleDuration(dur time.Duration) Option {
+	return func(o *options) {
+		o.withTokenTimeToStaleDuration = dur
 	}
 }
 

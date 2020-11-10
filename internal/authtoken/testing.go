@@ -3,6 +3,7 @@ package authtoken
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
@@ -27,7 +28,10 @@ func TestAuthToken(t *testing.T, conn *gorm.DB, kms *kms.Kms, scopeId string) *A
 	u, err := iamRepo.LookupUserWithLogin(ctx, acct.GetPublicId(), iam.WithAutoVivify(true))
 	require.NoError(t, err)
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(rw, rw, kms,
+		WithTokenTimeToLiveDuration(7*24*time.Hour),
+		WithTokenTimeToStaleDuration(24*time.Hour),
+	)
 	require.NoError(t, err)
 
 	at, err := repo.CreateAuthToken(ctx, u, acct.GetPublicId())
