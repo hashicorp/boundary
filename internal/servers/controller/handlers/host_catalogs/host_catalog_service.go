@@ -31,6 +31,8 @@ func init() {
 }
 
 type Service struct {
+	pbs.UnimplementedHostCatalogServiceServer
+
 	staticRepoFn common.StaticRepoFactory
 	iamRepoFn    common.IamRepoFactory
 }

@@ -34,6 +34,8 @@ func init() {
 
 // Service handles request as described by the pbs.UserServiceServer interface.
 type Service struct {
+	pbs.UnimplementedUserServiceServer
+
 	repoFn common.IamRepoFactory
 }
 

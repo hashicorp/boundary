@@ -33,6 +33,8 @@ func init() {
 
 // Service handles request as described by the pbs.GroupServiceServer interface.
 type Service struct {
+	pbs.UnimplementedGroupServiceServer
+
 	repoFn common.IamRepoFactory
 }
 

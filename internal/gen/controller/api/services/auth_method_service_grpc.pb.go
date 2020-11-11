@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // AuthMethodServiceClient is the client API for AuthMethodService service.
 //
@@ -110,6 +110,8 @@ func (c *authMethodServiceClient) Authenticate(ctx context.Context, in *Authenti
 }
 
 // AuthMethodServiceServer is the server API for AuthMethodService service.
+// All implementations must embed UnimplementedAuthMethodServiceServer
+// for forward compatibility
 type AuthMethodServiceServer interface {
 	// GetAuthMethod returns a stored Auth Method if present.  The provided request
 	// must include the Auth Method id. If missing, malformed or referencing a
@@ -139,32 +141,41 @@ type AuthMethodServiceServer interface {
 	DeleteAuthMethod(context.Context, *DeleteAuthMethodRequest) (*DeleteAuthMethodResponse, error)
 	// Authenticate validates credentials provided and returns an Auth Token.
 	Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
+	mustEmbedUnimplementedAuthMethodServiceServer()
 }
 
-// UnimplementedAuthMethodServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedAuthMethodServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedAuthMethodServiceServer struct {
 }
 
-func (*UnimplementedAuthMethodServiceServer) GetAuthMethod(context.Context, *GetAuthMethodRequest) (*GetAuthMethodResponse, error) {
+func (UnimplementedAuthMethodServiceServer) GetAuthMethod(context.Context, *GetAuthMethodRequest) (*GetAuthMethodResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAuthMethod not implemented")
 }
-func (*UnimplementedAuthMethodServiceServer) ListAuthMethods(context.Context, *ListAuthMethodsRequest) (*ListAuthMethodsResponse, error) {
+func (UnimplementedAuthMethodServiceServer) ListAuthMethods(context.Context, *ListAuthMethodsRequest) (*ListAuthMethodsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAuthMethods not implemented")
 }
-func (*UnimplementedAuthMethodServiceServer) CreateAuthMethod(context.Context, *CreateAuthMethodRequest) (*CreateAuthMethodResponse, error) {
+func (UnimplementedAuthMethodServiceServer) CreateAuthMethod(context.Context, *CreateAuthMethodRequest) (*CreateAuthMethodResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAuthMethod not implemented")
 }
-func (*UnimplementedAuthMethodServiceServer) UpdateAuthMethod(context.Context, *UpdateAuthMethodRequest) (*UpdateAuthMethodResponse, error) {
+func (UnimplementedAuthMethodServiceServer) UpdateAuthMethod(context.Context, *UpdateAuthMethodRequest) (*UpdateAuthMethodResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAuthMethod not implemented")
 }
-func (*UnimplementedAuthMethodServiceServer) DeleteAuthMethod(context.Context, *DeleteAuthMethodRequest) (*DeleteAuthMethodResponse, error) {
+func (UnimplementedAuthMethodServiceServer) DeleteAuthMethod(context.Context, *DeleteAuthMethodRequest) (*DeleteAuthMethodResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAuthMethod not implemented")
 }
-func (*UnimplementedAuthMethodServiceServer) Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error) {
+func (UnimplementedAuthMethodServiceServer) Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Authenticate not implemented")
 }
+func (UnimplementedAuthMethodServiceServer) mustEmbedUnimplementedAuthMethodServiceServer() {}
 
-func RegisterAuthMethodServiceServer(s *grpc.Server, srv AuthMethodServiceServer) {
+// UnsafeAuthMethodServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AuthMethodServiceServer will
+// result in compilation errors.
+type UnsafeAuthMethodServiceServer interface {
+	mustEmbedUnimplementedAuthMethodServiceServer()
+}
+
+func RegisterAuthMethodServiceServer(s grpc.ServiceRegistrar, srv AuthMethodServiceServer) {
 	s.RegisterService(&_AuthMethodService_serviceDesc, srv)
 }
 

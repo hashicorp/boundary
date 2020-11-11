@@ -47,6 +47,8 @@ func init() {
 
 // Service handles request as described by the pbs.TargetServiceServer interface.
 type Service struct {
+	pbs.UnimplementedTargetServiceServer
+
 	repoFn           common.TargetRepoFactory
 	iamRepoFn        common.IamRepoFactory
 	serversRepoFn    common.ServersRepoFactory

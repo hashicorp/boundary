@@ -34,6 +34,8 @@ func init() {
 
 // Service handles request as described by the pbs.RoleServiceServer interface.
 type Service struct {
+	pbs.UnimplementedRoleServiceServer
+
 	repoFn common.IamRepoFactory
 }
 

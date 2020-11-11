@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // AuthTokenServiceClient is the client API for AuthTokenService service.
 //
@@ -67,6 +67,8 @@ func (c *authTokenServiceClient) DeleteAuthToken(ctx context.Context, in *Delete
 }
 
 // AuthTokenServiceServer is the server API for AuthTokenService service.
+// All implementations must embed UnimplementedAuthTokenServiceServer
+// for forward compatibility
 type AuthTokenServiceServer interface {
 	// GetAuthToken returns a stored Auth Token if present.  The provided request
 	// must include the Auth Token id and if it is missing, malformed or
@@ -80,23 +82,32 @@ type AuthTokenServiceServer interface {
 	// DeleteAuthToken removes a Auth Token from Boundary. If the provided
 	// Auth Token id is malformed or not provided an error is returned.
 	DeleteAuthToken(context.Context, *DeleteAuthTokenRequest) (*DeleteAuthTokenResponse, error)
+	mustEmbedUnimplementedAuthTokenServiceServer()
 }
 
-// UnimplementedAuthTokenServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedAuthTokenServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedAuthTokenServiceServer struct {
 }
 
-func (*UnimplementedAuthTokenServiceServer) GetAuthToken(context.Context, *GetAuthTokenRequest) (*GetAuthTokenResponse, error) {
+func (UnimplementedAuthTokenServiceServer) GetAuthToken(context.Context, *GetAuthTokenRequest) (*GetAuthTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAuthToken not implemented")
 }
-func (*UnimplementedAuthTokenServiceServer) ListAuthTokens(context.Context, *ListAuthTokensRequest) (*ListAuthTokensResponse, error) {
+func (UnimplementedAuthTokenServiceServer) ListAuthTokens(context.Context, *ListAuthTokensRequest) (*ListAuthTokensResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAuthTokens not implemented")
 }
-func (*UnimplementedAuthTokenServiceServer) DeleteAuthToken(context.Context, *DeleteAuthTokenRequest) (*DeleteAuthTokenResponse, error) {
+func (UnimplementedAuthTokenServiceServer) DeleteAuthToken(context.Context, *DeleteAuthTokenRequest) (*DeleteAuthTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAuthToken not implemented")
 }
+func (UnimplementedAuthTokenServiceServer) mustEmbedUnimplementedAuthTokenServiceServer() {}
 
-func RegisterAuthTokenServiceServer(s *grpc.Server, srv AuthTokenServiceServer) {
+// UnsafeAuthTokenServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AuthTokenServiceServer will
+// result in compilation errors.
+type UnsafeAuthTokenServiceServer interface {
+	mustEmbedUnimplementedAuthTokenServiceServer()
+}
+
+func RegisterAuthTokenServiceServer(s grpc.ServiceRegistrar, srv AuthTokenServiceServer) {
 	s.RegisterService(&_AuthTokenService_serviceDesc, srv)
 }
 

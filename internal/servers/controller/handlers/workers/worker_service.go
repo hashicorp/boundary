@@ -17,6 +17,9 @@ import (
 )
 
 type workerServiceServer struct {
+	pbs.UnimplementedServerCoordinationServiceServer
+	pbs.UnimplementedSessionServiceServer
+
 	logger        hclog.Logger
 	serversRepoFn common.ServersRepoFactory
 	sessionRepoFn common.SessionRepoFactory

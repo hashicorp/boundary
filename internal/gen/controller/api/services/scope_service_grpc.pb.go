@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // ScopeServiceClient is the client API for ScopeService service.
 //
@@ -99,6 +99,8 @@ func (c *scopeServiceClient) DeleteScope(ctx context.Context, in *DeleteScopeReq
 }
 
 // ScopeServiceServer is the server API for ScopeService service.
+// All implementations must embed UnimplementedScopeServiceServer
+// for forward compatibility
 type ScopeServiceServer interface {
 	// GetScope returns a stored Scope if present.  The provided request
 	// must include the scope ID for the scope being retrieved. If
@@ -126,29 +128,38 @@ type ScopeServiceServer interface {
 	// DeleteScope remotes a Scope and all child resources from Boundary. If the
 	// provided Scope IDs are malformed or not provided an error is returned.
 	DeleteScope(context.Context, *DeleteScopeRequest) (*DeleteScopeResponse, error)
+	mustEmbedUnimplementedScopeServiceServer()
 }
 
-// UnimplementedScopeServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedScopeServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedScopeServiceServer struct {
 }
 
-func (*UnimplementedScopeServiceServer) GetScope(context.Context, *GetScopeRequest) (*GetScopeResponse, error) {
+func (UnimplementedScopeServiceServer) GetScope(context.Context, *GetScopeRequest) (*GetScopeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetScope not implemented")
 }
-func (*UnimplementedScopeServiceServer) ListScopes(context.Context, *ListScopesRequest) (*ListScopesResponse, error) {
+func (UnimplementedScopeServiceServer) ListScopes(context.Context, *ListScopesRequest) (*ListScopesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListScopes not implemented")
 }
-func (*UnimplementedScopeServiceServer) CreateScope(context.Context, *CreateScopeRequest) (*CreateScopeResponse, error) {
+func (UnimplementedScopeServiceServer) CreateScope(context.Context, *CreateScopeRequest) (*CreateScopeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateScope not implemented")
 }
-func (*UnimplementedScopeServiceServer) UpdateScope(context.Context, *UpdateScopeRequest) (*UpdateScopeResponse, error) {
+func (UnimplementedScopeServiceServer) UpdateScope(context.Context, *UpdateScopeRequest) (*UpdateScopeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateScope not implemented")
 }
-func (*UnimplementedScopeServiceServer) DeleteScope(context.Context, *DeleteScopeRequest) (*DeleteScopeResponse, error) {
+func (UnimplementedScopeServiceServer) DeleteScope(context.Context, *DeleteScopeRequest) (*DeleteScopeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteScope not implemented")
 }
+func (UnimplementedScopeServiceServer) mustEmbedUnimplementedScopeServiceServer() {}
 
-func RegisterScopeServiceServer(s *grpc.Server, srv ScopeServiceServer) {
+// UnsafeScopeServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ScopeServiceServer will
+// result in compilation errors.
+type UnsafeScopeServiceServer interface {
+	mustEmbedUnimplementedScopeServiceServer()
+}
+
+func RegisterScopeServiceServer(s grpc.ServiceRegistrar, srv ScopeServiceServer) {
 	s.RegisterService(&_ScopeService_serviceDesc, srv)
 }
 

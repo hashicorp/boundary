@@ -44,6 +44,8 @@ func init() {
 
 // Service handles request as described by the pbs.AuthMethodServiceServer interface.
 type Service struct {
+	pbs.UnimplementedAuthMethodServiceServer
+
 	kms       *kms.Kms
 	pwRepoFn  common.PasswordAuthRepoFactory
 	iamRepoFn common.IamRepoFactory
