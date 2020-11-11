@@ -53,8 +53,8 @@ require (
 	github.com/zalando/go-keyring v0.1.0
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
-	golang.org/x/tools v0.0.0-20201105220310-78b158585360
-	google.golang.org/genproto v0.0.0-20201106154455-f9bfe239b0ba
+	golang.org/x/tools v0.0.0-20201111133315-69daaf961d65
+	google.golang.org/genproto v0.0.0-20201111145450-ac7456db90a6
 	google.golang.org/grpc v1.33.2
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.0.1
 	google.golang.org/protobuf v1.25.0
