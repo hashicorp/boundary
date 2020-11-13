@@ -1,6 +1,15 @@
 package authtoken
 
-import "time"
+import (
+	"time"
+
+	"github.com/hashicorp/boundary/internal/db"
+)
+
+var (
+	defaultTokenTimeToLiveDuration  = 7 * 24 * time.Hour
+	defaultTokenTimeToStaleDuration = 7 * time.Hour
+)
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -23,7 +32,11 @@ type options struct {
 }
 
 func getDefaultOptions() options {
-	return options{}
+	return options{
+		withLimit:                    db.DefaultLimit,
+		withTokenTimeToLiveDuration:  defaultTokenTimeToLiveDuration,
+		withTokenTimeToStaleDuration: defaultTokenTimeToStaleDuration,
+	}
 }
 
 // withTokenValue allows the auth token value to be included in the lookup response.

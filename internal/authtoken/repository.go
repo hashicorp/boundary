@@ -15,23 +15,17 @@ import (
 )
 
 var (
-	lastAccessedUpdateDuration      = 10 * time.Minute
-	timeSkew                        = time.Duration(0)
-	defaultTokenTimeToLiveDuration  = 7 * 24 * time.Hour
-	defaultTokenTimeToStaleDuration = 7 * time.Hour
+	lastAccessedUpdateDuration = 10 * time.Minute
+	timeSkew                   = time.Duration(0)
 )
 
 // A Repository stores and retrieves the persistent types in the authtoken
 // package. It is not safe to use a repository concurrently.
 type Repository struct {
-	reader db.Reader
-	writer db.Writer
-	kms    *kms.Kms
-	// defaultLimit provides a default for limiting the number of results returned from the repo
-	defaultLimit int
-
-	// defaultTimeToLive and defaultTimeToStale durations ensure we do not accidentally set TTLs
-	// of zero value
+	reader              db.Reader
+	writer              db.Writer
+	kms                 *kms.Kms
+	limit               int
 	timeToLiveDuration  time.Duration
 	timeToStaleDuration time.Duration
 }
@@ -50,24 +44,11 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 
 	opts := getOpts(opt...)
 
-	if opts.withLimit == 0 {
-		// zero signals the boundary defaults should be used.
-		opts.withLimit = db.DefaultLimit
-	}
-
-	if opts.withTokenTimeToLiveDuration == 0 {
-		opts.withTokenTimeToLiveDuration = defaultTokenTimeToLiveDuration
-	}
-
-	if opts.withTokenTimeToStaleDuration == 0 {
-		opts.withTokenTimeToStaleDuration = defaultTokenTimeToStaleDuration
-	}
-
 	return &Repository{
 		reader:              r,
 		writer:              w,
 		kms:                 kms,
-		defaultLimit:        opts.withLimit,
+		limit:               opts.withLimit,
 		timeToLiveDuration:  opts.withTokenTimeToLiveDuration,
 		timeToStaleDuration: opts.withTokenTimeToStaleDuration,
 	}, nil
@@ -292,13 +273,9 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withOrgId string, opt .
 		return nil, fmt.Errorf("list users: missing org id %w", errors.ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
+
 	var authTokens []*AuthToken
-	if err := r.reader.SearchWhere(ctx, &authTokens, "auth_account_id in (select public_id from auth_account where scope_id = ?)", []interface{}{withOrgId}, db.WithLimit(limit)); err != nil {
+	if err := r.reader.SearchWhere(ctx, &authTokens, "auth_account_id in (select public_id from auth_account where scope_id = ?)", []interface{}{withOrgId}, db.WithLimit(opts.withLimit)); err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
 	for _, at := range authTokens {
