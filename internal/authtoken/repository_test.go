@@ -43,13 +43,10 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "valid default limit",
 			args: args{
-				r:   rw,
-				w:   rw,
-				kms: kmsCache,
-				opts: []Option{
-					WithTokenTimeToLiveDuration(defaultTokenTimeToLiveDuration),
-					WithTokenTimeToStaleDuration(defaultTokenTimeToStaleDuration),
-				},
+				r:    rw,
+				w:    rw,
+				kms:  kmsCache,
+				opts: []Option{},
 			},
 			want: &Repository{
 				reader:              rw,
@@ -68,8 +65,6 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 				opts: []Option{
 					WithLimit(5),
-					WithTokenTimeToLiveDuration(defaultTokenTimeToLiveDuration),
-					WithTokenTimeToStaleDuration(defaultTokenTimeToStaleDuration),
 				},
 			},
 			want: &Repository{
@@ -352,10 +347,8 @@ func TestRepository_ValidateToken(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms,
-		WithTokenTimeToLiveDuration(defaultTokenTimeToLiveDuration),
-		WithTokenTimeToStaleDuration(defaultTokenTimeToStaleDuration),
-	)
+	repo, err := NewRepository(rw, rw, kms)
+
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
