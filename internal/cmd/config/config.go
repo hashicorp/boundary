@@ -16,6 +16,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/vault/sdk/helper/parseutil"
 )
 
 const (
@@ -102,12 +103,12 @@ type Controller struct {
 	PublicClusterAddr string    `hcl:"public_cluster_addr"`
 
 	// AuthTokenTimeToLive is the total valid lifetime of a token denoted by time.Duration
-	AuthTokenTimeToLive         string `hcl:"auth_token_time_to_live"`
+	AuthTokenTimeToLive         interface{} `hcl:"auth_token_time_to_live"`
 	AuthTokenTimeToLiveDuration time.Duration
 
 	// AuthTokenTimeToStale is the total time a token can go unused before becoming invalid
 	// denoted by time.Duration
-	AuthTokenTimeToStale         string `hcl:"auth_token_time_to_stale"`
+	AuthTokenTimeToStale         interface{} `hcl:"auth_token_time_to_stale"`
 	AuthTokenTimeToStaleDuration time.Duration
 }
 
@@ -224,7 +225,7 @@ func Parse(d string) (*Config, error) {
 	// Perform controller configuration overrides for auth token settings
 	if result.Controller != nil {
 		if result.Controller.AuthTokenTimeToLive != "" {
-			t, err := time.ParseDuration(result.Controller.AuthTokenTimeToLive)
+			t, err := parseutil.ParseDurationSecond(result.Controller.AuthTokenTimeToLive)
 			if err != nil {
 				return result, err
 			}
@@ -232,7 +233,7 @@ func Parse(d string) (*Config, error) {
 		}
 
 		if result.Controller.AuthTokenTimeToStale != "" {
-			t, err := time.ParseDuration(result.Controller.AuthTokenTimeToStale)
+			t, err := parseutil.ParseDurationSecond(result.Controller.AuthTokenTimeToStale)
 			if err != nil {
 				return result, err
 			}

@@ -50,14 +50,18 @@ func withTokenValue() Option {
 // WithTokenTimeToLiveDuration allows setting the auth token time-to-live.
 func WithTokenTimeToLiveDuration(ttl time.Duration) Option {
 	return func(o *options) {
-		o.withTokenTimeToLiveDuration = ttl
+		if ttl > 0 {
+			o.withTokenTimeToLiveDuration = ttl
+		}
 	}
 }
 
 // WithTokenTimeToStaleDuration allows setting the auth token staleness duration.
 func WithTokenTimeToStaleDuration(dur time.Duration) Option {
 	return func(o *options) {
-		o.withTokenTimeToStaleDuration = dur
+		if dur > 0 {
+			o.withTokenTimeToStaleDuration = dur
+		}
 	}
 }
 
@@ -66,6 +70,8 @@ func WithTokenTimeToStaleDuration(dur time.Duration) Option {
 // If WithLimit == 0, then default limits are used for results.
 func WithLimit(limit int) Option {
 	return func(o *options) {
-		o.withLimit = limit
+		if limit > 0 {
+			o.withLimit = limit
+		}
 	}
 }
