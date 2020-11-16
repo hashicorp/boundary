@@ -8,7 +8,7 @@ import (
 
 var (
 	defaultTokenTimeToLiveDuration  = 7 * 24 * time.Hour
-	defaultTokenTimeToStaleDuration = 7 * time.Hour
+	defaultTokenTimeToStaleDuration = 24 * time.Hour
 )
 
 // getOpts - iterate the inbound Options and return a struct
