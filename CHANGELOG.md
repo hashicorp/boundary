@@ -29,6 +29,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * ui: Fix grant string corruption on updates
   ([Issue](https://github.com/hashicorp/boundary/issues/757))
   ([PR](https://github.com/hashicorp/boundary-ui/pull/356))
+* controller, cli: Fix mutual exclusivity bug with using -authz-token on `boundary connect`
+  ([PR](https://github.com/hashicorp/boundary/pull/787))
 
 ## v0.1.1
 
