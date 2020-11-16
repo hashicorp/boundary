@@ -18,6 +18,8 @@ import (
 
 // Service handles request as described by the pbs.AuthTokenServiceServer interface.
 type Service struct {
+	pbs.UnimplementedAuthTokenServiceServer
+
 	repoFn    common.AuthTokenRepoFactory
 	iamRepoFn common.IamRepoFactory
 }

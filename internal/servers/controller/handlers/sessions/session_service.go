@@ -20,6 +20,8 @@ import (
 
 // Service handles request as described by the pbs.SessionServiceServer interface.
 type Service struct {
+	pbs.UnimplementedSessionServiceServer
+
 	repoFn    common.SessionRepoFactory
 	iamRepoFn common.IamRepoFactory
 }

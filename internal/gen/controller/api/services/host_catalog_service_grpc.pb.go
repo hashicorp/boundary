@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // HostCatalogServiceClient is the client API for HostCatalogService service.
 //
@@ -99,6 +99,8 @@ func (c *hostCatalogServiceClient) DeleteHostCatalog(ctx context.Context, in *De
 }
 
 // HostCatalogServiceServer is the server API for HostCatalogService service.
+// All implementations must embed UnimplementedHostCatalogServiceServer
+// for forward compatibility
 type HostCatalogServiceServer interface {
 	// GetHostCatalog returns a stored Host Catalog if present.  The provided
 	// request must include the Catalog IDs for the Host Catalog being retrieved.
@@ -126,29 +128,38 @@ type HostCatalogServiceServer interface {
 	// sets from Boundary. If the provided Host Catalog IDs is malformed or not
 	// provided DeleteHostCatalog returns an error.
 	DeleteHostCatalog(context.Context, *DeleteHostCatalogRequest) (*DeleteHostCatalogResponse, error)
+	mustEmbedUnimplementedHostCatalogServiceServer()
 }
 
-// UnimplementedHostCatalogServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedHostCatalogServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedHostCatalogServiceServer struct {
 }
 
-func (*UnimplementedHostCatalogServiceServer) GetHostCatalog(context.Context, *GetHostCatalogRequest) (*GetHostCatalogResponse, error) {
+func (UnimplementedHostCatalogServiceServer) GetHostCatalog(context.Context, *GetHostCatalogRequest) (*GetHostCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHostCatalog not implemented")
 }
-func (*UnimplementedHostCatalogServiceServer) ListHostCatalogs(context.Context, *ListHostCatalogsRequest) (*ListHostCatalogsResponse, error) {
+func (UnimplementedHostCatalogServiceServer) ListHostCatalogs(context.Context, *ListHostCatalogsRequest) (*ListHostCatalogsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListHostCatalogs not implemented")
 }
-func (*UnimplementedHostCatalogServiceServer) CreateHostCatalog(context.Context, *CreateHostCatalogRequest) (*CreateHostCatalogResponse, error) {
+func (UnimplementedHostCatalogServiceServer) CreateHostCatalog(context.Context, *CreateHostCatalogRequest) (*CreateHostCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateHostCatalog not implemented")
 }
-func (*UnimplementedHostCatalogServiceServer) UpdateHostCatalog(context.Context, *UpdateHostCatalogRequest) (*UpdateHostCatalogResponse, error) {
+func (UnimplementedHostCatalogServiceServer) UpdateHostCatalog(context.Context, *UpdateHostCatalogRequest) (*UpdateHostCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateHostCatalog not implemented")
 }
-func (*UnimplementedHostCatalogServiceServer) DeleteHostCatalog(context.Context, *DeleteHostCatalogRequest) (*DeleteHostCatalogResponse, error) {
+func (UnimplementedHostCatalogServiceServer) DeleteHostCatalog(context.Context, *DeleteHostCatalogRequest) (*DeleteHostCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteHostCatalog not implemented")
 }
+func (UnimplementedHostCatalogServiceServer) mustEmbedUnimplementedHostCatalogServiceServer() {}
 
-func RegisterHostCatalogServiceServer(s *grpc.Server, srv HostCatalogServiceServer) {
+// UnsafeHostCatalogServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to HostCatalogServiceServer will
+// result in compilation errors.
+type UnsafeHostCatalogServiceServer interface {
+	mustEmbedUnimplementedHostCatalogServiceServer()
+}
+
+func RegisterHostCatalogServiceServer(s grpc.ServiceRegistrar, srv HostCatalogServiceServer) {
 	s.RegisterService(&_HostCatalogService_serviceDesc, srv)
 }
 

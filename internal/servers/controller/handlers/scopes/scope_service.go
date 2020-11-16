@@ -34,6 +34,8 @@ func init() {
 
 // Service handles requests as described by the pbs.ScopeServiceServer interface.
 type Service struct {
+	pbs.UnimplementedScopeServiceServer
+
 	repoFn common.IamRepoFactory
 }
 

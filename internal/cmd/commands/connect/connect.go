@@ -257,12 +257,15 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 
 	switch {
-	case c.flagAuthzToken != "" && c.flagTargetId != "":
-		c.UI.Error(`-target-id and -authz-token cannot both be specified`)
-		return 1
-	case c.flagAuthzToken != "" && c.flagTargetName != "":
-		c.UI.Error(`-target-name and -authz-token cannot both be specified`)
-		return 1
+	case c.flagAuthzToken != "":
+		switch {
+		case c.flagTargetId != "":
+			c.UI.Error(`-target-id and -authz-token cannot both be specified`)
+			return 1
+		case c.flagTargetName != "":
+			c.UI.Error(`-target-name and -authz-token cannot both be specified`)
+			return 1
+		}
 	default:
 		if c.flagTargetId == "" &&
 			(c.flagTargetName == "" ||

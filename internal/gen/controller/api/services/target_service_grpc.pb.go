@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // TargetServiceClient is the client API for TargetService service.
 //
@@ -162,6 +162,8 @@ func (c *targetServiceClient) RemoveTargetHostSets(ctx context.Context, in *Remo
 }
 
 // TargetServiceServer is the server API for TargetService service.
+// All implementations must embed UnimplementedTargetServiceServer
+// for forward compatibility
 type TargetServiceServer interface {
 	// GetTarget returns a stored Target if present.  The provided request
 	// must include the Target ID for the Target being retrieved. If
@@ -216,41 +218,50 @@ type TargetServiceServer interface {
 	// returned.  An error is returned if a Host Set is attempted to be
 	// removed from the Target when the Target does not have the Host Set.
 	RemoveTargetHostSets(context.Context, *RemoveTargetHostSetsRequest) (*RemoveTargetHostSetsResponse, error)
+	mustEmbedUnimplementedTargetServiceServer()
 }
 
-// UnimplementedTargetServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedTargetServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedTargetServiceServer struct {
 }
 
-func (*UnimplementedTargetServiceServer) GetTarget(context.Context, *GetTargetRequest) (*GetTargetResponse, error) {
+func (UnimplementedTargetServiceServer) GetTarget(context.Context, *GetTargetRequest) (*GetTargetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTarget not implemented")
 }
-func (*UnimplementedTargetServiceServer) ListTargets(context.Context, *ListTargetsRequest) (*ListTargetsResponse, error) {
+func (UnimplementedTargetServiceServer) ListTargets(context.Context, *ListTargetsRequest) (*ListTargetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListTargets not implemented")
 }
-func (*UnimplementedTargetServiceServer) CreateTarget(context.Context, *CreateTargetRequest) (*CreateTargetResponse, error) {
+func (UnimplementedTargetServiceServer) CreateTarget(context.Context, *CreateTargetRequest) (*CreateTargetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateTarget not implemented")
 }
-func (*UnimplementedTargetServiceServer) UpdateTarget(context.Context, *UpdateTargetRequest) (*UpdateTargetResponse, error) {
+func (UnimplementedTargetServiceServer) UpdateTarget(context.Context, *UpdateTargetRequest) (*UpdateTargetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateTarget not implemented")
 }
-func (*UnimplementedTargetServiceServer) DeleteTarget(context.Context, *DeleteTargetRequest) (*DeleteTargetResponse, error) {
+func (UnimplementedTargetServiceServer) DeleteTarget(context.Context, *DeleteTargetRequest) (*DeleteTargetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteTarget not implemented")
 }
-func (*UnimplementedTargetServiceServer) AuthorizeSession(context.Context, *AuthorizeSessionRequest) (*AuthorizeSessionResponse, error) {
+func (UnimplementedTargetServiceServer) AuthorizeSession(context.Context, *AuthorizeSessionRequest) (*AuthorizeSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AuthorizeSession not implemented")
 }
-func (*UnimplementedTargetServiceServer) AddTargetHostSets(context.Context, *AddTargetHostSetsRequest) (*AddTargetHostSetsResponse, error) {
+func (UnimplementedTargetServiceServer) AddTargetHostSets(context.Context, *AddTargetHostSetsRequest) (*AddTargetHostSetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddTargetHostSets not implemented")
 }
-func (*UnimplementedTargetServiceServer) SetTargetHostSets(context.Context, *SetTargetHostSetsRequest) (*SetTargetHostSetsResponse, error) {
+func (UnimplementedTargetServiceServer) SetTargetHostSets(context.Context, *SetTargetHostSetsRequest) (*SetTargetHostSetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetTargetHostSets not implemented")
 }
-func (*UnimplementedTargetServiceServer) RemoveTargetHostSets(context.Context, *RemoveTargetHostSetsRequest) (*RemoveTargetHostSetsResponse, error) {
+func (UnimplementedTargetServiceServer) RemoveTargetHostSets(context.Context, *RemoveTargetHostSetsRequest) (*RemoveTargetHostSetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveTargetHostSets not implemented")
 }
+func (UnimplementedTargetServiceServer) mustEmbedUnimplementedTargetServiceServer() {}
 
-func RegisterTargetServiceServer(s *grpc.Server, srv TargetServiceServer) {
+// UnsafeTargetServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to TargetServiceServer will
+// result in compilation errors.
+type UnsafeTargetServiceServer interface {
+	mustEmbedUnimplementedTargetServiceServer()
+}
+
+func RegisterTargetServiceServer(s grpc.ServiceRegistrar, srv TargetServiceServer) {
 	s.RegisterService(&_TargetService_serviceDesc, srv)
 }
 

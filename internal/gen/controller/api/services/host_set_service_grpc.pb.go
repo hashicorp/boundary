@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // HostSetServiceClient is the client API for HostSetService service.
 //
@@ -148,6 +148,8 @@ func (c *hostSetServiceClient) RemoveHostSetHosts(ctx context.Context, in *Remov
 }
 
 // HostSetServiceServer is the server API for HostSetService service.
+// All implementations must embed UnimplementedHostSetServiceServer
+// for forward compatibility
 type HostSetServiceServer interface {
 	// GetHostSet returns a stored Host Set if present.  The provided request
 	// must include the Host Set ID for the resource being retrieved. If missing,
@@ -197,38 +199,47 @@ type HostSetServiceServer interface {
 	// or references a non-existing scope or catalog, or if a Host id is included
 	// which is not in the provided Host Set.
 	RemoveHostSetHosts(context.Context, *RemoveHostSetHostsRequest) (*RemoveHostSetHostsResponse, error)
+	mustEmbedUnimplementedHostSetServiceServer()
 }
 
-// UnimplementedHostSetServiceServer can be embedded to have forward compatible implementations.
+// UnimplementedHostSetServiceServer must be embedded to have forward compatible implementations.
 type UnimplementedHostSetServiceServer struct {
 }
 
-func (*UnimplementedHostSetServiceServer) GetHostSet(context.Context, *GetHostSetRequest) (*GetHostSetResponse, error) {
+func (UnimplementedHostSetServiceServer) GetHostSet(context.Context, *GetHostSetRequest) (*GetHostSetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHostSet not implemented")
 }
-func (*UnimplementedHostSetServiceServer) ListHostSets(context.Context, *ListHostSetsRequest) (*ListHostSetsResponse, error) {
+func (UnimplementedHostSetServiceServer) ListHostSets(context.Context, *ListHostSetsRequest) (*ListHostSetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListHostSets not implemented")
 }
-func (*UnimplementedHostSetServiceServer) CreateHostSet(context.Context, *CreateHostSetRequest) (*CreateHostSetResponse, error) {
+func (UnimplementedHostSetServiceServer) CreateHostSet(context.Context, *CreateHostSetRequest) (*CreateHostSetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateHostSet not implemented")
 }
-func (*UnimplementedHostSetServiceServer) UpdateHostSet(context.Context, *UpdateHostSetRequest) (*UpdateHostSetResponse, error) {
+func (UnimplementedHostSetServiceServer) UpdateHostSet(context.Context, *UpdateHostSetRequest) (*UpdateHostSetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateHostSet not implemented")
 }
-func (*UnimplementedHostSetServiceServer) DeleteHostSet(context.Context, *DeleteHostSetRequest) (*DeleteHostSetResponse, error) {
+func (UnimplementedHostSetServiceServer) DeleteHostSet(context.Context, *DeleteHostSetRequest) (*DeleteHostSetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteHostSet not implemented")
 }
-func (*UnimplementedHostSetServiceServer) AddHostSetHosts(context.Context, *AddHostSetHostsRequest) (*AddHostSetHostsResponse, error) {
+func (UnimplementedHostSetServiceServer) AddHostSetHosts(context.Context, *AddHostSetHostsRequest) (*AddHostSetHostsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddHostSetHosts not implemented")
 }
-func (*UnimplementedHostSetServiceServer) SetHostSetHosts(context.Context, *SetHostSetHostsRequest) (*SetHostSetHostsResponse, error) {
+func (UnimplementedHostSetServiceServer) SetHostSetHosts(context.Context, *SetHostSetHostsRequest) (*SetHostSetHostsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetHostSetHosts not implemented")
 }
-func (*UnimplementedHostSetServiceServer) RemoveHostSetHosts(context.Context, *RemoveHostSetHostsRequest) (*RemoveHostSetHostsResponse, error) {
+func (UnimplementedHostSetServiceServer) RemoveHostSetHosts(context.Context, *RemoveHostSetHostsRequest) (*RemoveHostSetHostsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveHostSetHosts not implemented")
 }
+func (UnimplementedHostSetServiceServer) mustEmbedUnimplementedHostSetServiceServer() {}
 
-func RegisterHostSetServiceServer(s *grpc.Server, srv HostSetServiceServer) {
+// UnsafeHostSetServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to HostSetServiceServer will
+// result in compilation errors.
+type UnsafeHostSetServiceServer interface {
+	mustEmbedUnimplementedHostSetServiceServer()
+}
+
+func RegisterHostSetServiceServer(s grpc.ServiceRegistrar, srv HostSetServiceServer) {
 	s.RegisterService(&_HostSetService_serviceDesc, srv)
 }
 
