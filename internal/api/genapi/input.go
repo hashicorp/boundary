@@ -103,6 +103,11 @@ var inputStructs = []*structInfo{
 		outputOnly: true,
 	},
 	{
+		inProto:    &api.WrappedError{},
+		outFile:    "wrapped_error.gen.go",
+		outputOnly: true,
+	},
+	{
 		inProto:    &api.FieldError{},
 		outFile:    "field_error.gen.go",
 		outputOnly: true,
