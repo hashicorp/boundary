@@ -112,7 +112,9 @@ func New(conf *Config) (*Controller, error) {
 		return static.NewRepository(dbase, dbase, c.kms)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(dbase, dbase, c.kms)
+		return authtoken.NewRepository(dbase, dbase, c.kms,
+			authtoken.WithTokenTimeToLiveDuration(c.conf.RawConfig.Controller.AuthTokenTimeToLiveDuration),
+			authtoken.WithTokenTimeToStaleDuration(c.conf.RawConfig.Controller.AuthTokenTimeToStaleDuration))
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
 		return servers.NewRepository(dbase, dbase, c.kms)
