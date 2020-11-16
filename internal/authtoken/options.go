@@ -1,5 +1,16 @@
 package authtoken
 
+import (
+	"time"
+
+	"github.com/hashicorp/boundary/internal/db"
+)
+
+var (
+	defaultTokenTimeToLiveDuration  = 7 * 24 * time.Hour
+	defaultTokenTimeToStaleDuration = 24 * time.Hour
+)
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -14,12 +25,18 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withTokenValue bool
-	withLimit      int
+	withTokenValue               bool
+	withTokenTimeToLiveDuration  time.Duration
+	withTokenTimeToStaleDuration time.Duration
+	withLimit                    int
 }
 
 func getDefaultOptions() options {
-	return options{}
+	return options{
+		withLimit:                    db.DefaultLimit,
+		withTokenTimeToLiveDuration:  defaultTokenTimeToLiveDuration,
+		withTokenTimeToStaleDuration: defaultTokenTimeToStaleDuration,
+	}
 }
 
 // withTokenValue allows the auth token value to be included in the lookup response.
@@ -30,11 +47,31 @@ func withTokenValue() Option {
 	}
 }
 
+// WithTokenTimeToLiveDuration allows setting the auth token time-to-live.
+func WithTokenTimeToLiveDuration(ttl time.Duration) Option {
+	return func(o *options) {
+		if ttl > 0 {
+			o.withTokenTimeToLiveDuration = ttl
+		}
+	}
+}
+
+// WithTokenTimeToStaleDuration allows setting the auth token staleness duration.
+func WithTokenTimeToStaleDuration(dur time.Duration) Option {
+	return func(o *options) {
+		if dur > 0 {
+			o.withTokenTimeToStaleDuration = dur
+		}
+	}
+}
+
 // WithLimit provides an option to provide a limit.  Intentionally allowing
 // negative integers.   If WithLimit < 0, then unlimited results are returned.
 // If WithLimit == 0, then default limits are used for results.
 func WithLimit(limit int) Option {
 	return func(o *options) {
-		o.withLimit = limit
+		if limit > 0 {
+			o.withLimit = limit
+		}
 	}
 }

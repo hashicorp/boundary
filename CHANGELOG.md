@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## vNext
+## v0.1.2
 
 ### New and Improved
 

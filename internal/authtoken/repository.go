@@ -14,22 +14,20 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
-// TODO (ICU-406): Make these fields configurable.
 var (
 	lastAccessedUpdateDuration = 10 * time.Minute
-	maxStaleness               = 24 * time.Hour
-	maxTokenDuration           = 7 * 24 * time.Hour
 	timeSkew                   = time.Duration(0)
 )
 
 // A Repository stores and retrieves the persistent types in the authtoken
 // package. It is not safe to use a repository concurrently.
 type Repository struct {
-	reader db.Reader
-	writer db.Writer
-	kms    *kms.Kms
-	// defaultLimit provides a default for limiting the number of results returned from the repo
-	defaultLimit int
+	reader              db.Reader
+	writer              db.Writer
+	kms                 *kms.Kms
+	limit               int
+	timeToLiveDuration  time.Duration
+	timeToStaleDuration time.Duration
 }
 
 // NewRepository creates a new Repository. The returned repository is not safe for concurrent go
@@ -45,15 +43,14 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 	}
 
 	opts := getOpts(opt...)
-	if opts.withLimit == 0 {
-		// zero signals the boundary defaults should be used.
-		opts.withLimit = db.DefaultLimit
-	}
+
 	return &Repository{
-		reader:       r,
-		writer:       w,
-		kms:          kms,
-		defaultLimit: opts.withLimit,
+		reader:              r,
+		writer:              w,
+		kms:                 kms,
+		limit:               opts.withLimit,
+		timeToLiveDuration:  opts.withTokenTimeToLiveDuration,
+		timeToStaleDuration: opts.withTokenTimeToStaleDuration,
 	}, nil
 }
 
@@ -91,10 +88,9 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 		return nil, fmt.Errorf("create: unable to get database wrapper: %w", err)
 	}
 
-	// TODO: Allow the caller to specify something different than the default duration.
 	// We truncate the expiration time to the nearest second to make testing in different platforms with
 	// different time resolutions easier.
-	expiration, err := ptypes.TimestampProto(time.Now().Add(maxTokenDuration).Truncate(time.Second))
+	expiration, err := ptypes.TimestampProto(time.Now().Add(r.timeToLiveDuration).Truncate(time.Second))
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +207,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	sinceLastAccessed := now.Sub(lastAccessed) + timeSkew
 	// TODO (jimlambrt 9/2020) - investigate the need for the timeSkew and see
 	// if it can be eliminated.
-	if now.After(exp.Add(-timeSkew)) || sinceLastAccessed >= maxStaleness {
+	if now.After(exp.Add(-timeSkew)) || sinceLastAccessed >= r.timeToStaleDuration {
 		// If the token has expired or has become too stale, delete it from the DB.
 		_, err = r.writer.DoTx(
 			ctx,
@@ -277,13 +273,9 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withOrgId string, opt .
 		return nil, fmt.Errorf("list users: missing org id %w", errors.ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
+
 	var authTokens []*AuthToken
-	if err := r.reader.SearchWhere(ctx, &authTokens, "auth_account_id in (select public_id from auth_account where scope_id = ?)", []interface{}{withOrgId}, db.WithLimit(limit)); err != nil {
+	if err := r.reader.SearchWhere(ctx, &authTokens, "auth_account_id in (select public_id from auth_account where scope_id = ?)", []interface{}{withOrgId}, db.WithLimit(opts.withLimit)); err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
 	for _, at := range authTokens {
