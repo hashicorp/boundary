@@ -25,6 +25,7 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
+// Error information relevant to an error that was wrapped by the backend.
 type WrappedError struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -80,6 +81,7 @@ func (x *WrappedError) GetMessage() string {
 	return ""
 }
 
+// Additional details regarding a specific error.
 type ErrorDetails struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -87,7 +89,7 @@ type ErrorDetails struct {
 
 	// Request-field-specific error details.
 	RequestFields []*FieldError `protobuf:"bytes,1,rep,name=request_fields,proto3" json:"request_fields,omitempty"`
-	// The errors that were wrapped to
+	// The errors that were wrapped in the backend for this returned error.
 	WrappedErrors []*WrappedError `protobuf:"bytes,2,rep,name=wrapped_errors,proto3" json:"wrapped_errors,omitempty"`
 }
 
@@ -203,7 +205,7 @@ type Error struct {
 
 	// The kind of error this is.
 	Kind string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
-	// An id that is unique to the error (not the instance of the error).
+	// An id that is unique to an error (not the instance of the error).
 	ErrorId string `protobuf:"bytes,2,opt,name=error_id,proto3" json:"error_id,omitempty"`
 	// A human-readable explanation specific to this occurrence of the error.
 	Message string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`

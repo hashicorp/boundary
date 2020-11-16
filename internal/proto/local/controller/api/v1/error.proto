@@ -4,16 +4,18 @@ package controller.api.v1;
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api;api";
 
+// Error information relevant to an error that was wrapped by the backend.
 message WrappedError {
 	string error_id = 1 [json_name="error_id"];
 	string message = 2;
 }
 
+// Additional details regarding a specific error.
 message ErrorDetails {
 	// Request-field-specific error details.
 	repeated FieldError request_fields = 1 [json_name="request_fields"];
 
-	// The errors that were wrapped to
+	// The errors that were wrapped in the backend for this returned error.
 	repeated WrappedError wrapped_errors = 2 [json_name="wrapped_errors"];
 }
 
@@ -30,7 +32,7 @@ message FieldError {
 message Error {
 	// The kind of error this is.
 	string kind = 1;
-	// An id that is unique to the error (not the instance of the error).
+	// An id that is unique to an error (not the instance of the error).
 	string error_id = 2 [json_name="error_id"];
 	// A human-readable explanation specific to this occurrence of the error.
 	string message = 3;
