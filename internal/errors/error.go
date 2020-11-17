@@ -8,12 +8,12 @@ import (
 	"github.com/lib/pq"
 )
 
-// Op represents an operation (package.function).
-// For example iam.CreateRole
-type Op string
+// ErrorId is an id that is unique to the error (not the instance of the error).
+// The id should be generated using `make rand`, and used as the `errorid` param when calling `errors.New`
+type ErrorId string
 
-// Err provides the ability to specify a Msg, Op, Code and Wrapped error.
-// Errs must have a Code and all other fields are optional. We've chosen Err
+// Err provides the ability to specify a Msg, ErrorId, Code and Wrapped error.
+// Errs must have a Code and ErrorId all other fields are optional. We've chosen Err
 // over Error for the identifier to support the easy embedding of Errs.  Errs
 // can be embedded without a conflict between the embedded Err and Err.Error().
 type Err struct {
@@ -21,11 +21,11 @@ type Err struct {
 	// errorCodeInfo, which contains the error's Kind and Message
 	Code Code
 
+	// Unique ID used to identify the error being returned
+	ErrorId ErrorId
+
 	// Msg for the error
 	Msg string
-
-	// Op represents the operation raising/propagating an error and is optional
-	Op Op
 
 	// Wrapped is the error which this Err wraps and will be nil if there's no
 	// error to wrap.
@@ -33,50 +33,68 @@ type Err struct {
 }
 
 // New creates a new Err and supports the options of:
-// WithOp - allows you to specify an optional Op (operation)
 // WithMsg() - allows you to specify an optional error msg, if the default
 // msg for the error Code is not sufficient.
 // WithWrap() - allows you to specify
 // an error to wrap
-func New(c Code, opt ...Option) error {
+func New(c Code, errorid ErrorId, opt ...Option) error {
 	opts := GetOpts(opt...)
+
 	return &Err{
 		Code:    c,
-		Op:      opts.withOp,
+		ErrorId: errorid,
 		Wrapped: opts.withErrWrapped,
 		Msg:     opts.withErrMsg,
+	}
+}
+
+// Wrap creates a new Err, but preserves the Code of the original error being wrapped
+func Wrap(e error, errorid ErrorId, msg string) error {
+	var code Code
+	if err, ok := e.(*Err); ok {
+		code = err.Code
+	}
+	return &Err{
+		Code:    code,
+		ErrorId: errorid,
+		Msg:     msg,
+		Wrapped: e,
 	}
 }
 
 // Convert will convert the error to a Boundary *Err (returning it as an error)
 // and attempt to add a helpful error msg as well. If that's not possible, it
 // will return nil
-func Convert(e error) *Err {
+func Convert(e error, errorid ErrorId) *Err {
 	if e == nil {
 		return nil
 	}
 	if err, ok := e.(*Err); ok {
 		return err
 	}
+
 	var pqError *pq.Error
 	if As(e, &pqError) {
 		if pqError.Code.Class() == "23" { // class of integrity constraint violations
 			switch pqError.Code {
 			case "23505": // unique_violation
-				return New(NotUnique, WithMsg(pqError.Detail), WithWrap(ErrNotUnique)).(*Err)
+				return New(NotUnique, errorid, WithMsg(pqError.Detail), WithWrap(ErrNotUnique)).(*Err)
 			case "23502": // not_null_violation
 				msg := fmt.Sprintf("%s must not be empty", pqError.Column)
-				return New(NotNull, WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
+				return New(NotNull, errorid, WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
 			case "23514": // check_violation
 				msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
-				return New(CheckConstraint, WithMsg(msg), WithWrap(ErrCheckConstraint)).(*Err)
+				return New(CheckConstraint, errorid, WithMsg(msg), WithWrap(ErrCheckConstraint)).(*Err)
 			default:
-				return New(NotSpecificIntegrity, WithMsg(pqError.Message)).(*Err)
+				return New(NotSpecificIntegrity, errorid, WithMsg(pqError.Message)).(*Err)
 			}
 		}
 		if pqError.Code == "42P01" {
-			return New(MissingTable, WithMsg(pqError.Message)).(*Err)
+			return New(MissingTable, errorid, WithMsg(pqError.Message)).(*Err)
 		}
+	}
+	if errors.Is(e, ErrRecordNotFound) {
+		return New(RecordNotFound, errorid, WithMsg(e.Error())).(*Err)
 	}
 	// unfortunately, we can't help.
 	return nil
@@ -97,8 +115,8 @@ func (e *Err) Error() string {
 		return ""
 	}
 	var s strings.Builder
-	if e.Op != "" {
-		join(&s, ": ", string(e.Op))
+	if e.ErrorId != "" {
+		join(&s, ": ", string(e.ErrorId))
 	}
 	if e.Msg != "" {
 		join(&s, ": ", e.Msg)

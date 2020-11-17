@@ -10,6 +10,7 @@ import (
 func TestT(t *testing.T) {
 	t.Parallel()
 	stdErr := stderrors.New("test error")
+	testId := ErrorId("testid")
 	tests := []struct {
 		name string
 		args []interface{}
@@ -19,7 +20,7 @@ func TestT(t *testing.T) {
 			name: "all fields",
 			args: []interface{}{
 				"test error msg",
-				Op("alice.Bob"),
+				testId,
 				InvalidParameter,
 				stdErr,
 				Integrity,
@@ -27,8 +28,8 @@ func TestT(t *testing.T) {
 			want: &Template{
 				Err: Err{
 					Code:    InvalidParameter,
+					ErrorId: testId,
 					Msg:     "test error msg",
-					Op:      "alice.Bob",
 					Wrapped: stdErr,
 				},
 				Kind: Integrity,
@@ -109,6 +110,7 @@ func TestTemplate_Info(t *testing.T) {
 func TestTemplate_Error(t *testing.T) {
 	t.Parallel()
 	stdErr := stderrors.New("test error")
+	testId := ErrorId("testid")
 	tests := []struct {
 		name     string
 		template *Template
@@ -121,7 +123,7 @@ func TestTemplate_Error(t *testing.T) {
 			name: "all params",
 			template: T(
 				"test error msg",
-				Op("alice.Bob"),
+				testId,
 				InvalidParameter,
 				stdErr,
 				Integrity,
@@ -140,6 +142,7 @@ func TestTemplate_Error(t *testing.T) {
 func TestMatch(t *testing.T) {
 	t.Parallel()
 	stdErr := stderrors.New("test error")
+	testId := ErrorId("testid")
 	tests := []struct {
 		name     string
 		template *Template
@@ -149,7 +152,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "nil template",
 			template: nil,
-			err:      New(NotUnique, WithMsg("this thing was must be unique")),
+			err:      New(NotUnique, testId, WithMsg("this thing was must be unique")),
 			want:     false,
 		},
 		{
@@ -163,8 +166,8 @@ func TestMatch(t *testing.T) {
 			template: T(Integrity),
 			err: New(
 				NotUnique,
+				testId,
 				WithMsg("this thing must be unique"),
-				WithOp("alice.Bob"),
 				WithWrap(ErrInvalidFieldMask),
 			),
 			want: true,
@@ -174,8 +177,8 @@ func TestMatch(t *testing.T) {
 			template: T(Integrity),
 			err: New(
 				RecordNotFound,
+				testId,
 				WithMsg("this thing is missing"),
-				WithOp("alice.Bob"),
 				WithWrap(ErrInvalidFieldMask),
 			),
 			want: false,
@@ -185,8 +188,8 @@ func TestMatch(t *testing.T) {
 			template: T(NotUnique),
 			err: New(
 				NotUnique,
+				testId,
 				WithMsg("this thing must be unique"),
-				WithOp("alice.Bob"),
 				WithWrap(ErrInvalidFieldMask),
 			),
 			want: true,
@@ -196,30 +199,30 @@ func TestMatch(t *testing.T) {
 			template: T(NotUnique),
 			err: New(
 				RecordNotFound,
+				testId,
 				WithMsg("this thing is missing"),
-				WithOp("alice.Bob"),
 				WithWrap(ErrInvalidFieldMask),
 			),
 			want: false,
 		},
 		{
 			name:     "match on Op only",
-			template: T(Op("alice.Bob")),
+			template: T(ErrorId("unique")),
 			err: New(
 				NotUnique,
+				"unique",
 				WithMsg("this thing must be unique"),
-				WithOp("alice.Bob"),
 				WithWrap(ErrInvalidFieldMask),
 			),
 			want: true,
 		},
 		{
 			name:     "no match on Op only",
-			template: T(Op("alice.Alice")),
+			template: T(ErrorId("unique")),
 			err: New(
 				RecordNotFound,
+				testId,
 				WithMsg("this thing is missing"),
-				WithOp("alice.Bob"),
 				WithWrap(ErrInvalidFieldMask),
 			),
 			want: false,
@@ -231,12 +234,12 @@ func TestMatch(t *testing.T) {
 				Integrity,
 				InvalidParameter,
 				ErrInvalidFieldMask,
-				Op("alice.Bob"),
+				ErrorId("unique"),
 			),
 			err: New(
 				InvalidParameter,
+				"unique",
 				WithMsg("this thing must be unique"),
-				WithOp("alice.Bob"),
 				WithWrap(ErrInvalidFieldMask),
 			),
 			want: true,
@@ -246,8 +249,8 @@ func TestMatch(t *testing.T) {
 			template: T(ErrInvalidFieldMask),
 			err: New(
 				NotUnique,
+				testId,
 				WithMsg("this thing must be unique"),
-				WithOp("alice.Bob"),
 				WithWrap(ErrInvalidFieldMask),
 			),
 			want: true,
@@ -257,8 +260,8 @@ func TestMatch(t *testing.T) {
 			template: T(ErrNotUnique),
 			err: New(
 				RecordNotFound,
+				testId,
 				WithMsg("this thing is missing"),
-				WithOp("alice.Bob"),
 				WithWrap(ErrInvalidFieldMask),
 			),
 			want: false,
@@ -268,8 +271,8 @@ func TestMatch(t *testing.T) {
 			template: T(stdErr),
 			err: New(
 				NotUnique,
+				testId,
 				WithMsg("this thing must be unique"),
-				WithOp("alice.Bob"),
 				WithWrap(stdErr),
 			),
 			want: true,
@@ -279,8 +282,8 @@ func TestMatch(t *testing.T) {
 			template: T(stderrors.New("no match")),
 			err: New(
 				RecordNotFound,
+				testId,
 				WithMsg("this thing is missing"),
-				WithOp("alice.Bob"),
 				WithWrap(stdErr),
 			),
 			want: false,
