@@ -169,6 +169,7 @@ docker-build:
 	docker build -t $(IMAGE_TAG) \
 	--build-arg VERSION=$(VERSION) \
 	-f $(DOCKER_DIR)/Release.dockerfile docker/ 
+	docker tag $(IMAGE_TAG) hashicorp/boundary:latest
 
 # builds from locally generated binary in bin/
 docker-build-dev: export XC_OSARCH=linux/amd64
@@ -179,6 +180,7 @@ docker-build-dev: dev
 # requires appropriate permissions in dockerhub
 docker-publish:
 	docker push $(IMAGE_TAG)
+	docker push hashicorp/boundary:latest
 
 .PHONY: api tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish 
 
