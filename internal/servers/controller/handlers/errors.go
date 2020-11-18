@@ -27,7 +27,7 @@ type apiError struct {
 }
 
 func (e *apiError) Error() string {
-	res := fmt.Sprintf("Status: %d, Code: %q, Error: %q", e.status, e.inner.GetKind(), e.inner.GetMessage())
+	res := fmt.Sprintf("Status: %d, Kind: %q, Error: %q", e.status, e.inner.GetKind(), e.inner.GetMessage())
 	var dets []string
 	for _, rf := range e.inner.GetDetails().GetRequestFields() {
 		dets = append(dets, fmt.Sprintf("{name: %q, desc: %q}", rf.GetName(), rf.GetDescription()))
@@ -152,15 +152,15 @@ func backendErrorToApiError(inErr error) error {
 	case errors.IsUniqueError(inErr), errors.Is(inErr, errors.ErrNotUnique):
 		return InvalidArgumentErrorf(genericUniquenessMsg, nil)
 	}
-	return nil
-}
 
-var (
-	internalError = &apiError{
+	// We haven't been able to identify what this backend error is, return it as an internal error
+	// TODO: Don't return potentially sensitive information (like which user id an account
+	//  is already associated with when attempting to re-associate it).
+	return &apiError{
 		status: http.StatusInternalServerError,
-		inner:  &pb.Error{Kind: codes.Internal.String()},
+		inner:  &pb.Error{Kind: codes.Internal.String(), Message: inErr.Error()},
 	}
-)
+}
 
 func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 	const errorFallback = `{"error": "failed to marshal error message"}`
@@ -174,16 +174,8 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 			}
 		}
 
-		traceId := r.Header.Get("TraceId")
-		if traceId == "" {
-			traceId = "failed_to_get_trace_id"
-		}
-		if apiErr == nil || apiErr.status == http.StatusInternalServerError {
-			logger.Error("internal error returned", "trace id", traceId, "error", inErr)
-			apiErr = internalError
-
-			// TODO: Return the traceid for more than just Internal Server errors.
-			w.Header().Set("TraceId", traceId)
+		if apiErr.status == http.StatusInternalServerError {
+			logger.Error("internal error returned", "error", inErr)
 		}
 
 		buf, merr := mar.Marshal(apiErr.inner)

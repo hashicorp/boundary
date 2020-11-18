@@ -213,15 +213,6 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			c.logger.Trace("request received", "method", r.Method, "url", r.URL.RequestURI())
 		}
 
-		// If no TraceId is provided, generate our own.
-		if r.Header.Get("TraceId") == "" {
-			// TODO: Verify that this is safe to do with OpenTracing and evaluate if we need to change the
-			// id format to be inlined with OpenTracing standards.
-			if tid := generatedTraceId(); tid != "" {
-				r.Header.Set("TraceId", tid)
-			}
-		}
-
 		// Set the Cache-Control header for all responses returned
 		w.Header().Set("Cache-Control", "no-store")
 
