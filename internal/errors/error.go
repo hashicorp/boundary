@@ -49,17 +49,14 @@ func New(c Code, errorid ErrorId, opt ...Option) error {
 }
 
 // Wrap creates a new Err, but preserves the Code of the original error being wrapped
-func Wrap(e error, errorid ErrorId, msg string) error {
+func Wrap(e error, errorid ErrorId, opt ...Option) error {
 	var code Code
 	if err, ok := e.(*Err); ok {
+		// get code from wrapped error
 		code = err.Code
 	}
-	return &Err{
-		Code:    code,
-		ErrorId: errorid,
-		Msg:     msg,
-		Wrapped: e,
-	}
+	opt = append(opt, WithWrap(e))
+	return New(code, errorid, opt...)
 }
 
 // Convert will convert the error to a Boundary *Err (returning it as an error)

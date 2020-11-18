@@ -61,14 +61,16 @@ func Test_WrapError(t *testing.T) {
 	testErr := errors.New(errors.InvalidParameter, "uniqueId")
 	tests := []struct {
 		name string
-		msg  string
+		opt  []errors.Option
 		err  error
 		want error
 	}{
 		{
 			name: "boundary-error",
 			err:  testErr,
-			msg:  "test msg",
+			opt: []errors.Option{
+				errors.WithMsg("test msg"),
+			},
 			want: &errors.Err{
 				Wrapped: testErr,
 				ErrorId: testId,
@@ -94,11 +96,23 @@ func Test_WrapError(t *testing.T) {
 				Code:    errors.Unknown,
 			},
 		},
+		{
+			name: "conflicting-with-wrap",
+			err:  testErr,
+			opt: []errors.Option{
+				errors.WithWrap(fmt.Errorf("dont wrap this error")),
+			},
+			want: &errors.Err{
+				Wrapped: testErr,
+				ErrorId: testId,
+				Code:    errors.InvalidParameter,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := errors.Wrap(tt.err, testId, tt.msg)
+			err := errors.Wrap(tt.err, testId, tt.opt...)
 			require.Error(err)
 			assert.Equal(tt.want, err)
 		})
@@ -203,7 +217,7 @@ func TestError_Unwrap(t *testing.T) {
 		},
 		{
 			name:      "ErrInvalidParameterWrap",
-			err:       errors.Wrap(errors.ErrInvalidParameter, testId, "test msg"),
+			err:       errors.Wrap(errors.ErrInvalidParameter, testId),
 			want:      errors.ErrInvalidParameter,
 			wantIsErr: errors.ErrInvalidParameter,
 		},
