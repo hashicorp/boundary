@@ -101,6 +101,7 @@ func TestApiErrorHandler(t *testing.T) {
 				status: http.StatusInternalServerError,
 				inner: &pb.Error{
 					Kind: "Internal",
+					Message: "Some random error",
 				},
 			},
 		},
@@ -111,6 +112,7 @@ func TestApiErrorHandler(t *testing.T) {
 				status: http.StatusInternalServerError,
 				inner: &pb.Error{
 					Kind: "Internal",
+					Message: fmt.Sprintf("test error: %s", errors.ErrInvalidPublicId),
 				},
 			},
 		},
@@ -121,6 +123,7 @@ func TestApiErrorHandler(t *testing.T) {
 				status: http.StatusInternalServerError,
 				inner: &pb.Error{
 					Kind: "Internal",
+					Message: fmt.Sprintf("test error: %s", errors.ErrInvalidParameter),
 				},
 			},
 		},
@@ -177,6 +180,7 @@ func TestApiErrorHandler(t *testing.T) {
 				status: http.StatusInternalServerError,
 				inner: &pb.Error{
 					Kind: "Internal",
+					Message: fmt.Sprintf("test error: %s", errors.ErrMultipleRecords),
 				},
 			},
 		},
