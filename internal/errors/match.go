@@ -16,10 +16,10 @@ func T(args ...interface{}) *Template {
 		switch arg := a.(type) {
 		case Code:
 			t.Code = arg
-		case ErrorId:
-			t.ErrorId = arg
 		case string:
 			t.Msg = arg
+		case Op:
+			t.Op = arg
 		case *Err: // order is important, this match must before "case error:"
 			c := *arg
 			t.Wrapped = &c
@@ -78,7 +78,7 @@ func Match(t *Template, err error) bool {
 	if t.Msg != "" && t.Msg != e.Msg {
 		return false
 	}
-	if t.ErrorId != "" && t.ErrorId != e.ErrorId {
+	if t.Op != "" && t.Op != e.Op {
 		return false
 	}
 	if t.Kind != Other && t.Info().Kind != e.Info().Kind {
