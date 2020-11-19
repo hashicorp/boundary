@@ -16,6 +16,7 @@ type Option func(*Options)
 type Options struct {
 	withErrWrapped error
 	withErrMsg     string
+	withOp         Op
 }
 
 func getDefaultOptions() Options {
@@ -35,5 +36,13 @@ func WithWrap(e error) Option {
 func WithMsg(msg string) Option {
 	return func(o *Options) {
 		o.withErrMsg = msg
+	}
+}
+
+// WithOp provides an option to provide the operation that's raising/propagating
+// the error.
+func WithOp(op Op) Option {
+	return func(o *Options) {
+		o.withOp = op
 	}
 }

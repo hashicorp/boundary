@@ -27,10 +27,6 @@ dev: build-ui-ifne
 	@echo "==> Building Boundary with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
-rand:
-	@echo "==> Generating random boundary error ID"
-	@go run scripts/errorid.go
-
 bin: BUILD_TAGS+=ui
 bin: build-ui
 	@echo "==> Building Boundary with UI features enabled"
