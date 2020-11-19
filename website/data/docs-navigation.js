@@ -90,6 +90,7 @@ export default [
       'manage-users-groups',
       'manage-roles',
       'manage-sessions',
+			'manage-ssh',
     ],
   },
   '---',
