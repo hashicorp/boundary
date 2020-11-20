@@ -33,23 +33,23 @@ func TestRepository_CreateHost(t *testing.T) {
 		in        *Host
 		opts      []Option
 		want      *Host
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name:      "nil-Host",
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name:      "nil-embedded-Host",
 			in:        &Host{},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-no-catalog-id",
 			in: &Host{
 				Host: &store.Host{},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-public-id-set",
@@ -60,7 +60,7 @@ func TestRepository_CreateHost(t *testing.T) {
 					Address:   "127.0.0.1",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "valid-no-options",
@@ -118,7 +118,7 @@ func TestRepository_CreateHost(t *testing.T) {
 					CatalogId: catalog.PublicId,
 				},
 			},
-			wantIsErr: ErrInvalidAddress,
+			wantIsErr: errors.InvalidAddress,
 		},
 		{
 			name: "invalid-address-to-short",
@@ -128,7 +128,7 @@ func TestRepository_CreateHost(t *testing.T) {
 					Address:   "12",
 				},
 			},
-			wantIsErr: ErrInvalidAddress,
+			wantIsErr: errors.InvalidAddress,
 		},
 		{
 			name: "invalid-empty-address",
@@ -138,7 +138,7 @@ func TestRepository_CreateHost(t *testing.T) {
 					Address:   "            ",
 				},
 			},
-			wantIsErr: ErrInvalidAddress,
+			wantIsErr: errors.InvalidAddress,
 		},
 	}
 
@@ -150,8 +150,8 @@ func TestRepository_CreateHost(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}

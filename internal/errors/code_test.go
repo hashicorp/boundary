@@ -33,6 +33,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: InvalidParameter,
 		},
 		{
+			name: "InvalidAddress",
+			c:    InvalidAddress,
+			want: InvalidAddress,
+		},
+		{
+			name: "InvalidPublicId",
+			c:    InvalidPublicId,
+			want: InvalidPublicId,
+		},
+		{
 			name: "CheckConstraint",
 			c:    CheckConstraint,
 			want: CheckConstraint,

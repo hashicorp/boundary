@@ -22,6 +22,8 @@ const (
 
 	// General function errors are reserved Codes 100-999
 	InvalidParameter Code = 100 // InvalidParameter represents and invalid parameter for an operation.
+	InvalidAddress   Code = 101
+	InvalidPublicId  Code = 102
 
 	// DB errors are resevered Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error

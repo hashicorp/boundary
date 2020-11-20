@@ -18,11 +18,11 @@ func NewPublicId(prefix string) (string, error) {
 
 func newId(prefix string) (string, error) {
 	if prefix == "" {
-		return "", fmt.Errorf("missing prefix %w", errors.ErrInvalidParameter)
+		return "", errors.New(errors.InvalidParameter, errors.WithMsg("missing prefix"))
 	}
 	publicId, err := base62.Random(10)
 	if err != nil {
-		return "", fmt.Errorf("unable to generate id: %w", err)
+		return "", errors.Wrap(err, errors.WithMsg("unable to generate id"))
 	}
 	return fmt.Sprintf("%s_%s", prefix, publicId), nil
 }

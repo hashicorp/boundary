@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
@@ -178,11 +177,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	out, err := repo.CreateHost(ctx, scopeId, h)
 	if err != nil {
-		if errors.IsUniqueError(err) || errors.Is(err, errors.ErrNotUnique) {
-			// Push this error through so the error interceptor can interpret it correctly.
-			return nil, err
-		}
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host: %v.", err)
+		return nil, err
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host but no error returned from repository.")

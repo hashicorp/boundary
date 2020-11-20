@@ -48,6 +48,18 @@ func New(c Code, opt ...Option) error {
 	}
 }
 
+func Wrap(e error, opt ...Option) error {
+	bErr := Convert(e)
+	if bErr != nil {
+		opt = append(opt, WithWrap(bErr))
+		return New(bErr.Code, opt...)
+	}
+
+	// e is not a boundary domain error or it could not be converted to one
+	opt = append(opt, WithWrap(e))
+	return New(Unknown, opt...)
+}
+
 // Convert will convert the error to a Boundary *Err (returning it as an error)
 // and attempt to add a helpful error msg as well. If that's not possible, it
 // will return nil
@@ -55,8 +67,9 @@ func Convert(e error) *Err {
 	if e == nil {
 		return nil
 	}
-	if err, ok := e.(*Err); ok {
-		return err
+	var bErr *Err
+	if As(e, &bErr) {
+		return bErr
 	}
 	var pqError *pq.Error
 	if As(e, &pqError) {
@@ -104,18 +117,25 @@ func (e *Err) Error() string {
 		join(&s, ": ", e.Msg)
 	}
 
-	if info, ok := errorCodeInfo[e.Code]; ok {
+	var skipInfo bool
+	var wrapped *Err
+	if As(e.Wrapped, &wrapped) {
+		// if wrapped error code is the same as this error, don't print redundant info
+		skipInfo = wrapped.Code == e.Code
+	}
+
+	if info, ok := errorCodeInfo[e.Code]; ok && !skipInfo {
 		if e.Msg == "" {
 			join(&s, ": ", info.Message) // provide a default.
 			join(&s, ", ", info.Kind.String())
 		} else {
 			join(&s, ": ", info.Kind.String())
 		}
+		join(&s, ": ", fmt.Sprintf("error #%d", e.Code))
 	}
-	join(&s, ": ", fmt.Sprintf("error #%d", e.Code))
 
 	if e.Wrapped != nil {
-		join(&s, ": \n", e.Wrapped.Error())
+		join(&s, ": ", e.Wrapped.Error())
 	}
 	return s.String()
 }

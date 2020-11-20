@@ -22,24 +22,25 @@ import (
 // Both h.Name and h.Description are optional. If h.Name is set, it must be
 // unique within h.CatalogId.
 func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, opt ...Option) (*Host, error) {
+	errorOp := errors.WithOp("create: static host")
 	if h == nil {
-		return nil, fmt.Errorf("create: static host: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, errorOp, errors.WithMsg("nil host"))
 	}
 	if h.Host == nil {
-		return nil, fmt.Errorf("create: static host: embedded Host: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, errorOp, errors.WithMsg("nil embedded host"))
 	}
 	if h.CatalogId == "" {
-		return nil, fmt.Errorf("create: static host: no catalog id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, errorOp, errors.WithMsg("no catalog id"))
 	}
 	if h.PublicId != "" {
-		return nil, fmt.Errorf("create: static host: public id not empty: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, errorOp, errors.WithMsg("public id not empty"))
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("create: static host: no scopeId: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, errorOp, errors.WithMsg("no scope id"))
 	}
 	h.Address = strings.TrimSpace(h.Address)
 	if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
-		return nil, fmt.Errorf("create: static host: bad address: %w", ErrInvalidAddress)
+		return nil, errors.New(errors.InvalidAddress, errorOp)
 	}
 	h = h.clone()
 
@@ -47,20 +48,24 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, HostPrefix+"_") {
-			return nil, fmt.Errorf("create: static host: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, HostPrefix, errors.ErrInvalidPublicId)
+			return nil, errors.New(
+				errors.InvalidPublicId,
+				errorOp,
+				errors.WithMsg(fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, HostPrefix)),
+			)
 		}
 		h.PublicId = opts.withPublicId
 	} else {
 		id, err := newHostId()
 		if err != nil {
-			return nil, fmt.Errorf("create: static host: %w", err)
+			return nil, errors.Wrap(err, errorOp)
 		}
 		h.PublicId = id
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("create: static host: unable to get oplog wrapper: %w", err)
+		return nil, errors.Wrap(err, errorOp, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var newHost *Host
@@ -73,14 +78,19 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, fmt.Errorf("create: static host: in catalog: %s: name %s already exists: %w",
-				h.CatalogId, h.Name, errors.ErrNotUnique)
+			return nil, errors.Wrap(err, errorOp, errors.WithMsg(
+				fmt.Sprintf("in catalog: %s: name %s already exists", h.CatalogId, h.Name)),
+			)
 		}
 		if errors.IsCheckConstraintError(err) || errors.IsNotNullError(err) {
-			return nil, fmt.Errorf("create: static host: in catalog: %s: %q: %w",
-				h.CatalogId, h.Address, ErrInvalidAddress)
+			return nil, errors.New(
+				errors.InvalidAddress,
+				errorOp,
+				errors.WithMsg(fmt.Sprintf("in catalog: %s: %q", h.CatalogId, h.Address)),
+				errors.WithWrap(err),
+			)
 		}
-		return nil, fmt.Errorf("create: static host: in catalog: %s: %w", h.CatalogId, err)
+		return nil, errors.Wrap(err, errorOp, errors.WithMsg(fmt.Sprintf("in catalog: %s", h.CatalogId)))
 	}
 	return newHost, nil
 }

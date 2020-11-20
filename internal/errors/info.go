@@ -16,6 +16,14 @@ var errorCodeInfo = map[Code]Info{
 		Message: "invalid parameter",
 		Kind:    Parameter,
 	},
+	InvalidAddress: {
+		Message: "invalid address",
+		Kind:    Parameter,
+	},
+	InvalidPublicId: {
+		Message: "invalid public id",
+		Kind:    Parameter,
+	},
 	CheckConstraint: {
 		Message: "constraint check failed",
 		Kind:    Integrity,
