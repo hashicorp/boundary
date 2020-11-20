@@ -2,7 +2,6 @@
   composes: g-grid-container from global;
   display: flex;
   flex-direction: column;
-  flex-wrap: wrap;
   flex: 1 0 auto;
   position: relative;
   width: 100%;
@@ -31,11 +30,13 @@
   }
 
   & :global(.g-content) {
-    margin: 0;
+    padding-left: 0;
+    padding-right: 0;
 
     @media (max-width: 939px) {
       padding-left: 0;
       padding-right: 0;
+      margin-top: 64px;
     }
 
     & > h1:first-child {

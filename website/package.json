@@ -6,6 +6,7 @@
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "9.0.6",
     "@hashicorp/mktg-assets": "1.0.0-alpha.20",
+    "@hashicorp/mktg-global-styles": "^2.0.0",
     "@hashicorp/nextjs-scripts": "13.0.0-canary.1",
     "@hashicorp/react-alert-banner": "^5.0.0",
     "@hashicorp/react-button": "^4.0.0",

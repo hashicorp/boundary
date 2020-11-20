@@ -51,7 +51,7 @@ function OpenApiPage({
         product={productSlug}
         content={
           operationCategory ? (
-            <div>
+            <>
               <p className={`${styles.pageHeading} g-type-display-2`}>
                 {info.title}
               </p>
@@ -77,16 +77,16 @@ function OpenApiPage({
                   )
                 })}
               </div>
-            </div>
+            </>
           ) : (
-            <div>
+            <>
               <h1 className={`${styles.pageHeading} g-type-display-2`}>
                 {info.title}
               </h1>
               <p className={`${styles.landingPlaceholder} g-type-body-long`}>
                 Select a service from the sidebar.
               </p>
-            </div>
+            </>
           )
         }
       />
