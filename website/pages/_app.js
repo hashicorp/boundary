@@ -23,7 +23,7 @@ const title = 'Boundary by HashiCorp'
 const description =
   'Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments.'
 
-function App({ Component, pageProps }) {
+export default function App({ Component, pageProps }) {
   useAnchorLinkAnalytics()
 
   return (
@@ -50,21 +50,3 @@ function App({ Component, pageProps }) {
     </ErrorBoundary>
   )
 }
-
-App.getInitialProps = async ({ Component, ctx }) => {
-  let pageProps = {}
-
-  if (Component.getInitialProps) {
-    pageProps = await Component.getInitialProps(ctx)
-  } else if (Component.isMDXComponent) {
-    // fix for https://github.com/mdx-js/mdx/issues/382
-    const mdxLayoutComponent = Component({}).props.originalType
-    if (mdxLayoutComponent.getInitialProps) {
-      pageProps = await mdxLayoutComponent.getInitialProps(ctx)
-    }
-  }
-
-  return { pageProps }
-}
-
-export default App
