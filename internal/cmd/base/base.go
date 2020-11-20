@@ -314,7 +314,7 @@ func (c *Command) ReadTokenFromKeyring(keyringType, tokenName string) *authtoken
 		token, err = zkeyring.Get("HashiCorp Boundary Auth Token", tokenName)
 		if err != nil {
 			if err == zkeyring.ErrNotFound {
-				c.UI.Info("No saved credential found, continuing without")
+				c.UI.Error("No saved credential found, continuing without")
 			} else {
 				c.UI.Error(fmt.Sprintf("Error reading auth token from keyring: %s", err))
 				c.UI.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")

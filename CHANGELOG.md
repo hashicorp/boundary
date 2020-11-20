@@ -2,6 +2,14 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## vNext
+
+### Bug Fixes
+
+* cli: Ensure errors print to stderr when token is not found
+  ([Issue](https://github.com/hashicorp/boundary/issues/791))
+  ([PR](https://github.com/hashicorp/boundary/pull/799)]
+
 ## v0.1.2
 
 ### New and Improved
