@@ -140,6 +140,17 @@ func TestRepository_CreateHost(t *testing.T) {
 			},
 			wantIsErr: errors.InvalidAddress,
 		},
+		{
+			name: "invalid_public_id",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "127.0.0.1",
+				},
+			},
+			opts:      []Option{WithPublicId("bad_prefix")},
+			wantIsErr: errors.InvalidPublicId,
+		},
 	}
 
 	for _, tt := range tests {
