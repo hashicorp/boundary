@@ -21,15 +21,15 @@ const (
 	Unknown Code = 0 // Unknown will be equal to a zero value for Codes
 
 	// General function errors are reserved Codes 100-999
-	InvalidParameter Code = 100 // InvalidParameter represents and invalid parameter for an operation.
-	InvalidAddress   Code = 101
+	InvalidParameter Code = 100 // InvalidParameter represents an invalid parameter for an operation.
+	InvalidAddress   Code = 101 // InvalidAddress represents an invalid host address for an operation
 	InvalidPublicId  Code = 102
 
-	// DB errors are resevered Codes from 1000-1999
+	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
 	NotNull              Code = 1001 // NotNull represents a value must not be null error
 	NotUnique            Code = 1002 // NotUnique represents a value must be unique error
-	NotSpecificIntegrity Code = 1003 // NotSpecificIntegrity represents an integrity error that has no specificy domain error code
+	NotSpecificIntegrity Code = 1003 // NotSpecificIntegrity represents an integrity error that has no specific domain error code
 	MissingTable         Code = 1004 // Missing table represents an undefined table error
 	RecordNotFound       Code = 1100 // RecordNotFound represents that a record/row was not found matching the criteria
 	MultipleRecords      Code = 1101 // MultipleRecords represents that multiple records/rows were found matching the criteria

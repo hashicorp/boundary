@@ -15,7 +15,7 @@ const (
 func newHostCatalogId() (string, error) {
 	id, err := db.NewPublicId(HostCatalogPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, errors.WithMsg("new host catalog id"))
+		return "", errors.Wrap(err, errors.WithOp("static.newHostCatalogId"))
 	}
 	return id, err
 }
@@ -23,7 +23,7 @@ func newHostCatalogId() (string, error) {
 func newHostId() (string, error) {
 	id, err := db.NewPublicId(HostPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, errors.WithMsg("new host id"))
+		return "", errors.Wrap(err, errors.WithOp("static.newHostId"))
 	}
 	return id, err
 }
@@ -31,7 +31,7 @@ func newHostId() (string, error) {
 func newHostSetId() (string, error) {
 	id, err := db.NewPublicId(HostSetPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, errors.WithMsg("new host set id"))
+		return "", errors.Wrap(err, errors.WithOp("static.newHostSetId"))
 	}
 	return id, err
 }
