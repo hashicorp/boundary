@@ -9,7 +9,7 @@ import OpenApiPage, {
 const targetFile = '../internal/gen/controller.swagger.json'
 const pathFromRoot = 'api-docs'
 
-export default function ExamplePage(props) {
+export default function OpenApiDocsPage(props) {
   return (
     <OpenApiPage
       {...props}
