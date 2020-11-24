@@ -22,7 +22,7 @@ import (
 // Both h.Name and h.Description are optional. If h.Name is set, it must be
 // unique within h.CatalogId.
 func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, opt ...Option) (*Host, error) {
-	const op = errors.Op("static.CreateHost")
+	const op = "static.CreateHost"
 	if h == nil {
 		return nil, errors.New(errors.InvalidParameter, errors.WithOp(op), errors.WithMsg("nil host"))
 	}

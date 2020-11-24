@@ -17,7 +17,7 @@ func NewPublicId(prefix string) (string, error) {
 }
 
 func newId(prefix string) (string, error) {
-	const op = errors.Op("db.newId")
+	const op = "db.newId"
 	if prefix == "" {
 		return "", errors.New(errors.InvalidParameter, errors.WithOp(op), errors.WithMsg("missing prefix"))
 	}
