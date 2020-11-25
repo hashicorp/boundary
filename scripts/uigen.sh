@@ -17,7 +17,7 @@ fi
 	fi
 )
 
-uidir="${UI_CLONE_DIR}/ui/core/dist"
+uidir="${UI_CLONE_DIR}/ui/admin/dist"
 
 go-bindata -fs -o "$UI_ASSETS_FILE.tmp" -pkg ui -prefix "${uidir}" "${uidir}" "${uidir}/assets"
 

@@ -84,9 +84,9 @@ layers:
           && git fetch origin "$SHA" \
           && git checkout "$SHA" \
           && yarn install \
-          && yarn build:ui:core; ) \
+          && yarn build:ui:admin; ) \
           && TARGET=internal/ui/assets.go \
-          && UIDIR="$DIR/ui/core/dist" \
+          && UIDIR="$DIR/ui/admin/dist" \
           && go-bindata -fs -o "$TARGET" -pkg ui \
              -prefix "$UIDIR" "$UIDIR" "$UIDIR/assets" \
           && rm -rf "$DIR"

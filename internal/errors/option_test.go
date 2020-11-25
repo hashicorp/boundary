@@ -1,7 +1,6 @@
 package errors
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,9 +31,21 @@ func Test_getOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 
 		// try setting it
-		err := fmt.Errorf("test error")
-		opts = GetOpts(WithWrap(err))
-		testOpts.withErrWrapped = err
+		opts = GetOpts(WithWrap(ErrInvalidParameter))
+		testOpts.withErrWrapped = ErrInvalidParameter
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithOp", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts.withOp = ""
+		assert.Equal(opts, testOpts)
+
+		// try setting it
+		opts = GetOpts(WithOp("alice.bob"))
+		testOpts.withOp = "alice.bob"
 		assert.Equal(opts, testOpts)
 	})
 }

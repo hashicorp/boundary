@@ -27,10 +27,6 @@ dev: build-ui-ifne
 	@echo "==> Building Boundary with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
-rand:
-	@echo "==> Generating random boundary error ID"
-	@go run scripts/errorid.go
-
 bin: BUILD_TAGS+=ui
 bin: build-ui
 	@echo "==> Building Boundary with UI features enabled"
@@ -157,7 +153,7 @@ install-go:
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.1.1
+VERSION?=0.1.2
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker
@@ -169,6 +165,7 @@ docker-build:
 	docker build -t $(IMAGE_TAG) \
 	--build-arg VERSION=$(VERSION) \
 	-f $(DOCKER_DIR)/Release.dockerfile docker/ 
+	docker tag $(IMAGE_TAG) hashicorp/boundary:latest
 
 # builds from locally generated binary in bin/
 docker-build-dev: export XC_OSARCH=linux/amd64
@@ -179,6 +176,7 @@ docker-build-dev: dev
 # requires appropriate permissions in dockerhub
 docker-publish:
 	docker push $(IMAGE_TAG)
+	docker push hashicorp/boundary:latest
 
 .PHONY: api tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish 
 
