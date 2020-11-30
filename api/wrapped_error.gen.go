@@ -2,6 +2,6 @@
 package api
 
 type WrappedError struct {
-	ErrorId string `json:"error_id,omitempty"`
+	Op      string `json:"op,omitempty"`
 	Message string `json:"message,omitempty"`
 }

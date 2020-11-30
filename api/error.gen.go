@@ -5,7 +5,7 @@ import "bytes"
 
 type Error struct {
 	Kind    string        `json:"kind,omitempty"`
-	ErrorId string        `json:"error_id,omitempty"`
+	Op      string        `json:"op,omitempty"`
 	Message string        `json:"message,omitempty"`
 	Details *ErrorDetails `json:"details,omitempty"`
 
