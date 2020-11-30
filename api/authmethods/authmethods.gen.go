@@ -40,10 +40,6 @@ func (n AuthMethod) ResponseStatus() int {
 	return n.response.HttpResponse().StatusCode
 }
 
-func (n AuthMethod) ResponseTraceId() string {
-	return n.response.HttpResponse().Header.Get("TraceId")
-}
-
 type AuthMethodReadResult struct {
 	Item     *AuthMethod
 	response *api.Response

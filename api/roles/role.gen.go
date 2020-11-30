@@ -43,10 +43,6 @@ func (n Role) ResponseStatus() int {
 	return n.response.HttpResponse().StatusCode
 }
 
-func (n Role) ResponseTraceId() string {
-	return n.response.HttpResponse().Header.Get("TraceId")
-}
-
 type RoleReadResult struct {
 	Item     *Role
 	response *api.Response

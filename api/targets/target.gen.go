@@ -44,10 +44,6 @@ func (n Target) ResponseStatus() int {
 	return n.response.HttpResponse().StatusCode
 }
 
-func (n Target) ResponseTraceId() string {
-	return n.response.HttpResponse().Header.Get("TraceId")
-}
-
 type TargetReadResult struct {
 	Item     *Target
 	response *api.Response

@@ -40,10 +40,6 @@ func (n HostCatalog) ResponseStatus() int {
 	return n.response.HttpResponse().StatusCode
 }
 
-func (n HostCatalog) ResponseTraceId() string {
-	return n.response.HttpResponse().Header.Get("TraceId")
-}
-
 type HostCatalogReadResult struct {
 	Item     *HostCatalog
 	response *api.Response

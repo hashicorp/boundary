@@ -41,10 +41,6 @@ func (n Host) ResponseStatus() int {
 	return n.response.HttpResponse().StatusCode
 }
 
-func (n Host) ResponseTraceId() string {
-	return n.response.HttpResponse().Header.Get("TraceId")
-}
-
 type HostReadResult struct {
 	Item     *Host
 	response *api.Response

@@ -40,10 +40,6 @@ func (n Account) ResponseStatus() int {
 	return n.response.HttpResponse().StatusCode
 }
 
-func (n Account) ResponseTraceId() string {
-	return n.response.HttpResponse().Header.Get("TraceId")
-}
-
 type AccountReadResult struct {
 	Item     *Account
 	response *api.Response

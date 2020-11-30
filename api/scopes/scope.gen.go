@@ -38,10 +38,6 @@ func (n Scope) ResponseStatus() int {
 	return n.response.HttpResponse().StatusCode
 }
 
-func (n Scope) ResponseTraceId() string {
-	return n.response.HttpResponse().Header.Get("TraceId")
-}
-
 type ScopeReadResult struct {
 	Item     *Scope
 	response *api.Response

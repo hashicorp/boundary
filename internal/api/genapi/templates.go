@@ -557,10 +557,6 @@ func (n {{ .Name }}) ResponseMap() map[string]interface{} {
 func (n {{ .Name }}) ResponseStatus() int {
 	return n.response.HttpResponse().StatusCode
 }
-
-func (n {{ .Name }}) ResponseTraceId() string {
-	return n.response.HttpResponse().Header.Get("TraceId")
-}
 {{ end }}
 
 {{ if .CreateResponseTypes }}

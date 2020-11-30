@@ -48,10 +48,6 @@ func (n Session) ResponseStatus() int {
 	return n.response.HttpResponse().StatusCode
 }
 
-func (n Session) ResponseTraceId() string {
-	return n.response.HttpResponse().Header.Get("TraceId")
-}
-
 type SessionReadResult struct {
 	Item     *Session
 	response *api.Response

@@ -141,8 +141,8 @@ func PrintApiError(in *api.Error) string {
 		"Message": in.Message,
 	}
 
-	if in.ResponseTraceId() != "" {
-		nonAttributeMap["TraceId"] = in.ResponseTraceId()
+	if in.Op != "" {
+		nonAttributeMap["Operation"] = in.Op
 	}
 
 	maxLength := MaxAttributesLength(nonAttributeMap, nil, nil)
@@ -154,6 +154,19 @@ func PrintApiError(in *api.Error) string {
 	}
 
 	if in.Details != nil {
+		if len(in.Details.WrappedErrors) > 0 {
+			ret = append(ret,
+				"",
+				"  Wrapped Errors:",
+			)
+			for _, we := range in.Details.WrappedErrors {
+				ret = append(ret,
+					fmt.Sprintf("    Message:             %s", we.Message),
+					fmt.Sprintf("    Operation:           %s", we.Op),
+				)
+			}
+		}
+
 		if len(in.Details.RequestFields) > 0 {
 			ret = append(ret,
 				"",

@@ -23,7 +23,3 @@ func (n Error) ResponseMap() map[string]interface{} {
 func (n Error) ResponseStatus() int {
 	return n.response.HttpResponse().StatusCode
 }
-
-func (n Error) ResponseTraceId() string {
-	return n.response.HttpResponse().Header.Get("TraceId")
-}

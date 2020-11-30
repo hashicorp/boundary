@@ -40,10 +40,6 @@ func (n Group) ResponseStatus() int {
 	return n.response.HttpResponse().StatusCode
 }
 
-func (n Group) ResponseTraceId() string {
-	return n.response.HttpResponse().Header.Get("TraceId")
-}
-
 type GroupReadResult struct {
 	Item     *Group
 	response *api.Response
