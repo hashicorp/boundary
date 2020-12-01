@@ -4,11 +4,17 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## vNext
 
+### New and Improved
+
+* controller: Relax account login name constraints to allow dash as valid character 
+  ([Issue](https://github.com/hashicorp/boundary/issues/759))
+  ([PR](https://github.com/hashicorp/boundary/pull/806))
+
 ### Bug Fixes
 
 * cli: Ensure errors print to stderr when token is not found
   ([Issue](https://github.com/hashicorp/boundary/issues/791))
-  ([PR](https://github.com/hashicorp/boundary/pull/799)]
+  ([PR](https://github.com/hashicorp/boundary/pull/799))
 
 ## v0.1.2
 

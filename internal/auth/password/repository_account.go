@@ -190,7 +190,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 	return rowsDeleted, nil
 }
 
-var reInvalidLoginName = regexp.MustCompile("[^a-z0-9.]")
+var reInvalidLoginName = regexp.MustCompile("[^a-z0-9.-]")
 
 func validLoginName(u string) bool {
 	if u == "" {
