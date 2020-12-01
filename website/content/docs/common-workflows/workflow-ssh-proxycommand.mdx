@@ -27,7 +27,7 @@ Host localhost
     ProxyCommand sh -c "boundary connect -exec nc -- {{boundary.ip}} {{boundary.port}}"
 ```
 
-The `ProxyCommand` tells the SSH client to envoke `boundary connect`. We are passing the `-exec nc` flag to 
+The `ProxyCommand` tells the SSH client to invoke `boundary connect`. We are passing the `-exec nc` flag to 
 `boundary connect` to wrap [netcat](http://netcat.sourceforge.net/), and then pass the `boundary.ip` and `boundary.port`
 varibles as arguments to `nc`. This allows us to proxy our SSH connection through a local netcat tunnel that's
 managed as a Boundary session.
