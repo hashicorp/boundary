@@ -32,7 +32,7 @@ The `ProxyCommand` tells the SSH client to envoke `boundary connect`. We are pas
 varibles as arguments to `nc`. This allows us to proxy our SSH connection through a local netcat tunnel that's
 managed as a Boundary session.
 
-Now, when you run `ssh <user>@localhost`, SSH will envoke `boundary connect`, and will tunnel the traffic through 
+Now, when you run `ssh <user>@localhost`, SSH will invoke `boundary connect`, and will tunnel the traffic through 
 the local Boundary proxy in a wrapped netcat session.
 
 ## Authenticate to Boundary
