@@ -51,7 +51,7 @@ default resources such as a target and auth method. The default target (ttcp_123
 at `localhost` and a default port of `22`. 
 
 Authorize a session to the default target and store the token in the `BOUNDARY_CONNECT_AUTHZ_TOKEN` environment variable. 
-This will be used by Boundary when it's envoked by SSH:
+This will be used by Boundary when it's invoked by SSH:
 
 ```bash
 $ export BOUNDARY_CONNECT_AUTHZ_TOKEN=$(boundary targets authorize-session -id ttcp_1234567890 -format json | jq '.authorization_token' | tr -d '"')
