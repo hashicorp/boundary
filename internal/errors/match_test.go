@@ -149,7 +149,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "nil template",
 			template: nil,
-			err:      New(NotUnique, WithMsg("this thing was must be unique")),
+			err:      E(NotUnique, WithMsg("this thing was must be unique")),
 			want:     false,
 		},
 		{
@@ -161,7 +161,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "match on Kind only",
 			template: T(Integrity),
-			err: New(
+			err: E(
 				NotUnique,
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
@@ -172,7 +172,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "no match on Kind only",
 			template: T(Integrity),
-			err: New(
+			err: E(
 				RecordNotFound,
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),
@@ -183,7 +183,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "match on Code only",
 			template: T(NotUnique),
-			err: New(
+			err: E(
 				NotUnique,
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
@@ -194,7 +194,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "no match on Code only",
 			template: T(NotUnique),
-			err: New(
+			err: E(
 				RecordNotFound,
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),
@@ -205,7 +205,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "match on Op only",
 			template: T(Op("alice.Bob")),
-			err: New(
+			err: E(
 				NotUnique,
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
@@ -216,7 +216,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "no match on Op only",
 			template: T(Op("alice.Alice")),
-			err: New(
+			err: E(
 				RecordNotFound,
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),
@@ -233,7 +233,7 @@ func TestMatch(t *testing.T) {
 				ErrInvalidFieldMask,
 				Op("alice.Bob"),
 			),
-			err: New(
+			err: E(
 				InvalidParameter,
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
@@ -244,7 +244,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "match on Wrapped only",
 			template: T(ErrInvalidFieldMask),
-			err: New(
+			err: E(
 				NotUnique,
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
@@ -255,7 +255,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "no match on Wrapped only",
 			template: T(ErrNotUnique),
-			err: New(
+			err: E(
 				RecordNotFound,
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),
@@ -266,7 +266,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "match on Wrapped only stderror",
 			template: T(stdErr),
-			err: New(
+			err: E(
 				NotUnique,
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
@@ -277,7 +277,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "no match on Wrapped only stderror",
 			template: T(stderrors.New("no match")),
-			err: New(
+			err: E(
 				RecordNotFound,
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),

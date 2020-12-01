@@ -44,7 +44,7 @@ func TestError_IsUnique(t *testing.T) {
 		},
 		{
 			name: "wrapped-pq-is-unique",
-			in: errors.New(errors.NotUnique,
+			in: errors.E(errors.NotUnique,
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23505"),
 				}),
@@ -96,12 +96,12 @@ func TestError_IsCheckConstraint(t *testing.T) {
 		},
 		{
 			name: "ErrCodeCheckConstraint",
-			in:   errors.New(errors.CheckConstraint),
+			in:   errors.E(errors.CheckConstraint),
 			want: true,
 		},
 		{
 			name: "wrapped-pq-is-check-constraint",
-			in: errors.New(errors.CheckConstraint,
+			in: errors.E(errors.CheckConstraint,
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23514"),
 				}),
@@ -160,12 +160,12 @@ func TestError_IsNotNullError(t *testing.T) {
 		},
 		{
 			name: "ErrCodeNotNull",
-			in:   errors.New(errors.NotNull),
+			in:   errors.E(errors.NotNull),
 			want: true,
 		},
 		{
 			name: "wrapped-pq-is-not-null",
-			in: errors.New(errors.NotNull,
+			in: errors.E(errors.NotNull,
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23502"),
 				}),

@@ -32,13 +32,13 @@ type Err struct {
 	Wrapped error
 }
 
-// New creates a new Err and supports the options of:
+// E creates a new Err with provided code and supports the options of:
 // WithOp - allows you to specify an optional Op (operation)
 // WithMsg() - allows you to specify an optional error msg, if the default
 // msg for the error Code is not sufficient.
 // WithWrap() - allows you to specify
 // an error to wrap
-func New(c Code, opt ...Option) error {
+func E(c Code, opt ...Option) error {
 	opts := GetOpts(opt...)
 	return &Err{
 		Code:    c,
@@ -48,16 +48,38 @@ func New(c Code, opt ...Option) error {
 	}
 }
 
-func Wrap(e error, opt ...Option) error {
-	bErr := Convert(e)
-	if bErr != nil {
-		opt = append(opt, WithWrap(bErr))
-		return New(bErr.Code, opt...)
+// New creates a new Err with provided code, op and msg
+// It supports the options of:
+// WithWrap() - allows you to specify an error to wrap
+func New(c Code, op Op, msg string, opt ...Option) error {
+	if op != "" {
+		opt = append(opt, WithOp(op))
+	}
+	if msg != "" {
+		opt = append(opt, WithMsg(msg))
+	}
+
+	return E(c, opt...)
+}
+
+// Wrap creates a new Err from the provided err and op,
+// preserving the code from the originating error.
+// It supports the options of:
+// WithMsg() - allows you to specify an optional error msg, if the default
+// msg for the error Code is not sufficient.
+func Wrap(e error, op Op, opt ...Option) error {
+	if op != "" {
+		opt = append(opt, WithOp(op))
+	}
+	err := Convert(e)
+	if err != nil {
+		opt = append(opt, WithWrap(err))
+		return E(err.Code, opt...)
 	}
 
 	// e is not a boundary domain error or it could not be converted to one
 	opt = append(opt, WithWrap(e))
-	return New(Unknown, opt...)
+	return E(Unknown, opt...)
 }
 
 // Convert will convert the error to a Boundary *Err (returning it as an error)
@@ -67,28 +89,28 @@ func Convert(e error) *Err {
 	if e == nil {
 		return nil
 	}
-	var bErr *Err
-	if As(e, &bErr) {
-		return bErr
+	var err *Err
+	if As(e, &err) {
+		return err
 	}
 	var pqError *pq.Error
 	if As(e, &pqError) {
 		if pqError.Code.Class() == "23" { // class of integrity constraint violations
 			switch pqError.Code {
 			case "23505": // unique_violation
-				return New(NotUnique, WithMsg(pqError.Detail), WithWrap(ErrNotUnique)).(*Err)
+				return E(NotUnique, WithMsg(pqError.Detail), WithWrap(ErrNotUnique)).(*Err)
 			case "23502": // not_null_violation
 				msg := fmt.Sprintf("%s must not be empty", pqError.Column)
-				return New(NotNull, WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
+				return E(NotNull, WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
 			case "23514": // check_violation
 				msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
-				return New(CheckConstraint, WithMsg(msg), WithWrap(ErrCheckConstraint)).(*Err)
+				return E(CheckConstraint, WithMsg(msg), WithWrap(ErrCheckConstraint)).(*Err)
 			default:
-				return New(NotSpecificIntegrity, WithMsg(pqError.Message)).(*Err)
+				return E(NotSpecificIntegrity, WithMsg(pqError.Message)).(*Err)
 			}
 		}
 		if pqError.Code == "42P01" {
-			return New(MissingTable, WithMsg(pqError.Message)).(*Err)
+			return E(MissingTable, WithMsg(pqError.Message)).(*Err)
 		}
 	}
 	// unfortunately, we can't help.
