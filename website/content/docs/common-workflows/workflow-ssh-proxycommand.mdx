@@ -9,7 +9,7 @@ description: How to manage SSH proxy configuration with Boundary
 
 The most common pattern for using Boundary to SSH is with the built-in `boundary connect ssh` command. However,
 there are more idomatic approaches that can be employed to make Boundary transparent to users, and at the same
-time simplify common developer and operator workflows. Using `ProxyCommand` to execute a proxy when envoking the
+time simplify common developer and operator workflows. Using `ProxyCommand` to execute a proxy when invoking the
 SSH client is a common practice. In this workflow, we'll cover configuring your SSH client to execute the 
 `boundary` command, enabling a simplified SSH workflow that leverages Boundary's authenticated proxy for accessing
 targets.
