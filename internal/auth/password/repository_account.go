@@ -42,7 +42,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		return nil, fmt.Errorf("create: password account: scope id empty: %w", errors.ErrInvalidParameter)
 	}
 	if !validLoginName(a.LoginName) {
-		return nil, fmt.Errorf("create: password account: invalid login name; must be all-lowercase alphanumeric: %w", errors.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password account: invalid login name; must be all-lowercase alphanumeric, period or hyphen: %w", errors.ErrInvalidParameter)
 	}
 
 	cc, err := r.currentConfig(ctx, a.AuthMethodId)
@@ -236,7 +236,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		case strings.EqualFold("Description", f):
 		case strings.EqualFold("LoginName", f):
 			if !validLoginName(a.LoginName) {
-				return nil, db.NoRowsAffected, fmt.Errorf("update: password account: invalid user name: %w", errors.ErrInvalidParameter)
+				return nil, db.NoRowsAffected, fmt.Errorf("update: password account: invalid user name: must be all-lowercase alphanumeric, period or hyphen %w", errors.ErrInvalidParameter)
 			}
 			changeLoginName = true
 		default:
