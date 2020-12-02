@@ -28,7 +28,7 @@ func TestRepository_New(t *testing.T) {
 		name      string
 		args      args
 		want      *Repository
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name: "valid",
@@ -67,7 +67,7 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "nil-writer",
@@ -77,7 +77,7 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "nil-kms",
@@ -87,7 +87,7 @@ func TestRepository_New(t *testing.T) {
 				kms: nil,
 			},
 			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "all-nils",
@@ -97,7 +97,7 @@ func TestRepository_New(t *testing.T) {
 				kms: nil,
 			},
 			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -105,8 +105,8 @@ func TestRepository_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}

@@ -1,8 +1,6 @@
 package static
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -25,13 +23,14 @@ type Repository struct {
 // limit applied to all ListX methods.
 // routines to access it.
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+	const op = "static.NewRepository"
 	switch {
 	case r == nil:
-		return nil, fmt.Errorf("db.Reader: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "db.Reader")
 	case w == nil:
-		return nil, fmt.Errorf("db.Writer: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "db.Writer")
 	case kms == nil:
-		return nil, fmt.Errorf("kms: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "kms")
 	}
 
 	opts := getOpts(opt...)

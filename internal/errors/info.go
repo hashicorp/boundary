@@ -24,6 +24,14 @@ var errorCodeInfo = map[Code]Info{
 		Message: "invalid public id",
 		Kind:    Parameter,
 	},
+	InvalidFieldMask: {
+		Message: "invalid field mask",
+		Kind:    Parameter,
+	},
+	MissingFieldMask: {
+		Message: "empty field mask",
+		Kind:    Parameter,
+	},
 	CheckConstraint: {
 		Message: "constraint check failed",
 		Kind:    Integrity,

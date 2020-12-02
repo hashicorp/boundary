@@ -89,3 +89,20 @@ func IsMissingTableError(err error) bool {
 	}
 	return false
 }
+
+// IsNotFoundError returns a boolean indicating whether the error is known to
+// report a not found violation.
+func IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var domainErr *Err
+	if errors.As(err, &domainErr) {
+		if domainErr.Code == RecordNotFound {
+			return true
+		}
+	}
+
+	return false
+}

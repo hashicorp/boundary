@@ -2,6 +2,7 @@ package errors_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -239,4 +240,42 @@ func TestError_IsMissingTableError(t *testing.T) {
 		require.Error(err)
 		assert.True(errors.IsMissingTableError(err))
 	})
+}
+
+func TestError_IsNotFoundError(t *testing.T) {
+	var tests = []struct {
+		name string
+		in   error
+		want bool
+	}{
+		{
+			name: "nil-error",
+			in:   nil,
+			want: false,
+		},
+		{
+			name: "not-found-error",
+			in:   errors.E(errors.RecordNotFound),
+			want: true,
+		},
+		{
+			name: "sentinel-not-found",
+			in:   errors.ErrRecordNotFound,
+			want: true,
+		},
+		{
+			name: "std-err",
+			in:   fmt.Errorf("std error"),
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			err := tt.in
+			got := errors.IsNotFoundError(err)
+			assert.Equal(tt.want, got)
+		})
+	}
 }

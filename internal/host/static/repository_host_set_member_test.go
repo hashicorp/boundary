@@ -48,7 +48,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 		args      args
 		want      []*Host
 		wantErr   bool
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name: "empty-scope-id",
@@ -57,7 +57,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-set-id",
@@ -66,7 +66,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -75,7 +75,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				hostIds: hostIds,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-host-ids",
@@ -84,7 +84,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				version: set.Version,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-version",
@@ -116,8 +116,8 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.AddSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 				return
@@ -239,7 +239,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 		args      args
 		want      int
 		wantErr   bool
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name: "empty-scope-id",
@@ -248,7 +248,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-set-id",
@@ -257,7 +257,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -266,7 +266,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				hostIds: hostIds,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-host-ids",
@@ -275,7 +275,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				version: set.Version,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-version",
@@ -308,8 +308,8 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
 				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 				return
@@ -437,7 +437,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 		want      []*Host
 		wantCount int
 		wantErr   bool
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name: "empty-scope-id",
@@ -446,7 +446,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-set-id",
@@ -455,7 +455,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 				version: set.Version,
 				hostIds: hostIds,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -464,7 +464,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 				setId:   set.PublicId,
 				hostIds: hostIds,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-version",
@@ -497,8 +497,8 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(repo)
 			got, gotCount, err := repo.SetSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				assert.Equal(tt.wantCount, gotCount)
 				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))

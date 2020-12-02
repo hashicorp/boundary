@@ -24,6 +24,8 @@ const (
 	InvalidParameter Code = 100 // InvalidParameter represents an invalid parameter for an operation.
 	InvalidAddress   Code = 101 // InvalidAddress represents an invalid host address for an operation
 	InvalidPublicId  Code = 102
+	InvalidFieldMask Code = 103
+	MissingFieldMask Code = 104
 
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
