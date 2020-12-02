@@ -43,6 +43,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: InvalidPublicId,
 		},
 		{
+			name: "InvalidFieldMask",
+			c:    InvalidFieldMask,
+			want: InvalidFieldMask,
+		},
+		{
+			name: "EmptyFieldMask",
+			c:    EmptyFieldMask,
+			want: EmptyFieldMask,
+		},
+		{
 			name: "CheckConstraint",
 			c:    CheckConstraint,
 			want: CheckConstraint,

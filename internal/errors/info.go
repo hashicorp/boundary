@@ -28,7 +28,7 @@ var errorCodeInfo = map[Code]Info{
 		Message: "invalid field mask",
 		Kind:    Parameter,
 	},
-	MissingFieldMask: {
+	EmptyFieldMask: {
 		Message: "empty field mask",
 		Kind:    Parameter,
 	},

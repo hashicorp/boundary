@@ -112,7 +112,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
 	if len(fieldMask) == 0 {
-		return nil, db.NoRowsAffected, errors.E(errors.MissingFieldMask, errors.WithOp(op))
+		return nil, db.NoRowsAffected, errors.E(errors.EmptyFieldMask, errors.WithOp(op))
 	}
 
 	var dbMask, nullFields []string

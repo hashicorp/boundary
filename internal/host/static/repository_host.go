@@ -147,7 +147,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, errors.E(errors.MissingFieldMask, errors.WithOp(op))
+		return nil, db.NoRowsAffected, errors.E(errors.EmptyFieldMask, errors.WithOp(op))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)

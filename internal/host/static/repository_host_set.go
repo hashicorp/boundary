@@ -129,7 +129,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, db.NoRowsAffected, errors.E(errors.MissingFieldMask, errors.WithOp(op))
+		return nil, nil, db.NoRowsAffected, errors.E(errors.EmptyFieldMask, errors.WithOp(op))
 	}
 
 	opts := getOpts(opt...)

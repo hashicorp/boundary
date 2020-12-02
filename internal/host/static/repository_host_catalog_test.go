@@ -284,7 +284,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				},
 			},
 			chgFn:     changeName("test-update-name-repo"),
-			wantIsErr: errors.MissingFieldMask,
+			wantIsErr: errors.EmptyFieldMask,
 		},
 		{
 			name: "read-only-fields-in-field-mask",
