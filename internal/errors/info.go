@@ -1,7 +1,11 @@
 package errors
 
+// Info contains details of the specific error code
 type Info struct {
-	Kind    Kind
+	// Kind specifies the kind of error (unknown, parameter, integrity, etc).
+	Kind Kind
+
+	// Message provides a default message for the error code
 	Message string
 }
 

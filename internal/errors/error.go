@@ -33,11 +33,13 @@ type Err struct {
 }
 
 // E creates a new Err with provided code and supports the options of:
-// WithOp - allows you to specify an optional Op (operation)
-// WithMsg() - allows you to specify an optional error msg, if the default
+//
+// * WithOp() - allows you to specify an optional Op (operation)
+//
+// * WithMsg() - allows you to specify an optional error msg, if the default
 // msg for the error Code is not sufficient.
-// WithWrap() - allows you to specify
-// an error to wrap
+//
+// * WithWrap() - allows you to specify an error to wrap
 func E(c Code, opt ...Option) error {
 	opts := GetOpts(opt...)
 	return &Err{
@@ -50,7 +52,8 @@ func E(c Code, opt ...Option) error {
 
 // New creates a new Err with provided code, op and msg
 // It supports the options of:
-// WithWrap() - allows you to specify an error to wrap
+//
+// * WithWrap() - allows you to specify an error to wrap
 func New(c Code, op Op, msg string, opt ...Option) error {
 	if op != "" {
 		opt = append(opt, WithOp(op))
@@ -65,7 +68,8 @@ func New(c Code, op Op, msg string, opt ...Option) error {
 // Wrap creates a new Err from the provided err and op,
 // preserving the code from the originating error.
 // It supports the options of:
-// WithMsg() - allows you to specify an optional error msg, if the default
+//
+// * WithMsg() - allows you to specify an optional error msg, if the default
 // msg for the error Code is not sufficient.
 func Wrap(e error, op Op, opt ...Option) error {
 	if op != "" {
