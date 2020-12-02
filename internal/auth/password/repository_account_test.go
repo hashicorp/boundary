@@ -27,6 +27,8 @@ func TestCheckLoginName(t *testing.T) {
 		{"contains spaces", false},
 		{"NotLowerCase", false},
 		{"valid.loginname", true},
+		{"valid-loginname", true},
+		{"validloginname", true},
 	}
 	for _, tt := range tests {
 		tt := tt
