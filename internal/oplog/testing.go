@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/hashicorp/boundary/internal/db/migrations"
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -79,7 +80,9 @@ func testWrapper(t *testing.T) wrapping.Wrapper {
 func testInitStore(t *testing.T, cleanup func() error, url string) {
 	t.Helper()
 	// run migrations
-	m, err := migrate.New("file://../db/migrations/postgres", url)
+	source, err := migrations.NewMigrationSource("postgres")
+	require.NoError(t, err, "Error creating migration source")
+	m, err := migrate.NewWithSourceInstance("postgres", source, url)
 	require.NoError(t, err, "Error creating migrations")
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {

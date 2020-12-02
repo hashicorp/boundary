@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -20,7 +21,7 @@ func generate(dialect string) {
 		fmt.Printf("error opening dir with dialect %s: %v\n", dialect, err)
 		os.Exit(1)
 	}
-	names, err := dir.Readdirnames(0)
+	versions, err := dir.Readdirnames(0)
 	if err != nil {
 		fmt.Printf("error reading dir names with dialect %s: %v\n", dialect, err)
 		os.Exit(1)
@@ -28,26 +29,68 @@ func generate(dialect string) {
 	outBuf := bytes.NewBuffer(nil)
 	valuesBuf := bytes.NewBuffer(nil)
 
-	sort.Strings(names)
+	sort.Strings(versions)
 
-	for _, name := range names {
-		if !strings.HasSuffix(name, ".sql") {
-			continue
-		}
-		contents, err := ioutil.ReadFile(fmt.Sprintf("%s/%s/%s", baseDir, dialect, name))
+	largestVer := 0
+	for _, ver := range versions {
+		verVal, err := strconv.Atoi(ver)
 		if err != nil {
-			fmt.Printf("error opening file %s with dialect %s: %v", name, dialect, err)
+			if ver != "dev" {
+				fmt.Printf("error reading major schema version directory %q.  Must be a number or 'dev'\n", ver)
+				continue
+			}
+			verVal = largestVer + 1
+		}
+		if verVal > largestVer {
+			largestVer = verVal
+		}
+
+		dir, err := os.Open(fmt.Sprintf("%s/%s/%s", baseDir, dialect, ver))
+		if err != nil {
+			fmt.Printf("error opening dir with dialect %s: %v\n", dialect, err)
 			os.Exit(1)
 		}
-		if err := migrationsValueTemplate.Execute(valuesBuf, struct {
-			Name     string
-			Contents string
-		}{
-			Name:     name,
-			Contents: string(contents),
-		}); err != nil {
-			fmt.Printf("error executing migrations value template for file %s: %s", name, err)
+		names, err := dir.Readdirnames(0)
+		if err != nil {
+			fmt.Printf("error reading dir names with dialect %s: %v\n", dialect, err)
 			os.Exit(1)
+		}
+
+		sort.Strings(names)
+		for _, name := range names {
+			if !strings.HasSuffix(name, ".sql") {
+				continue
+			}
+
+			contents, err := ioutil.ReadFile(fmt.Sprintf("%s/%s/%s/%s", baseDir, dialect, ver, name))
+			if err != nil {
+				fmt.Printf("error opening file %s with dialect %s: %v", name, dialect, err)
+				os.Exit(1)
+			}
+
+			vName := name
+			nameParts := strings.SplitN(name, "_", 2)
+			if len(nameParts) != 2 {
+				continue
+			}
+
+			nameVer, err := strconv.Atoi(nameParts[0])
+			if err != nil {
+				fmt.Printf("Unable to get file version from %q\n", name)
+				continue
+			}
+			vName = fmt.Sprintf("%02d_%s", (verVal*1000)+nameVer, nameParts[1])
+
+			if err := migrationsValueTemplate.Execute(valuesBuf, struct {
+				Name     string
+				Contents string
+			}{
+				Name:     vName,
+				Contents: string(contents),
+			}); err != nil {
+				fmt.Printf("error executing migrations value template for file %s/%s: %s", ver, name, err)
+				os.Exit(1)
+			}
 		}
 	}
 	if err := migrationsTemplate.Execute(outBuf, struct {
