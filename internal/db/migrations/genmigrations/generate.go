@@ -34,16 +34,18 @@ func generate(dialect string) {
 	isDev := false
 	largestVer := 0
 	for _, ver := range versions {
-		verVal, err := strconv.Atoi(ver)
-		if err != nil {
-			if ver != "dev" {
-				fmt.Printf("error reading major schema version directory %q.  Must be a number or 'dev'\n", ver)
-				continue
-			}
+		var verVal int
+		switch ver {
+		case "dev":
 			verVal = largestVer + 1
-		}
-		if verVal > largestVer {
-			largestVer = verVal
+		default:
+			if verVal, err = strconv.Atoi(ver); err != nil {
+				fmt.Printf("error reading major schema version directory %q.  Must be a number or 'dev'\n", ver)
+				os.Exit(1)
+			}
+			if verVal > largestVer {
+				largestVer = verVal
+			}
 		}
 
 		dir, err := os.Open(fmt.Sprintf("%s/%s/%s", baseDir, dialect, ver))

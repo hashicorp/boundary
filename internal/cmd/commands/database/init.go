@@ -187,10 +187,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	if migrations.DevMigration != c.flagAllowDevMigration {
 		if migrations.DevMigration {
 			c.UI.Error("This version of the binary has unsafe dev database schema updates.  To proceed anyways please use the 'allow-development-migration' flag.")
+			return 2
 		} else {
 			c.UI.Error("The 'allow-development-migration' flag was set but this binary has no dev database schema updates.")
+			return 3
 		}
-		return 1
 	}
 
 	c.srv = base.NewServer(&base.Command{UI: c.UI})
