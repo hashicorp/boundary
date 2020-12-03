@@ -31,6 +31,7 @@ func generate(dialect string) {
 
 	sort.Strings(versions)
 
+	isDev := false
 	largestVer := 0
 	for _, ver := range versions {
 		verVal, err := strconv.Atoi(ver)
@@ -54,6 +55,10 @@ func generate(dialect string) {
 		if err != nil {
 			fmt.Printf("error reading dir names with dialect %s: %v\n", dialect, err)
 			os.Exit(1)
+		}
+
+		if ver == "dev" && len(names) > 0 {
+			isDev = true
 		}
 
 		sort.Strings(names)
@@ -94,11 +99,13 @@ func generate(dialect string) {
 		}
 	}
 	if err := migrationsTemplate.Execute(outBuf, struct {
-		Type   string
-		Values string
+		Type         string
+		Values       string
+		DevMigration bool
 	}{
-		Type:   dialect,
-		Values: valuesBuf.String(),
+		Type:         dialect,
+		Values:       valuesBuf.String(),
+		DevMigration: isDev,
 	}); err != nil {
 		fmt.Printf("error executing migrations value template for dialect %s: %s", dialect, err)
 		os.Exit(1)
@@ -118,6 +125,11 @@ package migrations
 import (
 	"bytes"
 )
+
+// DevMigration is true if the database schema that would be applied by
+// InitStore would be from files in the /dev directory which indicates it would
+// not be safe to run in a non dev environment.
+var DevMigration = {{ .DevMigration }}
 
 var {{ .Type }}Migrations = map[string]*fakeFile{
 	"migrations": {
