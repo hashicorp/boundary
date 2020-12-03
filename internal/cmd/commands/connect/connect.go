@@ -263,7 +263,7 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	if err := f.Parse(args); err != nil {
 		c.Error(err.Error())
-		return 1
+		return 3
 	}
 
 	switch {
@@ -271,22 +271,22 @@ func (c *Command) Run(args []string) (retCode int) {
 		switch {
 		case c.flagTargetId != "":
 			c.Error(`-target-id and -authz-token cannot both be specified`)
-			return 1
+			return 3
 		case c.flagTargetName != "":
 			c.Error(`-target-name and -authz-token cannot both be specified`)
-			return 1
+			return 3
 		}
 	default:
 		if c.flagTargetId == "" &&
 			(c.flagTargetName == "" ||
 				(c.FlagScopeId == "" && c.FlagScopeName == "")) {
 			c.Error("Target ID was not passed in, but no combination of target name and scope ID/name was passed in either")
-			return 1
+			return 3
 		}
 		if c.flagTargetId != "" &&
 			(c.flagTargetName != "" || c.FlagScopeId != "" || c.FlagScopeName != "") {
 			c.Error("Cannot specify a target ID and also other lookup parameters")
-			return 1
+			return 3
 		}
 	}
 
@@ -306,7 +306,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	tofuToken, err := base62.Random(20)
 	if err != nil {
 		c.Error(fmt.Errorf("Could not derive random bytes for tofu token: %w", err).Error())
-		return 1
+		return 2
 	}
 
 	c.connsLeftCh = make(chan int32)
@@ -317,7 +317,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	listenAddr := net.ParseIP(c.flagListenAddr)
 	if listenAddr == nil {
 		c.Error(fmt.Sprintf("Could not successfully parse listen address of %s", c.flagListenAddr))
-		return 1
+		return 3
 	}
 
 	authzString := c.flagAuthzToken
@@ -327,18 +327,18 @@ func (c *Command) Run(args []string) (retCode int) {
 			authBytes, err := ioutil.ReadAll(os.Stdin)
 			if err != nil {
 				c.Error(fmt.Errorf("No authorization string was provided and encountered the following error attempting to read it from stdin: %w", err).Error())
-				return 1
+				return 3
 			}
 			if len(authBytes) == 0 {
 				c.Error("No authorization data read from stdin")
-				return 1
+				return 3
 			}
 			authzString = string(authBytes)
 		}
 
 		if authzString == "" {
 			c.Error("Authorization data was empty")
-			return 1
+			return 3
 		}
 
 		if authzString[0] == '{' {
@@ -375,7 +375,12 @@ func (c *Command) Run(args []string) (retCode int) {
 		sar, err := targetClient.AuthorizeSession(c.Context, c.flagTargetId, opts...)
 		if err != nil {
 			if apiErr := api.AsServerError(err); apiErr != nil {
-				c.Error(fmt.Sprintf("Error from controller when performing authorize-session against target: %s", base.PrintApiError(apiErr)))
+				switch c.outputJsonErrors {
+				case true:
+					c.Error(apiErr.ResponseBody().String())
+				default:
+					c.Error(fmt.Sprintf("Error from controller when performing authorize-session against target: %s", base.PrintApiError(apiErr)))
+				}
 				return 1
 			}
 			c.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))
@@ -387,22 +392,22 @@ func (c *Command) Run(args []string) (retCode int) {
 	marshaled, err := base58.FastBase58Decoding(authzString)
 	if err != nil {
 		c.Error(fmt.Errorf("Unable to base58-decode authorization data: %w", err).Error())
-		return 1
+		return 3
 	}
 	if len(marshaled) == 0 {
 		c.Error("Zero length authorization information after decoding")
-		return 1
+		return 3
 	}
 
 	c.sessionAuthzData = new(targetspb.SessionAuthorizationData)
 	if err := proto.Unmarshal(marshaled, c.sessionAuthzData); err != nil {
 		c.Error(fmt.Errorf("Unable to proto-decode authorization data: %w", err).Error())
-		return 1
+		return 3
 	}
 
 	if len(c.sessionAuthzData.GetWorkerInfo()) == 0 {
 		c.Error("No workers found in authorization string")
-		return 1
+		return 3
 	}
 
 	c.connectionsLeft.Store(c.sessionAuthzData.ConnectionLimit)
@@ -411,12 +416,12 @@ func (c *Command) Run(args []string) (retCode int) {
 	parsedCert, err := x509.ParseCertificate(c.sessionAuthzData.Certificate)
 	if err != nil {
 		c.Error(fmt.Errorf("Unable to decode mTLS certificate: %w", err).Error())
-		return 1
+		return 3
 	}
 
 	if len(parsedCert.DNSNames) != 1 {
 		c.Error(fmt.Errorf("mTLS certificate has invalid parameters: %w", err).Error())
-		return 1
+		return 3
 	}
 
 	c.expiration = parsedCert.NotAfter
@@ -456,7 +461,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	})
 	if err != nil {
 		c.Error(fmt.Errorf("Error starting listening port: %w", err).Error())
-		return 1
+		return 2
 	}
 
 	listenerCloseFunc := func() {
@@ -464,7 +469,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		c.connectionsLeft.Store(0)
 		if err := c.listener.Close(); err != nil {
 			c.Error(fmt.Errorf("Error closing listener on shutdown: %w", err).Error())
-			retCode = 1
+			retCode = 2
 		}
 	}
 
@@ -492,7 +497,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			out, err := json.Marshal(&sessInfo)
 			if err != nil {
 				c.Error(fmt.Errorf("error marshaling session information: %w", err).Error())
-				return 1
+				return 2
 			}
 			c.UI.Output(string(out))
 		}
@@ -597,7 +602,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			out, err := json.Marshal(&termInfo)
 			if err != nil {
 				c.Error(fmt.Errorf("error marshaling termination information: %w", err).Error())
-				return 1
+				return 2
 			}
 			c.UI.Output(string(out))
 		}
