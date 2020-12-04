@@ -121,7 +121,7 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f.BoolVar(&base.BoolVar{
 		Name:   "allow-development-migrations",
 		Target: &c.flagAllowDevMigrations,
-		Usage:  "If set the init will continue even if the schema includes database update steps that may not be supported in the next official release.",
+		Usage:  "If set the init will continue even if the schema includes database update steps that may not be supported in the next official release.  Boundary does not provide a rollback mechanism so a backup should be taken independently if needed.",
 	})
 
 	f.BoolVar(&base.BoolVar{
