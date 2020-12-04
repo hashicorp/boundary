@@ -38,7 +38,7 @@ type InitCommand struct {
 	flagLogLevel                     string
 	flagLogFormat                    string
 	flagMigrationUrl                 string
-	flagAllowDevMigration            bool
+	flagAllowDevMigrations           bool
 	flagSkipInitialLoginRoleCreation bool
 	flagSkipAuthMethodCreation       bool
 	flagSkipScopesCreation           bool
@@ -119,9 +119,9 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f = set.NewFlagSet("Init Options")
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "allow-development-migration",
-		Target: &c.flagAllowDevMigration,
-		Usage:  "If set the init will continue even if the schema includes unsafe database update steps that have not been finalized.",
+		Name:   "allow-development-migrations",
+		Target: &c.flagAllowDevMigrations,
+		Usage:  "If set the init will continue even if the schema includes database update steps that may not be supported in the next official release.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -184,16 +184,15 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}()
 	}
 
-	if migrations.DevMigration != c.flagAllowDevMigration {
+	if migrations.DevMigration != c.flagAllowDevMigrations {
 		if migrations.DevMigration {
-			c.UI.Error(base.WrapAtLength("This version of the binary has unsafe " +
-				"dev database schema updates. Boundary does not provide a way to " +
-				"rollback a bad database schema update so a database backup " +
-				"should be created independently if needed. To proceed anyways " +
-				"please use the '-allow-development-migration' flag."))
+			c.UI.Error(base.WrapAtLength("This version of the binary has " +
+				"dev database schema updates which may not be supported in the " +
+				"next official release. To proceed anyways please use the " +
+				"'-allow-development-migrations' flag."))
 			return 2
 		} else {
-			c.UI.Error(base.WrapAtLength("The '-allow-development-migration' " +
+			c.UI.Error(base.WrapAtLength("The '-allow-development-migrations' " +
 				"flag was set but this binary has no dev database schema updates."))
 			return 3
 		}
