@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/migrations"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
@@ -37,6 +38,7 @@ type InitCommand struct {
 	flagLogLevel                     string
 	flagLogFormat                    string
 	flagMigrationUrl                 string
+	flagAllowDevMigrations           bool
 	flagSkipInitialLoginRoleCreation bool
 	flagSkipAuthMethodCreation       bool
 	flagSkipScopesCreation           bool
@@ -117,6 +119,12 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f = set.NewFlagSet("Init Options")
 
 	f.BoolVar(&base.BoolVar{
+		Name:   "allow-development-migrations",
+		Target: &c.flagAllowDevMigrations,
+		Usage:  "If set the init will continue even if the schema includes database update steps that may not be supported in the next official release.  Boundary does not provide a rollback mechanism so a backup should be taken independently if needed.",
+	})
+
+	f.BoolVar(&base.BoolVar{
 		Name:   "skip-initial-login-role-creation",
 		Target: &c.flagSkipInitialLoginRoleCreation,
 		Usage:  "If not set, a default role allowing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
@@ -174,6 +182,20 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 				c.UI.Warn(fmt.Errorf("Error finalizing config kms: %w", err).Error())
 			}
 		}()
+	}
+
+	if migrations.DevMigration != c.flagAllowDevMigrations {
+		if migrations.DevMigration {
+			c.UI.Error(base.WrapAtLength("This version of the binary has " +
+				"dev database schema updates which may not be supported in the " +
+				"next official release. To proceed anyways please use the " +
+				"'-allow-development-migrations' flag."))
+			return 2
+		} else {
+			c.UI.Error(base.WrapAtLength("The '-allow-development-migrations' " +
+				"flag was set but this binary has no dev database schema updates."))
+			return 3
+		}
 	}
 
 	c.srv = base.NewServer(&base.Command{UI: c.UI})
@@ -455,6 +477,13 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 		return 1
 	}
 
+	// Validation
+	switch {
+	case len(c.flagConfig) == 0:
+		c.UI.Error("Must specify a config file using -config")
+		return 1
+	}
+
 	wrapperPath := c.flagConfig
 	if c.flagConfigKms != "" {
 		wrapperPath = c.flagConfigKms
@@ -470,13 +499,6 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 			c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
 			return 1
 		}
-	}
-
-	// Validation
-	switch {
-	case len(c.flagConfig) == 0:
-		c.UI.Error("Must specify a config file using -config")
-		return 1
 	}
 
 	c.Config, err = config.LoadFile(c.flagConfig, wrapper)

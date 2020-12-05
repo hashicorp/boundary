@@ -82,7 +82,7 @@ func TestMigrate(t *testing.T) {
 			name: "valid",
 			args: args{
 				connectionUrl:       url,
-				migrationsDirectory: "migrations/postgres",
+				migrationsDirectory: "migrations/postgres/0",
 			},
 			wantErr: false,
 		},
@@ -90,7 +90,7 @@ func TestMigrate(t *testing.T) {
 			name: "bad-url",
 			args: args{
 				connectionUrl:       "",
-				migrationsDirectory: "migrations/postgres",
+				migrationsDirectory: "migrations/postgres/0",
 			},
 			wantErr: true,
 		},
