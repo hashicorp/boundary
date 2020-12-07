@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/boundary/internal/errors"
-
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"

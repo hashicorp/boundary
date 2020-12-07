@@ -13,9 +13,8 @@ import (
 type Op string
 
 // Err provides the ability to specify a Msg, Op, Code and Wrapped error.
-// Errs must have a Code and all other fields are optional. We've chosen Err
-// over Error for the identifier to support the easy embedding of Errs.  Errs
-// can be embedded without a conflict between the embedded Err and Err.Error().
+// We've chosen Err over Error for the identifier to support the easy embedding of Errs.
+// Errs can be embedded without a conflict between the embedded Err and Err.Error().
 type Err struct {
 	// Code is the error's code, which can be used to get the error's
 	// errorCodeInfo, which contains the error's Kind and Message
@@ -34,16 +33,35 @@ type Err struct {
 
 // E creates a new Err with provided code and supports the options of:
 //
-// * WithOp() - allows you to specify an optional Op (operation)
+// * WithOp() - allows you to specify an optional Op (operation).
 //
 // * WithMsg() - allows you to specify an optional error msg, if the default
 // msg for the error Code is not sufficient.
 //
-// * WithWrap() - allows you to specify an error to wrap
-func E(c Code, opt ...Option) error {
+// * WithWrap() - allows you to specify an error to wrap.
+// If the wrapped error is a boundary domain error, the wrapped error code
+// will be used as the returned error's code.
+//
+// * WithCode() - allows you to specify an optional Code, this code will be prioritized
+// over a code used from WithWrap().
+func E(opt ...Option) error {
 	opts := GetOpts(opt...)
+	var code Code
+
+	// check if options includes a wrapped error to take code from
+	var err *Err
+	if As(opts.withErrWrapped, &err) {
+		code = err.Code
+	}
+
+	// if options include withCode prioritize using that code
+	// even if one was set via wrapped error above
+	if opts.withCode != Unknown {
+		code = opts.withCode
+	}
+
 	return &Err{
-		Code:    c,
+		Code:    code,
 		Op:      opts.withOp,
 		Wrapped: opts.withErrWrapped,
 		Msg:     opts.withErrMsg,
@@ -55,6 +73,9 @@ func E(c Code, opt ...Option) error {
 //
 // * WithWrap() - allows you to specify an error to wrap
 func New(c Code, op Op, msg string, opt ...Option) error {
+	if c != Unknown {
+		opt = append(opt, WithCode(c))
+	}
 	if op != "" {
 		opt = append(opt, WithOp(op))
 	}
@@ -62,7 +83,7 @@ func New(c Code, op Op, msg string, opt ...Option) error {
 		opt = append(opt, WithMsg(msg))
 	}
 
-	return E(c, opt...)
+	return E(opt...)
 }
 
 // Wrap creates a new Err from the provided err and op,
@@ -75,15 +96,11 @@ func Wrap(e error, op Op, opt ...Option) error {
 	if op != "" {
 		opt = append(opt, WithOp(op))
 	}
-	err := Convert(e)
-	if err != nil {
-		opt = append(opt, WithWrap(err))
-		return E(err.Code, opt...)
+	if e != nil {
+		opt = append(opt, WithWrap(e))
 	}
 
-	// e is not a boundary domain error or it could not be converted to one
-	opt = append(opt, WithWrap(e))
-	return E(Unknown, opt...)
+	return E(opt...)
 }
 
 // Convert will convert the error to a Boundary *Err (returning it as an error)
@@ -102,19 +119,19 @@ func Convert(e error) *Err {
 		if pqError.Code.Class() == "23" { // class of integrity constraint violations
 			switch pqError.Code {
 			case "23505": // unique_violation
-				return E(NotUnique, WithMsg(pqError.Detail), WithWrap(ErrNotUnique)).(*Err)
+				return E(WithMsg(pqError.Detail), WithWrap(ErrNotUnique)).(*Err)
 			case "23502": // not_null_violation
 				msg := fmt.Sprintf("%s must not be empty", pqError.Column)
-				return E(NotNull, WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
+				return E(WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
 			case "23514": // check_violation
 				msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
-				return E(CheckConstraint, WithMsg(msg), WithWrap(ErrCheckConstraint)).(*Err)
+				return E(WithMsg(msg), WithWrap(ErrCheckConstraint)).(*Err)
 			default:
-				return E(NotSpecificIntegrity, WithMsg(pqError.Message)).(*Err)
+				return E(WithCode(NotSpecificIntegrity), WithMsg(pqError.Message)).(*Err)
 			}
 		}
 		if pqError.Code == "42P01" {
-			return E(MissingTable, WithMsg(pqError.Message)).(*Err)
+			return E(WithCode(MissingTable), WithMsg(pqError.Message)).(*Err)
 		}
 	}
 	// unfortunately, we can't help.

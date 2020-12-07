@@ -118,7 +118,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Domain error Db invalid parameter",
-			err:  errors.E(errors.InvalidPublicId),
+			err:  errors.E(errors.WithCode(errors.InvalidPublicId)),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
 				Code:    "Internal",
@@ -138,7 +138,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Domain error Db invalid parameter",
-			err:  errors.E(errors.InvalidParameter),
+			err:  errors.E(errors.WithCode(errors.InvalidParameter)),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
 				Code:    "Internal",
@@ -159,7 +159,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Domain error Db invalid field mask",
-			err:  errors.E(errors.InvalidFieldMask),
+			err:  errors.E(errors.WithCode(errors.InvalidFieldMask)),
 			expected: &pb.Error{
 				Status:  http.StatusBadRequest,
 				Code:    "InvalidArgument",
@@ -181,7 +181,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Domain error Db empty field mask",
-			err:  errors.E(errors.EmptyFieldMask),
+			err:  errors.E(errors.WithCode(errors.EmptyFieldMask)),
 			expected: &pb.Error{
 				Status:  http.StatusBadRequest,
 				Code:    "InvalidArgument",
@@ -202,7 +202,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Domain error Db not unqiue",
-			err:  errors.E(errors.NotUnique),
+			err:  errors.E(errors.WithCode(errors.NotUnique)),
 			expected: &pb.Error{
 				Status:  http.StatusBadRequest,
 				Code:    "InvalidArgument",
@@ -222,7 +222,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Domain error Db record not found",
-			err:  errors.E(errors.RecordNotFound),
+			err:  errors.E(errors.WithCode(errors.RecordNotFound)),
 			expected: &pb.Error{
 				Status:  http.StatusNotFound,
 				Code:    "NotFound",
@@ -242,7 +242,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "Domain error Db multiple records",
-			err:  errors.E(errors.MultipleRecords),
+			err:  errors.E(errors.WithCode(errors.MultipleRecords)),
 			expected: &pb.Error{
 				Status:  http.StatusInternalServerError,
 				Code:    "Internal",

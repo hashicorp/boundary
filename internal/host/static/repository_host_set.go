@@ -129,7 +129,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, db.NoRowsAffected, errors.E(errors.EmptyFieldMask, errors.WithOp(op))
+		return nil, nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
 	}
 
 	opts := getOpts(opt...)
@@ -155,7 +155,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_UPDATE)),
 				db.WithVersion(&version))
 			if err == nil && rowsUpdated > 1 {
-				return errors.E(errors.MultipleRecords)
+				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
 			if err != nil {
 				return err
@@ -262,7 +262,7 @@ func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId str
 			ds := s.clone()
 			rowsDeleted, err = w.Delete(ctx, ds, db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err == nil && rowsDeleted > 1 {
-				return errors.E(errors.MultipleRecords)
+				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
 			return err
 		},

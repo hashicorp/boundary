@@ -97,7 +97,7 @@ func updateVersion(ctx context.Context, w db.Writer, wrapper wrapping.Wrapper, m
 	case err != nil:
 		return errors.Wrap(err, op)
 	case rowsUpdated > 1:
-		return errors.E(errors.MultipleRecords, errors.WithOp(op))
+		return errors.E(errors.WithCode(errors.MultipleRecords))
 	}
 	msgs = append(msgs, setMsg)
 
@@ -209,7 +209,7 @@ func deleteMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*
 		return nil, errors.Wrap(err, op)
 	}
 	if rowsDeleted != len(members) {
-		return nil, fmt.Errorf("set members deleted %d did not match request for %d", rowsDeleted, len(members))
+		return nil, errors.E(errors.WithMsg(fmt.Sprintf("set members deleted %d did not match request for %d", rowsDeleted, len(members))))
 	}
 	return msgs, nil
 }

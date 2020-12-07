@@ -112,7 +112,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
 	if len(fieldMask) == 0 {
-		return nil, db.NoRowsAffected, errors.E(errors.EmptyFieldMask, errors.WithOp(op))
+		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
 	}
 
 	var dbMask, nullFields []string
@@ -159,7 +159,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				db.WithVersion(&version),
 			)
 			if err == nil && rowsUpdated > 1 {
-				return errors.E(errors.MultipleRecords)
+				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
 			return err
 		},
@@ -254,7 +254,7 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 				db.WithOplog(oplogWrapper, metadata),
 			)
 			if err == nil && rowsDeleted > 1 {
-				return errors.E(errors.MultipleRecords)
+				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
 			return err
 		},

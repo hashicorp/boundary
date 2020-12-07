@@ -48,4 +48,17 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withOp = "alice.bob"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithCode", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts.withOp = ""
+		assert.Equal(opts, testOpts)
+
+		// try setting it
+		opts = GetOpts(WithCode(NotUnique))
+		testOpts.withCode = NotUnique
+		assert.Equal(opts, testOpts)
+	})
 }

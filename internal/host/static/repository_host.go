@@ -40,7 +40,7 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 	}
 	h.Address = strings.TrimSpace(h.Address)
 	if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
-		return nil, errors.E(errors.InvalidAddress, errors.WithOp(op))
+		return nil, errors.New(errors.InvalidAddress, op, "invalid address")
 	}
 	h = h.clone()
 
@@ -130,7 +130,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 		case strings.EqualFold("Address", f):
 			h.Address = strings.TrimSpace(h.Address)
 			if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
-				return nil, db.NoRowsAffected, errors.E(errors.InvalidAddress, errors.WithOp(op))
+				return nil, db.NoRowsAffected, errors.New(errors.InvalidAddress, op, "invalid address")
 			}
 		default:
 			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("field: %s", f))
@@ -147,7 +147,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, errors.E(errors.EmptyFieldMask, errors.WithOp(op))
+		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
@@ -165,7 +165,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 				db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_UPDATE)),
 				db.WithVersion(&version))
 			if err == nil && rowsUpdated > 1 {
-				return errors.E(errors.MultipleRecords)
+				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
 			return err
 		},
@@ -251,7 +251,7 @@ func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId st
 			dh := h.clone()
 			rowsDeleted, err = w.Delete(ctx, dh, db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err == nil && rowsDeleted > 1 {
-				return errors.E(errors.MultipleRecords)
+				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
 			return err
 		},

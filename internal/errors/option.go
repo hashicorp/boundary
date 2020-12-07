@@ -14,6 +14,7 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
+	withCode       Code
 	withErrWrapped error
 	withErrMsg     string
 	withOp         Op
@@ -44,5 +45,13 @@ func WithMsg(msg string) Option {
 func WithOp(op Op) Option {
 	return func(o *Options) {
 		o.withOp = op
+	}
+}
+
+// WithCode provides an option to provide a code when creating a new
+// error.
+func WithCode(code Code) Option {
+	return func(o *Options) {
+		o.withCode = code
 	}
 }
