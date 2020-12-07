@@ -28,22 +28,24 @@ type Role struct {
 	GrantStrings []string          `json:"grant_strings,omitempty"`
 	Grants       []*Grant          `json:"grants,omitempty"`
 
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n Role) ResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n Role) ResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
+}
+
+func (n Role) ResponseStatus() int {
+	return n.response.HttpResponse().StatusCode
 }
 
 type RoleReadResult struct {
-	Item         *Role
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Item     *Role
+	response *api.Response
 }
 
 func (n RoleReadResult) GetItem() interface{} {
@@ -51,33 +53,31 @@ func (n RoleReadResult) GetItem() interface{} {
 }
 
 func (n RoleReadResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n RoleReadResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type RoleCreateResult = RoleReadResult
 type RoleUpdateResult = RoleReadResult
 
 type RoleDeleteResult struct {
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n RoleDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n RoleDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type RoleListResult struct {
-	Items        []*Role
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Items    []*Role
+	response *api.Response
 }
 
 func (n RoleListResult) GetItems() interface{} {
@@ -85,11 +85,11 @@ func (n RoleListResult) GetItems() interface{} {
 }
 
 func (n RoleListResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n RoleListResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 // Client is a client for this collection
@@ -150,8 +150,7 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Ro
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -192,8 +191,7 @@ func (c *Client) Read(ctx context.Context, roleId string, opt ...Option) (*RoleR
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -256,8 +254,7 @@ func (c *Client) Update(ctx context.Context, roleId string, version uint32, opt 
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -298,8 +295,7 @@ func (c *Client) Delete(ctx context.Context, roleId string, opt ...Option) (*Rol
 	}
 
 	target := &RoleDeleteResult{
-		responseBody: resp.Body,
-		responseMap:  resp.Map,
+		response: resp,
 	}
 	return target, nil
 }
@@ -341,8 +337,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Role
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -409,8 +404,7 @@ func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, g
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -477,8 +471,7 @@ func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint3
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -543,8 +536,7 @@ func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, g
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -609,8 +601,7 @@ func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint3
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -677,8 +668,7 @@ func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -745,7 +735,6 @@ func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version ui
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }

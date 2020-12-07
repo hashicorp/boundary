@@ -99,7 +99,7 @@ func (c *Command) Run(args []string) int {
 		result, err = authtokenClient.Read(c.Context, c.FlagId)
 	case "delete":
 		_, err = authtokenClient.Delete(c.Context, c.FlagId)
-		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
 			existed = false
 			err = nil
 		}

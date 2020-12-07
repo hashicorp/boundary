@@ -217,7 +217,7 @@ func (c *Command) Run(args []string) int {
 		result, err = roleClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
 		_, err = roleClient.Delete(c.Context, c.FlagId, opts...)
-		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Status == int32(http.StatusNotFound) {
+		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
 			existed = false
 			err = nil
 		}

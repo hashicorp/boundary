@@ -220,8 +220,7 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 `))
@@ -264,8 +263,7 @@ func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, op
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 `))
@@ -308,8 +306,7 @@ func (c *Client) Delete(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 	}
 
 	target := &{{ .Name }}DeleteResult{
-		responseBody: resp.Body,
-		responseMap: resp.Map,
+		response: resp,
 	}
 	return target, nil
 }
@@ -367,8 +364,7 @@ func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceTyp
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 `))
@@ -435,8 +431,7 @@ func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 `))
@@ -519,8 +514,7 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 {{ end }}
@@ -544,27 +538,31 @@ import (
 
 type {{ .Name }} struct { {{ range .Fields }}
 {{ .Name }}  {{ .FieldType }} `, "`json:\"{{ .ProtoName }},omitempty\"`", `{{ end }}
-{{ if ( or .CreateResponseTypes ( eq .Name "Error" ) ) }}
-	responseBody *bytes.Buffer
-	responseMap map[string]interface{}
+{{ if .CreateResponseTypes }}
+	response *api.Response
+{{ else if ( eq .Name "Error" ) }}
+	response *Response
 {{ end }}
 }
 
 {{ if ( or .CreateResponseTypes ( eq .Name "Error" ) ) }}
 func (n {{ .Name }}) ResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n {{ .Name }}) ResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
+}
+
+func (n {{ .Name }}) ResponseStatus() int {
+	return n.response.HttpResponse().StatusCode
 }
 {{ end }}
 
 {{ if .CreateResponseTypes }}
 type {{ .Name }}ReadResult struct {
 	Item *{{ .Name }}
-	responseBody *bytes.Buffer
-	responseMap map[string]interface{}
+	response *api.Response
 }
 
 func (n {{ .Name }}ReadResult) GetItem() interface{} {
@@ -572,33 +570,31 @@ func (n {{ .Name }}ReadResult) GetItem() interface{} {
 }
 
 func (n {{ .Name }}ReadResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n {{ .Name }}ReadResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type {{ .Name }}CreateResult = {{ .Name }}ReadResult
 type {{ .Name }}UpdateResult = {{ .Name }}ReadResult
 
 type {{ .Name }}DeleteResult struct {
-	responseBody *bytes.Buffer
-	responseMap map[string]interface{}
+	response *api.Response
 }
 
 func (n {{ .Name }}DeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n {{ .Name }}DeleteResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type {{ .Name }}ListResult struct {
 	Items []*{{ .Name }}
-	responseBody *bytes.Buffer
-	responseMap map[string]interface{}
+	response *api.Response
 }
 
 func (n {{ .Name }}ListResult) GetItems() interface{} {
@@ -606,11 +602,11 @@ func (n {{ .Name }}ListResult) GetItems() interface{} {
 }
 
 func (n {{ .Name }}ListResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n {{ .Name }}ListResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 {{ end }}
 `)))

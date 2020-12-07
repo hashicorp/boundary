@@ -25,22 +25,24 @@ type Account struct {
 	AuthMethodId string                 `json:"auth_method_id,omitempty"`
 	Attributes   map[string]interface{} `json:"attributes,omitempty"`
 
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n Account) ResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n Account) ResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
+}
+
+func (n Account) ResponseStatus() int {
+	return n.response.HttpResponse().StatusCode
 }
 
 type AccountReadResult struct {
-	Item         *Account
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Item     *Account
+	response *api.Response
 }
 
 func (n AccountReadResult) GetItem() interface{} {
@@ -48,33 +50,31 @@ func (n AccountReadResult) GetItem() interface{} {
 }
 
 func (n AccountReadResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n AccountReadResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type AccountCreateResult = AccountReadResult
 type AccountUpdateResult = AccountReadResult
 
 type AccountDeleteResult struct {
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n AccountDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n AccountDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type AccountListResult struct {
-	Items        []*Account
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Items    []*Account
+	response *api.Response
 }
 
 func (n AccountListResult) GetItems() interface{} {
@@ -82,11 +82,11 @@ func (n AccountListResult) GetItems() interface{} {
 }
 
 func (n AccountListResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n AccountListResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 // Client is a client for this collection
@@ -147,8 +147,7 @@ func (c *Client) Create(ctx context.Context, authMethodId string, opt ...Option)
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -189,8 +188,7 @@ func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*Ac
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -253,8 +251,7 @@ func (c *Client) Update(ctx context.Context, accountId string, version uint32, o
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -295,8 +292,7 @@ func (c *Client) Delete(ctx context.Context, accountId string, opt ...Option) (*
 	}
 
 	target := &AccountDeleteResult{
-		responseBody: resp.Body,
-		responseMap:  resp.Map,
+		response: resp,
 	}
 	return target, nil
 }
@@ -338,7 +334,6 @@ func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) (
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }

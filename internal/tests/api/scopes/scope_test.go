@@ -98,7 +98,7 @@ func TestCrud(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
 }
 
 func TestErrors(t *testing.T) {
@@ -122,17 +122,17 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
 
 	_, err = scps.Read(tc.Context(), "p_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
 
 	_, err = scps.Read(tc.Context(), "invalid id")
 	assert.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
+	assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
 }

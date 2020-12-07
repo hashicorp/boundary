@@ -25,22 +25,24 @@ type AuthMethod struct {
 	Type        string                 `json:"type,omitempty"`
 	Attributes  map[string]interface{} `json:"attributes,omitempty"`
 
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n AuthMethod) ResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n AuthMethod) ResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
+}
+
+func (n AuthMethod) ResponseStatus() int {
+	return n.response.HttpResponse().StatusCode
 }
 
 type AuthMethodReadResult struct {
-	Item         *AuthMethod
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Item     *AuthMethod
+	response *api.Response
 }
 
 func (n AuthMethodReadResult) GetItem() interface{} {
@@ -48,33 +50,31 @@ func (n AuthMethodReadResult) GetItem() interface{} {
 }
 
 func (n AuthMethodReadResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n AuthMethodReadResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type AuthMethodCreateResult = AuthMethodReadResult
 type AuthMethodUpdateResult = AuthMethodReadResult
 
 type AuthMethodDeleteResult struct {
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n AuthMethodDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n AuthMethodDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type AuthMethodListResult struct {
-	Items        []*AuthMethod
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Items    []*AuthMethod
+	response *api.Response
 }
 
 func (n AuthMethodListResult) GetItems() interface{} {
@@ -82,11 +82,11 @@ func (n AuthMethodListResult) GetItems() interface{} {
 }
 
 func (n AuthMethodListResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n AuthMethodListResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 // Client is a client for this collection
@@ -152,8 +152,7 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -194,8 +193,7 @@ func (c *Client) Read(ctx context.Context, authMethodId string, opt ...Option) (
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -258,8 +256,7 @@ func (c *Client) Update(ctx context.Context, authMethodId string, version uint32
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -300,8 +297,7 @@ func (c *Client) Delete(ctx context.Context, authMethodId string, opt ...Option)
 	}
 
 	target := &AuthMethodDeleteResult{
-		responseBody: resp.Body,
-		responseMap:  resp.Map,
+		response: resp,
 	}
 	return target, nil
 }
@@ -343,7 +339,6 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Auth
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }

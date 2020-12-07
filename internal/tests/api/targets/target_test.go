@@ -152,7 +152,7 @@ func TestCrud(t *testing.T) {
 	assert.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
 }
 
 func TestSet_Errors(t *testing.T) {
@@ -176,7 +176,7 @@ func TestSet_Errors(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
 
 	tar, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
 	require.Error(err)
@@ -188,11 +188,11 @@ func TestSet_Errors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Status)
+	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
 
 	_, err = tarClient.Read(tc.Context(), "invalid id")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.Status)
+	assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
 }

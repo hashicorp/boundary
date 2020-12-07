@@ -33,22 +33,24 @@ type Session struct {
 	Certificate       []byte            `json:"certificate,omitempty"`
 	TerminationReason string            `json:"termination_reason,omitempty"`
 
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n Session) ResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n Session) ResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
+}
+
+func (n Session) ResponseStatus() int {
+	return n.response.HttpResponse().StatusCode
 }
 
 type SessionReadResult struct {
-	Item         *Session
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Item     *Session
+	response *api.Response
 }
 
 func (n SessionReadResult) GetItem() interface{} {
@@ -56,33 +58,31 @@ func (n SessionReadResult) GetItem() interface{} {
 }
 
 func (n SessionReadResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n SessionReadResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type SessionCreateResult = SessionReadResult
 type SessionUpdateResult = SessionReadResult
 
 type SessionDeleteResult struct {
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n SessionDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n SessionDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type SessionListResult struct {
-	Items        []*Session
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Items    []*Session
+	response *api.Response
 }
 
 func (n SessionListResult) GetItems() interface{} {
@@ -90,11 +90,11 @@ func (n SessionListResult) GetItems() interface{} {
 }
 
 func (n SessionListResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n SessionListResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 // Client is a client for this collection
@@ -152,8 +152,7 @@ func (c *Client) Read(ctx context.Context, sessionId string, opt ...Option) (*Se
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -194,7 +193,6 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Sess
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }

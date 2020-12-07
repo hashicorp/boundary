@@ -4,19 +4,22 @@ package api
 import "bytes"
 
 type Error struct {
-	Status  int32         `json:"status,omitempty"`
-	Code    string        `json:"code,omitempty"`
+	Kind    string        `json:"kind,omitempty"`
+	Op      string        `json:"op,omitempty"`
 	Message string        `json:"message,omitempty"`
 	Details *ErrorDetails `json:"details,omitempty"`
 
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *Response
 }
 
 func (n Error) ResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n Error) ResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
+}
+
+func (n Error) ResponseStatus() int {
+	return n.response.HttpResponse().StatusCode
 }

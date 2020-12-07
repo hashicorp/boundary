@@ -33,15 +33,17 @@ func TestApiErrorHandler(t *testing.T) {
 	testCases := []struct {
 		name     string
 		err      error
-		expected *pb.Error
+		expected apiError
 	}{
 		{
 			name: "Not Found",
 			err:  NotFoundErrorf("Test"),
-			expected: &pb.Error{
-				Status:  http.StatusNotFound,
-				Code:    "NotFound",
-				Message: "Test",
+			expected: apiError{
+				status: http.StatusNotFound,
+				inner: &pb.Error{
+					Kind:    "NotFound",
+					Message: "Test",
+				},
 			},
 		},
 		{
@@ -50,19 +52,21 @@ func TestApiErrorHandler(t *testing.T) {
 				"k1": "v1",
 				"k2": "v2",
 			}),
-			expected: &pb.Error{
-				Status:  http.StatusBadRequest,
-				Code:    "InvalidArgument",
-				Message: "Test",
-				Details: &pb.ErrorDetails{
-					RequestFields: []*pb.FieldError{
-						{
-							Name:        "k1",
-							Description: "v1",
-						},
-						{
-							Name:        "k2",
-							Description: "v2",
+			expected: apiError{
+				status: http.StatusBadRequest,
+				inner: &pb.Error{
+					Kind:    "InvalidArgument",
+					Message: "Test",
+					Details: &pb.ErrorDetails{
+						RequestFields: []*pb.FieldError{
+							{
+								Name:        "k1",
+								Description: "v1",
+							},
+							{
+								Name:        "k2",
+								Description: "v2",
+							},
 						},
 					},
 				},
@@ -71,93 +75,113 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "GrpcGateway Routing Error",
 			err:  runtime.ErrNotMatch,
-			expected: &pb.Error{
-				Status:  http.StatusNotFound,
-				Code:    "NotFound",
-				Message: http.StatusText(http.StatusNotFound),
+			expected: apiError{
+				status: http.StatusNotFound,
+				inner: &pb.Error{
+					Kind:    "NotFound",
+					Message: http.StatusText(http.StatusNotFound),
+				},
 			},
 		},
 		{
 			name: "Unimplemented error",
 			err:  status.Error(codes.Unimplemented, "Test"),
-			expected: &pb.Error{
-				Status:  http.StatusMethodNotAllowed,
-				Code:    "Unimplemented",
-				Message: "Test",
+			expected: apiError{
+				status: http.StatusMethodNotAllowed,
+				inner: &pb.Error{
+					Kind:    "Unimplemented",
+					Message: "Test",
+				},
 			},
 		},
 		{
 			name: "Unknown error",
 			err:  stderrors.New("Some random error"),
-			expected: &pb.Error{
-				Status:  http.StatusInternalServerError,
-				Code:    "Internal",
-				Details: &pb.ErrorDetails{ErrorId: ""},
+			expected: apiError{
+				status: http.StatusInternalServerError,
+				inner: &pb.Error{
+					Kind: "Internal",
+					Message: "Some random error",
+				},
 			},
 		},
 		{
 			name: "Db invalid public id error",
 			err:  fmt.Errorf("test error: %w", errors.ErrInvalidPublicId),
-			expected: &pb.Error{
-				Status:  http.StatusInternalServerError,
-				Code:    "Internal",
-				Details: &pb.ErrorDetails{ErrorId: ""},
+			expected: apiError{
+				status: http.StatusInternalServerError,
+				inner: &pb.Error{
+					Kind: "Internal",
+					Message: fmt.Sprintf("test error: %s", errors.ErrInvalidPublicId),
+				},
 			},
 		},
 		{
 			name: "Db invalid parameter",
 			err:  fmt.Errorf("test error: %w", errors.ErrInvalidParameter),
-			expected: &pb.Error{
-				Status:  http.StatusInternalServerError,
-				Code:    "Internal",
-				Details: &pb.ErrorDetails{ErrorId: ""},
+			expected: apiError{
+				status: http.StatusInternalServerError,
+				inner: &pb.Error{
+					Kind: "Internal",
+					Message: fmt.Sprintf("test error: %s", errors.ErrInvalidParameter),
+				},
 			},
 		},
 		{
 			name: "Db invalid field mask",
 			err:  fmt.Errorf("test error: %w", errors.ErrInvalidFieldMask),
-			expected: &pb.Error{
-				Status:  http.StatusBadRequest,
-				Code:    "InvalidArgument",
-				Message: "Error in provided request",
-				Details: &pb.ErrorDetails{RequestFields: []*pb.FieldError{{Name: "update_mask", Description: "Invalid update mask provided."}}},
+			expected: apiError{
+				status: http.StatusBadRequest,
+				inner: &pb.Error{
+					Kind:    "InvalidArgument",
+					Message: "Error in provided request",
+					Details: &pb.ErrorDetails{RequestFields: []*pb.FieldError{{Name: "update_mask", Description: "Invalid update mask provided."}}},
+				},
 			},
 		},
 		{
 			name: "Db empty field mask",
 			err:  fmt.Errorf("test error: %w", errors.ErrEmptyFieldMask),
-			expected: &pb.Error{
-				Status:  http.StatusBadRequest,
-				Code:    "InvalidArgument",
-				Message: "Error in provided request",
-				Details: &pb.ErrorDetails{RequestFields: []*pb.FieldError{{Name: "update_mask", Description: "Invalid update mask provided."}}},
+			expected: apiError{
+				status: http.StatusBadRequest,
+				inner: &pb.Error{
+					Kind:    "InvalidArgument",
+					Message: "Error in provided request",
+					Details: &pb.ErrorDetails{RequestFields: []*pb.FieldError{{Name: "update_mask", Description: "Invalid update mask provided."}}},
+				},
 			},
 		},
 		{
 			name: "Db not unique",
 			err:  fmt.Errorf("test error: %w", errors.ErrNotUnique),
-			expected: &pb.Error{
-				Status:  http.StatusBadRequest,
-				Code:    "InvalidArgument",
-				Message: genericUniquenessMsg,
+			expected: apiError{
+				status: http.StatusBadRequest,
+				inner: &pb.Error{
+					Kind:    "InvalidArgument",
+					Message: genericUniquenessMsg,
+				},
 			},
 		},
 		{
 			name: "Db record not found",
 			err:  fmt.Errorf("test error: %w", errors.ErrRecordNotFound),
-			expected: &pb.Error{
-				Status:  http.StatusNotFound,
-				Code:    "NotFound",
-				Message: genericNotFoundMsg,
+			expected: apiError{
+				status: http.StatusNotFound,
+				inner: &pb.Error{
+					Kind:    "NotFound",
+					Message: genericNotFoundMsg,
+				},
 			},
 		},
 		{
 			name: "Db multiple records",
 			err:  fmt.Errorf("test error: %w", errors.ErrMultipleRecords),
-			expected: &pb.Error{
-				Status:  http.StatusInternalServerError,
-				Code:    "Internal",
-				Details: &pb.ErrorDetails{ErrorId: ""},
+			expected: apiError{
+				status: http.StatusInternalServerError,
+				inner: &pb.Error{
+					Kind: "Internal",
+					Message: fmt.Sprintf("test error: %s", errors.ErrMultipleRecords),
+				},
 			},
 		},
 	}
@@ -167,7 +191,7 @@ func TestApiErrorHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 			tested(ctx, mux, outMarsh, w, req, tc.err)
 			resp := w.Result()
-			assert.EqualValues(tc.expected.Status, resp.StatusCode)
+			assert.EqualValues(tc.expected.status, resp.StatusCode)
 
 			got, err := ioutil.ReadAll(resp.Body)
 			require.NoError(err)
@@ -176,12 +200,8 @@ func TestApiErrorHandler(t *testing.T) {
 			err = inMarsh.Unmarshal(got, gotErr)
 			require.NoError(err)
 
-			if tc.expected.Status == http.StatusInternalServerError {
-				require.NotNil(tc.expected.GetDetails())
-				tc.expected.GetDetails().ErrorId = gotErr.GetDetails().GetErrorId()
-			}
-
-			assert.Empty(cmp.Diff(tc.expected, gotErr, protocmp.Transform()))
+			assert.Equal(tc.expected.status, int32(resp.StatusCode))
+			assert.Empty(cmp.Diff(tc.expected.inner, gotErr, protocmp.Transform()))
 		})
 	}
 }

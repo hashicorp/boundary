@@ -23,22 +23,24 @@ type Scope struct {
 	Version     uint32     `json:"version,omitempty"`
 	Type        string     `json:"type,omitempty"`
 
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n Scope) ResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n Scope) ResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
+}
+
+func (n Scope) ResponseStatus() int {
+	return n.response.HttpResponse().StatusCode
 }
 
 type ScopeReadResult struct {
-	Item         *Scope
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Item     *Scope
+	response *api.Response
 }
 
 func (n ScopeReadResult) GetItem() interface{} {
@@ -46,33 +48,31 @@ func (n ScopeReadResult) GetItem() interface{} {
 }
 
 func (n ScopeReadResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n ScopeReadResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type ScopeCreateResult = ScopeReadResult
 type ScopeUpdateResult = ScopeReadResult
 
 type ScopeDeleteResult struct {
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n ScopeDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n ScopeDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type ScopeListResult struct {
-	Items        []*Scope
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Items    []*Scope
+	response *api.Response
 }
 
 func (n ScopeListResult) GetItems() interface{} {
@@ -80,11 +80,11 @@ func (n ScopeListResult) GetItems() interface{} {
 }
 
 func (n ScopeListResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n ScopeListResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 // Client is a client for this collection
@@ -145,8 +145,7 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Sc
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -187,8 +186,7 @@ func (c *Client) Read(ctx context.Context, scopeId string, opt ...Option) (*Scop
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -251,8 +249,7 @@ func (c *Client) Update(ctx context.Context, scopeId string, version uint32, opt
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -293,8 +290,7 @@ func (c *Client) Delete(ctx context.Context, scopeId string, opt ...Option) (*Sc
 	}
 
 	target := &ScopeDeleteResult{
-		responseBody: resp.Body,
-		responseMap:  resp.Map,
+		response: resp,
 	}
 	return target, nil
 }
@@ -336,7 +332,6 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Scop
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }

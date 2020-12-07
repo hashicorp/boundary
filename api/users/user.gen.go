@@ -25,22 +25,24 @@ type User struct {
 	AccountIds  []string          `json:"account_ids,omitempty"`
 	Accounts    []*Account        `json:"accounts,omitempty"`
 
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n User) ResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n User) ResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
+}
+
+func (n User) ResponseStatus() int {
+	return n.response.HttpResponse().StatusCode
 }
 
 type UserReadResult struct {
-	Item         *User
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Item     *User
+	response *api.Response
 }
 
 func (n UserReadResult) GetItem() interface{} {
@@ -48,33 +50,31 @@ func (n UserReadResult) GetItem() interface{} {
 }
 
 func (n UserReadResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n UserReadResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type UserCreateResult = UserReadResult
 type UserUpdateResult = UserReadResult
 
 type UserDeleteResult struct {
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n UserDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n UserDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type UserListResult struct {
-	Items        []*User
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Items    []*User
+	response *api.Response
 }
 
 func (n UserListResult) GetItems() interface{} {
@@ -82,11 +82,11 @@ func (n UserListResult) GetItems() interface{} {
 }
 
 func (n UserListResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n UserListResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 // Client is a client for this collection
@@ -147,8 +147,7 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Us
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -189,8 +188,7 @@ func (c *Client) Read(ctx context.Context, userId string, opt ...Option) (*UserR
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -253,8 +251,7 @@ func (c *Client) Update(ctx context.Context, userId string, version uint32, opt 
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -295,8 +292,7 @@ func (c *Client) Delete(ctx context.Context, userId string, opt ...Option) (*Use
 	}
 
 	target := &UserDeleteResult{
-		responseBody: resp.Body,
-		responseMap:  resp.Map,
+		response: resp,
 	}
 	return target, nil
 }
@@ -338,8 +334,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*User
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -406,8 +401,7 @@ func (c *Client) AddAccounts(ctx context.Context, userId string, version uint32,
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -472,8 +466,7 @@ func (c *Client) SetAccounts(ctx context.Context, userId string, version uint32,
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -540,7 +533,6 @@ func (c *Client) RemoveAccounts(ctx context.Context, userId string, version uint
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }

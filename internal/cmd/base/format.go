@@ -136,20 +136,13 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 
 func PrintApiError(in *api.Error) string {
 	nonAttributeMap := map[string]interface{}{
-		"Status":  in.Status,
-		"Code":    in.Code,
+		"Status":  in.ResponseStatus(),
+		"Kind":    in.Kind,
 		"Message": in.Message,
 	}
-	if in.Details != nil {
-		if in.Details.TraceId != "" {
-			nonAttributeMap["Trace ID"] = in.Details.TraceId
-		}
-		if in.Details.RequestId != "" {
-			nonAttributeMap["Request ID"] = in.Details.RequestId
-		}
-		if in.Details.ErrorId != "" {
-			nonAttributeMap["Error ID"] = in.Details.ErrorId
-		}
+
+	if in.Op != "" {
+		nonAttributeMap["Operation"] = in.Op
 	}
 
 	maxLength := MaxAttributesLength(nonAttributeMap, nil, nil)
@@ -161,6 +154,19 @@ func PrintApiError(in *api.Error) string {
 	}
 
 	if in.Details != nil {
+		if len(in.Details.WrappedErrors) > 0 {
+			ret = append(ret,
+				"",
+				"  Wrapped Errors:",
+			)
+			for _, we := range in.Details.WrappedErrors {
+				ret = append(ret,
+					fmt.Sprintf("    Message:             %s", we.Message),
+					fmt.Sprintf("    Operation:           %s", we.Op),
+				)
+			}
+		}
+
 		if len(in.Details.RequestFields) > 0 {
 			ret = append(ret,
 				"",

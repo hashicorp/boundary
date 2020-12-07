@@ -25,22 +25,24 @@ type Group struct {
 	MemberIds   []string          `json:"member_ids,omitempty"`
 	Members     []*Member         `json:"members,omitempty"`
 
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n Group) ResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n Group) ResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
+}
+
+func (n Group) ResponseStatus() int {
+	return n.response.HttpResponse().StatusCode
 }
 
 type GroupReadResult struct {
-	Item         *Group
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Item     *Group
+	response *api.Response
 }
 
 func (n GroupReadResult) GetItem() interface{} {
@@ -48,33 +50,31 @@ func (n GroupReadResult) GetItem() interface{} {
 }
 
 func (n GroupReadResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n GroupReadResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type GroupCreateResult = GroupReadResult
 type GroupUpdateResult = GroupReadResult
 
 type GroupDeleteResult struct {
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n GroupDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n GroupDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type GroupListResult struct {
-	Items        []*Group
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Items    []*Group
+	response *api.Response
 }
 
 func (n GroupListResult) GetItems() interface{} {
@@ -82,11 +82,11 @@ func (n GroupListResult) GetItems() interface{} {
 }
 
 func (n GroupListResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n GroupListResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 // Client is a client for this collection
@@ -147,8 +147,7 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Gr
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -189,8 +188,7 @@ func (c *Client) Read(ctx context.Context, groupId string, opt ...Option) (*Grou
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -253,8 +251,7 @@ func (c *Client) Update(ctx context.Context, groupId string, version uint32, opt
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -295,8 +292,7 @@ func (c *Client) Delete(ctx context.Context, groupId string, opt ...Option) (*Gr
 	}
 
 	target := &GroupDeleteResult{
-		responseBody: resp.Body,
-		responseMap:  resp.Map,
+		response: resp,
 	}
 	return target, nil
 }
@@ -338,8 +334,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Grou
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -406,8 +401,7 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -472,8 +466,7 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -540,7 +533,6 @@ func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }

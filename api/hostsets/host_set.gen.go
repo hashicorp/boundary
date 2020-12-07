@@ -26,22 +26,24 @@ type HostSet struct {
 	HostIds       []string               `json:"host_ids,omitempty"`
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n HostSet) ResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n HostSet) ResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
+}
+
+func (n HostSet) ResponseStatus() int {
+	return n.response.HttpResponse().StatusCode
 }
 
 type HostSetReadResult struct {
-	Item         *HostSet
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Item     *HostSet
+	response *api.Response
 }
 
 func (n HostSetReadResult) GetItem() interface{} {
@@ -49,33 +51,31 @@ func (n HostSetReadResult) GetItem() interface{} {
 }
 
 func (n HostSetReadResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n HostSetReadResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type HostSetCreateResult = HostSetReadResult
 type HostSetUpdateResult = HostSetReadResult
 
 type HostSetDeleteResult struct {
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	response *api.Response
 }
 
 func (n HostSetDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n HostSetDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 type HostSetListResult struct {
-	Items        []*HostSet
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Items    []*HostSet
+	response *api.Response
 }
 
 func (n HostSetListResult) GetItems() interface{} {
@@ -83,11 +83,11 @@ func (n HostSetListResult) GetItems() interface{} {
 }
 
 func (n HostSetListResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
+	return n.response.Body
 }
 
 func (n HostSetListResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+	return n.response.Map
 }
 
 // Client is a client for this collection
@@ -148,8 +148,7 @@ func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -190,8 +189,7 @@ func (c *Client) Read(ctx context.Context, hostSetId string, opt ...Option) (*Ho
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -254,8 +252,7 @@ func (c *Client) Update(ctx context.Context, hostSetId string, version uint32, o
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -296,8 +293,7 @@ func (c *Client) Delete(ctx context.Context, hostSetId string, opt ...Option) (*
 	}
 
 	target := &HostSetDeleteResult{
-		responseBody: resp.Body,
-		responseMap:  resp.Map,
+		response: resp,
 	}
 	return target, nil
 }
@@ -339,8 +335,7 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -407,8 +402,7 @@ func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32,
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -473,8 +467,7 @@ func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32,
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }
 
@@ -541,7 +534,6 @@ func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.responseBody = resp.Body
-	target.responseMap = resp.Map
+	target.response = resp
 	return target, nil
 }

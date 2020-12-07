@@ -33,18 +33,12 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 		return nil, nil
 	}
 
-	// TODO Remove as we'll use the common err format for this
-	if r.resp.StatusCode == 403 {
-		// Nothing to be done
-		return &Error{
-			Status:  http.StatusForbidden,
-			Message: "Forbidden",
-		}, nil
+	if r.resp.StatusCode >= 400 {
+		// If the status code is >= 400 the body of the response will be the
+		// json representation of the Error struct so we decode it as such.
+		inStruct = &Error{}
 	}
 
-	apiErr := &Error{
-		Status: int32(r.resp.StatusCode),
-	}
 	if r.resp.Body != nil {
 		r.Body = new(bytes.Buffer)
 		if _, err := r.Body.ReadFrom(r.resp.Body); err != nil {
@@ -55,9 +49,6 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 			reader := bytes.NewReader(r.Body.Bytes())
 			dec := json.NewDecoder(reader)
 			dec.UseNumber()
-			if r.resp.StatusCode >= 400 {
-				inStruct = apiErr
-			}
 			r.Map = make(map[string]interface{})
 			if err := dec.Decode(&r.Map); err != nil {
 				return nil, fmt.Errorf("error decoding response to map: %w; response was %s", err, r.Body.String())
@@ -71,10 +62,10 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 			}
 		}
 	}
+
 	if r.resp.StatusCode >= 400 {
-		errStruct := inStruct.(*Error)
-		errStruct.responseBody = r.Body
-		errStruct.responseMap = r.Map
+		apiErr := inStruct.(*Error)
+		apiErr.response = r
 		return apiErr, nil
 	}
 
