@@ -97,6 +97,13 @@ func Wrap(e error, op Op, opt ...Option) error {
 		opt = append(opt, WithOp(op))
 	}
 	if e != nil {
+		// TODO: once db package has been refactored to only return domain errors,
+		// this convert can be removed
+		err := Convert(e)
+		if err != nil {
+			// wrapped converted error
+			e = err
+		}
 		opt = append(opt, WithWrap(e))
 	}
 
