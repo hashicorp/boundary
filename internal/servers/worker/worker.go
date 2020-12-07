@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/go-hclog"
@@ -27,8 +29,7 @@ type Worker struct {
 	controllerStatusConn *atomic.Value
 	lastStatusSuccess    *atomic.Value
 
-	controllerResolver        *atomic.Value
-	controllerResolverCleanup *atomic.Value
+	controllerResolver *atomic.Value
 
 	controllerSessionConn *atomic.Value
 	sessionInfoMap        *sync.Map
@@ -36,20 +37,18 @@ type Worker struct {
 
 func New(conf *Config) (*Worker, error) {
 	w := &Worker{
-		conf:                      conf,
-		logger:                    conf.Logger.Named("worker"),
-		controllerStatusConn:      new(atomic.Value),
-		lastStatusSuccess:         new(atomic.Value),
-		controllerResolver:        new(atomic.Value),
-		controllerResolverCleanup: new(atomic.Value),
-		controllerSessionConn:     new(atomic.Value),
-		sessionInfoMap:            new(sync.Map),
+		conf:                  conf,
+		logger:                conf.Logger.Named("worker"),
+		controllerStatusConn:  new(atomic.Value),
+		lastStatusSuccess:     new(atomic.Value),
+		controllerResolver:    new(atomic.Value),
+		controllerSessionConn: new(atomic.Value),
+		sessionInfoMap:        new(sync.Map),
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
 	w.started.Store(false)
 	w.controllerResolver.Store((*manual.Resolver)(nil))
-	w.controllerResolverCleanup.Store(func() {})
 
 	if conf.SecureRandomReader == nil {
 		conf.SecureRandomReader = rand.Reader
@@ -92,9 +91,9 @@ func (w *Worker) Start() error {
 
 	w.baseContext, w.baseCancel = context.WithCancel(context.Background())
 
-	controllerResolver, controllerResolverCleanup := manual.GenerateAndRegisterManualResolver()
+	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
+	controllerResolver := manual.NewBuilderWithScheme(scheme)
 	w.controllerResolver.Store(controllerResolver)
-	w.controllerResolverCleanup.Store(controllerResolverCleanup)
 
 	if err := w.startListeners(); err != nil {
 		return fmt.Errorf("error starting worker listeners: %w", err)
@@ -119,7 +118,6 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 		return nil
 	}
 	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
-	w.controllerResolverCleanup.Load().(func())()
 	w.baseCancel()
 	if !skipListeners {
 		if err := w.stopListeners(); err != nil {

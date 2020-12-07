@@ -107,8 +107,10 @@ func (w *Worker) createClientConn(addr string) error {
 		]
 	  }
 	  `, defaultTimeout)
+	res := w.Resolver()
 	cc, err := grpc.DialContext(w.baseContext,
-		fmt.Sprintf("%s:///%s", w.Resolver().Scheme(), addr),
+		fmt.Sprintf("%s:///%s", res.Scheme(), addr),
+		grpc.WithResolvers(res),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
 		grpc.WithContextDialer(w.controllerDialerFunc()),
