@@ -263,6 +263,17 @@ func TestApiErrorHandler(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Wrapped domain error",
+			err:  errors.E(errors.WithCode(errors.InvalidAddress), errors.WithMsg("test msg"), errors.WithWrap(errors.E(errors.WithCode(errors.NotNull), errors.WithMsg("inner msg")))),
+			expected: apiError{
+				status: http.StatusInternalServerError,
+				inner: &pb.Error{
+					Kind:    "Internal",
+					Message: "test msg: parameter violation: error #101: inner msg: integrity violation: error #1001",
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
