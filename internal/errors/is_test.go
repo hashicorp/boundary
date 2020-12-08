@@ -57,6 +57,11 @@ func TestError_IsUnique(t *testing.T) {
 			in:   errors.ErrRecordNotFound,
 			want: false,
 		},
+		{
+			name: "conflicting-wrapped-code",
+			in:   errors.E(errors.WithCode(errors.NotNull), errors.WithWrap(errors.E(errors.WithCode(errors.NotUnique)))),
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -112,6 +117,11 @@ func TestError_IsCheckConstraint(t *testing.T) {
 		{
 			name: "ErrRecordNotFound",
 			in:   errors.ErrRecordNotFound,
+			want: false,
+		},
+		{
+			name: "conflicting-wrapped-code",
+			in:   errors.E(errors.WithCode(errors.NotNull), errors.WithWrap(errors.E(errors.WithCode(errors.CheckConstraint)))),
 			want: false,
 		},
 	}
@@ -176,6 +186,11 @@ func TestError_IsNotNullError(t *testing.T) {
 		{
 			name: "ErrRecordNotFound",
 			in:   errors.ErrRecordNotFound,
+			want: false,
+		},
+		{
+			name: "conflicting-wrapped-code",
+			in:   errors.E(errors.WithCode(errors.CheckConstraint), errors.WithWrap(errors.E(errors.WithCode(errors.NotNull)))),
 			want: false,
 		},
 	}
@@ -266,6 +281,11 @@ func TestError_IsNotFoundError(t *testing.T) {
 		{
 			name: "std-err",
 			in:   fmt.Errorf("std error"),
+			want: false,
+		},
+		{
+			name: "conflicting-wrapped-code",
+			in:   errors.E(errors.WithCode(errors.NotNull), errors.WithWrap(errors.E(errors.WithCode(errors.RecordNotFound)))),
 			want: false,
 		},
 	}
