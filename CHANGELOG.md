@@ -4,6 +4,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## vNext
 
+### Changes/Deprecations
+
+* controller: Switch the session connection limit for dev mode and the initial
+  target when doing database initialization to `-1`. This makes it easier for
+  people to start understanding Boundary while not hitting issues related to
+  some programs/protocols needing multiple connections as they may not be easy
+  for new users to understand.
+  ([PR](https://github.com/hashicorp/boundary/pull/814))
+
 ### New and Improved
 
 * controller: Improved error handling in hosts, host catalog and host set
