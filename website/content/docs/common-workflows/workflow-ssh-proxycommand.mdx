@@ -9,7 +9,7 @@ description: How to manage SSH proxy configuration with Boundary
 
 The most common pattern for using Boundary to SSH is with the built-in `boundary connect ssh` command. However,
 there are more idomatic approaches that can be employed to make Boundary transparent to users, and at the same
-time simplify common developer and operator workflows. Using `ProxyCommand` to execute a proxy when envoking the
+time simplify common developer and operator workflows. Using `ProxyCommand` to execute a proxy when invoking the
 SSH client is a common practice. In this workflow, we'll cover configuring your SSH client to execute the 
 `boundary` command, enabling a simplified SSH workflow that leverages Boundary's authenticated proxy for accessing
 targets.
@@ -23,17 +23,17 @@ Host ttcp_*
   ProxyCommand sh -c "boundary connect -target-id %h -exec nc -- {{boundary.ip}} {{boundary.port}}"
 ```
 
-The `ProxyCommand` tells the SSH client to envoke `boundary connect`. We are passing the `-exec nc` flag to 
+The `ProxyCommand` tells the SSH client to invoke `boundary connect`. We are passing the `-exec nc` flag to 
 `boundary connect` to wrap [netcat](http://netcat.sourceforge.net/), and then pass the `boundary.ip` and `boundary.port`
 varibles as arguments to `nc`. This allows us to proxy our SSH connection through a local netcat tunnel that's
 managed as a Boundary session.
 
-Now, when you run `ssh <user>@localhost`, SSH will envoke `boundary connect`, and will tunnel the traffic through 
+Now, when you run `ssh <user>@localhost`, SSH will invoke `boundary connect`, and will tunnel the traffic through 
 the local Boundary proxy in a wrapped netcat session.
 
 ## Authenticate to Boundary
 
-Before you can envoke `boundary connect` you need to authenticate. In this example, we're using `boundary dev` with the 
+Before you can invoke `boundary connect` you need to authenticate. In this example, we're using `boundary dev` with the 
 default username (admin) and password (password):
 
 ```bash
@@ -47,7 +47,7 @@ default resources such as a target and auth method. The default target (ttcp_123
 at `localhost` and a default port of `22`. 
 
 Authorize a session to the default target and store the token in the `BOUNDARY_CONNECT_AUTHZ_TOKEN` environment variable. 
-This will be used by Boundary when it's envoked by SSH:
+This will be used by Boundary when it's invoked by SSH:
 
 ```bash
 $ export BOUNDARY_CONNECT_AUTHZ_TOKEN=$(boundary targets authorize-session -id ttcp_1234567890 -format json | jq '.authorization_token' | tr -d '"')
