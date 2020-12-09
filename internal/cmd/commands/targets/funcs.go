@@ -99,6 +99,7 @@ func generateAuthorizationTableOutput(in *targets.SessionAuthorization) string {
 		"Scope ID":            in.Scope.Id,
 		"User ID":             in.UserId,
 		"Host ID":             in.HostId,
+		"Endpoint":            in.Endpoint,
 		"Created Time":        in.CreatedTime.Local().Format(time.RFC1123),
 		"Type":                in.Type,
 		"Authorization Token": in.AuthorizationToken,

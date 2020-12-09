@@ -416,6 +416,7 @@ HostSetIterationLoop:
 		Certificate:     sess.Certificate,
 		PrivateKey:      privKey,
 		HostId:          chosenId.hostId,
+		Endpoint:        endpointUrl.String(),
 		WorkerInfo:      workers,
 		ConnectionLimit: t.GetSessionConnectionLimit(),
 	}
@@ -435,6 +436,7 @@ HostSetIterationLoop:
 		UserId:             authResults.UserId,
 		HostId:             chosenId.hostId,
 		HostSetId:          chosenId.hostSetId,
+		Endpoint:           endpointUrl.String(),
 	}
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
 }

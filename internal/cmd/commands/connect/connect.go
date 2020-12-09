@@ -734,7 +734,13 @@ func (c *Command) handleExec(passthroughArgs []string) {
 
 	switch c.Func {
 	case "http":
-		args = append(args, c.httpFlags.buildArgs(c, port, ip, addr)...)
+		httpArgs, err := c.httpFlags.buildArgs(c, port, ip, addr)
+		if err != nil {
+			c.Error(fmt.Sprintf("Error parsing session args: %s", err))
+			c.execCmdReturnValue.Store(int32(3))
+			return
+		}
+		args = append(args, httpArgs...)
 
 	case "postgres":
 		args = append(args, c.postgresFlags.buildArgs(c, port, ip, addr)...)
