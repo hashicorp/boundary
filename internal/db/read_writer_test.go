@@ -1237,7 +1237,7 @@ func TestDb_Delete(t *testing.T) {
 		want       int
 		wantOplog  bool
 		wantErr    bool
-		wantErrIs  error
+		wantErrIs  errors.Code
 	}{
 		{
 			name:       "simple-no-oplog",
@@ -1272,7 +1272,7 @@ func TestDb_Delete(t *testing.T) {
 			wantOplog: true,
 			want:      0,
 			wantErr:   true,
-			wantErrIs: errors.ErrInvalidParameter,
+			wantErrIs: errors.InvalidParameter,
 		},
 		{
 			name:       "nil-metadata",
@@ -1285,7 +1285,7 @@ func TestDb_Delete(t *testing.T) {
 			wantOplog: true,
 			want:      0,
 			wantErr:   true,
-			wantErrIs: errors.ErrInvalidParameter,
+			wantErrIs: errors.InvalidParameter,
 		},
 		{
 			name:       "nil-underlying",
@@ -1296,7 +1296,7 @@ func TestDb_Delete(t *testing.T) {
 			},
 			want:      0,
 			wantErr:   true,
-			wantErrIs: errors.ErrInvalidParameter,
+			wantErrIs: errors.InvalidParameter,
 		},
 		{
 			name:       "not-found",
@@ -1325,8 +1325,8 @@ func TestDb_Delete(t *testing.T) {
 			assert.Equal(tt.want, got)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "received unexpected error: %v", err)
+				if tt.wantErrIs != 0 {
+					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "received unexpected error: %v", err)
 				}
 				err := TestVerifyOplog(t, rw, tt.args.i.GetPublicId(), WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(5*time.Second))
 				assert.Error(err)
