@@ -6,6 +6,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* controller: Improved error handling in hosts, host catalog and host set
+  ([PR](https://github.com/hashicorp/boundary/pull/786))
+  
 * controller: Relax account login name constraints to allow dash as valid character 
   ([Issue](https://github.com/hashicorp/boundary/issues/759))
   ([PR](https://github.com/hashicorp/boundary/pull/806))
