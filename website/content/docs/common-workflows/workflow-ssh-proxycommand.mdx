@@ -19,12 +19,8 @@ targets.
 Start by configuring a `Host` entry in `.ssh/ssh_config` for `localhost`:
 
 ```bash
-Host localhost
-    SendEnv LANG LC_*
-    PasswordAuthentication yes
-
-    # requires BOUNDARY_CONNECT_AUTHZ_TOKEN to be set from authorize-session command
-    ProxyCommand sh -c "boundary connect -exec nc -- {{boundary.ip}} {{boundary.port}}"
+Host ttcp_*
+  ProxyCommand sh -c "boundary connect -target-id %h -exec nc -- {{boundary.ip}} {{boundary.port}}"
 ```
 
 The `ProxyCommand` tells the SSH client to envoke `boundary connect`. We are passing the `-exec nc` flag to 
