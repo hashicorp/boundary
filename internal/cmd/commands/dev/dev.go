@@ -144,10 +144,11 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.IntVar(&base.IntVar{
-		Name:   "target-session-connection-limit",
-		Target: &c.flagTargetSessionConnectionLimit,
-		EnvVar: "BOUNDARY_DEV_TARGET_SESSION_CONNECTION_LIMIT",
-		Usage:  "Maximum number of connections per session to set on the default target. -1 means unlimited.",
+		Name:    "target-session-connection-limit",
+		Target:  &c.flagTargetSessionConnectionLimit,
+		Default: -1,
+		EnvVar:  "BOUNDARY_DEV_TARGET_SESSION_CONNECTION_LIMIT",
+		Usage:   "Maximum number of connections per session to set on the default target. -1 means unlimited.",
 	})
 
 	f.IntVar(&base.IntVar{
