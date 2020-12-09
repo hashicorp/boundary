@@ -56,12 +56,20 @@ var errorCodeInfo = map[Code]Info{
 		Message: "missing table",
 		Kind:    Integrity,
 	},
+	ColumnNotFound: {
+		Message: "column not found",
+		Kind:    Search,
+	},
 	RecordNotFound: {
 		Message: "record not found",
 		Kind:    Search,
 	},
 	MultipleRecords: {
 		Message: "multiple records",
+		Kind:    Search,
+	},
+	MaxRetries: {
+		Message: "too many retries",
 		Kind:    Search,
 	},
 }

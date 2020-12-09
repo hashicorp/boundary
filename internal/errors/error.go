@@ -140,6 +140,9 @@ func Convert(e error) *Err {
 		if pqError.Code == "42P01" {
 			return E(WithCode(MissingTable), WithMsg(pqError.Message)).(*Err)
 		}
+		if pqError.Code == "42703" {
+			return E(WithCode(ColumnNotFound), WithMsg(pqError.Message)).(*Err)
+		}
 	}
 	// unfortunately, we can't help.
 	return nil

@@ -73,6 +73,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: RecordNotFound,
 		},
 		{
+			name: "ColumnNotFound",
+			c:    ColumnNotFound,
+			want: ColumnNotFound,
+		},
+		{
+			name: "MaxRetries",
+			c:    MaxRetries,
+			want: MaxRetries,
+		},
+		{
 			name: "MultipleRecords",
 			c:    MultipleRecords,
 			want: MultipleRecords,
