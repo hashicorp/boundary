@@ -9,6 +9,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * controller: Relax account login name constraints to allow dash as valid character 
   ([Issue](https://github.com/hashicorp/boundary/issues/759))
   ([PR](https://github.com/hashicorp/boundary/pull/806))
+* cli/connect/http: Pass endpoint address through to allow setting TLS server
+  name directly in most cases
+  ([PR](https://github.com/hashicorp/boundary/pull/811))
 
 ### Bug Fixes
 

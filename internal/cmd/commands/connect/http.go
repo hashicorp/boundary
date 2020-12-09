@@ -2,6 +2,7 @@ package connect
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -29,7 +30,7 @@ func httpOptions(c *Command, set *base.FlagSets) {
 		Target:     &c.flagHttpHost,
 		EnvVar:     "BOUNDARY_CONNECT_HTTP_HOST",
 		Completion: complete.PredictNothing,
-		Usage:      `Specifies the host value to use. The specified hostname will be passed through to the client (if supported) for use in the Host header and TLS SNI value.`,
+		Usage:      `Specifies the host value to use, overriding the endpoint address from the session information. The specified hostname will be passed through to the client (if supported) for use in the Host header and TLS SNI value.`,
 	})
 
 	f.StringVar(&base.StringVar{
@@ -70,19 +71,28 @@ func (h *httpFlags) defaultExec() string {
 	return strings.ToLower(h.flagHttpStyle)
 }
 
-func (h *httpFlags) buildArgs(c *Command, port, ip, addr string) []string {
+func (h *httpFlags) buildArgs(c *Command, port, ip, addr string) ([]string, error) {
 	var args []string
+	host := h.flagHttpHost
+	if host == "" && c.sessionAuthzData.GetEndpoint() != "" {
+		hostUrl := c.sessionAuthzData.GetEndpoint()
+		u, err := url.Parse(hostUrl)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing endpoint URL: %w", err)
+		}
+		host = u.Hostname()
+	}
 	switch h.flagHttpStyle {
 	case "curl":
 		if h.flagHttpMethod != "" {
 			args = append(args, "-X", h.flagHttpMethod)
 		}
 		var uri string
-		if h.flagHttpHost != "" {
-			h.flagHttpHost = strings.TrimSuffix(h.flagHttpHost, "/")
-			args = append(args, "-H", fmt.Sprintf("Host: %s", h.flagHttpHost))
-			args = append(args, "--resolve", fmt.Sprintf("%s:%s:%s", h.flagHttpHost, port, ip))
-			uri = fmt.Sprintf("%s://%s:%s", h.flagHttpScheme, h.flagHttpHost, port)
+		if host != "" {
+			host = strings.TrimSuffix(host, "/")
+			args = append(args, "-H", fmt.Sprintf("Host: %s", host))
+			args = append(args, "--resolve", fmt.Sprintf("%s:%s:%s", host, port, ip))
+			uri = fmt.Sprintf("%s://%s:%s", h.flagHttpScheme, host, port)
 		} else {
 			uri = fmt.Sprintf("%s://%s", h.flagHttpScheme, addr)
 		}
@@ -91,5 +101,5 @@ func (h *httpFlags) buildArgs(c *Command, port, ip, addr string) []string {
 		}
 		args = append(args, uri)
 	}
-	return args
+	return args, nil
 }

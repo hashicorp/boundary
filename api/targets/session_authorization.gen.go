@@ -17,4 +17,5 @@ type SessionAuthorization struct {
 	HostId             string            `json:"host_id,omitempty"`
 	Type               string            `json:"type,omitempty"`
 	AuthorizationToken string            `json:"authorization_token,omitempty"`
+	Endpoint           string            `json:"endpoint,omitempty"`
 }

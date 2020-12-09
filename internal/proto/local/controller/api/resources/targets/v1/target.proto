@@ -105,6 +105,9 @@ message SessionAuthorizationData {
 	// Output only. The host ID...not used for security purposes, but for some special command handling (e.g. ssh host key aliasing).
 	string host_id = 140;
 
+	// Output only. The endpoint, for some special command handling.
+	string endpoint = 141;
+
 	// Output only. Worker information. The first worker in the array should be prioritized.
 	repeated WorkerInfo worker_info = 150 [json_name="worker_info"];
 }
@@ -137,4 +140,7 @@ message SessionAuthorization {
 
 	// Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.
 	string authorization_token = 90 [json_name="authorization_token"];
+
+	// Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
+	string endpoint = 100;
 }

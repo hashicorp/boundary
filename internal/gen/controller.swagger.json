@@ -3151,6 +3151,11 @@
           "type": "string",
           "description": "Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.",
           "readOnly": true
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.",
+          "readOnly": true
         }
       },
       "description": "SessionAuthorization contains all fields related to authorization for a Session. It's in the Targets package because it's returned by a Target's authorize action."
