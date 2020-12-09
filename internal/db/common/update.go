@@ -4,17 +4,12 @@
 package common
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/jinzhu/gorm"
-)
-
-var (
-	// ErrInvalidParameter is returned when a required parameter is nil.
-	ErrInvalidParameter = errors.New("nil parameter")
 )
 
 // UpdateFields will create a map[string]interface of the update values to be
@@ -22,8 +17,9 @@ var (
 // updated.   The caller provided fieldMaskPaths and setToNullPaths must not
 // intersect.  fieldMaskPaths and setToNullPaths cannot both be zero len.
 func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []string) (map[string]interface{}, error) {
+	const op = "common.UpdateFields"
 	if i == nil {
-		return nil, fmt.Errorf("interface is missing: %w", ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "interface is missing")
 	}
 	if fieldMaskPaths == nil {
 		fieldMaskPaths = []string{}
@@ -32,7 +28,7 @@ func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []strin
 		setToNullPaths = []string{}
 	}
 	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
-		return nil, errors.New("both fieldMaskPaths and setToNullPaths are zero len")
+		return nil, errors.New(errors.InvalidParameter, op, "both fieldMaskPaths and setToNullPaths are zero len")
 	}
 
 	inter, maskPaths, nullPaths, err := Intersection(fieldMaskPaths, setToNullPaths)
@@ -40,7 +36,7 @@ func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []strin
 		return nil, err
 	}
 	if len(inter) != 0 {
-		return nil, fmt.Errorf("fieldMashPaths and setToNullPaths cannot intersect")
+		return nil, errors.New(errors.InvalidParameter, op, "fieldMashPaths and setToNullPaths cannot intersect")
 	}
 
 	updateFields := map[string]interface{}{} // case sensitive update fields to values
@@ -91,11 +87,11 @@ func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []strin
 	}
 
 	if missing := findMissingPaths(setToNullPaths, found); len(missing) != 0 {
-		return nil, fmt.Errorf("null paths not found in resource: %s", missing)
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("null paths not found in resource: %s", missing))
 	}
 
 	if missing := findMissingPaths(fieldMaskPaths, found); len(missing) != 0 {
-		return nil, fmt.Errorf("field mask paths not found in resource: %s", missing)
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("field mask paths not found in resource: %s", missing))
 	}
 
 	return updateFields, nil
@@ -116,11 +112,12 @@ func findMissingPaths(paths []string, foundPaths map[string]struct{}) []string {
 // of the original av and bv, with the key set to uppercase and value set to the
 // original
 func Intersection(av, bv []string) ([]string, map[string]string, map[string]string, error) {
+	const op = "common.Intersection"
 	if av == nil {
-		return nil, nil, nil, fmt.Errorf("av is missing: %w", ErrInvalidParameter)
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "av is missing")
 	}
 	if bv == nil {
-		return nil, nil, nil, fmt.Errorf("bv is missing: %w", ErrInvalidParameter)
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "bv is missing")
 	}
 	if len(av) == 0 && len(bv) == 0 {
 		return []string{}, map[string]string{}, map[string]string{}, nil
