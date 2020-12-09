@@ -3,6 +3,7 @@ package errors_test
 import (
 	"context"
 	stderrors "errors"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -12,18 +13,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_NewError(t *testing.T) {
+func Test_ErrorE(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name string
-		code errors.Code
 		opt  []errors.Option
 		want error
 	}{
 		{
 			name: "all-options",
-			code: errors.InvalidParameter,
 			opt: []errors.Option{
+				errors.WithCode(errors.InvalidParameter),
 				errors.WithOp("alice.Bob"),
 				errors.WithWrap(errors.ErrRecordNotFound),
 				errors.WithMsg("test msg"),
@@ -42,11 +42,204 @@ func Test_NewError(t *testing.T) {
 				Code: errors.Unknown,
 			},
 		},
+		{
+			name: "withCode",
+			opt: []errors.Option{
+				errors.WithCode(errors.RecordNotFound),
+			},
+			want: &errors.Err{
+				Code: errors.RecordNotFound,
+			},
+		},
+		{
+			name: "uses-wrapped-code",
+			opt: []errors.Option{
+				errors.WithWrap(errors.ErrRecordNotFound),
+			},
+			want: &errors.Err{
+				Code:    errors.RecordNotFound,
+				Wrapped: errors.ErrRecordNotFound,
+			},
+		},
+		{
+			name: "conflicting-withCode-withWrap",
+			opt: []errors.Option{
+				errors.WithCode(errors.InvalidFieldMask),
+				errors.WithWrap(errors.ErrRecordNotFound),
+			},
+			want: &errors.Err{
+				Code:    errors.InvalidFieldMask,
+				Wrapped: errors.ErrRecordNotFound,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := errors.New(tt.code, tt.opt...)
+			err := errors.E(tt.opt...)
+			require.Error(err)
+			assert.Equal(tt.want, err)
+		})
+	}
+}
+
+func Test_NewError(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		code errors.Code
+		op   errors.Op
+		msg  string
+		opt  []errors.Option
+		want error
+	}{
+		{
+			name: "all-options",
+			code: errors.InvalidParameter,
+			op:   "alice.Bob",
+			msg:  "test msg",
+			opt: []errors.Option{
+				errors.WithWrap(errors.ErrRecordNotFound),
+			},
+			want: &errors.Err{
+				Op:      "alice.Bob",
+				Wrapped: errors.ErrRecordNotFound,
+				Msg:     "test msg",
+				Code:    errors.InvalidParameter,
+			},
+		},
+		{
+			name: "no-options",
+			opt:  nil,
+			want: &errors.Err{
+				Code: errors.Unknown,
+			},
+		},
+		{
+			name: "conflicting-op",
+			op:   "alice.Bob",
+			opt: []errors.Option{
+				errors.WithOp("bab.Op"),
+			},
+			want: &errors.Err{
+				Op:   "alice.Bob",
+				Code: errors.Unknown,
+			},
+		},
+		{
+			name: "conflicting-msg",
+			msg:  "test msg",
+			opt: []errors.Option{
+				errors.WithMsg("dont use this message"),
+			},
+			want: &errors.Err{
+				Msg:  "test msg",
+				Code: errors.Unknown,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			err := errors.New(tt.code, tt.op, tt.msg, tt.opt...)
+			require.Error(err)
+			assert.Equal(tt.want, err)
+		})
+	}
+}
+
+func Test_WrapError(t *testing.T) {
+	t.Parallel()
+	testErr := errors.E(errors.WithCode(errors.InvalidParameter), errors.WithOp("alice.Bob"), errors.WithMsg("test msg"))
+	tests := []struct {
+		name string
+		opt  []errors.Option
+		err  error
+		op   errors.Op
+		want error
+	}{
+		{
+			name: "boundary-error",
+			err:  testErr,
+			op:   "alice.Bob",
+			opt: []errors.Option{
+				errors.WithMsg("test msg"),
+			},
+			want: &errors.Err{
+				Wrapped: testErr,
+				Op:      "alice.Bob",
+				Msg:     "test msg",
+				Code:    errors.InvalidParameter,
+			},
+		},
+		{
+			name: "boundary-error-no-op",
+			err:  testErr,
+			opt: []errors.Option{
+				errors.WithMsg("test msg"),
+			},
+			want: &errors.Err{
+				Wrapped: testErr,
+				Msg:     "test msg",
+				Code:    errors.InvalidParameter,
+			},
+		},
+		{
+			name: "boundary-error-no-options",
+			err:  testErr,
+			want: &errors.Err{
+				Wrapped: testErr,
+				Code:    errors.InvalidParameter,
+			},
+		},
+		{
+			name: "std-error",
+			err:  fmt.Errorf("std error"),
+			want: &errors.Err{
+				Wrapped: fmt.Errorf("std error"),
+				Code:    errors.Unknown,
+			},
+		},
+		{
+			name: "conflicting-with-wrap",
+			err:  testErr,
+			opt: []errors.Option{
+				errors.WithWrap(fmt.Errorf("dont wrap this error")),
+			},
+			want: &errors.Err{
+				Wrapped: testErr,
+				Code:    errors.InvalidParameter,
+			},
+		},
+		{
+			name: "conflicting-with-op",
+			err:  testErr,
+			op:   "alice.Bob",
+			opt: []errors.Option{
+				errors.WithOp("bad.Op"),
+			},
+			want: &errors.Err{
+				Wrapped: testErr,
+				Op:      "alice.Bob",
+				Code:    errors.InvalidParameter,
+			},
+		},
+		{
+			name: "NotSpecificIntegrity",
+			err: &pq.Error{
+				Code:    pq.ErrorCode("23001"),
+				Message: "test msg",
+			},
+			want: &errors.Err{
+				Wrapped: errors.E(errors.WithCode(errors.NotSpecificIntegrity), errors.WithMsg("test msg")),
+				Code:    errors.NotSpecificIntegrity,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			err := errors.Wrap(tt.err, tt.op, tt.opt...)
 			require.Error(err)
 			assert.Equal(tt.want, err)
 		})
@@ -67,12 +260,12 @@ func TestError_Info(t *testing.T) {
 		},
 		{
 			name: "Unknown",
-			err:  errors.New(errors.Unknown).(*errors.Err),
+			err:  errors.E().(*errors.Err),
 			want: errors.Unknown,
 		},
 		{
 			name: "InvalidParameter",
-			err:  errors.New(errors.InvalidParameter).(*errors.Err),
+			err:  errors.E(errors.WithCode(errors.InvalidParameter)).(*errors.Err),
 			want: errors.InvalidParameter,
 		},
 	}
@@ -93,23 +286,38 @@ func TestError_Error(t *testing.T) {
 	}{
 		{
 			name: "msg",
-			err:  errors.New(errors.Unknown, errors.WithMsg("test msg")),
+			err:  errors.E(errors.WithMsg("test msg")),
 			want: "test msg: unknown: error #0",
 		},
 		{
 			name: "code",
-			err:  errors.New(errors.CheckConstraint),
+			err:  errors.E(errors.WithCode(errors.CheckConstraint)),
 			want: "constraint check failed, integrity violation: error #1000",
 		},
 		{
 			name: "op-msg-and-code",
-			err:  errors.New(errors.CheckConstraint, errors.WithOp("alice.bob"), errors.WithMsg("test msg")),
+			err:  errors.E(errors.WithCode(errors.CheckConstraint), errors.WithOp("alice.bob"), errors.WithMsg("test msg")),
 			want: "alice.bob: test msg: integrity violation: error #1000",
 		},
 		{
 			name: "unknown",
-			err:  errors.New(errors.Unknown),
+			err:  errors.E(),
 			want: "unknown, unknown: error #0",
+		},
+		{
+			name: "wrapped-no-code",
+			err:  errors.E(errors.WithWrap(errors.E(errors.WithCode(errors.InvalidParameter), errors.WithMsg("wrapped msg"))), errors.WithMsg("test msg")),
+			want: "test msg: wrapped msg: parameter violation: error #100",
+		},
+		{
+			name: "wrapped-different-error-codes",
+			err:  errors.E(errors.WithCode(errors.CheckConstraint), errors.WithWrap(errors.E(errors.WithCode(errors.InvalidParameter), errors.WithMsg("wrapped msg"))), errors.WithMsg("test msg")),
+			want: "test msg: integrity violation: error #1000: wrapped msg: parameter violation: error #100",
+		},
+		{
+			name: "wrapped-same-error-codes",
+			err:  errors.E(errors.WithCode(errors.CheckConstraint), errors.WithWrap(errors.E(errors.WithCode(errors.CheckConstraint), errors.WithMsg("wrapped msg"))), errors.WithMsg("test msg")),
+			want: "test msg: wrapped msg: integrity violation: error #1000",
 		},
 	}
 	for _, tt := range tests {
@@ -129,7 +337,7 @@ func TestError_Error(t *testing.T) {
 
 func TestError_Unwrap(t *testing.T) {
 	t.Parallel()
-	testErr := errors.New(errors.Unknown, errors.WithMsg("test error"))
+	testErr := errors.E(errors.WithMsg("test error"))
 
 	tests := []struct {
 		name      string
@@ -139,7 +347,7 @@ func TestError_Unwrap(t *testing.T) {
 	}{
 		{
 			name:      "ErrInvalidParameter",
-			err:       errors.New(errors.InvalidParameter, errors.WithWrap(errors.ErrInvalidParameter)),
+			err:       errors.E(errors.WithWrap(errors.ErrInvalidParameter)),
 			want:      errors.ErrInvalidParameter,
 			wantIsErr: errors.ErrInvalidParameter,
 		},
@@ -170,6 +378,7 @@ func TestError_Unwrap(t *testing.T) {
 
 func TestConvertError(t *testing.T) {
 	t.Parallel()
+	testErr := errors.E(errors.WithCode(errors.InvalidParameter), errors.WithOp("alice.Bob"), errors.WithMsg("test msg"))
 	const (
 		createTable = `
 	create table if not exists test_table (
@@ -210,7 +419,12 @@ func TestConvertError(t *testing.T) {
 			e: &pq.Error{
 				Code: pq.ErrorCode("23001"),
 			},
-			wantErr: errors.New(errors.NotSpecificIntegrity),
+			wantErr: errors.E(errors.WithCode(errors.NotSpecificIntegrity)),
+		},
+		{
+			name:    "convert-domain-error",
+			e:       testErr,
+			wantErr: testErr,
 		},
 	}
 	for _, tt := range tests {
@@ -237,7 +451,7 @@ func TestConvertError(t *testing.T) {
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(errors.Is(e, errors.ErrNotUnique))
-		assert.Equal("Key (name)=(alice) already exists.: integrity violation: error #1002: \nunique constraint violation: integrity violation: error #1002", e.Error())
+		assert.Equal("Key (name)=(alice) already exists.: unique constraint violation: integrity violation: error #1002", e.Error())
 	})
 	t.Run("ErrCodeNotNull", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -249,7 +463,7 @@ func TestConvertError(t *testing.T) {
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(errors.Is(e, errors.ErrNotNull))
-		assert.Equal("description must not be empty: integrity violation: error #1001: \nnot null constraint violated: integrity violation: error #1001", e.Error())
+		assert.Equal("description must not be empty: not null constraint violated: integrity violation: error #1001", e.Error())
 	})
 	t.Run("ErrCodeCheckConstraint", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -261,12 +475,13 @@ func TestConvertError(t *testing.T) {
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(errors.Is(e, errors.ErrCheckConstraint))
-		assert.Equal("test_table_five_check constraint failed: integrity violation: error #1000: \ncheck constraint violated: integrity violation: error #1000", e.Error())
+		assert.Equal("test_table_five_check constraint failed: check constraint violated: integrity violation: error #1000", e.Error())
 	})
 	t.Run("MissingTable", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		_, err := rw.Exec(ctx, missingTable, nil)
 		require.Error(err)
+
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(errors.Match(errors.T(errors.MissingTable), e))

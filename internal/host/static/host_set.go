@@ -1,8 +1,6 @@
 package static
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -20,7 +18,7 @@ type HostSet struct {
 // ignored.
 func NewHostSet(catalogId string, opt ...Option) (*HostSet, error) {
 	if catalogId == "" {
-		return nil, fmt.Errorf("new: static host set: no catalog id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, "static.NewHostSet", "no catalog id")
 	}
 
 	opts := getOpts(opt...)

@@ -33,23 +33,23 @@ func TestRepository_CreateHost(t *testing.T) {
 		in        *Host
 		opts      []Option
 		want      *Host
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name:      "nil-Host",
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name:      "nil-embedded-Host",
 			in:        &Host{},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-no-catalog-id",
 			in: &Host{
 				Host: &store.Host{},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-public-id-set",
@@ -60,7 +60,7 @@ func TestRepository_CreateHost(t *testing.T) {
 					Address:   "127.0.0.1",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "valid-no-options",
@@ -118,7 +118,7 @@ func TestRepository_CreateHost(t *testing.T) {
 					CatalogId: catalog.PublicId,
 				},
 			},
-			wantIsErr: ErrInvalidAddress,
+			wantIsErr: errors.InvalidAddress,
 		},
 		{
 			name: "invalid-address-to-short",
@@ -128,7 +128,7 @@ func TestRepository_CreateHost(t *testing.T) {
 					Address:   "12",
 				},
 			},
-			wantIsErr: ErrInvalidAddress,
+			wantIsErr: errors.InvalidAddress,
 		},
 		{
 			name: "invalid-empty-address",
@@ -138,7 +138,18 @@ func TestRepository_CreateHost(t *testing.T) {
 					Address:   "            ",
 				},
 			},
-			wantIsErr: ErrInvalidAddress,
+			wantIsErr: errors.InvalidAddress,
+		},
+		{
+			name: "invalid_public_id",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "127.0.0.1",
+				},
+			},
+			opts:      []Option{WithPublicId("bad_prefix")},
+			wantIsErr: errors.InvalidPublicId,
 		},
 	}
 
@@ -150,8 +161,8 @@ func TestRepository_CreateHost(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -309,7 +320,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 		masks     []string
 		want      *Host
 		wantCount int
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name: "nil-host",
@@ -320,7 +331,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "nil-embedded-host",
@@ -331,7 +342,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "no-public-id",
@@ -342,7 +353,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			},
 			chgFn:     deletePublicId(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "updating-non-existent-host",
@@ -354,7 +365,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			},
 			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
 			masks:     []string{"Name"},
-			wantIsErr: errors.ErrRecordNotFound,
+			wantIsErr: errors.RecordNotFound,
 		},
 		{
 			name: "empty-field-mask",
@@ -365,7 +376,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 				},
 			},
 			chgFn:     changeName("test-update-name-repo"),
-			wantIsErr: errors.ErrEmptyFieldMask,
+			wantIsErr: errors.EmptyFieldMask,
 		},
 		{
 			name: "read-only-fields-in-field-mask",
@@ -377,7 +388,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "CatalogId"},
-			wantIsErr: errors.ErrInvalidFieldMask,
+			wantIsErr: errors.InvalidFieldMask,
 		},
 		{
 			name: "unknown-field-in-field-mask",
@@ -389,7 +400,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"Bilbo"},
-			wantIsErr: errors.ErrInvalidFieldMask,
+			wantIsErr: errors.InvalidFieldMask,
 		},
 		{
 			name: "change-name",
@@ -550,7 +561,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			},
 			chgFn:     changeAddress("11"),
 			masks:     []string{"Address"},
-			wantIsErr: ErrInvalidAddress,
+			wantIsErr: errors.InvalidAddress,
 		},
 		{
 			name: "delete-address",
@@ -561,7 +572,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			},
 			chgFn:     changeAddress(""),
 			masks:     []string{"Address"},
-			wantIsErr: ErrInvalidAddress,
+			wantIsErr: errors.InvalidAddress,
 		},
 		{
 			name: "change-empty-address",
@@ -572,7 +583,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			},
 			chgFn:     changeAddress("            "),
 			masks:     []string{"Address"},
-			wantIsErr: ErrInvalidAddress,
+			wantIsErr: errors.InvalidAddress,
 		},
 	}
 
@@ -596,8 +607,8 @@ func TestRepository_UpdateHost(t *testing.T) {
 				orig = tt.chgFn(orig)
 			}
 			got, gotCount, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), orig, 1, tt.masks)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
@@ -748,11 +759,11 @@ func TestRepository_LookupHost(t *testing.T) {
 		name      string
 		in        string
 		want      *Host
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name:      "with-no-public-id",
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "with-non-existing-host-id",
@@ -773,8 +784,8 @@ func TestRepository_LookupHost(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupHost(context.Background(), tt.in)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -802,11 +813,11 @@ func TestRepository_ListHosts(t *testing.T) {
 		in        string
 		opts      []Option
 		want      []*Host
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name:      "with-no-catalog-id",
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "Catalog-with-no-hosts",
@@ -828,8 +839,8 @@ func TestRepository_ListHosts(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListHosts(context.Background(), tt.in, tt.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -930,11 +941,11 @@ func TestRepository_DeleteHost(t *testing.T) {
 		name      string
 		in        string
 		want      int
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name:      "With no public id",
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "With non existing host id",
@@ -956,8 +967,8 @@ func TestRepository_DeleteHost(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteHost(context.Background(), catalog.ScopeId, tt.in)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
 				return
 			}

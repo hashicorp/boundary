@@ -21,17 +21,18 @@ import (
 //
 // Both c.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...Option) (*HostCatalog, error) {
+	const op = "static.CreateCatalog"
 	if c == nil {
-		return nil, fmt.Errorf("create: static host catalog: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "nil HostCatalog")
 	}
 	if c.HostCatalog == nil {
-		return nil, fmt.Errorf("create: static host catalog: embedded HostCatalog: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "nil embedded HostCatalog")
 	}
 	if c.ScopeId == "" {
-		return nil, fmt.Errorf("create: static host catalog: no scope id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
 	if c.PublicId != "" {
-		return nil, fmt.Errorf("create: static host catalog: public id not empty: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
 	}
 	c = c.clone()
 
@@ -39,20 +40,24 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, HostCatalogPrefix+"_") {
-			return nil, fmt.Errorf("create: static host catalog: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, HostCatalogPrefix, errors.ErrInvalidPublicId)
+			return nil, errors.New(
+				errors.InvalidPublicId,
+				op,
+				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, HostCatalogPrefix),
+			)
 		}
 		c.PublicId = opts.withPublicId
 	} else {
 		id, err := newHostCatalogId()
 		if err != nil {
-			return nil, fmt.Errorf("create: static host catalog: %w", err)
+			return nil, errors.Wrap(err, op)
 		}
 		c.PublicId = id
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("create: static host catalog: unable to get oplog wrapper: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_CREATE)
@@ -74,10 +79,9 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, fmt.Errorf("create: static host catalog: in scope: %s: name %s already exists: %w",
-				c.ScopeId, c.Name, errors.ErrNotUnique)
+			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in scope: %s: name %s already exists", c.ScopeId, c.Name)))
 		}
-		return nil, fmt.Errorf("create: static host catalog: in scope: %s: %w", c.ScopeId, err)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in scope: %s", c.ScopeId)))
 	}
 	return newHostCatalog, nil
 }
@@ -94,20 +98,21 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 // An attribute of c will be set to NULL in the database if the attribute
 // in c is the zero value and it is included in fieldMask.
 func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version uint32, fieldMask []string, opt ...Option) (*HostCatalog, int, error) {
+	const op = "static.UpdateCatalog"
 	if c == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", errors.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil HostCatalog")
 	}
 	if c.HostCatalog == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: embedded HostCatalog: %w", errors.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil embedded HostCatalog")
 	}
 	if c.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: missing public id: %w", errors.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
 	}
 	if c.ScopeId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: missing scope id: %w", errors.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
 	if len(fieldMask) == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", errors.ErrEmptyFieldMask)
+		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
 	}
 
 	var dbMask, nullFields []string
@@ -123,13 +128,13 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			dbMask = append(dbMask, "description")
 
 		default:
-			return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: field: %s: %w", f, errors.ErrInvalidFieldMask)
+			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("field: %s", f))
 		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: unable to get oplog wrapper: %w", err)
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	c = c.clone()
@@ -154,7 +159,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				db.WithVersion(&version),
 			)
 			if err == nil && rowsUpdated > 1 {
-				return errors.ErrMultipleRecords
+				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
 			return err
 		},
@@ -162,10 +167,9 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %s: name %s already exists: %w",
-				c.PublicId, c.Name, errors.ErrNotUnique)
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", c.PublicId, c.Name)))
 		}
-		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %s: %w", c.PublicId, err)
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in %s", c.PublicId)))
 	}
 
 	return returnedCatalog, rowsUpdated, nil
@@ -174,24 +178,26 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 // LookupCatalog returns the HostCatalog for id. Returns nil, nil if no
 // HostCatalog is found for id.
 func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option) (*HostCatalog, error) {
+	const op = "static.LookupCatalog"
 	if id == "" {
-		return nil, fmt.Errorf("lookup: static host catalog: missing public id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "no public id")
 	}
 	c := allocCatalog()
 	c.PublicId = id
 	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
-		if err == errors.ErrRecordNotFound {
+		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("lookup: static host catalog: %s: %w", id, err)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
 	}
 	return c, nil
 }
 
 // ListCatalogs returns a slice of HostCatalogs for the scopeId. WithLimit is the only option supported.
 func (r *Repository) ListCatalogs(ctx context.Context, scopeId string, opt ...Option) ([]*HostCatalog, error) {
+	const op = "static.ListCatalogs"
 	if scopeId == "" {
-		return nil, fmt.Errorf("list: static host catalog: missing scope id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -202,7 +208,7 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeId string, opt ...Op
 	var hostCatalogs []*HostCatalog
 	err := r.reader.SearchWhere(ctx, &hostCatalogs, "scope_id = ?", []interface{}{scopeId}, db.WithLimit(limit))
 	if err != nil {
-		return nil, fmt.Errorf("list: static host catalog: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return hostCatalogs, nil
 }
@@ -210,24 +216,25 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeId string, opt ...Op
 // DeleteCatalog deletes id from the repository returning a count of the
 // number of records deleted.
 func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (int, error) {
+	const op = "static.DeleteCatalog"
 	if id == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: missing public id: %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
 	}
 
 	c := allocCatalog()
 	c.PublicId = id
 	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return db.NoRowsAffected, nil
 		}
-		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: failed %w for %s", err, id)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", id)))
 	}
 	if c.ScopeId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: missing scope id: %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: unable to get oplog wrapper: %w", err)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_DELETE)
@@ -247,14 +254,14 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 				db.WithOplog(oplogWrapper, metadata),
 			)
 			if err == nil && rowsDeleted > 1 {
-				return errors.ErrMultipleRecords
+				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
 			return err
 		},
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: %s: %w", c.PublicId, err)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", c.PublicId)))
 	}
 
 	return rowsDeleted, nil

@@ -2,6 +2,7 @@ package errors_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -44,7 +45,7 @@ func TestError_IsUnique(t *testing.T) {
 		},
 		{
 			name: "wrapped-pq-is-unique",
-			in: errors.New(errors.NotUnique,
+			in: errors.E(errors.WithCode(errors.NotUnique),
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23505"),
 				}),
@@ -54,6 +55,11 @@ func TestError_IsUnique(t *testing.T) {
 		{
 			name: "ErrRecordNotFound",
 			in:   errors.ErrRecordNotFound,
+			want: false,
+		},
+		{
+			name: "conflicting-wrapped-code",
+			in:   errors.E(errors.WithCode(errors.NotNull), errors.WithWrap(errors.E(errors.WithCode(errors.NotUnique)))),
 			want: false,
 		},
 	}
@@ -96,12 +102,12 @@ func TestError_IsCheckConstraint(t *testing.T) {
 		},
 		{
 			name: "ErrCodeCheckConstraint",
-			in:   errors.New(errors.CheckConstraint),
+			in:   errors.E(errors.WithCode(errors.CheckConstraint)),
 			want: true,
 		},
 		{
 			name: "wrapped-pq-is-check-constraint",
-			in: errors.New(errors.CheckConstraint,
+			in: errors.E(errors.WithCode(errors.CheckConstraint),
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23514"),
 				}),
@@ -111,6 +117,11 @@ func TestError_IsCheckConstraint(t *testing.T) {
 		{
 			name: "ErrRecordNotFound",
 			in:   errors.ErrRecordNotFound,
+			want: false,
+		},
+		{
+			name: "conflicting-wrapped-code",
+			in:   errors.E(errors.WithCode(errors.NotNull), errors.WithWrap(errors.E(errors.WithCode(errors.CheckConstraint)))),
 			want: false,
 		},
 	}
@@ -160,12 +171,12 @@ func TestError_IsNotNullError(t *testing.T) {
 		},
 		{
 			name: "ErrCodeNotNull",
-			in:   errors.New(errors.NotNull),
+			in:   errors.E(errors.WithCode(errors.NotNull)),
 			want: true,
 		},
 		{
 			name: "wrapped-pq-is-not-null",
-			in: errors.New(errors.NotNull,
+			in: errors.E(errors.WithCode(errors.NotNull),
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23502"),
 				}),
@@ -175,6 +186,11 @@ func TestError_IsNotNullError(t *testing.T) {
 		{
 			name: "ErrRecordNotFound",
 			in:   errors.ErrRecordNotFound,
+			want: false,
+		},
+		{
+			name: "conflicting-wrapped-code",
+			in:   errors.E(errors.WithCode(errors.CheckConstraint), errors.WithWrap(errors.E(errors.WithCode(errors.NotNull)))),
 			want: false,
 		},
 	}
@@ -239,4 +255,47 @@ func TestError_IsMissingTableError(t *testing.T) {
 		require.Error(err)
 		assert.True(errors.IsMissingTableError(err))
 	})
+}
+
+func TestError_IsNotFoundError(t *testing.T) {
+	var tests = []struct {
+		name string
+		in   error
+		want bool
+	}{
+		{
+			name: "nil-error",
+			in:   nil,
+			want: false,
+		},
+		{
+			name: "not-found-error",
+			in:   errors.E(errors.WithCode(errors.RecordNotFound)),
+			want: true,
+		},
+		{
+			name: "sentinel-not-found",
+			in:   errors.ErrRecordNotFound,
+			want: true,
+		},
+		{
+			name: "std-err",
+			in:   fmt.Errorf("std error"),
+			want: false,
+		},
+		{
+			name: "conflicting-wrapped-code",
+			in:   errors.E(errors.WithCode(errors.NotNull), errors.WithWrap(errors.E(errors.WithCode(errors.RecordNotFound)))),
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			err := tt.in
+			got := errors.IsNotFoundError(err)
+			assert.Equal(tt.want, got)
+		})
+	}
 }

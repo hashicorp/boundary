@@ -25,16 +25,16 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		in        *HostCatalog
 		opts      []Option
 		want      *HostCatalog
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name:      "nil-catalog",
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name:      "nil-embedded-catalog",
 			in:        &HostCatalog{},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "valid-no-options",
@@ -87,8 +87,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				assert.Empty(tt.in.PublicId)
 			}
 			got, err := repo.CreateCatalog(context.Background(), tt.in, tt.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
@@ -236,7 +236,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		masks     []string
 		want      *HostCatalog
 		wantCount int
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name: "nil-catalog",
@@ -245,7 +245,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "nil-embedded-catalog",
@@ -254,7 +254,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "no-public-id",
@@ -263,7 +263,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     deletePublicId(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "updating-non-existent-catalog",
@@ -274,7 +274,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
 			masks:     []string{"Name"},
-			wantIsErr: errors.ErrRecordNotFound,
+			wantIsErr: errors.RecordNotFound,
 		},
 		{
 			name: "empty-field-mask",
@@ -284,7 +284,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				},
 			},
 			chgFn:     changeName("test-update-name-repo"),
-			wantIsErr: errors.ErrEmptyFieldMask,
+			wantIsErr: errors.EmptyFieldMask,
 		},
 		{
 			name: "read-only-fields-in-field-mask",
@@ -295,7 +295,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
-			wantIsErr: errors.ErrInvalidFieldMask,
+			wantIsErr: errors.InvalidFieldMask,
 		},
 		{
 			name: "unknown-field-in-field-mask",
@@ -306,7 +306,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"Bilbo"},
-			wantIsErr: errors.ErrInvalidFieldMask,
+			wantIsErr: errors.InvalidFieldMask,
 		},
 		{
 			name: "change-name",
@@ -448,8 +448,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				orig = tt.chgFn(orig)
 			}
 			got, gotCount, err := repo.UpdateCatalog(context.Background(), orig, 1, tt.masks)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
@@ -579,7 +579,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 		name    string
 		id      string
 		want    *HostCatalog
-		wantErr error
+		wantErr errors.Code
 	}{
 		{
 			name: "found",
@@ -595,7 +595,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 			name:    "bad-public-id",
 			id:      "",
 			want:    nil,
-			wantErr: errors.ErrInvalidParameter,
+			wantErr: errors.InvalidParameter,
 		},
 	}
 
@@ -609,8 +609,8 @@ func TestRepository_LookupCatalog(t *testing.T) {
 			assert.NotNil(repo)
 
 			got, err := repo.LookupCatalog(context.Background(), tt.id)
-			if tt.wantErr != nil {
-				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
 			assert.NoError(err)
@@ -641,7 +641,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 		name    string
 		id      string
 		want    int
-		wantErr error
+		wantErr errors.Code
 	}{
 		{
 			name: "found",
@@ -657,7 +657,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 			name:    "bad-public-id",
 			id:      "",
 			want:    0,
-			wantErr: errors.ErrInvalidParameter,
+			wantErr: errors.InvalidParameter,
 		},
 	}
 
@@ -671,8 +671,8 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 			assert.NotNil(repo)
 
 			got, err := repo.DeleteCatalog(context.Background(), tt.id)
-			if tt.wantErr != nil {
-				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
 			assert.NoError(err)

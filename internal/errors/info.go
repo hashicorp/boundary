@@ -1,7 +1,11 @@
 package errors
 
+// Info contains details of the specific error code
 type Info struct {
-	Kind    Kind
+	// Kind specifies the kind of error (unknown, parameter, integrity, etc).
+	Kind Kind
+
+	// Message provides a default message for the error code
 	Message string
 }
 
@@ -14,6 +18,22 @@ var errorCodeInfo = map[Code]Info{
 	},
 	InvalidParameter: {
 		Message: "invalid parameter",
+		Kind:    Parameter,
+	},
+	InvalidAddress: {
+		Message: "invalid address",
+		Kind:    Parameter,
+	},
+	InvalidPublicId: {
+		Message: "invalid public id",
+		Kind:    Parameter,
+	},
+	InvalidFieldMask: {
+		Message: "invalid field mask",
+		Kind:    Parameter,
+	},
+	EmptyFieldMask: {
+		Message: "empty field mask",
 		Kind:    Parameter,
 	},
 	CheckConstraint: {

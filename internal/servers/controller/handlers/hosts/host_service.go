@@ -169,6 +169,10 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host for creation: %v.", err)
 	}
 
@@ -178,9 +182,9 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	out, err := repo.CreateHost(ctx, scopeId, h)
 	if err != nil {
-		if errors.IsUniqueError(err) || errors.Is(err, errors.ErrNotUnique) {
-			// Push this error through so the error interceptor can interpret it correctly.
-			return nil, err
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
 		}
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host: %v.", err)
 	}
@@ -207,6 +211,10 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host for update: %v.", err)
 	}
 	h.PublicId = id
@@ -220,6 +228,10 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	out, rowsUpdated, err := repo.UpdateHost(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
 		return nil, fmt.Errorf("unable to update host: %w", err)
 	}
 	if rowsUpdated == 0 {
@@ -235,6 +247,10 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	}
 	rows, err := repo.DeleteHost(ctx, scopeId, id)
 	if err != nil {
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return false, e
+		}
 		return false, fmt.Errorf("unable to delete host: %w", err)
 	}
 	return rows > 0, nil

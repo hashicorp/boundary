@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
@@ -180,6 +181,10 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	}
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host catalog for creation: %v.", err)
 	}
 	repo, err := s.staticRepoFn()
@@ -188,6 +193,10 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	}
 	out, err := repo.CreateCatalog(ctx, h)
 	if err != nil {
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
 		return nil, fmt.Errorf("unable to create host catalog: %w", err)
 	}
 	if out == nil {
@@ -207,6 +216,10 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	version := item.GetVersion()
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
 		return nil, fmt.Errorf("unable to build host catalog for update: %w", err)
 	}
 	h.PublicId = id
@@ -220,6 +233,10 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	}
 	out, rowsUpdated, err := repo.UpdateCatalog(ctx, h, version, dbMask)
 	if err != nil {
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
 		return nil, fmt.Errorf("unable to update host catalog: %w", err)
 	}
 	if rowsUpdated == 0 {
@@ -235,6 +252,10 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	}
 	rows, err := repo.DeleteCatalog(ctx, id)
 	if err != nil {
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return false, e
+		}
 		return false, fmt.Errorf("unable to delete host: %w", err)
 	}
 	return rows > 0, nil
