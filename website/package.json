@@ -5,18 +5,18 @@
   "author": "HashiCorp",
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "9.0.6",
-    "@hashicorp/mktg-global-styles": "^2.1.0",
+    "@hashicorp/mktg-global-styles": "2.1.0",
     "@hashicorp/nextjs-scripts": "13.0.0-canary.1",
-    "@hashicorp/react-alert-banner": "^5.0.0",
-    "@hashicorp/react-button": "^4.0.0",
-    "@hashicorp/react-content": "6.0.0",
-    "@hashicorp/react-docs-page": "^10.2.0",
-    "@hashicorp/react-hashi-stack-menu": "^1.0.10",
+    "@hashicorp/react-alert-banner": "5.0.0",
+    "@hashicorp/react-button": "4.0.0",
+    "@hashicorp/react-content": "6.1.1",
+    "@hashicorp/react-docs-page": "10.3.1",
+    "@hashicorp/react-hashi-stack-menu": "1.0.11",
     "@hashicorp/react-head": "1.1.6",
-    "@hashicorp/react-hero": "^4.1.0",
+    "@hashicorp/react-hero": "4.1.0",
     "@hashicorp/react-image": "3.0.3",
-    "@hashicorp/react-product-downloader": "^7.0.0",
-    "@hashicorp/react-product-features-list": "^3.0.0",
+    "@hashicorp/react-product-downloader": "7.0.0",
+    "@hashicorp/react-product-features-list": "3.0.0",
     "@hashicorp/react-section-header": "3.0.1",
     "@hashicorp/react-subnav": "7.1.0",
     "@hashicorp/react-use-cases": "2.0.1",
@@ -41,16 +41,15 @@
       "pre-commit": "next-hashicorp precommit"
     }
   },
-  "main": "index.js",
   "scripts": {
     "build": "node --max-old-space-size=2048 ./node_modules/.bin/next build",
     "export": "node --max-old-space-size=2048 ./node_modules/.bin/next export",
     "format": "next-hashicorp format",
     "generate:component": "next-hashicorp generate component",
     "generate:readme": "next-hashicorp markdown-blocks README.md",
+    "linkcheck": "linkcheck boundary.io",
     "lint": "next-hashicorp lint",
     "start": "next dev",
-    "static": "npm run build && npm run export",
-    "linkcheck": "linkcheck waypoint.io"
+    "static": "npm run build && npm run export"
   }
 }
