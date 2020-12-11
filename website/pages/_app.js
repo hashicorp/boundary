@@ -39,7 +39,9 @@ export default function App({ Component, pageProps }) {
         <meta name="og:title" property="og:title" content={title} />
         <meta name="og:description" property="og:title" content={description} />
       </HashiHead>
-      {ALERT_BANNER_ACTIVE && <AlertBanner {...alertBannerData} theme="red" />}
+      {ALERT_BANNER_ACTIVE && (
+        <AlertBanner {...alertBannerData} theme="boundary" />
+      )}
       <HashiStackMenu />
       <ProductSubnav />
       <div className="content">

@@ -14,7 +14,7 @@
 
   /* currently only supports "boundary", may want to extend to support other product themes */
   &[data-theme='boundary'] {
-    --brand: var(--red);
+    --brand: var(--boundary);
   }
 
   & .pageHeading {
