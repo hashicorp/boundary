@@ -227,7 +227,7 @@ func TestTcpTarget_Update(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: `db.Update: null value in column "name" violates not-null constraint: integrity violation: error #1001`,
+			wantErrMsg: `db.Update: name must not be empty: not null constraint violated: integrity violation: error #1001`,
 		},
 		{
 			name: "set description null",
