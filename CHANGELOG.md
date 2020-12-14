@@ -17,13 +17,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * controller: Improved error handling in hosts, host catalog and host set
   ([PR](https://github.com/hashicorp/boundary/pull/786))
-  
 * controller: Relax account login name constraints to allow dash as valid character 
   ([Issue](https://github.com/hashicorp/boundary/issues/759))
   ([PR](https://github.com/hashicorp/boundary/pull/806))
 * cli/connect/http: Pass endpoint address through to allow setting TLS server
   name directly in most cases
   ([PR](https://github.com/hashicorp/boundary/pull/811))
+* cli/connect/kube: New `kube` subcommand for `boundary connect` that makes it
+  easy to route `kubectl` commands through Boundary, including when using
+  `kubectl proxy` ([PR](https://github.com/hashicorp/boundary/pull/816))
 
 ### Bug Fixes
 
