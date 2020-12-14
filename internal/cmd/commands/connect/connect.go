@@ -115,8 +115,6 @@ func (c *Command) Synopsis() string {
 		return sshSynopsis
 	case "kube":
 		return kubeSynopsis
-	case "k8s":
-		return kubeSynopsis
 	default:
 		return ""
 	}
@@ -245,7 +243,7 @@ func (c *Command) Flags() *base.FlagSets {
 	case "ssh":
 		sshOptions(c, set)
 
-	case "kube", "k8s":
+	case "kube":
 		kubeOptions(c, set)
 	}
 
@@ -310,7 +308,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.flagExec = c.postgresFlags.defaultExec()
 		case "rdp":
 			c.flagExec = c.rdpFlags.defaultExec()
-		case "kube", "k8s":
+		case "kube":
 			c.flagExec = c.kubeFlags.defaultExec()
 		}
 	}
@@ -763,7 +761,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	case "ssh":
 		args = append(args, c.sshFlags.buildArgs(c, port, ip, addr)...)
 
-	case "kube", "k8s":
+	case "kube":
 		kubeArgs, err := c.kubeFlags.buildArgs(c, port, ip, addr)
 		if err != nil {
 			c.Error(fmt.Sprintf("Error parsing session args: %s", err))

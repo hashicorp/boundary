@@ -263,12 +263,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "kube",
 			}, nil
 		},
-		"connect k8s": func() (cli.Command, error) {
-			return &connect.Command{
-				Command: base.NewCommand(ui),
-				Func:    "k8s",
-			}, nil
-		},
 		"connect postgres": func() (cli.Command, error) {
 			return &connect.Command{
 				Command: base.NewCommand(ui),
