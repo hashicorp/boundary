@@ -77,16 +77,17 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 
 // validateScopeForWrite will validate that the scope is okay for db write operations
 func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWithScope, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.validateScopeForWrite"
 	opts := db.GetOpts(opt...)
 
 	if opType == db.CreateOp {
 		if resource.GetScopeId() == "" {
-			return stderrors.New("error scope id not set for user write")
+			return errors.New(errors.InvalidParameter, op, "error scope id not set for user write")
 		}
 		ps, err := LookupScope(ctx, r, resource)
 		if err != nil {
-			if errors.Is(err, errors.ErrRecordNotFound) {
-				return stderrors.New("scope is not found")
+			if errors.IsNotFoundError(err) {
+				return errors.New(errors.RecordNotFound, op, "scope is not found")
 			}
 			return err
 		}
@@ -97,13 +98,13 @@ func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWi
 			}
 		}
 		if !validScopeType {
-			return fmt.Errorf("%s not a valid scope type for this resource", ps.Type)
+			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s not a valid scope type for this resource", ps.Type))
 		}
 
 	}
 	if opType == db.UpdateOp && resource.GetScopeId() != "" {
 		if contains(opts.WithFieldMaskPaths, "ScopeId") || contains(opts.WithNullPaths, "ScopeId") {
-			return stderrors.New("not allowed to change a resource's scope")
+			return errors.New(errors.InvalidParameter, op, "not allowed to change a resource's scope")
 		}
 	}
 	return nil

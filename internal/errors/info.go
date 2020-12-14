@@ -36,6 +36,22 @@ var errorCodeInfo = map[Code]Info{
 		Message: "empty field mask",
 		Kind:    Parameter,
 	},
+	PasswordTooShort: {
+		Message: "too short",
+		Kind:    Password,
+	},
+	PasswordUnsupportedConfiguration: {
+		Message: "unsupported configuration",
+		Kind:    Password,
+	},
+	PasswordInvalidConfiguration: {
+		Message: "invalid configuration",
+		Kind:    Password,
+	},
+	PasswordsEqual: {
+		Message: "old and new password are equal",
+		Kind:    Password,
+	},
 	CheckConstraint: {
 		Message: "constraint check failed",
 		Kind:    Integrity,
@@ -67,6 +83,10 @@ var errorCodeInfo = map[Code]Info{
 	MultipleRecords: {
 		Message: "multiple records",
 		Kind:    Search,
+	},
+	Exception: {
+		Message: "db exception",
+		Kind:    Integrity,
 	},
 	MaxRetries: {
 		Message: "too many retries",

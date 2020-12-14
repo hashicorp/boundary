@@ -140,17 +140,17 @@ func TestRepository_GetConfiguration(t *testing.T) {
 		name         string
 		authMethodId string
 		want         *Argon2Configuration
-		wantIsErr    error
+		wantIsErr    errors.Code
 	}{
 		{
 			name:         "invalid-no-authMethodId",
 			authMethodId: "",
-			wantIsErr:    errors.ErrInvalidParameter,
+			wantIsErr:    errors.InvalidParameter,
 		},
 		{
 			name:         "invalid-authMethodId",
 			authMethodId: "abcdefghijk",
-			wantIsErr:    errors.ErrRecordNotFound,
+			wantIsErr:    errors.RecordNotFound,
 		},
 		{
 			name:         "valid-authMethodId",
@@ -163,8 +163,8 @@ func TestRepository_GetConfiguration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := repo.GetConfiguration(ctx, tt.authMethodId)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got, "returned configuration")
 				return
 			}
@@ -212,26 +212,26 @@ func TestRepository_SetConfiguration(t *testing.T) {
 		in             Configuration
 		want           *Argon2Configuration
 		wantUnknownErr bool
-		wantIsErr      error
+		wantIsErr      errors.Code
 	}{
 		{
 			name:      "invalid-nil-config",
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name:      "nil-embedded-config",
 			in:        &Argon2Configuration{},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name:      "invalid-no-authMethodId",
 			in:        NewArgon2Configuration(),
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name:      "unknown-configuration-type",
 			in:        tconf(0),
-			wantIsErr: ErrUnsupportedConfiguration,
+			wantIsErr: errors.PasswordUnsupportedConfiguration,
 		},
 		{
 			name: "invalid-unknown-authMethodId",
@@ -259,7 +259,7 @@ func TestRepository_SetConfiguration(t *testing.T) {
 					KeyLength:        32,
 				},
 			},
-			wantIsErr: ErrInvalidConfiguration,
+			wantIsErr: errors.PasswordInvalidConfiguration,
 		},
 		{
 			name: "valid",
@@ -290,8 +290,8 @@ func TestRepository_SetConfiguration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := repo.SetConfiguration(context.Background(), o.GetPublicId(), tt.in)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got, "returned configuration")
 				return
 			}

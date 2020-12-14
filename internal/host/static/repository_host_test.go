@@ -665,7 +665,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, hB.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
-		assert.True(errors.Is(errors.ErrRecordNotFound, err))
+		assert.True(errors.IsNotFoundError(err))
 	})
 
 	t.Run("valid-duplicate-names-diff-Catalogs", func(t *testing.T) {

@@ -27,6 +27,21 @@ const (
 	InvalidFieldMask Code = 103 // InvalidFieldMask represents an invalid field mast for an operation
 	EmptyFieldMask   Code = 104 // EmptyFieldMask represents an empty field mask for an operation
 
+	// PasswordTooShort results from attempting to set a password which is to short.
+	PasswordTooShort Code = 200
+
+	// PasswordUnsupportedConfiguration results from attempting to perform an
+	// operation that sets a password configuration to an unsupported type.
+	PasswordUnsupportedConfiguration Code = 201
+
+	// PasswordInvalidConfiguration results from attempting to perform an
+	// operation that sets a password configuration with invalid settings.
+	PasswordInvalidConfiguration Code = 202
+
+	// PasswordsEqual is returned from ChangePassword when the old and
+	// new passwords are equal.
+	PasswordsEqual Code = 203
+
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
 	NotNull              Code = 1001 // NotNull represents a value must not be null error
@@ -37,5 +52,5 @@ const (
 	MultipleRecords      Code = 1101 // MultipleRecords represents that multiple records/rows were found matching the criteria
 	ColumnNotFound       Code = 1102 // ColumnNotFound represent that a column was not found in the underlying db
 	MaxRetries           Code = 1103 // MaxRetries represent that a db Tx hit max retires allowed
-
+	Exception            Code = 1104 // Exception represent that an underlying db exception was raised
 )

@@ -166,7 +166,7 @@ func (r *Repository) LookupUser(ctx context.Context, userId string, opt ...Optio
 	user := allocUser()
 	user.PublicId = userId
 	if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return nil, nil, nil
 		}
 		return nil, nil, fmt.Errorf("lookup user: failed %w for %s", err, userId)

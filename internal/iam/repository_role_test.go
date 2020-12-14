@@ -107,7 +107,7 @@ func TestRepository_CreateRole(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantErrMsg:  "create role: error getting metadata for create: unable to get scope for standard metadata: record not found:",
+			wantErrMsg:  "create role: error getting metadata for create: unable to get scope for standard metadata: db.LookupWhere: record not found",
 			wantIsError: errors.ErrInvalidParameter,
 		},
 		{
@@ -201,7 +201,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 		wantRowsUpdate int
 		wantErr        bool
 		wantErrMsg     string
-		wantIsError    error
+		wantIsError    errors.Code
 		wantDup        bool
 	}{
 		{
@@ -238,8 +238,8 @@ func TestRepository_UpdateRole(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update role: update: lookup after write: record not found:",
-			wantIsError:    errors.ErrRecordNotFound,
+			wantErrMsg:     "update role: db.DoTx: db.DoTx: db.Update: db.lookupAfterWrite: db.LookupById: record not found",
+			wantIsError:    errors.RecordNotFound,
 		},
 		{
 			name: "null-name",
@@ -276,7 +276,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update role: empty field mask",
-			wantIsError:    errors.ErrEmptyFieldMask,
+			wantIsError:    errors.EmptyFieldMask,
 		},
 		{
 			name: "nil-fieldmask",
@@ -289,7 +289,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update role: empty field mask",
-			wantIsError:    errors.ErrEmptyFieldMask,
+			wantIsError:    errors.EmptyFieldMask,
 		},
 		{
 			name: "read-only-fields",
@@ -302,7 +302,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update role: field: CreateTime: invalid field mask",
-			wantIsError:    errors.ErrInvalidFieldMask,
+			wantIsError:    errors.InvalidFieldMask,
 		},
 		{
 			name: "unknown-fields",
@@ -315,7 +315,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update role: field: Alice: invalid field mask",
-			wantIsError:    errors.ErrInvalidFieldMask,
+			wantIsError:    errors.InvalidFieldMask,
 		},
 		{
 			name: "no-public-id",
@@ -328,7 +328,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantErrMsg:     "update role: missing role public id invalid parameter",
-			wantIsError:    errors.ErrInvalidParameter,
+			wantIsError:    errors.InvalidParameter,
 			wantRowsUpdate: 0,
 		},
 		{
@@ -340,7 +340,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			newScopeId:  org.PublicId,
 			wantErr:     true,
 			wantErrMsg:  "update role: empty field mask",
-			wantIsError: errors.ErrEmptyFieldMask,
+			wantIsError: errors.EmptyFieldMask,
 		},
 		{
 			name: "empty-scope-id-with-name-mask",
@@ -377,7 +377,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			wantErr:     true,
 			wantDup:     true,
 			wantErrMsg:  " already exists in org " + org.PublicId,
-			wantIsError: errors.ErrNotUnique,
+			wantIsError: errors.NotUnique,
 		},
 	}
 	for _, tt := range tests {
@@ -423,15 +423,15 @@ func TestRepository_UpdateRole(t *testing.T) {
 			roleAfterUpdate, principals, grants, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
-				if tt.wantIsError != nil {
-					assert.True(errors.Is(err, tt.wantIsError))
+				if tt.wantIsError != 0 {
+					assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				}
 				assert.Nil(roleAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, r.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.IsNotFoundError(err))
 				return
 			}
 			require.NoError(err)
@@ -517,7 +517,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete role: failed record not found:",
+			wantErrMsg:      "delete role: failed db.LookupById: record not found",
 		},
 	}
 	for _, tt := range tests {
@@ -530,7 +530,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.IsNotFoundError(err))
 				return
 			}
 			assert.NoError(err)

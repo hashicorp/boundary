@@ -117,8 +117,7 @@ func Convert(e error) *Err {
 	if e == nil {
 		return nil
 	}
-	var err *Err
-	if As(e, &err) {
+	if err, ok := e.(*Err); ok {
 		return err
 	}
 	var pqError *pq.Error
@@ -126,7 +125,7 @@ func Convert(e error) *Err {
 		if pqError.Code.Class() == "23" { // class of integrity constraint violations
 			switch pqError.Code {
 			case "23505": // unique_violation
-				return E(WithMsg(pqError.Detail), WithWrap(ErrNotUnique)).(*Err)
+				return E(WithMsg(pqError.Message), WithWrap(ErrNotUnique)).(*Err)
 			case "23502": // not_null_violation
 				msg := fmt.Sprintf("%s must not be empty", pqError.Column)
 				return E(WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
@@ -137,11 +136,13 @@ func Convert(e error) *Err {
 				return E(WithCode(NotSpecificIntegrity), WithMsg(pqError.Message)).(*Err)
 			}
 		}
-		if pqError.Code == "42P01" {
+		switch pqError.Code {
+		case "42P01":
 			return E(WithCode(MissingTable), WithMsg(pqError.Message)).(*Err)
-		}
-		if pqError.Code == "42703" {
+		case "42703":
 			return E(WithCode(ColumnNotFound), WithMsg(pqError.Message)).(*Err)
+		case "P0001":
+			return E(WithCode(Exception), WithMsg(pqError.Message)).(*Err)
 		}
 	}
 	// unfortunately, we can't help.

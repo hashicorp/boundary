@@ -173,7 +173,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 	}
 	u, err := repo.LookupAccount(ctx, id)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
 		}
 		return nil, err
@@ -273,7 +273,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	}
 	rows, err := repo.DeleteAccount(ctx, scopeId, id)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("unable to delete account: %w", err)
@@ -309,7 +309,7 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 	out, err := repo.ChangePassword(ctx, scopeId, id, currentPassword, newPassword, version)
 	if err != nil {
 		switch {
-		case errors.Is(err, errors.ErrRecordNotFound):
+		case errors.IsNotFoundError(err):
 			return nil, handlers.NotFoundErrorf("Account not found.")
 		case errors.Is(err, password.ErrTooShort):
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
@@ -334,7 +334,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 	out, err := repo.SetPassword(ctx, scopeId, id, pw, version)
 	if err != nil {
 		switch {
-		case errors.Is(err, errors.ErrRecordNotFound):
+		case errors.IsNotFoundError(err):
 			return nil, handlers.NotFoundErrorf("Account not found.")
 		case errors.Is(err, password.ErrTooShort):
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",

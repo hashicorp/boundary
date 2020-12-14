@@ -171,7 +171,7 @@ func Test_RoleCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed: scope is not found",
+			wantErrMsg: "db.Create: vet for write failed: iam.validateScopeForWrite: scope is not found: search issue: error #1100",
 		},
 	}
 
@@ -252,7 +252,7 @@ func Test_RoleUpdate(t *testing.T) {
 				scopeIdOverride: org.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: vet for write failed: not allowed to change a resource's scope",
+			wantErrMsg: "db.Update: vet for write failed: iam.validateScopeForWrite: not allowed to change a resource's scope: parameter violation: error #100",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -283,7 +283,7 @@ func Test_RoleUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update: failed: pq: duplicate key value violates unique constraint "iam_role_name_scope_id_key"`,
+			wantErrMsg: `db.Update: duplicate key value violates unique constraint "iam_role_name_scope_id_key": unique constraint violation: integrity violation: error #1002`,
 		},
 		{
 			name: "set description null",
@@ -348,7 +348,7 @@ func Test_RoleUpdate(t *testing.T) {
 				grantScopeId:   proj2.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: failed: pq: invalid to set grant_scope_id to non-same scope_id when role scope type is project",
+			wantErrMsg: "db.Update: invalid to set grant_scope_id to non-same scope_id when role scope type is project: integrity violation: error #1104",
 		},
 		{
 			name: "set grant scope in org",
@@ -369,7 +369,7 @@ func Test_RoleUpdate(t *testing.T) {
 				grantScopeId:   proj2.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: failed: pq: grant_scope_id is not a child project of the role scope",
+			wantErrMsg: "db.Update: grant_scope_id is not a child project of the role scope: integrity violation: error #1104",
 		},
 		{
 			name: "set grant scope in global",
@@ -380,7 +380,7 @@ func Test_RoleUpdate(t *testing.T) {
 				grantScopeId:   "global",
 			},
 			wantErr:    true,
-			wantErrMsg: "update: failed: pq: grant_scope_id is not a child project of the role scope",
+			wantErrMsg: "db.Update: grant_scope_id is not a child project of the role scope: integrity violation: error #1104",
 		},
 		{
 			name: "set grant scope to parent",
@@ -391,7 +391,7 @@ func Test_RoleUpdate(t *testing.T) {
 				grantScopeId:   org2.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: failed: pq: invalid to set grant_scope_id to non-same scope_id when role scope type is project",
+			wantErrMsg: "db.Update: invalid to set grant_scope_id to non-same scope_id when role scope type is project: integrity violation: error #1104",
 		},
 	}
 	for _, tt := range tests {
@@ -427,7 +427,7 @@ func Test_RoleUpdate(t *testing.T) {
 				assert.Equal(tt.wantErrMsg, err.Error())
 				err = db.TestVerifyOplog(t, rw, role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
-				assert.Contains(err.Error(), "record not found:")
+				assert.Contains(err.Error(), "record not found")
 				return
 			}
 			require.NoError(err)
@@ -473,7 +473,7 @@ func Test_RoleUpdate(t *testing.T) {
 		updatedRows, err := rw.Update(context.Background(), &updateRole, []string{"ScopeId"}, nil, db.WithSkipVetForWrite(true))
 		require.Error(err)
 		assert.Equal(0, updatedRows)
-		assert.Equal("update: failed: pq: immutable column: iam_role.scope_id", err.Error())
+		assert.Equal("db.Update: immutable column: iam_role.scope_id: integrity violation: error #1003", err.Error())
 	})
 }
 
@@ -526,7 +526,7 @@ func Test_RoleDelete(t *testing.T) {
 			foundRole.PublicId = tt.role.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundRole)
 			require.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }

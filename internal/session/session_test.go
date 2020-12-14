@@ -213,7 +213,7 @@ func TestSession_Delete(t *testing.T) {
 			foundSession.PublicId = tt.session.PublicId
 			err = rw.LookupById(context.Background(), &foundSession)
 			require.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }

@@ -146,7 +146,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	at := allocAuthToken()
 	at.PublicId = id
 	if err := r.reader.LookupByPublicId(ctx, at); err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("auth token: lookup: %w", err)
@@ -184,7 +184,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	retAT, err := r.LookupAuthToken(ctx, id, withTokenValue())
 	if err != nil {
 		retAT = nil
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("validate token: %w", err)
@@ -295,7 +295,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 
 	at, err := r.LookupAuthToken(ctx, id)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return db.NoRowsAffected, nil
 		}
 		return db.NoRowsAffected, fmt.Errorf("delete: auth token: lookup %w", err)

@@ -119,7 +119,7 @@ func TestRepository_Authenticate(t *testing.T) {
 			assert.Equal(tt.args.loginName, authAcct.LoginName, "LoginName")
 			err = db.TestVerifyOplog(t, rw, authAcct.CredentialId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }
@@ -276,7 +276,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 		name        string
 		args        args
 		wantAccount bool
-		wantIsErr   error
+		wantIsErr   errors.Code
 	}{
 		{
 			name: "invalid-no-accountId",
@@ -285,7 +285,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				old:    passwd,
 				new:    "12345678-changed",
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-no-current-password",
@@ -294,7 +294,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				old:    "",
 				new:    "12345678-changed",
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-no-new-password",
@@ -303,7 +303,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				old:    passwd,
 				new:    "",
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-same-passwords",
@@ -312,7 +312,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				old:    passwd,
 				new:    passwd,
 			},
-			wantIsErr: ErrPasswordsEqual,
+			wantIsErr: errors.PasswordsEqual,
 		},
 		{
 			name: "auth-failure-unknown-accountId",
@@ -322,7 +322,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				new:    "12345678-changed",
 			},
 			wantAccount: false,
-			wantIsErr:   errors.ErrRecordNotFound,
+			wantIsErr:   errors.RecordNotFound,
 		},
 		{
 			name: "auth-failure-wrong-current-password",
@@ -332,7 +332,6 @@ func TestRepository_ChangePassword(t *testing.T) {
 				new:    "12345678-changed",
 			},
 			wantAccount: false,
-			wantIsErr:   nil,
 		},
 		{
 			name: "password-to-short",
@@ -341,7 +340,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				old:    passwd,
 				new:    "1",
 			},
-			wantIsErr: ErrTooShort,
+			wantIsErr: errors.PasswordTooShort,
 		},
 		{
 			name: "valid",
@@ -369,9 +368,9 @@ func TestRepository_ChangePassword(t *testing.T) {
 			authAcct1 := authFn(passwd, "original account")
 
 			chgAuthAcct, err := repo.ChangePassword(context.Background(), o.GetPublicId(), tt.args.acctId, tt.args.old, tt.args.new, authAcct1.Version)
-			if tt.wantIsErr != nil {
+			if tt.wantIsErr != 0 {
 				assert.Error(err)
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(chgAuthAcct, "returned account")
 				authAcct2 := authFn(passwd, "error changing password: using old password")
 				assert.Equal(authAcct1.CredentialId, authAcct2.CredentialId, "CredentialId should not change")

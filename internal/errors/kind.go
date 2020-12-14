@@ -8,6 +8,7 @@ const (
 	Parameter
 	Integrity
 	Search
+	Password
 )
 
 func (e Kind) String() string {
@@ -16,5 +17,6 @@ func (e Kind) String() string {
 		Parameter: "parameter violation",
 		Integrity: "integrity violation",
 		Search:    "search issue",
+		Password:  "password violation",
 	}[e]
 }

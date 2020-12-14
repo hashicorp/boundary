@@ -99,7 +99,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	}
 	sess, _, err := repo.LookupSession(ctx, id)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", id)
 		}
 		return nil, err

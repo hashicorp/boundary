@@ -152,7 +152,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		},
 	)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return nil, nil, nil, nil
 		}
 		return nil, nil, nil, err

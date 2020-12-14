@@ -195,7 +195,7 @@ func TestConnection_Delete(t *testing.T) {
 			foundConnection.PublicId = tt.connection.PublicId
 			err = rw.LookupById(context.Background(), &foundConnection)
 			require.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }

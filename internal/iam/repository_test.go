@@ -242,7 +242,7 @@ func TestRepository_update(t *testing.T) {
 			},
 			wantUpdatedRows: 0,
 			wantErr:         true,
-			wantErrMsg:      "update: getting update fields failed: fieldMashPaths and setToNullPaths cannot intersect",
+			wantErrMsg:      "db.DoTx: db.Update: getting update fields failed: common.UpdateFields: fieldMashPaths and setToNullPaths cannot intersect: parameter violation: error #100",
 		},
 		{
 			name: "only-field-masks",

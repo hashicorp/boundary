@@ -193,7 +193,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.User, error) {
 	}
 	u, accts, err := repo.LookupUser(ctx, id)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("User %q doesn't exist.", id)
 		}
 		return nil, err
@@ -269,7 +269,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	}
 	rows, err := repo.DeleteUser(ctx, id)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("unable to delete user: %w", err)

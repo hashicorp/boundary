@@ -499,7 +499,7 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 				}
 				err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.IsNotFoundError(err))
 				return
 			}
 			require.NoError(err)

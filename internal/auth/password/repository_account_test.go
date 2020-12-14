@@ -626,7 +626,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		masks     []string
 		want      *Account
 		wantCount int
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name: "nil-Account",
@@ -635,7 +635,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     makeNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "nil-embedded-Account",
@@ -644,7 +644,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     makeEmbeddedNil(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "no-public-id",
@@ -653,7 +653,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     deletePublicId(),
 			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "updating-non-existent-Account",
@@ -664,7 +664,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
 			masks:     []string{"Name"},
-			wantIsErr: errors.ErrRecordNotFound,
+			wantIsErr: errors.RecordNotFound,
 		},
 		{
 			name: "empty-field-mask",
@@ -674,7 +674,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				},
 			},
 			chgFn:     changeName("test-update-name-repo"),
-			wantIsErr: errors.ErrEmptyFieldMask,
+			wantIsErr: errors.EmptyFieldMask,
 		},
 		{
 			name: "read-only-fields-in-field-mask",
@@ -685,7 +685,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "AuthMethodId"},
-			wantIsErr: errors.ErrInvalidFieldMask,
+			wantIsErr: errors.InvalidFieldMask,
 		},
 		{
 			name: "unknown-field-in-field-mask",
@@ -696,7 +696,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     changeName("test-update-name-repo"),
 			masks:     []string{"Bilbo"},
-			wantIsErr: errors.ErrInvalidFieldMask,
+			wantIsErr: errors.InvalidFieldMask,
 		},
 		{
 			name: "change-name",
@@ -843,7 +843,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     changeLoginName("KaZmIeRcZaK"),
 			masks:     []string{"LoginName"},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "change-login-name-to-short",
@@ -854,7 +854,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     changeLoginName("ka"),
 			masks:     []string{"LoginName"},
-			wantIsErr: ErrTooShort,
+			wantIsErr: errors.PasswordTooShort,
 		},
 		{
 			name: "delete-login-name",
@@ -865,7 +865,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:     changeLoginName(""),
 			masks:     []string{"LoginName"},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 	}
 
@@ -892,8 +892,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				orig = tt.chgFn(orig)
 			}
 			got, gotCount, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), orig, 1, tt.masks)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
@@ -956,7 +956,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
-		assert.True(errors.Is(errors.ErrRecordNotFound, err))
+		assert.True(errors.IsNotFoundError(err))
 	})
 
 	t.Run("valid-duplicate-names-diff-AuthMethods", func(t *testing.T) {
@@ -1034,7 +1034,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
-		assert.True(errors.Is(errors.ErrRecordNotFound, err))
+		assert.True(errors.IsNotFoundError(err))
 	})
 
 	t.Run("valid-duplicate-loginnames-diff-AuthMethods", func(t *testing.T) {
