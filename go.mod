@@ -9,7 +9,7 @@ replace github.com/hashicorp/boundary/sdk => ./sdk
 require (
 	github.com/99designs/keyring v1.1.6
 	github.com/armon/go-metrics v0.3.5
-	github.com/bufbuild/buf v0.32.1
+	github.com/bufbuild/buf v0.33.0
 	github.com/fatih/color v1.10.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
 	github.com/go-bindata/go-bindata/v3 v3.1.3
@@ -53,8 +53,8 @@ require (
 	github.com/zalando/go-keyring v0.1.0
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20201208171446-5f87f3452ae9
-	golang.org/x/tools v0.0.0-20201211025543-abf6a1d87e11
-	google.golang.org/genproto v0.0.0-20201211151036-40ec1c210f7a
+	golang.org/x/tools v0.0.0-20201211185031-d93e913c1a58
+	google.golang.org/genproto v0.0.0-20201214200347-8c77b98c765d
 	google.golang.org/grpc v1.34.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.0.1
 	google.golang.org/protobuf v1.25.1-0.20201020201750-d3470999428b
