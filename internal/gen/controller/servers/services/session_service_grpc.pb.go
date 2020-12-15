@@ -22,6 +22,8 @@ type SessionServiceClient interface {
 	LookupSession(ctx context.Context, in *LookupSessionRequest, opts ...grpc.CallOption) (*LookupSessionResponse, error)
 	// ActivateSession allows a worker to activate a session on a controller.
 	ActivateSession(ctx context.Context, in *ActivateSessionRequest, opts ...grpc.CallOption) (*ActivateSessionResponse, error)
+	// CancelSession allows a worker to request that the controller cancel a session.
+	CancelSession(ctx context.Context, in *CancelSessionRequest, opts ...grpc.CallOption) (*CancelSessionResponse, error)
 	// AuthorizeConnection allows a worker to activate a session on a controller.
 	AuthorizeConnection(ctx context.Context, in *AuthorizeConnectionRequest, opts ...grpc.CallOption) (*AuthorizeConnectionResponse, error)
 	// ConnectConnection updates a connection to set it to connected
@@ -50,6 +52,15 @@ func (c *sessionServiceClient) LookupSession(ctx context.Context, in *LookupSess
 func (c *sessionServiceClient) ActivateSession(ctx context.Context, in *ActivateSessionRequest, opts ...grpc.CallOption) (*ActivateSessionResponse, error) {
 	out := new(ActivateSessionResponse)
 	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.SessionService/ActivateSession", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sessionServiceClient) CancelSession(ctx context.Context, in *CancelSessionRequest, opts ...grpc.CallOption) (*CancelSessionResponse, error) {
+	out := new(CancelSessionResponse)
+	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.SessionService/CancelSession", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -92,6 +103,8 @@ type SessionServiceServer interface {
 	LookupSession(context.Context, *LookupSessionRequest) (*LookupSessionResponse, error)
 	// ActivateSession allows a worker to activate a session on a controller.
 	ActivateSession(context.Context, *ActivateSessionRequest) (*ActivateSessionResponse, error)
+	// CancelSession allows a worker to request that the controller cancel a session.
+	CancelSession(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error)
 	// AuthorizeConnection allows a worker to activate a session on a controller.
 	AuthorizeConnection(context.Context, *AuthorizeConnectionRequest) (*AuthorizeConnectionResponse, error)
 	// ConnectConnection updates a connection to set it to connected
@@ -110,6 +123,9 @@ func (UnimplementedSessionServiceServer) LookupSession(context.Context, *LookupS
 }
 func (UnimplementedSessionServiceServer) ActivateSession(context.Context, *ActivateSessionRequest) (*ActivateSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ActivateSession not implemented")
+}
+func (UnimplementedSessionServiceServer) CancelSession(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CancelSession not implemented")
 }
 func (UnimplementedSessionServiceServer) AuthorizeConnection(context.Context, *AuthorizeConnectionRequest) (*AuthorizeConnectionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AuthorizeConnection not implemented")
@@ -165,6 +181,24 @@ func _SessionService_ActivateSession_Handler(srv interface{}, ctx context.Contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SessionServiceServer).ActivateSession(ctx, req.(*ActivateSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SessionService_CancelSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SessionServiceServer).CancelSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.servers.services.v1.SessionService/CancelSession",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SessionServiceServer).CancelSession(ctx, req.(*CancelSessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -234,6 +268,10 @@ var _SessionService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ActivateSession",
 			Handler:    _SessionService_ActivateSession_Handler,
+		},
+		{
+			MethodName: "CancelSession",
+			Handler:    _SessionService_CancelSession_Handler,
 		},
 		{
 			MethodName: "AuthorizeConnection",
