@@ -15,6 +15,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* controller, worker, cli: When the client quits before the session time is
+  over, but in a manner where the TOFU token will be locked, attempt canceling
+  the session rather than leaving it open to time out
+  ([PR](https://github.com/hashicorp/boundary/pull/831))
 * controller: Improved error handling in hosts, host catalog and host set
   ([PR](https://github.com/hashicorp/boundary/pull/786))
 * controller: Relax account login name constraints to allow dash as valid character 
