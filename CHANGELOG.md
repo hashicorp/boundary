@@ -4,6 +4,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## vNext
 
+### Changes/Deprecations
+
+* controller: Switch the session connection limit for dev mode and the initial
+  target when doing database initialization to `-1`. This makes it easier for
+  people to start understanding Boundary while not hitting issues related to
+  some programs/protocols needing multiple connections as they may not be easy
+  for new users to understand.
+  ([PR](https://github.com/hashicorp/boundary/pull/814))
+
 ### New and Improved
 
 * controller: Improved error handling in db
@@ -11,10 +20,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * controller: Improved error handling in hosts, host catalog and host set
   ([PR](https://github.com/hashicorp/boundary/pull/786))
-  
 * controller: Relax account login name constraints to allow dash as valid character 
   ([Issue](https://github.com/hashicorp/boundary/issues/759))
   ([PR](https://github.com/hashicorp/boundary/pull/806))
+* cli/connect/http: Pass endpoint address through to allow setting TLS server
+  name directly in most cases
+  ([PR](https://github.com/hashicorp/boundary/pull/811))
+* cli/connect/kube: New `kube` subcommand for `boundary connect` that makes it
+  easy to route `kubectl` commands through Boundary, including when using
+  `kubectl proxy` ([PR](https://github.com/hashicorp/boundary/pull/816))
 
 ### Bug Fixes
 

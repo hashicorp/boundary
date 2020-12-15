@@ -442,6 +442,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return 0
 	}
 
+	c.srv.DevTargetSessionConnectionLimit = -1
 	t, err := c.srv.CreateInitialTarget(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial target: %w", err).Error())

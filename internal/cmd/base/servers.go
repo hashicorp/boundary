@@ -232,7 +232,7 @@ func (b *Server) PrintInfo(ui cli.Ui) {
 		}
 	}
 	sort.Strings(b.InfoKeys)
-	ui.Output(fmt.Sprintf("==> Boundary server configuration:\n"))
+	ui.Output("==> Boundary server configuration:\n")
 	for _, k := range b.InfoKeys {
 		ui.Output(fmt.Sprintf(
 			"%s%s: %s",
@@ -244,7 +244,7 @@ func (b *Server) PrintInfo(ui cli.Ui) {
 
 	// Output the header that the server has started
 	if !b.CombineLogs {
-		ui.Output(fmt.Sprintf("==> Boundary server started! Log data will stream in below:\n"))
+		ui.Output("==> Boundary server started! Log data will stream in below:\n")
 	}
 }
 
