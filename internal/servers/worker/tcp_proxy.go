@@ -10,9 +10,16 @@ import (
 	"nhooyr.io/websocket"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/libs/wsconn"
 )
 
-func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAddr, conn *websocket.Conn, si *sessionInfo, connectionId, endpoint string) {
+func (w *Worker) handleTcpProxyV12(
+	connCtx context.Context,
+	version uint,
+	clientAddr *net.TCPAddr,
+	conn *websocket.Conn,
+	si *sessionInfo,
+	connectionId, endpoint string) {
 	si.RLock()
 	sessionId := si.lookupSessionResponse.GetAuthorization().GetSessionId()
 	si.RUnlock()
@@ -58,20 +65,29 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 	si.Unlock()
 
 	// Get a wrapped net.Conn so we can use io.Copy
-	netConn := websocket.NetConn(connCtx, conn, websocket.MessageBinary)
+	var netConn net.Conn
+	switch version {
+	case 2:
+		netConn = wsconn.NewCCNetConn(connCtx, conn)
+	case 1:
+		netConn = websocket.NetConn(connCtx, conn, websocket.MessageBinary)
+	}
 
 	connWg := new(sync.WaitGroup)
 	connWg.Add(2)
 	go func() {
 		defer connWg.Done()
 		_, err := io.Copy(netConn, tcpRemoteConn)
+		netConn.Close()
+		tcpRemoteConn.Close()
 		w.logger.Debug("copy from client to endpoint done", "error", err)
 	}()
 	go func() {
 		defer connWg.Done()
 		_, err := io.Copy(tcpRemoteConn, netConn)
+		tcpRemoteConn.Close()
+		netConn.Close()
 		w.logger.Debug("copy from endpoint to client done", "error", err)
 	}()
 	connWg.Wait()
-
 }

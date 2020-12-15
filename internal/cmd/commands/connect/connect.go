@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	targetspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
+	"github.com/hashicorp/boundary/internal/libs/wsconn"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -636,7 +637,7 @@ func (c *Command) handleConnection(
 			HTTPClient: &http.Client{
 				Transport: transport,
 			},
-			Subprotocols: []string{globals.TcpProxyV1},
+			Subprotocols: []string{globals.TcpProxyV2, globals.TcpProxyV1},
 		},
 	)
 	if err != nil {
@@ -657,7 +658,10 @@ func (c *Command) handleConnection(
 		return errors.New("Response header is nil")
 	}
 	negProto := resp.Header.Get("Sec-WebSocket-Protocol")
-	if negProto != globals.TcpProxyV1 {
+	switch negProto {
+	case globals.TcpProxyV2:
+	case globals.TcpProxyV1:
+	default:
 		return fmt.Errorf("Unexpected negotiated protocol: %s", negProto)
 	}
 
@@ -689,7 +693,13 @@ func (c *Command) handleConnection(
 	}
 
 	// Get a wrapped net.Conn so we can use io.Copy
-	netConn := websocket.NetConn(c.proxyCtx, conn, websocket.MessageBinary)
+	var netConn net.Conn
+	switch negProto {
+	case globals.TcpProxyV2:
+		netConn = wsconn.NewCCNetConn(c.proxyCtx, conn)
+	case globals.TcpProxyV1:
+		netConn = websocket.NetConn(c.proxyCtx, conn, websocket.MessageBinary)
+	}
 
 	localWg := new(sync.WaitGroup)
 	localWg.Add(2)

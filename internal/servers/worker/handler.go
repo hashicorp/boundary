@@ -78,7 +78,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		w.logger.Trace("found session in session info map")
 
 		opts := &websocket.AcceptOptions{
-			Subprotocols: []string{globals.TcpProxyV1},
+			Subprotocols: []string{globals.TcpProxyV2, globals.TcpProxyV1},
 		}
 		conn, err := websocket.Accept(wr, r, opts)
 		if err != nil {
@@ -89,7 +89,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		// Later calls will cause this to noop if they return a different status
 		defer conn.Close(websocket.StatusNormalClosure, "done")
 
-		w.logger.Trace("websocket upgrade done")
+		w.logger.Debug("websocket upgrade done", "protocol", conn.Subprotocol())
 
 		connCtx, connCancel := context.WithDeadline(r.Context(), expiration.AsTime())
 		defer connCancel()
@@ -106,7 +106,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			return
 		}
 
-		w.logger.Trace("proxy handshake finished")
+		w.logger.Debug("proxy handshake finished")
 
 		if tofuToken != "" {
 			if tofuToken != handshake.GetTofuToken() {
@@ -155,7 +155,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		connectionLimit := si.lookupSessionResponse.GetConnectionLimit()
 		si.Unlock()
 
-		w.logger.Trace("authorized connection", "connection_id", ci.id)
+		w.logger.Debug("authorized connection", "connection_id", ci.id)
 
 		handshakeResult := &proxy.HandshakeResult{
 			Expiration:      expiration,
@@ -169,8 +169,10 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		}
 
 		switch conn.Subprotocol() {
+		case globals.TcpProxyV2:
+			w.handleTcpProxyV12(connCtx, 2, clientAddr, conn, si, ci.id, endpoint)
 		case globals.TcpProxyV1:
-			w.handleTcpProxyV1(connCtx, clientAddr, conn, si, ci.id, endpoint)
+			w.handleTcpProxyV12(connCtx, 1, clientAddr, conn, si, ci.id, endpoint)
 		default:
 			conn.Close(websocket.StatusProtocolError, "unsupported-protocol")
 			return
