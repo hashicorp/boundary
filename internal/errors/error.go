@@ -117,8 +117,8 @@ func Convert(e error) *Err {
 	if e == nil {
 		return nil
 	}
-	// TODO instead of casting the error here, we should do an AS.
-	// Currently doing an AS loses any additional context added by non-refactored packages
+	// TODO instead of casting the error here, we should do an As.
+	// Currently doing an As loses any additional context added by non-refactored packages
 	// that are still wrapping with stdlib
 	if err, ok := e.(*Err); ok {
 		return err
