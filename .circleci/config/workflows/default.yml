@@ -1,2 +1,7 @@
 jobs:
   - build
+  - algolia-index:
+      filters:
+          branches:
+            only:
+              - stable-website

@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/router'
-import Head from 'next/head'
 import Link from 'next/link'
 import OperationObject from './partials/operation-object'
-import DocsPage from '@hashicorp/react-docs-page'
+import Head from 'next/head'
+import HashiHead from '@hashicorp/react-head'
+import DocsSidenav from '@hashicorp/react-docs-sidenav'
+import Content from '@hashicorp/react-content'
 import { getPathsFromSchema, getPropsForPage } from './utils/routing-utils'
-import styles from './openapi-page.module.css'
+import styles from './style.module.css'
 import useOnClickOutside from 'lib/hooks/use-on-click-outside'
 
 function OpenApiPage({
@@ -31,63 +33,63 @@ function OpenApiPage({
 
   return (
     <div className={styles.root} data-theme={productSlug}>
-      <DocsPage
-        head={{
-          is: Head,
-          title: `${pageTitle} | ${productName} by HashiCorp`,
-          description: info.description,
-          siteName: `${productName} by HashiCorp`,
-        }}
-        product="boundary"
-        resourceURL={`https://github.com/hashicorp/${productSlug}`}
-        sidenav={{
-          Link,
-          currentPage: router.asPath,
-          category: pathFromRoot,
-          disableFilter: true,
-          order: sidenavOrder,
-          data: [],
-        }}
-      >
-        {operationCategory ? (
-          <div>
-            <p className={`${styles.pageHeading} g-type-display-2`}>
-              {info.title}
-            </p>
-            <h1 className={`${styles.categoryHeading} g-type-display-4`}>
-              {operationCategory.name}
-            </h1>
-            <div ref={operationsRef}>
-              {operationCategory.operations.map((op) => {
-                const isExpanded =
-                  expandedOperations.indexOf(op.operationId) !== -1
+      <HashiHead
+        is={Head}
+        title={`${pageTitle} | ${productName} by HashiCorp`}
+        description={info.description}
+        siteName={`${productName} by HashiCorp`}
+      />
+      <DocsSidenav
+        Link={Link}
+        currentPage={router.asPath}
+        category={pathFromRoot}
+        disableFilter={true}
+        order={sidenavOrder}
+        data={[]}
+      />
+      <Content
+        product={productSlug}
+        content={
+          operationCategory ? (
+            <>
+              <p className={`${styles.pageHeading} g-type-display-2`}>
+                {info.title}
+              </p>
+              <h1 className={`${styles.categoryHeading} g-type-display-4`}>
+                {operationCategory.name}
+              </h1>
+              <div ref={operationsRef}>
+                {operationCategory.operations.map((op) => {
+                  const isExpanded =
+                    expandedOperations.indexOf(op.operationId) !== -1
 
-                return (
-                  <OperationObject
-                    key={op.__type + op.__path}
-                    path={op.__path}
-                    type={op.__type}
-                    data={op}
-                    isCollapsed={!isExpanded}
-                    setIsCollapsed={(isCollapsed) =>
-                      setOperationState(op.operationId, !isCollapsed)
-                    }
-                  />
-                )
-              })}
-            </div>
-          </div>
-        ) : (
-          <div>
-            <h1 className={`${styles.pageHeading} g-type-display-2`}>
-              {info.title}
-            </h1>
-            <p className={`${styles.landingPlaceholder} g-type-body-long`}>
-              Select a service from the sidebar.
-            </p>
-          </div>
-        )}
-      </DocsPage>
+                  return (
+                    <OperationObject
+                      key={op.__type + op.__path}
+                      path={op.__path}
+                      type={op.__type}
+                      data={op}
+                      isCollapsed={!isExpanded}
+                      setIsCollapsed={(isCollapsed) =>
+                        setOperationState(op.operationId, !isCollapsed)
+                      }
+                    />
+                  )
+                })}
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className={`${styles.pageHeading} g-type-display-2`}>
+                {info.title}
+              </h1>
+              <p className={`${styles.landingPlaceholder} g-type-body-long`}>
+                Select a service from the sidebar.
+              </p>
+            </>
+          )
+        }
+      />
     </div>
   )
 }

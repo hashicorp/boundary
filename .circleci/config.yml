@@ -494,6 +494,17 @@ jobs:
         name: Save package cache
         paths:
         - .buildcache/packages/store
+  algolia-index:
+    docker:
+    - image: docker.mirror.hashicorp.services/node:12
+    steps:
+    - checkout
+    - run:
+        command: |-
+          cd website/
+          npm install
+          node scripts/index_search_content.js
+        name: Push content to Algolia Index
   linux_386_package:
     docker:
     - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
@@ -1495,4 +1506,9 @@ workflows:
   default:
     jobs:
     - build
+    - algolia-index:
+        filters:
+          branches:
+            only:
+              - stable-website
   version: 2

@@ -2,7 +2,6 @@ import styles from './branded-cta.module.css'
 import Button from '@hashicorp/react-button'
 
 export default function BrandedCta({ heading, content, links }) {
-
   return (
     <div className={styles.brandedCta}>
       <div className={`g-grid-container ${styles.contentContainer}`}>
@@ -30,7 +29,7 @@ export default function BrandedCta({ heading, content, links }) {
                   linkType={linkType}
                   theme={{
                     variant: buttonVariant,
-                    brand: 'red',
+                    brand: 'boundary',
                     background: 'light',
                   }}
                   title={link.text}

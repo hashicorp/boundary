@@ -9,7 +9,7 @@
     }
 
     & a {
-      color: var(--red);
+      color: var(--boundary);
     }
   }
 }
