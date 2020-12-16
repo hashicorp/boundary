@@ -37,6 +37,8 @@ import (
 	"nhooyr.io/websocket/wspb"
 )
 
+const sessionCancelTimeout = 10 * time.Second
+
 type SessionInfo struct {
 	Address         string    `json:"address"`
 	Port            int       `json:"port"`
@@ -613,7 +615,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 
 	if sendSessionCancel {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
 		wsConn, err := c.getWsConn(ctx, workerAddr, transport)
 		if err != nil {
 			c.Error(fmt.Errorf("error fetching connection to send session teardown request to worker: %w", err).Error())
