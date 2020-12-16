@@ -37,6 +37,8 @@ import (
 	"nhooyr.io/websocket/wspb"
 )
 
+const sessionCancelTimeout = 10 * time.Second
+
 type SessionInfo struct {
 	Address         string    `json:"address"`
 	Port            int       `json:"port"`
@@ -539,12 +541,17 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.connWg.Add(1)
 			go func() {
 				defer listeningConn.Close()
-				if err := c.handleConnection(
-					listeningConn,
+				defer c.connWg.Done()
+				wsConn, err := c.getWsConn(
+					c.proxyCtx,
 					workerAddr,
-					tofuToken,
-					transport); err != nil {
+					transport)
+				if err != nil {
 					c.Error(err.Error())
+				} else {
+					if err := c.runTcpProxyV1(wsConn, listeningConn, tofuToken); err != nil {
+						c.Error(err.Error())
+					}
 				}
 			}()
 		}
@@ -588,20 +595,36 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 
 	termInfo := TerminationInfo{Reason: "Unknown"}
+	sendSessionCancel := false
 	select {
 	case <-c.Context.Done():
 		termInfo.Reason = "Received shutdown signal"
+		sendSessionCancel = true
 	case <-timer.C:
 		termInfo.Reason = "Session has expired"
 	default:
 		if c.execCmdReturnValue != nil {
 			// Don't print out in this case, so ensure we clear it
 			termInfo.Reason = ""
+			sendSessionCancel = true
 		} else {
 			if c.connectionsLeft.Load() == 0 {
 				termInfo.Reason = "No connections left in session"
 			}
 		}
+	}
+
+	if sendSessionCancel {
+		ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
+		wsConn, err := c.getWsConn(ctx, workerAddr, transport)
+		if err != nil {
+			c.Error(fmt.Errorf("error fetching connection to send session teardown request to worker: %w", err).Error())
+		} else {
+			if err := c.sendSessionTeardown(ctx, wsConn, tofuToken); err != nil {
+				c.Error(fmt.Errorf("error sending session teardown request to worker: %w", err).Error())
+			}
+		}
+		cancel()
 	}
 
 	if termInfo.Reason != "" {
@@ -621,16 +644,13 @@ func (c *Command) Run(args []string) (retCode int) {
 	return
 }
 
-func (c *Command) handleConnection(
-	listeningConn *net.TCPConn,
+func (c *Command) getWsConn(
+	ctx context.Context,
 	workerAddr string,
-	tofuToken string,
-	transport *http.Transport) error {
-
-	defer c.connWg.Done()
+	transport *http.Transport) (*websocket.Conn, error) {
 
 	conn, resp, err := websocket.Dial(
-		c.proxyCtx,
+		ctx,
 		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
 		&websocket.DialOptions{
 			HTTPClient: &http.Client{
@@ -642,31 +662,53 @@ func (c *Command) handleConnection(
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "tls: internal error"):
-			return errors.New("Session is unauthorized")
+			return nil, errors.New("Session is unauthorized")
 		case strings.Contains(err.Error(), "connect: connection refused"):
-			return fmt.Errorf("Unable to connect to worker at %s", workerAddr)
+			return nil, fmt.Errorf("Unable to connect to worker at %s", workerAddr)
 		default:
-			return fmt.Errorf("Error dialing the worker: %w", err)
+			return nil, fmt.Errorf("Error dialing the worker: %w", err)
 		}
 	}
 
 	if resp == nil {
-		return errors.New("Response from worker is nil")
+		return nil, errors.New("Response from worker is nil")
 	}
 	if resp.Header == nil {
-		return errors.New("Response header is nil")
+		return nil, errors.New("Response header is nil")
 	}
 	negProto := resp.Header.Get("Sec-WebSocket-Protocol")
 	if negProto != globals.TcpProxyV1 {
-		return fmt.Errorf("Unexpected negotiated protocol: %s", negProto)
+		return nil, fmt.Errorf("Unexpected negotiated protocol: %s", negProto)
+	}
+	return conn, nil
+}
+
+func (c *Command) sendSessionTeardown(
+	ctx context.Context,
+	wsConn *websocket.Conn,
+	tofuToken string) error {
+
+	handshake := proxy.ClientHandshake{
+		TofuToken: tofuToken,
+		Command:   proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL,
+	}
+	if err := wspb.Write(ctx, wsConn, &handshake); err != nil {
+		return fmt.Errorf("error sending teardown handshake to worker: %w", err)
 	}
 
+	return nil
+}
+
+func (c *Command) runTcpProxyV1(
+	wsConn *websocket.Conn,
+	listeningConn *net.TCPConn,
+	tofuToken string) error {
 	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
-	if err := wspb.Write(c.proxyCtx, conn, &handshake); err != nil {
+	if err := wspb.Write(c.proxyCtx, wsConn, &handshake); err != nil {
 		return fmt.Errorf("error sending handshake to worker: %w", err)
 	}
 	var handshakeResult proxy.HandshakeResult
-	if err := wspb.Read(c.proxyCtx, conn, &handshakeResult); err != nil {
+	if err := wspb.Read(c.proxyCtx, wsConn, &handshakeResult); err != nil {
 		switch {
 		case strings.Contains(err.Error(), "unable to authorize connection"):
 			// There's no reason to think we'd be able to authorize any more
@@ -689,7 +731,7 @@ func (c *Command) handleConnection(
 	}
 
 	// Get a wrapped net.Conn so we can use io.Copy
-	netConn := websocket.NetConn(c.proxyCtx, conn, websocket.MessageBinary)
+	netConn := websocket.NetConn(c.proxyCtx, wsConn, websocket.MessageBinary)
 
 	localWg := new(sync.WaitGroup)
 	localWg.Add(2)

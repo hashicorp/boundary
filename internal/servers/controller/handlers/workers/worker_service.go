@@ -183,6 +183,29 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 	return resp, nil
 }
 
+func (ws *workerServiceServer) CancelSession(ctx context.Context, req *pbs.CancelSessionRequest) (*pbs.CancelSessionResponse, error) {
+	ws.logger.Trace("got cancel session request from worker", "session_id", req.GetSessionId())
+
+	sessRepo, err := ws.sessionRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
+	}
+
+	ses, _, err := sessRepo.LookupSession(ctx, req.GetSessionId())
+	if err != nil {
+		return nil, err
+	}
+
+	ses, err = sessRepo.CancelSession(ctx, req.GetSessionId(), ses.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.CancelSessionResponse{
+		Status: ses.States[0].Status.ProtoVal(),
+	}, nil
+}
+
 func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.ActivateSessionRequest) (*pbs.ActivateSessionResponse, error) {
 	ws.logger.Trace("got activate session request from worker", "session_id", req.GetSessionId())
 

@@ -17,6 +17,9 @@ service SessionService {
 	// ActivateSession allows a worker to activate a session on a controller.
 	rpc ActivateSession(ActivateSessionRequest) returns (ActivateSessionResponse) {}
 
+	// CancelSession allows a worker to request that the controller cancel a session.
+	rpc CancelSession(CancelSessionRequest) returns (CancelSessionResponse) {}
+
 	// AuthorizeConnection allows a worker to activate a session on a controller.
 	rpc AuthorizeConnection(AuthorizeConnectionRequest) returns (AuthorizeConnectionResponse) {}
 
@@ -58,6 +61,14 @@ message ActivateSessionRequest {
 }
 
 message ActivateSessionResponse {
+	controller.servers.services.v1.SESSIONSTATUS status = 10;
+}
+
+message CancelSessionRequest {
+	string session_id = 10;
+}
+
+message CancelSessionResponse {
 	controller.servers.services.v1.SESSIONSTATUS status = 10;
 }
 
