@@ -1510,5 +1510,5 @@ workflows:
         filters:
           branches:
             only:
-            - stable-website
+              - stable-website
   version: 2
