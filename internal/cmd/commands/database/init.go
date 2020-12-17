@@ -1,7 +1,6 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 
@@ -9,7 +8,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/migrations"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -265,25 +263,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	// Core migrations using the migration URL
 	{
 		c.srv.DatabaseUrl = strings.TrimSpace(migrationUrl)
-		ldb, err := sql.Open("postgres", c.srv.DatabaseUrl)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error opening database to check init status: %w", err).Error())
-			return 1
-		}
-		_, err = ldb.QueryContext(c.Context, "select version from schema_migrations")
-		switch {
-		case err == nil:
-			if base.Format(c.UI) == "table" {
-				c.UI.Info("Database already initialized.")
-				return 0
-			}
-		case errors.IsMissingTableError(err):
-			// Doesn't exist so we continue on
-		default:
-			c.UI.Error(fmt.Errorf("Error querying database for init status: %w", err).Error())
-			return 1
-		}
-		ran, err := db.InitStore("postgres", nil, c.srv.DatabaseUrl)
+		ran, err := db.InitStore(c.Context, "postgres", c.srv.DatabaseUrl)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
 			return 1

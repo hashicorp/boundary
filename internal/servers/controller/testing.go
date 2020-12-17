@@ -324,10 +324,10 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 
 	// Base server
-	tc.b = base.NewServer(nil)
-	tc.b.Command = &base.Command{
+	tc.b = base.NewServer(&base.Command{
+		Context:    ctx,
 		ShutdownCh: make(chan struct{}),
-	}
+	})
 
 	// Get dev config, or use a provided one
 	var err error
@@ -412,7 +412,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	if opts.DatabaseUrl != "" {
 		tc.b.DatabaseUrl = opts.DatabaseUrl
-		if _, err := db.InitStore("postgres", nil, tc.b.DatabaseUrl); err != nil {
+		if _, err := db.InitStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
 			t.Fatal(err)
 		}
 		if err := tc.b.ConnectToDatabase("postgres"); err != nil {
@@ -423,7 +423,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 				t.Fatal(err)
 			}
 			if !opts.DisableInitialLoginRoleCreation {
-				if _, err := tc.b.CreateInitialLoginRole(context.Background()); err != nil {
+				if _, err := tc.b.CreateInitialLoginRole(ctx); err != nil {
 					t.Fatal(err)
 				}
 				if !opts.DisableAuthMethodCreation {

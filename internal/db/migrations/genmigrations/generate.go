@@ -32,19 +32,21 @@ func generate(dialect string) {
 	sort.Strings(versions)
 
 	isDev := false
-	largestVer := 0
+	var lRelVer, largestSchemaVersion int
 	for _, ver := range versions {
 		var verVal int
 		switch ver {
 		case "dev":
-			verVal = largestVer + 1
+			verVal = lRelVer + 1
 		default:
-			if verVal, err = strconv.Atoi(ver); err != nil {
+			v, err := strconv.Atoi(ver)
+			if err != nil {
 				fmt.Printf("error reading major schema version directory %q.  Must be a number or 'dev'\n", ver)
 				os.Exit(1)
 			}
-			if verVal > largestVer {
-				largestVer = verVal
+			verVal = v
+			if verVal > lRelVer {
+				lRelVer = verVal
 			}
 		}
 
@@ -81,12 +83,17 @@ func generate(dialect string) {
 				continue
 			}
 
-			nameVer, err := strconv.Atoi(nameParts[0])
+			v, err := strconv.Atoi(nameParts[0])
 			if err != nil {
 				fmt.Printf("Unable to get file version from %q\n", name)
 				continue
 			}
-			vName = fmt.Sprintf("%02d_%s", (verVal*1000)+nameVer, nameParts[1])
+
+			fullV := (verVal * 1000) + v
+			vName = fmt.Sprintf("%02d_%s", fullV, nameParts[1])
+			if fullV > largestSchemaVersion {
+				largestSchemaVersion = fullV
+			}
 
 			if err := migrationsValueTemplate.Execute(valuesBuf, struct {
 				Name     string
@@ -101,13 +108,15 @@ func generate(dialect string) {
 		}
 	}
 	if err := migrationsTemplate.Execute(outBuf, struct {
-		Type         string
-		Values       string
-		DevMigration bool
+		Type                string
+		Values              string
+		DevMigration        bool
+		BinarySchemaVersion int
 	}{
-		Type:         dialect,
-		Values:       valuesBuf.String(),
-		DevMigration: isDev,
+		Type:                dialect,
+		Values:              valuesBuf.String(),
+		DevMigration:        isDev,
+		BinarySchemaVersion: largestSchemaVersion,
 	}); err != nil {
 		fmt.Printf("error executing migrations value template for dialect %s: %s", dialect, err)
 		os.Exit(1)
@@ -128,10 +137,16 @@ import (
 	"bytes"
 )
 
-// DevMigration is true if the database schema that would be applied by
-// InitStore would be from files in the /dev directory which indicates it would
-// not be safe to run in a non dev environment.
-var DevMigration = {{ .DevMigration }}
+var (
+	// DevMigration is true if the database schema that would be applied by
+	// InitStore would be from files in the /dev directory which indicates it would
+	// not be safe to run in a non dev environment.
+	DevMigration = {{ .DevMigration }}
+	
+	// BinarySchemaVersion provides the database schema version supported by
+	// this binary.
+	BinarySchemaVersion = {{ .BinarySchemaVersion }}
+)
 
 var {{ .Type }}Migrations = map[string]*fakeFile{
 	"migrations": {

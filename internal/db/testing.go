@@ -36,13 +36,14 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*gorm.DB, strin
 			assert.NoError(t, cleanup(), "Got error cleaning up db in docker.")
 		})
 	default:
-		cleanup = func() error { return nil }
 		url = opts.withTestDatabaseUrl
 	}
-	_, err = InitStore(dialect, cleanup, url)
+
+	_, err = InitStore(context.TODO(), dialect, url)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Couldn't init store on existing db: %v", err)
 	}
+
 	db, err := gorm.Open(dialect, url)
 	if err != nil {
 		t.Fatal(err)

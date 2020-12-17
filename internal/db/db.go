@@ -1,15 +1,16 @@
 package db
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/hashicorp/boundary/internal/db/migrations"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-multierror"
 	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
 )
@@ -63,43 +64,33 @@ func Migrate(connectionUrl string, migrationsDirectory string) error {
 
 // InitStore will execute the migrations needed to initialize the store. It
 // returns true if migrations actually ran; false if we were already current.
-func InitStore(dialect string, cleanup func() error, url string) (bool, error) {
-	var mErr *multierror.Error
-	// run migrations
-	source, err := migrations.NewMigrationSource(dialect)
+func InitStore(ctx context.Context, dialect string, url string) (bool, error) {
+	d, err := sql.Open(dialect, url)
 	if err != nil {
-		mErr = multierror.Append(mErr, fmt.Errorf("error creating migration driver: %w", err))
-		if cleanup != nil {
-			if err := cleanup(); err != nil {
-				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating driver: %w", err))
-			}
-		}
-		return false, mErr.ErrorOrNil()
+		return false, err
 	}
-	m, err := migrate.NewWithSourceInstance("httpfs", source, url)
-	if err != nil {
-		mErr = multierror.Append(mErr, fmt.Errorf("error creating migrations: %w", err))
-		if cleanup != nil {
-			if err := cleanup(); err != nil {
-				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating migrations: %w", err))
-			}
-		}
-		return false, mErr.ErrorOrNil()
 
+	sMan, err := schema.NewManager(ctx, dialect, d)
+	if err != nil {
+		return false, err
 	}
-	if err := m.Up(); err != nil {
-		if err == migrate.ErrNoChange {
-			return false, nil
-		}
-		mErr = multierror.Append(mErr, fmt.Errorf("error running migrations: %w", err))
-		if cleanup != nil {
-			if err := cleanup(); err != nil {
-				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from running migrations: %w", err))
-			}
-		}
-		return false, mErr.ErrorOrNil()
+
+	st, err := sMan.State(ctx)
+	if err != nil {
+		return false, err
 	}
-	return true, mErr.ErrorOrNil()
+	if st.Dirty {
+		return false, fmt.Errorf("The passed in database has had a failed migration applied to it.")
+	}
+
+	if st.InitializationStarted && st.CurrentSchemaVersion == st.BinarySchemaVersion {
+		return false, nil
+	}
+
+	if err := sMan.RollForward(ctx); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages []interface{}) {

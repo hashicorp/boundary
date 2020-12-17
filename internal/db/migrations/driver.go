@@ -6,12 +6,38 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4/source"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
 )
+
+func Queries() (up, down map[int][]byte) {
+	up, down = make(map[int][]byte), make(map[int][]byte)
+	for _, v := range postgresMigrations {
+		nParts := strings.SplitN(v.name, "_", 2)
+		if nParts[0] == "migrations" {
+			// Don't do anything, move onto the next one.
+			continue
+		}
+		ver, err := strconv.Atoi(nParts[0])
+		if err != nil {
+			fmt.Printf("Failed to convert name to version: %v", err)
+		}
+		upParts := strings.Split(v.name, ".")
+		switch upParts[1] {
+		case "up":
+			up[ver] = v.bytes
+		case "down":
+			down[ver] = v.bytes
+		default:
+			fmt.Printf("Failed to match %q", upParts[1])
+		}
+	}
+	return up, down
+}
 
 // migrationDriver satisfies the remaining need of the Driver interface, since
 // the package uses PartialDriver under the hood
