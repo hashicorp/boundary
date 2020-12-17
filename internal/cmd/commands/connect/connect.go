@@ -662,7 +662,7 @@ func (c *Command) getWsConn(
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "tls: internal error"):
-			return nil, errors.New("Session is unauthorized")
+			return nil, errors.New("Session credentials were not accepted, or session is unauthorized")
 		case strings.Contains(err.Error(), "connect: connection refused"):
 			return nil, fmt.Errorf("Unable to connect to worker at %s", workerAddr)
 		default:
