@@ -48,7 +48,7 @@ This would have to be run in each shell.
 If you're unable to install these packages, or don't want to, you can tell the
 Boundary authenticate command to not save the token to the operating system's
 key manager by setting `-token-name=none` flag or `BOUNDARY_TOKEN_NAME=none` env
-variable when running `boundary authentiate`. You'll be responsible for setting
+variable when running `boundary authenticate`. You'll be responsible for setting
 the token in subsequent commands via `-token` flag or `BOUNDARY_TOKEN` env
 variable. An easy way to do this would be to use the `-format=json` flag along
 with `jq` to pull the token value out of the response and place it wherever you
