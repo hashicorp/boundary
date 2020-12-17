@@ -19,20 +19,19 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withScopeId string
-	withPin     string
-	withId      string
-	withAction  action.Type
-	withType    resource.Type
-	withUserId  string
-	withKms     *kms.Kms
+	withScopeId                 string
+	withPin                     string
+	withId                      string
+	withAction                  action.Type
+	withType                    resource.Type
+	withUserId                  string
+	withKms                     *kms.Kms
+	withRecoveryTokenNotAllowed bool
+	withAnonymousUserNotAllowed bool
 }
 
 func getDefaultOptions() options {
-	return options{
-		withScopeId: "",
-		withUserId:  "",
-	}
+	return options{}
 }
 
 func WithScopeId(id string) Option {
@@ -74,5 +73,17 @@ func WithUserId(id string) Option {
 func WithKms(kms *kms.Kms) Option {
 	return func(o *options) {
 		o.withKms = kms
+	}
+}
+
+func WithRecoveryTokenNotAllowed(notAllowed bool) Option {
+	return func(o *options) {
+		o.withRecoveryTokenNotAllowed = notAllowed
+	}
+}
+
+func WithAnonymousUserNotAllowed(notAllowed bool) Option {
+	return func(o *options) {
+		o.withAnonymousUserNotAllowed = notAllowed
 	}
 }
