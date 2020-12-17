@@ -103,10 +103,50 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if err != nil {
 		return nil, err
 	}
+
+	finalItems := make([]*pb.Target, 0, len(ul))
 	for _, item := range ul {
+		orOkay := true
 		item.Scope = authResults.Scope
+		for _, orExpr := range req.ActionFilter {
+			andOkay := true
+			if len(orExpr) == 0 {
+				andOkay = false
+			}
+			andExpr := strings.Split(orExpr, ",")
+			for _, actStr := range andExpr {
+				if len(actStr) == 0 {
+					andOkay = false
+					break
+				}
+				act := action.Map[actStr]
+				if act == action.Unknown {
+					andOkay = false
+					break
+				}
+				opts := []auth.Option{
+					auth.WithScopeId(item.GetScopeId()),
+					auth.WithId(item.GetId()),
+					auth.WithType(resource.Target),
+					auth.WithAction(act),
+				}
+				if act == action.AuthorizeSession {
+					opts = append(opts, auth.WithAnonymousUserNotAllowed(true), auth.WithRecoveryTokenNotAllowed(true))
+				}
+				res := authResults.AdditionalVerification(ctx, opts...)
+				if res.Error != nil {
+					andOkay = false
+					break
+				}
+			}
+			orOkay = orOkay || andOkay
+		}
+		if orOkay {
+			finalItems = append(finalItems, item)
+		}
 	}
-	return &pbs.ListTargetsResponse{Items: ul}, nil
+
+	return &pbs.ListTargetsResponse{Items: finalItems}, nil
 }
 
 // GetTargets implements the interface pbs.TargetServiceServer.

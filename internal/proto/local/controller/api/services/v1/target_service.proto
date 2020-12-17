@@ -161,6 +161,7 @@ message GetTargetResponse {
 
 message ListTargetsRequest {
   string scope_id = 1;
+  repeated string action_filter = 2;
 }
 
 message ListTargetsResponse {
