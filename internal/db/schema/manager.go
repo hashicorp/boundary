@@ -22,9 +22,9 @@ type State struct {
 	BinarySchemaVersion   int
 }
 
-// BoundarySchemaManager provides a way to run operations and retrieve information regarding
-// the underlying boundary database.
-type BoundarySchemaManager struct {
+// Manager provides a way to run operations and retrieve information regarding
+// the underlying boundary database schema.
+type Manager struct {
 	db      *sql.DB
 	driver  *postgres.Postgres
 	dialect string
@@ -41,8 +41,8 @@ type BoundarySchemaManager struct {
 
 // NewManager creates a new schema manager. An error is returned
 // if the provided dialect is unrecognized or if the passed in db is unreachable.
-func NewManager(ctx context.Context, dialect string, db *sql.DB) (*BoundarySchemaManager, error) {
-	dbM := BoundarySchemaManager{db: db, dialect: dialect}
+func NewManager(ctx context.Context, dialect string, db *sql.DB) (*Manager, error) {
+	dbM := Manager{db: db, dialect: dialect}
 	var err error
 	switch dialect {
 	case "postgres", "postgresql":
@@ -59,26 +59,39 @@ func NewManager(ctx context.Context, dialect string, db *sql.DB) (*BoundarySchem
 }
 
 // SharedLock attempts to obtain a shared lock on the database.  This can fail if
-// an exclusive lock is already held with the same key.
-func (b *BoundarySchemaManager) SharedLock(ctx context.Context, k string) error {
-	query := `SELECT pg_advisory_lock_shared($1)`
-	if _, err := b.db.ExecContext(ctx, query, k); err != nil {
-		return fmt.Errorf("Unable to obtain the shared advisory lock %q", k)
+// an exclusive lock is already held with the same key.  An error is returned if
+// a lock was unable to be obtained.
+func (b *Manager) SharedLock(ctx context.Context, k int) error {
+	lockErr := fmt.Errorf("Unable to obtain the shared advisory lock %q", k)
+	r := b.db.QueryRowContext(ctx, "SELECT pg_try_advisory_lock_shared($1)", k)
+	if r.Err() != nil {
+		return lockErr
 	}
+	var gotLock bool
+	if err := r.Scan(&gotLock); err != nil || !gotLock {
+		return lockErr
+	}
+
 	return nil
 }
 
-// ExclusiveLock attempts to obtain an exclusive lock on the database.
-func (b *BoundarySchemaManager) ExclusiveLock(ctx context.Context, k string) error {
-	query := `SELECT pg_advisory_lock($1)`
-	if _, err := b.db.ExecContext(ctx, query, k); err != nil {
-		return fmt.Errorf("Unable to obtain the exclusive advisory lock %q", k)
+// ExclusiveLock attempts to obtain an exclusive lock on the database.  If the
+// lock can be obtained an error is returned.
+func (b *Manager) ExclusiveLock(ctx context.Context, k int) error {
+	lockErr := fmt.Errorf("Unable to obtain the exclusive advisory lock %q", k)
+	r := b.db.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", k)
+	if r.Err() != nil {
+		return lockErr
+	}
+	var gotLock bool
+	if err := r.Scan(&gotLock); err != nil || !gotLock {
+		return lockErr
 	}
 	return nil
 }
 
 // State provides the state of the boundary schema contained in the backing database.
-func (b *BoundarySchemaManager) State(ctx context.Context) (*State, error) {
+func (b *Manager) State(ctx context.Context) (*State, error) {
 	dbS := State{
 		BinarySchemaVersion: migrations.BinarySchemaVersion,
 	}
@@ -95,10 +108,10 @@ func (b *BoundarySchemaManager) State(ctx context.Context) (*State, error) {
 	return &dbS, nil
 }
 
-// RollForward updates the database schema to match the latest version known by the
-// boundary binary.  An error is not returned if the database is already at the most recent
-// version.
-func (b *BoundarySchemaManager) RollForward(ctx context.Context) error {
+// RollForward updates the database schema to match the latest version known by
+// the boundary binary.  An error is not returned if the database is already at
+// the most recent version.
+func (b *Manager) RollForward(ctx context.Context) error {
 	if err := b.driver.Lock(ctx); err != nil {
 		return err
 	}
@@ -118,19 +131,16 @@ func (b *BoundarySchemaManager) RollForward(ctx context.Context) error {
 	return b.runMigrations(ctx, newQueryCommand())
 }
 
-// runMigrations reads *Migration and error from a channel. Any other type
-// sent on this channel will result in a panic. Each migration is then
-// proxied to the database driver and run against the database.
-// Before running a newly received migration it will check if it's supposed
-// to stop execution because it might have received a stop signal on the
-// GracefulStop channel.
-func (b *BoundarySchemaManager) runMigrations(ctx context.Context, qp queryProvider) error {
+// runMigrations passes migration queries to a database driver and manages
+// the version and dirty bit.  Cancelation or deadline/timeout is managed
+// through the passed in context.
+func (b *Manager) runMigrations(ctx context.Context, qp queryProvider) error {
 	for qp.Next() {
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("Stopped during runMigrations: %w", ctx.Err())
 		default:
-			// context is not done yet.
+			// context is not done yet. Continue on to the next query to execute.
 		}
 
 		// set version with dirty state

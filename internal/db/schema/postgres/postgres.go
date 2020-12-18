@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
 	"github.com/hashicorp/go-multierror"
 	"github.com/lib/pq"
@@ -95,6 +97,40 @@ func WithInstance(ctx context.Context, instance *sql.DB, config *Config) (*Postg
 	}
 
 	if err := px.ensureVersionTable(ctx); err != nil {
+		return nil, err
+	}
+
+	return px, nil
+}
+
+func (p *Postgres) Open(ctx context.Context, u string) (*Postgres, error) {
+	purl, err := url.Parse(u)
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := sql.Open("postgres", migrate.FilterCustomQuery(purl).String())
+	if err != nil {
+		return nil, err
+	}
+
+	migrationsTable := purl.Query().Get("x-migrations-table")
+	statementTimeoutString := purl.Query().Get("x-statement-timeout")
+	statementTimeout := 0
+	if statementTimeoutString != "" {
+		statementTimeout, err = strconv.Atoi(statementTimeoutString)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	px, err := WithInstance(ctx, db, &Config{
+		DatabaseName:     purl.Path,
+		MigrationsTable:  migrationsTable,
+		StatementTimeout: time.Duration(statementTimeout) * time.Millisecond,
+	})
+
+	if err != nil {
 		return nil, err
 	}
 
