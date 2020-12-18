@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## vNext
+## 0.1.3
 
 ### Changes/Deprecations
 
