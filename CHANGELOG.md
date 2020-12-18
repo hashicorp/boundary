@@ -30,6 +30,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli/connect/kube: New `kube` subcommand for `boundary connect` that makes it
   easy to route `kubectl` commands through Boundary, including when using
   `kubectl proxy` ([PR](https://github.com/hashicorp/boundary/pull/816))
+* cli/server: Add some extra checks around valid/invalid combinations of
+  addresses to avoid hard-to-understand runtime issues
+  ([PR](https://github.com/hashicorp/boundary/pull/838))
 
 ### Bug Fixes
 
