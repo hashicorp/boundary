@@ -222,12 +222,17 @@ func (c *Command) Run(args []string) int {
 		if c.Config.Controller != nil {
 			switch len(c.Config.Worker.Controllers) {
 			case 0:
+				c.Config.Worker.Controllers = []string{clusterAddr}
 			case 1:
 				if c.Config.Worker.Controllers[0] == clusterAddr {
 					break
 				}
 				// Best effort see if it's a domain name and if not assume it must match
 				host, _, err := net.SplitHostPort(c.Config.Worker.Controllers[0])
+				if err != nil && strings.Contains(err.Error(), "missing port in address") {
+					err = nil
+					host = c.Config.Worker.Controllers[0]
+				}
 				if err == nil {
 					ip := net.ParseIP(host)
 					if ip == nil {
@@ -240,13 +245,16 @@ func (c *Command) Run(args []string) int {
 				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "controllers" key in the worker block with any value other than the controller cluster address/port when using IPs rather than DNS names`)
 				return 1
 			}
-			c.Config.Worker.Controllers = []string{clusterAddr}
 		}
 		for _, controller := range c.Config.Worker.Controllers {
 			host, _, err := net.SplitHostPort(controller)
 			if err != nil {
-				c.UI.Error(fmt.Errorf("Invalid controller address %q: %w", controller, err).Error())
-				return 1
+				if strings.Contains(err.Error(), "missing port in address") {
+					host = controller
+				} else {
+					c.UI.Error(fmt.Errorf("Invalid controller address %q: %w", controller, err).Error())
+					return 1
+				}
 			}
 			ip := net.ParseIP(host)
 			if ip != nil {
@@ -287,8 +295,12 @@ func (c *Command) Run(args []string) int {
 				}
 				host, _, err := net.SplitHostPort(ln.Address)
 				if err != nil {
-					c.UI.Error(fmt.Errorf("Invalid cluster listener address %q: %w", ln.Address, err).Error())
-					return 1
+					if strings.Contains(err.Error(), "missing port in address") {
+						host = ln.Address
+					} else {
+						c.UI.Error(fmt.Errorf("Invalid cluster listener address %q: %w", ln.Address, err).Error())
+						return 1
+					}
 				}
 				ip := net.ParseIP(host)
 				if ip != nil {
