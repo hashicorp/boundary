@@ -39,6 +39,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli: Ensure errors print to stderr when token is not found
   ([Issue](https://github.com/hashicorp/boundary/issues/791))
   ([PR](https://github.com/hashicorp/boundary/pull/799))
+* controller: Fix grant IDs being lowercased when being read back (and when
+  being used for permission evaluation)
+  ([Issue](https://github.com/hashicorp/boundary/issues/794))
+  ([PR](https://github.com/hashicorp/boundary/pull/839))
 
 ## v0.1.2
 
