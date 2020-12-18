@@ -1423,7 +1423,7 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 		require.NoError(err)
 		assert.Equal(expected[i], got.GrantStrings[i])
 		assert.Equal(expected[i], got.Grants[i].GetRaw())
-		assert.Equal(parsed.CanonicalString(), got.Grants[i].GetCanonical())
+		assert.Equal(v, got.Grants[i].GetCanonical())
 		j := got.Grants[i].GetJson()
 		require.NotNil(j)
 		assert.Equal(parsed.Id(), j.GetId())
@@ -1463,9 +1463,9 @@ func TestAddGrants(t *testing.T) {
 		},
 		{
 			name:     "Add duplicate grant on role with grant",
-			existing: []string{"id=1;actions=read"},
+			existing: []string{"id=aA1;actions=read"},
 			add:      []string{"id=*;type=*;actions=delete", "id=*;type=*;actions=delete"},
-			result:   []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			result:   []string{"id=aA1;actions=read", "id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add grant matching existing grant",

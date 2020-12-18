@@ -145,7 +145,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 		if !ok {
 			return fmt.Errorf("unable to interpret %q as string", "id")
 		}
-		g.id = strings.ToLower(id)
+		g.id = id
 	}
 	if rawType, ok := raw["type"]; ok {
 		typ, ok := rawType.(string)
@@ -197,7 +197,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 
 		switch kv[0] {
 		case "id":
-			g.id = strings.ToLower(kv[1])
+			g.id = kv[1]
 
 		case "type":
 			typeString := strings.ToLower(kv[1])
@@ -272,7 +272,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 	// if so
 	if grant.id != "" && strings.HasPrefix(grant.id, "{{") {
 		id := strings.TrimSuffix(strings.TrimPrefix(grant.id, "{{"), "}}")
-		id = strings.ToLower(strings.TrimSpace(id))
+		id = strings.TrimSpace(id)
 		switch id {
 		case "user.id":
 			if opts.withUserId != "" {
