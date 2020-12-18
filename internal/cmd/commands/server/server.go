@@ -226,9 +226,18 @@ func (c *Command) Run(args []string) int {
 				if c.Config.Worker.Controllers[0] == clusterAddr {
 					break
 				}
+				// Best effort see if it's a domain name and if not assume it must match
+				host, _, err := net.SplitHostPort(c.Config.Worker.Controllers[0])
+				if err == nil {
+					ip := net.ParseIP(host)
+					if ip == nil {
+						// Assume it's a domain name
+						break
+					}
+				}
 				fallthrough
 			default:
-				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "controllers" key in the worker block with any value other than the controller cluster address`)
+				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "controllers" key in the worker block with any value other than the controller cluster address/port when using IPs rather than DNS names`)
 				return 1
 			}
 			c.Config.Worker.Controllers = []string{clusterAddr}
