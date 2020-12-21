@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 )
 
-const SchemaAccessLockId = 865661975634167
+const SchemaAccessLockId = uint(3865661975)
 
 type ErrDirty struct {
 	Version int
