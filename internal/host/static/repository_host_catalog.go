@@ -128,7 +128,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			dbMask = append(dbMask, "description")
 
 		default:
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("field: %s", f))
+			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 
@@ -158,10 +158,13 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				db.WithOplog(oplogWrapper, metadata),
 				db.WithVersion(&version),
 			)
-			if err == nil && rowsUpdated > 1 {
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			if rowsUpdated > 1 {
 				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
-			return err
+			return nil
 		},
 	)
 
@@ -253,10 +256,13 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 				deleteCatalog,
 				db.WithOplog(oplogWrapper, metadata),
 			)
-			if err == nil && rowsDeleted > 1 {
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			if rowsDeleted > 1 {
 				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
-			return err
+			return nil
 		},
 	)
 

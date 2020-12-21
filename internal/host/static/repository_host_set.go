@@ -116,7 +116,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		case strings.EqualFold("Name", f):
 		case strings.EqualFold("Description", f):
 		default:
-			return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("field: %s", f))
+			return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 	var dbMask, nullFields []string
@@ -154,14 +154,17 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 			rowsUpdated, err = w.Update(ctx, returnedHostSet, dbMask, nullFields,
 				db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_UPDATE)),
 				db.WithVersion(&version))
-			if err == nil && rowsUpdated > 1 {
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			if rowsUpdated > 1 {
 				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
-			if err != nil {
-				return err
-			}
 			hosts, err = getHosts(ctx, reader, s.PublicId, limit)
-			return err
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
 		},
 	)
 
@@ -201,11 +204,17 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Opti
 				s = nil
 				return nil
 			}
-			return err
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
 		}
 		var err error
 		hosts, err = getHosts(ctx, reader, s.PublicId, limit)
-		return err
+		if err != nil {
+			return errors.Wrap(err, op)
+		}
+		return nil
 	})
 
 	if err != nil {
@@ -261,10 +270,13 @@ func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId str
 		func(_ db.Reader, w db.Writer) (err error) {
 			ds := s.clone()
 			rowsDeleted, err = w.Delete(ctx, ds, db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_DELETE)))
-			if err == nil && rowsDeleted > 1 {
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			if rowsDeleted > 1 {
 				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
-			return err
+			return nil
 		},
 	)
 

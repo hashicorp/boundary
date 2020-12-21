@@ -17,7 +17,7 @@ func newHostCatalogId() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "static.newHostCatalogId")
 	}
-	return id, err
+	return id, nil
 }
 
 func newHostId() (string, error) {
@@ -25,7 +25,7 @@ func newHostId() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "static.newHostId")
 	}
-	return id, err
+	return id, nil
 }
 
 func newHostSetId() (string, error) {
@@ -33,5 +33,5 @@ func newHostSetId() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "static.newHostSetId")
 	}
-	return id, err
+	return id, nil
 }
