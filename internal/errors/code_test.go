@@ -53,6 +53,26 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: EmptyFieldMask,
 		},
 		{
+			name: "PasswordTooShort",
+			c:    PasswordTooShort,
+			want: PasswordTooShort,
+		},
+		{
+			name: "PasswordUnsupportedConfiguration",
+			c:    PasswordUnsupportedConfiguration,
+			want: PasswordUnsupportedConfiguration,
+		},
+		{
+			name: "PasswordInvalidConfiguration",
+			c:    PasswordInvalidConfiguration,
+			want: PasswordInvalidConfiguration,
+		},
+		{
+			name: "PasswordsEqual",
+			c:    PasswordsEqual,
+			want: PasswordsEqual,
+		},
+		{
 			name: "CheckConstraint",
 			c:    CheckConstraint,
 			want: CheckConstraint,
@@ -71,6 +91,21 @@ func TestCode_Both_String_Info(t *testing.T) {
 			name: "RecordNotFound",
 			c:    RecordNotFound,
 			want: RecordNotFound,
+		},
+		{
+			name: "ColumnNotFound",
+			c:    ColumnNotFound,
+			want: ColumnNotFound,
+		},
+		{
+			name: "MaxRetries",
+			c:    MaxRetries,
+			want: MaxRetries,
+		},
+		{
+			name: "Exception",
+			c:    Exception,
+			want: Exception,
 		},
 		{
 			name: "MultipleRecords",

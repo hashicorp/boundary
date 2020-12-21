@@ -126,7 +126,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 		wantDup    bool
 		wantErr    bool
 		wantErrMsg string
-		wantIsErr  error
+		wantIsErr  errors.Code
 	}{
 		{
 			name: "valid-with-org",
@@ -166,7 +166,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `create: failed: pq: insert or update on table "iam_group_member_user" violates foreign key constraint`,
+			wantErrMsg: `db.Create: create failed: insert or update on table "iam_group_member_user" violates foreign key constraint`,
 		},
 		{
 			name: "bad-user-id",
@@ -180,7 +180,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `create: failed: pq: insert or update on table "iam_group_member_user" violates foreign key constraint`,
+			wantErrMsg: `db.Create: create failed: insert or update on table "iam_group_member_user" violates foreign key constraint`,
 		},
 		{
 			name: "missing-group-id",
@@ -196,7 +196,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "missing-user-id",
@@ -212,7 +212,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "dup-at-org",
@@ -227,7 +227,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `create: failed: pq: duplicate key value violates unique constraint "iam_group_member_user_pkey"`,
+			wantErrMsg: `db.Create: create failed: duplicate key value violates unique constraint "iam_group_member_user_pkey"`,
 		},
 	}
 
@@ -245,8 +245,8 @@ func Test_GroupMemberCreate(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
-				if tt.wantIsErr != nil {
-					assert.True(errors.Is(err, tt.wantIsErr))
+				if tt.wantIsErr != 0 {
+					assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				}
 				return
 			}
@@ -333,7 +333,7 @@ func Test_GroupMemberDelete(t *testing.T) {
 			found := allocGroupMember()
 			err = rw.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", tt.gm.GetGroupId(), tt.gm.GetMemberId())
 			require.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }

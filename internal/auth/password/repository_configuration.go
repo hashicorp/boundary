@@ -90,7 +90,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 		func(rr db.Reader, w db.Writer) error {
 			where, args := c.whereDup()
 			if err := rr.LookupWhere(ctx, newArgon2Conf, where, args...); err != nil {
-				if err != errors.ErrRecordNotFound {
+				if !errors.IsNotFoundError(err) {
 					return err
 				}
 				newArgon2Conf = c.clone()

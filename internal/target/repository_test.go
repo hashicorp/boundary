@@ -373,7 +373,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete target: failed record not found:",
+			wantErrMsg:      "delete target: failed db.LookupById: record not found",
 		},
 	}
 	for _, tt := range tests {
@@ -386,7 +386,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.IsNotFoundError(err))
 				return
 			}
 			assert.NoError(err)
@@ -694,7 +694,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 
 				err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.IsNotFoundError(err))
 				return
 			}
 			require.NoError(err)

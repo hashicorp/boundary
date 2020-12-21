@@ -13,11 +13,8 @@ func IsUniqueError(err error) bool {
 		return false
 	}
 
-	var domainErr *Err
-	if errors.As(err, &domainErr) {
-		if domainErr.Code == NotUnique {
-			return true
-		}
+	if Match(T(NotUnique), err) {
+		return true
 	}
 
 	var pqError *pq.Error
@@ -37,11 +34,8 @@ func IsCheckConstraintError(err error) bool {
 		return false
 	}
 
-	var domainErr *Err
-	if errors.As(err, &domainErr) {
-		if domainErr.Code == CheckConstraint {
-			return true
-		}
+	if Match(T(CheckConstraint), err) {
+		return true
 	}
 
 	var pqError *pq.Error
@@ -61,11 +55,8 @@ func IsNotNullError(err error) bool {
 		return false
 	}
 
-	var domainErr *Err
-	if errors.As(err, &domainErr) {
-		if domainErr.Code == NotNull {
-			return true
-		}
+	if Match(T(NotNull), err) {
+		return true
 	}
 
 	var pqError *pq.Error
@@ -97,11 +88,8 @@ func IsNotFoundError(err error) bool {
 		return false
 	}
 
-	var domainErr *Err
-	if errors.As(err, &domainErr) {
-		if domainErr.Code == RecordNotFound {
-			return true
-		}
+	if Match(T(RecordNotFound), err) {
+		return true
 	}
 
 	return false

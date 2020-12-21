@@ -14,11 +14,11 @@ var (
 
 	// ErrInvalidFieldMask is returned by update methods if the field mask
 	// contains unknown fields or fields that cannot be updated.
-	ErrInvalidFieldMask = E(WithCode(InvalidParameter), WithMsg("invalid field mask"))
+	ErrInvalidFieldMask = E(WithCode(InvalidFieldMask), WithMsg("invalid field mask"))
 
 	// ErrEmptyFieldMask is returned by update methods if the field mask is
 	// empty.
-	ErrEmptyFieldMask = E(WithCode(InvalidParameter), WithMsg("empty field mask"))
+	ErrEmptyFieldMask = E(WithCode(EmptyFieldMask), WithMsg("empty field mask"))
 
 	// ErrNotUnique is returned by create and update methods when a write
 	// to the repository resulted in a unique constraint violation.

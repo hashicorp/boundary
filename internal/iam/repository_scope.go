@@ -392,7 +392,7 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, opt .
 	scope := allocScope()
 	scope.PublicId = withPublicId
 	if err := r.reader.LookupByPublicId(ctx, &scope); err != nil {
-		if err == errors.ErrRecordNotFound {
+		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("lookup scope: failed %w fo %s", err, withPublicId)

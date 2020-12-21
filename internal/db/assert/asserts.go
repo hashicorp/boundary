@@ -3,8 +3,7 @@ package dbassert
 import (
 	"database/sql"
 
-	dbassert "github.com/hashicorp/dbassert"
-
+	"github.com/hashicorp/dbassert"
 	gormAssert "github.com/hashicorp/dbassert/gorm"
 	"github.com/stretchr/testify/assert"
 )

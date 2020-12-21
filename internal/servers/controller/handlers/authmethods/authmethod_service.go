@@ -178,7 +178,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 	}
 	u, err := repo.LookupAuthMethod(ctx, id)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
 		}
 		return nil, err
@@ -287,7 +287,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	}
 	rows, err := repo.DeleteAuthMethod(ctx, scopeId, id)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("unable to delete auth method: %w", err)

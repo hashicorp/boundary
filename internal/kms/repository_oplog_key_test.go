@@ -128,7 +128,7 @@ func TestRepository_CreateOplogKey(t *testing.T) {
 			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, opk.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(errors.Is(err, errors.ErrRecordNotFound))
+			assert.True(errors.IsNotFoundError(err))
 
 			assert.NotNil(opv.CreateTime)
 			foundKeyVersion, err := repo.LookupOplogKeyVersion(context.Background(), tt.args.keyWrapper, opv.PrivateId)
@@ -138,7 +138,7 @@ func TestRepository_CreateOplogKey(t *testing.T) {
 			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, opv.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(errors.Is(err, errors.ErrRecordNotFound))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }
@@ -163,7 +163,7 @@ func TestRepository_DeleteOplogKey(t *testing.T) {
 		args            args
 		wantRowsDeleted int
 		wantErr         bool
-		wantIsError     error
+		wantIsError     errors.Code
 	}{
 		{
 			name: "valid",
@@ -183,7 +183,7 @@ func TestRepository_DeleteOplogKey(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsError:     errors.ErrInvalidParameter,
+			wantIsError:     errors.InvalidParameter,
 		},
 		{
 			name: "not-found",
@@ -199,7 +199,7 @@ func TestRepository_DeleteOplogKey(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsError:     errors.ErrRecordNotFound,
+			wantIsError:     errors.RecordNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -209,13 +209,13 @@ func TestRepository_DeleteOplogKey(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, deletedRows)
-				if tt.wantIsError != nil {
-					assert.True(errors.Is(err, tt.wantIsError))
+				if tt.wantIsError != 0 {
+					assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				}
 				// make sure there was no oplog written
 				err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.True(errors.Is(errors.ErrRecordNotFound, err))
+				assert.True(errors.IsNotFoundError(err))
 				return
 			}
 			require.NoError(err)
@@ -223,12 +223,12 @@ func TestRepository_DeleteOplogKey(t *testing.T) {
 			foundKey, err := repo.LookupOplogKey(context.Background(), tt.args.key.PrivateId)
 			assert.Error(err)
 			assert.Nil(foundKey)
-			assert.True(errors.Is(err, errors.ErrRecordNotFound))
+			assert.True(errors.IsNotFoundError(err))
 
 			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }

@@ -60,15 +60,15 @@ func (t *Template) Error() string {
 	return "Template error"
 }
 
-// Match the template against the error.  The error must be a *Err, or match
-// will return false.  Matches all non-empty fields of the template against the
+// Match the template against the error.  The error must be of type *Err, or wrap an error of type *Err,
+// otherwise match will return false.  Matches all non-empty fields of the template against the
 // error.
 func Match(t *Template, err error) bool {
 	if t == nil || err == nil {
 		return false
 	}
-	e, ok := err.(*Err)
-	if !ok {
+	var e *Err
+	if !As(err, &e) {
 		return false
 	}
 

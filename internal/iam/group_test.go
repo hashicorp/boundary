@@ -171,7 +171,7 @@ func Test_GroupCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed: scope is not found",
+			wantErrMsg: "db.Create: vet for write failed: iam.validateScopeForWrite: scope is not found: search issue: error #1100",
 		},
 	}
 
@@ -247,7 +247,7 @@ func Test_GroupUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: vet for write failed: not allowed to change a resource's scope",
+			wantErrMsg: "db.Update: vet for write failed: iam.validateScopeForWrite: not allowed to change a resource's scope: parameter violation: error #100",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -278,7 +278,7 @@ func Test_GroupUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update: failed: pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
+			wantErrMsg: `db.Update: duplicate key value violates unique constraint "iam_group_name_scope_id_key": unique constraint violation: integrity violation: error #1002`,
 		},
 		{
 			name: "set description null",
@@ -427,7 +427,7 @@ func Test_GroupDelete(t *testing.T) {
 			foundGrp.PublicId = tt.group.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundGrp)
 			require.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }
