@@ -32,7 +32,7 @@ func TestNewUserRole(t *testing.T) {
 		args      args
 		want      *UserRole
 		wantErr   bool
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name: "valid-org",
@@ -68,7 +68,7 @@ func TestNewUserRole(t *testing.T) {
 			},
 			want:      nil,
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-user-id",
@@ -78,7 +78,7 @@ func TestNewUserRole(t *testing.T) {
 			},
 			want:      nil,
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -87,7 +87,7 @@ func TestNewUserRole(t *testing.T) {
 			got, err := NewUserRole(tt.args.roleId, tt.args.userId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				return
 			}
 			require.NoError(err)
@@ -112,7 +112,7 @@ func TestUserRole_Create(t *testing.T) {
 		wantDup    bool
 		wantErr    bool
 		wantErrMsg string
-		wantIsErr  error
+		wantIsErr  errors.Code
 	}{
 		{
 			name: "valid-with-org",
@@ -206,8 +206,8 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: vet for write failed: new user role: missing role id invalid parameter",
-			wantIsErr:  errors.ErrInvalidParameter,
+			wantErrMsg: "db.Create: iam.(UserRole).VetForWrite: missing role id: parameter violation: error #100",
+			wantIsErr:  errors.InvalidParameter,
 		},
 		{
 			name: "missing-user-id",
@@ -223,8 +223,8 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: vet for write failed: new user role: missing user id invalid parameter",
-			wantIsErr:  errors.ErrInvalidParameter,
+			wantErrMsg: "db.Create: iam.(UserRole).VetForWrite: missing user id: parameter violation: error #100",
+			wantIsErr:  errors.InvalidParameter,
 		},
 		{
 			name: "dup-at-org",
@@ -257,8 +257,8 @@ func TestUserRole_Create(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
-				if tt.wantIsErr != nil {
-					assert.True(errors.Is(err, tt.wantIsErr))
+				if tt.wantIsErr != 0 {
+					assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				}
 				return
 			}
@@ -395,7 +395,7 @@ func TestNewGroupRole(t *testing.T) {
 		args      args
 		want      *GroupRole
 		wantErr   bool
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name: "valid-org",
@@ -431,7 +431,7 @@ func TestNewGroupRole(t *testing.T) {
 			},
 			want:      nil,
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-group-id",
@@ -441,7 +441,7 @@ func TestNewGroupRole(t *testing.T) {
 			},
 			want:      nil,
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -450,7 +450,7 @@ func TestNewGroupRole(t *testing.T) {
 			got, err := NewGroupRole(tt.args.roleId, tt.args.groupId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				return
 			}
 			require.NoError(err)
@@ -475,7 +475,7 @@ func TestGroupRole_Create(t *testing.T) {
 		wantDup    bool
 		wantErr    bool
 		wantErrMsg string
-		wantIsErr  error
+		wantIsErr  errors.Code
 	}{
 		{
 			name: "valid-with-org",
@@ -569,8 +569,8 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: vet for write failed: new group role: missing role id invalid parameter",
-			wantIsErr:  errors.ErrInvalidParameter,
+			wantErrMsg: "db.Create: iam.(GroupRole).VetForWrite: missing role id: parameter violation: error #100",
+			wantIsErr:  errors.InvalidParameter,
 		},
 		{
 			name: "missing-user-id",
@@ -586,8 +586,8 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: vet for write failed: new group role: missing user id invalid parameter",
-			wantIsErr:  errors.ErrInvalidParameter,
+			wantErrMsg: "db.Create: iam.(GroupRole).VetForWrite: missing user id: parameter violation: error #100",
+			wantIsErr:  errors.InvalidParameter,
 		},
 		{
 			name: "dup-at-org",
@@ -635,8 +635,8 @@ func TestGroupRole_Create(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
-				if tt.wantIsErr != nil {
-					assert.True(errors.Is(err, tt.wantIsErr))
+				if tt.wantIsErr != 0 {
+					assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				}
 				return
 			}

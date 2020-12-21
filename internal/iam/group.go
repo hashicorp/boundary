@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -31,8 +30,9 @@ var _ db.VetForWriter = (*Group)(nil)
 // NewGroup creates a new in memory group with a scope (project/org)
 // and allowed options include: withDescripion, WithName.
 func NewGroup(scopeId string, opt ...Option) (*Group, error) {
+	const op = "iam.NewGroup"
 	if scopeId == "" {
-		return nil, fmt.Errorf("new group: missing scope id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	opts := getOpts(opt...)
 	g := &Group{
@@ -62,11 +62,12 @@ func allocGroup() Group {
 // VetForWrite implements db.VetForWrite() interface and validates the group
 // before it's written.
 func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.(Group).VetForWrite"
 	if g.PublicId == "" {
-		return fmt.Errorf("group vet for write: missing public id: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	if err := validateScopeForWrite(ctx, r, g, opType, opt...); err != nil {
-		return err
+		return errors.Wrap(err, op)
 	}
 	return nil
 }

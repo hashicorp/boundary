@@ -197,7 +197,7 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		require.Error(err)
 		assert.Nil(project)
 		assert.Equal(0, updatedRows)
-		assert.Contains(err.Error(), "update scope: you cannot change a scope's parent: invalid field mask")
+		assert.Contains(err.Error(), "iam.(Repository).UpdateScope: you cannot change a scope's parent: parameter violation: error #103")
 	})
 }
 
@@ -315,7 +315,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 			},
 			wantUpdatedRows: 0,
 			wantErr:         true,
-			wantErrMsg:      "update scope: missing scope: invalid parameter",
+			wantErrMsg:      "iam.(Repository).UpdateScope: missing scope: parameter violation: error #100",
 			wantNullFields:  nil,
 		},
 		{
@@ -334,7 +334,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 			},
 			wantUpdatedRows: 0,
 			wantErr:         true,
-			wantErrMsg:      "update scope: empty field mask",
+			wantErrMsg:      "iam.(Repository).UpdateScope: empty field mask, parameter violation: error #104",
 			wantNullFields:  nil,
 		},
 		{
@@ -398,7 +398,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 			wantDescription: "orig-" + id,
 			wantUpdatedRows: 0,
 			wantErr:         true,
-			wantErrMsg:      "update scope: you cannot change a scope's parent: invalid field mask",
+			wantErrMsg:      "iam.(Repository).UpdateScope: you cannot change a scope's parent: parameter violation: error #103",
 			wantNullFields:  nil,
 		},
 		{
@@ -418,7 +418,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 			},
 			wantUpdatedRows: 0,
 			wantErr:         true,
-			wantErrMsg:      "update scope: empty field mask",
+			wantErrMsg:      "am.(Repository).UpdateScope: empty field mask, parameter violation: error #104",
 			wantNullFields:  nil,
 		},
 	}

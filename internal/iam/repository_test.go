@@ -61,7 +61,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil kms",
+			wantErrString: "iam.NewRepository: nil kms: parameter violation: error #100",
 		},
 		{
 			name: "nil-writer",
@@ -72,7 +72,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil writer",
+			wantErrString: "iam.NewRepository: nil writer: parameter violation: error #100",
 		},
 		{
 			name: "nil-reader",
@@ -83,7 +83,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil reader",
+			wantErrString: "iam.NewRepository: nil reader: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {
@@ -92,7 +92,7 @@ func TestNewRepository(t *testing.T) {
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Equal(err.Error(), tt.wantErrString)
+				assert.Equal(tt.wantErrString, err.Error())
 				return
 			}
 			require.NoError(err)
@@ -136,7 +136,7 @@ func Test_Repository_create(t *testing.T) {
 		resource, err := repo.create(context.Background(), nil)
 		require.Error(err)
 		assert.Nil(resource)
-		assert.Equal(err.Error(), "error creating resource that is nil")
+		assert.Equal("iam.(Repository).create: missing resource: parameter violation: error #100", err.Error())
 	})
 }
 
@@ -165,7 +165,7 @@ func Test_Repository_delete(t *testing.T) {
 		deletedRows, err := repo.delete(context.Background(), nil, nil)
 		require.Error(err)
 		assert.Equal(0, deletedRows)
-		assert.Equal(err.Error(), "error deleting resource that is nil")
+		assert.Equal("iam.(Repository).delete: missing resource: parameter violation: error #100", err.Error())
 	})
 }
 
@@ -223,7 +223,7 @@ func TestRepository_update(t *testing.T) {
 			},
 			wantUpdatedRows: 0,
 			wantErr:         true,
-			wantErrMsg:      "error updating resource that is nil",
+			wantErrMsg:      "iam.(Repository).update: missing resource: parameter violation: error #100",
 		},
 		{
 			name: "intersection",
@@ -242,7 +242,7 @@ func TestRepository_update(t *testing.T) {
 			},
 			wantUpdatedRows: 0,
 			wantErr:         true,
-			wantErrMsg:      "db.DoTx: db.Update: getting update fields failed: common.UpdateFields: fieldMashPaths and setToNullPaths cannot intersect: parameter violation: error #100",
+			wantErrMsg:      "iam.(Repository).update: db.DoTx: iam.(Repository).update: db.Update: getting update fields failed: common.UpdateFields: fieldMashPaths and setToNullPaths cannot intersect: parameter violation: error #100",
 		},
 		{
 			name: "only-field-masks",

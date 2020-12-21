@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -24,12 +23,13 @@ var _ Cloneable = (*RoleGrant)(nil)
 var _ db.VetForWriter = (*RoleGrant)(nil)
 
 // NewRoleGrant creates a new in memory role grant
-func NewRoleGrant(roleId string, grant string, opt ...Option) (*RoleGrant, error) {
+func NewRoleGrant(roleId string, grant string, _ ...Option) (*RoleGrant, error) {
+	const op = "iam.NewRoleGrant"
 	if roleId == "" {
-		return nil, fmt.Errorf("new role grant: role id is not set: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing role id")
 	}
 	if grant == "" {
-		return nil, fmt.Errorf("new role grant: grant is empty: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing grant")
 	}
 
 	// Validate that the grant parses successfully. Note that we fake the scope
@@ -37,7 +37,7 @@ func NewRoleGrant(roleId string, grant string, opt ...Option) (*RoleGrant, error
 	// checking time and we just care that it parses correctly.
 	perm, err := perms.Parse("o_abcd1234", grant)
 	if err != nil {
-		return nil, fmt.Errorf("new role grant: error parsing grant string: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("parsing grant string"))
 	}
 	rg := &RoleGrant{
 		RoleGrant: &store.RoleGrant{
@@ -64,9 +64,10 @@ func (g *RoleGrant) Clone() interface{} {
 }
 
 // VetForWrite implements db.VetForWrite() interface
-func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (g *RoleGrant) VetForWrite(_ context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
+	const op = "iam.(RoleGrant).VetForWrite"
 	if g.RawGrant == "" {
-		return fmt.Errorf("vet role grant for writing: grant is empty: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "missing grant")
 	}
 
 	// Validate that the grant parses successfully. Note that we fake the scope
@@ -76,11 +77,11 @@ func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpTy
 	// anyways because it should still be part of the vetting process.
 	perm, err := perms.Parse("o_abcd1234", g.RawGrant)
 	if err != nil {
-		return fmt.Errorf("vet role grant for writing: error parsing grant string: %w", err)
+		return errors.Wrap(err, op, errors.WithMsg("parsing grant string"))
 	}
 	canonical := perm.CanonicalString()
 	if g.CanonicalGrant != "" && g.CanonicalGrant != canonical {
-		return fmt.Errorf("vet role grant for writing: existing canonical grant and derived one do not match: %w", err)
+		return errors.Wrap(err, op, errors.WithMsg("existing canonical grant and derived one do not match"))
 	}
 	g.CanonicalGrant = canonical
 

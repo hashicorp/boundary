@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -69,12 +68,13 @@ var _ db.VetForWriter = (*GroupMemberUser)(nil)
 
 // NewGroupMemberUser creates a new in memory user member of the group. No
 // options are currently supported.
-func NewGroupMemberUser(groupId, userId string, opt ...Option) (*GroupMemberUser, error) {
+func NewGroupMemberUser(groupId, userId string, _ ...Option) (*GroupMemberUser, error) {
+	const op = "iam.NewGroupMemberUser"
 	if groupId == "" {
-		return nil, fmt.Errorf("new group member: missing group id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing group id")
 	}
 	if userId == "" {
-		return nil, fmt.Errorf("new group member: missing user id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing user id")
 	}
 	return &GroupMemberUser{
 		GroupMemberUser: &store.GroupMemberUser{
@@ -100,11 +100,12 @@ func (m *GroupMemberUser) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface for group members.
 func (m *GroupMemberUser) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.(GroupMemberUser).VetForWrite"
 	if m.GroupId == "" {
-		return fmt.Errorf("group member: missing group id: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "missing group id")
 	}
 	if m.MemberId == "" {
-		return fmt.Errorf("group member: missing member id: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "missing member id")
 	}
 	return nil
 }

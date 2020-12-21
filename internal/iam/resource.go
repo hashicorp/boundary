@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -49,28 +48,29 @@ type ResourceWithScope interface {
 
 // LookupScope looks up the resource's  scope
 func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithScope) (*Scope, error) {
+	const op = "iam.LookupScope"
 	if reader == nil {
-		return nil, stderrors.New("error reader is nil for LookupScope")
+		return nil, errors.New(errors.InvalidParameter, op, "missing reader")
 	}
 	if resource == nil {
-		return nil, stderrors.New("error resource is nil for LookupScope")
+		return nil, errors.New(errors.InvalidParameter, op, "missing resource")
 	}
 	if resource.GetPublicId() == "" {
-		return nil, fmt.Errorf("LookupScope: scope id is unset %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	if resource.GetScopeId() == "" {
 		// try to retrieve it from db with it's scope id
 		if err := reader.LookupById(ctx, resource); err != nil {
-			return nil, fmt.Errorf("unable to get resource by public id: %w", err)
+			return nil, errors.Wrap(err, op)
 		}
 		// if it's still not set after getting it from the db...
 		if resource.GetScopeId() == "" {
-			return nil, stderrors.New("error scope is unset for LookupScope")
+			return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 		}
 	}
 	var p Scope
 	if err := reader.LookupWhere(ctx, &p, "public_id = ?", resource.GetScopeId()); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	return &p, nil
 }
@@ -89,7 +89,7 @@ func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWi
 			if errors.IsNotFoundError(err) {
 				return errors.New(errors.RecordNotFound, op, "scope is not found")
 			}
-			return err
+			return errors.Wrap(err, op)
 		}
 		validScopeType := false
 		for _, t := range resource.validScopeTypes() {

@@ -37,7 +37,7 @@ func TestRepository_CreateRole(t *testing.T) {
 		wantDup     bool
 		wantErr     bool
 		wantErrMsg  string
-		wantIsError error
+		wantIsError errors.Code
 	}{
 		{
 			name: "valid-org",
@@ -71,8 +71,8 @@ func TestRepository_CreateRole(t *testing.T) {
 					return r
 				}(),
 			},
-			wantErrMsg:  "create role: public id not empty: invalid parameter",
-			wantIsError: errors.ErrInvalidParameter,
+			wantErrMsg:  "am.(Repository).CreateRole: public id not empty: parameter violation: error #100",
+			wantIsError: errors.InvalidParameter,
 			wantErr:     true,
 		},
 		{
@@ -81,8 +81,8 @@ func TestRepository_CreateRole(t *testing.T) {
 				role: nil,
 			},
 			wantErr:     true,
-			wantErrMsg:  "create role: missing role invalid parameter",
-			wantIsError: errors.ErrInvalidParameter,
+			wantErrMsg:  "iam.(Repository).CreateRole: missing role: parameter violation: error #100",
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "nil-store",
@@ -94,8 +94,8 @@ func TestRepository_CreateRole(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantErrMsg:  "create role: missing role store invalid parameter",
-			wantIsError: errors.ErrInvalidParameter,
+			wantErrMsg:  "iam.(Repository).CreateRole: missing role store: parameter violation: error #100",
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "bad-scope-id",
@@ -107,8 +107,8 @@ func TestRepository_CreateRole(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantErrMsg:  "create role: error getting metadata for create: unable to get scope for standard metadata: db.LookupWhere: record not found",
-			wantIsError: errors.ErrInvalidParameter,
+			wantErrMsg:  "iam.(Repository).create: error getting metadata: iam.(Repository).stdMetadata: unable to get scope: iam.LookupScope: db.LookupWhere: record not found, search issue: error #1100",
+			wantIsError: errors.RecordNotFound,
 		},
 		{
 			name: "dup-name",
@@ -123,7 +123,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			wantDup:     true,
 			wantErr:     true,
 			wantErrMsg:  "already exists in scope ",
-			wantIsError: errors.ErrNotUnique,
+			wantIsError: errors.NotUnique,
 		},
 		{
 			name: "dup-name-but-diff-scope",
@@ -155,6 +155,7 @@ func TestRepository_CreateRole(t *testing.T) {
 				assert.Error(err)
 				assert.Nil(grp)
 				assert.Contains(err.Error(), tt.wantErrMsg)
+				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				return
 			}
 			assert.NoError(err)
@@ -238,7 +239,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update role: db.DoTx: db.DoTx: db.Update: db.lookupAfterWrite: db.LookupById: record not found",
+			wantErrMsg:     "db.DoTx: iam.(Repository).UpdateRole: iam.(Repository).update: db.DoTx: iam.(Repository).update: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
 			wantIsError:    errors.RecordNotFound,
 		},
 		{
@@ -275,7 +276,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update role: empty field mask",
+			wantErrMsg:     "iam.(Repository).UpdateRole: empty field mask, parameter violation: error #104",
 			wantIsError:    errors.EmptyFieldMask,
 		},
 		{
@@ -288,7 +289,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update role: empty field mask",
+			wantErrMsg:     "iam.(Repository).UpdateRole: empty field mask, parameter violation: error #104",
 			wantIsError:    errors.EmptyFieldMask,
 		},
 		{
@@ -301,7 +302,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update role: field: CreateTime: invalid field mask",
+			wantErrMsg:     "iam.(Repository).UpdateRole: invalid field mask: CreateTime: parameter violation: error #103",
 			wantIsError:    errors.InvalidFieldMask,
 		},
 		{
@@ -314,7 +315,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update role: field: Alice: invalid field mask",
+			wantErrMsg:     "iam.(Repository).UpdateRole: invalid field mask: Alice: parameter violation: error #103",
 			wantIsError:    errors.InvalidFieldMask,
 		},
 		{
@@ -327,7 +328,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			},
 			newScopeId:     org.PublicId,
 			wantErr:        true,
-			wantErrMsg:     "update role: missing role public id invalid parameter",
+			wantErrMsg:     "iam.(Repository).UpdateRole: missing public id: parameter violation: error #100",
 			wantIsError:    errors.InvalidParameter,
 			wantRowsUpdate: 0,
 		},
@@ -339,7 +340,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			},
 			newScopeId:  org.PublicId,
 			wantErr:     true,
-			wantErrMsg:  "update role: empty field mask",
+			wantErrMsg:  "iam.(Repository).UpdateRole: empty field mask, parameter violation: error #104",
 			wantIsError: errors.EmptyFieldMask,
 		},
 		{
@@ -471,6 +472,9 @@ func TestRepository_DeleteRole(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 
+	roleId, err := newRoleId()
+	require.NoError(t, err)
+
 	type args struct {
 		role *Role
 		opt  []Option
@@ -500,24 +504,22 @@ func TestRepository_DeleteRole(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete role: missing public id invalid parameter",
+			wantErrMsg:      "iam.(Repository).DeleteRole: missing public id: parameter violation: error #100",
 		},
 
 		{
 			name: "not-found",
 			args: args{
 				role: func() *Role {
-					id, err := newRoleId()
-					require.NoError(t, err)
 					r, err := NewRole(org.PublicId)
-					r.PublicId = id
+					r.PublicId = roleId
 					require.NoError(t, err)
 					return r
 				}(),
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete role: failed db.LookupById: record not found",
+			wantErrMsg:      "iam.(Repository).DeleteRole: failed for " + roleId + ": db.LookupById: record not found, search issue: error #1100",
 		},
 	}
 	for _, tt := range tests {
