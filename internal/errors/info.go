@@ -41,11 +41,11 @@ var errorCodeInfo = map[Code]Info{
 		Kind:    Password,
 	},
 	PasswordUnsupportedConfiguration: {
-		Message: "unsupported configuration",
+		Message: "unable to support the password config type",
 		Kind:    Password,
 	},
 	PasswordInvalidConfiguration: {
-		Message: "invalid configuration",
+		Message: "invalid parameters in password configuration",
 		Kind:    Password,
 	},
 	PasswordsEqual: {
@@ -74,7 +74,7 @@ var errorCodeInfo = map[Code]Info{
 	},
 	ColumnNotFound: {
 		Message: "column not found",
-		Kind:    Search,
+		Kind:    Integrity,
 	},
 	RecordNotFound: {
 		Message: "record not found",
@@ -90,6 +90,6 @@ var errorCodeInfo = map[Code]Info{
 	},
 	MaxRetries: {
 		Message: "too many retries",
-		Kind:    Search,
+		Kind:    Transaction,
 	},
 }

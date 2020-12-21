@@ -35,7 +35,7 @@ const (
 	PasswordUnsupportedConfiguration Code = 201
 
 	// PasswordInvalidConfiguration results from attempting to perform an
-	// operation that sets a password configuration with invalid settings.
+	// operation that sets a valid password configuration with invalid settings.
 	PasswordInvalidConfiguration Code = 202
 
 	// PasswordsEqual is returned from ChangePassword when the old and
