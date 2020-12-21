@@ -19,6 +19,6 @@ func (e Kind) String() string {
 		Integrity:   "integrity violation",
 		Search:      "search issue",
 		Password:    "password violation",
-		Transaction: "db transaction error",
+		Transaction: "db transaction issue",
 	}[e]
 }

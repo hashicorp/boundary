@@ -213,7 +213,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: `db.Update: column "foo" does not exist: search issue: error #1102`,
+			wantErrMsg: `db.Update: column "foo" does not exist: integrity violation: error #1102`,
 		},
 		{
 			name: "multiple-null",
@@ -1129,7 +1129,7 @@ func TestDb_DoTx(t *testing.T) {
 		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return oplog.ErrTicketAlreadyRedeemed })
 		require.Error(err)
 		assert.Equal(3, got.Retries)
-		assert.Equal("db.DoTx: Too many retries: 3 of 3: search issue: error #1103", err.Error())
+		assert.Equal("db.DoTx: Too many retries: 3 of 3: db transaction issue: error #1103", err.Error())
 	})
 	t.Run("updating-good-bad-good", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
