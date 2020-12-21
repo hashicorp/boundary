@@ -8,11 +8,19 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database"
 	"github.com/hashicorp/boundary/internal/db/migrations"
 	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 )
+
+const SchemaAccessLockId = 865661975634167
+
+type ErrDirty struct {
+	Version int
+}
+
+func (e ErrDirty) Error() string {
+	return fmt.Sprintf("Dirty database version %v. Fix and force version.", e.Version)
+}
 
 // State contains information regarding the current state of a boundary database's schema.
 type State struct {
@@ -24,6 +32,7 @@ type State struct {
 
 // Manager provides a way to run operations and retrieve information regarding
 // the underlying boundary database schema.
+// Manager is not thread safe.
 type Manager struct {
 	db      *sql.DB
 	driver  *postgres.Postgres
@@ -99,7 +108,7 @@ func (b *Manager) State(ctx context.Context) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
-	if v == database.NilVersion {
+	if v == postgres.NilVersion {
 		return &dbS, nil
 	}
 	dbS.InitializationStarted = true
@@ -125,10 +134,10 @@ func (b *Manager) RollForward(ctx context.Context) error {
 	}
 
 	if dirty {
-		return migrate.ErrDirty{curVersion}
+		return ErrDirty{curVersion}
 	}
 
-	return b.runMigrations(ctx, newQueryCommand())
+	return b.runMigrations(ctx, newQueryCommand(curVersion))
 }
 
 // runMigrations passes migration queries to a database driver and manages
@@ -166,7 +175,7 @@ type queryProvider struct {
 	up, down map[int][]byte
 }
 
-func newQueryCommand() queryProvider {
+func newQueryCommand(curVer int) queryProvider {
 	qp := queryProvider{pos: -1}
 	qp.up, qp.down = migrations.Queries()
 	if len(qp.up) != len(qp.down) {
@@ -179,6 +188,10 @@ func newQueryCommand() queryProvider {
 		qp.versions = append(qp.versions, k)
 	}
 	sort.Ints(qp.versions)
+
+	for len(qp.versions) > 0 && qp.versions[0] <= curVer {
+		qp.versions = qp.versions[1:]
+	}
 
 	return qp
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/migrations"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,26 +22,53 @@ func TestRollForward(t *testing.T) {
 	d, err := sql.Open("postgres", u)
 	require.NoError(t, err)
 
-	ctx := context.TODO()
+	ctx := context.Background()
 	m, err := schema.NewManager(ctx, "postgres", d)
 	require.NoError(t, err)
-	s, err := m.State(ctx)
+	assert.NoError(t, m.RollForward(ctx))
+
+	// Now set to dirty at an early version
+	testDriver, err := postgres.WithInstance(ctx, d, &postgres.Config{
+		MigrationsTable: "boundary_schema_version",
+	})
+	require.NoError(t, err)
+	testDriver.SetVersion(ctx, 0, true)
+	assert.Error(t, m.RollForward(ctx))
+}
+
+func TestState(t *testing.T) {
+	c, u, _, err := db.StartDbInDocker("postgres")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, c())
+	})
+	ctx := context.Background()
+	d, err := sql.Open("postgres", u)
 	require.NoError(t, err)
 
+	m, err := schema.NewManager(ctx, "postgres", d)
+	require.NoError(t, err)
 	want := &schema.State{
 		BinarySchemaVersion: migrations.BinarySchemaVersion,
 	}
+	s, err := m.State(ctx)
+	require.NoError(t, err)
 	assert.Equal(t, want, s)
 
-	assert.NoError(t, m.RollForward(ctx))
-
-	s, err = m.State(ctx)
+	testDriver, err := postgres.WithInstance(ctx, d, &postgres.Config{
+		MigrationsTable: "boundary_schema_version",
+	})
 	require.NoError(t, err)
+	require.NoError(t, testDriver.SetVersion(ctx, 2, true))
+
 	want = &schema.State{
 		InitializationStarted: true,
-		CurrentSchemaVersion:  migrations.BinarySchemaVersion,
 		BinarySchemaVersion:   migrations.BinarySchemaVersion,
+		Dirty:                 true,
+		CurrentSchemaVersion:  2,
 	}
+	s, err = m.State(ctx)
+	require.NoError(t, err)
 	assert.Equal(t, want, s)
 }
 

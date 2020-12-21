@@ -1,6 +1,7 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/migrations"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -254,6 +256,23 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return 1
 	}
 
+	// This database is used to keep an exclusive lock on the database for the
+	// remainder of the command
+	dBase, err := sql.Open("postgres", dbaseUrl)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error establishing db connection for locking: %w", err).Error())
+		return 1
+	}
+	man, err := schema.NewManager(c.Context, "postgres", dBase)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error setting up schema manager for locking: %w", err).Error())
+		return 1
+	}
+	if err := man.ExclusiveLock(c.Context, schema.SchemaAccessLockId); err != nil {
+		c.UI.Error(fmt.Errorf("Error capturing an exclusive lock: %w", err).Error())
+		return 1
+	}
+
 	migrationUrl, err := config.ParseAddress(migrationUrlToParse)
 	if err != nil && err != config.ErrNotAUrl {
 		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
@@ -262,8 +281,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	// Core migrations using the migration URL
 	{
-		c.srv.DatabaseUrl = strings.TrimSpace(migrationUrl)
-		ran, err := db.InitStore(c.Context, "postgres", c.srv.DatabaseUrl)
+		migrationUrl = strings.TrimSpace(migrationUrl)
+		ran, err := db.InitStore(c.Context, "postgres", migrationUrl)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
 			return 1
@@ -278,6 +297,10 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 			c.UI.Info("Migrations successfully run.")
 		}
 	}
+	// TODO: Set a bit which indicates the boundary initialization is still
+	//  underway and only clear it at the end of this function when it returns
+	//  without error.  This is different from the "dirty" bit maintained by
+	//  the schema manager which only tracks the schema changes.
 
 	// Everything after is done with normal database URL and is affecting actual data
 	c.srv.DatabaseUrl = strings.TrimSpace(dbaseUrl)

@@ -17,6 +17,8 @@ import (
 	"github.com/lib/pq"
 )
 
+const NilVersion = -1
+
 var DefaultMigrationsTable = "schema_migrations"
 
 var (
