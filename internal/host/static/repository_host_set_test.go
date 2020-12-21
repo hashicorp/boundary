@@ -545,7 +545,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, sB.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Error(err)
-		assert.True(errors.Is(errors.ErrRecordNotFound, err))
+		assert.True(errors.IsNotFoundError(err))
 		assert.Empty(gotHosts)
 	})
 

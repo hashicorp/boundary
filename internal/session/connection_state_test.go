@@ -150,7 +150,7 @@ func TestConnectionState_Delete(t *testing.T) {
 			foundState := allocConnectionState()
 			err = rw.LookupWhere(context.Background(), &foundState, "connection_id = ? and start_time = ?", tt.state.ConnectionId, initialState.StartTime)
 			require.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }

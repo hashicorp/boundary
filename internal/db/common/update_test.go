@@ -147,7 +147,7 @@ func Test_intersection(t *testing.T) {
 			want1:      nil,
 			want2:      nil,
 			wantErr:    true,
-			wantErrMsg: "av is missing: nil parameter",
+			wantErrMsg: "common.Intersection: av is missing: parameter violation: error #100",
 		},
 		{
 			name: "nil-bv",
@@ -159,7 +159,7 @@ func Test_intersection(t *testing.T) {
 			want1:      nil,
 			want2:      nil,
 			wantErr:    true,
-			wantErrMsg: "bv is missing: nil parameter",
+			wantErrMsg: "common.Intersection: bv is missing: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {
@@ -206,7 +206,7 @@ func TestUpdateFields(t *testing.T) {
 			},
 			want:       nil,
 			wantErr:    true,
-			wantErrMsg: "interface is missing: nil parameter",
+			wantErrMsg: "common.UpdateFields: interface is missing: parameter violation: error #100",
 		},
 		{
 			name: "missing fieldmasks",
@@ -217,7 +217,7 @@ func TestUpdateFields(t *testing.T) {
 			},
 			want:       nil,
 			wantErr:    true,
-			wantErrMsg: "both fieldMaskPaths and setToNullPaths are zero len",
+			wantErrMsg: "common.UpdateFields: both fieldMaskPaths and setToNullPaths are zero len: parameter violation: error #100",
 		},
 		{
 			name: "missing null fields",
@@ -239,7 +239,7 @@ func TestUpdateFields(t *testing.T) {
 				setToNullPaths: nil,
 			},
 			wantErr:    true,
-			wantErrMsg: "both fieldMaskPaths and setToNullPaths are zero len",
+			wantErrMsg: "common.UpdateFields: both fieldMaskPaths and setToNullPaths are zero len: parameter violation: error #100",
 		},
 		{
 			name: "not found masks",
@@ -250,7 +250,7 @@ func TestUpdateFields(t *testing.T) {
 			},
 			want:       nil,
 			wantErr:    true,
-			wantErrMsg: "field mask paths not found in resource: [invalidFieldName]",
+			wantErrMsg: "common.UpdateFields: field mask paths not found in resource: [invalidFieldName]: parameter violation: error #100",
 		},
 		{
 			name: "not found null paths",
@@ -261,7 +261,7 @@ func TestUpdateFields(t *testing.T) {
 			},
 			want:       nil,
 			wantErr:    true,
-			wantErrMsg: "null paths not found in resource: [invalidFieldName]",
+			wantErrMsg: "common.UpdateFields: null paths not found in resource: [invalidFieldName]: parameter violation: error #100",
 		},
 		{
 			name: "intersection",
@@ -272,7 +272,7 @@ func TestUpdateFields(t *testing.T) {
 			},
 			want:       nil,
 			wantErr:    true,
-			wantErrMsg: "fieldMashPaths and setToNullPaths cannot intersect",
+			wantErrMsg: "common.UpdateFields: fieldMashPaths and setToNullPaths cannot intersect: parameter violation: error #100",
 		},
 		{
 			name: "valid",
@@ -381,7 +381,7 @@ func TestUpdateFields(t *testing.T) {
 			},
 			want:       nil,
 			wantErr:    true,
-			wantErrMsg: "null paths not found in resource: [invalidFieldName]",
+			wantErrMsg: "common.UpdateFields: null paths not found in resource: [invalidFieldName]: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {

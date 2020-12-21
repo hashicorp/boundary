@@ -451,7 +451,7 @@ func TestConvertError(t *testing.T) {
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(errors.Is(e, errors.ErrNotUnique))
-		assert.Equal("Key (name)=(alice) already exists.: unique constraint violation: integrity violation: error #1002", e.Error())
+		assert.Equal("db.Exec: duplicate key value violates unique constraint \"test_table_name_key\": unique constraint violation: integrity violation: error #1002", e.Error())
 	})
 	t.Run("ErrCodeNotNull", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -463,7 +463,7 @@ func TestConvertError(t *testing.T) {
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(errors.Is(e, errors.ErrNotNull))
-		assert.Equal("description must not be empty: not null constraint violated: integrity violation: error #1001", e.Error())
+		assert.Equal("db.Exec: description must not be empty: not null constraint violated: integrity violation: error #1001", e.Error())
 	})
 	t.Run("ErrCodeCheckConstraint", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -475,7 +475,7 @@ func TestConvertError(t *testing.T) {
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(errors.Is(e, errors.ErrCheckConstraint))
-		assert.Equal("test_table_five_check constraint failed: check constraint violated: integrity violation: error #1000", e.Error())
+		assert.Equal("db.Exec: test_table_five_check constraint failed: check constraint violated: integrity violation: error #1000", e.Error())
 	})
 	t.Run("MissingTable", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -485,6 +485,6 @@ func TestConvertError(t *testing.T) {
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(errors.Match(errors.T(errors.MissingTable), e))
-		assert.Equal("relation \"not_a_defined_table\" does not exist: integrity violation: error #1004", e.Error())
+		assert.Equal("db.Exec: relation \"not_a_defined_table\" does not exist: integrity violation: error #1004", e.Error())
 	})
 }

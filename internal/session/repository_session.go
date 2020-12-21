@@ -138,7 +138,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 		},
 	)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return nil, nil, nil
 		}
 		return nil, nil, fmt.Errorf("lookup session: %w", err)

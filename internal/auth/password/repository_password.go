@@ -306,7 +306,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 
 			oldCred := allocCredential()
 			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", accountId); err != nil {
-				if !errors.Is(err, errors.ErrRecordNotFound) {
+				if !errors.IsNotFoundError(err) {
 					return err
 				}
 			}

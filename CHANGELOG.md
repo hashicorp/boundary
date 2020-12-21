@@ -6,6 +6,17 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Changes/Deprecations
 
+### New and Improved
+
+* controller: Improved error handling in db
+  ([PR](https://github.com/hashicorp/boundary/pull/815))
+
+### Bug Fixes
+  
+## 0.1.3
+
+### Changes/Deprecations
+
 * controller: Switch the session connection limit for dev mode and the initial
   target when doing database initialization to `-1`. This makes it easier for
   people to start understanding Boundary while not hitting issues related to
@@ -30,12 +41,19 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli/connect/kube: New `kube` subcommand for `boundary connect` that makes it
   easy to route `kubectl` commands through Boundary, including when using
   `kubectl proxy` ([PR](https://github.com/hashicorp/boundary/pull/816))
+* cli/server: Add some extra checks around valid/invalid combinations of
+  addresses to avoid hard-to-understand runtime issues
+  ([PR](https://github.com/hashicorp/boundary/pull/838))
 
 ### Bug Fixes
 
 * cli: Ensure errors print to stderr when token is not found
   ([Issue](https://github.com/hashicorp/boundary/issues/791))
   ([PR](https://github.com/hashicorp/boundary/pull/799))
+* controller: Fix grant IDs being lowercased when being read back (and when
+  being used for permission evaluation)
+  ([Issue](https://github.com/hashicorp/boundary/issues/794))
+  ([PR](https://github.com/hashicorp/boundary/pull/839))
 
 ## v0.1.2
 

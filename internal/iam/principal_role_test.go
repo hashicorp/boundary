@@ -176,7 +176,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed: pq: insert or update on table \"iam_user_role\" violates foreign key constraint \"iam_user_role_role_id_fkey\"",
+			wantErrMsg: "db.Create: create failed: insert or update on table \"iam_user_role\" violates foreign key constraint \"iam_user_role_role_id_fkey\"",
 		},
 		{
 			name: "bad-user-id",
@@ -190,7 +190,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed: pq: insert or update on table \"iam_user_role\" violates foreign key constraint \"iam_user_role_principal_id_fkey\"",
+			wantErrMsg: "db.Create: create failed: insert or update on table \"iam_user_role\" violates foreign key constraint \"iam_user_role_principal_id_fkey\"",
 		},
 		{
 			name: "missing-role-id",
@@ -206,7 +206,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed: new user role: missing role id invalid parameter",
+			wantErrMsg: "db.Create: vet for write failed: new user role: missing role id invalid parameter",
 			wantIsErr:  errors.ErrInvalidParameter,
 		},
 		{
@@ -223,7 +223,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed: new user role: missing user id invalid parameter",
+			wantErrMsg: "db.Create: vet for write failed: new user role: missing user id invalid parameter",
 			wantIsErr:  errors.ErrInvalidParameter,
 		},
 		{
@@ -239,7 +239,7 @@ func TestUserRole_Create(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `create: failed: pq: duplicate key value violates unique constraint "iam_user_role_pkey"`,
+			wantErrMsg: `db.Create: create failed: duplicate key value violates unique constraint "iam_user_role_pkey"`,
 		},
 	}
 
@@ -345,7 +345,7 @@ func TestUserRole_Delete(t *testing.T) {
 			found := allocUserRole()
 			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.role.GetRoleId(), tt.role.GetPrincipalId())
 			require.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }
@@ -539,7 +539,7 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed: pq: insert or update on table \"iam_group_role\" violates foreign key constraint \"iam_group_role_role_id_fkey\"",
+			wantErrMsg: "db.Create: create failed: insert or update on table \"iam_group_role\" violates foreign key constraint \"iam_group_role_role_id_fkey\"",
 		},
 		{
 			name: "bad-user-id",
@@ -553,7 +553,7 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed: pq: insert or update on table \"iam_group_role\" violates foreign key constraint \"iam_group_role_principal_id_fkey\"",
+			wantErrMsg: "db.Create: create failed: insert or update on table \"iam_group_role\" violates foreign key constraint \"iam_group_role_principal_id_fkey\"",
 		},
 		{
 			name: "missing-role-id",
@@ -569,7 +569,7 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed: new group role: missing role id invalid parameter",
+			wantErrMsg: "db.Create: vet for write failed: new group role: missing role id invalid parameter",
 			wantIsErr:  errors.ErrInvalidParameter,
 		},
 		{
@@ -586,7 +586,7 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed: new group role: missing user id invalid parameter",
+			wantErrMsg: "db.Create: vet for write failed: new group role: missing user id invalid parameter",
 			wantIsErr:  errors.ErrInvalidParameter,
 		},
 		{
@@ -602,7 +602,7 @@ func TestGroupRole_Create(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `create: failed: pq: duplicate key value violates unique constraint`,
+			wantErrMsg: `db.Create: create failed: duplicate key value violates unique constraint`,
 		},
 		{
 			name: "dup-at-proj",
@@ -617,7 +617,7 @@ func TestGroupRole_Create(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `create: failed: pq: duplicate key value violates unique constraint`,
+			wantErrMsg: `db.Create: create failed: duplicate key value violates unique constraint`,
 		},
 	}
 
@@ -728,7 +728,7 @@ func TestGroupRole_Delete(t *testing.T) {
 			found := allocGroupRole()
 			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.role.GetRoleId(), tt.role.GetPrincipalId())
 			require.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }

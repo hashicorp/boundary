@@ -244,7 +244,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Role, error) {
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, id)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 		}
 		return nil, err
@@ -327,7 +327,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	}
 	rows, err := repo.DeleteRole(ctx, id)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("unable to delete role: %w", err)

@@ -141,7 +141,7 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, opt .
 		},
 	)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return nil, nil, nil
 		}
 		return nil, nil, fmt.Errorf("lookup group: failed %w for %s", err, withPublicId)

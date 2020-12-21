@@ -96,7 +96,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthToken, err
 	}
 	u, err := repo.LookupAuthToken(ctx, id)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
 		}
 		return nil, fmt.Errorf("unable to lookup auth token: %w", err)
@@ -114,7 +114,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	}
 	rows, err := repo.DeleteAuthToken(ctx, id)
 	if err != nil {
-		if errors.Is(err, errors.ErrRecordNotFound) {
+		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("unable to delete user: %w", err)

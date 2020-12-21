@@ -138,7 +138,7 @@ func TestTcpTarget_Delete(t *testing.T) {
 			foundTarget.PublicId = tt.target.PublicId
 			err = rw.LookupById(context.Background(), &foundTarget)
 			require.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }
@@ -205,7 +205,7 @@ func TestTcpTarget_Update(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update: failed: pq: duplicate key value violates unique constraint "target_tcp_scope_id_name_key"`,
+			wantErrMsg: `db.Update: duplicate key value violates unique constraint "target_tcp_scope_id_name_key": unique constraint violation: integrity violation: error #1002`,
 		},
 		{
 			name: "set description null",
@@ -227,7 +227,7 @@ func TestTcpTarget_Update(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: `update: failed: pq: null value in column "name" violates not-null constraint`,
+			wantErrMsg: `db.Update: name must not be empty: not null constraint violated: integrity violation: error #1001`,
 		},
 		{
 			name: "set description null",
@@ -267,7 +267,7 @@ func TestTcpTarget_Update(t *testing.T) {
 				assert.Equal(tt.wantErrMsg, err.Error())
 				err = db.TestVerifyOplog(t, rw, target.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
-				assert.Contains(err.Error(), "record not found:")
+				assert.Contains(err.Error(), "record not found")
 				return
 			}
 			require.NoError(err)

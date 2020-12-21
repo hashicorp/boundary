@@ -148,7 +148,7 @@ func TestState_Delete(t *testing.T) {
 			foundState := allocState()
 			err = rw.LookupWhere(context.Background(), &foundState, "session_id = ? and start_time = ?", tt.state.SessionId, initialState.StartTime)
 			require.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }

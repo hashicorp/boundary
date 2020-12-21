@@ -155,7 +155,7 @@ func TestRootKeyVersion_Delete(t *testing.T) {
 			foundKey.PrivateId = tt.key.PrivateId
 			err = rw.LookupById(context.Background(), &foundKey)
 			require.Error(err)
-			assert.True(errors.Is(errors.ErrRecordNotFound, err))
+			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }
