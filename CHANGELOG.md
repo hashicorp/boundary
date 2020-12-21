@@ -2,6 +2,17 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## vNext
+
+### Changes/Deprecations
+
+### New and Improved
+
+* controller: Improved error handling in db
+  ([PR](https://github.com/hashicorp/boundary/pull/815))
+
+### Bug Fixes
+  
 ## 0.1.3
 
 ### Changes/Deprecations
