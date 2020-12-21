@@ -24,7 +24,7 @@
 
   & hr {
     width: 64px;
-    background-color: var(--red);
+    background-color: var(--boundary);
     margin-top: 0;
     margin-bottom: 24px;
   }

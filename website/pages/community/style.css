@@ -10,9 +10,9 @@
     & .list {
       & .body-text {
         & a {
-          color: var(--red);
+          color: var(--boundary);
           &::after {
-            background-color: var(--red);
+            background-color: var(--boundary);
           }
         }
       }

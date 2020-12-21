@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## vNext
+## 0.1.3
 
 ### Changes/Deprecations
 
@@ -15,9 +15,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* controller: Improved error handling in db
-  ([PR](https://github.com/hashicorp/boundary/pull/815))
-
+* controller, worker, cli: When the client quits before the session time is
+  over, but in a manner where the TOFU token will be locked, attempt canceling
+  the session rather than leaving it open to time out
+  ([PR](https://github.com/hashicorp/boundary/pull/831))
 * controller: Improved error handling in hosts, host catalog and host set
   ([PR](https://github.com/hashicorp/boundary/pull/786))
 * controller: Relax account login name constraints to allow dash as valid character 
@@ -29,12 +30,19 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli/connect/kube: New `kube` subcommand for `boundary connect` that makes it
   easy to route `kubectl` commands through Boundary, including when using
   `kubectl proxy` ([PR](https://github.com/hashicorp/boundary/pull/816))
+* cli/server: Add some extra checks around valid/invalid combinations of
+  addresses to avoid hard-to-understand runtime issues
+  ([PR](https://github.com/hashicorp/boundary/pull/838))
 
 ### Bug Fixes
 
 * cli: Ensure errors print to stderr when token is not found
   ([Issue](https://github.com/hashicorp/boundary/issues/791))
   ([PR](https://github.com/hashicorp/boundary/pull/799))
+* controller: Fix grant IDs being lowercased when being read back (and when
+  being used for permission evaluation)
+  ([Issue](https://github.com/hashicorp/boundary/issues/794))
+  ([PR](https://github.com/hashicorp/boundary/pull/839))
 
 ## v0.1.2
 

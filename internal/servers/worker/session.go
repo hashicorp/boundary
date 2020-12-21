@@ -152,6 +152,28 @@ func (w *Worker) activateSession(ctx context.Context, sessionId, tofuToken strin
 	return resp.GetStatus(), nil
 }
 
+func (w *Worker) cancelSession(ctx context.Context, sessionId string) (pbs.SESSIONSTATUS, error) {
+	rawConn := w.controllerSessionConn.Load()
+	if rawConn == nil {
+		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, errors.New("could not get a controller client")
+	}
+	conn, ok := rawConn.(pbs.SessionServiceClient)
+	if !ok {
+		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, errors.New("could not cast atomic controller client to the real thing")
+	}
+	if conn == nil {
+		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, errors.New("controller client is nil")
+	}
+
+	resp, err := conn.CancelSession(ctx, &pbs.CancelSessionRequest{
+		SessionId: sessionId,
+	})
+	if err != nil {
+		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, fmt.Errorf("error canceling session: %w", err)
+	}
+	return resp.GetStatus(), nil
+}
+
 func (w *Worker) authorizeConnection(ctx context.Context, sessionId string) (*connInfo, int32, error) {
 	rawConn := w.controllerSessionConn.Load()
 	if rawConn == nil {

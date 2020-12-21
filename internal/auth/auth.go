@@ -195,99 +195,129 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	return
 }
 
-// AdditionalVerification is used to perform checks of additional resources for
-// actions that need to touch more than one.
-func (r *VerifyResults) AdditionalVerification(ctx context.Context, opt ...Option) (ret VerifyResults) {
-	v := r.v
-
-	ret.Error = handlers.ForbiddenError()
-
-	// Set other parameters the same to start with
-	ret.Scope = r.Scope
-	ret.UserId = r.UserId
-	ret.AuthTokenId = r.AuthTokenId
-	ret.v = r.v
-
-	opts := getOpts(opt...)
-
-	act := opts.withAction
-	res := perms.Resource{
-		ScopeId: opts.withScopeId,
-		Id:      opts.withId,
-		Pin:     opts.withPin,
-		Type:    opts.withType,
-	}
-	// Global scope has no parent ID; account for this
-	if opts.withId == scope.Global.String() && opts.withType == resource.Scope {
-		res.ScopeId = scope.Global.String()
-	}
-
-	// Only perform lookup if it's actually different, otherwise use cached info
-	if res.ScopeId != r.Scope.Id {
-		iamRepo, err := v.iamRepoFn()
-		if err != nil {
-			v.logger.Error("additional verification: failed to get iam repo", "error", err)
-			return
-		}
-
-		// Look up scope details to return. We can skip a lookup when using the
-		// global scope
-		switch res.ScopeId {
-		case "global":
-			ret.Scope = &scopes.ScopeInfo{
-				Id:            scope.Global.String(),
-				Type:          scope.Global.String(),
-				Name:          scope.Global.String(),
-				Description:   "Global Scope",
-				ParentScopeId: "",
-			}
-
-		default:
-			scp, err := iamRepo.LookupScope(v.ctx, v.res.ScopeId)
-			if err != nil {
-				v.logger.Error("additional verification: failed to get look up scope", "error", err)
-				return
-			}
-			if scp == nil {
-				v.logger.Error("additional verification: non-existent scope", "error", err)
-				return
-			}
-			ret.Scope = &scopes.ScopeInfo{
-				Id:            scp.GetPublicId(),
-				Type:          scp.GetType(),
-				Name:          scp.GetName(),
-				Description:   scp.GetDescription(),
-				ParentScopeId: scp.GetParentId(),
-			}
-		}
-	}
-
-	// Always allowed
-	if v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms {
-		ret.Error = nil
+func (v *verifier) decryptToken() {
+	switch v.requestInfo.TokenFormat {
+	case AuthTokenTypeUnknown:
+		// Nothing to decrypt
 		return
-	}
 
-	aclResults := v.acl.Allowed(res, act)
-
-	if !aclResults.Allowed {
-		if v.requestInfo.DisableAuthzFailures {
-			ret.Error = nil
-			// TODO: Decide whether to remove this
-			v.logger.Info("failed authz info for request", "resource", pretty.Sprint(v.res), "user_id", ret.UserId, "action", v.act.String())
-		} else {
-			// If the anon user was used (either no token, or invalid (perhaps
-			// expired) token), return a 401. That way if it's an authn'd user
-			// that is not authz'd we'll return 403 to be explicit.
-			if ret.UserId == "u_anon" {
-				ret.Error = handlers.UnauthenticatedError()
-			}
+	case AuthTokenTypeBearer, AuthTokenTypeSplitCookie:
+		if v.kms == nil {
+			v.logger.Trace("decrypt token: no KMS object available to authz system")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
-	}
 
-	ret.Error = nil
-	return
+		tokenRepo, err := v.authTokenRepoFn()
+		if err != nil {
+			v.logger.Warn("decrypt bearer token: failed to get authtoken repo", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		at, err := tokenRepo.LookupAuthToken(v.ctx, v.requestInfo.PublicId)
+		if err != nil {
+			v.logger.Trace("decrypt bearer token: failed to look up auth token by public ID", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		if at == nil {
+			v.logger.Trace("decrypt bearer token: nil result from looking up auth token by public ID")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		tokenWrapper, err := v.kms.GetWrapper(v.ctx, at.GetScopeId(), kms.KeyPurposeTokens)
+		if err != nil {
+			v.logger.Warn("decrypt bearer token: unable to get wrapper for tokens; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		version := v.requestInfo.EncryptedToken[0:len(globals.ServiceTokenV1)]
+		switch version {
+		case globals.ServiceTokenV1:
+		default:
+			v.logger.Trace("decrypt bearer token: unknown token encryption version; continuing as anonymous user", "version", version)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		marshaledToken, err := base58.FastBase58Decoding(v.requestInfo.EncryptedToken[len(globals.ServiceTokenV1):])
+		if err != nil {
+			v.logger.Trace("decrypt bearer token: error unmarshaling base58 token; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		blobInfo := new(wrapping.EncryptedBlobInfo)
+		if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
+			v.logger.Trace("decrypt bearer token: error decoding encrypted token; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		s1Bytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, []byte(v.requestInfo.PublicId))
+		if err != nil {
+			v.logger.Trace("decrypt bearer token: error decrypting encrypted token; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		var s1Info tokens.S1TokenInfo
+		if err := proto.Unmarshal(s1Bytes, &s1Info); err != nil {
+			v.logger.Trace("decrypt bearer token: error unmarshaling token info; continuing as anonymous user", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		if v.requestInfo.TokenFormat == AuthTokenTypeUnknown || s1Info.Token == "" || v.requestInfo.PublicId == "" {
+			v.logger.Trace("decrypt bearer token: after parsing, could not find valid token; continuing as anonymous user")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+
+		v.requestInfo.Token = s1Info.Token
+		return
+
+	case AuthTokenTypeRecoveryKms:
+		if v.kms == nil {
+			v.logger.Trace("decrypt recovery token: no KMS object available to authz system")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		wrapper := v.kms.GetExternalWrappers().Recovery()
+		if wrapper == nil {
+			v.logger.Trace("decrypt recovery token: no recovery KMS is available")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		info, err := recovery.ParseRecoveryToken(v.ctx, wrapper, v.requestInfo.EncryptedToken)
+		if err != nil {
+			v.logger.Trace("decrypt recovery token: error parsing and validating recovery token", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		// If we add the validity period to the creation time (which we've
+		// verified is before the current time, with a minute of fudging), and
+		// it's before now, it's expired and might be a replay.
+		if info.CreationTime.Add(globals.RecoveryTokenValidityPeriod).Before(time.Now()) {
+			v.logger.Warn("decrypt recovery token: recovery token has expired (possible replay attack)")
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		repo, err := v.serversRepoFn()
+		if err != nil {
+			v.logger.Trace("decrypt recovery token: error fetching servers repo", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		if err := repo.AddRecoveryNonce(v.ctx, info.Nonce); err != nil {
+			v.logger.Warn("decrypt recovery token: error adding nonce to database (possible replay attack)", "error", err)
+			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
+			return
+		}
+		v.logger.Warn("recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
+	}
 }
 
 func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string, scopeInfo *scopes.ScopeInfo, retAcl perms.ACL, retErr error) {
@@ -412,6 +442,118 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	return
 }
 
+// AdditionalVerification is used to perform checks of additional resources for
+// actions that need to touch more than one.
+func (r *VerifyResults) AdditionalVerification(ctx context.Context, opt ...Option) (ret VerifyResults) {
+	v := r.v
+
+	ret.Error = handlers.ForbiddenError()
+
+	// Set other parameters the same to start with
+	ret.Scope = r.Scope
+	ret.UserId = r.UserId
+	ret.AuthTokenId = r.AuthTokenId
+	ret.v = r.v
+
+	opts := getOpts(opt...)
+
+	act := opts.withAction
+	res := perms.Resource{
+		ScopeId: opts.withScopeId,
+		Id:      opts.withId,
+		Pin:     opts.withPin,
+		Type:    opts.withType,
+	}
+	// Global scope has no parent ID; account for this
+	if opts.withId == scope.Global.String() && opts.withType == resource.Scope {
+		res.ScopeId = scope.Global.String()
+	}
+
+	// Only perform lookup if it's actually different, otherwise use cached info
+	if res.ScopeId != r.Scope.Id {
+		iamRepo, err := v.iamRepoFn()
+		if err != nil {
+			v.logger.Error("additional verification: failed to get iam repo", "error", err)
+			return
+		}
+
+		// Look up scope details to return. We can skip a lookup when using the
+		// global scope
+		switch res.ScopeId {
+		case "global":
+			ret.Scope = &scopes.ScopeInfo{
+				Id:            scope.Global.String(),
+				Type:          scope.Global.String(),
+				Name:          scope.Global.String(),
+				Description:   "Global Scope",
+				ParentScopeId: "",
+			}
+
+		default:
+			scp, err := iamRepo.LookupScope(v.ctx, v.res.ScopeId)
+			if err != nil {
+				v.logger.Error("additional verification: failed to get look up scope", "error", err)
+				return
+			}
+			if scp == nil {
+				v.logger.Error("additional verification: non-existent scope", "error", err)
+				return
+			}
+			ret.Scope = &scopes.ScopeInfo{
+				Id:            scp.GetPublicId(),
+				Type:          scp.GetType(),
+				Name:          scp.GetName(),
+				Description:   scp.GetDescription(),
+				ParentScopeId: scp.GetParentId(),
+			}
+		}
+	}
+
+	// NOTE: the exclusions for recovery/anonymous user below are best effort.
+	// It's up to the caller to ensure that an invalid user ID for the operation
+	// is not actually allowed. The options here are really for
+	// listing/filtering purposes.
+
+	// Always allowed
+	if v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms {
+		if opts.withRecoveryTokenNotAllowed {
+			// Don't allow it. This is used in some cases like target listing
+			// where the command will succeed for most things but it's not
+			// allowed for an authorize-session action.
+			return
+		}
+		ret.Error = nil
+		return
+	}
+
+	if opts.withAnonymousUserNotAllowed {
+		// Similar to above, in some cases we never allow the anonymous user,
+		// such as with targets and authorize-session
+		return
+	}
+
+	aclResults := v.acl.Allowed(res, act)
+
+	if !aclResults.Allowed {
+		if v.requestInfo.DisableAuthzFailures {
+			ret.Error = nil
+			// TODO: Decide whether to remove this
+			v.logger.Info("failed authz info for request", "resource", pretty.Sprint(v.res), "user_id", ret.UserId, "action", v.act.String())
+		} else {
+			// If the anon user was used (either no token, or invalid (perhaps
+			// expired) token), return a 401. That way if it's an authn'd user
+			// that is not authz'd we'll return 403 to be explicit.
+			if ret.UserId == "u_anon" {
+				ret.Error = handlers.UnauthenticatedError()
+			}
+			return
+		}
+	}
+
+	ret.Error = nil
+	return
+}
+
 // GetTokenFromRequest pulls the token from either the Authorization header or
 // split cookies and parses it. If it cannot be parsed successfully, the issue
 // is logged and we return blank, so logic will continue as the anonymous user.
@@ -464,129 +606,4 @@ func GetTokenFromRequest(logger hclog.Logger, kmsCache *kms.Kms, req *http.Reque
 	encryptedToken := splitFullToken[2]
 
 	return publicId, encryptedToken, receivedTokenType
-}
-
-func (v *verifier) decryptToken() {
-	switch v.requestInfo.TokenFormat {
-	case AuthTokenTypeUnknown:
-		// Nothing to decrypt
-		return
-
-	case AuthTokenTypeBearer, AuthTokenTypeSplitCookie:
-		if v.kms == nil {
-			v.logger.Trace("decrypt token: no KMS object available to authz system")
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-
-		tokenRepo, err := v.authTokenRepoFn()
-		if err != nil {
-			v.logger.Warn("decrypt bearer token: failed to get authtoken repo", "error", err)
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-
-		at, err := tokenRepo.LookupAuthToken(v.ctx, v.requestInfo.PublicId)
-		if err != nil {
-			v.logger.Trace("decrypt bearer token: failed to look up auth token by public ID", "error", err)
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-		if at == nil {
-			v.logger.Trace("decrypt bearer token: nil result from looking up auth token by public ID")
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-
-		tokenWrapper, err := v.kms.GetWrapper(v.ctx, at.GetScopeId(), kms.KeyPurposeTokens)
-		if err != nil {
-			v.logger.Warn("decrypt bearer token: unable to get wrapper for tokens; continuing as anonymous user", "error", err)
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-
-		version := v.requestInfo.EncryptedToken[0:len(globals.ServiceTokenV1)]
-		switch version {
-		case globals.ServiceTokenV1:
-		default:
-			v.logger.Trace("decrypt bearer token: unknown token encryption version; continuing as anonymous user", "version", version)
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-		marshaledToken, err := base58.FastBase58Decoding(v.requestInfo.EncryptedToken[len(globals.ServiceTokenV1):])
-		if err != nil {
-			v.logger.Trace("decrypt bearer token: error unmarshaling base58 token; continuing as anonymous user", "error", err)
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-
-		blobInfo := new(wrapping.EncryptedBlobInfo)
-		if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
-			v.logger.Trace("decrypt bearer token: error decoding encrypted token; continuing as anonymous user", "error", err)
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-
-		s1Bytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, []byte(v.requestInfo.PublicId))
-		if err != nil {
-			v.logger.Trace("decrypt bearer token: error decrypting encrypted token; continuing as anonymous user", "error", err)
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-
-		var s1Info tokens.S1TokenInfo
-		if err := proto.Unmarshal(s1Bytes, &s1Info); err != nil {
-			v.logger.Trace("decrypt bearer token: error unmarshaling token info; continuing as anonymous user", "error", err)
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-
-		if v.requestInfo.TokenFormat == AuthTokenTypeUnknown || s1Info.Token == "" || v.requestInfo.PublicId == "" {
-			v.logger.Trace("decrypt bearer token: after parsing, could not find valid token; continuing as anonymous user")
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-
-		v.requestInfo.Token = s1Info.Token
-		return
-
-	case AuthTokenTypeRecoveryKms:
-		if v.kms == nil {
-			v.logger.Trace("decrypt recovery token: no KMS object available to authz system")
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-		wrapper := v.kms.GetExternalWrappers().Recovery()
-		if wrapper == nil {
-			v.logger.Trace("decrypt recovery token: no recovery KMS is available")
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-		info, err := recovery.ParseRecoveryToken(v.ctx, wrapper, v.requestInfo.EncryptedToken)
-		if err != nil {
-			v.logger.Trace("decrypt recovery token: error parsing and validating recovery token", "error", err)
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-		// If we add the validity period to the creation time (which we've
-		// verified is before the current time, with a minute of fudging), and
-		// it's before now, it's expired and might be a replay.
-		if info.CreationTime.Add(globals.RecoveryTokenValidityPeriod).Before(time.Now()) {
-			v.logger.Warn("decrypt recovery token: recovery token has expired (possible replay attack)")
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-		repo, err := v.serversRepoFn()
-		if err != nil {
-			v.logger.Trace("decrypt recovery token: error fetching servers repo", "error", err)
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-		if err := repo.AddRecoveryNonce(v.ctx, info.Nonce); err != nil {
-			v.logger.Warn("decrypt recovery token: error adding nonce to database (possible replay attack)", "error", err)
-			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
-			return
-		}
-		v.logger.Warn("recovery KMS was used to authorize a call", "url", v.requestInfo.Path, "method", v.requestInfo.Method)
-	}
 }

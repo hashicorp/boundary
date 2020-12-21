@@ -120,13 +120,27 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 				conn.Close(websocket.StatusInternalError, "refusing to activate session")
 				return
 			}
-			w.logger.Trace("activating session")
-			sessStatus, err = w.activateSession(r.Context(), sessionId, handshake.GetTofuToken(), version)
+			if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_UNSPECIFIED {
+				w.logger.Trace("activating session")
+				sessStatus, err = w.activateSession(r.Context(), sessionId, handshake.GetTofuToken(), version)
+				if err != nil {
+					w.logger.Error("unable to validate session", "error", err)
+					conn.Close(websocket.StatusInternalError, "unable to activate session")
+					return
+				}
+			}
+		}
+
+		if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL {
+			w.logger.Trace("canceling session at client request")
+			_, err := w.cancelSession(r.Context(), sessionId)
 			if err != nil {
-				w.logger.Error("unable to validate session", "error", err)
-				conn.Close(websocket.StatusInternalError, "unable to activate session")
+				w.logger.Error("unable to cancel session", "error", err)
+				conn.Close(websocket.StatusInternalError, "unable to cancel session")
 				return
 			}
+			conn.Close(websocket.StatusNormalClosure, "session canceled")
+			return
 		}
 
 		var ci *connInfo

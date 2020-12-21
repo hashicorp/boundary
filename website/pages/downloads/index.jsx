@@ -84,7 +84,7 @@ export default function DownloadsPage({ releases }) {
             src={require('./img/boundary-logo.svg')}
           />
         }
-        brand="red"
+        brand="boundary"
         tutorialLink={{
           label: 'View Tutorial on HashiCorp Learn',
           href:
