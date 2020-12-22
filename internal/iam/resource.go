@@ -50,7 +50,7 @@ type ResourceWithScope interface {
 func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithScope) (*Scope, error) {
 	const op = "iam.LookupScope"
 	if reader == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing reader")
+		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
 	}
 	if resource == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing resource")

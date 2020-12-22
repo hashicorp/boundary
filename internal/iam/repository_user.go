@@ -628,13 +628,13 @@ func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVer
 func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.Reader, writer db.Writer, userId string, accountIds []string, _ ...Option) error {
 	const op = "iam.associateUserWithAccounts"
 	if repoKms == nil {
-		return errors.New(errors.InvalidParameter, op, "missing kms")
+		return errors.New(errors.InvalidParameter, op, "nil kms")
 	}
 	if reader == nil {
-		return errors.New(errors.InvalidParameter, op, "missing reader")
+		return errors.New(errors.InvalidParameter, op, "nil reader")
 	}
 	if writer == nil {
-		return errors.New(errors.InvalidParameter, op, "missing writer")
+		return errors.New(errors.InvalidParameter, op, "nil writer")
 	}
 	if userId == "" {
 		return errors.New(errors.InvalidParameter, op, "missing user id")
@@ -692,13 +692,13 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db.Reader, writer db.Writer, userId string, accountIds []string, _ ...Option) error {
 	const op = "iam.dissociateUserFromAccounts"
 	if repoKms == nil {
-		return errors.New(errors.InvalidParameter, op, "missing kms")
+		return errors.New(errors.InvalidParameter, op, "nil kms")
 	}
 	if reader == nil {
-		return errors.New(errors.InvalidParameter, op, "missing reader")
+		return errors.New(errors.InvalidParameter, op, "nil reader")
 	}
 	if writer == nil {
-		return errors.New(errors.InvalidParameter, op, "missing writer")
+		return errors.New(errors.InvalidParameter, op, "nil writer")
 	}
 	if userId == "" {
 		return errors.New(errors.InvalidParameter, op, "missing public id")

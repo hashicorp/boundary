@@ -40,7 +40,7 @@ func Test_LookupScope(t *testing.T) {
 		s, err := LookupScope(context.Background(), nil, user)
 		require.Error(err)
 		assert.Nil(s)
-		assert.Equal("iam.LookupScope: missing reader: parameter violation: error #100", err.Error())
+		assert.Equal("iam.LookupScope: nil reader: parameter violation: error #100", err.Error())
 
 		s, err = LookupScope(context.Background(), w, nil)
 		assert.Nil(s)

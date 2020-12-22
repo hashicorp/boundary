@@ -483,7 +483,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			}
 			currentMembers, err = txRepo.ListGroupMembers(ctx, groupId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write to retrieve current group members after set"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current group members after set"))
 			}
 			return nil
 		})

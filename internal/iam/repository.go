@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/internal/errors"
-
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -227,7 +226,7 @@ func (r *Repository) delete(ctx context.Context, resource Resource, _ ...Option)
 			}
 			if rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

@@ -156,7 +156,7 @@ func (*Scope) Actions() map[string]action.Type {
 func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	const op = "iam.(Scope).GetScope"
 	if r == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing reader")
+		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
 	}
 	if s.PublicId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
