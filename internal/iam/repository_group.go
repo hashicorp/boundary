@@ -96,11 +96,11 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 			}
 			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", group.PublicId)))
+				return errors.Wrap(err, op)
 			}
 			members, err = repo.ListGroupMembers(ctx, group.PublicId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", group.PublicId)))
+				return errors.Wrap(err, op)
 			}
 			return nil
 		},
@@ -130,15 +130,15 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, _ ...
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			if err := read.LookupByPublicId(ctx, &g); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
+				return errors.Wrap(err, op)
 			}
 			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
+				return errors.Wrap(err, op)
 			}
 			members, err = repo.ListGroupMembers(ctx, withPublicId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
+				return errors.Wrap(err, op)
 			}
 			return nil
 		},

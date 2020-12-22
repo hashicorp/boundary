@@ -72,7 +72,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, _ ...Option)
 	}
 	resourceCloner, ok := resource.(Cloneable)
 	if !ok {
-		return nil, errors.New(errors.InvalidParameter, op, "resource is not Cloneable for create")
+		return nil, errors.New(errors.InvalidParameter, op, "resource is not Cloneable")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
@@ -120,7 +120,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 	}
 	resourceCloner, ok := resource.(Cloneable)
 	if !ok {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "resource is not Cloneable for create")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "resource is not Cloneable")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
@@ -191,7 +191,7 @@ func (r *Repository) delete(ctx context.Context, resource Resource, _ ...Option)
 	}
 	resourceCloner, ok := resource.(Cloneable)
 	if !ok {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "resource is not Cloneable for create")
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "resource is not Cloneable")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
