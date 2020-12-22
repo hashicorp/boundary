@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/db/migrations"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 	"github.com/stretchr/testify/assert"
@@ -49,7 +48,7 @@ func TestState(t *testing.T) {
 	m, err := schema.NewManager(ctx, "postgres", d)
 	require.NoError(t, err)
 	want := &schema.State{
-		BinarySchemaVersion: migrations.BinarySchemaVersion,
+		BinarySchemaVersion: schema.BinarySchemaVersion("postgres"),
 	}
 	s, err := m.State(ctx)
 	require.NoError(t, err)
@@ -63,7 +62,7 @@ func TestState(t *testing.T) {
 
 	want = &schema.State{
 		InitializationStarted: true,
-		BinarySchemaVersion:   migrations.BinarySchemaVersion,
+		BinarySchemaVersion:   schema.BinarySchemaVersion("postgres"),
 		Dirty:                 true,
 		CurrentSchemaVersion:  2,
 	}

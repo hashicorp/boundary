@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/db/migrations"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
@@ -184,8 +183,10 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}()
 	}
 
-	if migrations.DevMigration != c.flagAllowDevMigrations {
-		if migrations.DevMigration {
+	dialect := "postgres"
+
+	if schema.DevMigration(dialect) != c.flagAllowDevMigrations {
+		if schema.DevMigration(dialect) {
 			c.UI.Error(base.WrapAtLength("This version of the binary has " +
 				"dev database schema updates which may not be supported in the " +
 				"next official release. To proceed anyways please use the " +
@@ -258,12 +259,12 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	// This database is used to keep an exclusive lock on the database for the
 	// remainder of the command
-	dBase, err := sql.Open("postgres", dbaseUrl)
+	dBase, err := sql.Open(dialect, dbaseUrl)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error establishing db connection for locking: %w", err).Error())
 		return 1
 	}
-	man, err := schema.NewManager(c.Context, "postgres", dBase)
+	man, err := schema.NewManager(c.Context, dialect, dBase)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error setting up schema manager for locking: %w", err).Error())
 		return 1
@@ -282,7 +283,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	// Core migrations using the migration URL
 	{
 		migrationUrl = strings.TrimSpace(migrationUrl)
-		ran, err := db.InitStore(c.Context, "postgres", migrationUrl)
+		ran, err := db.InitStore(c.Context, dialect, migrationUrl)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
 			return 1
@@ -304,7 +305,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	// Everything after is done with normal database URL and is affecting actual data
 	c.srv.DatabaseUrl = strings.TrimSpace(dbaseUrl)
-	if err := c.srv.ConnectToDatabase("postgres"); err != nil {
+	if err := c.srv.ConnectToDatabase(dialect); err != nil {
 		c.UI.Error(fmt.Errorf("Error connecting to database after migrations: %w", err).Error())
 		return 1
 	}

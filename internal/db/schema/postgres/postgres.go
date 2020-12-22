@@ -19,7 +19,7 @@ import (
 
 const NilVersion = -1
 
-var DefaultMigrationsTable = "schema_migrations"
+var DefaultMigrationsTable = "boundary_schema_migrations"
 
 var (
 	ErrNilConfig      = fmt.Errorf("no config")
