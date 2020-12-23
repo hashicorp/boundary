@@ -240,7 +240,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 		args            args
 		wantRowsDeleted int
 		wantErr         bool
-		wantIsErr       error
+		wantIsErr       errors.Code
 	}{
 		{
 			name: "valid",
@@ -271,7 +271,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 
 		{
@@ -295,7 +295,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 		{
 			name: "invalid-grant-strings",
@@ -375,8 +375,8 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
-				if tt.wantIsErr != nil {
-					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+				if tt.wantIsErr != 0 {
+					assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "unexpected error %s", err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)

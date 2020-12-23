@@ -34,7 +34,7 @@ func TestNewGroup(t *testing.T) {
 		args            args
 		wantErr         bool
 		wantErrMsg      string
-		wantIsErr       error
+		wantIsErr       errors.Code
 		wantName        string
 		wantDescription string
 	}{
@@ -71,8 +71,8 @@ func TestNewGroup(t *testing.T) {
 				opt: []Option{WithName(id)},
 			},
 			wantErr:    true,
-			wantErrMsg: "new group: missing scope id invalid parameter:",
-			wantIsErr:  errors.ErrInvalidParameter,
+			wantErrMsg: "iam.NewGroup: missing scope id: parameter violation: error #100",
+			wantIsErr:  errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -82,8 +82,8 @@ func TestNewGroup(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
-				if tt.wantIsErr != nil {
-					assert.True(errors.Is(err, tt.wantIsErr))
+				if tt.wantIsErr != 0 {
+					assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				}
 				return
 			}
@@ -171,7 +171,7 @@ func Test_GroupCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: vet for write failed: iam.validateScopeForWrite: scope is not found: search issue: error #1100",
+			wantErrMsg: "db.Create: iam.(Group).VetForWrite: iam.validateScopeForWrite: scope is not found: search issue: error #1100",
 		},
 	}
 
@@ -247,7 +247,7 @@ func Test_GroupUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Update: vet for write failed: iam.validateScopeForWrite: not allowed to change a resource's scope: parameter violation: error #100",
+			wantErrMsg: "db.Update: iam.(Group).VetForWrite: iam.validateScopeForWrite: not allowed to change a resource's scope: parameter violation: error #100",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",

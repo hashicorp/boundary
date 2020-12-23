@@ -14,33 +14,34 @@ import (
 
 // CreateGroup will create a group in the repository and return the written
 // group.  No options are currently supported.
-func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Option) (*Group, error) {
+func (r *Repository) CreateGroup(ctx context.Context, group *Group, _ ...Option) (*Group, error) {
+	const op = "iam.(Repository).CreateGroup"
 	if group == nil {
-		return nil, fmt.Errorf("create group: missing group %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing group")
 	}
 	if group.Group == nil {
-		return nil, fmt.Errorf("create group: missing group store %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing group store")
 	}
 	if group.PublicId != "" {
-		return nil, fmt.Errorf("create group: public id not empty: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
 	}
 	if group.ScopeId == "" {
-		return nil, fmt.Errorf("create group: missing group scope id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	id, err := newGroupId()
 	if err != nil {
-		return nil, fmt.Errorf("create group: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	g := group.Clone().(*Group)
 	g.PublicId = id
 	resource, err := r.create(ctx, g)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, fmt.Errorf("create group: group %s already exists in scope %s: %w", group.Name, group.ScopeId, errors.ErrNotUnique)
+			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf("group %s already exists in scope %s", group.Name, group.ScopeId))
 		}
-		return nil, fmt.Errorf("create group: %w for %s", err, g.PublicId)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", g.PublicId)))
 	}
-	return resource.(*Group), err
+	return resource.(*Group), nil
 }
 
 // UpdateGroup will update a group in the repository and return the written
@@ -48,22 +49,23 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Optio
 // be updated.  Fields will be set to NULL if the field is a zero value and
 // included in fieldMask. Name and Description are the only updatable fields,
 // If no updatable fields are included in the fieldMaskPaths, then an error is returned.
-func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint32, fieldMaskPaths []string, opt ...Option) (*Group, []*GroupMember, int, error) {
+func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint32, fieldMaskPaths []string, _ ...Option) (*Group, []*GroupMember, int, error) {
+	const op = "iam.(Repository).UpdateGroup"
 	if group == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group %w", errors.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing group")
 	}
 	if group.Group == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group store %w", errors.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing group store")
 	}
 	if group.PublicId == "" {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group public id %w", errors.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
 		default:
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: field: %s: %w", f, errors.ErrInvalidFieldMask)
+			return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 	var dbMask, nullFields []string
@@ -76,7 +78,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: %w", errors.ErrEmptyFieldMask)
+		return nil, nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
 	}
 	var resource Resource
 	var rowsUpdated int
@@ -90,33 +92,34 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 			g := group.Clone().(*Group)
 			resource, rowsUpdated, err = r.update(ctx, g, version, dbMask, nullFields)
 			if err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
 			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
-				return fmt.Errorf("update group: failed creating inner repo: %w for %s", err, group.PublicId)
+				return errors.Wrap(err, op)
 			}
 			members, err = repo.ListGroupMembers(ctx, group.PublicId)
 			if err != nil {
-				return fmt.Errorf("update group: listing group members: %w for %s", err, group.PublicId)
+				return errors.Wrap(err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: group %s already exists in org %s: %w", group.Name, group.ScopeId, errors.ErrNotUnique)
+			return nil, nil, db.NoRowsAffected, errors.New(errors.NotUnique, op, fmt.Sprintf("group %s already exists in scope %s", group.Name, group.ScopeId))
 		}
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: %w for %s", err, group.PublicId)
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", group.PublicId)))
 	}
-	return resource.(*Group), members, rowsUpdated, err
+	return resource.(*Group), members, rowsUpdated, nil
 }
 
 // LookupGroup will look up a group in the repository.  If the group is not
 // found, it will return nil, nil.
-func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, opt ...Option) (*Group, []*GroupMember, error) {
+func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, _ ...Option) (*Group, []*GroupMember, error) {
+	const op = "iam.(Repository).LookupGroup"
 	if withPublicId == "" {
-		return nil, nil, fmt.Errorf("lookup group: missing public id %w", errors.ErrInvalidParameter)
+		return nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	g := allocGroup()
 	g.PublicId = withPublicId
@@ -127,15 +130,15 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, opt .
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			if err := read.LookupByPublicId(ctx, &g); err != nil {
-				return fmt.Errorf("lookup group: failed %w for %s", err, withPublicId)
+				return errors.Wrap(err, op)
 			}
 			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
-				return fmt.Errorf("lookup group: failed creating inner repo: %w for %s", err, withPublicId)
+				return errors.Wrap(err, op)
 			}
 			members, err = repo.ListGroupMembers(ctx, withPublicId)
 			if err != nil {
-				return fmt.Errorf("lookup group: listing group members: %w for %s", err, withPublicId)
+				return errors.Wrap(err, op)
 			}
 			return nil
 		},
@@ -144,49 +147,52 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, opt .
 		if errors.IsNotFoundError(err) {
 			return nil, nil, nil
 		}
-		return nil, nil, fmt.Errorf("lookup group: failed %w for %s", err, withPublicId)
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
 	}
 	return &g, members, nil
 }
 
 // DeleteGroup will delete a group from the repository.
-func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
+func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, _ ...Option) (int, error) {
+	const op = "iam.(Repository).DeleteGroup"
 	if withPublicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete group: missing public id %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	g := allocGroup()
 	g.PublicId = withPublicId
 	if err := r.reader.LookupByPublicId(ctx, &g); err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete group: failed %w for %s", err, withPublicId)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
 	}
 	rowsDeleted, err := r.delete(ctx, &g)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete group: failed %w for %s", err, withPublicId)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
 	}
 	return rowsDeleted, nil
 }
 
 // ListGroups in a scope and supports WithLimit option.
 func (r *Repository) ListGroups(ctx context.Context, withScopeId string, opt ...Option) ([]*Group, error) {
+	const op = "iam.(Repository).ListGroups"
 	if withScopeId == "" {
-		return nil, fmt.Errorf("list groups: missing scope id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	var grps []*Group
 	err := r.list(ctx, &grps, "scope_id = ?", []interface{}{withScopeId}, opt...)
 	if err != nil {
-		return nil, fmt.Errorf("list groups: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return grps, nil
 }
 
 // ListGroupMembers of a group and supports WithLimit option.
 func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, opt ...Option) ([]*GroupMember, error) {
+	const op = "iam.(Repository).ListGroups"
 	if withGroupId == "" {
-		return nil, fmt.Errorf("list group members: missing group id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing group id")
 	}
 	members := []*GroupMember{}
 	if err := r.list(ctx, &members, "group_id = ?", []interface{}{withGroupId}, opt...); err != nil {
-		return nil, fmt.Errorf("list group members: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return members, nil
 }
@@ -195,35 +201,36 @@ func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, o
 // (groupId).  The group's current db version must match the groupVersion or an
 // error will be returned.  Zero is not a valid value for the WithVersion option
 // and will return an error.
-func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, opt ...Option) ([]*GroupMember, error) {
+func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, _ ...Option) ([]*GroupMember, error) {
+	const op = "iam.(Repository).AddGroupMembers"
 	if groupId == "" {
-		return nil, fmt.Errorf("add group members: missing group id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing group id")
 	}
 	if len(userIds) == 0 {
-		return nil, fmt.Errorf("add group members: missing user ids to add %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing user ids")
 	}
 	if groupVersion == 0 {
-		return nil, fmt.Errorf("add group members: version cannot be zero: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 	group := allocGroup()
 	group.PublicId = groupId
 	scope, err := group.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, fmt.Errorf("add group members: unable to get group %s scope: %w", groupId, err)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get group members %s scope", groupId)))
 	}
 
 	newGroupMembers := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
 		gm, err := NewGroupMemberUser(groupId, id)
 		if err != nil {
-			return nil, fmt.Errorf("add group members: unable to create in memory group member: %w", err)
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory group member"))
 		}
 		newGroupMembers = append(newGroupMembers, gm)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var currentMembers []*GroupMember
@@ -235,7 +242,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 			msgs := make([]*oplog.Message, 0, 2)
 			groupTicket, err := w.GetTicket(&group)
 			if err != nil {
-				return fmt.Errorf("add group members: unable to get ticket: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedGroup := allocGroup()
 			updatedGroup.PublicId = groupId
@@ -243,15 +250,15 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 			var groupOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(&groupVersion))
 			if err != nil {
-				return fmt.Errorf("add group members: unable to update group version: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to update group version"))
 			}
 			if rowsUpdated != 1 {
-				return fmt.Errorf("add group members: updated group and %d rows updated", rowsUpdated)
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &groupOplogMsg)
 			memberOplogMsgs := make([]*oplog.Message, 0, len(newGroupMembers))
 			if err := w.CreateItems(ctx, newGroupMembers, db.NewOplogMsgs(&memberOplogMsgs)); err != nil {
-				return fmt.Errorf("add group members: unable to add users: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to add users"))
 			}
 			msgs = append(msgs, memberOplogMsgs...)
 			metadata := oplog.Metadata{
@@ -261,7 +268,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 				"resource-public-id": []string{groupId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, groupTicket, metadata, msgs); err != nil {
-				return fmt.Errorf("add group members: unable to write oplog: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := Repository{
@@ -273,13 +280,13 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 			}
 			currentMembers, err = txRepo.ListGroupMembers(ctx, groupId)
 			if err != nil {
-				return fmt.Errorf("set group members: unable to retrieve current group members after sets: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current group members after sets"))
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("add group members: error adding members: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return currentMembers, nil
 }
@@ -287,35 +294,36 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 // DeleteGroupMembers (userIds) from a group (groupId). The group's current db version
 // must match the groupVersion or an error will be returned. Zero is not a valid
 // value for the WithVersion option and will return an error.
-func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, opt ...Option) (int, error) {
+func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, _ ...Option) (int, error) {
+	const op = "iam.(Repository).DeleteGroupMembers"
 	if groupId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete group members: missing group id: %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing group id")
 	}
 	if len(userIds) == 0 {
-		return db.NoRowsAffected, fmt.Errorf("delete group members: missing either user or groups to delete %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing either user or groups to delete")
 	}
 	if groupVersion == 0 {
-		return db.NoRowsAffected, fmt.Errorf("delete group members: version cannot be zero: %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 	group := allocGroup()
 	group.PublicId = groupId
 	scope, err := group.GetScope(ctx, r.reader)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete group members: unable to get group %s scope: %w", groupId, err)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get group members %s scope", groupId)))
 	}
 
 	deleteMembers := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
 		member, err := NewGroupMemberUser(groupId, id)
 		if err != nil {
-			return db.NoRowsAffected, fmt.Errorf("delete group members: unable to create in memory group member: %w", err)
+			return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory group member"))
 		}
 		deleteMembers = append(deleteMembers, member)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var totalRowsDeleted int
@@ -327,7 +335,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 			msgs := make([]*oplog.Message, 0, 2)
 			groupTicket, err := w.GetTicket(&group)
 			if err != nil {
-				return fmt.Errorf("delete group members: unable to get ticket: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedGroup := allocGroup()
 			updatedGroup.PublicId = groupId
@@ -335,19 +343,19 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 			var groupOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(&groupVersion))
 			if err != nil {
-				return fmt.Errorf("delete group members: unable to update group version: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to update group version"))
 			}
 			if rowsUpdated != 1 {
-				return fmt.Errorf("delete group members: updated group and %d rows updated", rowsUpdated)
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &groupOplogMsg)
 			userOplogMsgs := make([]*oplog.Message, 0, len(deleteMembers))
 			rowsDeleted, err := w.DeleteItems(ctx, deleteMembers, db.NewOplogMsgs(&userOplogMsgs))
 			if err != nil {
-				return fmt.Errorf("delete group members: unable to delete group members: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to delete group members"))
 			}
 			if rowsDeleted != len(deleteMembers) {
-				return fmt.Errorf("delete group members: group members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers))
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("group members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers)))
 			}
 			totalRowsDeleted += rowsDeleted
 			msgs = append(msgs, userOplogMsgs...)
@@ -358,13 +366,13 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 				"resource-public-id": []string{groupId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, groupTicket, metadata, msgs); err != nil {
-				return fmt.Errorf("delete group members: unable to write oplog: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete group members: error deleting members: %w", err)
+		return db.NoRowsAffected, errors.Wrap(err, op)
 	}
 	return totalRowsDeleted, nil
 }
@@ -372,23 +380,24 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 // SetGroupMembers will set the group's members.  If userIds is empty, the
 // members will be cleared. Zero is not a valid value for the WithVersion option
 // and will return an error.
-func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, opt ...Option) ([]*GroupMember, int, error) {
+func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, _ ...Option) ([]*GroupMember, int, error) {
+	const op = "iam.(Repository).SetGroupMembers"
 	if groupId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("set group members: missing group id: %w", errors.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing group id")
 	}
 	if groupVersion == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("set group members: version cannot be zero: %w", errors.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 	group := allocGroup()
 	group.PublicId = groupId
 	scope, err := group.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("set group members: unable to get members %s scope: %w", groupId, err)
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get group members %s scope", groupId)))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var currentMembers []*GroupMember
@@ -408,13 +417,13 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			}
 			addMembers, deleteMembers, err := groupMemberChanges(ctx, reader, groupId, userIds)
 			if err != nil {
-				return fmt.Errorf("set associated accounts: unable to determine changes: %w", err)
+				return errors.Wrap(err, op)
 			}
 			// handle no change to existing group members
 			if len(addMembers) == 0 && len(deleteMembers) == 0 {
 				currentMembers, err = txRepo.ListGroupMembers(ctx, groupId)
 				if err != nil {
-					return fmt.Errorf("set group members: unable to retrieve current group members after sets: %w", err)
+					return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current group members after sets"))
 				}
 				return nil
 			}
@@ -431,7 +440,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			// we need to write oplog entries for deletes and adds
 			groupTicket, err := w.GetTicket(&group)
 			if err != nil {
-				return fmt.Errorf("set group members: unable to get ticket for group: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedGroup := allocGroup()
 			updatedGroup.PublicId = groupId
@@ -439,19 +448,19 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			var groupOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(&groupVersion))
 			if err != nil {
-				return fmt.Errorf("set group members: unable to update group version: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to update group verison"))
 			}
 			if rowsUpdated != 1 {
-				return fmt.Errorf("set group members: updated group and %d rows updated", rowsUpdated)
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))
 			}
 			if len(deleteMembers) > 0 {
 				userOplogMsgs := make([]*oplog.Message, 0, len(deleteMembers))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteMembers, db.NewOplogMsgs(&userOplogMsgs))
 				if err != nil {
-					return fmt.Errorf("set group members: unable to delete group member: %w", err)
+					return errors.Wrap(err, op, errors.WithMsg("unable to delete group member"))
 				}
 				if rowsDeleted != len(deleteMembers) {
-					return fmt.Errorf("set group members: members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers))
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers)))
 				}
 				totalRowsAffected += rowsDeleted
 				msgs = append(msgs, userOplogMsgs...)
@@ -460,7 +469,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			if len(addMembers) > 0 {
 				userOplogMsgs := make([]*oplog.Message, 0, len(addMembers))
 				if err := w.CreateItems(ctx, addMembers, db.NewOplogMsgs(&userOplogMsgs)); err != nil {
-					return fmt.Errorf("set group members: unable to add users: %w", err)
+					return errors.Wrap(err, op, errors.WithMsg("unable to add users"))
 				}
 				totalRowsAffected += len(addMembers)
 				msgs = append(msgs, userOplogMsgs...)
@@ -470,22 +479,23 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			// we're done with all the membership writes, so let's write the
 			// group's update oplog message
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, groupTicket, metadata, msgs); err != nil {
-				return fmt.Errorf("set group members: unable to write oplog for additions: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
 			currentMembers, err = txRepo.ListGroupMembers(ctx, groupId)
 			if err != nil {
-				return fmt.Errorf("set group members: unable to retrieve current group members after sets: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current group members after set"))
 			}
 			return nil
 		})
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("set group members: unable to set group members: %w", err)
+		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 	return currentMembers, totalRowsAffected, nil
 }
 
 // groupMemberChanges returns two slices: members to add and delete
 func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, userIds []string) ([]interface{}, []interface{}, error) {
+	const op = "iam.groupMemberChanges"
 	var inClauseSpots []string
 	// starts at 2 because there is already a $1 in the query
 	for i := 2; i < len(userIds)+2; i++ {
@@ -505,7 +515,7 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 	// fmt.Println(query, params)
 	rows, err := reader.Query(ctx, query, params)
 	if err != nil {
-		return nil, nil, fmt.Errorf("changes: query failed: %w", err)
+		return nil, nil, errors.Wrap(err, op)
 	}
 	defer rows.Close()
 
@@ -517,7 +527,7 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 	for rows.Next() {
 		var chg change
 		if err := reader.ScanRows(rows, &chg); err != nil {
-			return nil, nil, fmt.Errorf("changes: scan row failed: %w", err)
+			return nil, nil, errors.Wrap(err, op)
 		}
 		changes = append(changes, &chg)
 	}
@@ -525,23 +535,23 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 	deleteMembers := []interface{}{}
 	for _, c := range changes {
 		if c.MemberId == "" {
-			return nil, nil, fmt.Errorf("changes: missing user id in change result")
+			return nil, nil, errors.New(errors.InvalidParameter, op, "missing user id in change result")
 		}
 		switch c.Action {
 		case "add":
 			gm, err := NewGroupMemberUser(groupId, c.MemberId)
 			if err != nil {
-				return nil, nil, fmt.Errorf("set group members: unable to create in memory group member for add: %w", err)
+				return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory group member for add"))
 			}
 			addMembers = append(addMembers, gm)
 		case "delete":
 			gm, err := NewGroupMemberUser(groupId, c.MemberId)
 			if err != nil {
-				return nil, nil, fmt.Errorf("set group members: unable to create in memory group member for delete: %w", err)
+				return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory group member for delete"))
 			}
 			deleteMembers = append(deleteMembers, gm)
 		default:
-			return nil, nil, fmt.Errorf("changes: unknown action %s for %s", c.Action, c.MemberId)
+			return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown action %s for %s", c.Action, c.MemberId))
 		}
 
 	}

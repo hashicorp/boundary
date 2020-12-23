@@ -51,15 +51,18 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 		// Create host set members
 		msgs, err := createMembers(ctx, w, members)
 		if err != nil {
-			return err
+			return errors.Wrap(err, op)
 		}
 		// Update host set version
 		if err := updateVersion(ctx, w, wrapper, metadata, msgs, set, version); err != nil {
-			return err
+			return errors.Wrap(err, op)
 		}
 
 		hosts, err = getHosts(ctx, reader, setId, unlimited)
-		return err
+		if err != nil {
+			return errors.Wrap(err, op)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, op)
@@ -188,11 +191,15 @@ func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId
 		// Delete host set members
 		msgs, err := deleteMembers(ctx, w, members)
 		if err != nil {
-			return err
+			return errors.Wrap(err, op)
 		}
 
 		// Update host set version
-		return updateVersion(ctx, w, wrapper, metadata, msgs, set, version)
+		err = updateVersion(ctx, w, wrapper, metadata, msgs, set, version)
+		if err != nil {
+			return errors.Wrap(err, op)
+		}
+		return nil
 	})
 
 	if err != nil {
@@ -278,7 +285,7 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 			if len(deletions) > 0 {
 				deletedMsgs, err := deleteMembers(ctx, w, deletions)
 				if err != nil {
-					return err
+					return errors.Wrap(err, op)
 				}
 				msgs = append(msgs, deletedMsgs...)
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
@@ -296,11 +303,14 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 
 			// Update host set version
 			if err := updateVersion(ctx, w, wrapper, metadata, msgs, set, version); err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
 
 			hosts, err = getHosts(ctx, reader, setId, unlimited)
-			return err
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
 		})
 
 		if err != nil {

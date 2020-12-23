@@ -2,8 +2,6 @@ package iam
 
 import (
 	"context"
-	stderrors "errors"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -32,8 +30,9 @@ var _ db.VetForWriter = (*Role)(nil)
 // NewRole creates a new in memory role with a scope (project/org)
 // allowed options include: withDescripion, WithName, withGrantScopeId.
 func NewRole(scopeId string, opt ...Option) (*Role, error) {
+	const op = "iam.NewRole"
 	if scopeId == "" {
-		return nil, fmt.Errorf("new role: missing scope id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	opts := getOpts(opt...)
 	r := &Role{
@@ -63,11 +62,12 @@ func (r *Role) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface.
 func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.(Role).VetForWrite"
 	if role.PublicId == "" {
-		return stderrors.New("error public id is empty string for role write")
+		return errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	if err := validateScopeForWrite(ctx, r, role, opType, opt...); err != nil {
-		return err
+		return errors.Wrap(err, op)
 	}
 	return nil
 }

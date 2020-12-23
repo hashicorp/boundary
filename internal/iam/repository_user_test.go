@@ -59,7 +59,7 @@ func TestRepository_CreateUser(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create user: error getting metadata for create: unable to get scope for standard metadata: db.LookupWhere: record not found",
+			wantErrMsg: "iam.(Repository).create: error getting metadata: iam.(Repository).stdMetadata: unable to get scope: iam.LookupScope: db.LookupWhere: record not found",
 		},
 		{
 			name: "dup-name",
@@ -72,7 +72,7 @@ func TestRepository_CreateUser(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: "create user: user %s already exists in org %s",
+			wantErrMsg: "iam.(Repository).CreateUser: user %s already exists in org %s: integrity violation: error #1002",
 		},
 	}
 	for _, tt := range tests {
@@ -170,7 +170,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update user: db.DoTx: db.Update: db.lookupAfterWrite: db.LookupById: record not found",
+			wantErrMsg:     "iam.(Repository).UpdateUser: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
 			wantIsErr:      errors.RecordNotFound,
 		},
 		{
@@ -204,7 +204,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update user: empty field mask",
+			wantErrMsg:     "iam.(Repository).UpdateUser: empty field mask, parameter violation: error #104",
 		},
 		{
 			name: "nil-fieldmask",
@@ -215,7 +215,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update user: empty field mask",
+			wantErrMsg:     "iam.(Repository).UpdateUser: empty field mask, parameter violation: error #104",
 		},
 		{
 			name: "read-only-fields",
@@ -226,7 +226,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update user: field: CreateTime: invalid field mask",
+			wantErrMsg:     "iam.(Repository).UpdateUser: invalid field mask: CreateTime: parameter violation: error #103",
 		},
 		{
 			name: "unknown-fields",
@@ -237,7 +237,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update user: field: Alice: invalid field mask",
+			wantErrMsg:     "iam.(Repository).UpdateUser: invalid field mask: Alice: parameter violation: error #103",
 		},
 		{
 			name: "no-public-id",
@@ -248,7 +248,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				PublicId:       pubId(""),
 			},
 			wantErr:        true,
-			wantErrMsg:     "update user: missing user public id invalid parameter",
+			wantErrMsg:     "iam.(Repository).UpdateUser: missing public id: parameter violation: error #100",
 			wantRowsUpdate: 0,
 		},
 		{
@@ -259,7 +259,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update user: field: ScopeId: invalid field mask",
+			wantErrMsg: "iam.(Repository).UpdateUser: invalid field mask: ScopeId: parameter violation: error #103",
 		},
 		{
 			name: "empty-scope-id-with-name-mask",
@@ -280,7 +280,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update user: user %s already exists in org %s`,
+			wantErrMsg: `iam.(Repository).UpdateUser: user %s already exists in org %s: integrity violation: error #1002`,
 		},
 		{
 			name: "modified-scope",
@@ -291,7 +291,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				opt:            []Option{WithSkipVetForWrite(true)},
 			},
 			wantErr:      true,
-			wantErrMsg:   `db.DoTx: db.Update: immutable column: iam_user.scope_id:`,
+			wantErrMsg:   `iam.(Repository).update: db.DoTx: iam.(Repository).update: db.Update: immutable column: iam_user.scope_id: integrity violation: error #1003`,
 			directUpdate: true,
 		},
 	}
@@ -418,7 +418,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete user: missing public id invalid parameter",
+			wantErrMsg:      "iam.(Repository).DeleteUser: missing public id: parameter violation: error #100",
 		},
 		{
 			name: "not-found",
@@ -434,7 +434,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 			},
 			wantRowsDeleted: 1,
 			wantErr:         true,
-			wantErrMsg:      "delete user: failed db.LookupById: record not found",
+			wantErrMsg:      "db.LookupById: record not found, search issue: error #1100",
 		},
 	}
 	for _, tt := range tests {

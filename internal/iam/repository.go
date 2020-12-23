@@ -2,18 +2,18 @@ package iam
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 var (
-	ErrMetadataScopeNotFound = errors.New("scope not found for metadata")
+	ErrMetadataScopeNotFound = errors.New(errors.RecordNotFound, "iam", "scope not found for metadata")
 )
 
 // Repository is the iam database repository
@@ -29,14 +29,15 @@ type Repository struct {
 // NewRepository creates a new iam Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+	const op = "iam.NewRepository"
 	if r == nil {
-		return nil, errors.New("error creating db repository with nil reader")
+		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.New("error creating db repository with nil writer")
+		return nil, errors.New(errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.New("error creating db repository with nil kms")
+		return nil, errors.New(errors.InvalidParameter, op, "nil kms")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
@@ -64,27 +65,28 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 }
 
 // create will create a new iam resource in the db repository with an oplog entry
-func (r *Repository) create(ctx context.Context, resource Resource, opt ...Option) (Resource, error) {
+func (r *Repository) create(ctx context.Context, resource Resource, _ ...Option) (Resource, error) {
+	const op = "iam.(Repository).create"
 	if resource == nil {
-		return nil, errors.New("error creating resource that is nil")
+		return nil, errors.New(errors.InvalidParameter, op, "missing resource")
 	}
 	resourceCloner, ok := resource.(Cloneable)
 	if !ok {
-		return nil, errors.New("error resource is not Cloneable for create")
+		return nil, errors.New(errors.InvalidParameter, op, "resource is not Cloneable")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
-		return nil, fmt.Errorf("error getting metadata for create: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("error getting metadata"))
 	}
 	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_CREATE.String()}
 
 	scope, err := resource.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get scope: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get scope"))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get oplog wrapper: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var returnedResource interface{}
@@ -101,24 +103,28 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 			)
 		},
 	)
-	return returnedResource.(Resource), err
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return returnedResource.(Resource), nil
 }
 
 // update will update an iam resource in the db repository with an oplog entry
 func (r *Repository) update(ctx context.Context, resource Resource, version uint32, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (Resource, int, error) {
+	const op = "iam.(Repository).update"
 	if version == 0 {
-		return nil, db.NoRowsAffected, errors.New("resource version cannot be zero during update")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 	if resource == nil {
-		return nil, db.NoRowsAffected, errors.New("error updating resource that is nil")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing resource")
 	}
 	resourceCloner, ok := resource.(Cloneable)
 	if !ok {
-		return nil, db.NoRowsAffected, errors.New("error resource is not Cloneable for update")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "resource is not Cloneable")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("error getting metadata for update: %w", err)
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("error getting metadata"))
 	}
 	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_UPDATE.String()}
 
@@ -137,12 +143,12 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 	default:
 		scope, err = resource.GetScope(ctx, r.reader)
 		if err != nil {
-			return nil, db.NoRowsAffected, fmt.Errorf("unable to get scope: %w", err)
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get scope"))
 		}
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
 
@@ -161,38 +167,45 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 				setToNullPaths,
 				dbOpts...,
 			)
-			if err == nil && rowsUpdated > 1 {
-				// return err, which will result in a rollback of the update
-				return errors.New("error more than 1 resource would have been updated ")
+			if err != nil {
+				return errors.Wrap(err, op)
 			}
-			return err
+			if rowsUpdated > 1 {
+				// return err, which will result in a rollback of the update
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+			}
+			return nil
 		},
 	)
-	return returnedResource.(Resource), rowsUpdated, err
+	if err != nil {
+		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+	}
+	return returnedResource.(Resource), rowsUpdated, nil
 }
 
 // delete will delete an iam resource in the db repository with an oplog entry
-func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Option) (int, error) {
+func (r *Repository) delete(ctx context.Context, resource Resource, _ ...Option) (int, error) {
+	const op = "iam.(Repository).delete"
 	if resource == nil {
-		return db.NoRowsAffected, errors.New("error deleting resource that is nil")
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing resource")
 	}
 	resourceCloner, ok := resource.(Cloneable)
 	if !ok {
-		return db.NoRowsAffected, errors.New("error resource is not Cloneable for delete")
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "resource is not Cloneable")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("error getting metadata for delete: %w", err)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("error getting metadata"))
 	}
 	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_DELETE.String()}
 
 	scope, err := resource.GetScope(ctx, r.reader)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("unable to get scope: %w", err)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get scope"))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsDeleted int
@@ -208,24 +221,31 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 				deleteResource,
 				db.WithOplog(oplogWrapper, metadata),
 			)
-			if err == nil && rowsDeleted > 1 {
-				// return err, which will result in a rollback of the delete
-				return errors.New("error more than 1 resource would have been deleted ")
+			if err != nil {
+				return errors.Wrap(err, op)
 			}
-			return err
+			if rowsDeleted > 1 {
+				// return err, which will result in a rollback of the delete
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
 		},
 	)
-	return rowsDeleted, err
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op)
+	}
+	return rowsDeleted, nil
 }
 
 func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {
+	const op = "iam.(Repository).stdMetadata"
 	if s, ok := resource.(*Scope); ok {
 		newScope := allocScope()
 		newScope.PublicId = s.PublicId
 		newScope.Type = s.Type
 		if newScope.Type == "" {
 			if err := r.reader.LookupByPublicId(ctx, &newScope); err != nil {
-				return nil, ErrMetadataScopeNotFound
+				return nil, errors.Wrap(ErrMetadataScopeNotFound, op)
 			}
 		}
 		switch newScope.Type {
@@ -244,16 +264,16 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 				"resource-type":      []string{resource.ResourceType().String()},
 			}, nil
 		default:
-			return nil, fmt.Errorf("not a supported scope for metadata: %s", s.Type)
+			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("not a supported scope for metadata: %s", s.Type))
 		}
 	}
 
 	scope, err := resource.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get scope for standard metadata: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get scope"))
 	}
 	if scope == nil {
-		return nil, errors.New("scope was nil for standard metadata")
+		return nil, errors.E(errors.WithOp(op), errors.WithMsg("nil scope"))
 	}
 	return oplog.Metadata{
 		"resource-public-id": []string{resource.GetPublicId()},

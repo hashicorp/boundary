@@ -8,6 +8,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* controller: Improved error handling in iam repo
+  ([PR](https://github.com/hashicorp/boundary/pull/841))
 * controller: Improved error handling in db
   ([PR](https://github.com/hashicorp/boundary/pull/815))
 
