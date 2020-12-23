@@ -4,7 +4,7 @@ Thank you for contributing to Boundary! Here you can find common questions aroun
 pull requests to our project.
 
 ## Issue Reporting
-### Reporting Security Releated Vulnerabilities
+### Reporting Security Related Vulnerabilities
 
 We take Boundary's security and our users' trust very seriously. If you believe you have found a security issue 
 in Boundary, please responsibly disclose by contacting us at security@hashicorp.com. Do not open an issue on 
@@ -31,7 +31,7 @@ and we'll do our best to triage it as quickly as possible.
 Before writing a line of code, please ask us about a potential improvement or feature that you want to write into Boundary. We may already be working on it; even if we aren't, we need to ensure that both the feature and its proposed implementation is aligned with our road map, vision, and standards for the project. We're happy to help walk through that via a [feature request issue](https://github.com/hashicorp/boundary/issues/new/choose).
 
 You can see a public [road map for Boundary](https://github.com/hashicorp/boundary/issues/new/choose) on our docs site and we encourage
-everyone to look this over to understaand at a high level what we're working on with Boundary.
+everyone to look this over to understand at a high level what we're working on with Boundary.
 
 ### Submitting a New Pull Request
 
@@ -46,10 +46,10 @@ allow us a couple of days to comment, request changes, or approve your PR. Thank
 ## Changelog
 
 The changelog is updated by PR contributors. Each contribution to Boundary should include a changelog update at the contributor or reviewer discretion. 
-The changelog should be updated when the contribution is large enough to warrent it being called out in the larger release cycle. Enhancements, bug fixes,
+The changelog should be updated when the contribution is large enough to warrant it being called out in the larger release cycle. Enhancements, bug fixes,
 and other contributions that practitioners might want to be aware of should exist in the changelog. 
 
-When contributing to the changelog, follow existing patterns for referencing PR's, issues or other ancilary context.
+When contributing to the changelog, follow existing patterns for referencing PR's, issues or other ancillary context.
 
 The changelog is broken down into sections:
 
