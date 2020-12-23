@@ -264,8 +264,8 @@ func (c *Command) Run(args []string) int {
 					errMsg = "an unspecified"
 				case ip.IsMulticast():
 					errMsg = "a multicast"
-				case ip.IsGlobalUnicast():
-					errMsg = "a global unicast"
+				case !ip.IsGlobalUnicast():
+					errMsg = "is not a global unicast"
 				}
 				if errMsg != "" {
 					c.UI.Error(fmt.Sprintf("Controller address %q is invalid: cannot be %s address", controller, errMsg))
