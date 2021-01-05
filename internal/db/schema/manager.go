@@ -43,7 +43,7 @@ func NewManager(ctx context.Context, dialect string, db *sql.DB) (*Manager, erro
 // an exclusive lock is already held with the same key.  An error is returned if
 // a lock was unable to be obtained.
 func (b *Manager) SharedLock(ctx context.Context, k SchemaLockKey) error {
-	lockErr := fmt.Errorf("Unable to obtain the shared advisory lock %q", k)
+	lockErr := fmt.Errorf("Unable to obtain the shared advisory lock %v", k)
 	r := b.db.QueryRowContext(ctx, "SELECT pg_try_advisory_lock_shared($1)", k)
 	if r.Err() != nil {
 		return lockErr
@@ -59,7 +59,7 @@ func (b *Manager) SharedLock(ctx context.Context, k SchemaLockKey) error {
 // ExclusiveLock attempts to obtain an exclusive lock on the database.  If the
 // lock can be obtained an error is returned.
 func (b *Manager) ExclusiveLock(ctx context.Context, k SchemaLockKey) error {
-	lockErr := fmt.Errorf("Unable to obtain the exclusive advisory lock %q", k)
+	lockErr := fmt.Errorf("Unable to obtain the exclusive advisory lock %v", k)
 	r := b.db.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", k)
 	if r.Err() != nil {
 		return lockErr
