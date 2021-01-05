@@ -31,6 +31,58 @@ func TestRollForward(t *testing.T) {
 	assert.Error(t, m.RollForward(ctx))
 }
 
+func TestRollForward_NotFromFresh(t *testing.T) {
+	dialect := "postgres"
+	oState := migrationStates[dialect]
+	nState := migrationState{
+		devMigration:   oState.devMigration,
+		upMigrations:   make(map[int][]byte),
+		downMigrations: make(map[int][]byte),
+	}
+	for k := range oState.upMigrations {
+		if k > 8 {
+			// Don't store any versions past our test version.
+			continue
+		}
+		nState.upMigrations[k] = oState.upMigrations[k]
+		nState.downMigrations[k] = oState.downMigrations[k]
+		if nState.binarySchemaVersion < k {
+			nState.binarySchemaVersion = k
+		}
+	}
+	migrationStates[dialect] = nState
+
+	c, u, _, err := docker.StartDbInDocker("postgres")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, c())
+	})
+	d, err := sql.Open(dialect, u)
+	require.NoError(t, err)
+
+	// Initialize the DB with only a portion of the current sql scripts.
+	ctx := context.Background()
+	m, err := NewManager(ctx, dialect, d)
+	require.NoError(t, err)
+	assert.NoError(t, m.RollForward(ctx))
+
+	ver, dirty, err := m.driver.version(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, nState.binarySchemaVersion, ver)
+	assert.False(t, dirty)
+
+	// Restore the full set of sql scripts and roll the rest of the way forward.
+	migrationStates[dialect] = oState
+
+	newM, err := NewManager(ctx, dialect, d)
+	require.NoError(t, err)
+	assert.NoError(t, newM.RollForward(ctx))
+	ver, dirty, err = newM.driver.version(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, oState.binarySchemaVersion, ver)
+	assert.False(t, dirty)
+}
+
 func TestManager_ExclusiveLock(t *testing.T) {
 	c, u, _, err := docker.StartDbInDocker("postgres")
 	require.NoError(t, err)
