@@ -2,7 +2,14 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## 0.1.4 (2021/01/05)
+## vNext
+
+### New and Improved
+
+* controller: Improved error handling in kms repo
+  ([PR](https://github.com/hashicorp/boundary/pull/848))
+
+## v0.1.4 (2021/01/05)
 
 ### New and Improved
 
@@ -20,7 +27,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([Issue](https://github.com/hashicorp/boundary/issues/830))
   ([PR](https://github.com/hashicorp/boundary/pull/846))
   
-## 0.1.3 (2020/12/18)
+## v0.1.3 (2020/12/18)
 
 ### Changes/Deprecations
 
