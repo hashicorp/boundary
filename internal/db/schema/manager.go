@@ -5,19 +5,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 type SchemaLockKey uint
 
 const SchemaAccessLockId SchemaLockKey = 3865661975
-
-type ErrDirty struct {
-	Version int
-}
-
-func (e ErrDirty) Error() string {
-	return fmt.Sprintf("Dirty database version %v. Fix and force version.", e.Version)
-}
 
 // Manager provides a way to run operations and retrieve information regarding
 // the underlying boundary database schema.
@@ -81,20 +75,21 @@ func (b *Manager) ExclusiveLock(ctx context.Context, k SchemaLockKey) error {
 // the boundary binary.  An error is not returned if the database is already at
 // the most recent version.
 func (b *Manager) RollForward(ctx context.Context) error {
-	if err := b.driver.Lock(ctx); err != nil {
-		return err
+	op := errors.Op("schema.RollForward")
+	if err := b.driver.lock(ctx); err != nil {
+		return errors.Wrap(err, op)
 	}
 	defer func() {
-		b.driver.Unlock(ctx)
+		b.driver.unlock(ctx)
 	}()
 
-	curVersion, dirty, err := b.driver.Version(ctx)
+	curVersion, dirty, err := b.driver.version(ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(err, op)
 	}
 
 	if dirty {
-		return ErrDirty{curVersion}
+		return errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("schema is dirty with version %d", curVersion))
 	}
 
 	return b.runMigrations(ctx, newStatementProvider(b.dialect, curVersion))
@@ -104,26 +99,27 @@ func (b *Manager) RollForward(ctx context.Context) error {
 // the version and dirty bit.  Cancelation or deadline/timeout is managed
 // through the passed in context.
 func (b *Manager) runMigrations(ctx context.Context, qp statementProvider) error {
+	op := errors.Op("schema.runMigrations")
 	for qp.Next() {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("Stopped during runMigrations: %w", ctx.Err())
+			return errors.Wrap(ctx.Err(), op)
 		default:
 			// context is not done yet. Continue on to the next query to execute.
 		}
 
 		// set version with dirty state
-		if err := b.driver.SetVersion(ctx, qp.Version(), true); err != nil {
-			return err
+		if err := b.driver.setVersion(ctx, qp.Version(), true); err != nil {
+			return errors.Wrap(err, op)
 		}
 
-		if err := b.driver.Run(ctx, bytes.NewReader(qp.ReadUp())); err != nil {
-			return err
+		if err := b.driver.run(ctx, bytes.NewReader(qp.ReadUp())); err != nil {
+			return errors.Wrap(err, op)
 		}
 
 		// set clean state
-		if err := b.driver.SetVersion(ctx, qp.Version(), false); err != nil {
-			return err
+		if err := b.driver.setVersion(ctx, qp.Version(), false); err != nil {
+			return errors.Wrap(err, op)
 		}
 	}
 	return nil

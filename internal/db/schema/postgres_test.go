@@ -102,7 +102,7 @@ func TestDbStuff(t *testing.T) {
 
 		addr := pgConnectionString(ip, port)
 		p := &postgres{}
-		d, err := p.Open(ctx, addr)
+		d, err := p.open(ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -125,7 +125,7 @@ func TestMultiStatement(t *testing.T) {
 
 		addr := pgConnectionString(ip, port)
 		p := &postgres{}
-		d, err := p.Open(ctx, addr)
+		d, err := p.open(ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -134,7 +134,7 @@ func TestMultiStatement(t *testing.T) {
 				t.Error(err)
 			}
 		}()
-		if err := d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text); CREATE TABLE bar (bar text);")); err != nil {
+		if err := d.run(ctx, strings.NewReader("CREATE TABLE foo (foo text); CREATE TABLE bar (bar text);")); err != nil {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
@@ -159,7 +159,7 @@ func TestWithSchema(t *testing.T) {
 
 		addr := pgConnectionString(ip, port)
 		p := &postgres{}
-		d, err := p.Open(ctx, addr)
+		d, err := p.open(ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -170,15 +170,15 @@ func TestWithSchema(t *testing.T) {
 		}()
 
 		// create foobar schema
-		if err := d.Run(ctx, strings.NewReader("CREATE SCHEMA foobar AUTHORIZATION postgres")); err != nil {
+		if err := d.run(ctx, strings.NewReader("CREATE SCHEMA foobar AUTHORIZATION postgres")); err != nil {
 			t.Fatal(err)
 		}
-		if err := d.SetVersion(ctx, 1, false); err != nil {
+		if err := d.setVersion(ctx, 1, false); err != nil {
 			t.Fatal(err)
 		}
 
 		// re-connect using that schema
-		d2, err := p.Open(ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=foobar",
+		d2, err := p.open(ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=foobar",
 			pgPassword, ip, port))
 		if err != nil {
 			t.Fatal(err)
@@ -189,7 +189,7 @@ func TestWithSchema(t *testing.T) {
 			}
 		}()
 
-		version, _, err := d2.Version(ctx)
+		version, _, err := d2.version(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -198,10 +198,10 @@ func TestWithSchema(t *testing.T) {
 		}
 
 		// now update version and compare
-		if err := d2.SetVersion(ctx, 2, false); err != nil {
+		if err := d2.setVersion(ctx, 2, false); err != nil {
 			t.Fatal(err)
 		}
-		version, _, err = d2.Version(ctx)
+		version, _, err = d2.version(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -210,7 +210,7 @@ func TestWithSchema(t *testing.T) {
 		}
 
 		// meanwhile, the public schema still has the other version
-		version, _, err = d.Version(ctx)
+		version, _, err = d.version(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -230,7 +230,7 @@ func TestParallelSchema(t *testing.T) {
 
 		addr := pgConnectionString(ip, port)
 		p := &postgres{}
-		d, err := p.Open(ctx, addr)
+		d, err := p.open(ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -241,15 +241,15 @@ func TestParallelSchema(t *testing.T) {
 		}()
 
 		// create foo and bar schemas
-		if err := d.Run(ctx, strings.NewReader("CREATE SCHEMA foo AUTHORIZATION postgres")); err != nil {
+		if err := d.run(ctx, strings.NewReader("CREATE SCHEMA foo AUTHORIZATION postgres")); err != nil {
 			t.Fatal(err)
 		}
-		if err := d.Run(ctx, strings.NewReader("CREATE SCHEMA bar AUTHORIZATION postgres")); err != nil {
+		if err := d.run(ctx, strings.NewReader("CREATE SCHEMA bar AUTHORIZATION postgres")); err != nil {
 			t.Fatal(err)
 		}
 
 		// re-connect using that schemas
-		dfoo, err := p.Open(ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=foo",
+		dfoo, err := p.open(ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=foo",
 			pgPassword, ip, port))
 		if err != nil {
 			t.Fatal(err)
@@ -260,7 +260,7 @@ func TestParallelSchema(t *testing.T) {
 			}
 		}()
 
-		dbar, err := p.Open(ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=bar",
+		dbar, err := p.open(ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=bar",
 			pgPassword, ip, port))
 		if err != nil {
 			t.Fatal(err)
@@ -271,19 +271,19 @@ func TestParallelSchema(t *testing.T) {
 			}
 		}()
 
-		if err := dfoo.Lock(ctx); err != nil {
+		if err := dfoo.lock(ctx); err != nil {
 			t.Fatal(err)
 		}
 
-		if err := dbar.Lock(ctx); err != nil {
+		if err := dbar.lock(ctx); err != nil {
 			t.Fatal(err)
 		}
 
-		if err := dbar.Unlock(ctx); err != nil {
+		if err := dbar.unlock(ctx); err != nil {
 			t.Fatal(err)
 		}
 
-		if err := dfoo.Unlock(ctx); err != nil {
+		if err := dfoo.unlock(ctx); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -299,29 +299,29 @@ func TestPostgres_Lock(t *testing.T) {
 
 		addr := pgConnectionString(ip, port)
 		p := &postgres{}
-		ps, err := p.Open(ctx, addr)
+		ps, err := p.open(ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		Test(t, ps, []byte("SELECT 1"))
 
-		err = ps.Lock(ctx)
+		err = ps.lock(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		err = ps.Unlock(ctx)
+		err = ps.unlock(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		err = ps.Lock(ctx)
+		err = ps.lock(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		err = ps.Unlock(ctx)
+		err = ps.unlock(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}

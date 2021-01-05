@@ -35,7 +35,7 @@ func (b *Manager) State(ctx context.Context) (*State, error) {
 	dbS := State{
 		BinarySchemaVersion: BinarySchemaVersion(b.dialect),
 	}
-	v, dirty, err := b.driver.Version(ctx)
+	v, dirty, err := b.driver.version(ctx)
 	if err != nil {
 		return nil, err
 	}

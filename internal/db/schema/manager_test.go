@@ -27,7 +27,7 @@ func TestRollForward(t *testing.T) {
 	// Now set to dirty at an early version
 	testDriver, err := newPostgres(ctx, d)
 	require.NoError(t, err)
-	testDriver.SetVersion(ctx, 0, true)
+	testDriver.setVersion(ctx, 0, true)
 	assert.Error(t, m.RollForward(ctx))
 }
 
@@ -57,7 +57,7 @@ func TestState(t *testing.T) {
 
 	testDriver, err := newPostgres(ctx, d)
 	require.NoError(t, err)
-	require.NoError(t, testDriver.SetVersion(ctx, 2, true))
+	require.NoError(t, testDriver.setVersion(ctx, 2, true))
 
 	want = &State{
 		InitializationStarted: true,

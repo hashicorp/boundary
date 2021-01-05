@@ -52,19 +52,19 @@ func Test(t *testing.T, d *postgres, migration []byte) {
 	TestNilVersion(t, d) // test first
 	TestLockAndUnlock(t, d)
 	TestRun(t, d, bytes.NewReader(migration))
-	TestSetVersion(t, d) // also tests Version()
-	// Drop breaks the driver, so test it last.
+	TestSetVersion(t, d) // also tests version()
+	// drop breaks the driver, so test it last.
 	TestDrop(t, d)
 }
 
 func TestNilVersion(t *testing.T, d *postgres) {
 	ctx := context.TODO()
-	v, _, err := d.Version(ctx)
+	v, _, err := d.version(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if v != database.NilVersion {
-		t.Fatalf("Version: expected version to be NilVersion (-1), got %v", v)
+		t.Fatalf("version: expected version to be NilVersion (-1), got %v", v)
 	}
 }
 
@@ -81,7 +81,7 @@ func TestLockAndUnlock(t *testing.T, d *postgres) {
 			case <-done:
 				return
 			case <-timeout:
-				errs <- fmt.Errorf("Timeout after 15 seconds. Looks like a deadlock in Lock/UnLock.\n%#v", d)
+				errs <- fmt.Errorf("Timeout after 15 seconds. Looks like a deadlock in lock/UnLock.\n%#v", d)
 				return
 			}
 		}
@@ -89,29 +89,29 @@ func TestLockAndUnlock(t *testing.T, d *postgres) {
 
 	// run the locking test ...
 	go func() {
-		if err := d.Lock(ctx); err != nil {
+		if err := d.lock(ctx); err != nil {
 			errs <- err
 			return
 		}
 
 		// try to acquire lock again
-		if err := d.Lock(ctx); err == nil {
+		if err := d.lock(ctx); err == nil {
 			errs <- errors.New("lock: expected err not to be nil")
 			return
 		}
 
 		// unlock
-		if err := d.Unlock(ctx); err != nil {
+		if err := d.unlock(ctx); err != nil {
 			errs <- err
 			return
 		}
 
 		// try to lock
-		if err := d.Lock(ctx); err != nil {
+		if err := d.lock(ctx); err != nil {
 			errs <- err
 			return
 		}
-		if err := d.Unlock(ctx); err != nil {
+		if err := d.unlock(ctx); err != nil {
 			errs <- err
 			return
 		}
@@ -136,14 +136,14 @@ func TestRun(t *testing.T, d *postgres, migration io.Reader) {
 		t.Fatal("migration can't be nil")
 	}
 
-	if err := d.Run(ctx, migration); err != nil {
+	if err := d.run(ctx, migration); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestDrop(t *testing.T, d *postgres) {
 	ctx := context.TODO()
-	if err := d.Drop(ctx); err != nil {
+	if err := d.drop(ctx); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -170,11 +170,11 @@ func TestSetVersion(t *testing.T, d *postgres) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := d.SetVersion(ctx, tc.version, tc.dirty)
+			err := d.setVersion(ctx, tc.version, tc.dirty)
 			if err != tc.expectedErr {
 				t.Fatal("Got unexpected error:", err, "!=", tc.expectedErr)
 			}
-			v, dirty, readErr := d.Version(ctx)
+			v, dirty, readErr := d.version(ctx)
 			if readErr != tc.expectedReadErr {
 				t.Fatal("Got unexpected error:", readErr, "!=", tc.expectedReadErr)
 			}
