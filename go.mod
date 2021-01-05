@@ -33,7 +33,7 @@ require (
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200916184745-5576096032f8
 	github.com/iancoleman/strcase v0.1.2
 	github.com/jackc/pgx/v4 v4.10.0
-	github.com/jefferai/keyring v1.1.7-0.20210105020142-ab1571f4c232
+	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
 	github.com/jinzhu/gorm v1.9.16
 	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0

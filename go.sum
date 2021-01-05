@@ -696,8 +696,8 @@ github.com/jefferai/go-libsecret v0.0.0-20210105015933-d08a58b018bc h1:M5sY7sNLu
 github.com/jefferai/go-libsecret v0.0.0-20210105015933-d08a58b018bc/go.mod h1:EqlXVKfB3lkzPXVorfFqbLDsC0On6b18A770TT8HGV0=
 github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f h1:E87tDTVS5W65euzixn7clSzK66puSt1H4I5SC0EmHH4=
 github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f/go.mod h1:3J2qVK16Lq8V+wfiL2lPeDZ7UWMxk5LemerHa1p6N00=
-github.com/jefferai/keyring v1.1.7-0.20210105020142-ab1571f4c232 h1:RRXh8qj0jIE3toWhvwmy3NDoLwHq9ApmldVO6Kbm9VM=
-github.com/jefferai/keyring v1.1.7-0.20210105020142-ab1571f4c232/go.mod h1:Y6M+VPkRv4aOcVNvvSWma4aMRLY+xvPhzZX3tDmPoPY=
+github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79 h1:7opZgeTbZEBfZSK6OXO6HSnWIDUBn6wlxBuG13pSuEM=
+github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79/go.mod h1:Y6M+VPkRv4aOcVNvvSWma4aMRLY+xvPhzZX3tDmPoPY=
 github.com/jessevdk/go-flags v1.4.0 h1:4IU2WS7AumrZ/40jfhf4QVDMsQwqA7VEHozFRrGARJA=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/jhump/protoreflect v1.8.1 h1:z7Ciiz3Bz37zSd485fbiTW8ABafIasyOWZI0N9EUUdo=
