@@ -101,7 +101,7 @@ func Wrap(e error, op Op, opt ...Option) error {
 		// this convert can be removed
 		err := Convert(e)
 		if err != nil {
-			// wrapped converted error
+			// wrap the converted error
 			e = err
 		}
 		opt = append(opt, WithWrap(e))

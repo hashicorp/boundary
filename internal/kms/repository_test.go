@@ -51,7 +51,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil writer",
+			wantErrString: "kms.NewRepository: nil writer: parameter violation: error #100",
 		},
 		{
 			name: "nil-reader",
@@ -61,7 +61,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil reader",
+			wantErrString: "kms.NewRepository: nil reader: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {
@@ -99,7 +99,7 @@ func TestCreateKeysTx(t *testing.T) {
 		name      string
 		args      args
 		wantErr   bool
-		wantErrIs error
+		wantErrIs errors.Code
 	}{
 		{
 			name: "valid",
@@ -121,7 +121,7 @@ func TestCreateKeysTx(t *testing.T) {
 				scopeId:      org.PublicId,
 			},
 			wantErr:   true,
-			wantErrIs: errors.ErrInvalidParameter,
+			wantErrIs: errors.InvalidParameter,
 		},
 		{
 			name: "nil-writer",
@@ -133,7 +133,7 @@ func TestCreateKeysTx(t *testing.T) {
 				scopeId:      org.PublicId,
 			},
 			wantErr:   true,
-			wantErrIs: errors.ErrInvalidParameter,
+			wantErrIs: errors.InvalidParameter,
 		},
 		{
 			name: "nil-wrapper",
@@ -145,7 +145,7 @@ func TestCreateKeysTx(t *testing.T) {
 				scopeId:      org.PublicId,
 			},
 			wantErr:   true,
-			wantErrIs: errors.ErrInvalidParameter,
+			wantErrIs: errors.InvalidParameter,
 		},
 		{
 			name: "empty-scope",
@@ -157,7 +157,7 @@ func TestCreateKeysTx(t *testing.T) {
 				scopeId:      "",
 			},
 			wantErr:   true,
-			wantErrIs: errors.ErrInvalidParameter,
+			wantErrIs: errors.InvalidParameter,
 		},
 		{
 			name: "bad-scope",
@@ -177,8 +177,8 @@ func TestCreateKeysTx(t *testing.T) {
 			keys, err := kms.CreateKeysTx(tt.args.ctx, tt.args.dbReader, tt.args.dbWriter, tt.args.rootWrapper, tt.args.randomReader, tt.args.scopeId)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
+				if tt.wantErrIs != 0 {
+					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error: %s", err.Error())
 				}
 				return
 			}

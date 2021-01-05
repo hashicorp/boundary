@@ -42,6 +42,9 @@ const (
 	// new passwords are equal.
 	PasswordsEqual Code = 203
 
+	Encrypt Code = 300 // Encrypt represents an error occurred during the underlying encryption process
+	Decrypt Code = 301 // Decrypt represents an error occurred during the underlying decryption process
+
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
 	NotNull              Code = 1001 // NotNull represents a value must not be null error
@@ -53,4 +56,6 @@ const (
 	ColumnNotFound       Code = 1102 // ColumnNotFound represent that a column was not found in the underlying db
 	MaxRetries           Code = 1103 // MaxRetries represent that a db Tx hit max retires allowed
 	Exception            Code = 1104 // Exception represent that an underlying db exception was raised
+
+	FixMe Code = 11111
 )

@@ -2,10 +2,10 @@ package kms
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"sync"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -61,8 +61,9 @@ type Kms struct {
 
 // NewKms takes in a repo and returns a Kms. Supported options: WithLogger.
 func NewKms(repo *Repository, opt ...Option) (*Kms, error) {
+	const op = "kms.NewKms"
 	if repo == nil {
-		return nil, stderrors.New("new kms created without an underlying repo")
+		return nil, errors.New(errors.InvalidParameter, op, "missing underlying repo")
 	}
 
 	opts := getOpts(opt...)
@@ -87,6 +88,7 @@ func (k *Kms) GetScopePurposeCache() *sync.Map {
 // of a key loss, there will need to be some refactoring here to have the values
 // being stored in the struct be a multiwrapper, but that's for a later project.
 func (k *Kms) AddExternalWrappers(opt ...Option) error {
+	const op = "kms.AddExternalWrappers"
 	k.externalScopeCacheMutex.Lock()
 	defer k.externalScopeCacheMutex.Unlock()
 
@@ -101,19 +103,19 @@ func (k *Kms) AddExternalWrappers(opt ...Option) error {
 	if opts.withRootWrapper != nil {
 		ext.root = opts.withRootWrapper
 		if ext.root.KeyID() == "" {
-			return fmt.Errorf("root wrapper has no key ID")
+			return errors.New(errors.InvalidParameter, op, "root wrapper has no key ID")
 		}
 	}
 	if opts.withWorkerAuthWrapper != nil {
 		ext.workerAuth = opts.withWorkerAuthWrapper
 		if ext.workerAuth.KeyID() == "" {
-			return fmt.Errorf("worker auth wrapper has no key ID")
+			return errors.New(errors.InvalidParameter, op, "worker auth wrapper has no key ID")
 		}
 	}
 	if opts.withRecoveryWrapper != nil {
 		ext.recovery = opts.withRecoveryWrapper
 		if ext.recovery.KeyID() == "" {
-			return fmt.Errorf("recovery wrapper has no key ID")
+			return errors.New(errors.InvalidParameter, op, "recovery wrapper has no key ID")
 		}
 	}
 
@@ -146,16 +148,17 @@ func generateKeyId(scopeId string, purpose KeyPurpose, version uint32) string {
 // multiwrapper. This is not necesary for encryption but should be supplied for
 // decryption.
 func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, opt ...Option) (wrapping.Wrapper, error) {
+	const op = "kms.GetWrapper"
 	if scopeId == "" {
-		return nil, stderrors.New("no scope ID provided")
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 
 	switch purpose {
 	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions:
 	case KeyPurposeUnknown:
-		return nil, stderrors.New("key purpose not specified")
+		return nil, errors.New(errors.InvalidParameter, op, "missing key purpose")
 	default:
-		return nil, fmt.Errorf("unsupported purpose %q", purpose)
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unsupported purpose %q", purpose))
 	}
 
 	opts := getOpts(opt...)
@@ -177,15 +180,15 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	// scope-purpose cache will catch everything in steady-state.
 	rootWrapper, rootKeyId, err := k.loadRoot(ctx, scopeId, opt...)
 	if err != nil {
-		return nil, fmt.Errorf("error loading root key for scope %s: %w", scopeId, err)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error loading root key for scope %s", scopeId)))
 	}
 	if rootWrapper == nil {
-		return nil, fmt.Errorf("got nil root wrapper for scope %s", scopeId)
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("got nil root wrapper for scope %s", scopeId))
 	}
 
 	wrapper, err := k.loadDek(ctx, scopeId, purpose, rootWrapper, rootKeyId, opt...)
 	if err != nil {
-		return nil, fmt.Errorf("error loading %s for scope %s: %w", purpose.String(), scopeId, err)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error loading %s for scope %s", purpose.String(), scopeId)))
 	}
 	k.scopePurposeCache.Store(scopeId+purpose.String(), wrapper)
 
@@ -193,6 +196,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 }
 
 func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multiwrapper.MultiWrapper, string, error) {
+	const op = "kms.loadRoot"
 	opts := getOpts(opt...)
 	repo := opts.withRepository
 	if repo == nil {
@@ -200,7 +204,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	}
 	rootKeys, err := repo.ListRootKeys(ctx)
 	if err != nil {
-		return nil, "", fmt.Errorf("error listing root keys: %w", err)
+		return nil, "", errors.Wrap(err, op)
 	}
 	var rootKeyId string
 	for _, k := range rootKeys {
@@ -210,7 +214,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 		}
 	}
 	if rootKeyId == "" {
-		return nil, "", fmt.Errorf("error finding root key for scope %s", scopeId)
+		return nil, "", errors.New(errors.FixMe, op, fmt.Sprintf("missing root key for scope %s", scopeId))
 	}
 
 	// Now: find the external KMS that can be used to decrypt the root values
@@ -219,21 +223,21 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	externalWrappers := k.externalScopeCache[scope.Global.String()]
 	k.externalScopeCacheMutex.Unlock()
 	if externalWrappers == nil {
-		return nil, "", stderrors.New("could not find kms information at either the needed scope or global fallback")
+		return nil, "", errors.New(errors.FixMe, op, "could not find kms information at either the needed scope or global fallback")
 	}
 
 	externalWrappers.m.RLock()
 	defer externalWrappers.m.RUnlock()
 
 	if externalWrappers.root == nil {
-		return nil, "", fmt.Errorf("root key wrapper for scope %s is nil", scopeId)
+		return nil, "", errors.New(errors.FixMe, op, fmt.Sprintf("root key wrapper for scope %s is nil", scopeId))
 	}
 	rootKeyVersions, err := repo.ListRootKeyVersions(ctx, externalWrappers.root, rootKeyId, WithOrder("version desc"))
 	if err != nil {
-		return nil, "", fmt.Errorf("error looking up root key versions for scope %s with key ID %s: %w", scopeId, externalWrappers.root.KeyID(), err)
+		return nil, "", errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error looking up root key versions for scope %s with key ID %s", scopeId, externalWrappers.root.KeyID())))
 	}
 	if len(rootKeyVersions) == 0 {
-		return nil, "", fmt.Errorf("no root key versions found for scope %s", scopeId)
+		return nil, "", errors.New(errors.FixMe, op, fmt.Sprintf("no root key versions found for scope %s", scopeId))
 	}
 
 	var multi *multiwrapper.MultiWrapper
@@ -242,10 +246,10 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 		if _, err := wrapper.SetConfig(map[string]string{
 			"key_id": key.GetPrivateId(),
 		}); err != nil {
-			return nil, "", fmt.Errorf("error setting config on aead root wrapper in scope %s: %w", scopeId, err)
+			return nil, "", errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead root wrapper in scope %s", scopeId)))
 		}
 		if err := wrapper.SetAESGCMKeyBytes(key.GetKey()); err != nil {
-			return nil, "", fmt.Errorf("error setting key bytes on aead root wrapper in scope %s: %w", scopeId, err)
+			return nil, "", errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead root wrapper in scope %s", scopeId)))
 		}
 		if i == 0 {
 			multi = multiwrapper.NewMultiWrapper(wrapper)
@@ -254,7 +258,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 		}
 	}
 
-	return multi, rootKeyId, err
+	return multi, rootKeyId, nil
 }
 
 // Dek is an interface wrapping dek types to allow a lot less switching in loadDek
@@ -270,11 +274,12 @@ type DekVersion interface {
 }
 
 func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) (*multiwrapper.MultiWrapper, error) {
+	const op = "kms.loadDek"
 	if rootWrapper == nil {
-		return nil, fmt.Errorf("got nil root wrapper in loadDek for scope %s", scopeId)
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("nil root wrapper for scope %s", scopeId))
 	}
 	if rootKeyId == "" {
-		return nil, fmt.Errorf("no root key ID provided for scope %s", scopeId)
+		return nil, errors.New(errors.FixMe, op, fmt.Sprintf("missing root key ID for scope %s", scopeId))
 	}
 
 	opts := getOpts(opt...)
@@ -296,7 +301,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keys, err = repo.ListSessionKeys(ctx)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("error listing root keys: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("error listing root keys"))
 	}
 	var keyId string
 	for _, k := range keys {
@@ -306,7 +311,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		}
 	}
 	if keyId == "" {
-		return nil, fmt.Errorf("error finding %s key for scope %s", purpose.String(), scopeId)
+		return nil, errors.New(errors.FixMe, op, fmt.Sprintf("error finding %s key for scope %s", purpose.String(), scopeId))
 	}
 
 	var keyVersions []DekVersion
@@ -321,10 +326,10 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keyVersions, err = repo.ListSessionKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
 	}
 	if err != nil {
-		return nil, fmt.Errorf("error looking up %s key versions for scope %s with key ID %s: %w", purpose.String(), scopeId, rootWrapper.KeyID(), err)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error looking up %s key versions for scope %s with key ID %s", purpose.String(), scopeId, rootWrapper.KeyID())))
 	}
 	if len(keyVersions) == 0 {
-		return nil, fmt.Errorf("no %s key versions found for scope %s", purpose.String(), scopeId)
+		return nil, errors.New(errors.FixMe, op, fmt.Sprintf("no %s key versions found for scope %s", purpose.String(), scopeId))
 	}
 
 	var multi *multiwrapper.MultiWrapper
@@ -333,10 +338,10 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		if _, err := wrapper.SetConfig(map[string]string{
 			"key_id": keyVersion.GetPrivateId(),
 		}); err != nil {
-			return nil, fmt.Errorf("error setting config on aead %s wrapper in scope %s: %w", purpose.String(), scopeId, err)
+			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead %s wrapper in scope %s", purpose.String(), scopeId)))
 		}
 		if err := wrapper.SetAESGCMKeyBytes(keyVersion.GetKey()); err != nil {
-			return nil, fmt.Errorf("error setting key bytes on aead %s wrapper in scope %s: %w", purpose.String(), scopeId, err)
+			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead %s wrapper in scope %s", purpose.String(), scopeId)))
 		}
 		if i == 0 {
 			multi = multiwrapper.NewMultiWrapper(wrapper)
@@ -345,5 +350,5 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		}
 	}
 
-	return multi, err
+	return multi, nil
 }

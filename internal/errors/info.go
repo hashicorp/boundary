@@ -52,6 +52,14 @@ var errorCodeInfo = map[Code]Info{
 		Message: "old and new password are equal",
 		Kind:    Password,
 	},
+	Encrypt: {
+		Message: "error occurred during encrypt",
+		Kind:    Encryption,
+	},
+	Decrypt: {
+		Message: "error occurred during decrypt",
+		Kind:    Encryption,
+	},
 	CheckConstraint: {
 		Message: "constraint check failed",
 		Kind:    Integrity,

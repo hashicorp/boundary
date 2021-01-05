@@ -73,6 +73,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: PasswordsEqual,
 		},
 		{
+			name: "Encrypt",
+			c:    Encrypt,
+			want: Encrypt,
+		},
+		{
+			name: "Decrypt",
+			c:    Decrypt,
+			want: Decrypt,
+		},
+		{
 			name: "CheckConstraint",
 			c:    CheckConstraint,
 			want: CheckConstraint,

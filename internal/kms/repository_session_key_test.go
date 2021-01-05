@@ -39,7 +39,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 		name        string
 		args        args
 		wantErr     bool
-		wantIsError error
+		wantIsError errors.Code
 	}{
 		{
 			name: "valid-org",
@@ -57,7 +57,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 				keyWrapper: rkvWrapper,
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "empty-key",
@@ -67,7 +67,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 				key:        []byte(""),
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "nil-wrapper",
@@ -77,7 +77,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 				keyWrapper: nil,
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "not-rkv-wrapper",
@@ -87,7 +87,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 				keyWrapper: wrapper,
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "wrapper-missing-id",
@@ -104,7 +104,7 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -114,8 +114,8 @@ func TestRepository_CreateSessionKey(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(tk)
-				if tt.wantIsError != nil {
-					assert.True(errors.Is(err, tt.wantIsError))
+				if tt.wantIsError != 0 {
+					assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				}
 				return
 			}
