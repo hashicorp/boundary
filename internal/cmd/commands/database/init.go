@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
@@ -283,7 +282,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	// Core migrations using the migration URL
 	{
 		migrationUrl = strings.TrimSpace(migrationUrl)
-		ran, err := db.InitStore(c.Context, dialect, migrationUrl)
+		ran, err := schema.InitStore(c.Context, dialect, migrationUrl)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
 			return 1

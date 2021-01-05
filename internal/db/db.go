@@ -1,14 +1,8 @@
 package db
 
 import (
-	"context"
-	"database/sql"
-	"errors"
 	"fmt"
-	"os"
 
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jinzhu/gorm"
@@ -41,56 +35,6 @@ func Open(dbType DbType, connectionUrl string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("unable to open database: %w", err)
 	}
 	return db, nil
-}
-
-// Migrate a database schema
-func Migrate(connectionUrl string, migrationsDirectory string) error {
-	if connectionUrl == "" {
-		return errors.New("connection url is unset")
-	}
-	if _, err := os.Stat(migrationsDirectory); os.IsNotExist(err) {
-		return errors.New("error migrations directory does not exist")
-	}
-	// run migrations
-	m, err := migrate.New(fmt.Sprintf("file://%s", migrationsDirectory), connectionUrl)
-	if err != nil {
-		return fmt.Errorf("unable to create migrations: %w", err)
-	}
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("unable to run migrations: %w", err)
-	}
-	return nil
-}
-
-// InitStore will execute the migrations needed to initialize the store. It
-// returns true if migrations actually ran; false if we were already current.
-func InitStore(ctx context.Context, dialect string, url string) (bool, error) {
-	d, err := sql.Open(dialect, url)
-	if err != nil {
-		return false, err
-	}
-
-	sMan, err := schema.NewManager(ctx, dialect, d)
-	if err != nil {
-		return false, err
-	}
-
-	st, err := sMan.State(ctx)
-	if err != nil {
-		return false, err
-	}
-	if st.Dirty {
-		return false, fmt.Errorf("The passed in database has had a failed migration applied to it.")
-	}
-
-	if st.InitializationStarted && st.CurrentSchemaVersion == st.BinarySchemaVersion {
-		return false, nil
-	}
-
-	if err := sMan.RollForward(ctx); err != nil {
-		return false, err
-	}
-	return true, nil
 }
 
 func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages []interface{}) {

@@ -1,19 +1,17 @@
-package schema_test
+package schema
 
 import (
 	"context"
 	"database/sql"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/db/schema/postgres"
+	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRollForward(t *testing.T) {
-	c, u, _, err := db.StartDbInDocker("postgres")
+	c, u, _, err := docker.StartDbInDocker("postgres")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -22,21 +20,24 @@ func TestRollForward(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	m, err := schema.NewManager(ctx, "postgres", d)
+	m, err := NewManager(ctx, "postgres", d)
 	require.NoError(t, err)
 	assert.NoError(t, m.RollForward(ctx))
 
 	// Now set to dirty at an early version
-	testDriver, err := postgres.WithInstance(ctx, d, &postgres.Config{
-		MigrationsTable: "boundary_schema_version",
-	})
+	testDriver, err := newPostgres(ctx, d)
 	require.NoError(t, err)
 	testDriver.SetVersion(ctx, 0, true)
 	assert.Error(t, m.RollForward(ctx))
 }
 
 func TestState(t *testing.T) {
-	c, u, _, err := db.StartDbInDocker("postgres")
+	c, u, _, err := docker.StartDbInDocker("postgres")
+	t.Cleanup(func() {
+		if err := c(); err != nil {
+			t.Fatalf("Got error at cleanup: %v", err)
+		}
+	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -45,24 +46,22 @@ func TestState(t *testing.T) {
 	d, err := sql.Open("postgres", u)
 	require.NoError(t, err)
 
-	m, err := schema.NewManager(ctx, "postgres", d)
+	m, err := NewManager(ctx, "postgres", d)
 	require.NoError(t, err)
-	want := &schema.State{
-		BinarySchemaVersion: schema.BinarySchemaVersion("postgres"),
+	want := &State{
+		BinarySchemaVersion: BinarySchemaVersion("postgres"),
 	}
 	s, err := m.State(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, want, s)
 
-	testDriver, err := postgres.WithInstance(ctx, d, &postgres.Config{
-		MigrationsTable: "boundary_schema_version",
-	})
+	testDriver, err := newPostgres(ctx, d)
 	require.NoError(t, err)
 	require.NoError(t, testDriver.SetVersion(ctx, 2, true))
 
-	want = &schema.State{
+	want = &State{
 		InitializationStarted: true,
-		BinarySchemaVersion:   schema.BinarySchemaVersion("postgres"),
+		BinarySchemaVersion:   BinarySchemaVersion("postgres"),
 		Dirty:                 true,
 		CurrentSchemaVersion:  2,
 	}
@@ -72,7 +71,7 @@ func TestState(t *testing.T) {
 }
 
 func TestManager_ExclusiveLock(t *testing.T) {
-	c, u, _, err := db.StartDbInDocker("postgres")
+	c, u, _, err := docker.StartDbInDocker("postgres")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -80,12 +79,12 @@ func TestManager_ExclusiveLock(t *testing.T) {
 	ctx := context.TODO()
 	d1, err := sql.Open("postgres", u)
 	require.NoError(t, err)
-	m1, err := schema.NewManager(ctx, "postgres", d1)
+	m1, err := NewManager(ctx, "postgres", d1)
 	require.NoError(t, err)
 
 	d2, err := sql.Open("postgres", u)
 	require.NoError(t, err)
-	m2, err := schema.NewManager(ctx, "postgres", d2)
+	m2, err := NewManager(ctx, "postgres", d2)
 	require.NoError(t, err)
 
 	assert.NoError(t, m1.ExclusiveLock(ctx, 123))
@@ -94,7 +93,7 @@ func TestManager_ExclusiveLock(t *testing.T) {
 }
 
 func TestManager_SharedLock(t *testing.T) {
-	c, u, _, err := db.StartDbInDocker("postgres")
+	c, u, _, err := docker.StartDbInDocker("postgres")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -102,12 +101,12 @@ func TestManager_SharedLock(t *testing.T) {
 	ctx := context.TODO()
 	d1, err := sql.Open("postgres", u)
 	require.NoError(t, err)
-	m1, err := schema.NewManager(ctx, "postgres", d1)
+	m1, err := NewManager(ctx, "postgres", d1)
 	require.NoError(t, err)
 
 	d2, err := sql.Open("postgres", u)
 	require.NoError(t, err)
-	m2, err := schema.NewManager(ctx, "postgres", d2)
+	m2, err := NewManager(ctx, "postgres", d2)
 	require.NoError(t, err)
 
 	assert.NoError(t, m1.SharedLock(ctx, 123))

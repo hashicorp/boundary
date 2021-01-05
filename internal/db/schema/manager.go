@@ -5,8 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-
-	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 )
 
 type SchemaLockKey uint
@@ -26,7 +24,7 @@ func (e ErrDirty) Error() string {
 // Manager is not thread safe.
 type Manager struct {
 	db      *sql.DB
-	driver  *postgres.Postgres
+	driver  *postgres
 	dialect string
 }
 
@@ -37,9 +35,7 @@ func NewManager(ctx context.Context, dialect string, db *sql.DB) (*Manager, erro
 	var err error
 	switch dialect {
 	case "postgres", "postgresql":
-		dbM.driver, err = postgres.WithInstance(ctx, db, &postgres.Config{
-			MigrationsTable: "boundary_schema_version",
-		})
+		dbM.driver, err = newPostgres(ctx, db)
 		if err != nil {
 			return nil, fmt.Errorf("Error creating database driver: %w", err)
 		}

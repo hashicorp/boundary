@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -412,7 +412,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	if opts.DatabaseUrl != "" {
 		tc.b.DatabaseUrl = opts.DatabaseUrl
-		if _, err := db.InitStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
+		if _, err := schema.InitStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
 			t.Fatal(err)
 		}
 		if err := tc.b.ConnectToDatabase("postgres"); err != nil {

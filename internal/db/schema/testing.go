@@ -1,7 +1,35 @@
+// The MIT License (MIT)
+//
+// Original Work
+// Copyright (c) 2016 Matthias Kadenbach
+// https://github.com/mattes/migrate
+//
+// Modified Work
+// Copyright (c) 2018 Dale Hui
+// https://github.com/golang-migrate/migrate
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
 // Package testing has the database tests.
 // All database drivers must pass the Test function.
 // This lives in it's own package so it stays a test dependency.
-package postgres
+package schema
 
 import (
 	"bytes"
@@ -16,7 +44,7 @@ import (
 )
 
 // Test runs tests against database implementations.
-func Test(t *testing.T, d *Postgres, migration []byte) {
+func Test(t *testing.T, d *postgres, migration []byte) {
 	if migration == nil {
 		t.Fatal("test must provide migration reader")
 	}
@@ -29,7 +57,7 @@ func Test(t *testing.T, d *Postgres, migration []byte) {
 	TestDrop(t, d)
 }
 
-func TestNilVersion(t *testing.T, d *Postgres) {
+func TestNilVersion(t *testing.T, d *postgres) {
 	ctx := context.TODO()
 	v, _, err := d.Version(ctx)
 	if err != nil {
@@ -40,7 +68,7 @@ func TestNilVersion(t *testing.T, d *Postgres) {
 	}
 }
 
-func TestLockAndUnlock(t *testing.T, d *Postgres) {
+func TestLockAndUnlock(t *testing.T, d *postgres) {
 	ctx := context.TODO()
 	// add a timeout, in case there is a deadlock
 	done := make(chan struct{})
@@ -102,7 +130,7 @@ func TestLockAndUnlock(t *testing.T, d *Postgres) {
 	}
 }
 
-func TestRun(t *testing.T, d *Postgres, migration io.Reader) {
+func TestRun(t *testing.T, d *postgres, migration io.Reader) {
 	ctx := context.TODO()
 	if migration == nil {
 		t.Fatal("migration can't be nil")
@@ -113,14 +141,14 @@ func TestRun(t *testing.T, d *Postgres, migration io.Reader) {
 	}
 }
 
-func TestDrop(t *testing.T, d *Postgres) {
+func TestDrop(t *testing.T, d *postgres) {
 	ctx := context.TODO()
 	if err := d.Drop(ctx); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestSetVersion(t *testing.T, d *Postgres) {
+func TestSetVersion(t *testing.T, d *postgres) {
 	ctx := context.TODO()
 	// nolint:maligned
 	testCases := []struct {

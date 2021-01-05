@@ -3,8 +3,6 @@ package schema
 import (
 	"fmt"
 	"sort"
-
-	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 )
 
 type statementProvider struct {
@@ -15,7 +13,7 @@ type statementProvider struct {
 
 func newStatementProvider(dialect string, curVer int) statementProvider {
 	qp := statementProvider{pos: -1}
-	qp.up, qp.down = postgres.UpMigrations, postgres.DownMigrations
+	qp.up, qp.down = migrationStates[dialect].upMigrations, migrationStates[dialect].downMigrations
 	if len(qp.up) != len(qp.down) {
 		fmt.Printf("Mismatch up/down size: up %d vs. down %d", len(qp.up), len(qp.down))
 	}

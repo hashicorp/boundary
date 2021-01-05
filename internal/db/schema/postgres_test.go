@@ -1,4 +1,32 @@
-package postgres
+// The MIT License (MIT)
+//
+// Original Work
+// Copyright (c) 2016 Matthias Kadenbach
+// https://github.com/mattes/migrate
+//
+// Modified Work
+// Copyright (c) 2018 Dale Hui
+// https://github.com/golang-migrate/migrate
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+package schema
 
 // error codes https://github.com/lib/pq/blob/master/error.go
 
@@ -15,10 +43,7 @@ import (
 	"testing"
 
 	"github.com/dhui/dktest"
-
-	"github.com/golang-migrate/migrate/v4/database"
 	"github.com/golang-migrate/migrate/v4/dktesting"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 const (
@@ -76,7 +101,7 @@ func TestDbStuff(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &Postgres{}
+		p := &postgres{}
 		d, err := p.Open(ctx, addr)
 		if err != nil {
 			t.Fatal(err)
@@ -99,7 +124,7 @@ func TestMultiStatement(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &Postgres{}
+		p := &postgres{}
 		d, err := p.Open(ctx, addr)
 		if err != nil {
 			t.Fatal(err)
@@ -124,59 +149,6 @@ func TestMultiStatement(t *testing.T) {
 	})
 }
 
-func TestErrorParsing(t *testing.T) {
-	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ctx := context.TODO()
-		ip, port, err := c.FirstPort()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		addr := pgConnectionString(ip, port)
-		p := &Postgres{}
-		d, err := p.Open(ctx, addr)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() {
-			if err := d.Close(); err != nil {
-				t.Error(err)
-			}
-		}()
-
-		wantErr := `migration failed: syntax error at or near "TABLEE" (column 37) in line 1: CREATE TABLE foo ` +
-			`(foo text); CREATE TABLEE bar (bar text); (details: pq: syntax error at or near "TABLEE")`
-		if err := d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text); CREATE TABLEE bar (bar text);")); err == nil {
-			t.Fatal("expected err but got nil")
-		} else if err.Error() != wantErr {
-			t.Fatalf("expected '%s' but got '%s'", wantErr, err.Error())
-		}
-	})
-}
-
-func TestFilterCustomQuery(t *testing.T) {
-	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ctx := context.TODO()
-		ip, port, err := c.FirstPort()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		addr := fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&x-custom=foobar",
-			pgPassword, ip, port)
-		p := &Postgres{}
-		d, err := p.Open(ctx, addr)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() {
-			if err := d.Close(); err != nil {
-				t.Error(err)
-			}
-		}()
-	})
-}
-
 func TestWithSchema(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
 		ctx := context.TODO()
@@ -186,7 +158,7 @@ func TestWithSchema(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &Postgres{}
+		p := &postgres{}
 		d, err := p.Open(ctx, addr)
 		if err != nil {
 			t.Fatal(err)
@@ -221,7 +193,7 @@ func TestWithSchema(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != database.NilVersion {
+		if version != nilVersion {
 			t.Fatal("expected NilVersion")
 		}
 
@@ -257,7 +229,7 @@ func TestParallelSchema(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &Postgres{}
+		p := &postgres{}
 		d, err := p.Open(ctx, addr)
 		if err != nil {
 			t.Fatal(err)
@@ -326,7 +298,7 @@ func TestPostgres_Lock(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &Postgres{}
+		p := &postgres{}
 		ps, err := p.Open(ctx, addr)
 		if err != nil {
 			t.Fatal(err)
@@ -363,7 +335,7 @@ func TestWithInstance_Concurrent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// The number of concurrent processes running WithInstance
+		// The number of concurrent processes running newPostgres
 		const concurrency = 30
 
 		// We can instantiate a single database handle because it is
@@ -390,7 +362,7 @@ func TestWithInstance_Concurrent(t *testing.T) {
 		for i := 0; i < concurrency; i++ {
 			go func(i int) {
 				defer wg.Done()
-				_, err := WithInstance(context.TODO(), db, &Config{})
+				_, err := newPostgres(context.TODO(), db)
 				if err != nil {
 					t.Errorf("process %d error: %s", i, err)
 				}

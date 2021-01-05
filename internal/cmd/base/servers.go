@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -471,7 +472,7 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 			return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
 		}
 
-		_, err := db.InitStore(ctx, dialect, url)
+		_, err := schema.InitStore(ctx, dialect, url)
 		if err != nil {
 			err = fmt.Errorf("unable to initialize dev database with dialect %s: %w", dialect, err)
 			if c != nil {
@@ -484,7 +485,7 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		b.DatabaseUrl = url
 
 	default:
-		if _, err := db.InitStore(ctx, dialect, b.DatabaseUrl); err != nil {
+		if _, err := schema.InitStore(ctx, dialect, b.DatabaseUrl); err != nil {
 			err = fmt.Errorf("error initializing store: %w", err)
 			if c != nil {
 				err = multierror.Append(err, c())

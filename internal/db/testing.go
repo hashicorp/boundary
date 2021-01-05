@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -39,7 +40,7 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*gorm.DB, strin
 		url = opts.withTestDatabaseUrl
 	}
 
-	_, err = InitStore(context.TODO(), dialect, url)
+	_, err = schema.InitStore(context.TODO(), dialect, url)
 	if err != nil {
 		t.Fatalf("Couldn't init store on existing db: %v", err)
 	}
