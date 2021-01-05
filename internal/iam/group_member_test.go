@@ -35,7 +35,7 @@ func Test_NewGroupMember(t *testing.T) {
 		args      args
 		want      *GroupMemberUser
 		wantErr   bool
-		wantIsErr error
+		wantIsErr errors.Code
 	}{
 		{
 			name: "valid-org",
@@ -83,7 +83,7 @@ func Test_NewGroupMember(t *testing.T) {
 			},
 			want:      nil,
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "missing-user",
@@ -92,7 +92,7 @@ func Test_NewGroupMember(t *testing.T) {
 			},
 			want:      nil,
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -102,7 +102,7 @@ func Test_NewGroupMember(t *testing.T) {
 			got, err := NewGroupMemberUser(tt.args.groupId, tt.args.userId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				return
 			}
 			require.NoError(err)

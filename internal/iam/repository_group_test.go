@@ -36,7 +36,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 		wantDup     bool
 		wantErr     bool
 		wantErrMsg  string
-		wantIsError error
+		wantIsError errors.Code
 	}{
 		{
 			name: "valid-org",
@@ -70,8 +70,8 @@ func TestRepository_CreateGroup(t *testing.T) {
 					return g
 				}(),
 			},
-			wantErrMsg:  "create group: public id not empty: invalid parameter",
-			wantIsError: errors.ErrInvalidParameter,
+			wantErrMsg:  "iam.(Repository).CreateGroup: public id not empty: parameter violation: error #100",
+			wantIsError: errors.InvalidParameter,
 			wantErr:     true,
 		},
 		{
@@ -80,8 +80,8 @@ func TestRepository_CreateGroup(t *testing.T) {
 				group: nil,
 			},
 			wantErr:     true,
-			wantErrMsg:  "create group: missing group invalid parameter",
-			wantIsError: errors.ErrInvalidParameter,
+			wantErrMsg:  "iam.(Repository).CreateGroup: missing group: parameter violation: error #10",
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "nil-store",
@@ -93,8 +93,8 @@ func TestRepository_CreateGroup(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantErrMsg:  "create group: missing group store invalid parameter",
-			wantIsError: errors.ErrInvalidParameter,
+			wantErrMsg:  "iam.(Repository).CreateGroup: missing group store: parameter violation: error #100",
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "bad-scope-id",
@@ -106,8 +106,8 @@ func TestRepository_CreateGroup(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantErrMsg:  "create group: error getting metadata for create: unable to get scope for standard metadata: db.LookupWhere: record not found",
-			wantIsError: errors.ErrInvalidParameter,
+			wantErrMsg:  "iam.(Repository).create: error getting metadata: iam.(Repository).stdMetadata: unable to get scope: iam.LookupScope: db.LookupWhere: record not found, search issue: error #1100",
+			wantIsError: errors.RecordNotFound,
 		},
 		{
 			name: "dup-name",
@@ -122,7 +122,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			wantDup:     true,
 			wantErr:     true,
 			wantErrMsg:  "already exists in scope ",
-			wantIsError: errors.ErrNotUnique,
+			wantIsError: errors.NotUnique,
 		},
 		{
 			name: "dup-name-but-diff-scope",
@@ -154,6 +154,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 				assert.Error(err)
 				assert.Nil(grp)
 				assert.Contains(err.Error(), tt.wantErrMsg)
+				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				return
 			}
 			assert.NoError(err)
@@ -237,7 +238,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update group: db.DoTx: db.DoTx: db.Update: db.lookupAfterWrite: db.LookupById: record not found",
+			wantErrMsg:     "db.DoTx: iam.(Repository).UpdateGroup: iam.(Repository).update: db.DoTx: iam.(Repository).update: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
 			wantIsError:    errors.RecordNotFound,
 		},
 		{
@@ -274,7 +275,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update group: empty field mask",
+			wantErrMsg:     "iam.(Repository).UpdateGroup: empty field mask: parameter violation: error #104",
 			wantIsError:    errors.EmptyFieldMask,
 		},
 		{
@@ -287,7 +288,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update group: empty field mask",
+			wantErrMsg:     "iam.(Repository).UpdateGroup: empty field mask: parameter violation: error #104",
 			wantIsError:    errors.EmptyFieldMask,
 		},
 		{
@@ -300,7 +301,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update group: field: CreateTime: invalid field mask",
+			wantErrMsg:     "iam.(Repository).UpdateGroup: invalid field mask: CreateTime: parameter violation: error #103",
 			wantIsError:    errors.InvalidFieldMask,
 		},
 		{
@@ -313,7 +314,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update group: field: Alice: invalid field mask",
+			wantErrMsg:     "iam.(Repository).UpdateGroup: invalid field mask: Alice: parameter violation: error #103",
 			wantIsError:    errors.InvalidFieldMask,
 		},
 		{
@@ -326,7 +327,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			},
 			newScopeId:     org.PublicId,
 			wantErr:        true,
-			wantErrMsg:     "update group: missing group public id invalid parameter",
+			wantErrMsg:     "iam.(Repository).UpdateGroup: missing public id: parameter violation: error #100",
 			wantIsError:    errors.InvalidParameter,
 			wantRowsUpdate: 0,
 		},
@@ -338,7 +339,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			},
 			newScopeId:  org.PublicId,
 			wantErr:     true,
-			wantErrMsg:  "update group: empty field mask",
+			wantErrMsg:  "iam.(Repository).UpdateGroup: empty field mask: parameter violation: error #104",
 			wantIsError: errors.EmptyFieldMask,
 		},
 		{
@@ -375,7 +376,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:  org.PublicId,
 			wantErr:     true,
 			wantDup:     true,
-			wantErrMsg:  " already exists in org " + org.PublicId,
+			wantErrMsg:  " already exists in scope " + org.PublicId,
 			wantIsError: errors.NotUnique,
 		},
 		{
@@ -388,7 +389,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			},
 			newScopeId:   org.PublicId,
 			wantErr:      true,
-			wantErrMsg:   `db.DoTx: db.Update: immutable column: iam_group.scope_id`,
+			wantErrMsg:   `iam.(Repository).update: db.DoTx: iam.(Repository).update: db.Update: immutable column: iam_group.scope_id: integrity violation: error #1003`,
 			directUpdate: true,
 		},
 	}
@@ -474,6 +475,9 @@ func TestRepository_DeleteGroup(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 
+	grpId, err := newGroupId()
+	a.NoError(err)
+
 	type args struct {
 		group *Group
 		opt   []Option
@@ -503,23 +507,21 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete group: missing public id invalid parameter",
+			wantErrMsg:      "iam.(Repository).DeleteGroup: missing public id: parameter violation: error #100",
 		},
 		{
 			name: "not-found",
 			args: args{
 				group: func() *Group {
-					id, err := newGroupId()
-					a.NoError(err)
 					g, err := NewGroup(org.PublicId)
-					g.PublicId = id
+					g.PublicId = grpId
 					a.NoError(err)
 					return g
 				}(),
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete group: failed db.LookupById: record not found",
+			wantErrMsg:      "iam.(Repository).DeleteGroup: for group " + grpId + ": db.LookupById: record not found, search issue: error #1100",
 		},
 	}
 	for _, tt := range tests {
@@ -727,7 +729,7 @@ func TestRepository_ListMembers(t *testing.T) {
 		got, err := repo.ListGroupMembers(context.Background(), "")
 		require.Error(err)
 		require.Nil(got)
-		require.Truef(errors.Is(err, errors.ErrInvalidParameter), "unexpected error %s", err.Error())
+		require.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "unexpected error %s", err.Error())
 
 	})
 }
@@ -879,7 +881,7 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 		args            args
 		wantRowsDeleted int
 		wantErr         bool
-		wantIsErr       error
+		wantIsErr       errors.Code
 	}{
 		{
 			name: "valid",
@@ -926,7 +928,7 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 		{
 			name: "bad-version",
@@ -949,7 +951,7 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -979,8 +981,8 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
-				if tt.wantIsErr != nil {
-					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+				if tt.wantIsErr != 0 {
+					assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "unexpected error %s", err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)

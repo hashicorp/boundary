@@ -42,14 +42,14 @@ func TestScope_New(t *testing.T) {
 		s, err := newScope(nil)
 		require.Error(err)
 		require.Nil(s)
-		assert.Contains(err.Error(), "new scope: child scope is missing its parent: invalid parameter")
+		assert.Contains(err.Error(), "iam.newScope: child scope is missing its parent: parameter violation: error #100")
 	})
 	t.Run("proj-scope-with-no-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		s, err := NewProject("")
 		require.Error(err)
 		require.Nil(s)
-		assert.Contains(err.Error(), "error creating new project: new scope: child scope is missing its parent: invalid parameter")
+		assert.Contains(err.Error(), "iam.NewProject: iam.newScope: child scope is missing its parent: parameter violation: error #100")
 	})
 }
 func TestScope_Create(t *testing.T) {
@@ -216,7 +216,7 @@ func TestScope_GlobalErrors(t *testing.T) {
 		s.PublicId = "global"
 		err := s.VetForWrite(context.Background(), nil, db.CreateOp)
 		require.Error(t, err)
-		assert.True(t, strings.Contains(err.Error(), "global scope cannot be created"))
+		assert.True(t, strings.Contains(err.Error(), "iam.(Scope).VetForWrite: you cannot create a global scope: parameter violation: error #100"))
 	})
 	t.Run("check org parent at vet time", func(t *testing.T) {
 		// Org must have global parent

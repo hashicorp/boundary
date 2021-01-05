@@ -264,7 +264,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if !opts.withSkipVetForWrite {
 		if vetter, ok := i.(VetForWriter); ok {
 			if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("vet for write failed"))
+				return errors.Wrap(err, op)
 			}
 		}
 	}
@@ -435,7 +435,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	if !opts.withSkipVetForWrite {
 		if vetter, ok := i.(VetForWriter); ok {
 			if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
-				return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("vet for write failed"))
+				return NoRowsAffected, errors.Wrap(err, op)
 			}
 		}
 	}
@@ -791,7 +791,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 		ticketer,
 	)
 	if err != nil {
-		return err
+		return errors.Wrap(err, op)
 	}
 	msg, err := rw.newOplogMessage(ctx, opType, i, WithFieldMaskPaths(opts.WithFieldMaskPaths), WithNullPaths(opts.WithNullPaths))
 	if err != nil {
@@ -985,7 +985,7 @@ func (rw *Db) LookupWhere(_ context.Context, resource interface{}, where string,
 		if err == gorm.ErrRecordNotFound {
 			return errors.E(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 		}
-		return err
+		return errors.Wrap(err, op)
 	}
 	return nil
 }

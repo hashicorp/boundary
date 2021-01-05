@@ -133,7 +133,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 				return nil, db.NoRowsAffected, errors.New(errors.InvalidAddress, op, "invalid address")
 			}
 		default:
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("field: %s", f))
+			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 	var dbMask, nullFields []string
@@ -164,10 +164,13 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 			rowsUpdated, err = w.Update(ctx, returnedHost, dbMask, nullFields,
 				db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_UPDATE)),
 				db.WithVersion(&version))
-			if err == nil && rowsUpdated > 1 {
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			if rowsUpdated > 1 {
 				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
-			return err
+			return nil
 		},
 	)
 
@@ -250,10 +253,13 @@ func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId st
 		func(_ db.Reader, w db.Writer) (err error) {
 			dh := h.clone()
 			rowsDeleted, err = w.Delete(ctx, dh, db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_DELETE)))
-			if err == nil && rowsDeleted > 1 {
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			if rowsDeleted > 1 {
 				return errors.E(errors.WithCode(errors.MultipleRecords))
 			}
-			return err
+			return nil
 		},
 	)
 

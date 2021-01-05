@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	"fmt"
 
 	authStore "github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -43,11 +42,12 @@ func (a *authAccount) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface.
 func (a *authAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.(authAccount).VetForWrite"
 	if a.PublicId == "" {
-		return fmt.Errorf("error public id is empty string for auth account write: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	if err := validateScopeForWrite(ctx, r, a, opType, opt...); err != nil {
-		return err
+		return errors.Wrap(err, op)
 	}
 	return nil
 }

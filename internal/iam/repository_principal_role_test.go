@@ -320,7 +320,7 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 		args            args
 		wantRowsDeleted int
 		wantErr         bool
-		wantIsErr       error
+		wantIsErr       errors.Code
 	}{
 		{
 			name: "valid",
@@ -355,7 +355,7 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 		{
 			name: "just-user-roles",
@@ -402,7 +402,7 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -416,7 +416,7 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 		{
 			name: "bad-version",
@@ -494,8 +494,8 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
-				if tt.wantIsErr != nil {
-					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+				if tt.wantIsErr != 0 {
+					assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "unexpected error %s", err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
@@ -772,7 +772,7 @@ func TestRepository_principalsToSet(t *testing.T) {
 		got, err := repo.principalsToSet(context.Background(), nil, users, grps)
 		require.Error(err)
 		assert.Nil(got)
-		assert.Truef(errors.Is(err, errors.ErrInvalidParameter), "unexpected error %s", err.Error())
+		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "unexpected error %s", err.Error())
 	})
 	t.Run("no change", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)

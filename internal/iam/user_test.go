@@ -55,7 +55,7 @@ func TestNewUser(t *testing.T) {
 				opt: []Option{WithName(id)},
 			},
 			wantErr:    true,
-			wantErrMsg: "new user: missing scope id invalid parameter",
+			wantErrMsg: "iam.NewUser: missing scope id: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {
@@ -123,7 +123,7 @@ func Test_UserCreate(t *testing.T) {
 		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		require.Error(err)
-		assert.Equal("db.Create: vet for write failed: iam.validateScopeForWrite: scope is not found: search issue: error #1100", err.Error())
+		assert.Equal("db.Create: iam.(User).VetForWrite: iam.validateScopeForWrite: scope is not found: search issue: error #1100", err.Error())
 	})
 }
 
@@ -168,7 +168,7 @@ func Test_UserUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Update: vet for write failed: iam.validateScopeForWrite: not allowed to change a resource's scope: parameter violation: error #100",
+			wantErrMsg: "db.Update: iam.(User).VetForWrite: iam.validateScopeForWrite: not allowed to change a resource's scope: parameter violation: error #100",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",

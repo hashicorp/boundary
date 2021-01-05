@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -32,9 +31,10 @@ var _ db.VetForWriter = (*User)(nil)
 // WithName - to specify the user's friendly name and WithDescription - to
 // specify a user description
 func NewUser(scopeId string, opt ...Option) (*User, error) {
+	const op = "iam.NewUser"
 	opts := getOpts(opt...)
 	if scopeId == "" {
-		return nil, fmt.Errorf("new user: missing scope id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	u := &User{
 		User: &store.User{
@@ -63,11 +63,12 @@ func (u *User) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface and validates the user
 // before it's written.
 func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.(User).VetForWrite"
 	if u.PublicId == "" {
-		return fmt.Errorf("user vet for write: missing public id: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	if err := validateScopeForWrite(ctx, r, u, opType, opt...); err != nil {
-		return err
+		return errors.Wrap(err, op)
 	}
 	return nil
 }

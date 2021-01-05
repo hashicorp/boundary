@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	stdErrors "errors"
 	"fmt"
 	"strings"
 
@@ -16,11 +15,12 @@ import (
 
 // CreateUser will create a user in the repository and return the written user
 func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) (*User, error) {
+	const op = "iam.(Repository).CreateUser"
 	if user == nil {
-		return nil, fmt.Errorf("create user: missing user %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing user")
 	}
 	if user.PublicId != "" {
-		return nil, fmt.Errorf("create user: public id is not empty %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "public id is not empty")
 	}
 	u := user.Clone().(*User)
 
@@ -28,13 +28,13 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, UserPrefix+"_") {
-			return nil, fmt.Errorf("create user: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, UserPrefix, errors.ErrInvalidPublicId)
+			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, UserPrefix))
 		}
 		u.PublicId = opts.withPublicId
 	} else {
 		id, err := newUserId()
 		if err != nil {
-			return nil, fmt.Errorf("create user: %w", err)
+			return nil, errors.Wrap(err, op)
 		}
 		u.PublicId = id
 	}
@@ -42,11 +42,11 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 	resource, err := r.create(ctx, u)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, fmt.Errorf("create user: user %s already exists in org %s: %w", user.Name, user.ScopeId, err)
+			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf("user %s already exists in org %s", user.Name, user.ScopeId))
 		}
-		return nil, fmt.Errorf("create user: %w for %s", err, u.PublicId)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", u.PublicId)))
 	}
-	return resource.(*User), err
+	return resource.(*User), nil
 }
 
 // UpdateUser will update a user in the repository and return the written user
@@ -56,18 +56,19 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 // only updatable fields, if no updatable fields are included in the
 // fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32, fieldMaskPaths []string, opt ...Option) (*User, []string, int, error) {
+	const op = "iam.(Repository).UpdateUser"
 	if user == nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: missing user %w", errors.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing user")
 	}
 	if user.PublicId == "" {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: missing user public id %w", errors.ErrInvalidParameter)
+		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
 		default:
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: field: %s: %w", f, errors.ErrInvalidFieldMask)
+			return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 	var dbMask, nullFields []string
@@ -80,13 +81,13 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: %w", errors.ErrEmptyFieldMask)
+		return nil, nil, db.NoRowsAffected, errors.E(errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
 	}
 
 	u := user.Clone().(*User)
 	metadata, err := r.stdMetadata(ctx, u)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: error getting metadata for update: %w", err)
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_UPDATE.String()}
 
@@ -100,12 +101,12 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 
 	scope, err := u.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: unable to get scope: %w", err)
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get scope"))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: unable to get oplog wrapper: %w", err)
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
 
@@ -125,12 +126,12 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 				nullFields,
 				dbOpts...,
 			)
-			if err == nil && rowsUpdated > 1 {
-				// return err, which will result in a rollback of the update
-				return stdErrors.New("error more than 1 resource would have been updated ")
-			}
 			if err != nil {
-				return err
+				return errors.Wrap(err, op)
+			}
+			if rowsUpdated > 1 {
+				// return err, which will result in a rollback of the update
+				return errors.New(errors.MultipleRecords, op, "error more than 1 resource would have been updated")
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
@@ -142,25 +143,26 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 			}
 			currentAccountIds, err = txRepo.ListUserAccounts(ctx, user.PublicId)
 			if err != nil {
-				return fmt.Errorf("unable to retrieve current account ids after update: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current account ids after update"))
 			}
 			return nil
 		},
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: user %s already exists in org %s", user.Name, user.ScopeId)
+			return nil, nil, db.NoRowsAffected, errors.New(errors.NotUnique, op, fmt.Sprintf("user %s already exists in org %s", user.Name, user.ScopeId))
 		}
-		return nil, nil, db.NoRowsAffected, fmt.Errorf("update user: %w for %s", err, user.PublicId)
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", user.PublicId)))
 	}
-	return returnedUser, currentAccountIds, rowsUpdated, err
+	return returnedUser, currentAccountIds, rowsUpdated, nil
 }
 
 // LookupUser will look up a user and its associated account ids in the
 // repository.  If the user is not found, it will return nil, nil, nil.
-func (r *Repository) LookupUser(ctx context.Context, userId string, opt ...Option) (*User, []string, error) {
+func (r *Repository) LookupUser(ctx context.Context, userId string, _ ...Option) (*User, []string, error) {
+	const op = "iam.(Repository).LookupUser"
 	if userId == "" {
-		return nil, nil, fmt.Errorf("lookup user: missing public id %w", errors.ErrInvalidParameter)
+		return nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 
 	user := allocUser()
@@ -169,41 +171,43 @@ func (r *Repository) LookupUser(ctx context.Context, userId string, opt ...Optio
 		if errors.IsNotFoundError(err) {
 			return nil, nil, nil
 		}
-		return nil, nil, fmt.Errorf("lookup user: failed %w for %s", err, userId)
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", userId)))
 	}
 	currentAccountIds, err := r.ListUserAccounts(ctx, userId)
 	if err != nil {
-		return nil, nil, fmt.Errorf("lookup user: unable to retrieve current account ids: %w", err)
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to retrieve current account ids"))
 	}
 	return &user, currentAccountIds, nil
 }
 
 // DeleteUser will delete a user from the repository
-func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
+func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, _ ...Option) (int, error) {
+	const op = "iam.(Repository).DeleteUser"
 	if withPublicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete user: missing public id %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	user := allocUser()
 	user.PublicId = withPublicId
 	if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete user: failed %w for %s", err, withPublicId)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
 	}
 	rowsDeleted, err := r.delete(ctx, &user)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete user: failed %w for %s", err, withPublicId)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
 	}
 	return rowsDeleted, nil
 }
 
 // ListUsers in an org and supports the WithLimit option.
 func (r *Repository) ListUsers(ctx context.Context, withOrgId string, opt ...Option) ([]*User, error) {
+	const op = "iam.(Repository).ListUsers"
 	if withOrgId == "" {
-		return nil, fmt.Errorf("list users: missing org id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing org id")
 	}
 	var users []*User
 	err := r.list(ctx, &users, "scope_id = ?", []interface{}{withOrgId}, opt...)
 	if err != nil {
-		return nil, fmt.Errorf("list users: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return users, nil
 }
@@ -215,26 +219,27 @@ func (r *Repository) ListUsers(ctx context.Context, withOrgId string, opt ...Opt
 // account. If a new user is auto vivified, then the WithName and
 // WithDescription options are supported as well.
 func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, opt ...Option) (*User, error) {
+	const op = "iam.(Repository).LookupUserWithLogin"
 	opts := getOpts(opt...)
 	if accountId == "" {
-		return nil, fmt.Errorf("lookup user with login: missing account id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing account id")
 	}
 	u, err := r.getUserWithAccount(ctx, accountId)
 	if err != nil {
-		return nil, fmt.Errorf("lookup user with login: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if u != nil {
 		return u, nil
 	}
 	if !opts.withAutoVivify {
-		return nil, fmt.Errorf("lookup user with login: user not found for account %s: %w", accountId, errors.ErrRecordNotFound)
+		return nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("user not found for account %s", accountId))
 	}
 
 	acct := allocAccount()
 	acct.PublicId = accountId
 	err = r.reader.LookupByPublicId(context.Background(), &acct)
 	if err != nil {
-		return nil, fmt.Errorf("lookup user with login: unable to lookup account %s: %w", accountId, err)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
 	}
 
 	metadata := oplog.Metadata{
@@ -246,7 +251,7 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, acct.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("lookup user with login: unable to get oplog wrapper: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	// We will create a new user and associate the user with the account
@@ -260,21 +265,21 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 			msgs := make([]*oplog.Message, 0, 2)
 			ticket, err := w.GetTicket(&acct)
 			if err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
 			obtainedUser, err = NewUser(acct.ScopeId, opt...)
 			if err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
 			id, err := newUserId()
 			if err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
 			var createMsg oplog.Message
 			obtainedUser.PublicId = id
 			err = w.Create(ctx, obtainedUser, db.NewOplogMsg(&createMsg))
 			if err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
 			msgs = append(msgs, &createMsg)
 
@@ -283,47 +288,45 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 			updateAcct.IamUserId = id
 			updatedRows, err := w.Update(ctx, updateAcct, []string{"IamUserId"}, nil, db.NewOplogMsg(&updateMsg))
 			if err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
 			if updatedRows != 1 {
-				return fmt.Errorf("account update affected %d rows", updatedRows)
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("account update affected %d rows", updatedRows))
 			}
 			msgs = append(msgs, &updateMsg)
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("lookup user with login: unable to associate user and account: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return obtainedUser, nil
 }
 
-func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId string, opt ...Option) (*User, error) {
+func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId string, _ ...Option) (*User, error) {
+	const op = "iam.(Repository).getUserWithAccount"
 	if withAccountId == "" {
-		return nil, fmt.Errorf("missing account id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing account id")
 	}
 	rows, err := r.reader.Query(ctx, whereUserAccount, []interface{}{withAccountId})
 	if err != nil {
-		return nil, fmt.Errorf("unable to query account %s", withAccountId)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to query account %s", withAccountId)))
 	}
 	defer rows.Close()
 	u := allocUser()
 	if rows.Next() {
 		err = r.reader.ScanRows(rows, &u)
 		if err != nil {
-			return nil, fmt.Errorf("unable to scan rows for account %s: %w", withAccountId, err)
+			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to scan rows for account %s", withAccountId)))
 		}
 	} else {
 		if err := rows.Err(); err != nil {
-			return nil, fmt.Errorf("unable to get next account: %w", err)
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to get next account"))
 		}
 		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("unable to get next row for accounts %s: %w", withAccountId, err)
 	}
 	return &u, nil
 }
@@ -331,12 +334,13 @@ func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId strin
 // ListUserAccounts returns the account ids for the userId and supports the
 // WithLimit option. Returns nil, nil when no associated accounts are found.
 func (r *Repository) ListUserAccounts(ctx context.Context, userId string, opt ...Option) ([]string, error) {
+	const op = "iam.(Repository).ListUserAccounts"
 	if userId == "" {
-		return nil, fmt.Errorf("list auth account ids: missing user id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing user id")
 	}
 	var accounts []*authAccount
 	if err := r.list(ctx, &accounts, "iam_user_id = ?", []interface{}{userId}, opt...); err != nil {
-		return nil, fmt.Errorf("list auth account ids: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if len(accounts) == 0 {
 		return nil, nil
@@ -352,15 +356,16 @@ func (r *Repository) ListUserAccounts(ctx context.Context, userId string, opt ..
 // return a list of all associated account ids for the user. The accounts must
 // not already be associated with different users.  No options are currently
 // supported.
-func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
+func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, _ ...Option) ([]string, error) {
+	const op = "iam.(Repository).AddUserAccounts"
 	if userId == "" {
-		return nil, fmt.Errorf("associate accounts: missing user public id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing user id")
 	}
 	if userVersion == 0 {
-		return nil, fmt.Errorf("associate accounts: missing user version %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing user version")
 	}
 	if len(accountIds) == 0 {
-		return nil, fmt.Errorf("associate accounts: missing account id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing account ids")
 	}
 
 	user := allocUser()
@@ -368,11 +373,11 @@ func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVer
 
 	err := r.reader.LookupById(ctx, &user)
 	if err != nil {
-		return nil, fmt.Errorf("associate accounts: unable to lookup user %s: %w", userId, err)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup user %s", userId)))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, user.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("associate accounts: unable to get oplog wrapper: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var currentAccountIds []string
@@ -383,7 +388,7 @@ func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVer
 		func(reader db.Reader, w db.Writer) error {
 			userTicket, err := w.GetTicket(&user)
 			if err != nil {
-				return fmt.Errorf("associate accounts: unable to get ticket: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedUser := allocUser()
 			updatedUser.PublicId = userId
@@ -391,13 +396,13 @@ func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVer
 			var userOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedUser, []string{"Version"}, nil, db.NewOplogMsg(&userOplogMsg), db.WithVersion(&userVersion))
 			if err != nil {
-				return fmt.Errorf("associate accounts: unable to update user version: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to get user version"))
 			}
 			if rowsUpdated != 1 {
-				return fmt.Errorf("associate accounts: updated user and %d rows updated", rowsUpdated)
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated user and %d rows updated", rowsUpdated))
 			}
 			if err := associateUserWithAccounts(ctx, r.kms, reader, w, user.PublicId, accountIds); err != nil {
-				return fmt.Errorf("associate accounts: %w", err)
+				return errors.Wrap(err, op)
 			}
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
@@ -406,7 +411,7 @@ func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVer
 				"resource-public-id": []string{user.PublicId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, userTicket, metadata, []*oplog.Message{&userOplogMsg}); err != nil {
-				return fmt.Errorf("associate accounts: unable to write oplog: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
@@ -418,13 +423,13 @@ func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVer
 			}
 			currentAccountIds, err = txRepo.ListUserAccounts(ctx, user.PublicId)
 			if err != nil {
-				return fmt.Errorf("associate accounts: unable to retrieve current account ids after adds: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current account ids after adds"))
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("associate accounts: error associating account ids: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return currentAccountIds, nil
 }
@@ -433,26 +438,27 @@ func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVer
 // return a list of all associated account ids for the user. The accounts must
 // not be associated with different users.  No options are currently
 // supported.
-func (r *Repository) DeleteUserAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
+func (r *Repository) DeleteUserAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, _ ...Option) ([]string, error) {
+	const op = "iam.(Repository).DeleteUserAccounts"
 	if userId == "" {
-		return nil, fmt.Errorf("disassociate accounts: missing user public id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	if userVersion == 0 {
-		return nil, fmt.Errorf("disassociate accounts: missing user version %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing user version")
 	}
 	if len(accountIds) == 0 {
-		return nil, fmt.Errorf("disassociate accounts: missing account id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing account ids")
 	}
 
 	user := allocUser()
 	user.PublicId = userId
 	err := r.reader.LookupById(ctx, &user)
 	if err != nil {
-		return nil, fmt.Errorf("disassociate accounts: unable to lookup user %s: %w", userId, err)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup user %s", userId)))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, user.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("disassociate accounts: unable to get oplog wrapper: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var currentAccountIds []string
@@ -463,7 +469,7 @@ func (r *Repository) DeleteUserAccounts(ctx context.Context, userId string, user
 		func(reader db.Reader, w db.Writer) error {
 			userTicket, err := w.GetTicket(&user)
 			if err != nil {
-				return fmt.Errorf("disassociate accounts: unable to get ticket: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedUser := allocUser()
 			updatedUser.PublicId = userId
@@ -471,13 +477,13 @@ func (r *Repository) DeleteUserAccounts(ctx context.Context, userId string, user
 			var userOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedUser, []string{"Version"}, nil, db.NewOplogMsg(&userOplogMsg), db.WithVersion(&userVersion))
 			if err != nil {
-				return fmt.Errorf("disassociate accounts: unable to update user version: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to update user version"))
 			}
 			if rowsUpdated != 1 {
-				return fmt.Errorf("disassociate accounts: updated user and %d rows updated", rowsUpdated)
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated user and %d rows updated", rowsUpdated))
 			}
 			if err := dissociateUserFromAccounts(ctx, r.kms, reader, w, user.PublicId, accountIds); err != nil {
-				return fmt.Errorf("disassociate accounts: %w", err)
+				return errors.Wrap(err, op)
 			}
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
@@ -486,7 +492,7 @@ func (r *Repository) DeleteUserAccounts(ctx context.Context, userId string, user
 				"resource-public-id": []string{user.PublicId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, userTicket, metadata, []*oplog.Message{&userOplogMsg}); err != nil {
-				return fmt.Errorf("disassociate accounts: unable to write oplog: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
@@ -498,13 +504,13 @@ func (r *Repository) DeleteUserAccounts(ctx context.Context, userId string, user
 			}
 			currentAccountIds, err = txRepo.ListUserAccounts(ctx, user.PublicId)
 			if err != nil {
-				return fmt.Errorf("disassociate accounts: unable to retrieve current account ids after adds: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current account ids after adds"))
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("disassociate accounts: error associating account ids: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return currentAccountIds, nil
 }
@@ -513,23 +519,24 @@ func (r *Repository) DeleteUserAccounts(ctx context.Context, userId string, user
 // return a list of all associated account ids for the user. The accounts must
 // not already be associated with different users.  No options are currently
 // supported.
-func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, opt ...Option) ([]string, error) {
+func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVersion uint32, accountIds []string, _ ...Option) ([]string, error) {
+	const op = "iam.(Repository).SetUserAccounts"
 	if userId == "" {
-		return nil, fmt.Errorf("set associated accounts: missing user public id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	if userVersion == 0 {
-		return nil, fmt.Errorf("set associated accounts: missing user version %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 
 	user := allocUser()
 	user.PublicId = userId
 	err := r.reader.LookupById(ctx, &user)
 	if err != nil {
-		return nil, fmt.Errorf("set associated accounts: unable to lookup user %s: %w", userId, err)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup user %s", userId)))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, user.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("set associated accounts: unable to get oplog wrapper: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	var currentAccountIds []string
 	_, err = r.writer.DoTx(
@@ -539,7 +546,7 @@ func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVer
 		func(reader db.Reader, w db.Writer) error {
 			associateIds, disassociateIds, err := associationChanges(ctx, reader, userId, accountIds)
 			if err != nil {
-				return fmt.Errorf("set associated accounts: unable to determine changes: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to determine changes"))
 			}
 
 			// just in case we've got nothing to do...
@@ -554,13 +561,13 @@ func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVer
 				}
 				currentAccountIds, err = txRepo.ListUserAccounts(ctx, userId)
 				if err != nil {
-					return fmt.Errorf("set associated accounts: unable to retrieve current account ids after set: %w", err)
+					return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current account ids after set"))
 				}
 				return nil
 			}
 			userTicket, err := w.GetTicket(&user)
 			if err != nil {
-				return fmt.Errorf("set associated accounts: unable to get ticket: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedUser := allocUser()
 			updatedUser.PublicId = userId
@@ -568,21 +575,21 @@ func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVer
 			var userOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedUser, []string{"Version"}, nil, db.NewOplogMsg(&userOplogMsg), db.WithVersion(&userVersion))
 			if err != nil {
-				return fmt.Errorf("set associated accounts: unable to update user version: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to update user version"))
 			}
 			if rowsUpdated != 1 {
-				return fmt.Errorf("set associated accounts: updated user and %d rows updated", rowsUpdated)
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated user and %d rows updated", rowsUpdated))
 			}
 
 			if len(associateIds) > 0 {
 				if err := associateUserWithAccounts(ctx, r.kms, reader, w, userId, associateIds); err != nil {
-					return fmt.Errorf("set associated accounts: unable to associate ids: %w", err)
+					return errors.Wrap(err, op, errors.WithMsg("unable to associate ids"))
 				}
 			}
 
 			if len(disassociateIds) > 0 {
 				if err := dissociateUserFromAccounts(ctx, r.kms, reader, w, userId, disassociateIds); err != nil {
-					return fmt.Errorf("set associated accounts: unable to disassociate ids: %w", err)
+					return errors.Wrap(err, op, errors.WithMsg("unable to disassociate ids"))
 				}
 			}
 
@@ -593,7 +600,7 @@ func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVer
 				"resource-public-id": []string{userId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, userTicket, metadata, []*oplog.Message{&userOplogMsg}); err != nil {
-				return fmt.Errorf("set associated accounts: unable to write oplog: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
@@ -605,34 +612,35 @@ func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVer
 			}
 			currentAccountIds, err = txRepo.ListUserAccounts(ctx, user.PublicId)
 			if err != nil {
-				return fmt.Errorf("set associated accounts: unable to retrieve current account ids after set: %w", err)
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current account ids after set"))
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("set associated accounts: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return currentAccountIds, nil
 }
 
 // associateUserWithAccounts will associate the accounts (accountIds) with
 // the user (userId) within the writer's database
-func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.Reader, writer db.Writer, userId string, accountIds []string, opt ...Option) error {
+func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.Reader, writer db.Writer, userId string, accountIds []string, _ ...Option) error {
+	const op = "iam.associateUserWithAccounts"
 	if repoKms == nil {
-		return fmt.Errorf("associate user with accounts: kms is nil: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "nil kms")
 	}
 	if reader == nil {
-		return fmt.Errorf("associate user with accounts: db reader is nil: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "nil reader")
 	}
 	if writer == nil {
-		return fmt.Errorf("associate user with accounts: db writer is nil: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "nil writer")
 	}
 	if userId == "" {
-		return fmt.Errorf("associate user with accounts: user id is empty: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "missing user id")
 	}
 	if len(accountIds) == 0 {
-		return fmt.Errorf("associate user with accounts: missing account id %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "missing account ids")
 	}
 	authAccounts := make([]*authAccount, 0, len(accountIds))
 	for _, accountId := range accountIds {
@@ -640,10 +648,10 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 		acct.PublicId = accountId
 		err := reader.LookupByPublicId(context.Background(), &acct)
 		if err != nil {
-			return fmt.Errorf("associate user with accounts: unable to lookup account %s: %w", accountId, err)
+			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
 		}
 		if acct.IamUserId != "" && acct.IamUserId != userId {
-			return fmt.Errorf("associate user with accounts: %s account is associated with a user %s: %w", accountId, acct.IamUserId, errors.ErrInvalidParameter)
+			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s account is associated with a user %s", accountId, acct.IamUserId))
 		}
 		authAccounts = append(authAccounts, &acct)
 	}
@@ -652,7 +660,7 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 		// wrapper could be different for each authAccount depending on it's scope
 		oplogWrapper, err := repoKms.GetWrapper(ctx, aa.GetScopeId(), kms.KeyPurposeOplog)
 		if err != nil {
-			return fmt.Errorf("associate user with accounts: unable to get oplog wrapper: %w", err)
+			return errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 		}
 
 		metadata := oplog.Metadata{
@@ -666,13 +674,13 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 		updatedAcct.IamUserId = userId
 		updatedRows, err = writer.Update(ctx, updatedAcct, []string{"IamUserId"}, nil, db.WithOplog(oplogWrapper, metadata), db.WithWhere("iam_user_id is NULL or iam_user_id = ?", userId))
 		if err != nil {
-			return fmt.Errorf("associate user with accouts: failed to associate %s account: %w", aa.PublicId, err)
+			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to associate %s account", aa.PublicId)))
 		}
 		if updatedRows == 0 {
-			return fmt.Errorf("associate user with accounts: failed to associate %s account: it is already associated with another user", aa.PublicId)
+			return errors.New(errors.MultipleRecords, op, fmt.Sprintf("failed to associate %s account: it is already associated with another user", aa.PublicId))
 		}
 		if updatedRows > 1 {
-			return fmt.Errorf("associate user with accounts: failed to associate %s account: would have updated too many accounts %d", aa.PublicId, updatedRows)
+			return errors.New(errors.MultipleRecords, op, fmt.Sprintf("failed to associate %s account: would have updated too many accounts %d", aa.PublicId, updatedRows))
 		}
 	}
 	return nil
@@ -681,21 +689,22 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 // dissociateUserFromAccounts will dissociate a user with its existing accounts
 // (accountIds). An error is returned if account is associated with a different
 // user.  No options are currently supported.
-func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db.Reader, writer db.Writer, userId string, accountIds []string, opt ...Option) error {
+func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db.Reader, writer db.Writer, userId string, accountIds []string, _ ...Option) error {
+	const op = "iam.dissociateUserFromAccounts"
 	if repoKms == nil {
-		return fmt.Errorf("dissociate user from accounts: kms is nil: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "nil kms")
 	}
 	if reader == nil {
-		return fmt.Errorf("dissociate user from accounts: db reader is nil: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "nil reader")
 	}
 	if writer == nil {
-		return fmt.Errorf("dissociate user from accounts: db writer is nil: %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "nil writer")
 	}
 	if userId == "" {
-		return fmt.Errorf("dissociate user from accounts: missing user public id %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	if len(accountIds) == 0 {
-		return fmt.Errorf("dissociate user from accounts: missing account id %w", errors.ErrInvalidParameter)
+		return errors.New(errors.InvalidParameter, op, "missing account ids")
 	}
 	authAccounts := make([]*authAccount, 0, len(accountIds))
 	for _, accountId := range accountIds {
@@ -703,10 +712,10 @@ func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db
 		acct.PublicId = accountId
 		err := reader.LookupByPublicId(context.Background(), &acct)
 		if err != nil {
-			return fmt.Errorf("dissociate user from accounts: unable to lookup account %s: %w", accountId, err)
+			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
 		}
 		if acct.IamUserId != userId {
-			return fmt.Errorf("dissociate user from accounts: %s account is not associated with user %s: %w", accountId, userId, errors.ErrInvalidParameter)
+			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s account is not associated with user %s", accountId, userId))
 		}
 		authAccounts = append(authAccounts, &acct)
 	}
@@ -715,7 +724,7 @@ func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db
 		// wrapper could be different for each authAccount depending on it's scope
 		oplogWrapper, err := repoKms.GetWrapper(ctx, aa.GetScopeId(), kms.KeyPurposeOplog)
 		if err != nil {
-			return fmt.Errorf("dissociate user from accounts: unable to get oplog wrapper: %w", err)
+			return errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 		}
 		metadata := oplog.Metadata{
 			"resource-public-id": []string{aa.PublicId},
@@ -729,13 +738,13 @@ func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db
 		// update IamUserId to null
 		updatedRows, err = writer.Update(ctx, updatedAcct, nil, []string{"IamUserId"}, db.WithOplog(oplogWrapper, metadata), db.WithWhere("iam_user_id is NULL or iam_user_id = ?", userId))
 		if err != nil {
-			return fmt.Errorf("dissociate user from accounts: failed to disassociate %s account: %w", aa.PublicId, err)
+			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to disassociate %s account", aa.PublicId)))
 		}
 		if updatedRows == 0 {
-			return fmt.Errorf("dissociate user from accounts: failed to disassociate %s account: it is associated with another user", aa.PublicId)
+			return errors.New(errors.MultipleRecords, op, fmt.Sprintf("failed to disassociate %s account: it is already associated with another user", aa.PublicId))
 		}
 		if updatedRows > 1 {
-			return fmt.Errorf("dissociate user from accounts: failed to disassociate %s account: would have updated too many accounts %d", aa.PublicId, updatedRows)
+			return errors.New(errors.MultipleRecords, op, fmt.Sprintf("failed to disassociate %s account: would have updated too many accounts %d", aa.PublicId, updatedRows))
 		}
 	}
 	return nil
@@ -743,6 +752,7 @@ func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db
 
 // associationChanges returns two slices: accounts to associate and disassociate
 func associationChanges(ctx context.Context, reader db.Reader, userId string, accountIds []string) ([]string, []string, error) {
+	const op = "iam.associationChanges"
 	var inClauseSpots []string
 	// starts at 2 because there is already a $1 in the query
 	for i := 2; i < len(accountIds)+2; i++ {
@@ -761,7 +771,7 @@ func associationChanges(ctx context.Context, reader db.Reader, userId string, ac
 	}
 	rows, err := reader.Query(ctx, query, params)
 	if err != nil {
-		return nil, nil, fmt.Errorf("changes: query failed: %w", err)
+		return nil, nil, errors.Wrap(err, op)
 	}
 	defer rows.Close()
 
@@ -773,14 +783,14 @@ func associationChanges(ctx context.Context, reader db.Reader, userId string, ac
 	for rows.Next() {
 		var chg change
 		if err := reader.ScanRows(rows, &chg); err != nil {
-			return nil, nil, fmt.Errorf("changes: scan row failed: %w", err)
+			return nil, nil, errors.Wrap(err, op)
 		}
 		changes = append(changes, &chg)
 	}
 	var associateIds, disassociateIds []string
 	for _, c := range changes {
 		if c.AccountId == "" {
-			return nil, nil, fmt.Errorf("changes: missing account id in change result")
+			return nil, nil, errors.New(errors.InvalidParameter, op, "missing account id in change result")
 		}
 		switch c.Action {
 		case "associate":
@@ -788,9 +798,8 @@ func associationChanges(ctx context.Context, reader db.Reader, userId string, ac
 		case "disassociate":
 			disassociateIds = append(disassociateIds, c.AccountId)
 		default:
-			return nil, nil, fmt.Errorf("changes: unknown action %s for %s", c.Action, c.AccountId)
+			return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown action %s for %s", c.Action, c.AccountId))
 		}
-
 	}
 	return associateIds, disassociateIds, nil
 }

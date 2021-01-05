@@ -31,7 +31,7 @@ func TestRoleGrant_Create(t *testing.T) {
 		args      args
 		want      *RoleGrant
 		wantErr   bool
-		wantIsErr error
+		wantIsErr errors.Code
 		create    bool
 	}{
 		{
@@ -41,7 +41,7 @@ func TestRoleGrant_Create(t *testing.T) {
 				grant:  "id=*;type=*;actions=*",
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "nil-grant",
@@ -50,7 +50,7 @@ func TestRoleGrant_Create(t *testing.T) {
 				grant:  "",
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 			create:    true,
 		},
 		{
@@ -91,7 +91,7 @@ func TestRoleGrant_Create(t *testing.T) {
 			got, err := NewRoleGrant(tt.args.roleId, tt.args.grant, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				return
 			}
 			require.NoError(err)

@@ -38,6 +38,6 @@ func Test_PublicIds(t *testing.T) {
 		id, err = newScopeId(scope.Unknown)
 		require.Error(t, err)
 		assert.Empty(t, id)
-		assert.True(t, errors.Is(err, errors.ErrInvalidParameter))
+		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
 	})
 }

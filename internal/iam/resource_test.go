@@ -40,15 +40,15 @@ func Test_LookupScope(t *testing.T) {
 		s, err := LookupScope(context.Background(), nil, user)
 		require.Error(err)
 		assert.Nil(s)
-		assert.Equal("error reader is nil for LookupScope", err.Error())
+		assert.Equal("iam.LookupScope: nil reader: parameter violation: error #100", err.Error())
 
 		s, err = LookupScope(context.Background(), w, nil)
 		assert.Nil(s)
-		assert.Equal("error resource is nil for LookupScope", err.Error())
+		assert.Equal("iam.LookupScope: missing resource: parameter violation: error #100", err.Error())
 
 		user2 := allocUser()
 		s, err = LookupScope(context.Background(), w, &user2)
 		assert.Nil(s)
-		assert.Contains(err.Error(), "LookupScope: scope id is unset invalid parameter")
+		assert.Contains(err.Error(), "iam.LookupScope: missing public id: parameter violation: error #100")
 	})
 }

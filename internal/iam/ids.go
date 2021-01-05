@@ -18,7 +18,7 @@ const (
 func newRoleId() (string, error) {
 	id, err := db.NewPublicId(RolePrefix)
 	if err != nil {
-		return "", fmt.Errorf("new role id: %w", err)
+		return "", errors.Wrap(err, "iam.newRoleId")
 	}
 	return id, nil
 }
@@ -26,7 +26,7 @@ func newRoleId() (string, error) {
 func newUserId() (string, error) {
 	id, err := db.NewPublicId(UserPrefix)
 	if err != nil {
-		return "", fmt.Errorf("new user id: %w", err)
+		return "", errors.Wrap(err, "iam.newUserId")
 	}
 	return id, nil
 }
@@ -34,18 +34,19 @@ func newUserId() (string, error) {
 func newGroupId() (string, error) {
 	id, err := db.NewPublicId(GroupPrefix)
 	if err != nil {
-		return "", fmt.Errorf("new group id: %w", err)
+		return "", errors.Wrap(err, "iam.newGroupId")
 	}
 	return id, nil
 }
 
 func newScopeId(scopeType scope.Type) (string, error) {
+	const op = "iam.newScopeId"
 	if scopeType == scope.Unknown {
-		return "", fmt.Errorf("new scope id: unknown is not supported %w", errors.ErrInvalidParameter)
+		return "", errors.New(errors.InvalidParameter, op, "unknown scope is not supported")
 	}
 	id, err := db.NewPublicId(scopeType.Prefix())
 	if err != nil {
-		return "", fmt.Errorf("new %s id: %w", scopeType.String(), err)
+		return "", errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("scope type: %s", scopeType.String())))
 	}
 	return id, nil
 }

@@ -8,10 +8,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* controller: Improved error handling in iam repo
+  ([PR](https://github.com/hashicorp/boundary/pull/841))
 * controller: Improved error handling in db
   ([PR](https://github.com/hashicorp/boundary/pull/815))
 
 ### Bug Fixes
+
+* servers: Fix erronious global unicast check that disallowed valid addresses
+  from being assigned ([PR](https://github.com/hashicorp/boundary/pull/845))
   
 ## 0.1.3
 
