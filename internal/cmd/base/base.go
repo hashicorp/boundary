@@ -17,10 +17,10 @@ import (
 	"sync"
 	"syscall"
 
-	nkeyring "github.com/99designs/keyring"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/sdk/wrapper"
+	nkeyring "github.com/jefferai/keyring"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"

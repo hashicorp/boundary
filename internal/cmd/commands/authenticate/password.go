@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	nkeyring "github.com/99designs/keyring"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/vault/sdk/helper/password"
+	nkeyring "github.com/jefferai/keyring"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/posener/complete"
