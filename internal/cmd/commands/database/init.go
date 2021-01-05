@@ -268,6 +268,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Error(fmt.Errorf("Error setting up schema manager for locking: %w", err).Error())
 		return 1
 	}
+	// This is an advisory locks on the DB which is released when the db session ends.
 	if err := man.ExclusiveLock(c.Context, schema.SchemaAccessLockId); err != nil {
 		c.UI.Error(fmt.Errorf("Error capturing an exclusive lock: %w", err).Error())
 		return 1

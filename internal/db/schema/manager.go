@@ -92,13 +92,17 @@ func (b *Manager) RollForward(ctx context.Context) error {
 		return errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("schema is dirty with version %d", curVersion))
 	}
 
-	return b.runMigrations(ctx, newStatementProvider(b.dialect, curVersion))
+	sp, err := newStatementProvider(b.dialect, curVersion)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	return b.runMigrations(ctx, sp)
 }
 
 // runMigrations passes migration queries to a database driver and manages
 // the version and dirty bit.  Cancelation or deadline/timeout is managed
 // through the passed in context.
-func (b *Manager) runMigrations(ctx context.Context, qp statementProvider) error {
+func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) error {
 	op := errors.Op("schema.runMigrations")
 	for qp.Next() {
 		select {

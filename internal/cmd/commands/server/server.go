@@ -348,6 +348,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Can't get schema manager: %w.", err).Error())
 			return 1
 		}
+		// This is an advisory locks on the DB which is released when the db session ends.
 		if err := sMan.SharedLock(ctx, schema.SchemaAccessLockId); err != nil {
 			c.UI.Error(fmt.Errorf("Unable to gain shared access to the database: %w", err).Error())
 			return 1
