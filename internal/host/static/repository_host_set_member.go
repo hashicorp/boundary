@@ -100,7 +100,7 @@ func updateVersion(ctx context.Context, w db.Writer, wrapper wrapping.Wrapper, m
 	case err != nil:
 		return errors.Wrap(err, op)
 	case rowsUpdated > 1:
-		return errors.E(errors.WithCode(errors.MultipleRecords))
+		return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 	}
 	msgs = append(msgs, setMsg)
 
@@ -295,7 +295,7 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 			if len(additions) > 0 {
 				createdMsgs, err := createMembers(ctx, w, additions)
 				if err != nil {
-					return err
+					return errors.Wrap(err, op)
 				}
 				msgs = append(msgs, createdMsgs...)
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())

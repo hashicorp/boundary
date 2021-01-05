@@ -66,7 +66,11 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			newHostSet = s.clone()
-			return w.Create(ctx, newHostSet, db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			err := w.Create(ctx, newHostSet, db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
 		},
 	)
 
@@ -158,7 +162,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			hosts, err = getHosts(ctx, reader, s.PublicId, limit)
 			if err != nil {
@@ -274,7 +278,7 @@ func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId str
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

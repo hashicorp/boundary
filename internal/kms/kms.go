@@ -214,7 +214,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 		}
 	}
 	if rootKeyId == "" {
-		return nil, "", errors.New(errors.FixMe, op, fmt.Sprintf("missing root key for scope %s", scopeId))
+		return nil, "", errors.New(errors.KeyNotFound, op, fmt.Sprintf("missing root key for scope %s", scopeId))
 	}
 
 	// Now: find the external KMS that can be used to decrypt the root values
@@ -223,21 +223,21 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	externalWrappers := k.externalScopeCache[scope.Global.String()]
 	k.externalScopeCacheMutex.Unlock()
 	if externalWrappers == nil {
-		return nil, "", errors.New(errors.FixMe, op, "could not find kms information at either the needed scope or global fallback")
+		return nil, "", errors.New(errors.KeyNotFound, op, "could not find kms information at either the needed scope or global fallback")
 	}
 
 	externalWrappers.m.RLock()
 	defer externalWrappers.m.RUnlock()
 
 	if externalWrappers.root == nil {
-		return nil, "", errors.New(errors.FixMe, op, fmt.Sprintf("root key wrapper for scope %s is nil", scopeId))
+		return nil, "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("root key wrapper for scope %s is nil", scopeId))
 	}
 	rootKeyVersions, err := repo.ListRootKeyVersions(ctx, externalWrappers.root, rootKeyId, WithOrder("version desc"))
 	if err != nil {
 		return nil, "", errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error looking up root key versions for scope %s with key ID %s", scopeId, externalWrappers.root.KeyID())))
 	}
 	if len(rootKeyVersions) == 0 {
-		return nil, "", errors.New(errors.FixMe, op, fmt.Sprintf("no root key versions found for scope %s", scopeId))
+		return nil, "", errors.New(errors.KeyNotFound, op, fmt.Sprintf("no root key versions found for scope %s", scopeId))
 	}
 
 	var multi *multiwrapper.MultiWrapper
@@ -279,7 +279,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("nil root wrapper for scope %s", scopeId))
 	}
 	if rootKeyId == "" {
-		return nil, errors.New(errors.FixMe, op, fmt.Sprintf("missing root key ID for scope %s", scopeId))
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("missing root key ID for scope %s", scopeId))
 	}
 
 	opts := getOpts(opt...)
@@ -311,7 +311,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		}
 	}
 	if keyId == "" {
-		return nil, errors.New(errors.FixMe, op, fmt.Sprintf("error finding %s key for scope %s", purpose.String(), scopeId))
+		return nil, errors.New(errors.KeyNotFound, op, fmt.Sprintf("error finding %s key for scope %s", purpose.String(), scopeId))
 	}
 
 	var keyVersions []DekVersion
@@ -329,7 +329,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error looking up %s key versions for scope %s with key ID %s", purpose.String(), scopeId, rootWrapper.KeyID())))
 	}
 	if len(keyVersions) == 0 {
-		return nil, errors.New(errors.FixMe, op, fmt.Sprintf("no %s key versions found for scope %s", purpose.String(), scopeId))
+		return nil, errors.New(errors.KeyNotFound, op, fmt.Sprintf("no %s key versions found for scope %s", purpose.String(), scopeId))
 	}
 
 	var multi *multiwrapper.MultiWrapper

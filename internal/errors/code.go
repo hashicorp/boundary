@@ -26,6 +26,7 @@ const (
 	InvalidPublicId  Code = 102 // InvalidPublicId represents an invalid public Id for an operation
 	InvalidFieldMask Code = 103 // InvalidFieldMask represents an invalid field mast for an operation
 	EmptyFieldMask   Code = 104 // EmptyFieldMask represents an empty field mask for an operation
+	KeyNotFound      Code = 105 // KeyNotFound represents that a key/version was not found in the KMS
 
 	// PasswordTooShort results from attempting to set a password which is to short.
 	PasswordTooShort Code = 200
@@ -56,6 +57,4 @@ const (
 	ColumnNotFound       Code = 1102 // ColumnNotFound represent that a column was not found in the underlying db
 	MaxRetries           Code = 1103 // MaxRetries represent that a db Tx hit max retires allowed
 	Exception            Code = 1104 // Exception represent that an underlying db exception was raised
-
-	FixMe Code = 11111
 )

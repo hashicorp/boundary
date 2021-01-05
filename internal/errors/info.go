@@ -36,6 +36,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "empty field mask",
 		Kind:    Parameter,
 	},
+	KeyNotFound: {
+		Message: "key/version not found",
+		Kind:    Integrity,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,

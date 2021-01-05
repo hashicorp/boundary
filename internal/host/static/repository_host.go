@@ -72,7 +72,11 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			newHost = h.clone()
-			return w.Create(ctx, newHost, db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			err := w.Create(ctx, newHost, db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
 		},
 	)
 
@@ -168,7 +172,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},
@@ -257,7 +261,7 @@ func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId st
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

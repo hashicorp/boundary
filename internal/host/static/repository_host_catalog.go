@@ -69,11 +69,15 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			newHostCatalog = c.clone()
-			return w.Create(
+			err := w.Create(
 				ctx,
 				newHostCatalog,
 				db.WithOplog(oplogWrapper, metadata),
 			)
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
 		},
 	)
 
@@ -162,7 +166,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},
@@ -260,7 +264,7 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

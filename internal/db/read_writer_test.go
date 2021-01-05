@@ -2278,7 +2278,7 @@ func TestClear_InputTypes(t *testing.T) {
 		name string
 		args args
 		want interface{}
-		err  error
+		err  errors.Code
 	}{
 		{
 			name: "nil",
@@ -2287,7 +2287,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: errors.ErrInvalidParameter,
+			err: errors.InvalidParameter,
 		},
 		{
 			name: "string",
@@ -2296,7 +2296,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: errors.ErrInvalidParameter,
+			err: errors.InvalidParameter,
 		},
 		{
 			name: "pointer-to-nil-struct",
@@ -2305,7 +2305,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: errors.ErrInvalidParameter,
+			err: errors.InvalidParameter,
 		},
 		{
 			name: "pointer-to-string",
@@ -2314,7 +2314,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: errors.ErrInvalidParameter,
+			err: errors.InvalidParameter,
 		},
 		{
 			name: "not-pointer",
@@ -2325,7 +2325,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: errors.ErrInvalidParameter,
+			err: errors.InvalidParameter,
 		},
 		{
 			name: "map",
@@ -2337,7 +2337,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: errors.ErrInvalidParameter,
+			err: errors.InvalidParameter,
 		},
 		{
 			name: "pointer-to-struct",
@@ -2359,8 +2359,8 @@ func TestClear_InputTypes(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			input := tt.args.v
 			err := Clear(input, tt.args.f, tt.args.d)
-			if tt.err != nil {
-				assert.Error(err)
+			if tt.err != 0 {
+				assert.True(errors.Match(errors.T(tt.err), err))
 				return
 			}
 			require.NoError(err)
