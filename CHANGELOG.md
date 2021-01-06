@@ -2,7 +2,15 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## 0.1.4 (2021/01/05)
+## vNext
+
+### Bug Fixes
+
+* db: Fix panic in `database init` when controller config block is missing 
+  ([Issue](https://github.com/hashicorp/boundary/issues/819)) 
+  ([PR](https://github.com/hashicorp/boundary/pull/851))
+
+## v0.1.4 (2021/01/05)
 
 ### New and Improved
 
@@ -20,7 +28,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([Issue](https://github.com/hashicorp/boundary/issues/830))
   ([PR](https://github.com/hashicorp/boundary/pull/846))
   
-## 0.1.3 (2020/12/18)
+## v0.1.3 (2020/12/18)
 
 ### Changes/Deprecations
 
