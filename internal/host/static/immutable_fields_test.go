@@ -23,7 +23,7 @@ func TestHostCatalog_ImmutableFields(t *testing.T) {
 	o, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	new := testCatalog(t, conn, prj.PublicId)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *HostCatalog
 		fieldMask []string
@@ -73,7 +73,6 @@ func TestHostCatalog_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig, after))
-
 		})
 	}
 }
@@ -91,7 +90,7 @@ func TestStaticHost_ImmutableFields(t *testing.T) {
 
 	new := hosts[0]
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *Host
 		fieldMask []string
@@ -141,7 +140,6 @@ func TestStaticHost_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig, after))
-
 		})
 	}
 }
@@ -166,7 +164,7 @@ func TestStaticHostSet_ImmutableFields(t *testing.T) {
 
 	new := sets[0]
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *HostSet
 		fieldMask []string
@@ -216,7 +214,6 @@ func TestStaticHostSet_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig, after))
-
 		})
 	}
 }
@@ -244,7 +241,7 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 	err = w.Create(context.Background(), new)
 	assert.NoError(t, err)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *HostSetMember
 		fieldMask []string
@@ -285,7 +282,6 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig, after))
-
 		})
 	}
 }

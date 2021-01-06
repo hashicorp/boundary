@@ -126,7 +126,6 @@ func Test_BasicOplog(t *testing.T) {
 		require.NoError(err)
 		assert.NotEmpty(newLogEntry.Id)
 	})
-
 }
 
 // Test_NewEntry provides some basic unit tests for NewEntry
@@ -497,7 +496,6 @@ func Test_Replay(t *testing.T) {
 		var foundReplayedUser2 oplog_test.TestUser
 		err = tx2.Where("id = ?", userCreate2.Id).First(&foundReplayedUser2).Error
 		assert.Equal(gorm.ErrRecordNotFound, err, err.Error())
-
 	})
 }
 

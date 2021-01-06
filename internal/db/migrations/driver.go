@@ -56,6 +56,7 @@ func newFakeFile(dialect string, name string) (*fakeFile, error) {
 	ff.dialect = dialect
 	return ff, nil
 }
+
 func (f *fakeFile) Read(p []byte) (n int, err error) {
 	return f.reader.Read(p)
 }

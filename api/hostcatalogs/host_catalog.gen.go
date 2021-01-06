@@ -57,8 +57,10 @@ func (n HostCatalogReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type HostCatalogCreateResult = HostCatalogReadResult
-type HostCatalogUpdateResult = HostCatalogReadResult
+type (
+	HostCatalogCreateResult = HostCatalogReadResult
+	HostCatalogUpdateResult = HostCatalogReadResult
+)
 
 type HostCatalogDeleteResult struct {
 	response *api.Response

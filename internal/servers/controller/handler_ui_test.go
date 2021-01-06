@@ -33,9 +33,9 @@ func TestUiRouting(t *testing.T) {
 	for k, v := range nameContentsMap {
 		dir := filepath.Dir(k)
 		if dir != "/" {
-			require.NoError(t, os.MkdirAll(filepath.Join(tempDir, dir), 0755))
+			require.NoError(t, os.MkdirAll(filepath.Join(tempDir, dir), 0o755))
 		}
-		require.NoError(t, ioutil.WriteFile(filepath.Join(tempDir, k), []byte(v), 0644))
+		require.NoError(t, ioutil.WriteFile(filepath.Join(tempDir, k), []byte(v), 0o644))
 	}
 
 	c := NewTestController(t, &TestControllerOpts{DisableAutoStart: true})

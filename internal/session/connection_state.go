@@ -59,8 +59,10 @@ type ConnectionState struct {
 	tableName string `gorm:"-"`
 }
 
-var _ Cloneable = (*ConnectionState)(nil)
-var _ db.VetForWriter = (*ConnectionState)(nil)
+var (
+	_ Cloneable       = (*ConnectionState)(nil)
+	_ db.VetForWriter = (*ConnectionState)(nil)
+)
 
 // NewConnectionState creates a new in memory connection state.  No options
 // are currently supported.

@@ -24,6 +24,7 @@ const (
 func (r TerminationReason) String() string {
 	return string(r)
 }
+
 func convertToReason(s string) (TerminationReason, error) {
 	switch s {
 	case UnknownTermination.String():

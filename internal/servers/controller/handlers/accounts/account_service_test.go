@@ -491,7 +491,8 @@ func TestUpdate(t *testing.T) {
 					Description:  wrapperspb.String("default"),
 					Type:         "password",
 					Attributes:   defaultAttributes,
-				}},
+				},
+			},
 		)
 		require.NoError(t, err)
 
@@ -718,7 +719,8 @@ func TestUpdate(t *testing.T) {
 					Id:          password.AccountPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
-				}},
+				},
+			},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},

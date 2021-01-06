@@ -169,8 +169,10 @@ type Db struct {
 }
 
 // ensure that Db implements the interfaces of: Reader and Writer
-var _ Reader = (*Db)(nil)
-var _ Writer = (*Db)(nil)
+var (
+	_ Reader = (*Db)(nil)
+	_ Writer = (*Db)(nil)
+)
 
 func New(underlying *gorm.DB) *Db {
 	return &Db{underlying: underlying}
@@ -344,7 +346,6 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 		if err := rw.Create(ctx, item); err != nil {
 			return errors.Wrap(err, op)
 		}
-
 	}
 	if opts.withOplog {
 		if err := rw.addOplogForItems(ctx, CreateOp, opts, ticket, createItems); err != nil {

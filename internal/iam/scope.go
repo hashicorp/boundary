@@ -28,9 +28,11 @@ type Scope struct {
 }
 
 // ensure that Scope implements the interfaces of: Resource, Cloneable, and db.VetForWriter
-var _ Resource = (*Scope)(nil)
-var _ db.VetForWriter = (*Scope)(nil)
-var _ Cloneable = (*Scope)(nil)
+var (
+	_ Resource        = (*Scope)(nil)
+	_ db.VetForWriter = (*Scope)(nil)
+	_ Cloneable       = (*Scope)(nil)
+)
 
 func NewOrg(opt ...Option) (*Scope, error) {
 	global := allocScope()

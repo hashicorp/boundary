@@ -15,7 +15,6 @@ import (
 )
 
 func Test_ImmutableFields(t *testing.T) {
-
 	cleanup, db := setup(t)
 	defer testCleanup(t, cleanup, db)
 	cipherer := testWrapper(t)
@@ -58,7 +57,7 @@ func Test_ImmutableFields(t *testing.T) {
 	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
 	require.NoError(t, err)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *Entry
 		fieldMask []string
@@ -131,7 +130,6 @@ func Test_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig, after))
-
 		})
 	}
 }

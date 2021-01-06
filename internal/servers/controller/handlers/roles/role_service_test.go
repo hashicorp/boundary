@@ -342,7 +342,6 @@ func TestDelete_twice(t *testing.T) {
 	_, gErr = s.DeleteRole(ctx, projReq)
 	assert.Error(gErr, "Second attempt")
 	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
-
 }
 
 func TestCreate(t *testing.T) {
@@ -822,7 +821,8 @@ func TestUpdate(t *testing.T) {
 					Id:          iam.RolePrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
-				}},
+				},
+			},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},

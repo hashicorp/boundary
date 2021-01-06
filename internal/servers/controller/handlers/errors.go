@@ -53,7 +53,8 @@ func ApiErrorWithCode(c codes.Code) error {
 		status: int32(runtime.HTTPStatusFromCode(c)),
 		inner: &pb.Error{
 			Kind: c.String(),
-		}}
+		},
+	}
 }
 
 // ApiErrorWithCodeAndMessage returns an api error with the provided code and message.
@@ -63,7 +64,8 @@ func ApiErrorWithCodeAndMessage(c codes.Code, msg string, args ...interface{}) e
 		inner: &pb.Error{
 			Kind:    c.String(),
 			Message: fmt.Sprintf(msg, args...),
-		}}
+		},
+	}
 }
 
 // NotFoundError returns an ApiError indicating a resource couldn't be found.
@@ -73,7 +75,8 @@ func NotFoundError() error {
 		inner: &pb.Error{
 			Kind:    codes.NotFound.String(),
 			Message: "Resource not found.",
-		}}
+		},
+	}
 }
 
 // NotFoundErrorf returns an ApiError indicating a resource couldn't be found.
@@ -83,7 +86,8 @@ func NotFoundErrorf(msg string, a ...interface{}) error {
 		inner: &pb.Error{
 			Kind:    codes.NotFound.String(),
 			Message: fmt.Sprintf(msg, a...),
-		}}
+		},
+	}
 }
 
 func ForbiddenError() error {
@@ -92,7 +96,8 @@ func ForbiddenError() error {
 		inner: &pb.Error{
 			Kind:    codes.PermissionDenied.String(),
 			Message: "Forbidden.",
-		}}
+		},
+	}
 }
 
 func UnauthenticatedError() error {
@@ -101,7 +106,8 @@ func UnauthenticatedError() error {
 		inner: &pb.Error{
 			Kind:    codes.Unauthenticated.String(),
 			Message: "Unauthenticated, or invalid token.",
-		}}
+		},
+	}
 }
 
 func InvalidArgumentErrorf(msg string, fields map[string]string) error {
@@ -136,7 +142,8 @@ func backendErrorToApiError(inErr error) error {
 			inner: &pb.Error{
 				Kind:    codes.NotFound.String(),
 				Message: http.StatusText(http.StatusNotFound),
-			}}
+			},
+		}
 	case status.Code(inErr) == codes.Unimplemented:
 		// Instead of returning a 501 we always want to return a 405 when a method isn't implemented.
 		return &apiError{
@@ -144,7 +151,8 @@ func backendErrorToApiError(inErr error) error {
 			inner: &pb.Error{
 				Kind:    codes.Unimplemented.String(),
 				Message: stErr.Message(),
-			}}
+			},
+		}
 	case errors.Is(inErr, errors.ErrRecordNotFound), errors.Match(errors.T(errors.RecordNotFound), inErr):
 		return NotFoundErrorf(genericNotFoundMsg)
 	case errors.Is(inErr, errors.ErrInvalidFieldMask), errors.Is(inErr, errors.ErrEmptyFieldMask),

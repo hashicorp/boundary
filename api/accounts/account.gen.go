@@ -57,8 +57,10 @@ func (n AccountReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type AccountCreateResult = AccountReadResult
-type AccountUpdateResult = AccountReadResult
+type (
+	AccountCreateResult = AccountReadResult
+	AccountUpdateResult = AccountReadResult
+)
 
 type AccountDeleteResult struct {
 	response *api.Response

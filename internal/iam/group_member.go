@@ -63,8 +63,10 @@ type GroupMemberUser struct {
 }
 
 // ensure that GroupMember implements the interfaces of: Cloneable, db.VetForWriter
-var _ Cloneable = (*GroupMemberUser)(nil)
-var _ db.VetForWriter = (*GroupMemberUser)(nil)
+var (
+	_ Cloneable       = (*GroupMemberUser)(nil)
+	_ db.VetForWriter = (*GroupMemberUser)(nil)
+)
 
 // NewGroupMemberUser creates a new in memory user member of the group. No
 // options are currently supported.

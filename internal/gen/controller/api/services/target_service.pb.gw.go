@@ -24,12 +24,14 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var _ codes.Code
-var _ io.Reader
-var _ status.Status
-var _ = runtime.String
-var _ = utilities.NewDoubleArray
-var _ = metadata.Join
+var (
+	_ codes.Code
+	_ io.Reader
+	_ status.Status
+	_ = runtime.String
+	_ = utilities.NewDoubleArray
+	_ = metadata.Join
+)
 
 func request_TargetService_GetTarget_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetTargetRequest
@@ -54,7 +56,6 @@ func request_TargetService_GetTarget_0(ctx context.Context, marshaler runtime.Ma
 
 	msg, err := client.GetTarget(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_GetTarget_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -80,12 +81,9 @@ func local_request_TargetService_GetTarget_0(ctx context.Context, marshaler runt
 
 	msg, err := server.GetTarget(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_TargetService_ListTargets_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
-)
+var filter_TargetService_ListTargets_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 
 func request_TargetService_ListTargets_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListTargetsRequest
@@ -100,7 +98,6 @@ func request_TargetService_ListTargets_0(ctx context.Context, marshaler runtime.
 
 	msg, err := client.ListTargets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_ListTargets_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -116,7 +113,6 @@ func local_request_TargetService_ListTargets_0(ctx context.Context, marshaler ru
 
 	msg, err := server.ListTargets(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_CreateTarget_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -133,7 +129,6 @@ func request_TargetService_CreateTarget_0(ctx context.Context, marshaler runtime
 
 	msg, err := client.CreateTarget(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_CreateTarget_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -150,12 +145,9 @@ func local_request_TargetService_CreateTarget_0(ctx context.Context, marshaler r
 
 	msg, err := server.CreateTarget(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_TargetService_UpdateTarget_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
-)
+var filter_TargetService_UpdateTarget_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 
 func request_TargetService_UpdateTarget_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateTargetRequest
@@ -202,7 +194,6 @@ func request_TargetService_UpdateTarget_0(ctx context.Context, marshaler runtime
 
 	msg, err := client.UpdateTarget(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_UpdateTarget_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -250,7 +241,6 @@ func local_request_TargetService_UpdateTarget_0(ctx context.Context, marshaler r
 
 	msg, err := server.UpdateTarget(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_DeleteTarget_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -276,7 +266,6 @@ func request_TargetService_DeleteTarget_0(ctx context.Context, marshaler runtime
 
 	msg, err := client.DeleteTarget(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_DeleteTarget_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -302,7 +291,6 @@ func local_request_TargetService_DeleteTarget_0(ctx context.Context, marshaler r
 
 	msg, err := server.DeleteTarget(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_AuthorizeSession_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -336,7 +324,6 @@ func request_TargetService_AuthorizeSession_0(ctx context.Context, marshaler run
 
 	msg, err := client.AuthorizeSession(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_AuthorizeSession_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -370,7 +357,6 @@ func local_request_TargetService_AuthorizeSession_0(ctx context.Context, marshal
 
 	msg, err := server.AuthorizeSession(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_AddTargetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -404,7 +390,6 @@ func request_TargetService_AddTargetHostSets_0(ctx context.Context, marshaler ru
 
 	msg, err := client.AddTargetHostSets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_AddTargetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -438,7 +423,6 @@ func local_request_TargetService_AddTargetHostSets_0(ctx context.Context, marsha
 
 	msg, err := server.AddTargetHostSets(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_SetTargetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -472,7 +456,6 @@ func request_TargetService_SetTargetHostSets_0(ctx context.Context, marshaler ru
 
 	msg, err := client.SetTargetHostSets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_SetTargetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -506,7 +489,6 @@ func local_request_TargetService_SetTargetHostSets_0(ctx context.Context, marsha
 
 	msg, err := server.SetTargetHostSets(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_RemoveTargetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -540,7 +522,6 @@ func request_TargetService_RemoveTargetHostSets_0(ctx context.Context, marshaler
 
 	msg, err := client.RemoveTargetHostSets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_RemoveTargetHostSets_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -574,7 +555,6 @@ func local_request_TargetService_RemoveTargetHostSets_0(ctx context.Context, mar
 
 	msg, err := server.RemoveTargetHostSets(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 // RegisterTargetServiceHandlerServer registers the http handlers for service TargetService to "mux".
@@ -582,7 +562,6 @@ func local_request_TargetService_RemoveTargetHostSets_0(ctx context.Context, mar
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterTargetServiceHandlerFromEndpoint instead.
 func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server TargetServiceServer) error {
-
 	mux.Handle("GET", pattern_TargetService_GetTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -603,7 +582,6 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_GetTarget_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_GetTarget_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("GET", pattern_TargetService_ListTargets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -626,7 +604,6 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_ListTargets_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_TargetService_CreateTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -649,7 +626,6 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_CreateTarget_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_CreateTarget_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("PATCH", pattern_TargetService_UpdateTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -672,7 +648,6 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_UpdateTarget_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_UpdateTarget_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("DELETE", pattern_TargetService_DeleteTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -695,7 +670,6 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_DeleteTarget_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_TargetService_AuthorizeSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -718,7 +692,6 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_AuthorizeSession_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_AuthorizeSession_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_TargetService_AddTargetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -741,7 +714,6 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_AddTargetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_AddTargetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_TargetService_SetTargetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -764,7 +736,6 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_SetTargetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_SetTargetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_TargetService_RemoveTargetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -787,7 +758,6 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_RemoveTargetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil
@@ -830,7 +800,6 @@ func RegisterTargetServiceHandler(ctx context.Context, mux *runtime.ServeMux, co
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
 // "TargetServiceClient" to call the correct interceptors.
 func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client TargetServiceClient) error {
-
 	mux.Handle("GET", pattern_TargetService_GetTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -848,7 +817,6 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_GetTarget_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_GetTarget_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("GET", pattern_TargetService_ListTargets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -868,7 +836,6 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_ListTargets_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_TargetService_CreateTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -888,7 +855,6 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_CreateTarget_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_CreateTarget_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("PATCH", pattern_TargetService_UpdateTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -908,7 +874,6 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_UpdateTarget_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_UpdateTarget_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("DELETE", pattern_TargetService_DeleteTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -928,7 +893,6 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_DeleteTarget_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_TargetService_AuthorizeSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -948,7 +912,6 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_AuthorizeSession_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_AuthorizeSession_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_TargetService_AddTargetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -968,7 +931,6 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_AddTargetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_AddTargetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_TargetService_SetTargetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -988,7 +950,6 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_SetTargetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_SetTargetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_TargetService_RemoveTargetHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -1008,7 +969,6 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		}
 
 		forward_TargetService_RemoveTargetHostSets_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetHostSets_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil

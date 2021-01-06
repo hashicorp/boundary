@@ -104,7 +104,8 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionsWithState []
 				Version:           sv.Version,
 				Endpoint:          sv.Endpoint,
 				ConnectionLimit:   sv.ConnectionLimit,
-				KeyId:             sv.KeyId}
+				KeyId:             sv.KeyId,
+			}
 			if opts.withListingConvert {
 				workingSession.CtTofuToken = nil // CtTofuToken should not returned in lists
 				workingSession.TofuToken = nil   // TofuToken should not returned in lists

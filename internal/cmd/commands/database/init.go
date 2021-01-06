@@ -18,8 +18,10 @@ import (
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*InitCommand)(nil)
-var _ cli.CommandAutocomplete = (*InitCommand)(nil)
+var (
+	_ cli.Command             = (*InitCommand)(nil)
+	_ cli.CommandAutocomplete = (*InitCommand)(nil)
+)
 
 type InitCommand struct {
 	*base.Command

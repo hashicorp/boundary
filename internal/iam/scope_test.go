@@ -52,6 +52,7 @@ func TestScope_New(t *testing.T) {
 		assert.Contains(err.Error(), "iam.NewProject: iam.newScope: child scope is missing its parent: parameter violation: error #100")
 	})
 }
+
 func TestScope_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -120,6 +121,7 @@ func TestScope_Update(t *testing.T) {
 		assert.Equal(0, updatedRows)
 	})
 }
+
 func TestScope_GetScope(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")

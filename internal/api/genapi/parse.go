@@ -35,7 +35,7 @@ func parsePBs() {
 		msg := in.inProto.ProtoReflect()
 		desc := msg.Descriptor()
 
-		//printDebug(desc)
+		// printDebug(desc)
 
 		// Evaluate above, populate below.
 		in.generatedStructure.pkg = packageFromFullName(desc.FullName())
@@ -73,7 +73,7 @@ func parsePBs() {
 			}
 			in.generatedStructure.fields = append(in.generatedStructure.fields, fi)
 		}
-		//fmt.Printf("Parsed: %#v\n", in.generatedStructure)
+		// fmt.Printf("Parsed: %#v\n", in.generatedStructure)
 	}
 }
 

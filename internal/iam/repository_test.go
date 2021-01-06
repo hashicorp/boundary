@@ -100,6 +100,7 @@ func TestNewRepository(t *testing.T) {
 		})
 	}
 }
+
 func Test_Repository_create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")

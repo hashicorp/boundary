@@ -97,12 +97,14 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 	`
 
 	rowsAffected, err := r.writer.Exec(ctx, q,
-		[]interface{}{server.PrivateId,
+		[]interface{}{
+			server.PrivateId,
 			server.Type,
 			server.Name,
 			server.Description,
 			server.Address,
-			time.Now().Format(time.RFC3339)})
+			time.Now().Format(time.RFC3339),
+		})
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("error performing status upsert: %w", err)
 	}

@@ -23,9 +23,11 @@ type User struct {
 }
 
 // ensure that User implements the interfaces of: Resource, Cloneable and db.VetForWriter
-var _ Resource = (*User)(nil)
-var _ Cloneable = (*User)(nil)
-var _ db.VetForWriter = (*User)(nil)
+var (
+	_ Resource        = (*User)(nil)
+	_ Cloneable       = (*User)(nil)
+	_ db.VetForWriter = (*User)(nil)
+)
 
 // NewUser creates a new in memory user and allows options:
 // WithName - to specify the user's friendly name and WithDescription - to

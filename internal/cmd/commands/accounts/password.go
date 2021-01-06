@@ -16,8 +16,10 @@ import (
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*PasswordCommand)(nil)
-var _ cli.CommandAutocomplete = (*PasswordCommand)(nil)
+var (
+	_ cli.Command             = (*PasswordCommand)(nil)
+	_ cli.CommandAutocomplete = (*PasswordCommand)(nil)
+)
 
 type PasswordCommand struct {
 	*base.Command

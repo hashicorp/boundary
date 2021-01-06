@@ -451,7 +451,7 @@ set id = null;
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count)
 
-	var tests = []struct {
+	tests := []struct {
 		name string
 		stmt string
 	}{
@@ -525,7 +525,5 @@ set id = null;
 		assert.Equal(orig.Id, found.Id)
 		assert.Equal(orig.Name, found.Name)
 		assert.Equal(orig.CreateTime, found.CreateTime)
-
 	})
-
 }

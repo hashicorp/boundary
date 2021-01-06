@@ -24,12 +24,14 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var _ codes.Code
-var _ io.Reader
-var _ status.Status
-var _ = runtime.String
-var _ = utilities.NewDoubleArray
-var _ = metadata.Join
+var (
+	_ codes.Code
+	_ io.Reader
+	_ status.Status
+	_ = runtime.String
+	_ = utilities.NewDoubleArray
+	_ = metadata.Join
+)
 
 func request_HostSetService_GetHostSet_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetHostSetRequest
@@ -54,7 +56,6 @@ func request_HostSetService_GetHostSet_0(ctx context.Context, marshaler runtime.
 
 	msg, err := client.GetHostSet(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostSetService_GetHostSet_0(ctx context.Context, marshaler runtime.Marshaler, server HostSetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -80,12 +81,9 @@ func local_request_HostSetService_GetHostSet_0(ctx context.Context, marshaler ru
 
 	msg, err := server.GetHostSet(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_HostSetService_ListHostSets_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
-)
+var filter_HostSetService_ListHostSets_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 
 func request_HostSetService_ListHostSets_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListHostSetsRequest
@@ -100,7 +98,6 @@ func request_HostSetService_ListHostSets_0(ctx context.Context, marshaler runtim
 
 	msg, err := client.ListHostSets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostSetService_ListHostSets_0(ctx context.Context, marshaler runtime.Marshaler, server HostSetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -116,7 +113,6 @@ func local_request_HostSetService_ListHostSets_0(ctx context.Context, marshaler 
 
 	msg, err := server.ListHostSets(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_HostSetService_CreateHostSet_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -133,7 +129,6 @@ func request_HostSetService_CreateHostSet_0(ctx context.Context, marshaler runti
 
 	msg, err := client.CreateHostSet(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostSetService_CreateHostSet_0(ctx context.Context, marshaler runtime.Marshaler, server HostSetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -150,12 +145,9 @@ func local_request_HostSetService_CreateHostSet_0(ctx context.Context, marshaler
 
 	msg, err := server.CreateHostSet(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_HostSetService_UpdateHostSet_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
-)
+var filter_HostSetService_UpdateHostSet_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 
 func request_HostSetService_UpdateHostSet_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateHostSetRequest
@@ -202,7 +194,6 @@ func request_HostSetService_UpdateHostSet_0(ctx context.Context, marshaler runti
 
 	msg, err := client.UpdateHostSet(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostSetService_UpdateHostSet_0(ctx context.Context, marshaler runtime.Marshaler, server HostSetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -250,7 +241,6 @@ func local_request_HostSetService_UpdateHostSet_0(ctx context.Context, marshaler
 
 	msg, err := server.UpdateHostSet(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_HostSetService_DeleteHostSet_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -276,7 +266,6 @@ func request_HostSetService_DeleteHostSet_0(ctx context.Context, marshaler runti
 
 	msg, err := client.DeleteHostSet(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostSetService_DeleteHostSet_0(ctx context.Context, marshaler runtime.Marshaler, server HostSetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -302,7 +291,6 @@ func local_request_HostSetService_DeleteHostSet_0(ctx context.Context, marshaler
 
 	msg, err := server.DeleteHostSet(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_HostSetService_AddHostSetHosts_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -336,7 +324,6 @@ func request_HostSetService_AddHostSetHosts_0(ctx context.Context, marshaler run
 
 	msg, err := client.AddHostSetHosts(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostSetService_AddHostSetHosts_0(ctx context.Context, marshaler runtime.Marshaler, server HostSetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -370,7 +357,6 @@ func local_request_HostSetService_AddHostSetHosts_0(ctx context.Context, marshal
 
 	msg, err := server.AddHostSetHosts(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_HostSetService_SetHostSetHosts_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -404,7 +390,6 @@ func request_HostSetService_SetHostSetHosts_0(ctx context.Context, marshaler run
 
 	msg, err := client.SetHostSetHosts(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostSetService_SetHostSetHosts_0(ctx context.Context, marshaler runtime.Marshaler, server HostSetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -438,7 +423,6 @@ func local_request_HostSetService_SetHostSetHosts_0(ctx context.Context, marshal
 
 	msg, err := server.SetHostSetHosts(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_HostSetService_RemoveHostSetHosts_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -472,7 +456,6 @@ func request_HostSetService_RemoveHostSetHosts_0(ctx context.Context, marshaler 
 
 	msg, err := client.RemoveHostSetHosts(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostSetService_RemoveHostSetHosts_0(ctx context.Context, marshaler runtime.Marshaler, server HostSetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -506,7 +489,6 @@ func local_request_HostSetService_RemoveHostSetHosts_0(ctx context.Context, mars
 
 	msg, err := server.RemoveHostSetHosts(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 // RegisterHostSetServiceHandlerServer registers the http handlers for service HostSetService to "mux".
@@ -514,7 +496,6 @@ func local_request_HostSetService_RemoveHostSetHosts_0(ctx context.Context, mars
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterHostSetServiceHandlerFromEndpoint instead.
 func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server HostSetServiceServer) error {
-
 	mux.Handle("GET", pattern_HostSetService_GetHostSet_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -535,7 +516,6 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_GetHostSet_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_GetHostSet_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("GET", pattern_HostSetService_ListHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -558,7 +538,6 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_ListHostSets_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_HostSetService_CreateHostSet_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -581,7 +560,6 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_CreateHostSet_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_CreateHostSet_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("PATCH", pattern_HostSetService_UpdateHostSet_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -604,7 +582,6 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_UpdateHostSet_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_UpdateHostSet_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("DELETE", pattern_HostSetService_DeleteHostSet_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -627,7 +604,6 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_DeleteHostSet_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_HostSetService_AddHostSetHosts_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -650,7 +626,6 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_AddHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_AddHostSetHosts_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_HostSetService_SetHostSetHosts_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -673,7 +648,6 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_SetHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_SetHostSetHosts_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_HostSetService_RemoveHostSetHosts_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -696,7 +670,6 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_RemoveHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_RemoveHostSetHosts_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil
@@ -739,7 +712,6 @@ func RegisterHostSetServiceHandler(ctx context.Context, mux *runtime.ServeMux, c
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
 // "HostSetServiceClient" to call the correct interceptors.
 func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client HostSetServiceClient) error {
-
 	mux.Handle("GET", pattern_HostSetService_GetHostSet_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -757,7 +729,6 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_GetHostSet_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_GetHostSet_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("GET", pattern_HostSetService_ListHostSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -777,7 +748,6 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_ListHostSets_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_HostSetService_CreateHostSet_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -797,7 +767,6 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_CreateHostSet_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_CreateHostSet_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("PATCH", pattern_HostSetService_UpdateHostSet_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -817,7 +786,6 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_UpdateHostSet_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_UpdateHostSet_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("DELETE", pattern_HostSetService_DeleteHostSet_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -837,7 +805,6 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_DeleteHostSet_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_HostSetService_AddHostSetHosts_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -857,7 +824,6 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_AddHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_AddHostSetHosts_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_HostSetService_SetHostSetHosts_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -877,7 +843,6 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_SetHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_SetHostSetHosts_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_HostSetService_RemoveHostSetHosts_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -897,7 +862,6 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_HostSetService_RemoveHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_RemoveHostSetHosts_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil

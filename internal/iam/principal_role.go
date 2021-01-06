@@ -67,8 +67,10 @@ type UserRole struct {
 
 // ensure that UserRole implements the interfaces of:  Cloneable and
 // db.VetForWriter
-var _ Cloneable = (*UserRole)(nil)
-var _ db.VetForWriter = (*UserRole)(nil)
+var (
+	_ Cloneable       = (*UserRole)(nil)
+	_ db.VetForWriter = (*UserRole)(nil)
+)
 
 // NewUserRole creates a new user role in memory. No options are supported
 // currently.
@@ -142,8 +144,10 @@ type GroupRole struct {
 
 // ensure that GroupRole implements the interfaces of: Cloneable and
 // db.VetForWriter
-var _ Cloneable = (*GroupRole)(nil)
-var _ db.VetForWriter = (*GroupRole)(nil)
+var (
+	_ Cloneable       = (*GroupRole)(nil)
+	_ db.VetForWriter = (*GroupRole)(nil)
+)
 
 // NewGroupRole creates a new group role in memory. No options are supported
 // currently.

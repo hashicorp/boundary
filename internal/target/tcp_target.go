@@ -20,9 +20,11 @@ type TcpTarget struct {
 	tableName string `gorm:"-"`
 }
 
-var _ Target = (*TcpTarget)(nil)
-var _ db.VetForWriter = (*TcpTarget)(nil)
-var _ oplog.ReplayableMessage = (*TcpTarget)(nil)
+var (
+	_ Target                  = (*TcpTarget)(nil)
+	_ db.VetForWriter         = (*TcpTarget)(nil)
+	_ oplog.ReplayableMessage = (*TcpTarget)(nil)
+)
 
 // NewTcpTarget creates a new in memory tcp target.  WithName, WithDescription and
 // WithDefaultPort options are supported
