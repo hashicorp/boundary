@@ -83,15 +83,8 @@ export default [
     ],
   },
   {
-    category: 'common-workflows',
-    content: [
-      'manage-scopes',
-      'manage-targets',
-      'manage-users-groups',
-      'manage-roles',
-      'manage-sessions',
-			'workflow-ssh-proxycommand',
-    ],
+    title: 'Common Workflows',
+    href: 'https://learn.hashicorp.com/collections/boundary/common-workflows',
   },
   '---',
   'roadmap',
