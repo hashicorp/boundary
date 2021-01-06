@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## vNext
+## Next
 
 ### Bug Fixes
 
@@ -10,7 +10,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([Issue](https://github.com/hashicorp/boundary/issues/819)) 
   ([PR](https://github.com/hashicorp/boundary/pull/851))
 
-## v0.1.4 (2021/01/05)
+## 0.1.4 (2021/01/05)
 
 ### New and Improved
 
@@ -28,7 +28,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([Issue](https://github.com/hashicorp/boundary/issues/830))
   ([PR](https://github.com/hashicorp/boundary/pull/846))
   
-## v0.1.3 (2020/12/18)
+## 0.1.3 (2020/12/18)
 
 ### Changes/Deprecations
 
@@ -70,7 +70,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([Issue](https://github.com/hashicorp/boundary/issues/794))
   ([PR](https://github.com/hashicorp/boundary/pull/839))
 
-## v0.1.2 (2020/11/17)
+## 0.1.2 (2020/11/17)
 
 ### New and Improved
 
@@ -100,7 +100,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * controller, cli: Fix mutual exclusivity bug with using -authz-token on `boundary connect`
   ([PR](https://github.com/hashicorp/boundary/pull/787))
 
-## v0.1.1 (2020/10/22)
+## 0.1.1 (2020/10/22)
 
 ### Changes/Deprecations
 
@@ -152,7 +152,7 @@ them to access targets).
   ([Issue](https://github.com/hashicorp/boundary/issues/727))
   ([PR](https://github.com/hashicorp/boundary/pull/705))
 
-## v0.1.0 (2020/10/14)
+## 0.1.0 (2020/10/14)
 
 v0.1.0 is the first release of Boundary. As a result there are no changes,
 improvements, or bugfixes from past versions.
