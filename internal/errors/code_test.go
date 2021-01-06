@@ -122,6 +122,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    MissingTable,
 			want: MissingTable,
 		},
+		{
+			name: "MigrationGeneration",
+			c:    MigrationGeneration,
+			want: MigrationGeneration,
+		},
+		{
+			name: "MigrationData",
+			c:    MigrationData,
+			want: MigrationData,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
