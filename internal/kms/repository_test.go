@@ -70,7 +70,7 @@ func TestNewRepository(t *testing.T) {
 			got, err := kms.NewRepository(tt.args.r, tt.args.w)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Equal(err.Error(), tt.wantErrString)
+				assert.Equal(tt.wantErrString, err.Error())
 				return
 			}
 			require.NoError(err)

@@ -227,6 +227,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 
+	if c.Config.Controller == nil {
+		c.UI.Error(`"controller" config block not found`)
+		return 1
+	}
+
 	if c.Config.Controller.Database == nil {
 		c.UI.Error(`"controller.database" config block not found`)
 		return 1
