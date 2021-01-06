@@ -177,9 +177,7 @@ func TestCreateKeysTx(t *testing.T) {
 			keys, err := kms.CreateKeysTx(tt.args.ctx, tt.args.dbReader, tt.args.dbWriter, tt.args.rootWrapper, tt.args.randomReader, tt.args.scopeId)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error: %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error: %s", err.Error())
 				return
 			}
 			require.NoError(err)

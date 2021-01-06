@@ -1325,9 +1325,7 @@ func TestDb_Delete(t *testing.T) {
 			assert.Equal(tt.want, got)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "received unexpected error: %v", err)
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "received unexpected error: %v", err)
 				err := TestVerifyOplog(t, rw, tt.args.i.GetPublicId(), WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(5*time.Second))
 				assert.Error(err)
 				return
@@ -1656,9 +1654,7 @@ func TestDb_CreateItems(t *testing.T) {
 			err := rw.CreateItems(context.Background(), tt.args.createItems, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error: %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error: %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -1853,9 +1849,7 @@ func TestDb_DeleteItems(t *testing.T) {
 			rowsDeleted, err := rw.DeleteItems(context.Background(), tt.args.deleteItems, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error: %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error: %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -2103,9 +2097,7 @@ func TestDb_GetTicket(t *testing.T) {
 			got, err := rw.GetTicket(tt.aggregateType)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error type: %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error type: %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -2247,9 +2239,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			err := rw.WriteOplogEntryWith(context.Background(), tt.args.wrapper, tt.args.ticket, tt.args.metadata, tt.args.msgs, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
@@ -2839,9 +2829,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 			got, err := rw.oplogMsgsForItems(context.Background(), tt.args.opType, tt.args.opts, tt.args.items)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantIsErr != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)
