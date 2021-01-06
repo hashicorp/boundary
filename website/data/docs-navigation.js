@@ -83,7 +83,7 @@ export default [
     ],
   },
   {
-    title: 'Common Workflow',
+    title: 'Common Workflows',
     href: 'https://learn.hashicorp.com/collections/boundary/common-workflows',
   },
   '---',
