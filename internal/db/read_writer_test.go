@@ -1120,7 +1120,7 @@ func TestDb_DoTx(t *testing.T) {
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { return stderrors.New("not a retry error") })
 		require.Error(err)
 		assert.Equal(RetryInfo{}, got)
-		assert.NotEqual(err, oplog.ErrTicketAlreadyRedeemed)
+		assert.NotEqual(oplog.ErrTicketAlreadyRedeemed, err)
 	})
 	t.Run("too-many-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
