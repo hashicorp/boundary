@@ -268,6 +268,30 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Error(fmt.Errorf("Error setting up schema manager for locking: %w", err).Error())
 		return 1
 	}
+	{
+		st, err := man.State(c.Context)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error getting database state: %w", err).Error())
+			return 1
+		}
+		if st.Dirty {
+			c.UI.Error(base.WrapAtLength("Database is in a bad initialization " +
+				"state.  Please revert back to the last known good state."))
+			return 1
+		}
+		if st.InitializationStarted {
+			// TODO: Separate from the "dirty" bit maintained by the schema
+			//  manager maintain a bit which indicates that this full command
+			//  was completed successfully (with all default resources being created).
+			//  Use that bit to determine if a previous init was completed
+			//  successfully or not.
+			c.UI.Error(base.WrapAtLength("Database was already been " +
+				"initialized. If the initialization did not complete successfully " +
+				"please revert the database to it's fresh state."))
+			return 1
+		}
+	}
+
 	// This is an advisory locks on the DB which is released when the db session ends.
 	if err := man.ExclusiveLock(c.Context, schema.SchemaAccessLockId); err != nil {
 		c.UI.Error(fmt.Errorf("Error capturing an exclusive lock: %w", err).Error())
@@ -298,10 +322,6 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 			c.UI.Info("Migrations successfully run.")
 		}
 	}
-	// TODO: Set a bit which indicates the boundary initialization is still
-	//  underway and only clear it at the end of this function when it returns
-	//  without error.  This is different from the "dirty" bit maintained by
-	//  the schema manager which only tracks the schema changes.
 
 	// Everything after is done with normal database URL and is affecting actual data
 	c.srv.DatabaseUrl = strings.TrimSpace(dbaseUrl)
