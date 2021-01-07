@@ -8,10 +8,12 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/hashicorp/boundary/internal/db/migrations"
 	"github.com/hashicorp/boundary/internal/docker"
+	berrors "github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 var (
@@ -31,11 +33,28 @@ func (db DbType) String() string {
 		"postgres",
 	}[db]
 }
+func StringToDbType(dialect string) (DbType, error) {
+	switch dialect {
+	case "postgres":
+		return Postgres, nil
+	default:
+		return UnknownDB, fmt.Errorf("delete: password account: scope id empty: %w", berrors.ErrInvalidParameter)
+	}
+}
 
 // Open a database connection which is long-lived.
 // You need to call Close() on the returned gorm.DB
 func Open(dbType DbType, connectionUrl string) (*gorm.DB, error) {
-	db, err := gorm.Open(dbType.String(), connectionUrl)
+	var dialect gorm.Dialector
+	switch dbType {
+	case Postgres:
+		dialect = postgres.New(postgres.Config{
+			DSN: connectionUrl},
+		)
+	default:
+		return nil, fmt.Errorf("unable to open %s database type", dbType)
+	}
+	db, err := gorm.Open(dialect, &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to open database: %w", err)
 	}
@@ -102,31 +121,17 @@ func InitStore(dialect string, cleanup func() error, url string) (bool, error) {
 	return true, mErr.ErrorOrNil()
 }
 
-func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages []interface{}) {
-	return func(values ...interface{}) (messages []interface{}) {
-		if len(values) > 2 && values[0].(string) == "log" {
-			switch values[2].(type) {
-			case *pq.Error:
-				log.Trace("error from database adapter", "location", values[1], "error", values[2])
-			}
-			return nil
-		}
-		return nil
-	}
-}
-
 type gormLogger struct {
 	logger hclog.Logger
 }
 
-func (g gormLogger) Print(values ...interface{}) {
-	formatted := gorm.LogFormatter(values...)
-	if formatted == nil {
-		return
+func (g gormLogger) Printf(msg string, values ...interface{}) {
+	if len(values) > 1 {
+		switch values[1].(type) {
+		case *pq.Error:
+			g.logger.Trace("error from database adapter", "location", values[0], "error", values[1])
+		}
 	}
-	// Our formatter should elide anything we don't want so this should never
-	// happen, panic if so so we catch/fix
-	panic("unhandled error case")
 }
 
 func GetGormLogger(log hclog.Logger) gormLogger {

@@ -27,7 +27,8 @@ returning id;
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.DB()
+	require.NoError(t, err)
 
 	for _, typ := range []string{"public", "private", "role", "scope"} {
 		createTable := strings.Replace(createTableBase, "{{rep}}", typ, -1)
@@ -113,7 +114,8 @@ returning id;
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.DB()
+	require.NoError(t, err)
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
 	}
@@ -179,8 +181,9 @@ set update_time = null;
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
-	_, err := db.Exec(createTable)
+	db, err := conn.DB()
+	require.NoError(t, err)
+	_, err = db.Exec(createTable)
 	assert.NoError(err)
 
 	_, err = db.Exec(addTriggers)
@@ -251,8 +254,10 @@ returning public_id;
 	conn, _ := TestSetup(t, "postgres")
 	assert, require := assert.New(t), require.New(t)
 
-	db := conn.DB()
-	_, err := db.Exec(createTable)
+	db, err := conn.DB()
+	require.NoError(err)
+
+	_, err = db.Exec(createTable)
 	require.NoError(err)
 
 	_, err = db.Exec(addTrigger)
@@ -310,8 +315,10 @@ returning private_id;
 	conn, _ := TestSetup(t, "postgres")
 	assert, require := assert.New(t), require.New(t)
 
-	db := conn.DB()
-	_, err := db.Exec(createTable)
+	db, err := conn.DB()
+	require.NoError(err)
+
+	_, err = db.Exec(createTable)
 	require.NoError(err)
 
 	_, err = db.Exec(addTrigger)
@@ -342,8 +349,8 @@ returning private_id;
 
 func TestDomain_DefaultUsersExist(t *testing.T) {
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
-
+	db, err := conn.DB()
+	require.NoError(t, err)
 	for _, val := range []string{"u_anon", "u_auth"} {
 		rows, err := db.Query(`select from iam_user where public_id = $1`, val)
 		require.NoError(t, err)
@@ -431,8 +438,9 @@ set id = null;
 	}
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
-	_, err := db.Exec(createTable)
+	db, err := conn.DB()
+	require.NoError(t, err)
+	_, err = db.Exec(createTable)
 	assert.NoError(t, err)
 
 	_, err = db.Exec(addTriggers)
@@ -517,7 +525,7 @@ set id = null;
 
 		_, err = db.Exec(update_updatable)
 		require.Error(err)
-		assert.Containsf(err.Error(), `pq: column "bad_column_name" not found`, "unexpected error msg: %s", err.Error())
+		assert.Containsf(err.Error(), `SQLSTATE 42703`, "unexpected error msg: %s", err.Error())
 
 		var found rowData
 		err = db.QueryRow(query, id).Scan(&found.Id, &found.Name, &found.CreateTime, &found.Updatable)

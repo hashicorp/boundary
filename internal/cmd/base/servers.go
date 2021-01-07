@@ -33,9 +33,10 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
 	"google.golang.org/grpc/grpclog"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type Server struct {
@@ -429,16 +430,27 @@ func (b *Server) RunShutdownFuncs() error {
 }
 
 func (b *Server) ConnectToDatabase(dialect string) error {
-	dbase, err := gorm.Open(dialect, b.DatabaseUrl)
+	dbType, err := db.StringToDbType(dialect)
 	if err != nil {
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
+	dbase, err := db.Open(dbType, b.DatabaseUrl)
+	if err != nil {
+		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+	}
+	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
+		newLogger := logger.New(
+			db.GetGormLogger(b.Logger),
+			logger.Config{
+				LogLevel: logger.Error, // Log level
+				Colorful: false,        // Disable color
+			},
+		)
+		dbase = dbase.Session(&gorm.Session{Logger: newLogger})
+	}
 
 	b.Database = dbase
-	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
-		gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
-		b.Database.SetLogger(db.GetGormLogger(b.Logger))
-	}
+
 	return nil
 }
 
@@ -495,7 +507,7 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		return err
 	}
 
-	b.Database.LogMode(true)
+	b.Database.Logger.LogMode(logger.Info)
 
 	if err := b.CreateGlobalKmsKeys(context.Background()); err != nil {
 		return err
@@ -588,7 +600,11 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 
 func (b *Server) DestroyDevDatabase() error {
 	if b.Database != nil {
-		b.Database.Close()
+		underlyingDB, err := b.Database.DB()
+		if err != nil {
+			return err
+		}
+		underlyingDB.Close()
 	}
 	if b.DevDatabaseCleanupFunc != nil {
 		return b.DevDatabaseCleanupFunc()

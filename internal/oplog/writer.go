@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db/common"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // Writer interface for Entries
@@ -97,7 +97,7 @@ func (w *GormWriter) hasTable(tableName string) bool {
 	if tableName == "" {
 		return false
 	}
-	return w.Tx.Dialect().HasTable(tableName)
+	return w.Tx.Migrator().HasTable(tableName)
 }
 
 // CreateTableLike will create a newTableName like the model's table
@@ -109,10 +109,11 @@ func (w *GormWriter) createTableLike(existingTableName string, newTableName stri
 	if newTableName == "" {
 		return errors.New("error newTableName is empty string")
 	}
-	existingTableName = w.Tx.Dialect().Quote(existingTableName)
-	newTableName = w.Tx.Dialect().Quote(newTableName)
+
+	existingTableName = w.Tx.Statement.Quote(existingTableName)
+	newTableName = w.Tx.Statement.Quote(newTableName)
 	var sql string
-	switch w.Tx.Dialect().GetName() {
+	switch w.Tx.Dialector.Name() {
 	case "postgres":
 		sql = fmt.Sprintf(
 			`CREATE TABLE %s ( LIKE %s INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES );`,
@@ -135,5 +136,6 @@ func (w *GormWriter) dropTableIfExists(tableName string) error {
 	if tableName == "" {
 		return errors.New("cannot drop table whose name is an empty string")
 	}
-	return w.Tx.DropTableIfExists(tableName).Error
+	// Migrator.DropTable uses an "if exists" clause
+	return w.Tx.Migrator().DropTable(tableName)
 }

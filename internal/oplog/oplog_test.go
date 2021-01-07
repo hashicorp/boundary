@@ -8,9 +8,9 @@ import (
 	dbassert "github.com/hashicorp/dbassert/gorm"
 
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -391,7 +391,9 @@ func Test_Replay(t *testing.T) {
 		}
 		err = tx.Model(&userUpdate).Updates(map[string]interface{}{"PhoneNumber": "867-5309", "Name": gorm.Expr("NULL")}).Error
 		require.NoError(err)
-		dbassert := dbassert.New(t, tx.DB(), "postgres")
+		underlyingDB, err := tx.DB()
+		require.NoError(err)
+		dbassert := dbassert.New(t, underlyingDB, tx.Dialector.Name())
 		dbassert.IsNull(&userUpdate, "Name")
 
 		foundCreateUser := testFindUser(t, tx, userCreate.Id)

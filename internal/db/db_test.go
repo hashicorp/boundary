@@ -2,6 +2,8 @@ package db
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestOpen(t *testing.T) {
@@ -45,7 +47,10 @@ func TestOpen(t *testing.T) {
 			got, err := Open(tt.args.dbType, tt.args.connectionUrl)
 			defer func() {
 				if err == nil {
-					got.Close()
+					sqlDB, err := got.DB()
+					require.NoError(t, err)
+					err = sqlDB.Close()
+					require.NoError(t, err)
 				}
 			}()
 			if (err != nil) != tt.wantErr {

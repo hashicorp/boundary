@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/oplog/store"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 var (
@@ -59,7 +59,7 @@ func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, er
 	}
 	ticket := store.Ticket{}
 	if err := ticketer.tx.First(&ticket, store.Ticket{Name: name}).Error; err != nil {
-		if gorm.IsRecordNotFoundError(err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrTicketNotFound
 		}
 		return nil, fmt.Errorf("error retreiving ticket from storage: %w", err)

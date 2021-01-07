@@ -19,10 +19,10 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"gorm.io/gorm"
 )
 
 func TestDb_UpdateUnsetField(t *testing.T) {
@@ -43,7 +43,7 @@ func TestDb_UpdateUnsetField(t *testing.T) {
 	cnt, err := rw.Update(context.Background(), updatedTu, []string{"Name"}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 1, cnt)
-	assert.Equal(t, "ignore", updatedTu.Email)
+	assert.Equal(t, "", updatedTu.Email)
 	assert.Equal(t, "updated", updatedTu.Name)
 }
 
