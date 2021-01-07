@@ -7,6 +7,7 @@ import (
 
 	dbassert "github.com/hashicorp/dbassert/gorm"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,19 @@ func setup(t *testing.T) (func() error, *gorm.DB) {
 	require := require.New(t)
 	cleanup, url, err := testInitDbInDocker(t)
 	require.NoError(err)
-	db, err := gorm.Open("postgres", url)
+	dbType, err := db.StringToDbType("postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := db.Open(dbType, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, sqlDB.Close(), "Got error closing gorm db.")
+	})
 	require.NoError(err)
 	oplog_test.Init(db)
 	return cleanup, db

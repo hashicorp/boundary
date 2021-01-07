@@ -14,8 +14,8 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL). Do not close the returned db.
@@ -43,12 +43,18 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*gorm.DB, strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	db, err := gorm.Open(dialect, url)
+	dbType, err := StringToDbType(dialect)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(dbType, url)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		assert.NoError(t, db.Close(), "Got error closing gorm db.")
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, sqlDB.Close(), "Got error closing gorm db.")
 	})
 	return db, url
 }

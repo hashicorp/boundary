@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm/logger"
 )
 
 func TestHostSet_New(t *testing.T) {
@@ -16,8 +17,7 @@ func TestHostSet_New(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cat := testCatalog(t, conn, prj.PublicId)
-
-	conn.LogMode(false)
+	conn.Logger.LogMode(logger.Silent)
 	type args struct {
 		catalogId string
 		opts      []Option

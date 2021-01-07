@@ -366,8 +366,9 @@ func TestRepository_UpdateUser(t *testing.T) {
 			assert.True(proto.Equal(userAfterUpdate, foundUser))
 			sort.Strings(foundAccountIds)
 			assert.Equal(accountIds, foundAccountIds)
-
-			dbassert := dbassert.New(t, conn.DB())
+			underlyingDB, err := conn.DB()
+			require.NoError(err)
+			dbassert := dbassert.New(t, underlyingDB)
 			if tt.args.name == "" {
 				dbassert.IsNull(foundUser, "name")
 			}
@@ -644,7 +645,9 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			dbassert := dbassert.New(t, conn.DB())
+			underlyingDB, err := conn.DB()
+			require.NoError(err)
+			dbassert := dbassert.New(t, underlyingDB)
 			got, err := repo.LookupUserWithLogin(context.Background(), tt.args.withAccountId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -962,8 +965,10 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			dbassert := dbassert.New(t, conn.DB())
-			err := dissociateUserFromAccounts(context.Background(), kms, rw, rw, tt.args.Ids.user, tt.args.Ids.accts, tt.args.opt...)
+			underlyingDB, err := conn.DB()
+			require.NoError(err)
+			dbassert := dbassert.New(t, underlyingDB)
+			err = dissociateUserFromAccounts(context.Background(), kms, rw, rw, tt.args.Ids.user, tt.args.Ids.accts, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != 0 {

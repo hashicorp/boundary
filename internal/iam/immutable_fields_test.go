@@ -96,8 +96,8 @@ func TestConcreteScope_ImmutableFields(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
-	db := conn.DB()
-
+	db, err := conn.DB()
+	require.NoError(t, err)
 	org, proj := TestScopes(t, repo)
 
 	var tests = []struct {

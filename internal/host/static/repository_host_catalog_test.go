@@ -461,7 +461,9 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.ScopeId, got.ScopeId)
-			dbassert := dbassert.New(t, conn.DB())
+			underlyingDB, err := conn.DB()
+			require.NoError(t, err)
+			dbassert := dbassert.New(t, underlyingDB)
 			if tt.want.Name == "" {
 				dbassert.IsNull(got, "name")
 				return
