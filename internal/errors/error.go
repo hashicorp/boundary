@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lib/pq"
+	"github.com/jackc/pgx"
 )
 
 // Op represents an operation (package.function).
@@ -123,29 +123,29 @@ func Convert(e error) *Err {
 	if err, ok := e.(*Err); ok {
 		return err
 	}
-	var pqError *pq.Error
-	if As(e, &pqError) {
-		if pqError.Code.Class() == "23" { // class of integrity constraint violations
-			switch pqError.Code {
+	var pgxError *pgx.PgError
+	if As(e, &pgxError) {
+		if pgxError.Code[0:2] == "23" { // class of integrity constraint violations
+			switch pgxError.Code {
 			case "23505": // unique_violation
-				return E(WithMsg(pqError.Message), WithWrap(ErrNotUnique)).(*Err)
+				return E(WithMsg(pgxError.Message), WithWrap(ErrNotUnique)).(*Err)
 			case "23502": // not_null_violation
-				msg := fmt.Sprintf("%s must not be empty", pqError.Column)
+				msg := fmt.Sprintf("%s must not be empty", pgxError.ColumnName)
 				return E(WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
 			case "23514": // check_violation
-				msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
+				msg := fmt.Sprintf("%s constraint failed", pgxError.ConstraintName)
 				return E(WithMsg(msg), WithWrap(ErrCheckConstraint)).(*Err)
 			default:
-				return E(WithCode(NotSpecificIntegrity), WithMsg(pqError.Message)).(*Err)
+				return E(WithCode(NotSpecificIntegrity), WithMsg(pgxError.Message)).(*Err)
 			}
 		}
-		switch pqError.Code {
+		switch pgxError.Code {
 		case "42P01":
-			return E(WithCode(MissingTable), WithMsg(pqError.Message)).(*Err)
+			return E(WithCode(MissingTable), WithMsg(pgxError.Message)).(*Err)
 		case "42703":
-			return E(WithCode(ColumnNotFound), WithMsg(pqError.Message)).(*Err)
+			return E(WithCode(ColumnNotFound), WithMsg(pgxError.Message)).(*Err)
 		case "P0001":
-			return E(WithCode(Exception), WithMsg(pqError.Message)).(*Err)
+			return E(WithCode(Exception), WithMsg(pgxError.Message)).(*Err)
 		}
 	}
 	// unfortunately, we can't help.
