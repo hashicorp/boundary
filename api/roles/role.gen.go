@@ -60,8 +60,10 @@ func (n RoleReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type RoleCreateResult = RoleReadResult
-type RoleUpdateResult = RoleReadResult
+type (
+	RoleCreateResult = RoleReadResult
+	RoleUpdateResult = RoleReadResult
+)
 
 type RoleDeleteResult struct {
 	response *api.Response

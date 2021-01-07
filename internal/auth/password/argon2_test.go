@@ -121,7 +121,7 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
 
-	var tests = []struct {
+	tests := []struct {
 		name  string
 		chgFn func(*Argon2Configuration) (*Argon2Configuration, []string)
 	}{
@@ -157,11 +157,10 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 			assert.Equal(0, count)
 		})
 	}
-
 }
 
 func TestArgon2Configuration_Validate(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		name string
 		in   *Argon2Configuration
 		want error
@@ -315,7 +314,7 @@ func TestArgon2Credential_New(t *testing.T) {
 		password  string
 		conf      *Argon2Configuration
 	}
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		args      args
 		want      *Argon2Credential

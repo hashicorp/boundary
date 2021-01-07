@@ -659,7 +659,8 @@ func TestUpdate(t *testing.T) {
 					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "new desc"},
-				}},
+				},
+			},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -736,7 +737,7 @@ func TestUpdate(t *testing.T) {
 				require.NoError(err, "Failed to convert proto to timestamp")
 				// Verify it is a catalog updated after it was created
 				// TODO: This is currently failing.
-				//assert.True(gotUpdateTime.After(hcCreated), "Updated catalog should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hcCreated)
+				// assert.True(gotUpdateTime.After(hcCreated), "Updated catalog should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hcCreated)
 				_ = gotUpdateTime
 				_ = hcCreated
 

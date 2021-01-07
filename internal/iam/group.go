@@ -23,9 +23,11 @@ type Group struct {
 }
 
 // ensure that Group implements the interfaces of: Resource, Cloneable, and db.VetForWriter.
-var _ Resource = (*Group)(nil)
-var _ Cloneable = (*Group)(nil)
-var _ db.VetForWriter = (*Group)(nil)
+var (
+	_ Resource        = (*Group)(nil)
+	_ Cloneable       = (*Group)(nil)
+	_ db.VetForWriter = (*Group)(nil)
+)
 
 // NewGroup creates a new in memory group with a scope (project/org)
 // and allowed options include: withDescripion, WithName.

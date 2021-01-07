@@ -12,9 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-var (
-	ErrMetadataScopeNotFound = stderrors.New("scope not found for metadata")
-)
+var ErrMetadataScopeNotFound = stderrors.New("scope not found for metadata")
 
 // Clonable provides a cloning interface
 type Cloneable interface {

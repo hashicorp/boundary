@@ -13,6 +13,7 @@ package tools
 // NOTE: This must not be indented, so to stop goimports from trying to be
 // helpful, it's separated out from the import block below. Please try to keep
 // them in the same order.
+//go:generate go install mvdan.cc/gofumpt
 //go:generate go install github.com/bufbuild/buf/cmd/buf
 //go:generate go install github.com/favadi/protoc-go-inject-tag
 //go:generate go install github.com/go-swagger/go-swagger/cmd/swagger
@@ -26,6 +27,8 @@ package tools
 //go:generate go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
 import (
+	_ "mvdan.cc/gofumpt"
+
 	_ "github.com/bufbuild/buf/cmd/buf"
 
 	_ "github.com/favadi/protoc-go-inject-tag"

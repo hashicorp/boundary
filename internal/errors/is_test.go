@@ -14,7 +14,7 @@ import (
 
 func TestError_IsUnique(t *testing.T) {
 	t.Parallel()
-	var tests = []struct {
+	tests := []struct {
 		name string
 		in   error
 		want bool
@@ -76,7 +76,7 @@ func TestError_IsUnique(t *testing.T) {
 
 func TestError_IsCheckConstraint(t *testing.T) {
 	t.Parallel()
-	var tests = []struct {
+	tests := []struct {
 		name string
 		in   error
 		want bool
@@ -138,7 +138,7 @@ func TestError_IsCheckConstraint(t *testing.T) {
 
 func TestError_IsNotNullError(t *testing.T) {
 	t.Parallel()
-	var tests = []struct {
+	tests := []struct {
 		name string
 		in   error
 		want bool
@@ -206,7 +206,7 @@ func TestError_IsNotNullError(t *testing.T) {
 }
 
 func TestError_IsMissingTableError(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		name string
 		in   error
 		want bool
@@ -258,7 +258,7 @@ func TestError_IsMissingTableError(t *testing.T) {
 }
 
 func TestError_IsNotFoundError(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		name string
 		in   error
 		want bool

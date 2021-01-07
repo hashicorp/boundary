@@ -186,7 +186,6 @@ func TestHandleImplementedPaths(t *testing.T) {
 	} {
 		for _, p := range paths {
 			t.Run(fmt.Sprintf("%s/%s", verb, p), func(t *testing.T) {
-
 				var expCode int
 				if !strings.HasPrefix(p, "v1/") {
 					sp := strings.Split(p, "_")

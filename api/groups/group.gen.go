@@ -57,8 +57,10 @@ func (n GroupReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type GroupCreateResult = GroupReadResult
-type GroupUpdateResult = GroupReadResult
+type (
+	GroupCreateResult = GroupReadResult
+	GroupUpdateResult = GroupReadResult
+)
 
 type GroupDeleteResult struct {
 	response *api.Response

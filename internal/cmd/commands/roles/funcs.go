@@ -138,7 +138,6 @@ func generateRoleTableOutput(in *roles.Role) string {
 		ret = append(ret,
 			fmt.Sprintf("    %s", grant.Canonical),
 		)
-
 	}
 	return base.WrapForHelpText(ret)
 }

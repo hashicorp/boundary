@@ -45,7 +45,7 @@ func TestRepository_Authenticate(t *testing.T) {
 		password     string
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		args      args
 		want      *Account
@@ -272,7 +272,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 		old, new string
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name        string
 		args        args
 		wantAccount bool
@@ -447,7 +447,7 @@ func TestRepository_SetPassword(t *testing.T) {
 		return ""
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name       string
 		oldPw      string
 		newPw      string
@@ -537,5 +537,4 @@ func TestRepository_SetPassword(t *testing.T) {
 			assert.Nil(acct)
 		})
 	}
-
 }

@@ -34,9 +34,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var (
-	maskManager handlers.MaskManager
-)
+var maskManager handlers.MaskManager
 
 func init() {
 	var err error
