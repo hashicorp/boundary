@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 // TestCatalogs creates count number of static host catalogs to the provided DB

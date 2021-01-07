@@ -24,7 +24,6 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -34,6 +33,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+	"gorm.io/gorm"
 )
 
 func testService(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {

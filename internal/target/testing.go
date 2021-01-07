@@ -7,8 +7,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func TestTcpTarget(t *testing.T, conn *gorm.DB, scopeId, name string, opt ...Option) *TcpTarget {

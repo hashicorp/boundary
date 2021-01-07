@@ -6,8 +6,8 @@ import (
 	dbassert "github.com/hashicorp/dbassert"
 	gormAssert "github.com/hashicorp/dbassert/gorm"
 
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func Test_FieldDomain(t *testing.T) {

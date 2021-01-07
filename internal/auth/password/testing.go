@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // TestAuthMethods creates count number of password auth methods to the provided DB

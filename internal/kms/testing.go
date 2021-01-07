@@ -7,8 +7,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func TestRootKey(t *testing.T, conn *gorm.DB, scopeId string) *RootKey {
