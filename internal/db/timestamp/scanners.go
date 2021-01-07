@@ -31,3 +31,8 @@ func (ts *Timestamp) Value() (driver.Value, error) {
 	}
 	return ptypes.Timestamp(ts.Timestamp)
 }
+
+// GormDataType gorm common data type (required)
+func (ts *Timestamp) GormDataType() string {
+	return "timestamp"
+}
