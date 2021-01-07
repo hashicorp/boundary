@@ -62,8 +62,10 @@ type State struct {
 	tableName string `gorm:"-"`
 }
 
-var _ Cloneable = (*State)(nil)
-var _ db.VetForWriter = (*State)(nil)
+var (
+	_ Cloneable       = (*State)(nil)
+	_ db.VetForWriter = (*State)(nil)
+)
 
 // NewState creates a new in memory session state.  No options
 // are currently supported.

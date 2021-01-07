@@ -23,9 +23,11 @@ type Role struct {
 }
 
 // ensure that Role implements the interfaces of: Resource, Cloneable, and db.VetForWriter.
-var _ Resource = (*Role)(nil)
-var _ Cloneable = (*Role)(nil)
-var _ db.VetForWriter = (*Role)(nil)
+var (
+	_ Resource        = (*Role)(nil)
+	_ Cloneable       = (*Role)(nil)
+	_ db.VetForWriter = (*Role)(nil)
+)
 
 // NewRole creates a new in memory role with a scope (project/org)
 // allowed options include: withDescripion, WithName, withGrantScopeId.

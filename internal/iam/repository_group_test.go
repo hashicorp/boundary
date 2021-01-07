@@ -728,7 +728,6 @@ func TestRepository_ListMembers(t *testing.T) {
 		require.Error(err)
 		require.Nil(got)
 		require.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "unexpected error %s", err.Error())
-
 	})
 }
 
@@ -853,7 +852,6 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 				assert.NotEmpty(gotMembers[m.MemberId])
 				assert.Equal(gotMembers[m.MemberId].GetGroupId(), m.GroupId)
 			}
-
 		})
 	}
 }

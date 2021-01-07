@@ -19,8 +19,10 @@ type RoleGrant struct {
 }
 
 // ensure that RoleGrant implements the interfaces of: Cloneable and db.VetForWriter
-var _ Cloneable = (*RoleGrant)(nil)
-var _ db.VetForWriter = (*RoleGrant)(nil)
+var (
+	_ Cloneable       = (*RoleGrant)(nil)
+	_ db.VetForWriter = (*RoleGrant)(nil)
+)
 
 // NewRoleGrant creates a new in memory role grant
 func NewRoleGrant(roleId string, grant string, _ ...Option) (*RoleGrant, error) {

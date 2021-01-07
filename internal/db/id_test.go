@@ -48,7 +48,6 @@ func TestNewPublicId(t *testing.T) {
 			if len(got) != tt.wantLen {
 				t.Errorf("NewPublicId() = %v, with len of %d and wanted len of %v", got, len(got), tt.wantLen)
 			}
-
 		})
 	}
 }

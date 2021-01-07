@@ -57,8 +57,10 @@ func (n AuthMethodReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type AuthMethodCreateResult = AuthMethodReadResult
-type AuthMethodUpdateResult = AuthMethodReadResult
+type (
+	AuthMethodCreateResult = AuthMethodReadResult
+	AuthMethodUpdateResult = AuthMethodReadResult
+)
 
 type AuthMethodDeleteResult struct {
 	response *api.Response

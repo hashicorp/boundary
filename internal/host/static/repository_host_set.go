@@ -220,7 +220,6 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Opti
 		}
 		return nil
 	})
-
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in %s", s.PublicId)))
 	}

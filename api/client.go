@@ -28,18 +28,20 @@ import (
 	"golang.org/x/time/rate"
 )
 
-const EnvBoundaryAddr = "BOUNDARY_ADDR"
-const EnvBoundaryCACert = "BOUNDARY_CACERT"
-const EnvBoundaryCAPath = "BOUNDARY_CAPATH"
-const EnvBoundaryClientCert = "BOUNDARY_CLIENT_CERT"
-const EnvBoundaryClientKey = "BOUNDARY_CLIENT_KEY"
-const EnvBoundaryClientTimeout = "BOUNDARY_CLIENT_TIMEOUT"
-const EnvBoundaryTLSInsecure = "BOUNDARY_TLS_INSECURE"
-const EnvBoundaryTLSServerName = "BOUNDARY_TLS_SERVER_NAME"
-const EnvBoundaryMaxRetries = "BOUNDARY_MAX_RETRIES"
-const EnvBoundaryToken = "BOUNDARY_TOKEN"
-const EnvBoundaryRateLimit = "BOUNDARY_RATE_LIMIT"
-const EnvBoundarySRVLookup = "BOUNDARY_SRV_LOOKUP"
+const (
+	EnvBoundaryAddr          = "BOUNDARY_ADDR"
+	EnvBoundaryCACert        = "BOUNDARY_CACERT"
+	EnvBoundaryCAPath        = "BOUNDARY_CAPATH"
+	EnvBoundaryClientCert    = "BOUNDARY_CLIENT_CERT"
+	EnvBoundaryClientKey     = "BOUNDARY_CLIENT_KEY"
+	EnvBoundaryClientTimeout = "BOUNDARY_CLIENT_TIMEOUT"
+	EnvBoundaryTLSInsecure   = "BOUNDARY_TLS_INSECURE"
+	EnvBoundaryTLSServerName = "BOUNDARY_TLS_SERVER_NAME"
+	EnvBoundaryMaxRetries    = "BOUNDARY_MAX_RETRIES"
+	EnvBoundaryToken         = "BOUNDARY_TOKEN"
+	EnvBoundaryRateLimit     = "BOUNDARY_RATE_LIMIT"
+	EnvBoundarySRVLookup     = "BOUNDARY_SRV_LOOKUP"
+)
 
 // Config is used to configure the creation of the client
 type Config struct {
@@ -642,7 +644,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		u.Path = ""
 	}
 
-	var host = u.Host
+	host := u.Host
 	// if SRV records exist (see
 	// https://tools.ietf.org/html/draft-andrews-http-srv-02), lookup the SRV
 	// record and take the highest match; this is not designed for

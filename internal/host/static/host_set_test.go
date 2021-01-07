@@ -23,7 +23,7 @@ func TestHostSet_New(t *testing.T) {
 		opts      []Option
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name    string
 		args    args
 		want    *HostSet

@@ -21,8 +21,10 @@ import (
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*Command)(nil)
-var _ cli.CommandAutocomplete = (*Command)(nil)
+var (
+	_ cli.Command             = (*Command)(nil)
+	_ cli.CommandAutocomplete = (*Command)(nil)
+)
 
 type Command struct {
 	*base.Server
@@ -241,7 +243,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	//childShutdownCh := make(chan struct{})
+	// childShutdownCh := make(chan struct{})
 
 	c.Config, err = config.DevCombined()
 	if err != nil {

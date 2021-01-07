@@ -113,7 +113,7 @@ func main() {
 		strings.Join(table.Marshal(), "\n"),
 		strings.Join(post, "\n"))
 
-	if err := ioutil.WriteFile(permsFile, []byte(final), 0644); err != nil {
+	if err := ioutil.WriteFile(permsFile, []byte(final), 0o644); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

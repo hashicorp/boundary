@@ -17,7 +17,7 @@ import (
 )
 
 func TestCheckLoginName(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		in   string
 		want bool
 	}{
@@ -50,7 +50,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 1)
 	authMethod := authMethods[0]
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        *Account
 		opts      []Option
@@ -333,7 +333,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 
 	newAcctId, err := newAccountId()
 	require.NoError(t, err)
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        string
 		want      *Account
@@ -387,7 +387,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 
 	newAcctId, err := newAccountId()
 	require.NoError(t, err)
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        string
 		want      int
@@ -442,7 +442,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 	accounts2 := TestAccounts(t, conn, authMethods[1].GetPublicId(), 4)
 	_ = accounts2
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        string
 		opts      []Option
@@ -498,7 +498,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 	accountCount := 10
 	_ = TestAccounts(t, conn, am.GetPublicId(), accountCount)
 
-	var tests = []struct {
+	tests := []struct {
 		name     string
 		repoOpts []Option
 		listOpts []Option
@@ -619,7 +619,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		}
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		orig      *Account
 		chgFn     func(*Account) *Account

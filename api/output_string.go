@@ -12,9 +12,7 @@ const (
 	ErrOutputStringRequest = "output a string, please"
 )
 
-var (
-	LastOutputStringError *OutputStringError
-)
+var LastOutputStringError *OutputStringError
 
 type OutputStringError struct {
 	*retryablehttp.Request

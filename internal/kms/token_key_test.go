@@ -2,7 +2,6 @@ package kms_test
 
 import (
 	"context"
-
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"

@@ -7,7 +7,6 @@ import (
 )
 
 func Test_Resource(t *testing.T) {
-
 	tests := []struct {
 		typeString string
 		want       Type

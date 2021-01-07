@@ -65,8 +65,10 @@ func (n SessionReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type SessionCreateResult = SessionReadResult
-type SessionUpdateResult = SessionReadResult
+type (
+	SessionCreateResult = SessionReadResult
+	SessionUpdateResult = SessionReadResult
+)
 
 type SessionDeleteResult struct {
 	response *api.Response

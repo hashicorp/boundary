@@ -26,7 +26,7 @@ func TestAuthToken_ImmutableFields(t *testing.T) {
 	org, _ := iam.TestScopes(t, repo)
 	new := TestAuthToken(t, conn, kms, org.PublicId)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *AuthToken
 		fieldMask []string
@@ -76,7 +76,6 @@ func TestAuthToken_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig, after))
-
 		})
 	}
 }

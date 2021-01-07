@@ -61,7 +61,6 @@ func TestEncryptDecrypt(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("Test encrypt %v", c.f), func(t *testing.T) {
-
 			var b bytes.Buffer
 
 			ui := &cli.BasicUi{

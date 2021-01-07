@@ -34,7 +34,7 @@ func TestRepository_New(t *testing.T) {
 		opts []Option
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		args      args
 		want      *Repository
@@ -192,7 +192,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 	org2, _ := iam.TestScopes(t, repo)
 	u2 := iam.TestUser(t, repo, org2.GetPublicId())
 
-	var tests = []struct {
+	tests := []struct {
 		name       string
 		iamUser    *iam.User
 		authAcctId string
@@ -279,7 +279,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
-	var tests = []struct {
+	tests := []struct {
 		name    string
 		id      string
 		want    *AuthToken
@@ -370,7 +370,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, badToken)
 
-	var tests = []struct {
+	tests := []struct {
 		name    string
 		id      string
 		token   string
@@ -475,7 +475,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, iamUser)
 
-	var tests = []struct {
+	tests := []struct {
 		name               string
 		staleDuration      time.Duration
 		expirationDuration time.Duration
@@ -543,7 +543,7 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
-	var tests = []struct {
+	tests := []struct {
 		name    string
 		id      string
 		want    int
@@ -609,7 +609,7 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 
 	emptyOrg, _ := iam.TestScopes(t, repo)
 
-	var tests = []struct {
+	tests := []struct {
 		name    string
 		orgId   string
 		want    []*AuthToken

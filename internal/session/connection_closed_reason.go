@@ -22,6 +22,7 @@ const (
 func (r ClosedReason) String() string {
 	return string(r)
 }
+
 func convertToClosedReason(s string) (ClosedReason, error) {
 	switch s {
 	case UnknownReason.String():

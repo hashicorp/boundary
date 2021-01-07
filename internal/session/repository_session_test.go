@@ -1008,7 +1008,6 @@ func TestRepository_CloseConnections(t *testing.T) {
 				cw := setupFn(2)
 				cw[1].ConnectionId = ""
 				return cw
-
 			}(),
 			reason:      ClosedByUser,
 			wantErr:     true,

@@ -76,6 +76,7 @@ func Test_TestWorker(t *testing.T) {
 	w := TestWorker(t, conn, wrapper)
 	require.NotNil(w)
 }
+
 func Test_TestCert(t *testing.T) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)

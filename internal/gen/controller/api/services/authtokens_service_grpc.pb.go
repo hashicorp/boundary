@@ -4,6 +4,7 @@ package services
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -86,15 +87,16 @@ type AuthTokenServiceServer interface {
 }
 
 // UnimplementedAuthTokenServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedAuthTokenServiceServer struct {
-}
+type UnimplementedAuthTokenServiceServer struct{}
 
 func (UnimplementedAuthTokenServiceServer) GetAuthToken(context.Context, *GetAuthTokenRequest) (*GetAuthTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAuthToken not implemented")
 }
+
 func (UnimplementedAuthTokenServiceServer) ListAuthTokens(context.Context, *ListAuthTokensRequest) (*ListAuthTokensResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAuthTokens not implemented")
 }
+
 func (UnimplementedAuthTokenServiceServer) DeleteAuthToken(context.Context, *DeleteAuthTokenRequest) (*DeleteAuthTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAuthToken not implemented")
 }

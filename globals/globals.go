@@ -14,8 +14,10 @@ const (
 	ServiceTokenV1 = "s1"
 )
 
-type ContextMaxRequestSizeType int
-type ContextOriginalRequestPathType int
+type (
+	ContextMaxRequestSizeType      int
+	ContextOriginalRequestPathType int
+)
 
 var (
 	// DefaultMaxRequestDuration is the amount of time we'll wait for a request

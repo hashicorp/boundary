@@ -143,7 +143,6 @@ func TestCode_Both_String_Info(t *testing.T) {
 			assert := assert.New(t)
 			assert.Equal(errorCodeInfo[tt.want], tt.c.Info())
 			assert.Equal(errorCodeInfo[tt.want].Message, tt.c.String())
-
 		})
 	}
 }

@@ -106,5 +106,4 @@ func Test_Redeem(t *testing.T) {
 		err = secondTicketer.Redeem(secondTicket)
 		assert.Equal("ticket already redeemed", err.Error())
 	})
-
 }

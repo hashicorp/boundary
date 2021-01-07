@@ -86,7 +86,6 @@ func TestStrutil_ListContainsGlob(t *testing.T) {
 	if !StrListContainsGlob(haystack, "_test_") {
 		t.Fatalf("Value should exist")
 	}
-
 }
 
 func TestStrutil_ListContains(t *testing.T) {

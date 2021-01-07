@@ -12,8 +12,7 @@ func getOpts(opt ...Option) options {
 type Option func(*options)
 
 // options = how options are represented
-type options struct {
-}
+type options struct{}
 
 func getDefaultOptions() options {
 	return options{}
