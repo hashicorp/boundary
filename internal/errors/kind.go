@@ -11,6 +11,7 @@ const (
 	Password
 	Transaction
 	Encryption
+	Encoding
 )
 
 func (e Kind) String() string {
@@ -22,5 +23,6 @@ func (e Kind) String() string {
 		Password:    "password violation",
 		Transaction: "db transaction issue",
 		Encryption:  "encryption issue",
+		Encoding:    "encoding issue",
 	}[e]
 }

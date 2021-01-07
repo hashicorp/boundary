@@ -61,7 +61,7 @@ func Test_NewTypeCatalog(t *testing.T) {
 		)
 		assert.Nil(types)
 		assert.Error(err)
-		assert.Equal("error setting the type: typeName is an empty string for Set (in NewTypeCatalog)", err.Error())
+		assert.Equal("oplog.NewTypeCatalog: error setting the type: oplog.(TypeCatalog).Set: missing type name: parameter violation: error #100", err.Error())
 	})
 	t.Run("missing Type.Interface", func(t *testing.T) {
 		assert := assert.New(t)
@@ -71,7 +71,7 @@ func Test_NewTypeCatalog(t *testing.T) {
 		)
 		assert.Nil(types)
 		assert.Error(err)
-		assert.Equal("error type is {} (in NewTypeCatalog)", err.Error())
+		assert.Equal("oplog.NewTypeCatalog: error type is {}: parameter violation: error #100", err.Error())
 	})
 	t.Run("empty Type", func(t *testing.T) {
 		assert := assert.New(t)
@@ -81,7 +81,7 @@ func Test_NewTypeCatalog(t *testing.T) {
 		)
 		assert.Nil(types)
 		assert.Error(err)
-		assert.Equal("error type is {} (in NewTypeCatalog)", err.Error())
+		assert.Equal("oplog.NewTypeCatalog: error type is {}: parameter violation: error #100", err.Error())
 	})
 }
 
@@ -113,7 +113,7 @@ func Test_GetTypeName(t *testing.T) {
 		n, err := types.GetTypeName(new(oplog_test.TestCar))
 		require.Error(err)
 		assert.Equal(n, "")
-		assert.Equal("error unknown name for interface: *oplog_test.TestCar", err.Error())
+		assert.Equal("oplog.(TypeCatalog).GetTypeName: unknown name for interface: *oplog_test.TestCar: parameter violation: error #100", err.Error())
 	})
 	t.Run("nil interface", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -126,7 +126,7 @@ func Test_GetTypeName(t *testing.T) {
 		n, err := types.GetTypeName(nil)
 		require.Error(err)
 		assert.Equal(n, "")
-		assert.Equal("error interface parameter is nil for GetTypeName", err.Error())
+		assert.Equal("oplog.(TypeCatalog).GetTypeName: nil interface: parameter violation: error #100", err.Error())
 	})
 }
 
@@ -158,7 +158,7 @@ func Test_Get(t *testing.T) {
 		n, err := types.Get("car")
 		require.Error(err)
 		assert.Equal(n, nil)
-		assert.Equal("error typeName is not found for Get", err.Error())
+		assert.Equal("oplog.(TypeCatalog).Get: type name not found: integrity violation: error #105", err.Error())
 	})
 	t.Run("bad typeName", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -171,7 +171,7 @@ func Test_Get(t *testing.T) {
 		n, err := types.Get("")
 		require.Error(err)
 		assert.Equal(n, nil)
-		assert.Equal("error typeName is empty string for Get", err.Error())
+		assert.Equal("oplog.(TypeCatalog).Get: missing type name: parameter violation: error #100", err.Error())
 	})
 }
 
@@ -197,7 +197,7 @@ func Test_Set(t *testing.T) {
 		u := new(oplog_test.TestUser)
 		err = types.Set(u, "")
 		require.Error(err)
-		assert.Equal("typeName is an empty string for Set", err.Error())
+		assert.Equal("oplog.(TypeCatalog).Set: missing type name: parameter violation: error #100", err.Error())
 		assert.Equal(types, &TypeCatalog{})
 	})
 	t.Run("bad interface", func(t *testing.T) {
@@ -207,7 +207,7 @@ func Test_Set(t *testing.T) {
 		require.NoError(err)
 		err = types.Set(nil, "")
 		require.Error(err)
-		assert.Equal("error interface parameter is nil for Set", err.Error())
+		assert.Equal("oplog.(TypeCatalog).Set: nil interface: parameter violation: error #100", err.Error())
 		assert.Equal(types, &TypeCatalog{})
 	})
 }

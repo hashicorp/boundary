@@ -58,6 +58,21 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: KeyNotFound,
 		},
 		{
+			name: "TicketAlreadyRedeemed",
+			c:    TicketAlreadyRedeemed,
+			want: TicketAlreadyRedeemed,
+		},
+		{
+			name: "TicketNotFound",
+			c:    TicketNotFound,
+			want: TicketNotFound,
+		},
+		{
+			name: "Io",
+			c:    Io,
+			want: Io,
+		},
+		{
 			name: "PasswordTooShort",
 			c:    PasswordTooShort,
 			want: PasswordTooShort,
@@ -86,6 +101,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			name: "Decrypt",
 			c:    Decrypt,
 			want: Decrypt,
+		},
+		{
+			name: "Encode",
+			c:    Encode,
+			want: Encode,
+		},
+		{
+			name: "Decode",
+			c:    Decode,
+			want: Decode,
 		},
 		{
 			name: "CheckConstraint",

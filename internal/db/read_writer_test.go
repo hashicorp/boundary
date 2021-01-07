@@ -1044,7 +1044,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 9 {
-					return oplog.ErrTicketAlreadyRedeemed
+					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1060,7 +1060,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 2 {
-					return oplog.ErrTicketAlreadyRedeemed
+					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1076,7 +1076,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 3 {
-					return oplog.ErrTicketAlreadyRedeemed
+					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1092,7 +1092,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 4 {
-					return oplog.ErrTicketAlreadyRedeemed
+					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1124,13 +1124,16 @@ func TestDb_DoTx(t *testing.T) {
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { return stderrors.New("not a retry error") })
 		require.Error(err)
 		assert.Equal(RetryInfo{}, got)
-		assert.NotEqual(oplog.ErrTicketAlreadyRedeemed, err)
+		assert.False(errors.Match(errors.T(errors.TicketAlreadyRedeemed), err))
 	})
 	t.Run("too-many-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
 		attempts := 0
-		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return oplog.ErrTicketAlreadyRedeemed })
+		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Reader, Writer) error {
+			attempts += 1
+			return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+		})
 		require.Error(err)
 		assert.Equal(3, got.Retries)
 		assert.Equal("db.DoTx: Too many retries: 3 of 3: db transaction issue: error #1103", err.Error())
