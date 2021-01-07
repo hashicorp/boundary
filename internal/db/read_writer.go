@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/jinzhu/gorm"
 	"google.golang.org/protobuf/proto"
+	"gorm.io/gorm"
 )
 
 const (
@@ -412,16 +412,17 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("no fields matched using fieldMaskPaths %s", fieldMaskPaths))
 	}
 
-	// This is not a boundary scope, but rather a gorm Scope:
-	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
-	scope := rw.underlying.NewScope(i)
-	if scope.PrimaryKeyZero() {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "primary key is not set")
+	err = rw.underlying.Statement.Parse(i)
+	if err != nil || rw.underlying.Statement.Schema == nil {
+		return NoRowsAffected, errors.New(errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
 	}
-
-	for _, f := range scope.PrimaryFields() {
-		if contains(fieldMaskPaths, f.Name) {
-			return NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("not allowed on primary key field %s", f.Name))
+	reflectValue := reflect.Indirect(reflect.ValueOf(i))
+	for _, pf := range rw.underlying.Statement.Schema.PrimaryFields {
+		if _, isZero := pf.ValueOf(reflectValue); isZero {
+			return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("primary key %s is not set", pf.Name))
+		}
+		if contains(fieldMaskPaths, pf.Name) {
+			return NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("not allowed on primary key field %s", pf.Name))
 		}
 	}
 
@@ -456,8 +457,14 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 			if *opts.WithVersion == 0 {
 				return NoRowsAffected, errors.New(errors.InvalidParameter, op, "with version option is zero")
 			}
-			if _, ok := scope.FieldByName("version"); !ok {
-				return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", scope.TableName()))
+			err := rw.underlying.Statement.Parse(i)
+			if err != nil && rw.underlying.Statement.Schema == nil {
+				return NoRowsAffected, errors.New(errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
+			}
+			fmt.Println(rw.underlying.Statement.Schema.FieldsByName["version"])
+			if !contains(rw.underlying.Statement.Schema.DBNames, "version") {
+				// if _, ok := rw.underlying.Statement.Schema.FieldsByName["version"]; !ok {
+				return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", rw.underlying.Statement.Schema.Table))
 			}
 			where, args = append(where, "version = ?"), append(args, opts.WithVersion)
 		}
@@ -528,14 +535,18 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if withOplog && opts.newOplogMsg != nil {
 		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
 	}
-	// This is not a boundary scope, but rather a gorm Scope:
-	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
-	scope := rw.underlying.NewScope(i)
-	if opts.withWhereClause == "" {
-		if scope.PrimaryKeyZero() {
-			return NoRowsAffected, errors.New(errors.InvalidParameter, op, "primary key is not set")
+
+	err := rw.underlying.Statement.Parse(i)
+	if err == nil && rw.underlying.Statement.Schema == nil {
+		return NoRowsAffected, errors.New(errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
+	}
+	reflectValue := reflect.Indirect(reflect.ValueOf(i))
+	for _, pf := range rw.underlying.Statement.Schema.PrimaryFields {
+		if _, isZero := pf.ValueOf(reflectValue); isZero {
+			return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("primary key %s is not set", pf.Name))
 		}
 	}
+
 	if withOplog {
 		_, err := validateOplogArgs(i, opts)
 		if err != nil {
@@ -897,7 +908,8 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 		}
 
 		// step one of this, start a transaction...
-		newTx := w.underlying.BeginTx(ctx, nil)
+		newTx := w.underlying.WithContext(ctx)
+		newTx.Begin()
 
 		rw := &Db{newTx}
 		if err := Handler(rw, rw); err != nil {
