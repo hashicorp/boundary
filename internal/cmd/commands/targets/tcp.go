@@ -15,8 +15,10 @@ import (
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*TcpCommand)(nil)
-var _ cli.CommandAutocomplete = (*TcpCommand)(nil)
+var (
+	_ cli.Command             = (*TcpCommand)(nil)
+	_ cli.CommandAutocomplete = (*TcpCommand)(nil)
+)
 
 type TcpCommand struct {
 	*base.Command

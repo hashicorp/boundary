@@ -42,8 +42,10 @@ func NewWorkerServiceServer(
 	}
 }
 
-var _ pbs.SessionServiceServer = &workerServiceServer{}
-var _ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
+var (
+	_ pbs.SessionServiceServer            = &workerServiceServer{}
+	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
+)
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
 	ws.logger.Trace("got status request from worker", "name", req.Worker.Name, "address", req.Worker.Address, "jobs", req.GetJobs())

@@ -22,9 +22,11 @@ type authAccount struct {
 	tableName string `gorm:"-"`
 }
 
-var _ Cloneable = (*authAccount)(nil)
-var _ db.VetForWriter = (*authAccount)(nil)
-var _ oplog.ReplayableMessage = (*authAccount)(nil)
+var (
+	_ Cloneable               = (*authAccount)(nil)
+	_ db.VetForWriter         = (*authAccount)(nil)
+	_ oplog.ReplayableMessage = (*authAccount)(nil)
+)
 
 func allocAccount() authAccount {
 	return authAccount{

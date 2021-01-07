@@ -69,7 +69,7 @@ func TestListening(t *testing.T) {
 
 	logger := hclog.Default()
 	logger.SetLevel(hclog.Trace)
-	//log.SetOutput(logger.StandardWriter(new(hclog.StandardLoggerOptions)))
+	// log.SetOutput(logger.StandardWriter(new(hclog.StandardLoggerOptions)))
 	mux := New(listener, logger)
 	defer mux.Close()
 

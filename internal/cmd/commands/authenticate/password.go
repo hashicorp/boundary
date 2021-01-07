@@ -20,12 +20,16 @@ import (
 	zkeyring "github.com/zalando/go-keyring"
 )
 
-var _ cli.Command = (*PasswordCommand)(nil)
-var _ cli.CommandAutocomplete = (*PasswordCommand)(nil)
+var (
+	_ cli.Command             = (*PasswordCommand)(nil)
+	_ cli.CommandAutocomplete = (*PasswordCommand)(nil)
+)
 
-var envPassword = "BOUNDARY_AUTHENTICATE_PASSWORD_PASSWORD"
-var envLoginName = "BOUNDARY_AUTHENTICATE_PASSWORD_LOGIN_NAME"
-var envAuthMethodId = "BOUNDARY_AUTHENTICATE_AUTH_METHOD_ID"
+var (
+	envPassword     = "BOUNDARY_AUTHENTICATE_PASSWORD_PASSWORD"
+	envLoginName    = "BOUNDARY_AUTHENTICATE_PASSWORD_LOGIN_NAME"
+	envAuthMethodId = "BOUNDARY_AUTHENTICATE_AUTH_METHOD_ID"
+)
 
 type PasswordCommand struct {
 	*base.Command

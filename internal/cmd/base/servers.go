@@ -159,7 +159,7 @@ func (b *Server) StorePidFile(pidPath string) error {
 	}
 
 	// Open the PID file
-	pidFile, err := os.OpenFile(pidPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	pidFile, err := os.OpenFile(pidPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		return fmt.Errorf("could not open pid file: %w", err)
 	}
@@ -313,7 +313,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 			lnConfig.MaxRequestSize = globals.DefaultMaxRequestSize
 		}
 		// TODO: We don't actually limit this yet.
-		//props["max_request_size"] = fmt.Sprintf("%d", lnConfig.MaxRequestSize)
+		// props["max_request_size"] = fmt.Sprintf("%d", lnConfig.MaxRequestSize)
 
 		if lnConfig.MaxRequestDuration == 0 {
 			lnConfig.MaxRequestDuration = globals.DefaultMaxRequestDuration

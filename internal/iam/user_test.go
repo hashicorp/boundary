@@ -312,7 +312,6 @@ func Test_UserGetScope(t *testing.T) {
 		require.NoError(err)
 		assert.True(proto.Equal(org, userScope))
 	})
-
 }
 
 func TestUser_Clone(t *testing.T) {

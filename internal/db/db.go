@@ -14,9 +14,7 @@ import (
 	"github.com/lib/pq"
 )
 
-var (
-	StartDbInDocker = docker.StartDbInDocker
-)
+var StartDbInDocker = docker.StartDbInDocker
 
 type DbType int
 

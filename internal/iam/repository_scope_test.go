@@ -160,7 +160,7 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		require.NotNil(s)
 		assert.Equal("foo"+id, s.GetName())
 		// TODO: This isn't empty because of ICU-490 -- when that is resolved, fix this
-		//assert.Empty(s.GetDescription())
+		// assert.Empty(s.GetDescription())
 
 		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
 		require.NoError(err)
@@ -248,7 +248,6 @@ func Test_Repository_Scope_Delete(t *testing.T) {
 		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
 		require.NoError(err)
 		assert.Nil(foundScope)
-
 	})
 	t.Run("valid-with-bad-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)

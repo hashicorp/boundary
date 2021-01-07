@@ -12,9 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
-var (
-	ErrMetadataScopeNotFound = errors.New(errors.RecordNotFound, "iam", "scope not found for metadata")
-)
+var ErrMetadataScopeNotFound = errors.New(errors.RecordNotFound, "iam", "scope not found for metadata")
 
 // Repository is the iam database repository
 type Repository struct {

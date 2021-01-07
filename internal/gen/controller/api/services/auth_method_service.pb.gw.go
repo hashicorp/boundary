@@ -24,12 +24,14 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var _ codes.Code
-var _ io.Reader
-var _ status.Status
-var _ = runtime.String
-var _ = utilities.NewDoubleArray
-var _ = metadata.Join
+var (
+	_ codes.Code
+	_ io.Reader
+	_ status.Status
+	_ = runtime.String
+	_ = utilities.NewDoubleArray
+	_ = metadata.Join
+)
 
 func request_AuthMethodService_GetAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetAuthMethodRequest
@@ -54,7 +56,6 @@ func request_AuthMethodService_GetAuthMethod_0(ctx context.Context, marshaler ru
 
 	msg, err := client.GetAuthMethod(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_AuthMethodService_GetAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -80,12 +81,9 @@ func local_request_AuthMethodService_GetAuthMethod_0(ctx context.Context, marsha
 
 	msg, err := server.GetAuthMethod(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_AuthMethodService_ListAuthMethods_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
-)
+var filter_AuthMethodService_ListAuthMethods_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 
 func request_AuthMethodService_ListAuthMethods_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListAuthMethodsRequest
@@ -100,7 +98,6 @@ func request_AuthMethodService_ListAuthMethods_0(ctx context.Context, marshaler 
 
 	msg, err := client.ListAuthMethods(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_AuthMethodService_ListAuthMethods_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -116,7 +113,6 @@ func local_request_AuthMethodService_ListAuthMethods_0(ctx context.Context, mars
 
 	msg, err := server.ListAuthMethods(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_AuthMethodService_CreateAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -133,7 +129,6 @@ func request_AuthMethodService_CreateAuthMethod_0(ctx context.Context, marshaler
 
 	msg, err := client.CreateAuthMethod(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_AuthMethodService_CreateAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -150,12 +145,9 @@ func local_request_AuthMethodService_CreateAuthMethod_0(ctx context.Context, mar
 
 	msg, err := server.CreateAuthMethod(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_AuthMethodService_UpdateAuthMethod_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
-)
+var filter_AuthMethodService_UpdateAuthMethod_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 
 func request_AuthMethodService_UpdateAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateAuthMethodRequest
@@ -202,7 +194,6 @@ func request_AuthMethodService_UpdateAuthMethod_0(ctx context.Context, marshaler
 
 	msg, err := client.UpdateAuthMethod(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_AuthMethodService_UpdateAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -250,7 +241,6 @@ func local_request_AuthMethodService_UpdateAuthMethod_0(ctx context.Context, mar
 
 	msg, err := server.UpdateAuthMethod(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_AuthMethodService_DeleteAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -276,7 +266,6 @@ func request_AuthMethodService_DeleteAuthMethod_0(ctx context.Context, marshaler
 
 	msg, err := client.DeleteAuthMethod(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_AuthMethodService_DeleteAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -302,7 +291,6 @@ func local_request_AuthMethodService_DeleteAuthMethod_0(ctx context.Context, mar
 
 	msg, err := server.DeleteAuthMethod(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_AuthMethodService_Authenticate_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -336,7 +324,6 @@ func request_AuthMethodService_Authenticate_0(ctx context.Context, marshaler run
 
 	msg, err := client.Authenticate(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_AuthMethodService_Authenticate_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -370,7 +357,6 @@ func local_request_AuthMethodService_Authenticate_0(ctx context.Context, marshal
 
 	msg, err := server.Authenticate(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 // RegisterAuthMethodServiceHandlerServer registers the http handlers for service AuthMethodService to "mux".
@@ -378,7 +364,6 @@ func local_request_AuthMethodService_Authenticate_0(ctx context.Context, marshal
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterAuthMethodServiceHandlerFromEndpoint instead.
 func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server AuthMethodServiceServer) error {
-
 	mux.Handle("GET", pattern_AuthMethodService_GetAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -399,7 +384,6 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		}
 
 		forward_AuthMethodService_GetAuthMethod_0(ctx, mux, outboundMarshaler, w, req, response_AuthMethodService_GetAuthMethod_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("GET", pattern_AuthMethodService_ListAuthMethods_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -422,7 +406,6 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		}
 
 		forward_AuthMethodService_ListAuthMethods_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_AuthMethodService_CreateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -445,7 +428,6 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		}
 
 		forward_AuthMethodService_CreateAuthMethod_0(ctx, mux, outboundMarshaler, w, req, response_AuthMethodService_CreateAuthMethod_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("PATCH", pattern_AuthMethodService_UpdateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -468,7 +450,6 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		}
 
 		forward_AuthMethodService_UpdateAuthMethod_0(ctx, mux, outboundMarshaler, w, req, response_AuthMethodService_UpdateAuthMethod_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("DELETE", pattern_AuthMethodService_DeleteAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -491,7 +472,6 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		}
 
 		forward_AuthMethodService_DeleteAuthMethod_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_AuthMethodService_Authenticate_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -514,7 +494,6 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		}
 
 		forward_AuthMethodService_Authenticate_0(ctx, mux, outboundMarshaler, w, req, response_AuthMethodService_Authenticate_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil
@@ -557,7 +536,6 @@ func RegisterAuthMethodServiceHandler(ctx context.Context, mux *runtime.ServeMux
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
 // "AuthMethodServiceClient" to call the correct interceptors.
 func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client AuthMethodServiceClient) error {
-
 	mux.Handle("GET", pattern_AuthMethodService_GetAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -575,7 +553,6 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		}
 
 		forward_AuthMethodService_GetAuthMethod_0(ctx, mux, outboundMarshaler, w, req, response_AuthMethodService_GetAuthMethod_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("GET", pattern_AuthMethodService_ListAuthMethods_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -595,7 +572,6 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		}
 
 		forward_AuthMethodService_ListAuthMethods_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_AuthMethodService_CreateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -615,7 +591,6 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		}
 
 		forward_AuthMethodService_CreateAuthMethod_0(ctx, mux, outboundMarshaler, w, req, response_AuthMethodService_CreateAuthMethod_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("PATCH", pattern_AuthMethodService_UpdateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -635,7 +610,6 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		}
 
 		forward_AuthMethodService_UpdateAuthMethod_0(ctx, mux, outboundMarshaler, w, req, response_AuthMethodService_UpdateAuthMethod_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("DELETE", pattern_AuthMethodService_DeleteAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -655,7 +629,6 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		}
 
 		forward_AuthMethodService_DeleteAuthMethod_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_AuthMethodService_Authenticate_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -675,7 +648,6 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		}
 
 		forward_AuthMethodService_Authenticate_0(ctx, mux, outboundMarshaler, w, req, response_AuthMethodService_Authenticate_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil

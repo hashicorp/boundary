@@ -26,7 +26,7 @@ func TestTarget_ImmutableFields(t *testing.T) {
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	new := TestTcpTarget(t, conn, proj.PublicId, testId(t))
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *TcpTarget
 		fieldMask []string
@@ -80,7 +80,6 @@ func TestTarget_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*TcpTarget), after.(*TcpTarget)))
-
 		})
 	}
 }
@@ -96,7 +95,7 @@ func TestTcpTarget_ImmutableFields(t *testing.T) {
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	new := TestTcpTarget(t, conn, proj.PublicId, testId(t))
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *TcpTarget
 		fieldMask []string
@@ -146,7 +145,6 @@ func TestTcpTarget_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*TcpTarget), after.(*TcpTarget)))
-
 		})
 	}
 }
@@ -177,7 +175,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 	new, err := NewTargetHostSet(projTarget.PublicId, gotHostSets[0].PublicId)
 	require.NoError(t, err)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *TargetHostSet
 		fieldMask []string

@@ -35,7 +35,7 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	new, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *kms.RootKeyVersion
 		fieldMask []string
@@ -105,7 +105,6 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*kms.RootKeyVersion), after.(*kms.RootKeyVersion)))
-
 		})
 	}
 }
@@ -122,7 +121,7 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	new := kms.TestRootKey(t, conn, org.PublicId)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *kms.RootKey
 		fieldMask []string
@@ -172,7 +171,6 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*kms.RootKey), after.(*kms.RootKey)))
-
 		})
 	}
 }
@@ -191,7 +189,7 @@ func TestDatabaseKey_ImmutableFields(t *testing.T) {
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	new := kms.TestDatabaseKey(t, conn, rk.PrivateId)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *kms.DatabaseKey
 		fieldMask []string
@@ -241,7 +239,6 @@ func TestDatabaseKey_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*kms.DatabaseKey), after.(*kms.DatabaseKey)))
-
 		})
 	}
 }
@@ -261,7 +258,7 @@ func TestDatabaseKeyVersion_ImmutableFields(t *testing.T) {
 	dk := kms.TestDatabaseKey(t, conn, rk.PrivateId)
 	new := kms.TestDatabaseKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("database key"))
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *kms.DatabaseKeyVersion
 		fieldMask []string
@@ -340,7 +337,6 @@ func TestDatabaseKeyVersion_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*kms.DatabaseKeyVersion), after.(*kms.DatabaseKeyVersion)))
-
 		})
 	}
 }

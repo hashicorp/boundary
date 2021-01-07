@@ -48,8 +48,10 @@ func (c *Connection) GetPublicId() string {
 	return c.PublicId
 }
 
-var _ Cloneable = (*Connection)(nil)
-var _ db.VetForWriter = (*Connection)(nil)
+var (
+	_ Cloneable       = (*Connection)(nil)
+	_ db.VetForWriter = (*Connection)(nil)
+)
 
 // New creates a new in memory session.  No options
 // are currently supported.

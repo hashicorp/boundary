@@ -42,7 +42,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
 	require.NoError(t, err)
 
-	var tests = []struct {
+	tests := []struct {
 		name    string
 		args    args
 		want    *AuthToken
@@ -131,7 +131,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 		return id
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        *store.AuthToken
 		wantError bool
@@ -185,7 +185,7 @@ func TestAuthToken_DbDelete(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	existingAuthTok := TestAuthToken(t, conn, kms, org.GetPublicId())
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		at        *writableAuthToken
 		wantError bool

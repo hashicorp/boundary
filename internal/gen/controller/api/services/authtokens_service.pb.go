@@ -7,13 +7,14 @@
 package services
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	authtokens "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -389,16 +390,19 @@ func file_controller_api_services_v1_authtokens_service_proto_rawDescGZIP() []by
 	return file_controller_api_services_v1_authtokens_service_proto_rawDescData
 }
 
-var file_controller_api_services_v1_authtokens_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_controller_api_services_v1_authtokens_service_proto_goTypes = []interface{}{
-	(*GetAuthTokenRequest)(nil),     // 0: controller.api.services.v1.GetAuthTokenRequest
-	(*GetAuthTokenResponse)(nil),    // 1: controller.api.services.v1.GetAuthTokenResponse
-	(*ListAuthTokensRequest)(nil),   // 2: controller.api.services.v1.ListAuthTokensRequest
-	(*ListAuthTokensResponse)(nil),  // 3: controller.api.services.v1.ListAuthTokensResponse
-	(*DeleteAuthTokenRequest)(nil),  // 4: controller.api.services.v1.DeleteAuthTokenRequest
-	(*DeleteAuthTokenResponse)(nil), // 5: controller.api.services.v1.DeleteAuthTokenResponse
-	(*authtokens.AuthToken)(nil),    // 6: controller.api.resources.authtokens.v1.AuthToken
-}
+var (
+	file_controller_api_services_v1_authtokens_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+	file_controller_api_services_v1_authtokens_service_proto_goTypes  = []interface{}{
+		(*GetAuthTokenRequest)(nil),     // 0: controller.api.services.v1.GetAuthTokenRequest
+		(*GetAuthTokenResponse)(nil),    // 1: controller.api.services.v1.GetAuthTokenResponse
+		(*ListAuthTokensRequest)(nil),   // 2: controller.api.services.v1.ListAuthTokensRequest
+		(*ListAuthTokensResponse)(nil),  // 3: controller.api.services.v1.ListAuthTokensResponse
+		(*DeleteAuthTokenRequest)(nil),  // 4: controller.api.services.v1.DeleteAuthTokenRequest
+		(*DeleteAuthTokenResponse)(nil), // 5: controller.api.services.v1.DeleteAuthTokenResponse
+		(*authtokens.AuthToken)(nil),    // 6: controller.api.resources.authtokens.v1.AuthToken
+	}
+)
+
 var file_controller_api_services_v1_authtokens_service_proto_depIdxs = []int32{
 	6, // 0: controller.api.services.v1.GetAuthTokenResponse.item:type_name -> controller.api.resources.authtokens.v1.AuthToken
 	6, // 1: controller.api.services.v1.ListAuthTokensResponse.items:type_name -> controller.api.resources.authtokens.v1.AuthToken

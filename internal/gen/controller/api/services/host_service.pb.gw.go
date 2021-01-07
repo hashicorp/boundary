@@ -24,12 +24,14 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var _ codes.Code
-var _ io.Reader
-var _ status.Status
-var _ = runtime.String
-var _ = utilities.NewDoubleArray
-var _ = metadata.Join
+var (
+	_ codes.Code
+	_ io.Reader
+	_ status.Status
+	_ = runtime.String
+	_ = utilities.NewDoubleArray
+	_ = metadata.Join
+)
 
 func request_HostService_GetHost_0(ctx context.Context, marshaler runtime.Marshaler, client HostServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetHostRequest
@@ -54,7 +56,6 @@ func request_HostService_GetHost_0(ctx context.Context, marshaler runtime.Marsha
 
 	msg, err := client.GetHost(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostService_GetHost_0(ctx context.Context, marshaler runtime.Marshaler, server HostServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -80,12 +81,9 @@ func local_request_HostService_GetHost_0(ctx context.Context, marshaler runtime.
 
 	msg, err := server.GetHost(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_HostService_ListHosts_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
-)
+var filter_HostService_ListHosts_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 
 func request_HostService_ListHosts_0(ctx context.Context, marshaler runtime.Marshaler, client HostServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListHostsRequest
@@ -100,7 +98,6 @@ func request_HostService_ListHosts_0(ctx context.Context, marshaler runtime.Mars
 
 	msg, err := client.ListHosts(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostService_ListHosts_0(ctx context.Context, marshaler runtime.Marshaler, server HostServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -116,7 +113,6 @@ func local_request_HostService_ListHosts_0(ctx context.Context, marshaler runtim
 
 	msg, err := server.ListHosts(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_HostService_CreateHost_0(ctx context.Context, marshaler runtime.Marshaler, client HostServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -133,7 +129,6 @@ func request_HostService_CreateHost_0(ctx context.Context, marshaler runtime.Mar
 
 	msg, err := client.CreateHost(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostService_CreateHost_0(ctx context.Context, marshaler runtime.Marshaler, server HostServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -150,12 +145,9 @@ func local_request_HostService_CreateHost_0(ctx context.Context, marshaler runti
 
 	msg, err := server.CreateHost(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_HostService_UpdateHost_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
-)
+var filter_HostService_UpdateHost_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 
 func request_HostService_UpdateHost_0(ctx context.Context, marshaler runtime.Marshaler, client HostServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateHostRequest
@@ -202,7 +194,6 @@ func request_HostService_UpdateHost_0(ctx context.Context, marshaler runtime.Mar
 
 	msg, err := client.UpdateHost(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostService_UpdateHost_0(ctx context.Context, marshaler runtime.Marshaler, server HostServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -250,7 +241,6 @@ func local_request_HostService_UpdateHost_0(ctx context.Context, marshaler runti
 
 	msg, err := server.UpdateHost(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_HostService_DeleteHost_0(ctx context.Context, marshaler runtime.Marshaler, client HostServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -276,7 +266,6 @@ func request_HostService_DeleteHost_0(ctx context.Context, marshaler runtime.Mar
 
 	msg, err := client.DeleteHost(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_HostService_DeleteHost_0(ctx context.Context, marshaler runtime.Marshaler, server HostServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -302,7 +291,6 @@ func local_request_HostService_DeleteHost_0(ctx context.Context, marshaler runti
 
 	msg, err := server.DeleteHost(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 // RegisterHostServiceHandlerServer registers the http handlers for service HostService to "mux".
@@ -310,7 +298,6 @@ func local_request_HostService_DeleteHost_0(ctx context.Context, marshaler runti
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterHostServiceHandlerFromEndpoint instead.
 func RegisterHostServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server HostServiceServer) error {
-
 	mux.Handle("GET", pattern_HostService_GetHost_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -331,7 +318,6 @@ func RegisterHostServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		}
 
 		forward_HostService_GetHost_0(ctx, mux, outboundMarshaler, w, req, response_HostService_GetHost_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("GET", pattern_HostService_ListHosts_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -354,7 +340,6 @@ func RegisterHostServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		}
 
 		forward_HostService_ListHosts_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_HostService_CreateHost_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -377,7 +362,6 @@ func RegisterHostServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		}
 
 		forward_HostService_CreateHost_0(ctx, mux, outboundMarshaler, w, req, response_HostService_CreateHost_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("PATCH", pattern_HostService_UpdateHost_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -400,7 +384,6 @@ func RegisterHostServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		}
 
 		forward_HostService_UpdateHost_0(ctx, mux, outboundMarshaler, w, req, response_HostService_UpdateHost_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("DELETE", pattern_HostService_DeleteHost_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -423,7 +406,6 @@ func RegisterHostServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		}
 
 		forward_HostService_DeleteHost_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil
@@ -466,7 +448,6 @@ func RegisterHostServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
 // "HostServiceClient" to call the correct interceptors.
 func RegisterHostServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client HostServiceClient) error {
-
 	mux.Handle("GET", pattern_HostService_GetHost_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -484,7 +465,6 @@ func RegisterHostServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		}
 
 		forward_HostService_GetHost_0(ctx, mux, outboundMarshaler, w, req, response_HostService_GetHost_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("GET", pattern_HostService_ListHosts_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -504,7 +484,6 @@ func RegisterHostServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		}
 
 		forward_HostService_ListHosts_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("POST", pattern_HostService_CreateHost_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -524,7 +503,6 @@ func RegisterHostServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		}
 
 		forward_HostService_CreateHost_0(ctx, mux, outboundMarshaler, w, req, response_HostService_CreateHost_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("PATCH", pattern_HostService_UpdateHost_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -544,7 +522,6 @@ func RegisterHostServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		}
 
 		forward_HostService_UpdateHost_0(ctx, mux, outboundMarshaler, w, req, response_HostService_UpdateHost_0{resp}, mux.GetForwardResponseOptions()...)
-
 	})
 
 	mux.Handle("DELETE", pattern_HostService_DeleteHost_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -564,7 +541,6 @@ func RegisterHostServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		}
 
 		forward_HostService_DeleteHost_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil

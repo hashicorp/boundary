@@ -56,8 +56,10 @@ type TerminationInfo struct {
 	Reason string `json:"termination_reason"`
 }
 
-var _ cli.Command = (*Command)(nil)
-var _ cli.CommandAutocomplete = (*Command)(nil)
+var (
+	_ cli.Command             = (*Command)(nil)
+	_ cli.CommandAutocomplete = (*Command)(nil)
+)
 
 type Command struct {
 	*base.Command
@@ -648,7 +650,6 @@ func (c *Command) getWsConn(
 	ctx context.Context,
 	workerAddr string,
 	transport *http.Transport) (*websocket.Conn, error) {
-
 	conn, resp, err := websocket.Dial(
 		ctx,
 		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
@@ -687,7 +688,6 @@ func (c *Command) sendSessionTeardown(
 	ctx context.Context,
 	wsConn *websocket.Conn,
 	tofuToken string) error {
-
 	handshake := proxy.ClientHandshake{
 		TofuToken: tofuToken,
 		Command:   proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL,

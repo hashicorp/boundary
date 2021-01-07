@@ -28,7 +28,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, iamRepo)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        *AuthMethod
 		opts      []Option
@@ -266,7 +266,7 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 
 	amId, err := newAuthMethodId()
 	require.NoError(t, err)
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        string
 		want      *AuthMethod
@@ -317,7 +317,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 
 	newAuthMethodId, err := newAuthMethodId()
 	require.NoError(t, err)
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        string
 		want      int
@@ -368,7 +368,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 	o, _ := iam.TestScopes(t, iamRepo)
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 3)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        string
 		opts      []Option
@@ -420,7 +420,7 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 	authMethodCount := 10
 	ams := TestAuthMethods(t, conn, o.GetPublicId(), authMethodCount)
 
-	var tests = []struct {
+	tests := []struct {
 		name     string
 		repoOpts []Option
 		listOpts []Option

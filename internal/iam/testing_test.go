@@ -36,6 +36,7 @@ func Test_testProj(t *testing.T) {
 	assert.Equal(id, proj.Description)
 	assert.NotEmpty(proj.PublicId)
 }
+
 func Test_testId(t *testing.T) {
 	assert := assert.New(t)
 	id := testId(t)
@@ -48,6 +49,7 @@ func Test_testPublicId(t *testing.T) {
 	require.NotEmpty(id)
 	assert.True(strings.HasPrefix(id, "test_"))
 }
+
 func Test_TestScopes(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -219,5 +221,4 @@ func Test_TestGroupMember(t *testing.T) {
 	require.NotNil(gm)
 	require.Equal(pg.PublicId, gm.GroupId)
 	require.Equal(u.PublicId, gm.MemberId)
-
 }

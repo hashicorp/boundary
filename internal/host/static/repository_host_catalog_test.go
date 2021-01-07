@@ -20,7 +20,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        *HostCatalog
 		opts      []Option
@@ -229,7 +229,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		orig      *HostCatalog
 		chgFn     func(*HostCatalog) *HostCatalog
@@ -575,7 +575,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
-	var tests = []struct {
+	tests := []struct {
 		name    string
 		id      string
 		want    *HostCatalog
@@ -637,7 +637,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
-	var tests = []struct {
+	tests := []struct {
 		name    string
 		id      string
 		want    int

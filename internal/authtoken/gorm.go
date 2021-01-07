@@ -1,7 +1,9 @@
 package authtoken
 
-const defaultAuthTokenTableName = "auth_token_account"
-const defaultWritableAuthTokenTableName = "auth_token"
+const (
+	defaultAuthTokenTableName         = "auth_token_account"
+	defaultWritableAuthTokenTableName = "auth_token"
+)
 
 // TableName returns the table name for the auth token.
 func (s *AuthToken) TableName() string {

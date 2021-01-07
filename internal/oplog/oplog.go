@@ -66,6 +66,7 @@ func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper
 	}
 	return &entry, nil
 }
+
 func (e *Entry) validate() error {
 	if e.Cipherer == nil {
 		return errors.New("entry Cipherer is nil")

@@ -83,7 +83,6 @@ func Test_NewTypeCatalog(t *testing.T) {
 		assert.Error(err)
 		assert.Equal("error type is {} (in NewTypeCatalog)", err.Error())
 	})
-
 }
 
 // Test_GetTypeName provides unit tests for GetTypeName

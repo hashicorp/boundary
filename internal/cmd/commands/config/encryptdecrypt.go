@@ -14,8 +14,10 @@ import (
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*EncryptDecryptCommand)(nil)
-var _ cli.CommandAutocomplete = (*EncryptDecryptCommand)(nil)
+var (
+	_ cli.Command             = (*EncryptDecryptCommand)(nil)
+	_ cli.CommandAutocomplete = (*EncryptDecryptCommand)(nil)
+)
 
 type EncryptDecryptCommand struct {
 	*base.Command

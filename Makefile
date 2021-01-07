@@ -33,7 +33,7 @@ bin: build-ui
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
 fmt:
-	goimports -w $$(find . -name '*.go' | grep -v pb.go | grep -v pb.gw.go)
+	gofumpt -w $$(find . -name '*.go' | grep -v pb.go | grep -v pb.gw.go)
 
 # Set env for all UI targets.
 UI_TARGETS := update-ui-version build-ui build-ui-ifne

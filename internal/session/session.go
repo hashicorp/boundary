@@ -106,8 +106,10 @@ func (s *Session) GetPublicId() string {
 	return s.PublicId
 }
 
-var _ Cloneable = (*Session)(nil)
-var _ db.VetForWriter = (*Session)(nil)
+var (
+	_ Cloneable       = (*Session)(nil)
+	_ db.VetForWriter = (*Session)(nil)
+)
 
 // New creates a new in memory session.
 func New(c ComposedOf, opt ...Option) (*Session, error) {

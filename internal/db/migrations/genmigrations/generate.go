@@ -114,7 +114,7 @@ func generate(dialect string) {
 	}
 
 	outFile := fmt.Sprintf("%s/%s.gen.go", baseDir, dialect)
-	if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0644); err != nil {
+	if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0o644); err != nil {
 		fmt.Printf("error writing file %q: %v\n", outFile, err)
 		os.Exit(1)
 	}

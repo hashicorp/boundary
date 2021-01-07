@@ -71,7 +71,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		tofuToken := si.lookupSessionResponse.GetTofuToken()
 		version := si.lookupSessionResponse.GetVersion()
 		endpoint := si.lookupSessionResponse.GetEndpoint()
-		//userId := si.lookupSessionResponse.GetAuthorization()
+		// userId := si.lookupSessionResponse.GetAuthorization()
 		sessStatus := si.status
 		si.RUnlock()
 

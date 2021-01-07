@@ -34,7 +34,8 @@ func TestDb_UpdateUnsetField(t *testing.T) {
 		StoreTestUser: &db_test.StoreTestUser{
 			PublicId: testId(t),
 			Name:     "default",
-		}}
+		},
+	}
 	require.NoError(t, rw.Create(context.Background(), tu))
 
 	updatedTu := tu.Clone().(*db_test.TestUser)
@@ -586,9 +587,11 @@ type testUserWithVet struct {
 func (u *testUserWithVet) GetPublicId() string {
 	return u.PublicId
 }
+
 func (u *testUserWithVet) TableName() string {
 	return "db_test_user"
 }
+
 func (u *testUserWithVet) VetForWrite(ctx context.Context, r Reader, opType OpType, opt ...Option) error {
 	if u.PublicId == "" {
 		return stderrors.New("public id is empty string for user write")
@@ -1029,6 +1032,7 @@ func TestDb_Exec(t *testing.T) {
 		require.Equal(1, rowsAffected)
 	})
 }
+
 func TestDb_DoTx(t *testing.T) {
 	t.Parallel()
 	db, _ := TestSetup(t, "postgres")
@@ -1901,6 +1905,7 @@ func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_
 	}
 	return u
 }
+
 func testCar(t *testing.T, conn *gorm.DB, name, model string, mpg int32) *db_test.TestCar {
 	t.Helper()
 	require := require.New(t)
@@ -2274,7 +2279,7 @@ func TestClear_InputTypes(t *testing.T) {
 		d int
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name string
 		args args
 		want interface{}
@@ -2430,7 +2435,7 @@ func TestClear_Structs(t *testing.T) {
 		f []string
 		d int
 	}
-	var tests = []struct {
+	tests := []struct {
 		name string
 		args args
 		want interface{}
@@ -2676,7 +2681,7 @@ func TestClear_SetFieldsToNil(t *testing.T) {
 		v interface{}
 		f []string
 	}
-	var tests = []struct {
+	tests := []struct {
 		name string
 		args args
 		want interface{}
