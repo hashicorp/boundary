@@ -1426,7 +1426,7 @@ func TestDb_ScanRows(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		require.NoError(err)
 		assert.NotEmpty(user.Id)
-		where := "select * from db_test_user where name in ($1, $2)"
+		where := "select * from db_test_user where name in (?, ?)"
 		rows, err := w.Query(context.Background(), where, []interface{}{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
@@ -1456,7 +1456,7 @@ func TestDb_Query(t *testing.T) {
 		assert.NotEmpty(user.Id)
 		assert.Equal("alice", user.Name)
 
-		where := "select * from db_test_user where name in ($1, $2)"
+		where := "select * from db_test_user where name in (?, ?)"
 		rows, err := rw.Query(context.Background(), where, []interface{}{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
