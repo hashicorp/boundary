@@ -412,12 +412,13 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("no fields matched using fieldMaskPaths %s", fieldMaskPaths))
 	}
 
-	err = rw.underlying.Statement.Parse(i)
-	if err != nil || rw.underlying.Statement.Schema == nil {
+	mDb := rw.underlying.Model(i)
+	err = mDb.Statement.Parse(i)
+	if err != nil || mDb.Statement.Schema == nil {
 		return NoRowsAffected, errors.New(errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
 	}
 	reflectValue := reflect.Indirect(reflect.ValueOf(i))
-	for _, pf := range rw.underlying.Statement.Schema.PrimaryFields {
+	for _, pf := range mDb.Statement.Schema.PrimaryFields {
 		if _, isZero := pf.ValueOf(reflectValue); isZero {
 			return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("primary key %s is not set", pf.Name))
 		}
@@ -457,13 +458,14 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 			if *opts.WithVersion == 0 {
 				return NoRowsAffected, errors.New(errors.InvalidParameter, op, "with version option is zero")
 			}
-			err := rw.underlying.Statement.Parse(i)
-			if err != nil && rw.underlying.Statement.Schema == nil {
+			mDb := rw.underlying.Model(i)
+			err = mDb.Statement.Parse(i)
+			if err != nil && mDb.Statement.Schema == nil {
 				return NoRowsAffected, errors.New(errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
 			}
-			if !contains(rw.underlying.Statement.Schema.DBNames, "version") {
-				// if _, ok := rw.underlying.Statement.Schema.FieldsByName["version"]; !ok {
-				return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", rw.underlying.Statement.Schema.Table))
+			if !contains(mDb.Statement.Schema.DBNames, "version") {
+				// if _, ok := stmt.Schema.FieldsByName["version"]; !ok {
+				return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", mDb.Statement.Schema.Table))
 			}
 			where, args = append(where, "version = ?"), append(args, opts.WithVersion)
 		}
@@ -535,12 +537,13 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
 	}
 
-	err := rw.underlying.Statement.Parse(i)
-	if err == nil && rw.underlying.Statement.Schema == nil {
+	mDb := rw.underlying.Model(i)
+	err := mDb.Statement.Parse(i)
+	if err == nil && mDb.Statement.Schema == nil {
 		return NoRowsAffected, errors.New(errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
 	}
 	reflectValue := reflect.Indirect(reflect.ValueOf(i))
-	for _, pf := range rw.underlying.Statement.Schema.PrimaryFields {
+	for _, pf := range mDb.Statement.Schema.PrimaryFields {
 		if _, isZero := pf.ValueOf(reflectValue); isZero {
 			return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("primary key %s is not set", pf.Name))
 		}
