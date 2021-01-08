@@ -58,10 +58,8 @@ func (n HostReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type (
-	HostCreateResult = HostReadResult
-	HostUpdateResult = HostReadResult
-)
+type HostCreateResult = HostReadResult
+type HostUpdateResult = HostReadResult
 
 type HostDeleteResult struct {
 	response *api.Response
@@ -177,7 +175,7 @@ func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*HostR
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -209,7 +207,7 @@ func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt 
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, hostId, opt...)
+		existingTarget, existingErr := c.Read(ctx, hostId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)

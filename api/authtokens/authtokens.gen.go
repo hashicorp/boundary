@@ -57,10 +57,8 @@ func (n AuthTokenReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type (
-	AuthTokenCreateResult = AuthTokenReadResult
-	AuthTokenUpdateResult = AuthTokenReadResult
-)
+type AuthTokenCreateResult = AuthTokenReadResult
+type AuthTokenUpdateResult = AuthTokenReadResult
 
 type AuthTokenDeleteResult struct {
 	response *api.Response
@@ -132,7 +130,7 @@ func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}

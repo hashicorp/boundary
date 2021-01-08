@@ -57,10 +57,8 @@ func (n AccountReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type (
-	AccountCreateResult = AccountReadResult
-	AccountUpdateResult = AccountReadResult
-)
+type AccountCreateResult = AccountReadResult
+type AccountUpdateResult = AccountReadResult
 
 type AccountDeleteResult struct {
 	response *api.Response
@@ -176,7 +174,7 @@ func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*Ac
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -208,7 +206,7 @@ func (c *Client) Update(ctx context.Context, accountId string, version uint32, o
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, accountId, opt...)
+		existingTarget, existingErr := c.Read(ctx, accountId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)

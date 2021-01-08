@@ -57,10 +57,8 @@ func (n UserReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type (
-	UserCreateResult = UserReadResult
-	UserUpdateResult = UserReadResult
-)
+type UserCreateResult = UserReadResult
+type UserUpdateResult = UserReadResult
 
 type UserDeleteResult struct {
 	response *api.Response
@@ -176,7 +174,7 @@ func (c *Client) Read(ctx context.Context, userId string, opt ...Option) (*UserR
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -208,7 +206,7 @@ func (c *Client) Update(ctx context.Context, userId string, version uint32, opt 
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, userId, opt...)
+		existingTarget, existingErr := c.Read(ctx, userId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -357,7 +355,7 @@ func (c *Client) AddAccounts(ctx context.Context, userId string, version uint32,
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into AddAccounts request")
 		}
-		existingTarget, existingErr := c.Read(ctx, userId, opt...)
+		existingTarget, existingErr := c.Read(ctx, userId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -422,7 +420,7 @@ func (c *Client) SetAccounts(ctx context.Context, userId string, version uint32,
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into SetAccounts request")
 		}
-		existingTarget, existingErr := c.Read(ctx, userId, opt...)
+		existingTarget, existingErr := c.Read(ctx, userId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -489,7 +487,7 @@ func (c *Client) RemoveAccounts(ctx context.Context, userId string, version uint
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into RemoveAccounts request")
 		}
-		existingTarget, existingErr := c.Read(ctx, userId, opt...)
+		existingTarget, existingErr := c.Read(ctx, userId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
