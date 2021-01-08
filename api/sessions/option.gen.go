@@ -17,6 +17,7 @@ type options struct {
 	postMap                 map[string]interface{}
 	queryMap                map[string]string
 	withAutomaticVersioning bool
+	withSkipCurlOutput      bool
 }
 
 func getDefaultOptions() options {
@@ -32,6 +33,9 @@ func getOpts(opt ...Option) (options, []api.Option) {
 		o(&opts)
 	}
 	var apiOpts []api.Option
+	if opts.withSkipCurlOutput {
+		apiOpts = append(apiOpts, api.WithSkipCurlOutput(true))
+	}
 	return opts, apiOpts
 }
 
@@ -42,5 +46,13 @@ func getOpts(opt ...Option) (options, []api.Option) {
 func WithAutomaticVersioning(enable bool) Option {
 	return func(o *options) {
 		o.withAutomaticVersioning = enable
+	}
+}
+
+// WithSkipCurlOutput tells the API to not use the current call for cURL output.
+// Useful for when we need to look up versions.
+func WithSkipCurlOutput(skip bool) Option {
+	return func(o *options) {
+		o.withSkipCurlOutput = true
 	}
 }

@@ -185,7 +185,7 @@ func (c *Client) Read(ctx context.Context, targetId string, opt ...Option) (*Tar
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -217,7 +217,7 @@ func (c *Client) Update(ctx context.Context, targetId string, version uint32, op
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, targetId, opt...)
+		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -366,7 +366,7 @@ func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint3
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into AddHostSets request")
 		}
-		existingTarget, existingErr := c.Read(ctx, targetId, opt...)
+		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -431,7 +431,7 @@ func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint3
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into SetHostSets request")
 		}
-		existingTarget, existingErr := c.Read(ctx, targetId, opt...)
+		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -498,7 +498,7 @@ func (c *Client) RemoveHostSets(ctx context.Context, targetId string, version ui
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into RemoveHostSets request")
 		}
-		existingTarget, existingErr := c.Read(ctx, targetId, opt...)
+		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)

@@ -179,7 +179,7 @@ func (c *Client) Read(ctx context.Context, roleId string, opt ...Option) (*RoleR
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -211,7 +211,7 @@ func (c *Client) Update(ctx context.Context, roleId string, version uint32, opt 
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, opt...)
+		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -360,7 +360,7 @@ func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, g
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into AddGrants request")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, opt...)
+		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -427,7 +427,7 @@ func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint3
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into AddPrincipals request")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, opt...)
+		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -492,7 +492,7 @@ func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, g
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into SetGrants request")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, opt...)
+		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -557,7 +557,7 @@ func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint3
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into SetPrincipals request")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, opt...)
+		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -624,7 +624,7 @@ func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into RemoveGrants request")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, opt...)
+		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -691,7 +691,7 @@ func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version ui
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into RemovePrincipals request")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, opt...)
+		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)

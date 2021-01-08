@@ -680,14 +680,17 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	ret := &retryablehttp.Request{
 		Request: req,
 	}
-	ret.SetBody(rawBody)
+	if err := ret.SetBody(rawBody); err != nil {
+		return nil, fmt.Errorf("error setting the raw body of the request: %w", err)
+	}
 
 	return ret, nil
 }
 
 // Do takes a properly configured request and applies client configuration to
 // it, returning the response.
-func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
+func (c *Client) Do(r *retryablehttp.Request, opt ...Option) (*Response, error) {
+	opts := getOpts(opt...)
 	c.modifyLock.RLock()
 	limiter := c.config.Limiter
 	maxRetries := c.config.MaxRetries
@@ -697,13 +700,15 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 	timeout := c.config.Timeout
 	token := c.config.Token
 	recoveryKmsWrapper := c.config.RecoveryKmsWrapper
-	outputCurlString := c.config.OutputCurlString
+	outputCurlString := c.config.OutputCurlString && !opts.withSkipCurlOuptut
 	c.modifyLock.RUnlock()
 
 	ctx := r.Context()
 
 	if limiter != nil {
-		limiter.Wait(ctx)
+		if err := limiter.Wait(ctx); err != nil {
+			return nil, fmt.Errorf("error waiting on rate limiter: %w", err)
+		}
 	}
 
 	// Sanity check the token before potentially erroring from the API
