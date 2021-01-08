@@ -55,8 +55,10 @@ func (n ScopeReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type ScopeCreateResult = ScopeReadResult
-type ScopeUpdateResult = ScopeReadResult
+type (
+	ScopeCreateResult = ScopeReadResult
+	ScopeUpdateResult = ScopeReadResult
+)
 
 type ScopeDeleteResult struct {
 	response *api.Response

@@ -61,8 +61,10 @@ func (n TargetReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type TargetCreateResult = TargetReadResult
-type TargetUpdateResult = TargetReadResult
+type (
+	TargetCreateResult = TargetReadResult
+	TargetUpdateResult = TargetReadResult
+)
 
 type TargetDeleteResult struct {
 	response *api.Response

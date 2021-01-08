@@ -57,8 +57,10 @@ func (n UserReadResult) GetResponseMap() map[string]interface{} {
 	return n.response.Map
 }
 
-type UserCreateResult = UserReadResult
-type UserUpdateResult = UserReadResult
+type (
+	UserCreateResult = UserReadResult
+	UserUpdateResult = UserReadResult
+)
 
 type UserDeleteResult struct {
 	response *api.Response
