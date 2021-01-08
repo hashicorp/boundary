@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL). Do not close the returned db.
@@ -51,6 +52,7 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*gorm.DB, strin
 	if err != nil {
 		t.Fatal(err)
 	}
+	db.Logger.LogMode(logger.Error)
 	t.Cleanup(func() {
 		sqlDB, err := db.DB()
 		assert.NoError(t, err)
