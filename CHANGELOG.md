@@ -6,6 +6,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
+* cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`
+  commands and automatic versioning is being used (that is, no `-version` flag
+  is given), it will now display the final call instead of the `GET` that
+  fetches the current version
+  ([Issue](https://github.com/hashicorp/boundary/issues/856))
+  ([PR](https://github.com/hashicorp/boundary/pull/858))
 * db: Fix panic in `database init` when controller config block is missing 
   ([Issue](https://github.com/hashicorp/boundary/issues/819)) 
   ([PR](https://github.com/hashicorp/boundary/pull/851))
