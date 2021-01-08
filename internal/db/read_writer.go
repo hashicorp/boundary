@@ -461,7 +461,6 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 			if err != nil && rw.underlying.Statement.Schema == nil {
 				return NoRowsAffected, errors.New(errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
 			}
-			fmt.Println(rw.underlying.Statement.Schema.FieldsByName["version"])
 			if !contains(rw.underlying.Statement.Schema.DBNames, "version") {
 				// if _, ok := rw.underlying.Statement.Schema.FieldsByName["version"]; !ok {
 				return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", rw.underlying.Statement.Schema.Table))
@@ -909,7 +908,7 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 
 		// step one of this, start a transaction...
 		newTx := w.underlying.WithContext(ctx)
-		newTx.Begin()
+		newTx = newTx.Begin()
 
 		rw := &Db{newTx}
 		if err := Handler(rw, rw); err != nil {
@@ -1006,7 +1005,7 @@ func (rw *Db) LookupWhere(_ context.Context, resource interface{}, where string,
 // clause with parameters.  Supports the WithLimit option.  If
 // WithLimit < 0, then unlimited results are returned.  If WithLimit == 0, then
 // default limits are used for results.  Supports the WithOrder option.
-func (rw *Db) SearchWhere(_ context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
+func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	const op = "db.SearchWhere"
 	opts := GetOpts(opt...)
 	if rw.underlying == nil {
@@ -1016,8 +1015,10 @@ func (rw *Db) SearchWhere(_ context.Context, resources interface{}, where string
 		return errors.New(errors.InvalidParameter, op, "interface parameter must to be a pointer")
 	}
 	var err error
-	db := rw.underlying.Order(opts.withOrder)
-
+	db := rw.underlying.WithContext(ctx)
+	if opts.withOrder != "" {
+		db = db.Order(opts.withOrder)
+	}
 	// Perform limiting
 	switch {
 	case opts.WithLimit < 0: // any negative number signals unlimited results
