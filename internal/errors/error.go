@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgconn"
 )
 
 // Op represents an operation (package.function).
@@ -123,7 +123,7 @@ func Convert(e error) *Err {
 	if err, ok := e.(*Err); ok {
 		return err
 	}
-	var pgxError *pgx.PgError
+	var pgxError *pgconn.PgError
 	if As(e, &pgxError) {
 		if pgxError.Code[0:2] == "23" { // class of integrity constraint violations
 			switch pgxError.Code {
