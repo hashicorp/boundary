@@ -108,10 +108,67 @@ func TestDevWorker(t *testing.T) {
 			Name:        "dev-worker",
 			Description: "A default worker created in dev mode",
 			Controllers: []string{"127.0.0.1"},
+			Tags: map[string][]string{
+				"type": {"dev", "local"},
+			},
 		},
 	}
 
 	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
-
+	exp.Worker.TagsRaw = actual.Worker.TagsRaw
 	assert.Equal(t, exp, actual)
+
+	// Redo it with key=value syntax for tags
+	devWorkerKeyValueConfig := `
+	listener "tcp" {
+		purpose = "proxy"
+	}
+
+	worker {
+		name = "dev-worker"
+		description = "A default worker created in dev mode"
+		controllers = ["127.0.0.1"]
+		tags = ["type=dev", "type=local"]
+	}
+	`
+
+	actual, err = Parse(devConfig + devWorkerKeyValueConfig)
+	assert.NoError(t, err)
+	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
+	exp.Worker.TagsRaw = actual.Worker.TagsRaw
+	assert.Equal(t, exp, actual)
+
+	// Redo it with non-lower-cased keys
+	devWorkerKeyValueConfig = `
+	listener "tcp" {
+		purpose = "proxy"
+	}
+
+	worker {
+		name = "dev-worker"
+		description = "A default worker created in dev mode"
+		controllers = ["127.0.0.1"]
+		tags = ["tyPe=dev", "type=local"]
+	}
+	`
+
+	_, err = Parse(devConfig + devWorkerKeyValueConfig)
+	assert.Error(t, err)
+
+	// Redo it with non-lower-cased values
+	devWorkerKeyValueConfig = `
+		listener "tcp" {
+			purpose = "proxy"
+		}
+	
+		worker {
+			name = "dev-worker"
+			description = "A default worker created in dev mode"
+			controllers = ["127.0.0.1"]
+			tags = ["type=dev", "type=loCal"]
+		}
+		`
+
+	_, err = Parse(devConfig + devWorkerKeyValueConfig)
+	assert.Error(t, err)
 }

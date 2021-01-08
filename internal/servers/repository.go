@@ -53,9 +53,16 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) 
 	}, nil
 }
 
-// list will return a listing of resources and honor the WithLimit option or the
-// repo defaultLimit
+// ListServers is a passthrough to listServersWithReader that uses the repo's
+// normal reader.
 func (r *Repository) ListServers(ctx context.Context, serverType ServerType, opt ...Option) ([]*Server, error) {
+	return r.listServersWithReader(ctx, r.reader, serverType, opt...)
+}
+
+// listServersWithReader will return a listing of resources and honor the
+// WithLimit option or the repo defaultLimit. It accepts a reader, allowing it
+// to be used within a transaction or without.
+func (r *Repository) listServersWithReader(ctx context.Context, reader db.Reader, serverType ServerType, opt ...Option) ([]*Server, error) {
 	opts := getOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
@@ -63,7 +70,7 @@ func (r *Repository) ListServers(ctx context.Context, serverType ServerType, opt
 	}
 	updateTime := time.Now().Add(-1 * liveness)
 	var servers []*Server
-	if err := r.reader.SearchWhere(
+	if err := reader.SearchWhere(
 		ctx,
 		&servers,
 		"type = $1 and update_time > $2",
@@ -75,46 +82,109 @@ func (r *Repository) ListServers(ctx context.Context, serverType ServerType, opt
 	return servers, nil
 }
 
+// ServerTag holds the information for the server_tags table for Gorm.
+type ServerTag struct {
+	ServerId string
+	Key      string
+	Value    string
+}
+
+// ListTagsForServers pulls out tag tuples into ServerTag structs for the
+// given server ID values.
+func (r *Repository) ListTagsForServers(ctx context.Context, serverIds []string, opt ...Option) ([]*ServerTag, error) {
+	var serverTags []*ServerTag
+	if err := r.reader.SearchWhere(
+		ctx,
+		&serverTags,
+		"server_id = ?",
+		[]interface{}{serverIds},
+		db.WithLimit(-1),
+	); err != nil {
+		return nil, fmt.Errorf("error listing server tags: %w", err)
+	}
+	return serverTags, nil
+}
+
 // UpsertServer adds or updates a server in the DB
 func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Option) ([]*Server, int, error) {
 	if server == nil {
 		return nil, db.NoRowsAffected, errors.New("cannot update server that is nil")
 	}
-	// Ensure, for now at least, the private ID is always equivalent to the name
-	server.PrivateId = server.Name
-	// Build query
-	q := `
-	insert into server
-		(private_id, type, name, description, address, update_time)
-	values
-		($1, $2, $3, $4, $5, $6)
-	on conflict on constraint server_pkey
-	do update set
-		name = $3,
-		description = $4,
-		address = $5,
-		update_time = $6;
-	`
 
-	rowsAffected, err := r.writer.Exec(ctx, q,
-		[]interface{}{
-			server.PrivateId,
-			server.Type,
-			server.Name,
-			server.Description,
-			server.Address,
-			time.Now().Format(time.RFC3339),
-		})
+	opts := getOpts(opt...)
+
+	var rowsUpdated int
+	var controllers []*Server
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, w db.Writer) error {
+			var err error
+			rowsUpdated, err = w.Exec(ctx,
+				serverUpsertQuery,
+				[]interface{}{
+					server.PrivateId,
+					server.Type,
+					server.Description,
+					server.Address,
+					time.Now().Format(time.RFC3339),
+				})
+			if err != nil {
+				return fmt.Errorf("error performing status upsert: %w", err)
+			}
+
+			// If it's a worker, fetch the current controllers to feed to them
+			if server.Type == resource.Worker.String() {
+				// Fetch current controllers to feed to the workers
+				controllers, err = r.listServersWithReader(ctx, read, ServerTypeController)
+				if err != nil {
+					return fmt.Errorf("error fetching list of controllers to send to worker: %w", err)
+				}
+			}
+
+			// If we've been told to update tags, we need to clean out old
+			// ones and add new ones. Within the current transaction, simply
+			// delete all tags for the given worker, then add the new ones
+			// we've been sent.
+			if opts.withUpdateTags {
+				_, err = w.Delete(ctx, &ServerTag{}, db.WithWhere(deleteTagsSql, server.PrivateId))
+				if err != nil {
+					return fmt.Errorf("error clearing worker tags: %w", err)
+				}
+
+				// If tags were cleared out entirely, then we'll have nothing
+				// to do here, e.g., it will result in deletion of all tags.
+				// Otherwise, go through and stage each tuple for insertion
+				// below.
+				if len(server.Tags) > 0 {
+					tags := make([]interface{}, 0, len(server.Tags))
+					for k, v := range server.Tags {
+						if v == nil {
+							return fmt.Errorf("found nil tag value for worker %s and key %s", server.PrivateId, k)
+						}
+						for _, val := range v.Values {
+							tags = append(tags, ServerTag{
+								ServerId: server.PrivateId,
+								Key:      k,
+								Value:    val,
+							})
+						}
+					}
+					if err = w.CreateItems(ctx, tags); err != nil {
+						return fmt.Errorf("error storing tags for worker %s: %w", server.PrivateId, err)
+					}
+				}
+			}
+
+			return nil
+		},
+	)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("error performing status upsert: %w", err)
+		return nil, db.NoRowsAffected, err
 	}
-	// If updating a controller, done
-	if server.Type == resource.Controller.String() {
-		return nil, int(rowsAffected), nil
-	}
-	// Fetch current controllers to feed to the workers
-	controllers, err := r.ListServers(ctx, ServerTypeController)
-	return controllers, len(controllers), err
+
+	return controllers, rowsUpdated, nil
 }
 
 type RecoveryNonce struct {
@@ -138,7 +208,7 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, err
 	// If something was inserted before 3x the actual validity period, clean it out
 	endTime := time.Now().Add(-3 * globals.RecoveryTokenValidityPeriod)
 
-	rows, err := r.writer.Delete(ctx, &RecoveryNonce{}, db.WithWhere(deleteWhereSql, endTime))
+	rows, err := r.writer.Delete(ctx, &RecoveryNonce{}, db.WithWhere(deleteWhereCreateTimeSql, endTime))
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("error performing nonce cleanup: %w", err)
 	}

@@ -158,6 +158,7 @@ begin;
     endpoint text -- not part of the warehouse, used to send info to the worker
   );
 
+  -- Replaced in 100 to add worker_filter
   create trigger 
     immutable_columns
   before
@@ -453,6 +454,7 @@ begin;
   create trigger insert_session_state before insert on session_state
     for each row execute procedure insert_session_state();
 
+  -- Replaced in 100 to add worker_filter
   create view session_with_state as
   select
     s.public_id,

@@ -12,8 +12,7 @@ CGO_ENABLED?=0
 
 export GEN_BASEPATH := $(shell pwd)
 
-api: apigen fmt
-apigen:
+api:
 	$(MAKE) --environment-overrides -C internal/api/genapi api
 
 tools:

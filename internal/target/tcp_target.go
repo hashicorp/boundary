@@ -41,6 +41,7 @@ func NewTcpTarget(scopeId string, opt ...Option) (*TcpTarget, error) {
 			DefaultPort:            opts.withDefaultPort,
 			SessionConnectionLimit: opts.withSessionConnectionLimit,
 			SessionMaxSeconds:      opts.withSessionMaxSeconds,
+			WorkerFilter:           opts.withWorkerFilter,
 		},
 	}
 	return t, nil

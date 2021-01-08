@@ -4,6 +4,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Changes/Deprecations
+
+* controller/worker: Require names to be all lowercase. This removes ambiguity
+  or accidental mismatching when using upcoming filtering features.
+
 ### Bug Fixes
 
 * cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`

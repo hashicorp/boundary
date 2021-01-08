@@ -33,6 +33,7 @@ func generateTargetTableOutput(in *targets.Target) string {
 		"Updated Time":             in.UpdatedTime.Local().Format(time.RFC1123),
 		"Session Connection Limit": in.SessionConnectionLimit,
 		"Session Max Seconds":      in.SessionMaxSeconds,
+		"Worker Filter":            in.WorkerFilter,
 	}
 
 	if in.Name != "" {

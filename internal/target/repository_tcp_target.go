@@ -128,6 +128,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		case strings.EqualFold("defaultport", f):
 		case strings.EqualFold("sessionmaxseconds", f):
 		case strings.EqualFold("sessionconnectionlimit", f):
+		case strings.EqualFold("workerfilter", f):
 		default:
 			return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: field: %s: %w", f, errors.ErrInvalidFieldMask)
 		}
@@ -140,9 +141,10 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 			"DefaultPort":            target.DefaultPort,
 			"SessionMaxSeconds":      target.SessionMaxSeconds,
 			"SessionConnectionLimit": target.SessionConnectionLimit,
+			"WorkerFilter":           target.WorkerFilter,
 		},
 		fieldMaskPaths,
-		[]string{"SessionMaxSeconds", "SessionConnectionLimit"},
+		[]string{"SessionMaxSeconds", "SessionConnectionLimit", "WorkerFilter"},
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update tcp target: %w", errors.ErrEmptyFieldMask)
