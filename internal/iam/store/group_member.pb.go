@@ -7,12 +7,11 @@
 package store
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -260,15 +259,12 @@ func file_controller_storage_iam_store_v1_group_member_proto_rawDescGZIP() []byt
 	return file_controller_storage_iam_store_v1_group_member_proto_rawDescData
 }
 
-var (
-	file_controller_storage_iam_store_v1_group_member_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-	file_controller_storage_iam_store_v1_group_member_proto_goTypes  = []interface{}{
-		(*GroupMemberUser)(nil),     // 0: controller.storage.iam.store.v1.GroupMemberUser
-		(*GroupMemberView)(nil),     // 1: controller.storage.iam.store.v1.GroupMemberView
-		(*timestamp.Timestamp)(nil), // 2: controller.storage.timestamp.v1.Timestamp
-	}
-)
-
+var file_controller_storage_iam_store_v1_group_member_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_controller_storage_iam_store_v1_group_member_proto_goTypes = []interface{}{
+	(*GroupMemberUser)(nil),     // 0: controller.storage.iam.store.v1.GroupMemberUser
+	(*GroupMemberView)(nil),     // 1: controller.storage.iam.store.v1.GroupMemberView
+	(*timestamp.Timestamp)(nil), // 2: controller.storage.timestamp.v1.Timestamp
+}
 var file_controller_storage_iam_store_v1_group_member_proto_depIdxs = []int32{
 	2, // 0: controller.storage.iam.store.v1.GroupMemberUser.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	2, // 1: controller.storage.iam.store.v1.GroupMemberView.create_time:type_name -> controller.storage.timestamp.v1.Timestamp

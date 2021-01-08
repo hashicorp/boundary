@@ -7,9 +7,6 @@
 package authmethods
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_struct "github.com/golang/protobuf/ptypes/struct"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	wrappers "github.com/golang/protobuf/ptypes/wrappers"
@@ -17,6 +14,8 @@ import (
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -306,18 +305,15 @@ func file_controller_api_resources_authmethods_v1_auth_method_proto_rawDescGZIP(
 	return file_controller_api_resources_authmethods_v1_auth_method_proto_rawDescData
 }
 
-var (
-	file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-	file_controller_api_resources_authmethods_v1_auth_method_proto_goTypes  = []interface{}{
-		(*AuthMethod)(nil),                   // 0: controller.api.resources.authmethods.v1.AuthMethod
-		(*PasswordAuthMethodAttributes)(nil), // 1: controller.api.resources.authmethods.v1.PasswordAuthMethodAttributes
-		(*scopes.ScopeInfo)(nil),             // 2: controller.api.resources.scopes.v1.ScopeInfo
-		(*wrappers.StringValue)(nil),         // 3: google.protobuf.StringValue
-		(*timestamp.Timestamp)(nil),          // 4: google.protobuf.Timestamp
-		(*_struct.Struct)(nil),               // 5: google.protobuf.Struct
-	}
-)
-
+var file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_controller_api_resources_authmethods_v1_auth_method_proto_goTypes = []interface{}{
+	(*AuthMethod)(nil),                   // 0: controller.api.resources.authmethods.v1.AuthMethod
+	(*PasswordAuthMethodAttributes)(nil), // 1: controller.api.resources.authmethods.v1.PasswordAuthMethodAttributes
+	(*scopes.ScopeInfo)(nil),             // 2: controller.api.resources.scopes.v1.ScopeInfo
+	(*wrappers.StringValue)(nil),         // 3: google.protobuf.StringValue
+	(*timestamp.Timestamp)(nil),          // 4: google.protobuf.Timestamp
+	(*_struct.Struct)(nil),               // 5: google.protobuf.Struct
+}
 var file_controller_api_resources_authmethods_v1_auth_method_proto_depIdxs = []int32{
 	2, // 0: controller.api.resources.authmethods.v1.AuthMethod.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
 	3, // 1: controller.api.resources.authmethods.v1.AuthMethod.name:type_name -> google.protobuf.StringValue

@@ -7,9 +7,6 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/golang/protobuf/ptypes/wrappers"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	groups "github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
@@ -18,6 +15,8 @@ import (
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -1071,30 +1070,27 @@ func file_controller_api_services_v1_group_service_proto_rawDescGZIP() []byte {
 	return file_controller_api_services_v1_group_service_proto_rawDescData
 }
 
-var (
-	file_controller_api_services_v1_group_service_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
-	file_controller_api_services_v1_group_service_proto_goTypes  = []interface{}{
-		(*GetGroupRequest)(nil),            // 0: controller.api.services.v1.GetGroupRequest
-		(*GetGroupResponse)(nil),           // 1: controller.api.services.v1.GetGroupResponse
-		(*ListGroupsRequest)(nil),          // 2: controller.api.services.v1.ListGroupsRequest
-		(*ListGroupsResponse)(nil),         // 3: controller.api.services.v1.ListGroupsResponse
-		(*CreateGroupRequest)(nil),         // 4: controller.api.services.v1.CreateGroupRequest
-		(*CreateGroupResponse)(nil),        // 5: controller.api.services.v1.CreateGroupResponse
-		(*UpdateGroupRequest)(nil),         // 6: controller.api.services.v1.UpdateGroupRequest
-		(*UpdateGroupResponse)(nil),        // 7: controller.api.services.v1.UpdateGroupResponse
-		(*DeleteGroupRequest)(nil),         // 8: controller.api.services.v1.DeleteGroupRequest
-		(*DeleteGroupResponse)(nil),        // 9: controller.api.services.v1.DeleteGroupResponse
-		(*AddGroupMembersRequest)(nil),     // 10: controller.api.services.v1.AddGroupMembersRequest
-		(*AddGroupMembersResponse)(nil),    // 11: controller.api.services.v1.AddGroupMembersResponse
-		(*SetGroupMembersRequest)(nil),     // 12: controller.api.services.v1.SetGroupMembersRequest
-		(*SetGroupMembersResponse)(nil),    // 13: controller.api.services.v1.SetGroupMembersResponse
-		(*RemoveGroupMembersRequest)(nil),  // 14: controller.api.services.v1.RemoveGroupMembersRequest
-		(*RemoveGroupMembersResponse)(nil), // 15: controller.api.services.v1.RemoveGroupMembersResponse
-		(*groups.Group)(nil),               // 16: controller.api.resources.groups.v1.Group
-		(*field_mask.FieldMask)(nil),       // 17: google.protobuf.FieldMask
-	}
-)
-
+var file_controller_api_services_v1_group_service_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_controller_api_services_v1_group_service_proto_goTypes = []interface{}{
+	(*GetGroupRequest)(nil),            // 0: controller.api.services.v1.GetGroupRequest
+	(*GetGroupResponse)(nil),           // 1: controller.api.services.v1.GetGroupResponse
+	(*ListGroupsRequest)(nil),          // 2: controller.api.services.v1.ListGroupsRequest
+	(*ListGroupsResponse)(nil),         // 3: controller.api.services.v1.ListGroupsResponse
+	(*CreateGroupRequest)(nil),         // 4: controller.api.services.v1.CreateGroupRequest
+	(*CreateGroupResponse)(nil),        // 5: controller.api.services.v1.CreateGroupResponse
+	(*UpdateGroupRequest)(nil),         // 6: controller.api.services.v1.UpdateGroupRequest
+	(*UpdateGroupResponse)(nil),        // 7: controller.api.services.v1.UpdateGroupResponse
+	(*DeleteGroupRequest)(nil),         // 8: controller.api.services.v1.DeleteGroupRequest
+	(*DeleteGroupResponse)(nil),        // 9: controller.api.services.v1.DeleteGroupResponse
+	(*AddGroupMembersRequest)(nil),     // 10: controller.api.services.v1.AddGroupMembersRequest
+	(*AddGroupMembersResponse)(nil),    // 11: controller.api.services.v1.AddGroupMembersResponse
+	(*SetGroupMembersRequest)(nil),     // 12: controller.api.services.v1.SetGroupMembersRequest
+	(*SetGroupMembersResponse)(nil),    // 13: controller.api.services.v1.SetGroupMembersResponse
+	(*RemoveGroupMembersRequest)(nil),  // 14: controller.api.services.v1.RemoveGroupMembersRequest
+	(*RemoveGroupMembersResponse)(nil), // 15: controller.api.services.v1.RemoveGroupMembersResponse
+	(*groups.Group)(nil),               // 16: controller.api.resources.groups.v1.Group
+	(*field_mask.FieldMask)(nil),       // 17: google.protobuf.FieldMask
+}
 var file_controller_api_services_v1_group_service_proto_depIdxs = []int32{
 	16, // 0: controller.api.services.v1.GetGroupResponse.item:type_name -> controller.api.resources.groups.v1.Group
 	16, // 1: controller.api.services.v1.ListGroupsResponse.items:type_name -> controller.api.resources.groups.v1.Group

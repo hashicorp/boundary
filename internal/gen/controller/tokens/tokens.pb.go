@@ -7,11 +7,10 @@
 package tokens
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -106,13 +105,10 @@ func file_controller_tokens_v1_tokens_proto_rawDescGZIP() []byte {
 	return file_controller_tokens_v1_tokens_proto_rawDescData
 }
 
-var (
-	file_controller_tokens_v1_tokens_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_controller_tokens_v1_tokens_proto_goTypes  = []interface{}{
-		(*S1TokenInfo)(nil), // 0: controller.tokens.v1.S1TokenInfo
-	}
-)
-
+var file_controller_tokens_v1_tokens_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_controller_tokens_v1_tokens_proto_goTypes = []interface{}{
+	(*S1TokenInfo)(nil), // 0: controller.tokens.v1.S1TokenInfo
+}
 var file_controller_tokens_v1_tokens_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type

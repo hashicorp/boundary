@@ -9,13 +9,12 @@
 package store
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -460,16 +459,13 @@ func file_controller_storage_auth_password_store_v1_password_proto_rawDescGZIP()
 	return file_controller_storage_auth_password_store_v1_password_proto_rawDescData
 }
 
-var (
-	file_controller_storage_auth_password_store_v1_password_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-	file_controller_storage_auth_password_store_v1_password_proto_goTypes  = []interface{}{
-		(*AuthMethod)(nil),          // 0: controller.storage.auth.password.store.v1.AuthMethod
-		(*Account)(nil),             // 1: controller.storage.auth.password.store.v1.Account
-		(*Credential)(nil),          // 2: controller.storage.auth.password.store.v1.Credential
-		(*timestamp.Timestamp)(nil), // 3: controller.storage.timestamp.v1.Timestamp
-	}
-)
-
+var file_controller_storage_auth_password_store_v1_password_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_controller_storage_auth_password_store_v1_password_proto_goTypes = []interface{}{
+	(*AuthMethod)(nil),          // 0: controller.storage.auth.password.store.v1.AuthMethod
+	(*Account)(nil),             // 1: controller.storage.auth.password.store.v1.Account
+	(*Credential)(nil),          // 2: controller.storage.auth.password.store.v1.Credential
+	(*timestamp.Timestamp)(nil), // 3: controller.storage.timestamp.v1.Timestamp
+}
 var file_controller_storage_auth_password_store_v1_password_proto_depIdxs = []int32{
 	3, // 0: controller.storage.auth.password.store.v1.AuthMethod.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	3, // 1: controller.storage.auth.password.store.v1.AuthMethod.update_time:type_name -> controller.storage.timestamp.v1.Timestamp

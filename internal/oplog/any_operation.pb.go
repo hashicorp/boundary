@@ -7,12 +7,11 @@
 package oplog
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -217,16 +216,13 @@ func file_controller_storage_oplog_v1_any_operation_proto_rawDescGZIP() []byte {
 	return file_controller_storage_oplog_v1_any_operation_proto_rawDescData
 }
 
-var (
-	file_controller_storage_oplog_v1_any_operation_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-	file_controller_storage_oplog_v1_any_operation_proto_msgTypes  = make([]protoimpl.MessageInfo, 1)
-	file_controller_storage_oplog_v1_any_operation_proto_goTypes   = []interface{}{
-		(OpType)(0),                  // 0: controller.storage.oplog.v1.OpType
-		(*AnyOperation)(nil),         // 1: controller.storage.oplog.v1.AnyOperation
-		(*field_mask.FieldMask)(nil), // 2: google.protobuf.FieldMask
-	}
-)
-
+var file_controller_storage_oplog_v1_any_operation_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_controller_storage_oplog_v1_any_operation_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_controller_storage_oplog_v1_any_operation_proto_goTypes = []interface{}{
+	(OpType)(0),                  // 0: controller.storage.oplog.v1.OpType
+	(*AnyOperation)(nil),         // 1: controller.storage.oplog.v1.AnyOperation
+	(*field_mask.FieldMask)(nil), // 2: google.protobuf.FieldMask
+}
 var file_controller_storage_oplog_v1_any_operation_proto_depIdxs = []int32{
 	0, // 0: controller.storage.oplog.v1.AnyOperation.operation_type:type_name -> controller.storage.oplog.v1.OpType
 	2, // 1: controller.storage.oplog.v1.AnyOperation.field_mask:type_name -> google.protobuf.FieldMask

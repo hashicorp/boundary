@@ -4,7 +4,6 @@ package services
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -204,36 +203,30 @@ type UserServiceServer interface {
 }
 
 // UnimplementedUserServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedUserServiceServer struct{}
+type UnimplementedUserServiceServer struct {
+}
 
 func (UnimplementedUserServiceServer) GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUser not implemented")
 }
-
 func (UnimplementedUserServiceServer) ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUsers not implemented")
 }
-
 func (UnimplementedUserServiceServer) CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateUser not implemented")
 }
-
 func (UnimplementedUserServiceServer) UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateUser not implemented")
 }
-
 func (UnimplementedUserServiceServer) DeleteUser(context.Context, *DeleteUserRequest) (*DeleteUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteUser not implemented")
 }
-
 func (UnimplementedUserServiceServer) AddUserAccounts(context.Context, *AddUserAccountsRequest) (*AddUserAccountsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddUserAccounts not implemented")
 }
-
 func (UnimplementedUserServiceServer) SetUserAccounts(context.Context, *SetUserAccountsRequest) (*SetUserAccountsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetUserAccounts not implemented")
 }
-
 func (UnimplementedUserServiceServer) RemoveUserAccounts(context.Context, *RemoveUserAccountsRequest) (*RemoveUserAccountsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveUserAccounts not implemented")
 }

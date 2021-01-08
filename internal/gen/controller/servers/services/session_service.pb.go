@@ -7,14 +7,13 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	targets "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	_ "github.com/hashicorp/boundary/internal/servers"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -1125,30 +1124,27 @@ func file_controller_servers_services_v1_session_service_proto_rawDescGZIP() []b
 	return file_controller_servers_services_v1_session_service_proto_rawDescData
 }
 
-var (
-	file_controller_servers_services_v1_session_service_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
-	file_controller_servers_services_v1_session_service_proto_goTypes  = []interface{}{
-		(*LookupSessionRequest)(nil),             // 0: controller.servers.services.v1.LookupSessionRequest
-		(*LookupSessionResponse)(nil),            // 1: controller.servers.services.v1.LookupSessionResponse
-		(*ActivateSessionRequest)(nil),           // 2: controller.servers.services.v1.ActivateSessionRequest
-		(*ActivateSessionResponse)(nil),          // 3: controller.servers.services.v1.ActivateSessionResponse
-		(*CancelSessionRequest)(nil),             // 4: controller.servers.services.v1.CancelSessionRequest
-		(*CancelSessionResponse)(nil),            // 5: controller.servers.services.v1.CancelSessionResponse
-		(*AuthorizeConnectionRequest)(nil),       // 6: controller.servers.services.v1.AuthorizeConnectionRequest
-		(*AuthorizeConnectionResponse)(nil),      // 7: controller.servers.services.v1.AuthorizeConnectionResponse
-		(*ConnectConnectionRequest)(nil),         // 8: controller.servers.services.v1.ConnectConnectionRequest
-		(*ConnectConnectionResponse)(nil),        // 9: controller.servers.services.v1.ConnectConnectionResponse
-		(*CloseConnectionRequestData)(nil),       // 10: controller.servers.services.v1.CloseConnectionRequestData
-		(*CloseConnectionRequest)(nil),           // 11: controller.servers.services.v1.CloseConnectionRequest
-		(*CloseConnectionResponseData)(nil),      // 12: controller.servers.services.v1.CloseConnectionResponseData
-		(*CloseConnectionResponse)(nil),          // 13: controller.servers.services.v1.CloseConnectionResponse
-		(*targets.SessionAuthorizationData)(nil), // 14: controller.api.resources.targets.v1.SessionAuthorizationData
-		(*timestamp.Timestamp)(nil),              // 15: google.protobuf.Timestamp
-		(SESSIONSTATUS)(0),                       // 16: controller.servers.services.v1.SESSIONSTATUS
-		(CONNECTIONSTATUS)(0),                    // 17: controller.servers.services.v1.CONNECTIONSTATUS
-	}
-)
-
+var file_controller_servers_services_v1_session_service_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_controller_servers_services_v1_session_service_proto_goTypes = []interface{}{
+	(*LookupSessionRequest)(nil),             // 0: controller.servers.services.v1.LookupSessionRequest
+	(*LookupSessionResponse)(nil),            // 1: controller.servers.services.v1.LookupSessionResponse
+	(*ActivateSessionRequest)(nil),           // 2: controller.servers.services.v1.ActivateSessionRequest
+	(*ActivateSessionResponse)(nil),          // 3: controller.servers.services.v1.ActivateSessionResponse
+	(*CancelSessionRequest)(nil),             // 4: controller.servers.services.v1.CancelSessionRequest
+	(*CancelSessionResponse)(nil),            // 5: controller.servers.services.v1.CancelSessionResponse
+	(*AuthorizeConnectionRequest)(nil),       // 6: controller.servers.services.v1.AuthorizeConnectionRequest
+	(*AuthorizeConnectionResponse)(nil),      // 7: controller.servers.services.v1.AuthorizeConnectionResponse
+	(*ConnectConnectionRequest)(nil),         // 8: controller.servers.services.v1.ConnectConnectionRequest
+	(*ConnectConnectionResponse)(nil),        // 9: controller.servers.services.v1.ConnectConnectionResponse
+	(*CloseConnectionRequestData)(nil),       // 10: controller.servers.services.v1.CloseConnectionRequestData
+	(*CloseConnectionRequest)(nil),           // 11: controller.servers.services.v1.CloseConnectionRequest
+	(*CloseConnectionResponseData)(nil),      // 12: controller.servers.services.v1.CloseConnectionResponseData
+	(*CloseConnectionResponse)(nil),          // 13: controller.servers.services.v1.CloseConnectionResponse
+	(*targets.SessionAuthorizationData)(nil), // 14: controller.api.resources.targets.v1.SessionAuthorizationData
+	(*timestamp.Timestamp)(nil),              // 15: google.protobuf.Timestamp
+	(SESSIONSTATUS)(0),                       // 16: controller.servers.services.v1.SESSIONSTATUS
+	(CONNECTIONSTATUS)(0),                    // 17: controller.servers.services.v1.CONNECTIONSTATUS
+}
 var file_controller_servers_services_v1_session_service_proto_depIdxs = []int32{
 	14, // 0: controller.servers.services.v1.LookupSessionResponse.authorization:type_name -> controller.api.resources.targets.v1.SessionAuthorizationData
 	15, // 1: controller.servers.services.v1.LookupSessionResponse.expiration:type_name -> google.protobuf.Timestamp

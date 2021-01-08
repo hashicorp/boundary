@@ -7,9 +7,6 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/golang/protobuf/ptypes/wrappers"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	roles "github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
@@ -17,6 +14,8 @@ import (
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -1479,36 +1478,33 @@ func file_controller_api_services_v1_role_service_proto_rawDescGZIP() []byte {
 	return file_controller_api_services_v1_role_service_proto_rawDescData
 }
 
-var (
-	file_controller_api_services_v1_role_service_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
-	file_controller_api_services_v1_role_service_proto_goTypes  = []interface{}{
-		(*GetRoleRequest)(nil),               // 0: controller.api.services.v1.GetRoleRequest
-		(*GetRoleResponse)(nil),              // 1: controller.api.services.v1.GetRoleResponse
-		(*ListRolesRequest)(nil),             // 2: controller.api.services.v1.ListRolesRequest
-		(*ListRolesResponse)(nil),            // 3: controller.api.services.v1.ListRolesResponse
-		(*CreateRoleRequest)(nil),            // 4: controller.api.services.v1.CreateRoleRequest
-		(*CreateRoleResponse)(nil),           // 5: controller.api.services.v1.CreateRoleResponse
-		(*UpdateRoleRequest)(nil),            // 6: controller.api.services.v1.UpdateRoleRequest
-		(*UpdateRoleResponse)(nil),           // 7: controller.api.services.v1.UpdateRoleResponse
-		(*DeleteRoleRequest)(nil),            // 8: controller.api.services.v1.DeleteRoleRequest
-		(*DeleteRoleResponse)(nil),           // 9: controller.api.services.v1.DeleteRoleResponse
-		(*AddRolePrincipalsRequest)(nil),     // 10: controller.api.services.v1.AddRolePrincipalsRequest
-		(*AddRolePrincipalsResponse)(nil),    // 11: controller.api.services.v1.AddRolePrincipalsResponse
-		(*SetRolePrincipalsRequest)(nil),     // 12: controller.api.services.v1.SetRolePrincipalsRequest
-		(*SetRolePrincipalsResponse)(nil),    // 13: controller.api.services.v1.SetRolePrincipalsResponse
-		(*RemoveRolePrincipalsRequest)(nil),  // 14: controller.api.services.v1.RemoveRolePrincipalsRequest
-		(*RemoveRolePrincipalsResponse)(nil), // 15: controller.api.services.v1.RemoveRolePrincipalsResponse
-		(*AddRoleGrantsRequest)(nil),         // 16: controller.api.services.v1.AddRoleGrantsRequest
-		(*AddRoleGrantsResponse)(nil),        // 17: controller.api.services.v1.AddRoleGrantsResponse
-		(*SetRoleGrantsRequest)(nil),         // 18: controller.api.services.v1.SetRoleGrantsRequest
-		(*SetRoleGrantsResponse)(nil),        // 19: controller.api.services.v1.SetRoleGrantsResponse
-		(*RemoveRoleGrantsRequest)(nil),      // 20: controller.api.services.v1.RemoveRoleGrantsRequest
-		(*RemoveRoleGrantsResponse)(nil),     // 21: controller.api.services.v1.RemoveRoleGrantsResponse
-		(*roles.Role)(nil),                   // 22: controller.api.resources.roles.v1.Role
-		(*field_mask.FieldMask)(nil),         // 23: google.protobuf.FieldMask
-	}
-)
-
+var file_controller_api_services_v1_role_service_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_controller_api_services_v1_role_service_proto_goTypes = []interface{}{
+	(*GetRoleRequest)(nil),               // 0: controller.api.services.v1.GetRoleRequest
+	(*GetRoleResponse)(nil),              // 1: controller.api.services.v1.GetRoleResponse
+	(*ListRolesRequest)(nil),             // 2: controller.api.services.v1.ListRolesRequest
+	(*ListRolesResponse)(nil),            // 3: controller.api.services.v1.ListRolesResponse
+	(*CreateRoleRequest)(nil),            // 4: controller.api.services.v1.CreateRoleRequest
+	(*CreateRoleResponse)(nil),           // 5: controller.api.services.v1.CreateRoleResponse
+	(*UpdateRoleRequest)(nil),            // 6: controller.api.services.v1.UpdateRoleRequest
+	(*UpdateRoleResponse)(nil),           // 7: controller.api.services.v1.UpdateRoleResponse
+	(*DeleteRoleRequest)(nil),            // 8: controller.api.services.v1.DeleteRoleRequest
+	(*DeleteRoleResponse)(nil),           // 9: controller.api.services.v1.DeleteRoleResponse
+	(*AddRolePrincipalsRequest)(nil),     // 10: controller.api.services.v1.AddRolePrincipalsRequest
+	(*AddRolePrincipalsResponse)(nil),    // 11: controller.api.services.v1.AddRolePrincipalsResponse
+	(*SetRolePrincipalsRequest)(nil),     // 12: controller.api.services.v1.SetRolePrincipalsRequest
+	(*SetRolePrincipalsResponse)(nil),    // 13: controller.api.services.v1.SetRolePrincipalsResponse
+	(*RemoveRolePrincipalsRequest)(nil),  // 14: controller.api.services.v1.RemoveRolePrincipalsRequest
+	(*RemoveRolePrincipalsResponse)(nil), // 15: controller.api.services.v1.RemoveRolePrincipalsResponse
+	(*AddRoleGrantsRequest)(nil),         // 16: controller.api.services.v1.AddRoleGrantsRequest
+	(*AddRoleGrantsResponse)(nil),        // 17: controller.api.services.v1.AddRoleGrantsResponse
+	(*SetRoleGrantsRequest)(nil),         // 18: controller.api.services.v1.SetRoleGrantsRequest
+	(*SetRoleGrantsResponse)(nil),        // 19: controller.api.services.v1.SetRoleGrantsResponse
+	(*RemoveRoleGrantsRequest)(nil),      // 20: controller.api.services.v1.RemoveRoleGrantsRequest
+	(*RemoveRoleGrantsResponse)(nil),     // 21: controller.api.services.v1.RemoveRoleGrantsResponse
+	(*roles.Role)(nil),                   // 22: controller.api.resources.roles.v1.Role
+	(*field_mask.FieldMask)(nil),         // 23: google.protobuf.FieldMask
+}
 var file_controller_api_services_v1_role_service_proto_depIdxs = []int32{
 	22, // 0: controller.api.services.v1.GetRoleResponse.item:type_name -> controller.api.resources.roles.v1.Role
 	22, // 1: controller.api.services.v1.ListRolesResponse.items:type_name -> controller.api.resources.roles.v1.Role

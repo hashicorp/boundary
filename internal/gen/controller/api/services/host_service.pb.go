@@ -7,15 +7,14 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	hosts "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -646,24 +645,21 @@ func file_controller_api_services_v1_host_service_proto_rawDescGZIP() []byte {
 	return file_controller_api_services_v1_host_service_proto_rawDescData
 }
 
-var (
-	file_controller_api_services_v1_host_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
-	file_controller_api_services_v1_host_service_proto_goTypes  = []interface{}{
-		(*GetHostRequest)(nil),       // 0: controller.api.services.v1.GetHostRequest
-		(*GetHostResponse)(nil),      // 1: controller.api.services.v1.GetHostResponse
-		(*ListHostsRequest)(nil),     // 2: controller.api.services.v1.ListHostsRequest
-		(*ListHostsResponse)(nil),    // 3: controller.api.services.v1.ListHostsResponse
-		(*CreateHostRequest)(nil),    // 4: controller.api.services.v1.CreateHostRequest
-		(*CreateHostResponse)(nil),   // 5: controller.api.services.v1.CreateHostResponse
-		(*UpdateHostRequest)(nil),    // 6: controller.api.services.v1.UpdateHostRequest
-		(*UpdateHostResponse)(nil),   // 7: controller.api.services.v1.UpdateHostResponse
-		(*DeleteHostRequest)(nil),    // 8: controller.api.services.v1.DeleteHostRequest
-		(*DeleteHostResponse)(nil),   // 9: controller.api.services.v1.DeleteHostResponse
-		(*hosts.Host)(nil),           // 10: controller.api.resources.hosts.v1.Host
-		(*field_mask.FieldMask)(nil), // 11: google.protobuf.FieldMask
-	}
-)
-
+var file_controller_api_services_v1_host_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_controller_api_services_v1_host_service_proto_goTypes = []interface{}{
+	(*GetHostRequest)(nil),       // 0: controller.api.services.v1.GetHostRequest
+	(*GetHostResponse)(nil),      // 1: controller.api.services.v1.GetHostResponse
+	(*ListHostsRequest)(nil),     // 2: controller.api.services.v1.ListHostsRequest
+	(*ListHostsResponse)(nil),    // 3: controller.api.services.v1.ListHostsResponse
+	(*CreateHostRequest)(nil),    // 4: controller.api.services.v1.CreateHostRequest
+	(*CreateHostResponse)(nil),   // 5: controller.api.services.v1.CreateHostResponse
+	(*UpdateHostRequest)(nil),    // 6: controller.api.services.v1.UpdateHostRequest
+	(*UpdateHostResponse)(nil),   // 7: controller.api.services.v1.UpdateHostResponse
+	(*DeleteHostRequest)(nil),    // 8: controller.api.services.v1.DeleteHostRequest
+	(*DeleteHostResponse)(nil),   // 9: controller.api.services.v1.DeleteHostResponse
+	(*hosts.Host)(nil),           // 10: controller.api.resources.hosts.v1.Host
+	(*field_mask.FieldMask)(nil), // 11: google.protobuf.FieldMask
+}
 var file_controller_api_services_v1_host_service_proto_depIdxs = []int32{
 	10, // 0: controller.api.services.v1.GetHostResponse.item:type_name -> controller.api.resources.hosts.v1.Host
 	10, // 1: controller.api.services.v1.ListHostsResponse.items:type_name -> controller.api.resources.hosts.v1.Host

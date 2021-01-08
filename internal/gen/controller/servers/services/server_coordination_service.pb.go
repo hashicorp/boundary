@@ -7,13 +7,12 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/golang/protobuf/ptypes/timestamp"
 	servers "github.com/hashicorp/boundary/internal/servers"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -773,25 +772,22 @@ func file_controller_servers_services_v1_server_coordination_service_proto_rawDe
 	return file_controller_servers_services_v1_server_coordination_service_proto_rawDescData
 }
 
-var (
-	file_controller_servers_services_v1_server_coordination_service_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-	file_controller_servers_services_v1_server_coordination_service_proto_msgTypes  = make([]protoimpl.MessageInfo, 7)
-	file_controller_servers_services_v1_server_coordination_service_proto_goTypes   = []interface{}{
-		(CONNECTIONSTATUS)(0),    // 0: controller.servers.services.v1.CONNECTIONSTATUS
-		(SESSIONSTATUS)(0),       // 1: controller.servers.services.v1.SESSIONSTATUS
-		(JOBTYPE)(0),             // 2: controller.servers.services.v1.JOBTYPE
-		(CHANGETYPE)(0),          // 3: controller.servers.services.v1.CHANGETYPE
-		(*Connection)(nil),       // 4: controller.servers.services.v1.Connection
-		(*SessionJobInfo)(nil),   // 5: controller.servers.services.v1.SessionJobInfo
-		(*Job)(nil),              // 6: controller.servers.services.v1.Job
-		(*JobStatus)(nil),        // 7: controller.servers.services.v1.JobStatus
-		(*StatusRequest)(nil),    // 8: controller.servers.services.v1.StatusRequest
-		(*JobChangeRequest)(nil), // 9: controller.servers.services.v1.JobChangeRequest
-		(*StatusResponse)(nil),   // 10: controller.servers.services.v1.StatusResponse
-		(*servers.Server)(nil),   // 11: controller.servers.v1.Server
-	}
-)
-
+var file_controller_servers_services_v1_server_coordination_service_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_controller_servers_services_v1_server_coordination_service_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_controller_servers_services_v1_server_coordination_service_proto_goTypes = []interface{}{
+	(CONNECTIONSTATUS)(0),    // 0: controller.servers.services.v1.CONNECTIONSTATUS
+	(SESSIONSTATUS)(0),       // 1: controller.servers.services.v1.SESSIONSTATUS
+	(JOBTYPE)(0),             // 2: controller.servers.services.v1.JOBTYPE
+	(CHANGETYPE)(0),          // 3: controller.servers.services.v1.CHANGETYPE
+	(*Connection)(nil),       // 4: controller.servers.services.v1.Connection
+	(*SessionJobInfo)(nil),   // 5: controller.servers.services.v1.SessionJobInfo
+	(*Job)(nil),              // 6: controller.servers.services.v1.Job
+	(*JobStatus)(nil),        // 7: controller.servers.services.v1.JobStatus
+	(*StatusRequest)(nil),    // 8: controller.servers.services.v1.StatusRequest
+	(*JobChangeRequest)(nil), // 9: controller.servers.services.v1.JobChangeRequest
+	(*StatusResponse)(nil),   // 10: controller.servers.services.v1.StatusResponse
+	(*servers.Server)(nil),   // 11: controller.servers.v1.Server
+}
 var file_controller_servers_services_v1_server_coordination_service_proto_depIdxs = []int32{
 	0,  // 0: controller.servers.services.v1.Connection.status:type_name -> controller.servers.services.v1.CONNECTIONSTATUS
 	1,  // 1: controller.servers.services.v1.SessionJobInfo.status:type_name -> controller.servers.services.v1.SESSIONSTATUS

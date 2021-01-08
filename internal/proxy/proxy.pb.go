@@ -7,12 +7,11 @@
 package proxy
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -237,17 +236,14 @@ func file_worker_proxy_v1_proxy_proto_rawDescGZIP() []byte {
 	return file_worker_proxy_v1_proxy_proto_rawDescData
 }
 
-var (
-	file_worker_proxy_v1_proxy_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-	file_worker_proxy_v1_proxy_proto_msgTypes  = make([]protoimpl.MessageInfo, 2)
-	file_worker_proxy_v1_proxy_proto_goTypes   = []interface{}{
-		(HANDSHAKECOMMAND)(0),       // 0: worker.proxy.v1.HANDSHAKECOMMAND
-		(*ClientHandshake)(nil),     // 1: worker.proxy.v1.ClientHandshake
-		(*HandshakeResult)(nil),     // 2: worker.proxy.v1.HandshakeResult
-		(*timestamp.Timestamp)(nil), // 3: google.protobuf.Timestamp
-	}
-)
-
+var file_worker_proxy_v1_proxy_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_worker_proxy_v1_proxy_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_worker_proxy_v1_proxy_proto_goTypes = []interface{}{
+	(HANDSHAKECOMMAND)(0),       // 0: worker.proxy.v1.HANDSHAKECOMMAND
+	(*ClientHandshake)(nil),     // 1: worker.proxy.v1.ClientHandshake
+	(*HandshakeResult)(nil),     // 2: worker.proxy.v1.HandshakeResult
+	(*timestamp.Timestamp)(nil), // 3: google.protobuf.Timestamp
+}
 var file_worker_proxy_v1_proxy_proto_depIdxs = []int32{
 	0, // 0: worker.proxy.v1.ClientHandshake.command:type_name -> worker.proxy.v1.HANDSHAKECOMMAND
 	3, // 1: worker.proxy.v1.HandshakeResult.expiration:type_name -> google.protobuf.Timestamp

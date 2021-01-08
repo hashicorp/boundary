@@ -24,14 +24,12 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var (
-	_ codes.Code
-	_ io.Reader
-	_ status.Status
-	_ = runtime.String
-	_ = utilities.NewDoubleArray
-	_ = metadata.Join
-)
+var _ codes.Code
+var _ io.Reader
+var _ status.Status
+var _ = runtime.String
+var _ = utilities.NewDoubleArray
+var _ = metadata.Join
 
 func request_ScopeService_GetScope_0(ctx context.Context, marshaler runtime.Marshaler, client ScopeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetScopeRequest
@@ -56,6 +54,7 @@ func request_ScopeService_GetScope_0(ctx context.Context, marshaler runtime.Mars
 
 	msg, err := client.GetScope(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_ScopeService_GetScope_0(ctx context.Context, marshaler runtime.Marshaler, server ScopeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -81,9 +80,12 @@ func local_request_ScopeService_GetScope_0(ctx context.Context, marshaler runtim
 
 	msg, err := server.GetScope(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_ScopeService_ListScopes_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+var (
+	filter_ScopeService_ListScopes_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
 
 func request_ScopeService_ListScopes_0(ctx context.Context, marshaler runtime.Marshaler, client ScopeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListScopesRequest
@@ -98,6 +100,7 @@ func request_ScopeService_ListScopes_0(ctx context.Context, marshaler runtime.Ma
 
 	msg, err := client.ListScopes(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_ScopeService_ListScopes_0(ctx context.Context, marshaler runtime.Marshaler, server ScopeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -113,9 +116,12 @@ func local_request_ScopeService_ListScopes_0(ctx context.Context, marshaler runt
 
 	msg, err := server.ListScopes(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_ScopeService_CreateScope_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+var (
+	filter_ScopeService_CreateScope_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+)
 
 func request_ScopeService_CreateScope_0(ctx context.Context, marshaler runtime.Marshaler, client ScopeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq CreateScopeRequest
@@ -138,6 +144,7 @@ func request_ScopeService_CreateScope_0(ctx context.Context, marshaler runtime.M
 
 	msg, err := client.CreateScope(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_ScopeService_CreateScope_0(ctx context.Context, marshaler runtime.Marshaler, server ScopeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -161,9 +168,12 @@ func local_request_ScopeService_CreateScope_0(ctx context.Context, marshaler run
 
 	msg, err := server.CreateScope(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_ScopeService_UpdateScope_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+var (
+	filter_ScopeService_UpdateScope_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+)
 
 func request_ScopeService_UpdateScope_0(ctx context.Context, marshaler runtime.Marshaler, client ScopeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateScopeRequest
@@ -210,6 +220,7 @@ func request_ScopeService_UpdateScope_0(ctx context.Context, marshaler runtime.M
 
 	msg, err := client.UpdateScope(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_ScopeService_UpdateScope_0(ctx context.Context, marshaler runtime.Marshaler, server ScopeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -257,6 +268,7 @@ func local_request_ScopeService_UpdateScope_0(ctx context.Context, marshaler run
 
 	msg, err := server.UpdateScope(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_ScopeService_DeleteScope_0(ctx context.Context, marshaler runtime.Marshaler, client ScopeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -282,6 +294,7 @@ func request_ScopeService_DeleteScope_0(ctx context.Context, marshaler runtime.M
 
 	msg, err := client.DeleteScope(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_ScopeService_DeleteScope_0(ctx context.Context, marshaler runtime.Marshaler, server ScopeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -307,6 +320,7 @@ func local_request_ScopeService_DeleteScope_0(ctx context.Context, marshaler run
 
 	msg, err := server.DeleteScope(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 // RegisterScopeServiceHandlerServer registers the http handlers for service ScopeService to "mux".
@@ -314,6 +328,7 @@ func local_request_ScopeService_DeleteScope_0(ctx context.Context, marshaler run
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterScopeServiceHandlerFromEndpoint instead.
 func RegisterScopeServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server ScopeServiceServer) error {
+
 	mux.Handle("GET", pattern_ScopeService_GetScope_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -334,6 +349,7 @@ func RegisterScopeServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		}
 
 		forward_ScopeService_GetScope_0(ctx, mux, outboundMarshaler, w, req, response_ScopeService_GetScope_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("GET", pattern_ScopeService_ListScopes_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -356,6 +372,7 @@ func RegisterScopeServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		}
 
 		forward_ScopeService_ListScopes_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("POST", pattern_ScopeService_CreateScope_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -378,6 +395,7 @@ func RegisterScopeServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		}
 
 		forward_ScopeService_CreateScope_0(ctx, mux, outboundMarshaler, w, req, response_ScopeService_CreateScope_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("PATCH", pattern_ScopeService_UpdateScope_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -400,6 +418,7 @@ func RegisterScopeServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		}
 
 		forward_ScopeService_UpdateScope_0(ctx, mux, outboundMarshaler, w, req, response_ScopeService_UpdateScope_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("DELETE", pattern_ScopeService_DeleteScope_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -422,6 +441,7 @@ func RegisterScopeServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		}
 
 		forward_ScopeService_DeleteScope_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
 
 	return nil
@@ -464,6 +484,7 @@ func RegisterScopeServiceHandler(ctx context.Context, mux *runtime.ServeMux, con
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
 // "ScopeServiceClient" to call the correct interceptors.
 func RegisterScopeServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client ScopeServiceClient) error {
+
 	mux.Handle("GET", pattern_ScopeService_GetScope_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -481,6 +502,7 @@ func RegisterScopeServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		}
 
 		forward_ScopeService_GetScope_0(ctx, mux, outboundMarshaler, w, req, response_ScopeService_GetScope_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("GET", pattern_ScopeService_ListScopes_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -500,6 +522,7 @@ func RegisterScopeServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		}
 
 		forward_ScopeService_ListScopes_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("POST", pattern_ScopeService_CreateScope_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -519,6 +542,7 @@ func RegisterScopeServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		}
 
 		forward_ScopeService_CreateScope_0(ctx, mux, outboundMarshaler, w, req, response_ScopeService_CreateScope_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("PATCH", pattern_ScopeService_UpdateScope_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -538,6 +562,7 @@ func RegisterScopeServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		}
 
 		forward_ScopeService_UpdateScope_0(ctx, mux, outboundMarshaler, w, req, response_ScopeService_UpdateScope_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("DELETE", pattern_ScopeService_DeleteScope_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -557,6 +582,7 @@ func RegisterScopeServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		}
 
 		forward_ScopeService_DeleteScope_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
 
 	return nil

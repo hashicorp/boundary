@@ -7,15 +7,14 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	targets "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -1226,33 +1225,30 @@ func file_controller_api_services_v1_target_service_proto_rawDescGZIP() []byte {
 	return file_controller_api_services_v1_target_service_proto_rawDescData
 }
 
-var (
-	file_controller_api_services_v1_target_service_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
-	file_controller_api_services_v1_target_service_proto_goTypes  = []interface{}{
-		(*GetTargetRequest)(nil),             // 0: controller.api.services.v1.GetTargetRequest
-		(*GetTargetResponse)(nil),            // 1: controller.api.services.v1.GetTargetResponse
-		(*ListTargetsRequest)(nil),           // 2: controller.api.services.v1.ListTargetsRequest
-		(*ListTargetsResponse)(nil),          // 3: controller.api.services.v1.ListTargetsResponse
-		(*CreateTargetRequest)(nil),          // 4: controller.api.services.v1.CreateTargetRequest
-		(*CreateTargetResponse)(nil),         // 5: controller.api.services.v1.CreateTargetResponse
-		(*UpdateTargetRequest)(nil),          // 6: controller.api.services.v1.UpdateTargetRequest
-		(*UpdateTargetResponse)(nil),         // 7: controller.api.services.v1.UpdateTargetResponse
-		(*DeleteTargetRequest)(nil),          // 8: controller.api.services.v1.DeleteTargetRequest
-		(*DeleteTargetResponse)(nil),         // 9: controller.api.services.v1.DeleteTargetResponse
-		(*AddTargetHostSetsRequest)(nil),     // 10: controller.api.services.v1.AddTargetHostSetsRequest
-		(*AddTargetHostSetsResponse)(nil),    // 11: controller.api.services.v1.AddTargetHostSetsResponse
-		(*SetTargetHostSetsRequest)(nil),     // 12: controller.api.services.v1.SetTargetHostSetsRequest
-		(*SetTargetHostSetsResponse)(nil),    // 13: controller.api.services.v1.SetTargetHostSetsResponse
-		(*RemoveTargetHostSetsRequest)(nil),  // 14: controller.api.services.v1.RemoveTargetHostSetsRequest
-		(*RemoveTargetHostSetsResponse)(nil), // 15: controller.api.services.v1.RemoveTargetHostSetsResponse
-		(*AuthorizeSessionRequest)(nil),      // 16: controller.api.services.v1.AuthorizeSessionRequest
-		(*AuthorizeSessionResponse)(nil),     // 17: controller.api.services.v1.AuthorizeSessionResponse
-		(*targets.Target)(nil),               // 18: controller.api.resources.targets.v1.Target
-		(*field_mask.FieldMask)(nil),         // 19: google.protobuf.FieldMask
-		(*targets.SessionAuthorization)(nil), // 20: controller.api.resources.targets.v1.SessionAuthorization
-	}
-)
-
+var file_controller_api_services_v1_target_service_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_controller_api_services_v1_target_service_proto_goTypes = []interface{}{
+	(*GetTargetRequest)(nil),             // 0: controller.api.services.v1.GetTargetRequest
+	(*GetTargetResponse)(nil),            // 1: controller.api.services.v1.GetTargetResponse
+	(*ListTargetsRequest)(nil),           // 2: controller.api.services.v1.ListTargetsRequest
+	(*ListTargetsResponse)(nil),          // 3: controller.api.services.v1.ListTargetsResponse
+	(*CreateTargetRequest)(nil),          // 4: controller.api.services.v1.CreateTargetRequest
+	(*CreateTargetResponse)(nil),         // 5: controller.api.services.v1.CreateTargetResponse
+	(*UpdateTargetRequest)(nil),          // 6: controller.api.services.v1.UpdateTargetRequest
+	(*UpdateTargetResponse)(nil),         // 7: controller.api.services.v1.UpdateTargetResponse
+	(*DeleteTargetRequest)(nil),          // 8: controller.api.services.v1.DeleteTargetRequest
+	(*DeleteTargetResponse)(nil),         // 9: controller.api.services.v1.DeleteTargetResponse
+	(*AddTargetHostSetsRequest)(nil),     // 10: controller.api.services.v1.AddTargetHostSetsRequest
+	(*AddTargetHostSetsResponse)(nil),    // 11: controller.api.services.v1.AddTargetHostSetsResponse
+	(*SetTargetHostSetsRequest)(nil),     // 12: controller.api.services.v1.SetTargetHostSetsRequest
+	(*SetTargetHostSetsResponse)(nil),    // 13: controller.api.services.v1.SetTargetHostSetsResponse
+	(*RemoveTargetHostSetsRequest)(nil),  // 14: controller.api.services.v1.RemoveTargetHostSetsRequest
+	(*RemoveTargetHostSetsResponse)(nil), // 15: controller.api.services.v1.RemoveTargetHostSetsResponse
+	(*AuthorizeSessionRequest)(nil),      // 16: controller.api.services.v1.AuthorizeSessionRequest
+	(*AuthorizeSessionResponse)(nil),     // 17: controller.api.services.v1.AuthorizeSessionResponse
+	(*targets.Target)(nil),               // 18: controller.api.resources.targets.v1.Target
+	(*field_mask.FieldMask)(nil),         // 19: google.protobuf.FieldMask
+	(*targets.SessionAuthorization)(nil), // 20: controller.api.resources.targets.v1.SessionAuthorization
+}
 var file_controller_api_services_v1_target_service_proto_depIdxs = []int32{
 	18, // 0: controller.api.services.v1.GetTargetResponse.item:type_name -> controller.api.resources.targets.v1.Target
 	18, // 1: controller.api.services.v1.ListTargetsResponse.items:type_name -> controller.api.resources.targets.v1.Target

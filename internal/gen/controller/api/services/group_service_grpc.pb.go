@@ -4,7 +4,6 @@ package services
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -194,36 +193,30 @@ type GroupServiceServer interface {
 }
 
 // UnimplementedGroupServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedGroupServiceServer struct{}
+type UnimplementedGroupServiceServer struct {
+}
 
 func (UnimplementedGroupServiceServer) GetGroup(context.Context, *GetGroupRequest) (*GetGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroup not implemented")
 }
-
 func (UnimplementedGroupServiceServer) ListGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListGroups not implemented")
 }
-
 func (UnimplementedGroupServiceServer) CreateGroup(context.Context, *CreateGroupRequest) (*CreateGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateGroup not implemented")
 }
-
 func (UnimplementedGroupServiceServer) UpdateGroup(context.Context, *UpdateGroupRequest) (*UpdateGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateGroup not implemented")
 }
-
 func (UnimplementedGroupServiceServer) DeleteGroup(context.Context, *DeleteGroupRequest) (*DeleteGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteGroup not implemented")
 }
-
 func (UnimplementedGroupServiceServer) AddGroupMembers(context.Context, *AddGroupMembersRequest) (*AddGroupMembersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddGroupMembers not implemented")
 }
-
 func (UnimplementedGroupServiceServer) SetGroupMembers(context.Context, *SetGroupMembersRequest) (*SetGroupMembersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetGroupMembers not implemented")
 }
-
 func (UnimplementedGroupServiceServer) RemoveGroupMembers(context.Context, *RemoveGroupMembersRequest) (*RemoveGroupMembersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveGroupMembers not implemented")
 }

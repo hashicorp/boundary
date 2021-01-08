@@ -7,12 +7,11 @@
 package protooptions
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	descriptor "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -157,14 +156,11 @@ func file_controller_custom_options_v1_options_proto_rawDescGZIP() []byte {
 	return file_controller_custom_options_v1_options_proto_rawDescData
 }
 
-var (
-	file_controller_custom_options_v1_options_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_controller_custom_options_v1_options_proto_goTypes  = []interface{}{
-		(*MaskMapping)(nil),             // 0: controller.custom_options.v1.MaskMapping
-		(*descriptor.FieldOptions)(nil), // 1: google.protobuf.FieldOptions
-	}
-)
-
+var file_controller_custom_options_v1_options_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_controller_custom_options_v1_options_proto_goTypes = []interface{}{
+	(*MaskMapping)(nil),             // 0: controller.custom_options.v1.MaskMapping
+	(*descriptor.FieldOptions)(nil), // 1: google.protobuf.FieldOptions
+}
 var file_controller_custom_options_v1_options_proto_depIdxs = []int32{
 	1, // 0: controller.custom_options.v1.mask_mapping:extendee -> google.protobuf.FieldOptions
 	1, // 1: controller.custom_options.v1.generate_sdk_option:extendee -> google.protobuf.FieldOptions

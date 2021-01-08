@@ -4,7 +4,6 @@ package services
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -133,24 +132,21 @@ type ScopeServiceServer interface {
 }
 
 // UnimplementedScopeServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedScopeServiceServer struct{}
+type UnimplementedScopeServiceServer struct {
+}
 
 func (UnimplementedScopeServiceServer) GetScope(context.Context, *GetScopeRequest) (*GetScopeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetScope not implemented")
 }
-
 func (UnimplementedScopeServiceServer) ListScopes(context.Context, *ListScopesRequest) (*ListScopesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListScopes not implemented")
 }
-
 func (UnimplementedScopeServiceServer) CreateScope(context.Context, *CreateScopeRequest) (*CreateScopeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateScope not implemented")
 }
-
 func (UnimplementedScopeServiceServer) UpdateScope(context.Context, *UpdateScopeRequest) (*UpdateScopeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateScope not implemented")
 }
-
 func (UnimplementedScopeServiceServer) DeleteScope(context.Context, *DeleteScopeRequest) (*DeleteScopeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteScope not implemented")
 }

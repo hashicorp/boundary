@@ -24,14 +24,12 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var (
-	_ codes.Code
-	_ io.Reader
-	_ status.Status
-	_ = runtime.String
-	_ = utilities.NewDoubleArray
-	_ = metadata.Join
-)
+var _ codes.Code
+var _ io.Reader
+var _ status.Status
+var _ = runtime.String
+var _ = utilities.NewDoubleArray
+var _ = metadata.Join
 
 func request_SessionService_GetSession_0(ctx context.Context, marshaler runtime.Marshaler, client SessionServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetSessionRequest
@@ -56,6 +54,7 @@ func request_SessionService_GetSession_0(ctx context.Context, marshaler runtime.
 
 	msg, err := client.GetSession(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_SessionService_GetSession_0(ctx context.Context, marshaler runtime.Marshaler, server SessionServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -81,9 +80,12 @@ func local_request_SessionService_GetSession_0(ctx context.Context, marshaler ru
 
 	msg, err := server.GetSession(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_SessionService_ListSessions_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+var (
+	filter_SessionService_ListSessions_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
 
 func request_SessionService_ListSessions_0(ctx context.Context, marshaler runtime.Marshaler, client SessionServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListSessionsRequest
@@ -98,6 +100,7 @@ func request_SessionService_ListSessions_0(ctx context.Context, marshaler runtim
 
 	msg, err := client.ListSessions(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_SessionService_ListSessions_0(ctx context.Context, marshaler runtime.Marshaler, server SessionServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -113,6 +116,7 @@ func local_request_SessionService_ListSessions_0(ctx context.Context, marshaler 
 
 	msg, err := server.ListSessions(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_SessionService_CancelSession_0(ctx context.Context, marshaler runtime.Marshaler, client SessionServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -146,6 +150,7 @@ func request_SessionService_CancelSession_0(ctx context.Context, marshaler runti
 
 	msg, err := client.CancelSession(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_SessionService_CancelSession_0(ctx context.Context, marshaler runtime.Marshaler, server SessionServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -179,6 +184,7 @@ func local_request_SessionService_CancelSession_0(ctx context.Context, marshaler
 
 	msg, err := server.CancelSession(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 // RegisterSessionServiceHandlerServer registers the http handlers for service SessionService to "mux".
@@ -186,6 +192,7 @@ func local_request_SessionService_CancelSession_0(ctx context.Context, marshaler
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterSessionServiceHandlerFromEndpoint instead.
 func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server SessionServiceServer) error {
+
 	mux.Handle("GET", pattern_SessionService_GetSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -206,6 +213,7 @@ func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_SessionService_GetSession_0(ctx, mux, outboundMarshaler, w, req, response_SessionService_GetSession_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("GET", pattern_SessionService_ListSessions_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -228,6 +236,7 @@ func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_SessionService_ListSessions_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("POST", pattern_SessionService_CancelSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -250,6 +259,7 @@ func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_SessionService_CancelSession_0(ctx, mux, outboundMarshaler, w, req, response_SessionService_CancelSession_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	return nil
@@ -292,6 +302,7 @@ func RegisterSessionServiceHandler(ctx context.Context, mux *runtime.ServeMux, c
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
 // "SessionServiceClient" to call the correct interceptors.
 func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client SessionServiceClient) error {
+
 	mux.Handle("GET", pattern_SessionService_GetSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -309,6 +320,7 @@ func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_SessionService_GetSession_0(ctx, mux, outboundMarshaler, w, req, response_SessionService_GetSession_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("GET", pattern_SessionService_ListSessions_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -328,6 +340,7 @@ func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_SessionService_ListSessions_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("POST", pattern_SessionService_CancelSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -347,6 +360,7 @@ func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_SessionService_CancelSession_0(ctx, mux, outboundMarshaler, w, req, response_SessionService_CancelSession_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	return nil

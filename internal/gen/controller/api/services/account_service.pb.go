@@ -7,9 +7,6 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/golang/protobuf/ptypes/wrappers"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	accounts "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
@@ -17,6 +14,8 @@ import (
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -946,28 +945,25 @@ func file_controller_api_services_v1_account_service_proto_rawDescGZIP() []byte 
 	return file_controller_api_services_v1_account_service_proto_rawDescData
 }
 
-var (
-	file_controller_api_services_v1_account_service_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
-	file_controller_api_services_v1_account_service_proto_goTypes  = []interface{}{
-		(*GetAccountRequest)(nil),      // 0: controller.api.services.v1.GetAccountRequest
-		(*GetAccountResponse)(nil),     // 1: controller.api.services.v1.GetAccountResponse
-		(*ListAccountsRequest)(nil),    // 2: controller.api.services.v1.ListAccountsRequest
-		(*ListAccountsResponse)(nil),   // 3: controller.api.services.v1.ListAccountsResponse
-		(*CreateAccountRequest)(nil),   // 4: controller.api.services.v1.CreateAccountRequest
-		(*CreateAccountResponse)(nil),  // 5: controller.api.services.v1.CreateAccountResponse
-		(*UpdateAccountRequest)(nil),   // 6: controller.api.services.v1.UpdateAccountRequest
-		(*UpdateAccountResponse)(nil),  // 7: controller.api.services.v1.UpdateAccountResponse
-		(*DeleteAccountRequest)(nil),   // 8: controller.api.services.v1.DeleteAccountRequest
-		(*DeleteAccountResponse)(nil),  // 9: controller.api.services.v1.DeleteAccountResponse
-		(*SetPasswordRequest)(nil),     // 10: controller.api.services.v1.SetPasswordRequest
-		(*SetPasswordResponse)(nil),    // 11: controller.api.services.v1.SetPasswordResponse
-		(*ChangePasswordRequest)(nil),  // 12: controller.api.services.v1.ChangePasswordRequest
-		(*ChangePasswordResponse)(nil), // 13: controller.api.services.v1.ChangePasswordResponse
-		(*accounts.Account)(nil),       // 14: controller.api.resources.accounts.v1.Account
-		(*field_mask.FieldMask)(nil),   // 15: google.protobuf.FieldMask
-	}
-)
-
+var file_controller_api_services_v1_account_service_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_controller_api_services_v1_account_service_proto_goTypes = []interface{}{
+	(*GetAccountRequest)(nil),      // 0: controller.api.services.v1.GetAccountRequest
+	(*GetAccountResponse)(nil),     // 1: controller.api.services.v1.GetAccountResponse
+	(*ListAccountsRequest)(nil),    // 2: controller.api.services.v1.ListAccountsRequest
+	(*ListAccountsResponse)(nil),   // 3: controller.api.services.v1.ListAccountsResponse
+	(*CreateAccountRequest)(nil),   // 4: controller.api.services.v1.CreateAccountRequest
+	(*CreateAccountResponse)(nil),  // 5: controller.api.services.v1.CreateAccountResponse
+	(*UpdateAccountRequest)(nil),   // 6: controller.api.services.v1.UpdateAccountRequest
+	(*UpdateAccountResponse)(nil),  // 7: controller.api.services.v1.UpdateAccountResponse
+	(*DeleteAccountRequest)(nil),   // 8: controller.api.services.v1.DeleteAccountRequest
+	(*DeleteAccountResponse)(nil),  // 9: controller.api.services.v1.DeleteAccountResponse
+	(*SetPasswordRequest)(nil),     // 10: controller.api.services.v1.SetPasswordRequest
+	(*SetPasswordResponse)(nil),    // 11: controller.api.services.v1.SetPasswordResponse
+	(*ChangePasswordRequest)(nil),  // 12: controller.api.services.v1.ChangePasswordRequest
+	(*ChangePasswordResponse)(nil), // 13: controller.api.services.v1.ChangePasswordResponse
+	(*accounts.Account)(nil),       // 14: controller.api.resources.accounts.v1.Account
+	(*field_mask.FieldMask)(nil),   // 15: google.protobuf.FieldMask
+}
 var file_controller_api_services_v1_account_service_proto_depIdxs = []int32{
 	14, // 0: controller.api.services.v1.GetAccountResponse.item:type_name -> controller.api.resources.accounts.v1.Account
 	14, // 1: controller.api.services.v1.ListAccountsResponse.items:type_name -> controller.api.resources.accounts.v1.Account

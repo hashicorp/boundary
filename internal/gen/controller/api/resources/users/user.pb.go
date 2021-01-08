@@ -7,15 +7,14 @@
 package users
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	wrappers "github.com/golang/protobuf/ptypes/wrappers"
 	scopes "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -289,17 +288,14 @@ func file_controller_api_resources_users_v1_user_proto_rawDescGZIP() []byte {
 	return file_controller_api_resources_users_v1_user_proto_rawDescData
 }
 
-var (
-	file_controller_api_resources_users_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-	file_controller_api_resources_users_v1_user_proto_goTypes  = []interface{}{
-		(*Account)(nil),              // 0: controller.api.resources.users.v1.Account
-		(*User)(nil),                 // 1: controller.api.resources.users.v1.User
-		(*scopes.ScopeInfo)(nil),     // 2: controller.api.resources.scopes.v1.ScopeInfo
-		(*wrappers.StringValue)(nil), // 3: google.protobuf.StringValue
-		(*timestamp.Timestamp)(nil),  // 4: google.protobuf.Timestamp
-	}
-)
-
+var file_controller_api_resources_users_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_controller_api_resources_users_v1_user_proto_goTypes = []interface{}{
+	(*Account)(nil),              // 0: controller.api.resources.users.v1.Account
+	(*User)(nil),                 // 1: controller.api.resources.users.v1.User
+	(*scopes.ScopeInfo)(nil),     // 2: controller.api.resources.scopes.v1.ScopeInfo
+	(*wrappers.StringValue)(nil), // 3: google.protobuf.StringValue
+	(*timestamp.Timestamp)(nil),  // 4: google.protobuf.Timestamp
+}
 var file_controller_api_resources_users_v1_user_proto_depIdxs = []int32{
 	2, // 0: controller.api.resources.users.v1.User.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
 	3, // 1: controller.api.resources.users.v1.User.name:type_name -> google.protobuf.StringValue

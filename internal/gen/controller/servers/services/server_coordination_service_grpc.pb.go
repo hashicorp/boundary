@@ -4,7 +4,6 @@ package services
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -53,12 +52,12 @@ type ServerCoordinationServiceServer interface {
 }
 
 // UnimplementedServerCoordinationServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedServerCoordinationServiceServer struct{}
+type UnimplementedServerCoordinationServiceServer struct {
+}
 
 func (UnimplementedServerCoordinationServiceServer) Status(context.Context, *StatusRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
 }
-
 func (UnimplementedServerCoordinationServiceServer) mustEmbedUnimplementedServerCoordinationServiceServer() {
 }
 

@@ -4,7 +4,6 @@ package services
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -257,48 +256,39 @@ type RoleServiceServer interface {
 }
 
 // UnimplementedRoleServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedRoleServiceServer struct{}
+type UnimplementedRoleServiceServer struct {
+}
 
 func (UnimplementedRoleServiceServer) GetRole(context.Context, *GetRoleRequest) (*GetRoleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRole not implemented")
 }
-
 func (UnimplementedRoleServiceServer) ListRoles(context.Context, *ListRolesRequest) (*ListRolesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRoles not implemented")
 }
-
 func (UnimplementedRoleServiceServer) CreateRole(context.Context, *CreateRoleRequest) (*CreateRoleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateRole not implemented")
 }
-
 func (UnimplementedRoleServiceServer) UpdateRole(context.Context, *UpdateRoleRequest) (*UpdateRoleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateRole not implemented")
 }
-
 func (UnimplementedRoleServiceServer) DeleteRole(context.Context, *DeleteRoleRequest) (*DeleteRoleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteRole not implemented")
 }
-
 func (UnimplementedRoleServiceServer) AddRolePrincipals(context.Context, *AddRolePrincipalsRequest) (*AddRolePrincipalsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRolePrincipals not implemented")
 }
-
 func (UnimplementedRoleServiceServer) SetRolePrincipals(context.Context, *SetRolePrincipalsRequest) (*SetRolePrincipalsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetRolePrincipals not implemented")
 }
-
 func (UnimplementedRoleServiceServer) RemoveRolePrincipals(context.Context, *RemoveRolePrincipalsRequest) (*RemoveRolePrincipalsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveRolePrincipals not implemented")
 }
-
 func (UnimplementedRoleServiceServer) AddRoleGrants(context.Context, *AddRoleGrantsRequest) (*AddRoleGrantsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRoleGrants not implemented")
 }
-
 func (UnimplementedRoleServiceServer) SetRoleGrants(context.Context, *SetRoleGrantsRequest) (*SetRoleGrantsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetRoleGrants not implemented")
 }
-
 func (UnimplementedRoleServiceServer) RemoveRoleGrants(context.Context, *RemoveRoleGrantsRequest) (*RemoveRoleGrantsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveRoleGrants not implemented")
 }

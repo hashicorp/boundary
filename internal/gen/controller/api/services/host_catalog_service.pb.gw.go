@@ -24,14 +24,12 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var (
-	_ codes.Code
-	_ io.Reader
-	_ status.Status
-	_ = runtime.String
-	_ = utilities.NewDoubleArray
-	_ = metadata.Join
-)
+var _ codes.Code
+var _ io.Reader
+var _ status.Status
+var _ = runtime.String
+var _ = utilities.NewDoubleArray
+var _ = metadata.Join
 
 func request_HostCatalogService_GetHostCatalog_0(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetHostCatalogRequest
@@ -56,6 +54,7 @@ func request_HostCatalogService_GetHostCatalog_0(ctx context.Context, marshaler 
 
 	msg, err := client.GetHostCatalog(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_HostCatalogService_GetHostCatalog_0(ctx context.Context, marshaler runtime.Marshaler, server HostCatalogServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -81,9 +80,12 @@ func local_request_HostCatalogService_GetHostCatalog_0(ctx context.Context, mars
 
 	msg, err := server.GetHostCatalog(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_HostCatalogService_ListHostCatalogs_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+var (
+	filter_HostCatalogService_ListHostCatalogs_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
 
 func request_HostCatalogService_ListHostCatalogs_0(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListHostCatalogsRequest
@@ -98,6 +100,7 @@ func request_HostCatalogService_ListHostCatalogs_0(ctx context.Context, marshale
 
 	msg, err := client.ListHostCatalogs(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_HostCatalogService_ListHostCatalogs_0(ctx context.Context, marshaler runtime.Marshaler, server HostCatalogServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -113,6 +116,7 @@ func local_request_HostCatalogService_ListHostCatalogs_0(ctx context.Context, ma
 
 	msg, err := server.ListHostCatalogs(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_HostCatalogService_CreateHostCatalog_0(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -129,6 +133,7 @@ func request_HostCatalogService_CreateHostCatalog_0(ctx context.Context, marshal
 
 	msg, err := client.CreateHostCatalog(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_HostCatalogService_CreateHostCatalog_0(ctx context.Context, marshaler runtime.Marshaler, server HostCatalogServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -145,9 +150,12 @@ func local_request_HostCatalogService_CreateHostCatalog_0(ctx context.Context, m
 
 	msg, err := server.CreateHostCatalog(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_HostCatalogService_UpdateHostCatalog_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+var (
+	filter_HostCatalogService_UpdateHostCatalog_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+)
 
 func request_HostCatalogService_UpdateHostCatalog_0(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateHostCatalogRequest
@@ -194,6 +202,7 @@ func request_HostCatalogService_UpdateHostCatalog_0(ctx context.Context, marshal
 
 	msg, err := client.UpdateHostCatalog(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_HostCatalogService_UpdateHostCatalog_0(ctx context.Context, marshaler runtime.Marshaler, server HostCatalogServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -241,6 +250,7 @@ func local_request_HostCatalogService_UpdateHostCatalog_0(ctx context.Context, m
 
 	msg, err := server.UpdateHostCatalog(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_HostCatalogService_DeleteHostCatalog_0(ctx context.Context, marshaler runtime.Marshaler, client HostCatalogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -266,6 +276,7 @@ func request_HostCatalogService_DeleteHostCatalog_0(ctx context.Context, marshal
 
 	msg, err := client.DeleteHostCatalog(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_HostCatalogService_DeleteHostCatalog_0(ctx context.Context, marshaler runtime.Marshaler, server HostCatalogServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -291,6 +302,7 @@ func local_request_HostCatalogService_DeleteHostCatalog_0(ctx context.Context, m
 
 	msg, err := server.DeleteHostCatalog(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 // RegisterHostCatalogServiceHandlerServer registers the http handlers for service HostCatalogService to "mux".
@@ -298,6 +310,7 @@ func local_request_HostCatalogService_DeleteHostCatalog_0(ctx context.Context, m
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterHostCatalogServiceHandlerFromEndpoint instead.
 func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server HostCatalogServiceServer) error {
+
 	mux.Handle("GET", pattern_HostCatalogService_GetHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -318,6 +331,7 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_GetHostCatalog_0(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_GetHostCatalog_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("GET", pattern_HostCatalogService_ListHostCatalogs_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -340,6 +354,7 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_ListHostCatalogs_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("POST", pattern_HostCatalogService_CreateHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -362,6 +377,7 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_CreateHostCatalog_0(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_CreateHostCatalog_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("PATCH", pattern_HostCatalogService_UpdateHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -384,6 +400,7 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_UpdateHostCatalog_0(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_UpdateHostCatalog_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("DELETE", pattern_HostCatalogService_DeleteHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -406,6 +423,7 @@ func RegisterHostCatalogServiceHandlerServer(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_DeleteHostCatalog_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
 
 	return nil
@@ -448,6 +466,7 @@ func RegisterHostCatalogServiceHandler(ctx context.Context, mux *runtime.ServeMu
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
 // "HostCatalogServiceClient" to call the correct interceptors.
 func RegisterHostCatalogServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client HostCatalogServiceClient) error {
+
 	mux.Handle("GET", pattern_HostCatalogService_GetHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -465,6 +484,7 @@ func RegisterHostCatalogServiceHandlerClient(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_GetHostCatalog_0(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_GetHostCatalog_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("GET", pattern_HostCatalogService_ListHostCatalogs_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -484,6 +504,7 @@ func RegisterHostCatalogServiceHandlerClient(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_ListHostCatalogs_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("POST", pattern_HostCatalogService_CreateHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -503,6 +524,7 @@ func RegisterHostCatalogServiceHandlerClient(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_CreateHostCatalog_0(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_CreateHostCatalog_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("PATCH", pattern_HostCatalogService_UpdateHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -522,6 +544,7 @@ func RegisterHostCatalogServiceHandlerClient(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_UpdateHostCatalog_0(ctx, mux, outboundMarshaler, w, req, response_HostCatalogService_UpdateHostCatalog_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	mux.Handle("DELETE", pattern_HostCatalogService_DeleteHostCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -541,6 +564,7 @@ func RegisterHostCatalogServiceHandlerClient(ctx context.Context, mux *runtime.S
 		}
 
 		forward_HostCatalogService_DeleteHostCatalog_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
 
 	return nil

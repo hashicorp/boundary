@@ -7,15 +7,14 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	users "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -1062,30 +1061,27 @@ func file_controller_api_services_v1_user_service_proto_rawDescGZIP() []byte {
 	return file_controller_api_services_v1_user_service_proto_rawDescData
 }
 
-var (
-	file_controller_api_services_v1_user_service_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
-	file_controller_api_services_v1_user_service_proto_goTypes  = []interface{}{
-		(*GetUserRequest)(nil),             // 0: controller.api.services.v1.GetUserRequest
-		(*GetUserResponse)(nil),            // 1: controller.api.services.v1.GetUserResponse
-		(*ListUsersRequest)(nil),           // 2: controller.api.services.v1.ListUsersRequest
-		(*ListUsersResponse)(nil),          // 3: controller.api.services.v1.ListUsersResponse
-		(*CreateUserRequest)(nil),          // 4: controller.api.services.v1.CreateUserRequest
-		(*CreateUserResponse)(nil),         // 5: controller.api.services.v1.CreateUserResponse
-		(*UpdateUserRequest)(nil),          // 6: controller.api.services.v1.UpdateUserRequest
-		(*UpdateUserResponse)(nil),         // 7: controller.api.services.v1.UpdateUserResponse
-		(*DeleteUserRequest)(nil),          // 8: controller.api.services.v1.DeleteUserRequest
-		(*DeleteUserResponse)(nil),         // 9: controller.api.services.v1.DeleteUserResponse
-		(*AddUserAccountsRequest)(nil),     // 10: controller.api.services.v1.AddUserAccountsRequest
-		(*AddUserAccountsResponse)(nil),    // 11: controller.api.services.v1.AddUserAccountsResponse
-		(*SetUserAccountsRequest)(nil),     // 12: controller.api.services.v1.SetUserAccountsRequest
-		(*SetUserAccountsResponse)(nil),    // 13: controller.api.services.v1.SetUserAccountsResponse
-		(*RemoveUserAccountsRequest)(nil),  // 14: controller.api.services.v1.RemoveUserAccountsRequest
-		(*RemoveUserAccountsResponse)(nil), // 15: controller.api.services.v1.RemoveUserAccountsResponse
-		(*users.User)(nil),                 // 16: controller.api.resources.users.v1.User
-		(*field_mask.FieldMask)(nil),       // 17: google.protobuf.FieldMask
-	}
-)
-
+var file_controller_api_services_v1_user_service_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_controller_api_services_v1_user_service_proto_goTypes = []interface{}{
+	(*GetUserRequest)(nil),             // 0: controller.api.services.v1.GetUserRequest
+	(*GetUserResponse)(nil),            // 1: controller.api.services.v1.GetUserResponse
+	(*ListUsersRequest)(nil),           // 2: controller.api.services.v1.ListUsersRequest
+	(*ListUsersResponse)(nil),          // 3: controller.api.services.v1.ListUsersResponse
+	(*CreateUserRequest)(nil),          // 4: controller.api.services.v1.CreateUserRequest
+	(*CreateUserResponse)(nil),         // 5: controller.api.services.v1.CreateUserResponse
+	(*UpdateUserRequest)(nil),          // 6: controller.api.services.v1.UpdateUserRequest
+	(*UpdateUserResponse)(nil),         // 7: controller.api.services.v1.UpdateUserResponse
+	(*DeleteUserRequest)(nil),          // 8: controller.api.services.v1.DeleteUserRequest
+	(*DeleteUserResponse)(nil),         // 9: controller.api.services.v1.DeleteUserResponse
+	(*AddUserAccountsRequest)(nil),     // 10: controller.api.services.v1.AddUserAccountsRequest
+	(*AddUserAccountsResponse)(nil),    // 11: controller.api.services.v1.AddUserAccountsResponse
+	(*SetUserAccountsRequest)(nil),     // 12: controller.api.services.v1.SetUserAccountsRequest
+	(*SetUserAccountsResponse)(nil),    // 13: controller.api.services.v1.SetUserAccountsResponse
+	(*RemoveUserAccountsRequest)(nil),  // 14: controller.api.services.v1.RemoveUserAccountsRequest
+	(*RemoveUserAccountsResponse)(nil), // 15: controller.api.services.v1.RemoveUserAccountsResponse
+	(*users.User)(nil),                 // 16: controller.api.resources.users.v1.User
+	(*field_mask.FieldMask)(nil),       // 17: google.protobuf.FieldMask
+}
 var file_controller_api_services_v1_user_service_proto_depIdxs = []int32{
 	16, // 0: controller.api.services.v1.GetUserResponse.item:type_name -> controller.api.resources.users.v1.User
 	16, // 1: controller.api.services.v1.ListUsersResponse.items:type_name -> controller.api.resources.users.v1.User

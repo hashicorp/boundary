@@ -7,14 +7,13 @@
 package scopes
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	wrappers "github.com/golang/protobuf/ptypes/wrappers"
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -304,16 +303,13 @@ func file_controller_api_resources_scopes_v1_scope_proto_rawDescGZIP() []byte {
 	return file_controller_api_resources_scopes_v1_scope_proto_rawDescData
 }
 
-var (
-	file_controller_api_resources_scopes_v1_scope_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-	file_controller_api_resources_scopes_v1_scope_proto_goTypes  = []interface{}{
-		(*ScopeInfo)(nil),            // 0: controller.api.resources.scopes.v1.ScopeInfo
-		(*Scope)(nil),                // 1: controller.api.resources.scopes.v1.Scope
-		(*wrappers.StringValue)(nil), // 2: google.protobuf.StringValue
-		(*timestamp.Timestamp)(nil),  // 3: google.protobuf.Timestamp
-	}
-)
-
+var file_controller_api_resources_scopes_v1_scope_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_controller_api_resources_scopes_v1_scope_proto_goTypes = []interface{}{
+	(*ScopeInfo)(nil),            // 0: controller.api.resources.scopes.v1.ScopeInfo
+	(*Scope)(nil),                // 1: controller.api.resources.scopes.v1.Scope
+	(*wrappers.StringValue)(nil), // 2: google.protobuf.StringValue
+	(*timestamp.Timestamp)(nil),  // 3: google.protobuf.Timestamp
+}
 var file_controller_api_resources_scopes_v1_scope_proto_depIdxs = []int32{
 	0, // 0: controller.api.resources.scopes.v1.Scope.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
 	2, // 1: controller.api.resources.scopes.v1.Scope.name:type_name -> google.protobuf.StringValue

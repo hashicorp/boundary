@@ -7,13 +7,12 @@
 package store
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -198,14 +197,11 @@ func file_controller_storage_iam_store_v1_scope_proto_rawDescGZIP() []byte {
 	return file_controller_storage_iam_store_v1_scope_proto_rawDescData
 }
 
-var (
-	file_controller_storage_iam_store_v1_scope_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_controller_storage_iam_store_v1_scope_proto_goTypes  = []interface{}{
-		(*Scope)(nil),               // 0: controller.storage.iam.store.v1.Scope
-		(*timestamp.Timestamp)(nil), // 1: controller.storage.timestamp.v1.Timestamp
-	}
-)
-
+var file_controller_storage_iam_store_v1_scope_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_controller_storage_iam_store_v1_scope_proto_goTypes = []interface{}{
+	(*Scope)(nil),               // 0: controller.storage.iam.store.v1.Scope
+	(*timestamp.Timestamp)(nil), // 1: controller.storage.timestamp.v1.Timestamp
+}
 var file_controller_storage_iam_store_v1_scope_proto_depIdxs = []int32{
 	1, // 0: controller.storage.iam.store.v1.Scope.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	1, // 1: controller.storage.iam.store.v1.Scope.update_time:type_name -> controller.storage.timestamp.v1.Timestamp

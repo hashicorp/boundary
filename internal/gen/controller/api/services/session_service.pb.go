@@ -7,15 +7,14 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	sessions "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	_ "google.golang.org/genproto/protobuf/field_mask"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -413,19 +412,16 @@ func file_controller_api_services_v1_session_service_proto_rawDescGZIP() []byte 
 	return file_controller_api_services_v1_session_service_proto_rawDescData
 }
 
-var (
-	file_controller_api_services_v1_session_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-	file_controller_api_services_v1_session_service_proto_goTypes  = []interface{}{
-		(*GetSessionRequest)(nil),     // 0: controller.api.services.v1.GetSessionRequest
-		(*GetSessionResponse)(nil),    // 1: controller.api.services.v1.GetSessionResponse
-		(*ListSessionsRequest)(nil),   // 2: controller.api.services.v1.ListSessionsRequest
-		(*ListSessionsResponse)(nil),  // 3: controller.api.services.v1.ListSessionsResponse
-		(*CancelSessionRequest)(nil),  // 4: controller.api.services.v1.CancelSessionRequest
-		(*CancelSessionResponse)(nil), // 5: controller.api.services.v1.CancelSessionResponse
-		(*sessions.Session)(nil),      // 6: controller.api.resources.sessions.v1.Session
-	}
-)
-
+var file_controller_api_services_v1_session_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_controller_api_services_v1_session_service_proto_goTypes = []interface{}{
+	(*GetSessionRequest)(nil),     // 0: controller.api.services.v1.GetSessionRequest
+	(*GetSessionResponse)(nil),    // 1: controller.api.services.v1.GetSessionResponse
+	(*ListSessionsRequest)(nil),   // 2: controller.api.services.v1.ListSessionsRequest
+	(*ListSessionsResponse)(nil),  // 3: controller.api.services.v1.ListSessionsResponse
+	(*CancelSessionRequest)(nil),  // 4: controller.api.services.v1.CancelSessionRequest
+	(*CancelSessionResponse)(nil), // 5: controller.api.services.v1.CancelSessionResponse
+	(*sessions.Session)(nil),      // 6: controller.api.resources.sessions.v1.Session
+}
 var file_controller_api_services_v1_session_service_proto_depIdxs = []int32{
 	6, // 0: controller.api.services.v1.GetSessionResponse.item:type_name -> controller.api.resources.sessions.v1.Session
 	6, // 1: controller.api.services.v1.ListSessionsResponse.items:type_name -> controller.api.resources.sessions.v1.Session

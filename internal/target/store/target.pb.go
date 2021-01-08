@@ -7,13 +7,12 @@
 package store
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -497,16 +496,13 @@ func file_controller_storage_target_store_v1_target_proto_rawDescGZIP() []byte {
 	return file_controller_storage_target_store_v1_target_proto_rawDescData
 }
 
-var (
-	file_controller_storage_target_store_v1_target_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-	file_controller_storage_target_store_v1_target_proto_goTypes  = []interface{}{
-		(*TargetView)(nil),          // 0: controller.storage.target.store.v1.TargetView
-		(*TargetHostSet)(nil),       // 1: controller.storage.target.store.v1.TargetHostSet
-		(*TcpTarget)(nil),           // 2: controller.storage.target.store.v1.TcpTarget
-		(*timestamp.Timestamp)(nil), // 3: controller.storage.timestamp.v1.Timestamp
-	}
-)
-
+var file_controller_storage_target_store_v1_target_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_controller_storage_target_store_v1_target_proto_goTypes = []interface{}{
+	(*TargetView)(nil),          // 0: controller.storage.target.store.v1.TargetView
+	(*TargetHostSet)(nil),       // 1: controller.storage.target.store.v1.TargetHostSet
+	(*TcpTarget)(nil),           // 2: controller.storage.target.store.v1.TcpTarget
+	(*timestamp.Timestamp)(nil), // 3: controller.storage.timestamp.v1.Timestamp
+}
 var file_controller_storage_target_store_v1_target_proto_depIdxs = []int32{
 	3, // 0: controller.storage.target.store.v1.TargetView.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	3, // 1: controller.storage.target.store.v1.TargetView.update_time:type_name -> controller.storage.timestamp.v1.Timestamp

@@ -7,15 +7,14 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	scopes "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -675,24 +674,21 @@ func file_controller_api_services_v1_scope_service_proto_rawDescGZIP() []byte {
 	return file_controller_api_services_v1_scope_service_proto_rawDescData
 }
 
-var (
-	file_controller_api_services_v1_scope_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
-	file_controller_api_services_v1_scope_service_proto_goTypes  = []interface{}{
-		(*GetScopeRequest)(nil),      // 0: controller.api.services.v1.GetScopeRequest
-		(*GetScopeResponse)(nil),     // 1: controller.api.services.v1.GetScopeResponse
-		(*ListScopesRequest)(nil),    // 2: controller.api.services.v1.ListScopesRequest
-		(*ListScopesResponse)(nil),   // 3: controller.api.services.v1.ListScopesResponse
-		(*CreateScopeRequest)(nil),   // 4: controller.api.services.v1.CreateScopeRequest
-		(*CreateScopeResponse)(nil),  // 5: controller.api.services.v1.CreateScopeResponse
-		(*UpdateScopeRequest)(nil),   // 6: controller.api.services.v1.UpdateScopeRequest
-		(*UpdateScopeResponse)(nil),  // 7: controller.api.services.v1.UpdateScopeResponse
-		(*DeleteScopeRequest)(nil),   // 8: controller.api.services.v1.DeleteScopeRequest
-		(*DeleteScopeResponse)(nil),  // 9: controller.api.services.v1.DeleteScopeResponse
-		(*scopes.Scope)(nil),         // 10: controller.api.resources.scopes.v1.Scope
-		(*field_mask.FieldMask)(nil), // 11: google.protobuf.FieldMask
-	}
-)
-
+var file_controller_api_services_v1_scope_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_controller_api_services_v1_scope_service_proto_goTypes = []interface{}{
+	(*GetScopeRequest)(nil),      // 0: controller.api.services.v1.GetScopeRequest
+	(*GetScopeResponse)(nil),     // 1: controller.api.services.v1.GetScopeResponse
+	(*ListScopesRequest)(nil),    // 2: controller.api.services.v1.ListScopesRequest
+	(*ListScopesResponse)(nil),   // 3: controller.api.services.v1.ListScopesResponse
+	(*CreateScopeRequest)(nil),   // 4: controller.api.services.v1.CreateScopeRequest
+	(*CreateScopeResponse)(nil),  // 5: controller.api.services.v1.CreateScopeResponse
+	(*UpdateScopeRequest)(nil),   // 6: controller.api.services.v1.UpdateScopeRequest
+	(*UpdateScopeResponse)(nil),  // 7: controller.api.services.v1.UpdateScopeResponse
+	(*DeleteScopeRequest)(nil),   // 8: controller.api.services.v1.DeleteScopeRequest
+	(*DeleteScopeResponse)(nil),  // 9: controller.api.services.v1.DeleteScopeResponse
+	(*scopes.Scope)(nil),         // 10: controller.api.resources.scopes.v1.Scope
+	(*field_mask.FieldMask)(nil), // 11: google.protobuf.FieldMask
+}
 var file_controller_api_services_v1_scope_service_proto_depIdxs = []int32{
 	10, // 0: controller.api.services.v1.GetScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
 	10, // 1: controller.api.services.v1.ListScopesResponse.items:type_name -> controller.api.resources.scopes.v1.Scope
