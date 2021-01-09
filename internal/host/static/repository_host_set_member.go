@@ -18,7 +18,7 @@ import (
 // the set to be added. The version must match the current version of the
 // setId in the repository.
 func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, error) {
-	const op = "static.AddSetMembers"
+	const op = "static.(Repository).AddSetMembers"
 	if scopeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
@@ -159,7 +159,7 @@ func getHosts(ctx context.Context, reader db.Reader, setId string, limit int) ([
 // returns the number of hosts deleted from the set. The version must match
 // the current version of the setId in the repository.
 func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) (int, error) {
-	const op = "static.DeleteSetMembers"
+	const op = "static.(Repository).DeleteSetMembers"
 	if scopeId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
@@ -227,7 +227,7 @@ func deleteMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*
 // set to be added. The version must match the current version of the setId
 // in the repository. If hostIds is empty, all hosts will be removed setId.
 func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, int, error) {
-	const op = "static.SetSetMembers"
+	const op = "static.(Repository).SetSetMembers"
 	if scopeId == "" {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
@@ -326,7 +326,7 @@ type change struct {
 }
 
 func (r *Repository) changes(ctx context.Context, setId string, hostIds []string) ([]*change, error) {
-	const op = "static.changes"
+	const op = "static.(Repository).changes"
 	var inClauseSpots []string
 	// starts at 2 because there is already a $1 in the query
 	for i := 2; i < len(hostIds)+2; i++ {

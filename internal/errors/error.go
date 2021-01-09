@@ -23,7 +23,9 @@ type Err struct {
 	// Msg for the error
 	Msg string
 
-	// Op represents the operation raising/propagating an error and is optional
+	// Op represents the operation raising/propagating an error and is optional.
+	// Op should be formatted as "package.func" for functions, while methods should
+	// include the receiver type in parentheses "package.(type).func"
 	Op Op
 
 	// Wrapped is the error which this Err wraps and will be nil if there's no
