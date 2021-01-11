@@ -19,7 +19,7 @@ type statementProvider struct {
 func newStatementProvider(dialect string, curVer int) (*statementProvider, error) {
 	op := errors.Op("schema.newStatementProvider")
 	qp := statementProvider{pos: -1}
-	qp.up, qp.down = GetUpMigration(dialect), GetDownMigration(dialect)
+	qp.up, qp.down = getUpMigration(dialect), getDownMigration(dialect)
 	if len(qp.up) != len(qp.down) {
 		return nil, errors.New(errors.MigrationData, op, fmt.Sprintf("Mismatch up/down size: up %d vs. down %d", len(qp.up), len(qp.down)))
 	}

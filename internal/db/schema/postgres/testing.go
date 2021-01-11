@@ -29,23 +29,22 @@
 // Package testing has the database tests.
 // All database drivers must pass the Test function.
 // This lives in it's own package so it stays a test dependency.
-package schema
+package postgres
 
 import (
 	"bytes"
 	"context"
 	"database/sql"
-	"fmt"
 	"io"
 	"testing"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4/database"
-	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/stretchr/testify/require"
 )
 
 // Test runs tests against database implementations.
-func Test(t *testing.T, d *postgres, migration []byte) {
+func Test(t *testing.T, d *Postgres, migration []byte) {
 	if migration == nil {
 		t.Fatal("test must provide migration reader")
 	}
@@ -53,69 +52,69 @@ func Test(t *testing.T, d *postgres, migration []byte) {
 	TestNilVersion(t, d) // test first
 	TestLockAndUnlock(t, d)
 	TestRun(t, d, bytes.NewReader(migration))
-	TestSetVersion(t, d) // also tests version()
+	TestSetVersion(t, d) // also tests Version()
 	// drop breaks the driver, so test it last.
 	TestDrop(t, d)
 }
 
-func TestNilVersion(t *testing.T, d *postgres) {
+func TestNilVersion(t *testing.T, d *Postgres) {
 	ctx := context.TODO()
-	v, _, err := d.version(ctx)
+	v, _, err := d.Version(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if v != database.NilVersion {
-		t.Fatalf("version: expected version to be NilVersion (-1), got %v", v)
+		t.Fatalf("Version: expected Version to be NilVersion (-1), got %v", v)
 	}
 }
 
-func TestLockAndUnlock(t *testing.T, d *postgres) {
+func TestLockAndUnlock(t *testing.T, d *Postgres) {
 	ctx := context.TODO()
 
 	ctx, _ = context.WithTimeout(ctx, 15*time.Second)
 
 	// locking twice is ok, no error
-	if err := d.lock(ctx); err != nil {
+	if err := d.Lock(ctx); err != nil {
 		t.Fatalf("got error, expected none: %v", err)
 	}
-	if err := d.lock(ctx); err != nil {
+	if err := d.Lock(ctx); err != nil {
 		t.Fatalf("got error, expected none: %v", err)
 	}
 
-	// unlock
-	if err := d.unlock(ctx); err != nil {
+	// Unlock
+	if err := d.Unlock(ctx); err != nil {
 		t.Fatalf("error unlocking: %v", err)
 	}
 
-	// try to lock
-	if err := d.lock(ctx); err != nil {
+	// try to Lock
+	if err := d.Lock(ctx); err != nil {
 		t.Fatalf("got error, expected none: %v", err)
 	}
-	if err := d.unlock(ctx); err != nil {
+	if err := d.Unlock(ctx); err != nil {
 		t.Fatalf("got error, expected none: %v", err)
 	}
 
 }
 
-func TestRun(t *testing.T, d *postgres, migration io.Reader) {
+func TestRun(t *testing.T, d *Postgres, migration io.Reader) {
 	ctx := context.TODO()
 	if migration == nil {
 		t.Fatal("migration can't be nil")
 	}
 
-	if err := d.run(ctx, migration); err != nil {
+	if err := d.Run(ctx, migration); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestDrop(t *testing.T, d *postgres) {
+func TestDrop(t *testing.T, d *Postgres) {
 	ctx := context.TODO()
 	if err := d.drop(ctx); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestSetVersion(t *testing.T, d *postgres) {
+func TestSetVersion(t *testing.T, d *Postgres) {
 	ctx := context.TODO()
 	// nolint:maligned
 	testCases := []struct {
@@ -137,16 +136,16 @@ func TestSetVersion(t *testing.T, d *postgres) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := d.setVersion(ctx, tc.version, tc.dirty)
+			err := d.SetVersion(ctx, tc.version, tc.dirty)
 			if err != tc.expectedErr {
 				t.Fatal("Got unexpected error:", err, "!=", tc.expectedErr)
 			}
-			v, dirty, readErr := d.version(ctx)
+			v, dirty, readErr := d.Version(ctx)
 			if readErr != tc.expectedReadErr {
 				t.Fatal("Got unexpected error:", readErr, "!=", tc.expectedReadErr)
 			}
 			if v != tc.expectedVersion {
-				t.Error("Got unexpected version:", v, "!=", tc.expectedVersion)
+				t.Error("Got unexpected Version:", v, "!=", tc.expectedVersion)
 			}
 			if dirty != tc.expectedDirty {
 				t.Error("Got unexpected dirty value:", dirty, "!=", tc.dirty)
@@ -155,26 +154,20 @@ func TestSetVersion(t *testing.T, d *postgres) {
 	}
 }
 
-func (p *postgres) open(ctx context.Context, u string) (*postgres, error) {
-	const op = "schema.(postgres).open"
+func (p *Postgres) open(t *testing.T, ctx context.Context, u string) (*Postgres, error) {
+	t.Helper()
 	db, err := sql.Open("postgres", u)
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
+	require.NoError(t, err)
 
-	px, err := newPostgres(ctx, db)
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
+	px, err := NewPostgres(ctx, db)
+	require.NoError(t, err)
 
 	return px, nil
 }
 
-func (p *postgres) close() error {
-	connErr := p.conn.Close()
-	dbErr := p.db.Close()
-	if connErr != nil || dbErr != nil {
-		return fmt.Errorf("conn: %v, db: %v", connErr, dbErr)
-	}
+func (p *Postgres) close(t *testing.T) error {
+	t.Helper()
+	require.NoError(t, p.conn.Close())
+	require.NoError(t, p.db.Close())
 	return nil
 }

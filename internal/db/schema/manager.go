@@ -5,17 +5,31 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 
+	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 	"github.com/hashicorp/boundary/internal/errors"
 )
+
+// driver provides functionality to a database.
+type driver interface {
+	TrySharedLock(context.Context) error
+	TryLock(context.Context) error
+	Lock(context.Context) error
+	Unlock(context.Context) error
+	Run(context.Context, io.Reader) error
+	// A value of -1 indicates no version is set.
+	SetVersion(context.Context, int, bool) error
+	// A value of -1 indicates no version is set.
+	Version(context.Context) (int, bool, error)
+}
 
 // Manager provides a way to run operations and retrieve information regarding
 // the underlying boundary database schema.
 // Manager is not thread safe.
 type Manager struct {
-	db *sql.DB
-	// TODO: Make this field be an interface when we implement a second, non-postgres, db.
-	driver  *postgres
+	db      *sql.DB
+	driver  driver
 	dialect string
 }
 
@@ -27,7 +41,7 @@ func NewManager(ctx context.Context, dialect string, db *sql.DB) (*Manager, erro
 	var err error
 	switch dialect {
 	case "postgres", "postgresql":
-		dbM.driver, err = newPostgres(ctx, db)
+		dbM.driver, err = postgres.NewPostgres(ctx, db)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -42,7 +56,7 @@ func NewManager(ctx context.Context, dialect string, db *sql.DB) (*Manager, erro
 // a lock was unable to be obtained.
 func (b *Manager) SharedLock(ctx context.Context) error {
 	const op = "schema.(Manager).SharedLock"
-	if err := b.driver.trySharedLock(ctx); err != nil {
+	if err := b.driver.TrySharedLock(ctx); err != nil {
 		return errors.Wrap(err, op)
 	}
 	return nil
@@ -52,7 +66,7 @@ func (b *Manager) SharedLock(ctx context.Context) error {
 // lock can be obtained an error is returned.
 func (b *Manager) ExclusiveLock(ctx context.Context) error {
 	const op = "schema.(Manager).ExclusiveLock"
-	if err := b.driver.tryLock(ctx); err != nil {
+	if err := b.driver.TryLock(ctx); err != nil {
 		return errors.Wrap(err, op)
 	}
 	return nil
@@ -65,14 +79,14 @@ func (b *Manager) RollForward(ctx context.Context) error {
 	const op = "schema.(Manager).RollForward"
 
 	// Capturing a lock that this session to the db already possesses is okay.
-	if err := b.driver.lock(ctx); err != nil {
+	if err := b.driver.Lock(ctx); err != nil {
 		return errors.Wrap(err, op)
 	}
 	defer func() {
-		b.driver.unlock(ctx)
+		b.driver.Unlock(ctx)
 	}()
 
-	curVersion, dirty, err := b.driver.version(ctx)
+	curVersion, dirty, err := b.driver.Version(ctx)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -102,16 +116,16 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 		}
 
 		// set version with dirty state
-		if err := b.driver.setVersion(ctx, qp.Version(), true); err != nil {
+		if err := b.driver.SetVersion(ctx, qp.Version(), true); err != nil {
 			return errors.Wrap(err, op)
 		}
 
-		if err := b.driver.run(ctx, bytes.NewReader(qp.ReadUp())); err != nil {
+		if err := b.driver.Run(ctx, bytes.NewReader(qp.ReadUp())); err != nil {
 			return errors.Wrap(err, op)
 		}
 
 		// set clean state
-		if err := b.driver.setVersion(ctx, qp.Version(), false); err != nil {
+		if err := b.driver.SetVersion(ctx, qp.Version(), false); err != nil {
 			return errors.Wrap(err, op)
 		}
 	}

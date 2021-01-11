@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
@@ -46,9 +47,9 @@ func TestRollForward(t *testing.T) {
 	assert.NoError(t, m.RollForward(ctx))
 
 	// Now set to dirty at an early version
-	testDriver, err := newPostgres(ctx, d)
+	testDriver, err := postgres.NewPostgres(ctx, d)
 	require.NoError(t, err)
-	testDriver.setVersion(ctx, 0, true)
+	testDriver.SetVersion(ctx, 0, true)
 	assert.Error(t, m.RollForward(ctx))
 }
 
@@ -87,7 +88,7 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 	require.NoError(t, err)
 	assert.NoError(t, m.RollForward(ctx))
 
-	ver, dirty, err := m.driver.version(ctx)
+	ver, dirty, err := m.driver.Version(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, nState.binarySchemaVersion, ver)
 	assert.False(t, dirty)
@@ -98,7 +99,7 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 	newM, err := NewManager(ctx, dialect, d)
 	require.NoError(t, err)
 	assert.NoError(t, newM.RollForward(ctx))
-	ver, dirty, err = newM.driver.version(ctx)
+	ver, dirty, err = newM.driver.Version(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, oState.binarySchemaVersion, ver)
 	assert.False(t, dirty)

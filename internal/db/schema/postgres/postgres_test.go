@@ -26,7 +26,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package schema
+package postgres
 
 // error codes https://github.com/lib/pq/blob/master/error.go
 
@@ -101,13 +101,13 @@ func TestDbStuff(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &postgres{}
-		d, err := p.open(ctx, addr)
+		p := &Postgres{}
+		d, err := p.open(t, ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer func() {
-			if err := d.close(); err != nil {
+			if err := d.close(t); err != nil {
 				t.Error(err)
 			}
 		}()
@@ -124,17 +124,17 @@ func TestMultiStatement(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &postgres{}
-		d, err := p.open(ctx, addr)
+		p := &Postgres{}
+		d, err := p.open(t, ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer func() {
-			if err := d.close(); err != nil {
+			if err := d.close(t); err != nil {
 				t.Error(err)
 			}
 		}()
-		if err := d.run(ctx, strings.NewReader("CREATE TABLE foo (foo text); CREATE TABLE bar (bar text);")); err != nil {
+		if err := d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text); CREATE TABLE bar (bar text);")); err != nil {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
@@ -158,38 +158,38 @@ func TestWithSchema(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &postgres{}
-		d, err := p.open(ctx, addr)
+		p := &Postgres{}
+		d, err := p.open(t, ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer func() {
-			if err := d.close(); err != nil {
+			if err := d.close(t); err != nil {
 				t.Fatal(err)
 			}
 		}()
 
 		// create foobar schema
-		if err := d.run(ctx, strings.NewReader("CREATE SCHEMA foobar AUTHORIZATION postgres")); err != nil {
+		if err := d.Run(ctx, strings.NewReader("CREATE SCHEMA foobar AUTHORIZATION postgres")); err != nil {
 			t.Fatal(err)
 		}
-		if err := d.setVersion(ctx, 1, false); err != nil {
+		if err := d.SetVersion(ctx, 1, false); err != nil {
 			t.Fatal(err)
 		}
 
 		// re-connect using that schema
-		d2, err := p.open(ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=foobar",
+		d2, err := p.open(t, ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=foobar",
 			pgPassword, ip, port))
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer func() {
-			if err := d2.close(); err != nil {
+			if err := d2.close(t); err != nil {
 				t.Fatal(err)
 			}
 		}()
 
-		version, _, err := d2.version(ctx)
+		version, _, err := d2.Version(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -197,25 +197,25 @@ func TestWithSchema(t *testing.T) {
 			t.Fatal("expected NilVersion")
 		}
 
-		// now update version and compare
-		if err := d2.setVersion(ctx, 2, false); err != nil {
+		// now update Version and compare
+		if err := d2.SetVersion(ctx, 2, false); err != nil {
 			t.Fatal(err)
 		}
-		version, _, err = d2.version(ctx)
+		version, _, err = d2.Version(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if version != 2 {
-			t.Fatal("expected version 2")
+			t.Fatal("expected Version 2")
 		}
 
-		// meanwhile, the public schema still has the other version
-		version, _, err = d.version(ctx)
+		// meanwhile, the public schema still has the other Version
+		version, _, err = d.Version(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if version != 1 {
-			t.Fatal("expected version 2")
+			t.Fatal("expected Version 2")
 		}
 	})
 }
@@ -229,30 +229,30 @@ func TestPostgres_Lock(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &postgres{}
-		ps, err := p.open(ctx, addr)
+		p := &Postgres{}
+		ps, err := p.open(t, ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		Test(t, ps, []byte("SELECT 1"))
 
-		err = ps.lock(ctx)
+		err = ps.Lock(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		err = ps.unlock(ctx)
+		err = ps.Unlock(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		err = ps.lock(ctx)
+		err = ps.Lock(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		err = ps.unlock(ctx)
+		err = ps.Unlock(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -266,7 +266,7 @@ func TestWithInstance_Concurrent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// The number of concurrent processes running newPostgres
+		// The number of concurrent processes running NewPostgres
 		const concurrency = 30
 
 		// We can instantiate a single database handle because it is
@@ -293,7 +293,7 @@ func TestWithInstance_Concurrent(t *testing.T) {
 		for i := 0; i < concurrency; i++ {
 			go func(i int) {
 				defer wg.Done()
-				_, err := newPostgres(context.TODO(), db)
+				_, err := NewPostgres(context.TODO(), db)
 				if err != nil {
 					t.Errorf("process %d error: %s", i, err)
 				}
