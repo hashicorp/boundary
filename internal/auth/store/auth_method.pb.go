@@ -7,12 +7,11 @@
 package store
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/hashicorp/boundary/internal/db/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -200,14 +199,11 @@ func file_controller_storage_auth_store_v1_auth_method_proto_rawDescGZIP() []byt
 	return file_controller_storage_auth_store_v1_auth_method_proto_rawDescData
 }
 
-var (
-	file_controller_storage_auth_store_v1_auth_method_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-	file_controller_storage_auth_store_v1_auth_method_proto_goTypes  = []interface{}{
-		(*AuthMethod)(nil),  // 0: controller.storage.auth.store.v1.AuthMethod
-		(*AuthAccount)(nil), // 1: controller.storage.auth.store.v1.AuthAccount
-	}
-)
-
+var file_controller_storage_auth_store_v1_auth_method_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_controller_storage_auth_store_v1_auth_method_proto_goTypes = []interface{}{
+	(*AuthMethod)(nil),  // 0: controller.storage.auth.store.v1.AuthMethod
+	(*AuthAccount)(nil), // 1: controller.storage.auth.store.v1.AuthAccount
+}
 var file_controller_storage_auth_store_v1_auth_method_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type

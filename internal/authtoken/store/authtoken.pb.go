@@ -7,12 +7,11 @@
 package store
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -255,14 +254,11 @@ func file_controller_storage_authtoken_store_v1_authtoken_proto_rawDescGZIP() []
 	return file_controller_storage_authtoken_store_v1_authtoken_proto_rawDescData
 }
 
-var (
-	file_controller_storage_authtoken_store_v1_authtoken_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_controller_storage_authtoken_store_v1_authtoken_proto_goTypes  = []interface{}{
-		(*AuthToken)(nil),           // 0: controller.storage.authtoken.store.v1.AuthToken
-		(*timestamp.Timestamp)(nil), // 1: controller.storage.timestamp.v1.Timestamp
-	}
-)
-
+var file_controller_storage_authtoken_store_v1_authtoken_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_controller_storage_authtoken_store_v1_authtoken_proto_goTypes = []interface{}{
+	(*AuthToken)(nil),           // 0: controller.storage.authtoken.store.v1.AuthToken
+	(*timestamp.Timestamp)(nil), // 1: controller.storage.timestamp.v1.Timestamp
+}
 var file_controller_storage_authtoken_store_v1_authtoken_proto_depIdxs = []int32{
 	1, // 0: controller.storage.authtoken.store.v1.AuthToken.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	1, // 1: controller.storage.authtoken.store.v1.AuthToken.update_time:type_name -> controller.storage.timestamp.v1.Timestamp

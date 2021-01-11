@@ -7,14 +7,13 @@
 package authtokens
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	_ "github.com/golang/protobuf/ptypes/wrappers"
 	scopes "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -233,15 +232,12 @@ func file_controller_api_resources_authtokens_v1_authtoken_proto_rawDescGZIP() [
 	return file_controller_api_resources_authtokens_v1_authtoken_proto_rawDescData
 }
 
-var (
-	file_controller_api_resources_authtokens_v1_authtoken_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_controller_api_resources_authtokens_v1_authtoken_proto_goTypes  = []interface{}{
-		(*AuthToken)(nil),           // 0: controller.api.resources.authtokens.v1.AuthToken
-		(*scopes.ScopeInfo)(nil),    // 1: controller.api.resources.scopes.v1.ScopeInfo
-		(*timestamp.Timestamp)(nil), // 2: google.protobuf.Timestamp
-	}
-)
-
+var file_controller_api_resources_authtokens_v1_authtoken_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_controller_api_resources_authtokens_v1_authtoken_proto_goTypes = []interface{}{
+	(*AuthToken)(nil),           // 0: controller.api.resources.authtokens.v1.AuthToken
+	(*scopes.ScopeInfo)(nil),    // 1: controller.api.resources.scopes.v1.ScopeInfo
+	(*timestamp.Timestamp)(nil), // 2: google.protobuf.Timestamp
+}
 var file_controller_api_resources_authtokens_v1_authtoken_proto_depIdxs = []int32{
 	1, // 0: controller.api.resources.authtokens.v1.AuthToken.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
 	2, // 1: controller.api.resources.authtokens.v1.AuthToken.created_time:type_name -> google.protobuf.Timestamp

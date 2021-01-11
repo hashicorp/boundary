@@ -140,7 +140,7 @@ func (c *Client) Read(ctx context.Context, sessionId string, opt ...Option) (*Se
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}

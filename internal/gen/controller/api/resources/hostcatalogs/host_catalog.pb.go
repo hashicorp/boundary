@@ -7,9 +7,6 @@
 package hostcatalogs
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_struct "github.com/golang/protobuf/ptypes/struct"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	wrappers "github.com/golang/protobuf/ptypes/wrappers"
@@ -17,6 +14,8 @@ import (
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -233,17 +232,14 @@ func file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_rawDescGZI
 	return file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_rawDescData
 }
 
-var (
-	file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_goTypes  = []interface{}{
-		(*HostCatalog)(nil),          // 0: controller.api.resources.hostcatalogs.v1.HostCatalog
-		(*scopes.ScopeInfo)(nil),     // 1: controller.api.resources.scopes.v1.ScopeInfo
-		(*wrappers.StringValue)(nil), // 2: google.protobuf.StringValue
-		(*timestamp.Timestamp)(nil),  // 3: google.protobuf.Timestamp
-		(*_struct.Struct)(nil),       // 4: google.protobuf.Struct
-	}
-)
-
+var file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_goTypes = []interface{}{
+	(*HostCatalog)(nil),          // 0: controller.api.resources.hostcatalogs.v1.HostCatalog
+	(*scopes.ScopeInfo)(nil),     // 1: controller.api.resources.scopes.v1.ScopeInfo
+	(*wrappers.StringValue)(nil), // 2: google.protobuf.StringValue
+	(*timestamp.Timestamp)(nil),  // 3: google.protobuf.Timestamp
+	(*_struct.Struct)(nil),       // 4: google.protobuf.Struct
+}
 var file_controller_api_resources_hostcatalogs_v1_host_catalog_proto_depIdxs = []int32{
 	1, // 0: controller.api.resources.hostcatalogs.v1.HostCatalog.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
 	2, // 1: controller.api.resources.hostcatalogs.v1.HostCatalog.name:type_name -> google.protobuf.StringValue

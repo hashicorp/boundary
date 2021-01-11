@@ -7,13 +7,12 @@
 package store
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -262,15 +261,12 @@ func file_controller_storage_kms_store_v1_token_key_proto_rawDescGZIP() []byte {
 	return file_controller_storage_kms_store_v1_token_key_proto_rawDescData
 }
 
-var (
-	file_controller_storage_kms_store_v1_token_key_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-	file_controller_storage_kms_store_v1_token_key_proto_goTypes  = []interface{}{
-		(*TokenKey)(nil),            // 0: controller.storage.kms.store.v1.TokenKey
-		(*TokenKeyVersion)(nil),     // 1: controller.storage.kms.store.v1.TokenKeyVersion
-		(*timestamp.Timestamp)(nil), // 2: controller.storage.timestamp.v1.Timestamp
-	}
-)
-
+var file_controller_storage_kms_store_v1_token_key_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_controller_storage_kms_store_v1_token_key_proto_goTypes = []interface{}{
+	(*TokenKey)(nil),            // 0: controller.storage.kms.store.v1.TokenKey
+	(*TokenKeyVersion)(nil),     // 1: controller.storage.kms.store.v1.TokenKeyVersion
+	(*timestamp.Timestamp)(nil), // 2: controller.storage.timestamp.v1.Timestamp
+}
 var file_controller_storage_kms_store_v1_token_key_proto_depIdxs = []int32{
 	2, // 0: controller.storage.kms.store.v1.TokenKey.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	2, // 1: controller.storage.kms.store.v1.TokenKeyVersion.create_time:type_name -> controller.storage.timestamp.v1.Timestamp

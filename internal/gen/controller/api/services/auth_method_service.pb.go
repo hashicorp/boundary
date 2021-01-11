@@ -7,9 +7,6 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_struct "github.com/golang/protobuf/ptypes/struct"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	authmethods "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
@@ -18,6 +15,8 @@ import (
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -887,29 +886,26 @@ func file_controller_api_services_v1_auth_method_service_proto_rawDescGZIP() []b
 	return file_controller_api_services_v1_auth_method_service_proto_rawDescData
 }
 
-var (
-	file_controller_api_services_v1_auth_method_service_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
-	file_controller_api_services_v1_auth_method_service_proto_goTypes  = []interface{}{
-		(*GetAuthMethodRequest)(nil),     // 0: controller.api.services.v1.GetAuthMethodRequest
-		(*GetAuthMethodResponse)(nil),    // 1: controller.api.services.v1.GetAuthMethodResponse
-		(*ListAuthMethodsRequest)(nil),   // 2: controller.api.services.v1.ListAuthMethodsRequest
-		(*ListAuthMethodsResponse)(nil),  // 3: controller.api.services.v1.ListAuthMethodsResponse
-		(*CreateAuthMethodRequest)(nil),  // 4: controller.api.services.v1.CreateAuthMethodRequest
-		(*CreateAuthMethodResponse)(nil), // 5: controller.api.services.v1.CreateAuthMethodResponse
-		(*UpdateAuthMethodRequest)(nil),  // 6: controller.api.services.v1.UpdateAuthMethodRequest
-		(*UpdateAuthMethodResponse)(nil), // 7: controller.api.services.v1.UpdateAuthMethodResponse
-		(*DeleteAuthMethodRequest)(nil),  // 8: controller.api.services.v1.DeleteAuthMethodRequest
-		(*DeleteAuthMethodResponse)(nil), // 9: controller.api.services.v1.DeleteAuthMethodResponse
-		(*PasswordCredentials)(nil),      // 10: controller.api.services.v1.PasswordCredentials
-		(*AuthenticateRequest)(nil),      // 11: controller.api.services.v1.AuthenticateRequest
-		(*AuthenticateResponse)(nil),     // 12: controller.api.services.v1.AuthenticateResponse
-		(*authmethods.AuthMethod)(nil),   // 13: controller.api.resources.authmethods.v1.AuthMethod
-		(*field_mask.FieldMask)(nil),     // 14: google.protobuf.FieldMask
-		(*_struct.Struct)(nil),           // 15: google.protobuf.Struct
-		(*authtokens.AuthToken)(nil),     // 16: controller.api.resources.authtokens.v1.AuthToken
-	}
-)
-
+var file_controller_api_services_v1_auth_method_service_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_controller_api_services_v1_auth_method_service_proto_goTypes = []interface{}{
+	(*GetAuthMethodRequest)(nil),     // 0: controller.api.services.v1.GetAuthMethodRequest
+	(*GetAuthMethodResponse)(nil),    // 1: controller.api.services.v1.GetAuthMethodResponse
+	(*ListAuthMethodsRequest)(nil),   // 2: controller.api.services.v1.ListAuthMethodsRequest
+	(*ListAuthMethodsResponse)(nil),  // 3: controller.api.services.v1.ListAuthMethodsResponse
+	(*CreateAuthMethodRequest)(nil),  // 4: controller.api.services.v1.CreateAuthMethodRequest
+	(*CreateAuthMethodResponse)(nil), // 5: controller.api.services.v1.CreateAuthMethodResponse
+	(*UpdateAuthMethodRequest)(nil),  // 6: controller.api.services.v1.UpdateAuthMethodRequest
+	(*UpdateAuthMethodResponse)(nil), // 7: controller.api.services.v1.UpdateAuthMethodResponse
+	(*DeleteAuthMethodRequest)(nil),  // 8: controller.api.services.v1.DeleteAuthMethodRequest
+	(*DeleteAuthMethodResponse)(nil), // 9: controller.api.services.v1.DeleteAuthMethodResponse
+	(*PasswordCredentials)(nil),      // 10: controller.api.services.v1.PasswordCredentials
+	(*AuthenticateRequest)(nil),      // 11: controller.api.services.v1.AuthenticateRequest
+	(*AuthenticateResponse)(nil),     // 12: controller.api.services.v1.AuthenticateResponse
+	(*authmethods.AuthMethod)(nil),   // 13: controller.api.resources.authmethods.v1.AuthMethod
+	(*field_mask.FieldMask)(nil),     // 14: google.protobuf.FieldMask
+	(*_struct.Struct)(nil),           // 15: google.protobuf.Struct
+	(*authtokens.AuthToken)(nil),     // 16: controller.api.resources.authtokens.v1.AuthToken
+}
 var file_controller_api_services_v1_auth_method_service_proto_depIdxs = []int32{
 	13, // 0: controller.api.services.v1.GetAuthMethodResponse.item:type_name -> controller.api.resources.authmethods.v1.AuthMethod
 	13, // 1: controller.api.services.v1.ListAuthMethodsResponse.items:type_name -> controller.api.resources.authmethods.v1.AuthMethod

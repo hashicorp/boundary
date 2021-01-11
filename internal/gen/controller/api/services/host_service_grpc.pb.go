@@ -4,7 +4,6 @@ package services
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -137,24 +136,21 @@ type HostServiceServer interface {
 }
 
 // UnimplementedHostServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedHostServiceServer struct{}
+type UnimplementedHostServiceServer struct {
+}
 
 func (UnimplementedHostServiceServer) GetHost(context.Context, *GetHostRequest) (*GetHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHost not implemented")
 }
-
 func (UnimplementedHostServiceServer) ListHosts(context.Context, *ListHostsRequest) (*ListHostsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListHosts not implemented")
 }
-
 func (UnimplementedHostServiceServer) CreateHost(context.Context, *CreateHostRequest) (*CreateHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateHost not implemented")
 }
-
 func (UnimplementedHostServiceServer) UpdateHost(context.Context, *UpdateHostRequest) (*UpdateHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateHost not implemented")
 }
-
 func (UnimplementedHostServiceServer) DeleteHost(context.Context, *DeleteHostRequest) (*DeleteHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteHost not implemented")
 }

@@ -7,12 +7,11 @@
 package store
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/hashicorp/boundary/internal/db/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -143,13 +142,10 @@ func file_controller_storage_auth_store_v1_account_proto_rawDescGZIP() []byte {
 	return file_controller_storage_auth_store_v1_account_proto_rawDescData
 }
 
-var (
-	file_controller_storage_auth_store_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_controller_storage_auth_store_v1_account_proto_goTypes  = []interface{}{
-		(*Account)(nil), // 0: controller.storage.auth.store.v1.Account
-	}
-)
-
+var file_controller_storage_auth_store_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_controller_storage_auth_store_v1_account_proto_goTypes = []interface{}{
+	(*Account)(nil), // 0: controller.storage.auth.store.v1.Account
+}
 var file_controller_storage_auth_store_v1_account_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type

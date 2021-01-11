@@ -9,12 +9,11 @@
 package store
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -400,16 +399,13 @@ func file_controller_storage_oplog_store_v1_oplog_proto_rawDescGZIP() []byte {
 	return file_controller_storage_oplog_store_v1_oplog_proto_rawDescData
 }
 
-var (
-	file_controller_storage_oplog_store_v1_oplog_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-	file_controller_storage_oplog_store_v1_oplog_proto_goTypes  = []interface{}{
-		(*Entry)(nil),               // 0: controller.storage.oplog.store.v1.Entry
-		(*Metadata)(nil),            // 1: controller.storage.oplog.store.v1.Metadata
-		(*Ticket)(nil),              // 2: controller.storage.oplog.store.v1.Ticket
-		(*timestamp.Timestamp)(nil), // 3: controller.storage.timestamp.v1.Timestamp
-	}
-)
-
+var file_controller_storage_oplog_store_v1_oplog_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_controller_storage_oplog_store_v1_oplog_proto_goTypes = []interface{}{
+	(*Entry)(nil),               // 0: controller.storage.oplog.store.v1.Entry
+	(*Metadata)(nil),            // 1: controller.storage.oplog.store.v1.Metadata
+	(*Ticket)(nil),              // 2: controller.storage.oplog.store.v1.Ticket
+	(*timestamp.Timestamp)(nil), // 3: controller.storage.timestamp.v1.Timestamp
+}
 var file_controller_storage_oplog_store_v1_oplog_proto_depIdxs = []int32{
 	3, // 0: controller.storage.oplog.store.v1.Entry.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	3, // 1: controller.storage.oplog.store.v1.Entry.update_time:type_name -> controller.storage.timestamp.v1.Timestamp

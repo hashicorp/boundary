@@ -7,15 +7,14 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	hostcatalogs "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -666,24 +665,21 @@ func file_controller_api_services_v1_host_catalog_service_proto_rawDescGZIP() []
 	return file_controller_api_services_v1_host_catalog_service_proto_rawDescData
 }
 
-var (
-	file_controller_api_services_v1_host_catalog_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
-	file_controller_api_services_v1_host_catalog_service_proto_goTypes  = []interface{}{
-		(*GetHostCatalogRequest)(nil),     // 0: controller.api.services.v1.GetHostCatalogRequest
-		(*GetHostCatalogResponse)(nil),    // 1: controller.api.services.v1.GetHostCatalogResponse
-		(*ListHostCatalogsRequest)(nil),   // 2: controller.api.services.v1.ListHostCatalogsRequest
-		(*ListHostCatalogsResponse)(nil),  // 3: controller.api.services.v1.ListHostCatalogsResponse
-		(*CreateHostCatalogRequest)(nil),  // 4: controller.api.services.v1.CreateHostCatalogRequest
-		(*CreateHostCatalogResponse)(nil), // 5: controller.api.services.v1.CreateHostCatalogResponse
-		(*UpdateHostCatalogRequest)(nil),  // 6: controller.api.services.v1.UpdateHostCatalogRequest
-		(*UpdateHostCatalogResponse)(nil), // 7: controller.api.services.v1.UpdateHostCatalogResponse
-		(*DeleteHostCatalogRequest)(nil),  // 8: controller.api.services.v1.DeleteHostCatalogRequest
-		(*DeleteHostCatalogResponse)(nil), // 9: controller.api.services.v1.DeleteHostCatalogResponse
-		(*hostcatalogs.HostCatalog)(nil),  // 10: controller.api.resources.hostcatalogs.v1.HostCatalog
-		(*field_mask.FieldMask)(nil),      // 11: google.protobuf.FieldMask
-	}
-)
-
+var file_controller_api_services_v1_host_catalog_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_controller_api_services_v1_host_catalog_service_proto_goTypes = []interface{}{
+	(*GetHostCatalogRequest)(nil),     // 0: controller.api.services.v1.GetHostCatalogRequest
+	(*GetHostCatalogResponse)(nil),    // 1: controller.api.services.v1.GetHostCatalogResponse
+	(*ListHostCatalogsRequest)(nil),   // 2: controller.api.services.v1.ListHostCatalogsRequest
+	(*ListHostCatalogsResponse)(nil),  // 3: controller.api.services.v1.ListHostCatalogsResponse
+	(*CreateHostCatalogRequest)(nil),  // 4: controller.api.services.v1.CreateHostCatalogRequest
+	(*CreateHostCatalogResponse)(nil), // 5: controller.api.services.v1.CreateHostCatalogResponse
+	(*UpdateHostCatalogRequest)(nil),  // 6: controller.api.services.v1.UpdateHostCatalogRequest
+	(*UpdateHostCatalogResponse)(nil), // 7: controller.api.services.v1.UpdateHostCatalogResponse
+	(*DeleteHostCatalogRequest)(nil),  // 8: controller.api.services.v1.DeleteHostCatalogRequest
+	(*DeleteHostCatalogResponse)(nil), // 9: controller.api.services.v1.DeleteHostCatalogResponse
+	(*hostcatalogs.HostCatalog)(nil),  // 10: controller.api.resources.hostcatalogs.v1.HostCatalog
+	(*field_mask.FieldMask)(nil),      // 11: google.protobuf.FieldMask
+}
 var file_controller_api_services_v1_host_catalog_service_proto_depIdxs = []int32{
 	10, // 0: controller.api.services.v1.GetHostCatalogResponse.item:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog
 	10, // 1: controller.api.services.v1.ListHostCatalogsResponse.items:type_name -> controller.api.resources.hostcatalogs.v1.HostCatalog

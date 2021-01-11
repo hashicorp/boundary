@@ -7,15 +7,14 @@
 package services
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	hostsets "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -1071,30 +1070,27 @@ func file_controller_api_services_v1_host_set_service_proto_rawDescGZIP() []byte
 	return file_controller_api_services_v1_host_set_service_proto_rawDescData
 }
 
-var (
-	file_controller_api_services_v1_host_set_service_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
-	file_controller_api_services_v1_host_set_service_proto_goTypes  = []interface{}{
-		(*GetHostSetRequest)(nil),          // 0: controller.api.services.v1.GetHostSetRequest
-		(*GetHostSetResponse)(nil),         // 1: controller.api.services.v1.GetHostSetResponse
-		(*ListHostSetsRequest)(nil),        // 2: controller.api.services.v1.ListHostSetsRequest
-		(*ListHostSetsResponse)(nil),       // 3: controller.api.services.v1.ListHostSetsResponse
-		(*CreateHostSetRequest)(nil),       // 4: controller.api.services.v1.CreateHostSetRequest
-		(*CreateHostSetResponse)(nil),      // 5: controller.api.services.v1.CreateHostSetResponse
-		(*UpdateHostSetRequest)(nil),       // 6: controller.api.services.v1.UpdateHostSetRequest
-		(*UpdateHostSetResponse)(nil),      // 7: controller.api.services.v1.UpdateHostSetResponse
-		(*DeleteHostSetRequest)(nil),       // 8: controller.api.services.v1.DeleteHostSetRequest
-		(*DeleteHostSetResponse)(nil),      // 9: controller.api.services.v1.DeleteHostSetResponse
-		(*AddHostSetHostsRequest)(nil),     // 10: controller.api.services.v1.AddHostSetHostsRequest
-		(*AddHostSetHostsResponse)(nil),    // 11: controller.api.services.v1.AddHostSetHostsResponse
-		(*SetHostSetHostsRequest)(nil),     // 12: controller.api.services.v1.SetHostSetHostsRequest
-		(*SetHostSetHostsResponse)(nil),    // 13: controller.api.services.v1.SetHostSetHostsResponse
-		(*RemoveHostSetHostsRequest)(nil),  // 14: controller.api.services.v1.RemoveHostSetHostsRequest
-		(*RemoveHostSetHostsResponse)(nil), // 15: controller.api.services.v1.RemoveHostSetHostsResponse
-		(*hostsets.HostSet)(nil),           // 16: controller.api.resources.hostsets.v1.HostSet
-		(*field_mask.FieldMask)(nil),       // 17: google.protobuf.FieldMask
-	}
-)
-
+var file_controller_api_services_v1_host_set_service_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_controller_api_services_v1_host_set_service_proto_goTypes = []interface{}{
+	(*GetHostSetRequest)(nil),          // 0: controller.api.services.v1.GetHostSetRequest
+	(*GetHostSetResponse)(nil),         // 1: controller.api.services.v1.GetHostSetResponse
+	(*ListHostSetsRequest)(nil),        // 2: controller.api.services.v1.ListHostSetsRequest
+	(*ListHostSetsResponse)(nil),       // 3: controller.api.services.v1.ListHostSetsResponse
+	(*CreateHostSetRequest)(nil),       // 4: controller.api.services.v1.CreateHostSetRequest
+	(*CreateHostSetResponse)(nil),      // 5: controller.api.services.v1.CreateHostSetResponse
+	(*UpdateHostSetRequest)(nil),       // 6: controller.api.services.v1.UpdateHostSetRequest
+	(*UpdateHostSetResponse)(nil),      // 7: controller.api.services.v1.UpdateHostSetResponse
+	(*DeleteHostSetRequest)(nil),       // 8: controller.api.services.v1.DeleteHostSetRequest
+	(*DeleteHostSetResponse)(nil),      // 9: controller.api.services.v1.DeleteHostSetResponse
+	(*AddHostSetHostsRequest)(nil),     // 10: controller.api.services.v1.AddHostSetHostsRequest
+	(*AddHostSetHostsResponse)(nil),    // 11: controller.api.services.v1.AddHostSetHostsResponse
+	(*SetHostSetHostsRequest)(nil),     // 12: controller.api.services.v1.SetHostSetHostsRequest
+	(*SetHostSetHostsResponse)(nil),    // 13: controller.api.services.v1.SetHostSetHostsResponse
+	(*RemoveHostSetHostsRequest)(nil),  // 14: controller.api.services.v1.RemoveHostSetHostsRequest
+	(*RemoveHostSetHostsResponse)(nil), // 15: controller.api.services.v1.RemoveHostSetHostsResponse
+	(*hostsets.HostSet)(nil),           // 16: controller.api.resources.hostsets.v1.HostSet
+	(*field_mask.FieldMask)(nil),       // 17: google.protobuf.FieldMask
+}
 var file_controller_api_services_v1_host_set_service_proto_depIdxs = []int32{
 	16, // 0: controller.api.services.v1.GetHostSetResponse.item:type_name -> controller.api.resources.hostsets.v1.HostSet
 	16, // 1: controller.api.services.v1.ListHostSetsResponse.items:type_name -> controller.api.resources.hostsets.v1.HostSet

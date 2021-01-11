@@ -4,7 +4,6 @@ package services
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -133,24 +132,21 @@ type HostCatalogServiceServer interface {
 }
 
 // UnimplementedHostCatalogServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedHostCatalogServiceServer struct{}
+type UnimplementedHostCatalogServiceServer struct {
+}
 
 func (UnimplementedHostCatalogServiceServer) GetHostCatalog(context.Context, *GetHostCatalogRequest) (*GetHostCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHostCatalog not implemented")
 }
-
 func (UnimplementedHostCatalogServiceServer) ListHostCatalogs(context.Context, *ListHostCatalogsRequest) (*ListHostCatalogsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListHostCatalogs not implemented")
 }
-
 func (UnimplementedHostCatalogServiceServer) CreateHostCatalog(context.Context, *CreateHostCatalogRequest) (*CreateHostCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateHostCatalog not implemented")
 }
-
 func (UnimplementedHostCatalogServiceServer) UpdateHostCatalog(context.Context, *UpdateHostCatalogRequest) (*UpdateHostCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateHostCatalog not implemented")
 }
-
 func (UnimplementedHostCatalogServiceServer) DeleteHostCatalog(context.Context, *DeleteHostCatalogRequest) (*DeleteHostCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteHostCatalog not implemented")
 }

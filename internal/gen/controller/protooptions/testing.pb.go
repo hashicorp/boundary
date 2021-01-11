@@ -7,11 +7,10 @@
 package protooptions
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -615,19 +614,16 @@ func file_controller_custom_options_v1_testing_proto_rawDescGZIP() []byte {
 	return file_controller_custom_options_v1_testing_proto_rawDescData
 }
 
-var (
-	file_controller_custom_options_v1_testing_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
-	file_controller_custom_options_v1_testing_proto_goTypes  = []interface{}{
-		(*TestBase)(nil),                // 0: controller.custom_options.v1.TestBase
-		(*TestBaseSplit1)(nil),          // 1: controller.custom_options.v1.TestBaseSplit1
-		(*TestBaseSplit2)(nil),          // 2: controller.custom_options.v1.TestBaseSplit2
-		(*TestProperlyNamedFields)(nil), // 3: controller.custom_options.v1.TestProperlyNamedFields
-		(*TestNameDoesntMap)(nil),       // 4: controller.custom_options.v1.TestNameDoesntMap
-		(*TestNotEnoughFields)(nil),     // 5: controller.custom_options.v1.TestNotEnoughFields
-		(*TestManyToOneMappings)(nil),   // 6: controller.custom_options.v1.TestManyToOneMappings
-	}
-)
-
+var file_controller_custom_options_v1_testing_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_controller_custom_options_v1_testing_proto_goTypes = []interface{}{
+	(*TestBase)(nil),                // 0: controller.custom_options.v1.TestBase
+	(*TestBaseSplit1)(nil),          // 1: controller.custom_options.v1.TestBaseSplit1
+	(*TestBaseSplit2)(nil),          // 2: controller.custom_options.v1.TestBaseSplit2
+	(*TestProperlyNamedFields)(nil), // 3: controller.custom_options.v1.TestProperlyNamedFields
+	(*TestNameDoesntMap)(nil),       // 4: controller.custom_options.v1.TestNameDoesntMap
+	(*TestNotEnoughFields)(nil),     // 5: controller.custom_options.v1.TestNotEnoughFields
+	(*TestManyToOneMappings)(nil),   // 6: controller.custom_options.v1.TestManyToOneMappings
+}
 var file_controller_custom_options_v1_testing_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type

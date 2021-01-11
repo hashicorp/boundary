@@ -4,7 +4,6 @@ package services
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -116,28 +115,24 @@ type SessionServiceServer interface {
 }
 
 // UnimplementedSessionServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedSessionServiceServer struct{}
+type UnimplementedSessionServiceServer struct {
+}
 
 func (UnimplementedSessionServiceServer) LookupSession(context.Context, *LookupSessionRequest) (*LookupSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LookupSession not implemented")
 }
-
 func (UnimplementedSessionServiceServer) ActivateSession(context.Context, *ActivateSessionRequest) (*ActivateSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ActivateSession not implemented")
 }
-
 func (UnimplementedSessionServiceServer) CancelSession(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelSession not implemented")
 }
-
 func (UnimplementedSessionServiceServer) AuthorizeConnection(context.Context, *AuthorizeConnectionRequest) (*AuthorizeConnectionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AuthorizeConnection not implemented")
 }
-
 func (UnimplementedSessionServiceServer) ConnectConnection(context.Context, *ConnectConnectionRequest) (*ConnectConnectionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConnectConnection not implemented")
 }
-
 func (UnimplementedSessionServiceServer) CloseConnection(context.Context, *CloseConnectionRequest) (*CloseConnectionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CloseConnection not implemented")
 }

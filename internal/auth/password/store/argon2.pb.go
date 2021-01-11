@@ -9,12 +9,11 @@
 package store
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -371,15 +370,12 @@ func file_controller_storage_auth_password_store_v1_argon2_proto_rawDescGZIP() [
 	return file_controller_storage_auth_password_store_v1_argon2_proto_rawDescData
 }
 
-var (
-	file_controller_storage_auth_password_store_v1_argon2_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-	file_controller_storage_auth_password_store_v1_argon2_proto_goTypes  = []interface{}{
-		(*Argon2Configuration)(nil), // 0: controller.storage.auth.password.store.v1.Argon2Configuration
-		(*Argon2Credential)(nil),    // 1: controller.storage.auth.password.store.v1.Argon2Credential
-		(*timestamp.Timestamp)(nil), // 2: controller.storage.timestamp.v1.Timestamp
-	}
-)
-
+var file_controller_storage_auth_password_store_v1_argon2_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_controller_storage_auth_password_store_v1_argon2_proto_goTypes = []interface{}{
+	(*Argon2Configuration)(nil), // 0: controller.storage.auth.password.store.v1.Argon2Configuration
+	(*Argon2Credential)(nil),    // 1: controller.storage.auth.password.store.v1.Argon2Credential
+	(*timestamp.Timestamp)(nil), // 2: controller.storage.timestamp.v1.Timestamp
+}
 var file_controller_storage_auth_password_store_v1_argon2_proto_depIdxs = []int32{
 	2, // 0: controller.storage.auth.password.store.v1.Argon2Configuration.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	2, // 1: controller.storage.auth.password.store.v1.Argon2Credential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp

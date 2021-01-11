@@ -4,7 +4,6 @@ package services
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -146,28 +145,24 @@ type AuthMethodServiceServer interface {
 }
 
 // UnimplementedAuthMethodServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedAuthMethodServiceServer struct{}
+type UnimplementedAuthMethodServiceServer struct {
+}
 
 func (UnimplementedAuthMethodServiceServer) GetAuthMethod(context.Context, *GetAuthMethodRequest) (*GetAuthMethodResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAuthMethod not implemented")
 }
-
 func (UnimplementedAuthMethodServiceServer) ListAuthMethods(context.Context, *ListAuthMethodsRequest) (*ListAuthMethodsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAuthMethods not implemented")
 }
-
 func (UnimplementedAuthMethodServiceServer) CreateAuthMethod(context.Context, *CreateAuthMethodRequest) (*CreateAuthMethodResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAuthMethod not implemented")
 }
-
 func (UnimplementedAuthMethodServiceServer) UpdateAuthMethod(context.Context, *UpdateAuthMethodRequest) (*UpdateAuthMethodResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAuthMethod not implemented")
 }
-
 func (UnimplementedAuthMethodServiceServer) DeleteAuthMethod(context.Context, *DeleteAuthMethodRequest) (*DeleteAuthMethodResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAuthMethod not implemented")
 }
-
 func (UnimplementedAuthMethodServiceServer) Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Authenticate not implemented")
 }

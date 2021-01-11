@@ -7,9 +7,6 @@
 package targets
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_struct "github.com/golang/protobuf/ptypes/struct"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	wrappers "github.com/golang/protobuf/ptypes/wrappers"
@@ -17,6 +14,8 @@ import (
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -787,24 +786,21 @@ func file_controller_api_resources_targets_v1_target_proto_rawDescGZIP() []byte 
 	return file_controller_api_resources_targets_v1_target_proto_rawDescData
 }
 
-var (
-	file_controller_api_resources_targets_v1_target_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-	file_controller_api_resources_targets_v1_target_proto_goTypes  = []interface{}{
-		(*HostSet)(nil),                  // 0: controller.api.resources.targets.v1.HostSet
-		(*Target)(nil),                   // 1: controller.api.resources.targets.v1.Target
-		(*TcpTargetAttributes)(nil),      // 2: controller.api.resources.targets.v1.TcpTargetAttributes
-		(*WorkerInfo)(nil),               // 3: controller.api.resources.targets.v1.WorkerInfo
-		(*SessionAuthorizationData)(nil), // 4: controller.api.resources.targets.v1.SessionAuthorizationData
-		(*SessionAuthorization)(nil),     // 5: controller.api.resources.targets.v1.SessionAuthorization
-		(*scopes.ScopeInfo)(nil),         // 6: controller.api.resources.scopes.v1.ScopeInfo
-		(*wrappers.StringValue)(nil),     // 7: google.protobuf.StringValue
-		(*timestamp.Timestamp)(nil),      // 8: google.protobuf.Timestamp
-		(*wrappers.UInt32Value)(nil),     // 9: google.protobuf.UInt32Value
-		(*wrappers.Int32Value)(nil),      // 10: google.protobuf.Int32Value
-		(*_struct.Struct)(nil),           // 11: google.protobuf.Struct
-	}
-)
-
+var file_controller_api_resources_targets_v1_target_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_controller_api_resources_targets_v1_target_proto_goTypes = []interface{}{
+	(*HostSet)(nil),                  // 0: controller.api.resources.targets.v1.HostSet
+	(*Target)(nil),                   // 1: controller.api.resources.targets.v1.Target
+	(*TcpTargetAttributes)(nil),      // 2: controller.api.resources.targets.v1.TcpTargetAttributes
+	(*WorkerInfo)(nil),               // 3: controller.api.resources.targets.v1.WorkerInfo
+	(*SessionAuthorizationData)(nil), // 4: controller.api.resources.targets.v1.SessionAuthorizationData
+	(*SessionAuthorization)(nil),     // 5: controller.api.resources.targets.v1.SessionAuthorization
+	(*scopes.ScopeInfo)(nil),         // 6: controller.api.resources.scopes.v1.ScopeInfo
+	(*wrappers.StringValue)(nil),     // 7: google.protobuf.StringValue
+	(*timestamp.Timestamp)(nil),      // 8: google.protobuf.Timestamp
+	(*wrappers.UInt32Value)(nil),     // 9: google.protobuf.UInt32Value
+	(*wrappers.Int32Value)(nil),      // 10: google.protobuf.Int32Value
+	(*_struct.Struct)(nil),           // 11: google.protobuf.Struct
+}
 var file_controller_api_resources_targets_v1_target_proto_depIdxs = []int32{
 	6,  // 0: controller.api.resources.targets.v1.Target.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
 	7,  // 1: controller.api.resources.targets.v1.Target.name:type_name -> google.protobuf.StringValue

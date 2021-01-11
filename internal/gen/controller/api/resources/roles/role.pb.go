@@ -7,15 +7,14 @@
 package roles
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	wrappers "github.com/golang/protobuf/ptypes/wrappers"
 	scopes "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -485,19 +484,16 @@ func file_controller_api_resources_roles_v1_role_proto_rawDescGZIP() []byte {
 	return file_controller_api_resources_roles_v1_role_proto_rawDescData
 }
 
-var (
-	file_controller_api_resources_roles_v1_role_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-	file_controller_api_resources_roles_v1_role_proto_goTypes  = []interface{}{
-		(*Principal)(nil),            // 0: controller.api.resources.roles.v1.Principal
-		(*GrantJson)(nil),            // 1: controller.api.resources.roles.v1.GrantJson
-		(*Grant)(nil),                // 2: controller.api.resources.roles.v1.Grant
-		(*Role)(nil),                 // 3: controller.api.resources.roles.v1.Role
-		(*scopes.ScopeInfo)(nil),     // 4: controller.api.resources.scopes.v1.ScopeInfo
-		(*wrappers.StringValue)(nil), // 5: google.protobuf.StringValue
-		(*timestamp.Timestamp)(nil),  // 6: google.protobuf.Timestamp
-	}
-)
-
+var file_controller_api_resources_roles_v1_role_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_controller_api_resources_roles_v1_role_proto_goTypes = []interface{}{
+	(*Principal)(nil),            // 0: controller.api.resources.roles.v1.Principal
+	(*GrantJson)(nil),            // 1: controller.api.resources.roles.v1.GrantJson
+	(*Grant)(nil),                // 2: controller.api.resources.roles.v1.Grant
+	(*Role)(nil),                 // 3: controller.api.resources.roles.v1.Role
+	(*scopes.ScopeInfo)(nil),     // 4: controller.api.resources.scopes.v1.ScopeInfo
+	(*wrappers.StringValue)(nil), // 5: google.protobuf.StringValue
+	(*timestamp.Timestamp)(nil),  // 6: google.protobuf.Timestamp
+}
 var file_controller_api_resources_roles_v1_role_proto_depIdxs = []int32{
 	1, // 0: controller.api.resources.roles.v1.Grant.json:type_name -> controller.api.resources.roles.v1.GrantJson
 	4, // 1: controller.api.resources.roles.v1.Role.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo

@@ -11,12 +11,11 @@
 package db_test
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -556,17 +555,14 @@ func file_controller_storage_db_db_test_v1_db_test_proto_rawDescGZIP() []byte {
 	return file_controller_storage_db_db_test_v1_db_test_proto_rawDescData
 }
 
-var (
-	file_controller_storage_db_db_test_v1_db_test_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-	file_controller_storage_db_db_test_v1_db_test_proto_goTypes  = []interface{}{
-		(*StoreTestUser)(nil),       // 0: controller.storage.db.db_test.v1.StoreTestUser
-		(*StoreTestCar)(nil),        // 1: controller.storage.db.db_test.v1.StoreTestCar
-		(*StoreTestRental)(nil),     // 2: controller.storage.db.db_test.v1.StoreTestRental
-		(*StoreTestScooter)(nil),    // 3: controller.storage.db.db_test.v1.StoreTestScooter
-		(*timestamp.Timestamp)(nil), // 4: controller.storage.timestamp.v1.Timestamp
-	}
-)
-
+var file_controller_storage_db_db_test_v1_db_test_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_controller_storage_db_db_test_v1_db_test_proto_goTypes = []interface{}{
+	(*StoreTestUser)(nil),       // 0: controller.storage.db.db_test.v1.StoreTestUser
+	(*StoreTestCar)(nil),        // 1: controller.storage.db.db_test.v1.StoreTestCar
+	(*StoreTestRental)(nil),     // 2: controller.storage.db.db_test.v1.StoreTestRental
+	(*StoreTestScooter)(nil),    // 3: controller.storage.db.db_test.v1.StoreTestScooter
+	(*timestamp.Timestamp)(nil), // 4: controller.storage.timestamp.v1.Timestamp
+}
 var file_controller_storage_db_db_test_v1_db_test_proto_depIdxs = []int32{
 	4, // 0: controller.storage.db.db_test.v1.StoreTestUser.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	4, // 1: controller.storage.db.db_test.v1.StoreTestUser.update_time:type_name -> controller.storage.timestamp.v1.Timestamp

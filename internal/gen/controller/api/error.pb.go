@@ -7,11 +7,10 @@
 package api
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -321,16 +320,13 @@ func file_controller_api_v1_error_proto_rawDescGZIP() []byte {
 	return file_controller_api_v1_error_proto_rawDescData
 }
 
-var (
-	file_controller_api_v1_error_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-	file_controller_api_v1_error_proto_goTypes  = []interface{}{
-		(*WrappedError)(nil), // 0: controller.api.v1.WrappedError
-		(*ErrorDetails)(nil), // 1: controller.api.v1.ErrorDetails
-		(*FieldError)(nil),   // 2: controller.api.v1.FieldError
-		(*Error)(nil),        // 3: controller.api.v1.Error
-	}
-)
-
+var file_controller_api_v1_error_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_controller_api_v1_error_proto_goTypes = []interface{}{
+	(*WrappedError)(nil), // 0: controller.api.v1.WrappedError
+	(*ErrorDetails)(nil), // 1: controller.api.v1.ErrorDetails
+	(*FieldError)(nil),   // 2: controller.api.v1.FieldError
+	(*Error)(nil),        // 3: controller.api.v1.Error
+}
 var file_controller_api_v1_error_proto_depIdxs = []int32{
 	2, // 0: controller.api.v1.ErrorDetails.request_fields:type_name -> controller.api.v1.FieldError
 	0, // 1: controller.api.v1.ErrorDetails.wrapped_errors:type_name -> controller.api.v1.WrappedError

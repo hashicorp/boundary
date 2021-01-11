@@ -4,7 +4,6 @@ package services
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -223,40 +222,33 @@ type TargetServiceServer interface {
 }
 
 // UnimplementedTargetServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedTargetServiceServer struct{}
+type UnimplementedTargetServiceServer struct {
+}
 
 func (UnimplementedTargetServiceServer) GetTarget(context.Context, *GetTargetRequest) (*GetTargetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTarget not implemented")
 }
-
 func (UnimplementedTargetServiceServer) ListTargets(context.Context, *ListTargetsRequest) (*ListTargetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListTargets not implemented")
 }
-
 func (UnimplementedTargetServiceServer) CreateTarget(context.Context, *CreateTargetRequest) (*CreateTargetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateTarget not implemented")
 }
-
 func (UnimplementedTargetServiceServer) UpdateTarget(context.Context, *UpdateTargetRequest) (*UpdateTargetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateTarget not implemented")
 }
-
 func (UnimplementedTargetServiceServer) DeleteTarget(context.Context, *DeleteTargetRequest) (*DeleteTargetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteTarget not implemented")
 }
-
 func (UnimplementedTargetServiceServer) AuthorizeSession(context.Context, *AuthorizeSessionRequest) (*AuthorizeSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AuthorizeSession not implemented")
 }
-
 func (UnimplementedTargetServiceServer) AddTargetHostSets(context.Context, *AddTargetHostSetsRequest) (*AddTargetHostSetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddTargetHostSets not implemented")
 }
-
 func (UnimplementedTargetServiceServer) SetTargetHostSets(context.Context, *SetTargetHostSetsRequest) (*SetTargetHostSetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetTargetHostSets not implemented")
 }
-
 func (UnimplementedTargetServiceServer) RemoveTargetHostSets(context.Context, *RemoveTargetHostSetsRequest) (*RemoveTargetHostSetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveTargetHostSets not implemented")
 }

@@ -249,7 +249,7 @@ func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, op
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -385,7 +385,7 @@ func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, {{ .ResourceFunctionArg }}, opt...)
+		existingTarget, existingErr := c.Read(ctx, {{ .ResourceFunctionArg }}, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -468,7 +468,7 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into {{ $fullName }} request")
 		}
-		existingTarget, existingErr := c.Read(ctx, {{ $input.ResourceFunctionArg }}, opt...)
+		existingTarget, existingErr := c.Read(ctx, {{ $input.ResourceFunctionArg }}, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -655,6 +655,7 @@ type options struct {
 	postMap map[string]interface{}
 	queryMap map[string]string
 	withAutomaticVersioning bool
+	withSkipCurlOutput bool
 }
 
 func getDefaultOptions() options {
@@ -670,6 +671,9 @@ func getOpts(opt ...Option) (options, []api.Option) {
 		o(&opts)
 	}
 	var apiOpts []api.Option
+	if opts.withSkipCurlOutput {
+		apiOpts = append(apiOpts, api.WithSkipCurlOutput(true))
+	}
 	return opts, apiOpts
 }
 
@@ -682,6 +686,15 @@ func WithAutomaticVersioning(enable bool) Option {
 		o.withAutomaticVersioning = enable
 	}
 }
+
+// WithSkipCurlOutput tells the API to not use the current call for cURL output.
+// Useful for when we need to look up versions.
+func WithSkipCurlOutput(skip bool) Option {
+	return func(o *options) {
+		o.withSkipCurlOutput = true
+	}
+}
+
 {{ range .Fields }}
 func With{{ .SubtypeName }}{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
 	return func(o *options) {		{{ if ( not ( eq .SubtypeName "" ) ) }}

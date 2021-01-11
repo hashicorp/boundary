@@ -9,11 +9,10 @@
 package oplog_test
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -371,16 +370,13 @@ func file_controller_storage_oplog_test_v1_oplog_test_proto_rawDescGZIP() []byte
 	return file_controller_storage_oplog_test_v1_oplog_test_proto_rawDescData
 }
 
-var (
-	file_controller_storage_oplog_test_v1_oplog_test_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-	file_controller_storage_oplog_test_v1_oplog_test_proto_goTypes  = []interface{}{
-		(*TestUser)(nil),              // 0: controller.storage.oplog.test.v1.TestUser
-		(*TestCar)(nil),               // 1: controller.storage.oplog.test.v1.TestCar
-		(*TestRental)(nil),            // 2: controller.storage.oplog.test.v1.TestRental
-		(*TestNonReplayableUser)(nil), // 3: controller.storage.oplog.test.v1.TestNonReplayableUser
-	}
-)
-
+var file_controller_storage_oplog_test_v1_oplog_test_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_controller_storage_oplog_test_v1_oplog_test_proto_goTypes = []interface{}{
+	(*TestUser)(nil),              // 0: controller.storage.oplog.test.v1.TestUser
+	(*TestCar)(nil),               // 1: controller.storage.oplog.test.v1.TestCar
+	(*TestRental)(nil),            // 2: controller.storage.oplog.test.v1.TestRental
+	(*TestNonReplayableUser)(nil), // 3: controller.storage.oplog.test.v1.TestNonReplayableUser
+}
 var file_controller_storage_oplog_test_v1_oplog_test_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type

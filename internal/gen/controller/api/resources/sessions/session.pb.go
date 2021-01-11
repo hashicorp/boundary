@@ -7,9 +7,6 @@
 package sessions
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/golang/protobuf/ptypes/struct"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	_ "github.com/golang/protobuf/ptypes/wrappers"
@@ -18,6 +15,8 @@ import (
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -460,17 +459,14 @@ func file_controller_api_resources_sessions_v1_session_proto_rawDescGZIP() []byt
 	return file_controller_api_resources_sessions_v1_session_proto_rawDescData
 }
 
-var (
-	file_controller_api_resources_sessions_v1_session_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-	file_controller_api_resources_sessions_v1_session_proto_goTypes  = []interface{}{
-		(*WorkerInfo)(nil),          // 0: controller.api.resources.sessions.v1.WorkerInfo
-		(*SessionState)(nil),        // 1: controller.api.resources.sessions.v1.SessionState
-		(*Session)(nil),             // 2: controller.api.resources.sessions.v1.Session
-		(*timestamp.Timestamp)(nil), // 3: google.protobuf.Timestamp
-		(*scopes.ScopeInfo)(nil),    // 4: controller.api.resources.scopes.v1.ScopeInfo
-	}
-)
-
+var file_controller_api_resources_sessions_v1_session_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_controller_api_resources_sessions_v1_session_proto_goTypes = []interface{}{
+	(*WorkerInfo)(nil),          // 0: controller.api.resources.sessions.v1.WorkerInfo
+	(*SessionState)(nil),        // 1: controller.api.resources.sessions.v1.SessionState
+	(*Session)(nil),             // 2: controller.api.resources.sessions.v1.Session
+	(*timestamp.Timestamp)(nil), // 3: google.protobuf.Timestamp
+	(*scopes.ScopeInfo)(nil),    // 4: controller.api.resources.scopes.v1.ScopeInfo
+}
 var file_controller_api_resources_sessions_v1_session_proto_depIdxs = []int32{
 	3, // 0: controller.api.resources.sessions.v1.SessionState.start_time:type_name -> google.protobuf.Timestamp
 	3, // 1: controller.api.resources.sessions.v1.SessionState.end_time:type_name -> google.protobuf.Timestamp

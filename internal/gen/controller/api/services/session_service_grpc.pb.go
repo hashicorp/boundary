@@ -4,7 +4,6 @@ package services
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -91,16 +90,15 @@ type SessionServiceServer interface {
 }
 
 // UnimplementedSessionServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedSessionServiceServer struct{}
+type UnimplementedSessionServiceServer struct {
+}
 
 func (UnimplementedSessionServiceServer) GetSession(context.Context, *GetSessionRequest) (*GetSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSession not implemented")
 }
-
 func (UnimplementedSessionServiceServer) ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSessions not implemented")
 }
-
 func (UnimplementedSessionServiceServer) CancelSession(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelSession not implemented")
 }

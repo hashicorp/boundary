@@ -181,7 +181,7 @@ func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) 
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -213,7 +213,7 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint3
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, hostCatalogId, opt...)
+		existingTarget, existingErr := c.Read(ctx, hostCatalogId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)

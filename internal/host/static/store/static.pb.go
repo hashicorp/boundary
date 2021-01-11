@@ -10,13 +10,12 @@
 package store
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -544,17 +543,14 @@ func file_controller_storage_host_static_store_v1_static_proto_rawDescGZIP() []b
 	return file_controller_storage_host_static_store_v1_static_proto_rawDescData
 }
 
-var (
-	file_controller_storage_host_static_store_v1_static_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-	file_controller_storage_host_static_store_v1_static_proto_goTypes  = []interface{}{
-		(*HostCatalog)(nil),         // 0: controller.storage.host.static.store.v1.HostCatalog
-		(*Host)(nil),                // 1: controller.storage.host.static.store.v1.Host
-		(*HostSet)(nil),             // 2: controller.storage.host.static.store.v1.HostSet
-		(*HostSetMember)(nil),       // 3: controller.storage.host.static.store.v1.HostSetMember
-		(*timestamp.Timestamp)(nil), // 4: controller.storage.timestamp.v1.Timestamp
-	}
-)
-
+var file_controller_storage_host_static_store_v1_static_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_controller_storage_host_static_store_v1_static_proto_goTypes = []interface{}{
+	(*HostCatalog)(nil),         // 0: controller.storage.host.static.store.v1.HostCatalog
+	(*Host)(nil),                // 1: controller.storage.host.static.store.v1.Host
+	(*HostSet)(nil),             // 2: controller.storage.host.static.store.v1.HostSet
+	(*HostSetMember)(nil),       // 3: controller.storage.host.static.store.v1.HostSetMember
+	(*timestamp.Timestamp)(nil), // 4: controller.storage.timestamp.v1.Timestamp
+}
 var file_controller_storage_host_static_store_v1_static_proto_depIdxs = []int32{
 	4, // 0: controller.storage.host.static.store.v1.HostCatalog.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	4, // 1: controller.storage.host.static.store.v1.HostCatalog.update_time:type_name -> controller.storage.timestamp.v1.Timestamp

@@ -176,7 +176,7 @@ func (c *Client) Read(ctx context.Context, groupId string, opt ...Option) (*Grou
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -208,7 +208,7 @@ func (c *Client) Update(ctx context.Context, groupId string, version uint32, opt
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, groupId, opt...)
+		existingTarget, existingErr := c.Read(ctx, groupId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -357,7 +357,7 @@ func (c *Client) AddMembers(ctx context.Context, groupId string, version uint32,
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into AddMembers request")
 		}
-		existingTarget, existingErr := c.Read(ctx, groupId, opt...)
+		existingTarget, existingErr := c.Read(ctx, groupId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -422,7 +422,7 @@ func (c *Client) SetMembers(ctx context.Context, groupId string, version uint32,
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into SetMembers request")
 		}
-		existingTarget, existingErr := c.Read(ctx, groupId, opt...)
+		existingTarget, existingErr := c.Read(ctx, groupId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -489,7 +489,7 @@ func (c *Client) RemoveMembers(ctx context.Context, groupId string, version uint
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into RemoveMembers request")
 		}
-		existingTarget, existingErr := c.Read(ctx, groupId, opt...)
+		existingTarget, existingErr := c.Read(ctx, groupId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
