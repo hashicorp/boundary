@@ -19,7 +19,7 @@ func InitStore(ctx context.Context, dialect string, url string) (bool, error) {
 		return false, err
 	}
 
-	st, err := sMan.State(ctx)
+	st, err := sMan.CurrentState(ctx)
 	if err != nil {
 		return false, err
 	}

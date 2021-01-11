@@ -32,7 +32,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"hash/crc32"
 	"io"
 	"io/ioutil"
 	"strconv"
@@ -43,46 +42,31 @@ import (
 	"github.com/lib/pq"
 )
 
+// schemaAccessLockId is a lock key used to ensure a single boundary binary is operating
+// on a postgres server at a time.  The value has no meaning and was picked randomly.
+const schemaAccessLockId = 3865661975
+
 var defaultMigrationsTable = "boundary_schema_version"
 
 type postgres struct {
 	// Locking and unlocking need to use the same connection
-	conn     *sql.Conn
-	db       *sql.DB
-	isLocked bool
-
-	advisoryLockId string
+	conn *sql.Conn
+	db   *sql.DB
 }
 
 func newPostgres(ctx context.Context, instance *sql.DB) (*postgres, error) {
-	op := errors.Op("schema.newPostgres")
+	const op = "schema.newPostgres"
 	if err := instance.PingContext(ctx); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-
-	query := `SELECT CURRENT_DATABASE(), CURRENT_SCHEMA()`
-	var databaseName, schemaName string
-	if err := instance.QueryRowContext(ctx, query).Scan(&databaseName, &schemaName); err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-
-	if len(databaseName) == 0 {
-		return nil, errors.New(errors.NotSpecificIntegrity, op, "no database name found")
-	}
-	if len(schemaName) == 0 {
-		return nil, errors.New(errors.NotSpecificIntegrity, op, "no schema name found")
-	}
-
 	conn, err := instance.Conn(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 
-	aid := generateAdvisoryLockId(databaseName, schemaName)
 	px := &postgres{
-		conn:           conn,
-		db:             instance,
-		advisoryLockId: aid,
+		conn: conn,
+		db:   instance,
 	}
 
 	if err := px.ensureVersionTable(ctx); err != nil {
@@ -92,63 +76,65 @@ func newPostgres(ctx context.Context, instance *sql.DB) (*postgres, error) {
 	return px, nil
 }
 
-func (p *postgres) open(ctx context.Context, u string) (*postgres, error) {
-	op := errors.Op("schema.open")
-	db, err := sql.Open("postgres", u)
-	if err != nil {
-		return nil, errors.Wrap(err, op)
+// https://www.postgresql.org/docs/9.6/static/explicit-locking.html#ADVISORY-LOCKS
+func (p *postgres) trySharedLock(ctx context.Context) error {
+	const op = "schema.(postgres).trySharedLock"
+	r := p.db.QueryRowContext(ctx, "SELECT pg_try_advisory_lock_shared($1)", schemaAccessLockId)
+	if r.Err() != nil {
+		return errors.Wrap(r.Err(), op)
 	}
-
-	px, err := newPostgres(ctx, db)
-	if err != nil {
-		return nil, errors.Wrap(err, op)
+	var gotLock bool
+	if err := r.Scan(&gotLock); err != nil {
+		return errors.Wrap(err, op)
 	}
-
-	return px, nil
-}
-
-func (p *postgres) Close() error {
-	connErr := p.conn.Close()
-	dbErr := p.db.Close()
-	if connErr != nil || dbErr != nil {
-		return fmt.Errorf("conn: %v, db: %v", connErr, dbErr)
+	if !gotLock {
+		return errors.New(errors.MigrationLock, op, "lock failed")
 	}
 	return nil
 }
 
 // https://www.postgresql.org/docs/9.6/static/explicit-locking.html#ADVISORY-LOCKS
-func (p *postgres) lock(ctx context.Context) error {
-	op := errors.Op("schema.(postgres).lock")
-	if p.isLocked {
-		return errors.New(errors.CheckConstraint, op, "already locked")
+func (p *postgres) tryLock(ctx context.Context) error {
+	const op = "schema.(postgres).tryLock"
+
+	r := p.db.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", schemaAccessLockId)
+	if r.Err() != nil {
+		return errors.Wrap(r.Err(), op)
 	}
+	var gotLock bool
+	if err := r.Scan(&gotLock); err != nil {
+		return errors.Wrap(err, op)
+	}
+	if !gotLock {
+		return errors.New(errors.MigrationLock, op, "lock failed")
+	}
+	return nil
+}
+
+func (p *postgres) lock(ctx context.Context) error {
+	const op = "schema.(postgres).lock"
 
 	// This will wait indefinitely until the lock can be acquired.
 	query := `SELECT pg_advisory_lock($1)`
-	if _, err := p.conn.ExecContext(ctx, query, p.advisoryLockId); err != nil {
+	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
 		return errors.Wrap(err, op)
 	}
 
-	p.isLocked = true
 	return nil
 }
 
 func (p *postgres) unlock(ctx context.Context) error {
-	op := errors.Op("schema.(postgres).unlock")
-	if !p.isLocked {
-		return nil
-	}
+	const op = "schema.(postgres).unlock"
 
 	query := `SELECT pg_advisory_unlock($1)`
-	if _, err := p.conn.ExecContext(ctx, query, p.advisoryLockId); err != nil {
+	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
 		return errors.Wrap(err, op)
 	}
-	p.isLocked = false
 	return nil
 }
 
 func (p *postgres) run(ctx context.Context, migration io.Reader) error {
-	op := errors.Op("schema.run")
+	const op = "schema.(postgres).run"
 	migr, err := ioutil.ReadAll(migration)
 	if err != nil {
 		return errors.Wrap(err, op)
@@ -217,7 +203,7 @@ func runesLastIndex(input []rune, target rune) int {
 }
 
 func (p *postgres) setVersion(ctx context.Context, version int, dirty bool) error {
-	op := errors.Op("schema.setVersion")
+	const op = "schema.(postgres).setVersion"
 	tx, err := p.conn.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return err
@@ -253,7 +239,7 @@ func (p *postgres) setVersion(ctx context.Context, version int, dirty bool) erro
 }
 
 func (p *postgres) version(ctx context.Context) (version int, dirty bool, err error) {
-	op := errors.Op("schema.version")
+	const op = "schema.(postgres.version"
 	query := `SELECT version, dirty FROM ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` LIMIT 1`
 	err = p.conn.QueryRowContext(ctx, query).Scan(&version, &dirty)
 	switch {
@@ -274,7 +260,7 @@ func (p *postgres) version(ctx context.Context) (version int, dirty bool, err er
 }
 
 func (p *postgres) drop(ctx context.Context) (err error) {
-	op := errors.Op("schema.drop")
+	const op = "schema.(postgres).drop"
 	// select all tables in current schema
 	query := `SELECT table_name FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_type='BASE TABLE'`
 	tables, err := p.conn.QueryContext(ctx, query)
@@ -320,7 +306,7 @@ func (p *postgres) drop(ctx context.Context) (err error) {
 // Note that this function locks the database, which deviates from the usual
 // convention of "caller locks" in the postgres type.
 func (p *postgres) ensureVersionTable(ctx context.Context) (err error) {
-	op := errors.Op("schema.ensureVersionTable")
+	const op = "schema.(postgres).ensureVersionTable"
 	if err = p.lock(ctx); err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -337,16 +323,4 @@ func (p *postgres) ensureVersionTable(ctx context.Context) (err error) {
 	}
 
 	return nil
-}
-
-const advisoryLockIDSalt uint = 1486364155
-
-// GenerateAdvisoryLockId inspired by rails migrations, see https://goo.gl/8o9bCT
-func generateAdvisoryLockId(databaseName string, additionalNames ...string) string {
-	if len(additionalNames) > 0 {
-		databaseName = strings.Join(append(additionalNames, databaseName), "\x00")
-	}
-	sum := crc32.ChecksumIEEE([]byte(databaseName))
-	sum = sum * uint32(advisoryLockIDSalt)
-	return fmt.Sprint(sum)
 }

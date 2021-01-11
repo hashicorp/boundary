@@ -30,8 +30,8 @@ type State struct {
 	BinarySchemaVersion   int
 }
 
-// State provides the state of the boundary schema contained in the backing database.
-func (b *Manager) State(ctx context.Context) (*State, error) {
+// CurrentState provides the state of the boundary schema contained in the backing database.
+func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 	dbS := State{
 		BinarySchemaVersion: BinarySchemaVersion(b.dialect),
 	}
@@ -46,6 +46,14 @@ func (b *Manager) State(ctx context.Context) (*State, error) {
 	dbS.CurrentSchemaVersion = v
 	dbS.Dirty = dirty
 	return &dbS, nil
+}
+
+func GetUpMigration(dialect string) map[int][]byte {
+	return migrationStates[dialect].upMigrations
+}
+
+func GetDownMigration(dialect string) map[int][]byte {
+	return migrationStates[dialect].downMigrations
 }
 
 func DevMigration(dialect string) bool {

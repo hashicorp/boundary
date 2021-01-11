@@ -276,7 +276,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return 1
 	}
 	{
-		st, err := man.State(c.Context)
+		st, err := man.CurrentState(c.Context)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error getting database state: %w", err).Error())
 			return 1
@@ -300,7 +300,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	// This is an advisory locks on the DB which is released when the db session ends.
-	if err := man.ExclusiveLock(c.Context, schema.SchemaAccessLockId); err != nil {
+	if err := man.ExclusiveLock(c.Context); err != nil {
 		c.UI.Error(fmt.Errorf("Error capturing an exclusive lock: %w", err).Error())
 		return 1
 	}

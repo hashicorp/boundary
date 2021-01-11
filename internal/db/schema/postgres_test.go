@@ -107,7 +107,7 @@ func TestDbStuff(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer func() {
-			if err := d.Close(); err != nil {
+			if err := d.close(); err != nil {
 				t.Error(err)
 			}
 		}()
@@ -130,7 +130,7 @@ func TestMultiStatement(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer func() {
-			if err := d.Close(); err != nil {
+			if err := d.close(); err != nil {
 				t.Error(err)
 			}
 		}()
@@ -164,7 +164,7 @@ func TestWithSchema(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer func() {
-			if err := d.Close(); err != nil {
+			if err := d.close(); err != nil {
 				t.Fatal(err)
 			}
 		}()
@@ -184,7 +184,7 @@ func TestWithSchema(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer func() {
-			if err := d2.Close(); err != nil {
+			if err := d2.close(); err != nil {
 				t.Fatal(err)
 			}
 		}()
@@ -216,75 +216,6 @@ func TestWithSchema(t *testing.T) {
 		}
 		if version != 1 {
 			t.Fatal("expected version 2")
-		}
-	})
-}
-
-func TestParallelSchema(t *testing.T) {
-	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ctx := context.TODO()
-		ip, port, err := c.FirstPort()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		addr := pgConnectionString(ip, port)
-		p := &postgres{}
-		d, err := p.open(ctx, addr)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() {
-			if err := d.Close(); err != nil {
-				t.Error(err)
-			}
-		}()
-
-		// create foo and bar schemas
-		if err := d.run(ctx, strings.NewReader("CREATE SCHEMA foo AUTHORIZATION postgres")); err != nil {
-			t.Fatal(err)
-		}
-		if err := d.run(ctx, strings.NewReader("CREATE SCHEMA bar AUTHORIZATION postgres")); err != nil {
-			t.Fatal(err)
-		}
-
-		// re-connect using that schemas
-		dfoo, err := p.open(ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=foo",
-			pgPassword, ip, port))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() {
-			if err := dfoo.Close(); err != nil {
-				t.Error(err)
-			}
-		}()
-
-		dbar, err := p.open(ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=bar",
-			pgPassword, ip, port))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() {
-			if err := dbar.Close(); err != nil {
-				t.Error(err)
-			}
-		}()
-
-		if err := dfoo.lock(ctx); err != nil {
-			t.Fatal(err)
-		}
-
-		if err := dbar.lock(ctx); err != nil {
-			t.Fatal(err)
-		}
-
-		if err := dbar.unlock(ctx); err != nil {
-			t.Fatal(err)
-		}
-
-		if err := dfoo.unlock(ctx); err != nil {
-			t.Fatal(err)
 		}
 	})
 }

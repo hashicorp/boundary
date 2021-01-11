@@ -30,7 +30,7 @@ func TestState(t *testing.T) {
 	want := &State{
 		BinarySchemaVersion: BinarySchemaVersion("postgres"),
 	}
-	s, err := m.State(ctx)
+	s, err := m.CurrentState(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, want, s)
 
@@ -44,7 +44,7 @@ func TestState(t *testing.T) {
 		Dirty:                 true,
 		CurrentSchemaVersion:  2,
 	}
-	s, err = m.State(ctx)
+	s, err = m.CurrentState(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, want, s)
 }

@@ -57,5 +57,5 @@ const (
 	// Migration setup errors are codes 2000-3000
 	MigrationGeneration Code = 2000 // MigrationGeneration represents an error with the generated migration related code
 	MigrationData       Code = 2001 // MigrationData represents an error with the migration data
-
+	MigrationLock       Code = 2002 // MigrationLock represents an error related to locking of the DB
 )

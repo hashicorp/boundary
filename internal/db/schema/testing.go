@@ -34,13 +34,14 @@ package schema
 import (
 	"bytes"
 	"context"
-	"errors"
+	"database/sql"
 	"fmt"
 	"io"
 	"testing"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4/database"
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // Test runs tests against database implementations.
@@ -70,64 +71,30 @@ func TestNilVersion(t *testing.T, d *postgres) {
 
 func TestLockAndUnlock(t *testing.T, d *postgres) {
 	ctx := context.TODO()
-	// add a timeout, in case there is a deadlock
-	done := make(chan struct{})
-	errs := make(chan error)
 
-	go func() {
-		timeout := time.After(15 * time.Second)
-		for {
-			select {
-			case <-done:
-				return
-			case <-timeout:
-				errs <- fmt.Errorf("Timeout after 15 seconds. Looks like a deadlock in lock/UnLock.\n%#v", d)
-				return
-			}
-		}
-	}()
+	ctx, _ = context.WithTimeout(ctx, 15*time.Second)
 
-	// run the locking test ...
-	go func() {
-		if err := d.lock(ctx); err != nil {
-			errs <- err
-			return
-		}
-
-		// try to acquire lock again
-		if err := d.lock(ctx); err == nil {
-			errs <- errors.New("lock: expected err not to be nil")
-			return
-		}
-
-		// unlock
-		if err := d.unlock(ctx); err != nil {
-			errs <- err
-			return
-		}
-
-		// try to lock
-		if err := d.lock(ctx); err != nil {
-			errs <- err
-			return
-		}
-		if err := d.unlock(ctx); err != nil {
-			errs <- err
-			return
-		}
-		// notify everyone
-		close(done)
-	}()
-
-	// wait for done or any error
-	for {
-		select {
-		case <-done:
-			return
-		case err := <-errs:
-			t.Fatal(err)
-		}
+	// locking twice is ok, no error
+	if err := d.lock(ctx); err != nil {
+		t.Fatalf("got error, expected none: %v", err)
 	}
+	if err := d.lock(ctx); err != nil {
+		t.Fatalf("got error, expected none: %v", err)
+	}
+
+	// unlock
+	if err := d.unlock(ctx); err != nil {
+		t.Fatalf("error unlocking: %v", err)
+	}
+
+	// try to lock
+	if err := d.lock(ctx); err != nil {
+		t.Fatalf("got error, expected none: %v", err)
+	}
+	if err := d.unlock(ctx); err != nil {
+		t.Fatalf("got error, expected none: %v", err)
+	}
+
 }
 
 func TestRun(t *testing.T, d *postgres, migration io.Reader) {
@@ -186,4 +153,28 @@ func TestSetVersion(t *testing.T, d *postgres) {
 			}
 		})
 	}
+}
+
+func (p *postgres) open(ctx context.Context, u string) (*postgres, error) {
+	const op = "schema.(postgres).open"
+	db, err := sql.Open("postgres", u)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+
+	px, err := newPostgres(ctx, db)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+
+	return px, nil
+}
+
+func (p *postgres) close() error {
+	connErr := p.conn.Close()
+	dbErr := p.db.Close()
+	if connErr != nil || dbErr != nil {
+		return fmt.Errorf("conn: %v, db: %v", connErr, dbErr)
+	}
+	return nil
 }

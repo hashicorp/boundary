@@ -100,4 +100,8 @@ var errorCodeInfo = map[Code]Info{
 		Message: "bad migration data",
 		Kind:    Integrity,
 	},
+	MigrationLock: {
+		Message: "bad db lock",
+		Kind:    Integrity,
+	},
 }
