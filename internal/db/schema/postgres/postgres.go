@@ -44,7 +44,7 @@ import (
 
 // schemaAccessLockId is a Lock key used to ensure a single boundary binary is operating
 // on a postgres server at a time.  The value has no meaning and was picked randomly.
-const schemaAccessLockId = 3865661975
+const schemaAccessLockId int64 = 3865661975
 const nilVersion = -1
 
 var defaultMigrationsTable = "boundary_schema_version"
