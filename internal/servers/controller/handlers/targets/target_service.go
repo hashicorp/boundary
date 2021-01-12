@@ -114,84 +114,10 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if err != nil {
 		return nil, err
 	}
-
-	// This section applies a filter on actions, if one is given
-	finalItems := make([]*pb.Target, 0, len(ul))
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		// Separate values are OR'd together so start by ranging over those
-		for _, orExpr := range req.ActionFilter {
-			if len(orExpr) == 0 {
-				continue
-			}
-			// Within this expression, treat each value as something that is
-			// ANDed. We start by asserting that the expression is valid; as we
-			// test for the desired actions, we invalidate the AND clause if
-			// needed.
-			andOkay := true
-			andExpr := strings.Split(orExpr, ",")
-			for _, actStr := range andExpr {
-				// If there is an empty part, treat it as false for safety
-				if len(actStr) == 0 {
-					andOkay = false
-					break
-				}
-				var wantFalse bool
-				// Keep track of whether it's negated
-				if strings.HasPrefix(actStr, "!") {
-					wantFalse = true
-					actStr = actStr[1:]
-				}
-				act := action.Map[actStr]
-				// If we don't know what the action is, it is by default invalid
-				if act == action.Unknown {
-					andOkay = false
-					break
-				}
-				opts := []auth.Option{
-					auth.WithScopeId(item.GetScopeId()),
-					auth.WithId(item.GetId()),
-					auth.WithType(resource.Target),
-					auth.WithAction(act),
-				}
-				// Make sure that we don't tell the anonymous user or recovery
-				// token that it's allowed
-				if act == action.AuthorizeSession {
-					opts = append(opts,
-						auth.WithAnonymousUserNotAllowed(true),
-						auth.WithRecoveryTokenNotAllowed(true))
-				}
-				// Run the verification
-				res := authResults.AdditionalVerification(ctx, opts...)
-				// If we wanted false, that is, it was prefixed with !, we must
-				// see an error. The system currently doesn't disambiguate
-				// between kinds of errors but given that we trust the
-				// scope/id/resource from above and we've validated it's a real
-				// action via the map, it's a decent assumption that an error
-				// means it's actually not valid. We may want to revisit this
-				// assumption in the future.
-				if wantFalse && res.Error != nil {
-					andOkay = false
-					break
-				}
-				// If we didn't negate it, we expect no error; if so the AND
-				// clause fails.
-				if !wantFalse && res.Error == nil {
-					andOkay = false
-					break
-				}
-			}
-			// If we get through an iteration of an expression and andOkay is
-			// true, this also means that OR passes, so add it and move on to
-			// the next item
-			if andOkay {
-				finalItems = append(finalItems, item)
-				break
-			}
-		}
 	}
-
-	return &pbs.ListTargetsResponse{Items: finalItems}, nil
+	return &pbs.ListTargetsResponse{Items: ul}, nil
 }
 
 // GetTargets implements the interface pbs.TargetServiceServer.
