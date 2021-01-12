@@ -34,7 +34,7 @@ func TestRootKeyVersion_Create(t *testing.T) {
 		args          args
 		want          *kms.RootKeyVersion
 		wantErr       bool
-		wantIsErr     error
+		wantIsErr     errors.Code
 		create        bool
 		wantCreateErr bool
 	}{
@@ -44,7 +44,7 @@ func TestRootKeyVersion_Create(t *testing.T) {
 				key: []byte("test key"),
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-key",
@@ -52,7 +52,7 @@ func TestRootKeyVersion_Create(t *testing.T) {
 				rootId: rootKey.PrivateId,
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "valid",
@@ -76,7 +76,7 @@ func TestRootKeyVersion_Create(t *testing.T) {
 			got, err := kms.NewRootKeyVersion(tt.args.rootId, tt.args.key, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				return
 			}
 			require.NoError(err)

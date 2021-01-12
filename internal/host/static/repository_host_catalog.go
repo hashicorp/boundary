@@ -21,7 +21,7 @@ import (
 //
 // Both c.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...Option) (*HostCatalog, error) {
-	const op = "static.CreateCatalog"
+	const op = "static.(Repository).CreateCatalog"
 	if c == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil HostCatalog")
 	}
@@ -69,11 +69,15 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			newHostCatalog = c.clone()
-			return w.Create(
+			err := w.Create(
 				ctx,
 				newHostCatalog,
 				db.WithOplog(oplogWrapper, metadata),
 			)
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
 		},
 	)
 
@@ -98,7 +102,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 // An attribute of c will be set to NULL in the database if the attribute
 // in c is the zero value and it is included in fieldMask.
 func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version uint32, fieldMask []string, opt ...Option) (*HostCatalog, int, error) {
-	const op = "static.UpdateCatalog"
+	const op = "static.(Repository).UpdateCatalog"
 	if c == nil {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil HostCatalog")
 	}
@@ -162,7 +166,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},
@@ -181,7 +185,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 // LookupCatalog returns the HostCatalog for id. Returns nil, nil if no
 // HostCatalog is found for id.
 func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option) (*HostCatalog, error) {
-	const op = "static.LookupCatalog"
+	const op = "static.(Repository).LookupCatalog"
 	if id == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no public id")
 	}
@@ -198,7 +202,7 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 
 // ListCatalogs returns a slice of HostCatalogs for the scopeId. WithLimit is the only option supported.
 func (r *Repository) ListCatalogs(ctx context.Context, scopeId string, opt ...Option) ([]*HostCatalog, error) {
-	const op = "static.ListCatalogs"
+	const op = "static.(Repository).ListCatalogs"
 	if scopeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
@@ -219,7 +223,7 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeId string, opt ...Op
 // DeleteCatalog deletes id from the repository returning a count of the
 // number of records deleted.
 func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (int, error) {
-	const op = "static.DeleteCatalog"
+	const op = "static.(Repository).DeleteCatalog"
 	if id == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
 	}
@@ -260,7 +264,7 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

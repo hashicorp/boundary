@@ -36,6 +36,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "empty field mask",
 		Kind:    Parameter,
 	},
+	KeyNotFound: {
+		Message: "key/version not found",
+		Kind:    Integrity,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,
@@ -51,6 +55,14 @@ var errorCodeInfo = map[Code]Info{
 	PasswordsEqual: {
 		Message: "old and new password are equal",
 		Kind:    Password,
+	},
+	Encrypt: {
+		Message: "error occurred during encrypt",
+		Kind:    Encryption,
+	},
+	Decrypt: {
+		Message: "error occurred during decrypt",
+		Kind:    Encryption,
 	},
 	CheckConstraint: {
 		Message: "constraint check failed",

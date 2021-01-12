@@ -116,9 +116,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(target)
-				if tt.wantIsError != nil {
-					assert.True(errors.Is(err, tt.wantIsError))
-				}
+				assert.True(errors.Is(err, tt.wantIsError))
 				return
 			}
 			require.NoError(err)
@@ -381,9 +379,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			targetAfterUpdate, hostSets, updatedRows, err := repo.UpdateTcpTarget(context.Background(), &updateTarget, target.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
-				if tt.wantIsError != 0 {
-					assert.True(errors.Match(errors.T(tt.wantIsError), err))
-				}
+				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				assert.Nil(targetAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)

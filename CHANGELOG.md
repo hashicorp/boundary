@@ -4,6 +4,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* controller: Improved error handling in kms repo
+  ([PR](https://github.com/hashicorp/boundary/pull/848))
+  
 ### Bug Fixes
 
 * cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`

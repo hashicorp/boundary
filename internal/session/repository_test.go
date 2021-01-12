@@ -45,7 +45,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil writer",
+			wantErrString: "kms.NewRepository: nil writer: parameter violation: error #100",
 		},
 		{
 			name: "nil-reader",
@@ -55,7 +55,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil reader",
+			wantErrString: "kms.NewRepository: nil reader: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {

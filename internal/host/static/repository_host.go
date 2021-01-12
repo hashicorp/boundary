@@ -22,7 +22,7 @@ import (
 // Both h.Name and h.Description are optional. If h.Name is set, it must be
 // unique within h.CatalogId.
 func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, opt ...Option) (*Host, error) {
-	const op = "static.CreateHost"
+	const op = "static.(Repository).CreateHost"
 	if h == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil Host")
 	}
@@ -72,7 +72,11 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			newHost = h.clone()
-			return w.Create(ctx, newHost, db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			err := w.Create(ctx, newHost, db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
 		},
 	)
 
@@ -106,7 +110,7 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 // An attribute of h will be set to NULL in the database if the attribute
 // in h is the zero value and it is included in fieldMaskPaths.
 func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, version uint32, fieldMaskPaths []string, opt ...Option) (*Host, int, error) {
-	const op = "static.UpdateHost"
+	const op = "static.(Repository).UpdateHost"
 	if h == nil {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil Host")
 	}
@@ -168,7 +172,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},
@@ -195,7 +199,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 // LookupHost will look up a host in the repository. If the host is not
 // found, it will return nil, nil. All options are ignored.
 func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Option) (*Host, error) {
-	const op = "static.LookupHost"
+	const op = "static.(Repository).LookupHost"
 	if publicId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no public id")
 	}
@@ -213,7 +217,7 @@ func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Opt
 // ListHosts returns a slice of Hosts for the catalogId.
 // WithLimit is the only option supported.
 func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Option) ([]*Host, error) {
-	const op = "static.ListHosts"
+	const op = "static.(Repository).ListHosts"
 	if catalogId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no catalog id")
 	}
@@ -235,7 +239,7 @@ func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Opt
 // returning a count of the number of records deleted. All options are
 // ignored.
 func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId string, opt ...Option) (int, error) {
-	const op = "static.DeleteHost"
+	const op = "static.(Repository).DeleteHost"
 	if publicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
 	}
@@ -257,7 +261,7 @@ func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId st
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

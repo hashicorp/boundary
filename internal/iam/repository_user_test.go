@@ -339,9 +339,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			}
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantIsErr != 0 {
-					assert.True(errors.Match(errors.T(tt.wantIsErr), err))
-				}
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				assert.Nil(userAfterUpdate)
 				assert.Equal(0, updatedRows)
 				switch tt.name {
@@ -649,9 +647,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
 				if tt.args.withAccountId != "" && tt.args.withAccountId != id {
 					// need to assert that userid in auth_account is still null
 					acct := allocAccount()
@@ -820,9 +816,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 			err := associateUserWithAccounts(context.Background(), kms, rw, rw, tt.args.Ids.user, tt.args.Ids.accts, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -966,9 +960,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 			err := dissociateUserFromAccounts(context.Background(), kms, rw, rw, tt.args.Ids.user, tt.args.Ids.accts, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)
