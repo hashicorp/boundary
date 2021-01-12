@@ -163,6 +163,7 @@ func TestList(t *testing.T) {
 			Attributes:             new(structpb.Struct),
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(1),
+			AuthorizedActions:      targets.TargetIdActions.Strings(),
 		})
 	}
 
@@ -194,7 +195,7 @@ func TestList(t *testing.T) {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListTargets(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListTargets(%q) got response %q, wanted %q", tc.scopeId, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListTargets(%q) scope %q, got response %q, wanted %q", tc.name, tc.scopeId, got, tc.res)
 		})
 	}
 }

@@ -557,16 +557,25 @@ func (r *VerifyResults) AdditionalVerification(ctx context.Context, opt ...Optio
 // FetchActionsForId returns the allowed actions for a given ID using the
 // current set of ACLs and all other parameters the same (user, scope, etc.)
 func (r *VerifyResults) FetchActionsForId(ctx context.Context, id string, availableActions action.Actions, opt ...Option) action.Actions {
-	// TODO: See if we can be better about what we return with the anonymous
-	// user and recovery KMS, perhaps given exclusionary options for each
-	if r.v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms {
-		return action.Actions{action.All}
+	switch {
+	case r.v.requestInfo.DisableAuthEntirely,
+		r.v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms:
+		// TODO: See if we can be better about what we return with the anonymous
+		// user and recovery KMS, perhaps given exclusionary options for each
+		return availableActions
 	}
 
-	var res perms.Resource = *r.v.res
+	opts := getOpts(opt...)
+	res := opts.withResource
+	if res == nil {
+		res = r.v.res
+	}
+	if res == nil {
+		res = new(perms.Resource)
+	}
 	res.Id = id
 
-	return r.v.acl.AllowedActions(res, availableActions)
+	return r.v.acl.AllowedActions(*res, availableActions)
 }
 
 // GetTokenFromRequest pulls the token from either the Authorization header or

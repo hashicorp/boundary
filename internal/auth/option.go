@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
@@ -28,6 +29,7 @@ type options struct {
 	withKms                     *kms.Kms
 	withRecoveryTokenNotAllowed bool
 	withAnonymousUserNotAllowed bool
+	withResource                *perms.Resource
 }
 
 func getDefaultOptions() options {
@@ -85,5 +87,11 @@ func WithRecoveryTokenNotAllowed(notAllowed bool) Option {
 func WithAnonymousUserNotAllowed(notAllowed bool) Option {
 	return func(o *options) {
 		o.withAnonymousUserNotAllowed = notAllowed
+	}
+}
+
+func WithResource(resource *perms.Resource) Option {
+	return func(o *options) {
+		o.withResource = resource
 	}
 }
