@@ -107,3 +107,16 @@ func (a Type) String() string {
 		"remove-accounts",
 	}[a]
 }
+
+type Actions []Type
+
+func (a Actions) Strings() []string {
+	if a == nil {
+		return nil
+	}
+	ret := make([]string, len(a))
+	for i, act := range a {
+		ret[i] = act.String()
+	}
+	return ret
+}

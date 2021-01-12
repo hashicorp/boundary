@@ -554,6 +554,21 @@ func (r *VerifyResults) AdditionalVerification(ctx context.Context, opt ...Optio
 	return
 }
 
+// FetchActionsForId returns the allowed actions for a given ID using the
+// current set of ACLs and all other parameters the same (user, scope, etc.)
+func (r *VerifyResults) FetchActionsForId(ctx context.Context, id string, availableActions action.Actions, opt ...Option) action.Actions {
+	// TODO: See if we can be better about what we return with the anonymous
+	// user and recovery KMS, perhaps given exclusionary options for each
+	if r.v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms {
+		return action.Actions{action.All}
+	}
+
+	var res perms.Resource = *r.v.res
+	res.Id = id
+
+	return r.v.acl.AllowedActions(res, availableActions)
+}
+
 // GetTokenFromRequest pulls the token from either the Authorization header or
 // split cookies and parses it. If it cannot be parsed successfully, the issue
 // is logged and we return blank, so logic will continue as the anonymous user.

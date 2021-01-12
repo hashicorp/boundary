@@ -123,6 +123,18 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 	return
 }
 
+// AllowedActions returns the set of actions out of a given possible set that
+// are allowed given the scope/id/type/pin
+func (a ACL) AllowedActions(r Resource, aTypes action.Actions) action.Actions {
+	ret := make(action.Actions, 0, len(aTypes))
+	for _, act := range aTypes {
+		if a.Allowed(r, act).Allowed {
+			ret = append(ret, act)
+		}
+	}
+	return ret
+}
+
 func topLevelType(typ resource.Type) bool {
 	switch typ {
 	case resource.AuthMethod,

@@ -34,7 +34,18 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var maskManager handlers.MaskManager
+var (
+	maskManager     handlers.MaskManager
+	targetIdActions = action.Actions{
+		action.Read,
+		action.Update,
+		action.Delete,
+		action.AddHostSets,
+		action.SetHostSets,
+		action.RemoveHostSets,
+		action.AuthorizeSession,
+	}
+)
 
 func init() {
 	var err error
@@ -197,6 +208,8 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, targetIdActions).Strings()
+
 	return &pbs.GetTargetResponse{Item: u}, nil
 }
 
