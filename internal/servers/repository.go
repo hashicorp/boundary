@@ -96,7 +96,7 @@ func (r *Repository) ListTagsForServers(ctx context.Context, serverIds []string,
 	if err := r.reader.SearchWhere(
 		ctx,
 		&serverTags,
-		"server_id = ?",
+		"server_id in (?)",
 		[]interface{}{serverIds},
 		db.WithLimit(-1),
 	); err != nil {
