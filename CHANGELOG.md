@@ -6,8 +6,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* controller: Improved error handling in kms repo
-  ([PR](https://github.com/hashicorp/boundary/pull/848))
+* controller: Improved error handling in kms, oplog and perms repos
+  ([PR1](https://github.com/hashicorp/boundary/pull/848), [PR2](https://github.com/hashicorp/boundary/pull/854))
   
 ### Bug Fixes
 

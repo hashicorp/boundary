@@ -40,6 +40,18 @@ var errorCodeInfo = map[Code]Info{
 		Message: "key/version not found",
 		Kind:    Integrity,
 	},
+	TicketAlreadyRedeemed: {
+		Message: "ticket already redeemed",
+		Kind:    Integrity,
+	},
+	TicketNotFound: {
+		Message: "ticket not found",
+		Kind:    Integrity,
+	},
+	Io: {
+		Message: "error during io operation",
+		Kind:    Integrity,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,
@@ -63,6 +75,14 @@ var errorCodeInfo = map[Code]Info{
 	Decrypt: {
 		Message: "error occurred during decrypt",
 		Kind:    Encryption,
+	},
+	Encode: {
+		Message: "error occurred during encode",
+		Kind:    Encoding,
+	},
+	Decode: {
+		Message: "error occurred during decode",
+		Kind:    Encoding,
 	},
 	CheckConstraint: {
 		Message: "constraint check failed",
