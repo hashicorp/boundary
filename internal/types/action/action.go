@@ -107,3 +107,18 @@ func (a Type) String() string {
 		"remove-accounts",
 	}[a]
 }
+
+// Actions stores a slice of action types
+type Actions []Type
+
+// Strings converts Actions into a slice of the actions' string equivalents
+func (a Actions) Strings() []string {
+	if a == nil {
+		return nil
+	}
+	ret := make([]string, len(a))
+	for i, act := range a {
+		ret[i] = act.String()
+	}
+	return ret
+}

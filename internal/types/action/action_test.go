@@ -83,3 +83,32 @@ func TestAction(t *testing.T) {
 		})
 	}
 }
+
+func TestActionStrings(t *testing.T) {
+	tests := []struct {
+		name    string
+		actions Actions
+		want    []string
+	}{
+		{
+			name:    "basic test",
+			actions: Actions{Read, AuthorizeSession},
+			want:    []string{"read", "authorize-session"},
+		},
+		{
+			name:    "reverse test to check ordering",
+			actions: Actions{AuthorizeSession, Read},
+			want:    []string{"authorize-session", "read"},
+		},
+		{
+			name:    "another test",
+			actions: Actions{Delete, AddGrants},
+			want:    []string{"delete", "add-grants"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.actions.Strings(), tt.want)
+		})
+	}
+}
