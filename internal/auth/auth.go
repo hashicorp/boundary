@@ -575,7 +575,16 @@ func (r *VerifyResults) FetchActionsForId(ctx context.Context, id string, availa
 	}
 	res.Id = id
 
-	return r.v.acl.AllowedActions(*res, availableActions)
+	ret := make(action.Actions, 0, len(availableActions))
+	for _, act := range availableActions {
+		if r.v.acl.Allowed(*res, act).Allowed {
+			ret = append(ret, act)
+		}
+	}
+	if len(ret) == 0 {
+		return nil
+	}
+	return ret
 }
 
 // GetTokenFromRequest pulls the token from either the Authorization header or
