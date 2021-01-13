@@ -245,9 +245,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
-				if tt.wantIsErr != 0 {
-					assert.True(errors.Match(errors.T(tt.wantIsErr), err))
-				}
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				return
 			}
 			assert.NoError(err)

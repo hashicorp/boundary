@@ -20,7 +20,7 @@ import (
 // Both s.Name and s.Description are optional. If s.Name is set, it must be
 // unique within s.CatalogId.
 func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, opt ...Option) (*HostSet, error) {
-	const op = "static.CreateSet"
+	const op = "static.(Repository).CreateSet"
 	if s == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil HostSet")
 	}
@@ -66,7 +66,11 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			newHostSet = s.clone()
-			return w.Create(ctx, newHostSet, db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			err := w.Create(ctx, newHostSet, db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
 		},
 	)
 
@@ -94,7 +98,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 // The WithLimit option can be used to limit the number of hosts returned.
 // All other options are ignored.
 func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, version uint32, fieldMaskPaths []string, opt ...Option) (*HostSet, []*Host, int, error) {
-	const op = "static.UpdateSet"
+	const op = "static.(Repository).UpdateSet"
 	if s == nil {
 		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil HostSet")
 	}
@@ -158,7 +162,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			hosts, err = getHosts(ctx, reader, s.PublicId, limit)
 			if err != nil {
@@ -183,7 +187,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 // found, it will return nil, nil, nil. The WithLimit option can be used to
 // limit the number of hosts returned. All other options are ignored.
 func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Option) (*HostSet, []*Host, error) {
-	const op = "static.LookupSet"
+	const op = "static.(Repository).LookupSet"
 	if publicId == "" {
 		return nil, nil, errors.New(errors.InvalidParameter, op, "no public id")
 	}
@@ -226,7 +230,7 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Opti
 // ListSets returns a slice of HostSets for the catalogId. WithLimit is the
 // only option supported.
 func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Option) ([]*HostSet, error) {
-	const op = "static.ListSets"
+	const op = "static.(Repository).ListSets"
 	if catalogId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no catalog id")
 	}
@@ -248,7 +252,7 @@ func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Opti
 // returning a count of the number of records deleted. All options are
 // ignored.
 func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId string, opt ...Option) (int, error) {
-	const op = "static.DeleteSet"
+	const op = "static.(Repository).DeleteSet"
 	if publicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
 	}
@@ -273,7 +277,7 @@ func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId str
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

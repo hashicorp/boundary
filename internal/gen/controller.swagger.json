@@ -3235,6 +3235,14 @@
           "type": "string",
           "description": "A boolean expression to filter the workers that are allowed to satisfy this request."
         },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        },
         "attributes": {
           "type": "object",
           "description": "The attributes that are applicable for the specific Target."

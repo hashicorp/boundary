@@ -563,13 +563,13 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if rowsDeleted > 0 && (withOplog || opts.newOplogMsg != nil) {
 		if withOplog {
 			if err := rw.addOplog(ctx, DeleteOp, opts, ticket, i); err != nil {
-				return rowsDeleted, errors.Wrap(db.Error, op, errors.WithMsg("add oplog failed"))
+				return rowsDeleted, errors.Wrap(err, op, errors.WithMsg("add oplog failed"))
 			}
 		}
 		if opts.newOplogMsg != nil {
 			msg, err := rw.newOplogMessage(ctx, DeleteOp, i)
 			if err != nil {
-				return rowsDeleted, errors.Wrap(db.Error, op, errors.WithMsg("returning oplog failed"))
+				return rowsDeleted, errors.Wrap(err, op, errors.WithMsg("returning oplog failed"))
 			}
 			*opts.newOplogMsg = *msg
 		}

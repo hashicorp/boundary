@@ -53,6 +53,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: EmptyFieldMask,
 		},
 		{
+			name: "KeyNotFound",
+			c:    KeyNotFound,
+			want: KeyNotFound,
+		},
+		{
 			name: "PasswordTooShort",
 			c:    PasswordTooShort,
 			want: PasswordTooShort,
@@ -71,6 +76,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			name: "PasswordsEqual",
 			c:    PasswordsEqual,
 			want: PasswordsEqual,
+		},
+		{
+			name: "Encrypt",
+			c:    Encrypt,
+			want: Encrypt,
+		},
+		{
+			name: "Decrypt",
+			c:    Decrypt,
+			want: Decrypt,
 		},
 		{
 			name: "CheckConstraint",

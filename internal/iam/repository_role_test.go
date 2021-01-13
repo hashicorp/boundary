@@ -424,9 +424,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			roleAfterUpdate, principals, grants, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
-				if tt.wantIsError != 0 {
-					assert.True(errors.Match(errors.T(tt.wantIsError), err))
-				}
+				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				assert.Nil(roleAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)

@@ -26,6 +26,7 @@ const (
 	InvalidPublicId  Code = 102 // InvalidPublicId represents an invalid public Id for an operation
 	InvalidFieldMask Code = 103 // InvalidFieldMask represents an invalid field mast for an operation
 	EmptyFieldMask   Code = 104 // EmptyFieldMask represents an empty field mask for an operation
+	KeyNotFound      Code = 105 // KeyNotFound represents that a key/version was not found in the KMS
 
 	// PasswordTooShort results from attempting to set a password which is to short.
 	PasswordTooShort Code = 200
@@ -41,6 +42,9 @@ const (
 	// PasswordsEqual is returned from ChangePassword when the old and
 	// new passwords are equal.
 	PasswordsEqual Code = 203
+
+	Encrypt Code = 300 // Encrypt represents an error occurred during the underlying encryption process
+	Decrypt Code = 301 // Decrypt represents an error occurred during the underlying decryption process
 
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
