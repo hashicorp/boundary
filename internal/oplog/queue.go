@@ -114,7 +114,7 @@ func (q *Queue) Remove() (proto.Message, OpType, []string, []string, error) {
 	msg := new(AnyOperation)
 	err = proto.Unmarshal(data, msg)
 	if err != nil {
-		return nil, 0, nil, nil, errors.New(errors.Decode, op, "error unmarshalling message", errors.WithWrap(err))
+		return nil, 0, nil, nil, errors.New(errors.Decode, op, "error unmarshaling message", errors.WithWrap(err))
 	}
 	if msg.Value == nil {
 		return nil, 0, nil, nil, nil
@@ -125,7 +125,7 @@ func (q *Queue) Remove() (proto.Message, OpType, []string, []string, error) {
 	}
 	pm := any.(proto.Message)
 	if err = proto.Unmarshal(msg.Value, pm); err != nil {
-		return nil, 0, nil, nil, errors.New(errors.Decode, op, "error unmarshalling value", errors.WithWrap(err))
+		return nil, 0, nil, nil, errors.New(errors.Decode, op, "error unmarshaling value", errors.WithWrap(err))
 	}
 	var masks, nullPaths []string
 	if msg.OperationType == OpType_OP_TYPE_UPDATE {

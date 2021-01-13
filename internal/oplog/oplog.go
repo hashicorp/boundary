@@ -107,7 +107,7 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 			break
 		}
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(err, op, errors.WithMsg("error removing item from queue"))
 		}
 		name, err := types.GetTypeName(m)
 		if err != nil {

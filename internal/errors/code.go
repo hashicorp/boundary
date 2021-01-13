@@ -48,8 +48,8 @@ const (
 
 	Encrypt Code = 300 // Encrypt represents an error occurred during the underlying encryption process
 	Decrypt Code = 301 // Decrypt represents an error occurred during the underlying decryption process
-	Encode  Code = 302 // Encode represents an error occurred during the underlying encoding/marshalling process
-	Decode  Code = 303 // Decode represents an error occurred during the underlying decoding/unmarshalling process
+	Encode  Code = 302 // Encode represents an error occurred during the underlying encoding/marshaling process
+	Decode  Code = 303 // Decode represents an error occurred during the underlying decoding/unmarshaling process
 
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
