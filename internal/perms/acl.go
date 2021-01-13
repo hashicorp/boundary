@@ -124,13 +124,16 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 }
 
 // AllowedActions returns the set of actions out of a given possible set that
-// are allowed given the scope/id/type/pin
+// are allowed given the scope/id/type/pin. Returns nil if no match.
 func (a ACL) AllowedActions(r Resource, aTypes action.Actions) action.Actions {
 	ret := make(action.Actions, 0, len(aTypes))
 	for _, act := range aTypes {
 		if a.Allowed(r, act).Allowed {
 			ret = append(ret, act)
 		}
+	}
+	if len(ret) == 0 {
+		return nil
 	}
 	return ret
 }
