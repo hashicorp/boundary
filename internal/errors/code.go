@@ -62,6 +62,4 @@ const (
 	ColumnNotFound       Code = 1102 // ColumnNotFound represent that a column was not found in the underlying db
 	MaxRetries           Code = 1103 // MaxRetries represent that a db Tx hit max retires allowed
 	Exception            Code = 1104 // Exception represent that an underlying db exception was raised
-
-	FixMe Code = 11111
 )
