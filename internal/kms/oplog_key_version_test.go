@@ -38,7 +38,7 @@ func TestOplogKeyVersion_Create(t *testing.T) {
 		args          args
 		want          *kms.OplogKeyVersion
 		wantErr       bool
-		wantIsErr     error
+		wantIsErr     errors.Code
 		create        bool
 		wantCreateErr bool
 	}{
@@ -49,7 +49,7 @@ func TestOplogKeyVersion_Create(t *testing.T) {
 				rootKeyVersionId: rkv.PrivateId,
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-key",
@@ -58,7 +58,7 @@ func TestOplogKeyVersion_Create(t *testing.T) {
 				rootKeyVersionId: rkv.PrivateId,
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-root-key-version-id",
@@ -67,7 +67,7 @@ func TestOplogKeyVersion_Create(t *testing.T) {
 				key:        []byte("test key"),
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "valid",
@@ -93,7 +93,7 @@ func TestOplogKeyVersion_Create(t *testing.T) {
 			got, err := kms.NewOplogKeyVersion(tt.args.oplogKeyId, tt.args.key, tt.args.rootKeyVersionId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				return
 			}
 			require.NoError(err)

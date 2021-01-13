@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -34,7 +35,21 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var maskManager handlers.MaskManager
+var (
+	maskManager handlers.MaskManager
+
+	// TargetIdActions contains the set of actions that can be performed on
+	// individual target resources
+	TargetIdActions = action.Actions{
+		action.Read,
+		action.Update,
+		action.Delete,
+		action.AddHostSets,
+		action.SetHostSets,
+		action.RemoveHostSets,
+		action.AuthorizeSession,
+	}
+)
 
 func init() {
 	var err error
@@ -103,10 +118,19 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if err != nil {
 		return nil, err
 	}
+	finalItems := make([]*pb.Target, 0, len(ul))
+	resource := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.Target,
+	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, TargetIdActions, auth.WithResource(resource)).Strings()
+		if len(item.AuthorizedActions) > 0 {
+			finalItems = append(finalItems, item)
+		}
 	}
-	return &pbs.ListTargetsResponse{Items: ul}, nil
+	return &pbs.ListTargetsResponse{Items: finalItems}, nil
 }
 
 // GetTargets implements the interface pbs.TargetServiceServer.
@@ -123,6 +147,7 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, TargetIdActions).Strings()
 	return &pbs.GetTargetResponse{Item: u}, nil
 }
 
@@ -140,6 +165,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, TargetIdActions).Strings()
 	return &pbs.CreateTargetResponse{Item: u, Uri: fmt.Sprintf("targets/%s", u.GetId())}, nil
 }
 
@@ -157,6 +183,7 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, TargetIdActions).Strings()
 	return &pbs.UpdateTargetResponse{Item: u}, nil
 }
 
@@ -190,6 +217,7 @@ func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSe
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, TargetIdActions).Strings()
 	return &pbs.AddTargetHostSetsResponse{Item: u}, nil
 }
 
@@ -207,6 +235,7 @@ func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSe
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, TargetIdActions).Strings()
 	return &pbs.SetTargetHostSetsResponse{Item: u}, nil
 }
 
@@ -224,6 +253,7 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, TargetIdActions).Strings()
 	return &pbs.RemoveTargetHostSetsResponse{Item: u}, nil
 }
 

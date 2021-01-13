@@ -94,11 +94,15 @@ func (r *Repository) create(ctx context.Context, resource Resource, _ ...Option)
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			returnedResource = resourceCloner.Clone()
-			return w.Create(
+			err := w.Create(
 				ctx,
 				returnedResource,
 				db.WithOplog(oplogWrapper, metadata),
 			)
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
 		},
 	)
 	if err != nil {
