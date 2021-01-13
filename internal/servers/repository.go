@@ -100,7 +100,7 @@ func (r *Repository) ListTagsForServers(ctx context.Context, serverIds []string,
 		[]interface{}{serverIds},
 		db.WithLimit(-1),
 	); err != nil {
-		return nil, fmt.Errorf("error listing server tags: %w", err)
+		return nil, fmt.Errorf("error listing server tags with server IDs %#v: %w", serverIds, err)
 	}
 	return serverTags, nil
 }
