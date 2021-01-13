@@ -36,7 +36,10 @@ import (
 )
 
 var (
-	maskManager     handlers.MaskManager
+	maskManager handlers.MaskManager
+
+	// TargetIdActions contains the set of actions that can be performed on
+	// individual target resources
 	TargetIdActions = action.Actions{
 		action.Read,
 		action.Update,

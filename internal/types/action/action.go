@@ -108,8 +108,10 @@ func (a Type) String() string {
 	}[a]
 }
 
+// Actions stores a slice of action types
 type Actions []Type
 
+// Strings converts Actions into a slice of the actions' string equivalents
 func (a Actions) Strings() []string {
 	if a == nil {
 		return nil
