@@ -1,12 +1,9 @@
 package schema
 
-import (
-	"context"
-)
-
 const nilVersion = -1
 
-// migrationState is an interface that
+// migrationState is meant to be populated by the generated migration code and
+// contains the internal representation of a schema in the current binary.
 type migrationState struct {
 	// devMigration is true if the database schema that would be applied by
 	// InitStore would be from files in the /dev directory which indicates it would
@@ -21,48 +18,37 @@ type migrationState struct {
 	downMigrations map[int][]byte
 }
 
+// migrationStates is populated by the generated migration code with the key being the dialect.
 var migrationStates = make(map[string]migrationState)
 
-// State contains information regarding the current state of a boundary database's schema.
-type State struct {
-	InitializationStarted bool
-	Dirty                 bool
-	CurrentSchemaVersion  int
-	BinarySchemaVersion   int
-}
-
-// CurrentState provides the state of the boundary schema contained in the backing database.
-func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
-	dbS := State{
-		BinarySchemaVersion: BinarySchemaVersion(b.dialect),
-	}
-	v, dirty, err := b.driver.Version(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if v == nilVersion {
-		return &dbS, nil
-	}
-	dbS.InitializationStarted = true
-	dbS.CurrentSchemaVersion = v
-	dbS.Dirty = dirty
-	return &dbS, nil
-}
-
 func getUpMigration(dialect string) map[int][]byte {
-	return migrationStates[dialect].upMigrations
+	ms, ok := migrationStates[dialect]
+	if !ok {
+		return nil
+	}
+	return ms.upMigrations
 }
 
 func getDownMigration(dialect string) map[int][]byte {
-	return migrationStates[dialect].downMigrations
+	ms, ok := migrationStates[dialect]
+	if !ok {
+		return nil
+	}
+	return ms.downMigrations
 }
 
-// DevMigration returns true if the provided dialect has changes which are still in development.
+// DevMigration returns true iff the provided dialect has changes which are still in development.
 func DevMigration(dialect string) bool {
-	return migrationStates[dialect].devMigration
+	ms, ok := migrationStates[dialect]
+	return ok && ms.devMigration
 }
 
 // BinarySchemaVersion provides the schema version that this binary supports for the provided dialect.
+// If the binary doesn't support this dialect -1 is returned.
 func BinarySchemaVersion(dialect string) int {
-	return migrationStates[dialect].binarySchemaVersion
+	ms, ok := migrationStates[dialect]
+	if !ok {
+		return nilVersion
+	}
+	return ms.binarySchemaVersion
 }

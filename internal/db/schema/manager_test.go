@@ -32,6 +32,45 @@ func TestNewManager(t *testing.T) {
 	assert.True(t, errors.Match(errors.T(errors.Op("schema.NewManager")), err))
 }
 
+func TestCurrentState(t *testing.T) {
+	c, u, _, err := docker.StartDbInDocker("postgres")
+	t.Cleanup(func() {
+		if err := c(); err != nil {
+			t.Fatalf("Got error at cleanup: %v", err)
+		}
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, c())
+	})
+	ctx := context.Background()
+	d, err := sql.Open("postgres", u)
+	require.NoError(t, err)
+
+	m, err := NewManager(ctx, "postgres", d)
+	require.NoError(t, err)
+	want := &State{
+		BinarySchemaVersion: BinarySchemaVersion("postgres"),
+	}
+	s, err := m.CurrentState(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, want, s)
+
+	testDriver, err := postgres.NewPostgres(ctx, d)
+	require.NoError(t, err)
+	require.NoError(t, testDriver.SetVersion(ctx, 2, true))
+
+	want = &State{
+		InitializationStarted: true,
+		BinarySchemaVersion:   BinarySchemaVersion("postgres"),
+		Dirty:                 true,
+		CurrentSchemaVersion:  2,
+	}
+	s, err = m.CurrentState(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, want, s)
+}
+
 func TestRollForward(t *testing.T) {
 	c, u, _, err := docker.StartDbInDocker("postgres")
 	require.NoError(t, err)
@@ -56,22 +95,8 @@ func TestRollForward(t *testing.T) {
 func TestRollForward_NotFromFresh(t *testing.T) {
 	dialect := "postgres"
 	oState := migrationStates[dialect]
-	nState := migrationState{
-		devMigration:   oState.devMigration,
-		upMigrations:   make(map[int][]byte),
-		downMigrations: make(map[int][]byte),
-	}
-	for k := range oState.upMigrations {
-		if k > 8 {
-			// Don't store any versions past our test version.
-			continue
-		}
-		nState.upMigrations[k] = oState.upMigrations[k]
-		nState.downMigrations[k] = oState.downMigrations[k]
-		if nState.binarySchemaVersion < k {
-			nState.binarySchemaVersion = k
-		}
-	}
+
+	nState := createPartialMigrationState(oState, 8)
 	migrationStates[dialect] = nState
 
 	c, u, _, err := docker.StartDbInDocker("postgres")
@@ -152,4 +177,25 @@ func TestManager_SharedLock(t *testing.T) {
 
 	assert.Error(t, m1.ExclusiveLock(ctx))
 	assert.Error(t, m2.ExclusiveLock(ctx))
+}
+
+// Creates a new migrationState only with the versions <= the provided maxVer
+func createPartialMigrationState(om migrationState, maxVer int) migrationState {
+	nState := migrationState{
+		devMigration:   om.devMigration,
+		upMigrations:   make(map[int][]byte),
+		downMigrations: make(map[int][]byte),
+	}
+	for k := range om.upMigrations {
+		if k > maxVer {
+			// Don't store any versions past our test version.
+			continue
+		}
+		nState.upMigrations[k] = om.upMigrations[k]
+		nState.downMigrations[k] = om.downMigrations[k]
+		if nState.binarySchemaVersion < k {
+			nState.binarySchemaVersion = k
+		}
+	}
+	return nState
 }

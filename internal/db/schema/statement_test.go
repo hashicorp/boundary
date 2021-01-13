@@ -42,6 +42,10 @@ func TestStatementProvider(t *testing.T) {
 	assert.False(t, st.Next())
 	assert.Equal(t, -1, st.Version())
 	assert.Equal(t, []byte(nil), st.ReadUp())
+
+	st, err = newStatementProvider("unknown_dialect", nilVersion)
+	assert.NoError(t, err)
+	assert.False(t, st.Next())
 }
 
 func TestStatementProvider_error(t *testing.T) {

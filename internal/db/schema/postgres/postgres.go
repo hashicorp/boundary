@@ -151,7 +151,7 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader) error {
 		return errors.Wrap(err, op)
 	}
 	// Run migration
-	query := string(migr[:])
+	query := string(migr)
 	if _, err := p.conn.ExecContext(ctx, query); err != nil {
 		if pgErr, ok := err.(*pq.Error); ok {
 			var line uint

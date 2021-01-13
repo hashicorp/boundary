@@ -154,7 +154,7 @@ func TestSetVersion(t *testing.T, d *Postgres) {
 	}
 }
 
-func (p *Postgres) open(t *testing.T, ctx context.Context, u string) (*Postgres, error) {
+func open(t *testing.T, ctx context.Context, u string) (*Postgres, error) {
 	t.Helper()
 	db, err := sql.Open("postgres", u)
 	require.NoError(t, err)

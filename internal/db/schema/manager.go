@@ -51,6 +51,37 @@ func NewManager(ctx context.Context, dialect string, db *sql.DB) (*Manager, erro
 	return &dbM, nil
 }
 
+// State contains information regarding the current state of a boundary database's schema.
+type State struct {
+	// InitializationStarted indicates if the current database has already been initialized
+	// (successfully or not) at least once.
+	InitializationStarted bool
+	// Dirty is set to true if the database failed in a previous migration/initialization.
+	Dirty bool
+	// CurrentSchemaVersion is the schema version that is currently running in the database.
+	CurrentSchemaVersion int
+	// BinarySchemaVersion is the schema version which this boundary binary supports.
+	BinarySchemaVersion int
+}
+
+// CurrentState provides the state of the boundary schema contained in the backing database.
+func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
+	dbS := State{
+		BinarySchemaVersion: BinarySchemaVersion(b.dialect),
+	}
+	v, dirty, err := b.driver.Version(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if v == nilVersion {
+		return &dbS, nil
+	}
+	dbS.InitializationStarted = true
+	dbS.CurrentSchemaVersion = v
+	dbS.Dirty = dirty
+	return &dbS, nil
+}
+
 // SharedLock attempts to obtain a shared lock on the database.  This can fail if
 // an exclusive lock is already held with the same key.  An error is returned if
 // a lock was unable to be obtained.

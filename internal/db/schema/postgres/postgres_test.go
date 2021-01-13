@@ -31,6 +31,7 @@ package postgres
 // error codes https://github.com/lib/pq/blob/master/error.go
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	sqldriver "database/sql/driver"
@@ -44,6 +45,8 @@ import (
 
 	"github.com/dhui/dktest"
 	"github.com/golang-migrate/migrate/v4/dktesting"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -101,8 +104,7 @@ func TestDbStuff(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &Postgres{}
-		d, err := p.open(t, ctx, addr)
+		d, err := open(t, ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -115,6 +117,34 @@ func TestDbStuff(t *testing.T) {
 	})
 }
 
+func TestVersion_NoVersionTable(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.TODO()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		d, err := open(t, ctx, addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if err := d.close(t); err != nil {
+				t.Error(err)
+			}
+		}()
+		// Drop the version table so calls to Version don't rely on that
+		d.drop(ctx)
+
+		v, dirt, err := d.Version(ctx)
+		assert.NoError(t, err)
+		assert.Equal(t, v, nilVersion)
+		assert.False(t, dirt)
+	})
+}
+
 func TestMultiStatement(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
 		ctx := context.TODO()
@@ -124,8 +154,7 @@ func TestMultiStatement(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &Postgres{}
-		d, err := p.open(t, ctx, addr)
+		d, err := open(t, ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -158,8 +187,7 @@ func TestWithSchema(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &Postgres{}
-		d, err := p.open(t, ctx, addr)
+		d, err := open(t, ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -178,7 +206,7 @@ func TestWithSchema(t *testing.T) {
 		}
 
 		// re-connect using that schema
-		d2, err := p.open(t, ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=foobar",
+		d2, err := open(t, ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=foobar",
 			pgPassword, ip, port))
 		if err != nil {
 			t.Fatal(err)
@@ -229,8 +257,7 @@ func TestPostgres_Lock(t *testing.T) {
 		}
 
 		addr := pgConnectionString(ip, port)
-		p := &Postgres{}
-		ps, err := p.open(t, ctx, addr)
+		ps, err := open(t, ctx, addr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -301,6 +328,29 @@ func TestWithInstance_Concurrent(t *testing.T) {
 		}
 	})
 }
+
+func TestRun_Error(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.TODO()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		p, err := open(t, ctx, addr)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		t.Cleanup(func() {
+			require.NoError(t, p.close(t))
+		})
+
+		err = p.Run(ctx, bytes.NewReader([]byte("SELECT *\nFROM foo")))
+		assert.Error(t, err)
+	})
+}
+
 func Test_computeLineFromPos(t *testing.T) {
 	testcases := []struct {
 		pos      int
