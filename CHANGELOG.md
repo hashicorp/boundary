@@ -9,6 +9,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * controller/worker: Require names to be all lowercase. This removes ambiguity
   or accidental mismatching when using upcoming filtering features.
 
+### New and Improved
+
+* targets: You can now specify a Boolean-expression filter against worker tags
+  to control which workers are allowed to handle any given target's sessions
+  ([PR](https://github.com/hashicorp/boundary/pull/862))
+
 ### Bug Fixes
 
 * cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`
