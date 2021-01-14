@@ -905,7 +905,7 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 			if err := newTx.Rollback().Error; err != nil {
 				return info, errors.Wrap(err, op)
 			}
-			if errors.Is(err, oplog.ErrTicketAlreadyRedeemed) {
+			if errors.Match(errors.T(errors.TicketAlreadyRedeemed), err) {
 				d := backOff.Duration(attempts)
 				info.Retries++
 				info.Backoff = info.Backoff + d

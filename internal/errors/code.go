@@ -21,12 +21,15 @@ const (
 	Unknown Code = 0 // Unknown will be equal to a zero value for Codes
 
 	// General function errors are reserved Codes 100-999
-	InvalidParameter Code = 100 // InvalidParameter represents an invalid parameter for an operation.
-	InvalidAddress   Code = 101 // InvalidAddress represents an invalid host address for an operation
-	InvalidPublicId  Code = 102 // InvalidPublicId represents an invalid public Id for an operation
-	InvalidFieldMask Code = 103 // InvalidFieldMask represents an invalid field mast for an operation
-	EmptyFieldMask   Code = 104 // EmptyFieldMask represents an empty field mask for an operation
-	KeyNotFound      Code = 105 // KeyNotFound represents that a key/version was not found in the KMS
+	InvalidParameter      Code = 100 // InvalidParameter represents an invalid parameter for an operation.
+	InvalidAddress        Code = 101 // InvalidAddress represents an invalid host address for an operation
+	InvalidPublicId       Code = 102 // InvalidPublicId represents an invalid public Id for an operation
+	InvalidFieldMask      Code = 103 // InvalidFieldMask represents an invalid field mast for an operation
+	EmptyFieldMask        Code = 104 // EmptyFieldMask represents an empty field mask for an operation
+	KeyNotFound           Code = 105 // KeyNotFound represents that a key/version was not found in the KMS
+	TicketAlreadyRedeemed Code = 106 // TicketAlreadyRedeemed represents that the ticket version has already been redeemed
+	TicketNotFound        Code = 107 // TicketNotFound represents that the ticket was not found
+	Io                    Code = 108 // Io represents that an io error occurred in an underlying call (i.e binary.Write)
 
 	// PasswordTooShort results from attempting to set a password which is to short.
 	PasswordTooShort Code = 200
@@ -45,6 +48,8 @@ const (
 
 	Encrypt Code = 300 // Encrypt represents an error occurred during the underlying encryption process
 	Decrypt Code = 301 // Decrypt represents an error occurred during the underlying decryption process
+	Encode  Code = 302 // Encode represents an error occurred during the underlying encoding/marshaling process
+	Decode  Code = 303 // Decode represents an error occurred during the underlying decoding/unmarshaling process
 
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
