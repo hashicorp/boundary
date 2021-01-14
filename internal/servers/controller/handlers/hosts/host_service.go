@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -21,7 +22,17 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var maskManager handlers.MaskManager
+var (
+	maskManager handlers.MaskManager
+
+	// HostIdActions contains the set of actions that can be performed on
+	// individual host resources
+	HostIdActions = action.Actions{
+		action.Read,
+		action.Update,
+		action.Delete,
+	}
+)
 
 func init() {
 	var err error
@@ -59,10 +70,19 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 	if err != nil {
 		return nil, err
 	}
+	finalItems := make([]*pb.Host, 0, len(hl))
+	resource := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.Host,
+	}
 	for _, item := range hl {
 		item.Scope = authResults.Scope
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, HostIdActions, auth.WithResource(resource)).Strings()
+		if len(item.AuthorizedActions) > 0 {
+			finalItems = append(finalItems, item)
+		}
 	}
-	return &pbs.ListHostsResponse{Items: hl}, nil
+	return &pbs.ListHostsResponse{Items: finalItems}, nil
 }
 
 // GetHost implements the interface pbs.HostServiceServer.
@@ -79,6 +99,7 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
+	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, HostIdActions).Strings()
 	return &pbs.GetHostResponse{Item: hc}, nil
 }
 
@@ -96,6 +117,7 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 		return nil, err
 	}
 	h.Scope = authResults.Scope
+	h.AuthorizedActions = authResults.FetchActionsForId(ctx, h.Id, HostIdActions).Strings()
 	return &pbs.CreateHostResponse{
 		Item: h,
 		Uri:  fmt.Sprintf("hosts/%s", h.GetId()),
@@ -116,6 +138,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
+	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, HostIdActions).Strings()
 	return &pbs.UpdateHostResponse{Item: hc}, nil
 }
 

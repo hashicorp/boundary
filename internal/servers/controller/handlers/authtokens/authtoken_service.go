@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -17,6 +18,14 @@ import (
 )
 
 // Service handles request as described by the pbs.AuthTokenServiceServer interface.
+
+// AuthTokenIdActions contains the set of actions that can be performed on
+// individual target resources
+var AuthTokenIdActions = action.Actions{
+	action.Read,
+	action.Delete,
+}
+
 type Service struct {
 	pbs.UnimplementedAuthTokenServiceServer
 
@@ -50,8 +59,17 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	if err != nil {
 		return nil, err
 	}
+	finalItems := make([]*pb.AuthToken, 0, len(ul))
+	resource := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.AuthToken,
+	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, AuthTokenIdActions, auth.WithResource(resource)).Strings()
+		if len(item.AuthorizedActions) > 0 {
+			finalItems = append(finalItems, item)
+		}
 	}
 	return &pbs.ListAuthTokensResponse{Items: ul}, nil
 }
@@ -70,6 +88,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, AuthTokenIdActions).Strings()
 	return &pbs.GetAuthTokenResponse{Item: u}, nil
 }
 
