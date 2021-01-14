@@ -562,8 +562,8 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	if item.GetSessionConnectionLimit() != nil {
 		opts = append(opts, target.WithSessionConnectionLimit(item.GetSessionConnectionLimit().GetValue()))
 	}
-	if item.GetWorkerFilter() != nil {
-		opts = append(opts, target.WithWorkerFilter(item.GetWorkerFilter().GetValue()))
+	if len(item.GetWorkerFilter()) > 0 {
+		opts = append(opts, target.WithWorkerFilter(item.GetWorkerFilter()))
 	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
@@ -604,8 +604,8 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if item.GetSessionConnectionLimit() != nil {
 		opts = append(opts, target.WithSessionConnectionLimit(item.GetSessionConnectionLimit().GetValue()))
 	}
-	if item.GetWorkerFilter() != nil {
-		opts = append(opts, target.WithWorkerFilter(item.GetWorkerFilter().GetValue()))
+	if len(item.GetWorkerFilter()) > 0 {
+		opts = append(opts, target.WithWorkerFilter(item.GetWorkerFilter()))
 	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
@@ -793,7 +793,7 @@ func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 		Type:                   target.TcpTargetType.String(),
 		SessionMaxSeconds:      wrapperspb.UInt32(in.GetSessionMaxSeconds()),
 		SessionConnectionLimit: wrapperspb.Int32(in.GetSessionConnectionLimit()),
-		WorkerFilter:           wrapperspb.String(in.GetWorkerFilter()),
+		WorkerFilter:           in.GetWorkerFilter(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -867,7 +867,7 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 		default:
 			badFields["type"] = "Unknown type provided."
 		}
-		if filter := req.GetItem().GetWorkerFilter().GetValue(); filter != "" {
+		if filter := req.GetItem().GetWorkerFilter(); filter != "" {
 			if _, err := bexpr.CreateEvaluator(filter); err != nil {
 				badFields["worker_filter"] = "Unable to successfully parse filter expression."
 			}
@@ -907,7 +907,7 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 				badFields["attributes.default_port"] = "This optional field cannot be set to 0."
 			}
 		}
-		if filter := req.GetItem().GetWorkerFilter().GetValue(); filter != "" {
+		if filter := req.GetItem().GetWorkerFilter(); filter != "" {
 			if _, err := bexpr.CreateEvaluator(filter); err != nil {
 				badFields["worker_filter"] = "Unable to successfully parse filter expression."
 			}

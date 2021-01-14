@@ -33,7 +33,6 @@ func generateTargetTableOutput(in *targets.Target) string {
 		"Updated Time":             in.UpdatedTime.Local().Format(time.RFC1123),
 		"Session Connection Limit": in.SessionConnectionLimit,
 		"Session Max Seconds":      in.SessionMaxSeconds,
-		"Worker Filter":            in.WorkerFilter,
 	}
 
 	if in.Name != "" {
@@ -41,6 +40,9 @@ func generateTargetTableOutput(in *targets.Target) string {
 	}
 	if in.Description != "" {
 		nonAttributeMap["Description"] = in.Description
+	}
+	if in.WorkerFilter != "" {
+		nonAttributeMap["Worker Filter"] = in.WorkerFilter
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, in.Attributes, keySubstMap)
