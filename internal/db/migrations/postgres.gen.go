@@ -1542,7 +1542,7 @@ select
   name,
   description,
   default_port,
-  session_max_seconds
+  session_max_seconds,
   session_connection_limit,
   version,
   create_time,
