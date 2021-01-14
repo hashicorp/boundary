@@ -1549,7 +1549,7 @@ select
   update_time,
   worker_filter,
   'tcp' as type
-  from target_tcp;
+from target_tcp;
 
 -- Replaces the view created in 50 to include worker_filter
 drop view session_with_state;
@@ -1579,10 +1579,10 @@ create view session_with_state as
     ss.previous_end_time,
     ss.start_time,
     ss.end_time
-  from  
+  from
     session s,
     session_state ss
-  where 
+  where
     s.public_id = ss.session_id;
 
 create table server_tags (
