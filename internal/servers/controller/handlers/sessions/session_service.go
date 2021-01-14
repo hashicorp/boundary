@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/session"
@@ -17,6 +18,13 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
+
+// SessionIdActions contains the set of actions that can be performed on
+// individual session resources
+var SessionIdActions = action.Actions{
+	action.Read,
+	action.Cancel,
+}
 
 // Service handles request as described by the pbs.SessionServiceServer interface.
 type Service struct {
@@ -53,6 +61,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 		return nil, err
 	}
 	ses.Scope = authResults.Scope
+	ses.AuthorizedActions = authResults.FetchActionsForId(ctx, ses.Id, SessionIdActions).Strings()
 	return &pbs.GetSessionResponse{Item: ses}, nil
 }
 
@@ -69,10 +78,19 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	if err != nil {
 		return nil, err
 	}
+	finalItems := make([]*pb.Session, 0, len(seslist))
+	resource := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.Session,
+	}
 	for _, item := range seslist {
 		item.Scope = authResults.Scope
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, SessionIdActions, auth.WithResource(resource)).Strings()
+		if len(item.AuthorizedActions) > 0 {
+			finalItems = append(finalItems, item)
+		}
 	}
-	return &pbs.ListSessionsResponse{Items: seslist}, nil
+	return &pbs.ListSessionsResponse{Items: finalItems}, nil
 }
 
 // CancelSession implements the interface pbs.SessionServiceServer.
@@ -89,6 +107,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		return nil, err
 	}
 	ses.Scope = authResults.Scope
+	ses.AuthorizedActions = authResults.FetchActionsForId(ctx, ses.Id, SessionIdActions).Strings()
 	return &pbs.CancelSessionResponse{Item: ses}, nil
 }
 

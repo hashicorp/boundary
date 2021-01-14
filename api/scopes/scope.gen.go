@@ -13,15 +13,16 @@ import (
 )
 
 type Scope struct {
-	Id          string     `json:"id,omitempty"`
-	ScopeId     string     `json:"scope_id,omitempty"`
-	Scope       *ScopeInfo `json:"scope,omitempty"`
-	Name        string     `json:"name,omitempty"`
-	Description string     `json:"description,omitempty"`
-	CreatedTime time.Time  `json:"created_time,omitempty"`
-	UpdatedTime time.Time  `json:"updated_time,omitempty"`
-	Version     uint32     `json:"version,omitempty"`
-	Type        string     `json:"type,omitempty"`
+	Id                string     `json:"id,omitempty"`
+	ScopeId           string     `json:"scope_id,omitempty"`
+	Scope             *ScopeInfo `json:"scope,omitempty"`
+	Name              string     `json:"name,omitempty"`
+	Description       string     `json:"description,omitempty"`
+	CreatedTime       time.Time  `json:"created_time,omitempty"`
+	UpdatedTime       time.Time  `json:"updated_time,omitempty"`
+	Version           uint32     `json:"version,omitempty"`
+	Type              string     `json:"type,omitempty"`
+	AuthorizedActions []string   `json:"authorized_actions,omitempty"`
 
 	response *api.Response
 }

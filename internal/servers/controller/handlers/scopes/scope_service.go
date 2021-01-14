@@ -12,6 +12,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -21,7 +22,17 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var maskManager handlers.MaskManager
+var (
+	maskManager handlers.MaskManager
+
+	// ScopeIdActions contains the set of actions that can be performed on
+	// individual scope resources
+	ScopeIdActions = action.Actions{
+		action.Read,
+		action.Update,
+		action.Delete,
+	}
+)
 
 func init() {
 	var err error
@@ -63,12 +74,20 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-
+	finalItems := make([]*pb.Scope, 0, len(pl))
+	resource := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.Scope,
+	}
 	for _, item := range pl {
 		item.Scope = authResults.Scope
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, ScopeIdActions, auth.WithResource(resource)).Strings()
+		if len(item.AuthorizedActions) > 0 {
+			finalItems = append(finalItems, item)
+		}
 	}
 
-	return &pbs.ListScopesResponse{Items: pl}, nil
+	return &pbs.ListScopesResponse{Items: finalItems}, nil
 }
 
 // GetScopes implements the interface pbs.ScopeServiceServer.
@@ -85,6 +104,7 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 		return nil, err
 	}
 	p.Scope = authResults.Scope
+	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, ScopeIdActions).Strings()
 	return &pbs.GetScopeResponse{Item: p}, nil
 }
 
@@ -102,6 +122,7 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 		return nil, err
 	}
 	p.Scope = authResults.Scope
+	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, ScopeIdActions).Strings()
 	return &pbs.CreateScopeResponse{Item: p, Uri: fmt.Sprintf("scopes/%s", p.GetId())}, nil
 }
 
@@ -119,6 +140,7 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 		return nil, err
 	}
 	p.Scope = authResults.Scope
+	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, ScopeIdActions).Strings()
 	return &pbs.UpdateScopeResponse{Item: p}, nil
 }
 
