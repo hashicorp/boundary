@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -37,6 +38,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"server": func() (cli.Command, error) {
 			return &server.Command{
 				Server: base.NewServer(&base.Command{
+					Context:    context.Background(),
 					UI:         serverCmdUi,
 					ShutdownCh: base.MakeShutdownCh(),
 				}),
@@ -47,6 +49,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"dev": func() (cli.Command, error) {
 			return &dev.Command{
 				Server: base.NewServer(&base.Command{
+					Context:    context.Background(),
 					UI:         serverCmdUi,
 					ShutdownCh: base.MakeShutdownCh(),
 				}),

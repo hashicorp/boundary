@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"runtime"
@@ -344,18 +343,17 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 
-		ctx := context.TODO()
-		sMan, err := schema.NewManager(ctx, "postgres", c.Database.DB())
+		sMan, err := schema.NewManager(c.Context, "postgres", c.Database.DB())
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Can't get schema manager: %w.", err).Error())
 			return 1
 		}
 		// This is an advisory locks on the DB which is released when the db session ends.
-		if err := sMan.SharedLock(ctx); err != nil {
+		if err := sMan.SharedLock(c.Context); err != nil {
 			c.UI.Error(fmt.Errorf("Unable to gain shared access to the database: %w", err).Error())
 			return 1
 		}
-		ckState, err := sMan.CurrentState(ctx)
+		ckState, err := sMan.CurrentState(c.Context)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error checking schema state: %w", err).Error())
 			return 1
