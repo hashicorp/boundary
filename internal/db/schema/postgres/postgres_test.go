@@ -97,7 +97,7 @@ func isReady(ctx context.Context, c dktest.ContainerInfo) bool {
 
 func TestDbStuff(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ctx := context.TODO()
+		ctx := context.Background()
 		ip, port, err := c.FirstPort()
 		if err != nil {
 			t.Fatal(err)
@@ -119,7 +119,7 @@ func TestDbStuff(t *testing.T) {
 
 func TestVersion_NoVersionTable(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ctx := context.TODO()
+		ctx := context.Background()
 		ip, port, err := c.FirstPort()
 		if err != nil {
 			t.Fatal(err)
@@ -147,7 +147,7 @@ func TestVersion_NoVersionTable(t *testing.T) {
 
 func TestMultiStatement(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ctx := context.TODO()
+		ctx := context.Background()
 		ip, port, err := c.FirstPort()
 		if err != nil {
 			t.Fatal(err)
@@ -180,7 +180,7 @@ func TestMultiStatement(t *testing.T) {
 
 func TestWithSchema(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ctx := context.TODO()
+		ctx := context.Background()
 		ip, port, err := c.FirstPort()
 		if err != nil {
 			t.Fatal(err)
@@ -250,7 +250,7 @@ func TestWithSchema(t *testing.T) {
 
 func TestPostgres_Lock(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ctx := context.TODO()
+		ctx := context.Background()
 		ip, port, err := c.FirstPort()
 		if err != nil {
 			t.Fatal(err)
@@ -320,7 +320,7 @@ func TestWithInstance_Concurrent(t *testing.T) {
 		for i := 0; i < concurrency; i++ {
 			go func(i int) {
 				defer wg.Done()
-				_, err := NewPostgres(context.TODO(), db)
+				_, err := NewPostgres(context.Background(), db)
 				if err != nil {
 					t.Errorf("process %d error: %s", i, err)
 				}
@@ -331,7 +331,7 @@ func TestWithInstance_Concurrent(t *testing.T) {
 
 func TestRun_Error(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ctx := context.TODO()
+		ctx := context.Background()
 		ip, port, err := c.FirstPort()
 		if err != nil {
 			t.Fatal(err)

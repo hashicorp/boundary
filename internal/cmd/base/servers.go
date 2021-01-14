@@ -443,10 +443,9 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 	return nil
 }
 
-func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
+func (b *Server) CreateDevDatabase(ctx context.Context, dialect string, opt ...Option) error {
 	opts := getOpts(opt...)
 
-	ctx := context.TODO()
 	var container, url string
 	var err error
 	var c func() error

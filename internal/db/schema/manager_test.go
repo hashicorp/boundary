@@ -131,12 +131,12 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 }
 
 func TestManager_ExclusiveLock(t *testing.T) {
+	ctx := context.Background()
 	c, u, _, err := docker.StartDbInDocker("postgres")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
 	})
-	ctx := context.TODO()
 	d1, err := sql.Open("postgres", u)
 	require.NoError(t, err)
 	m1, err := NewManager(ctx, "postgres", d1)
@@ -154,12 +154,12 @@ func TestManager_ExclusiveLock(t *testing.T) {
 }
 
 func TestManager_SharedLock(t *testing.T) {
+	ctx := context.Background()
 	c, u, _, err := docker.StartDbInDocker("postgres")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
 	})
-	ctx := context.TODO()
 	d1, err := sql.Open("postgres", u)
 	require.NoError(t, err)
 	m1, err := NewManager(ctx, "postgres", d1)

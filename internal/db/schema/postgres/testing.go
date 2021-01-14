@@ -58,7 +58,7 @@ func Test(t *testing.T, d *Postgres, migration []byte) {
 }
 
 func TestNilVersion(t *testing.T, d *Postgres) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	v, _, err := d.Version(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -69,7 +69,7 @@ func TestNilVersion(t *testing.T, d *Postgres) {
 }
 
 func TestLockAndUnlock(t *testing.T, d *Postgres) {
-	ctx := context.TODO()
+	ctx := context.Background()
 
 	ctx, _ = context.WithTimeout(ctx, 15*time.Second)
 
@@ -97,7 +97,7 @@ func TestLockAndUnlock(t *testing.T, d *Postgres) {
 }
 
 func TestRun(t *testing.T, d *Postgres, migration io.Reader) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if migration == nil {
 		t.Fatal("migration can't be nil")
 	}
@@ -108,14 +108,14 @@ func TestRun(t *testing.T, d *Postgres, migration io.Reader) {
 }
 
 func TestDrop(t *testing.T, d *Postgres) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if err := d.drop(ctx); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestSetVersion(t *testing.T, d *Postgres) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	// nolint:maligned
 	testCases := []struct {
 		name            string
