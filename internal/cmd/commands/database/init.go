@@ -292,7 +292,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 			//  was completed successfully (with all default resources being created).
 			//  Use that bit to determine if a previous init was completed
 			//  successfully or not.
-			c.UI.Error(base.WrapAtLength("Database was already been " +
+			c.UI.Error(base.WrapAtLength("Database has already been " +
 				"initialized. If the initialization did not complete successfully " +
 				"please revert the database to it's fresh state."))
 			return 1
