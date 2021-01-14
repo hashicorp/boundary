@@ -160,7 +160,7 @@ func TestDevWorker(t *testing.T) {
 		listener "tcp" {
 			purpose = "proxy"
 		}
-	
+
 		worker {
 			name = "dev-worker"
 			description = "A default worker created in dev mode"
