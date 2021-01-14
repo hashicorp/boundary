@@ -294,7 +294,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 			//  successfully or not.
 			c.UI.Error(base.WrapAtLength("Database has already been " +
 				"initialized. If the initialization did not complete successfully " +
-				"please revert the database to it's fresh state."))
+				"please revert the database to its fresh state."))
 			return 1
 		}
 	}
