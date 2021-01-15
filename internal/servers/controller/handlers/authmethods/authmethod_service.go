@@ -42,10 +42,7 @@ var (
 		action.Read,
 		action.Update,
 		action.Delete,
-		action.AddHostSets,
-		action.SetHostSets,
-		action.RemoveHostSets,
-		action.AuthorizeSession,
+		action.Authenticate,
 	}
 )
 
@@ -107,7 +104,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 			finalItems = append(finalItems, item)
 		}
 	}
-	return &pbs.ListAuthMethodsResponse{Items: ul}, nil
+	return &pbs.ListAuthMethodsResponse{Items: finalItems}, nil
 }
 
 // GetAuthMethod implements the interface pbs.AuthMethodServiceServer.

@@ -70,6 +70,7 @@ func TestGet(t *testing.T) {
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
+		AuthorizedActions: []string{"read", "update", "delete", "authenticate"},
 	}
 
 	cases := []struct {
