@@ -56,7 +56,7 @@ func TestCurrentState(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, want, s)
 
-	testDriver, err := postgres.NewPostgres(ctx, d)
+	testDriver, err := postgres.New(ctx, d)
 	require.NoError(t, err)
 	require.NoError(t, testDriver.SetVersion(ctx, 2, true))
 
@@ -64,7 +64,7 @@ func TestCurrentState(t *testing.T) {
 		InitializationStarted: true,
 		BinarySchemaVersion:   BinarySchemaVersion("postgres"),
 		Dirty:                 true,
-		CurrentSchemaVersion:  2,
+		DatabaseSchemaVersion: 2,
 	}
 	s, err = m.CurrentState(ctx)
 	require.NoError(t, err)
@@ -86,7 +86,7 @@ func TestRollForward(t *testing.T) {
 	assert.NoError(t, m.RollForward(ctx))
 
 	// Now set to dirty at an early version
-	testDriver, err := postgres.NewPostgres(ctx, d)
+	testDriver, err := postgres.New(ctx, d)
 	require.NoError(t, err)
 	testDriver.SetVersion(ctx, 0, true)
 	assert.Error(t, m.RollForward(ctx))

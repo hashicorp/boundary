@@ -84,5 +84,4 @@ func TestStatementProvider_error(t *testing.T) {
 			assert.Error(t, err)
 		})
 	}
-
 }

@@ -366,15 +366,15 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
 			return 1
 		}
-		if ckState.BinarySchemaVersion > ckState.CurrentSchemaVersion {
+		if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
 			// TODO: Add the command to migrate up the schema version once that command exists.
 			c.UI.Error("Older schema version is than is expected from this binary.")
 			return 1
 		}
-		if ckState.BinarySchemaVersion < ckState.CurrentSchemaVersion {
+		if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {
 			c.UI.Error(base.WrapAtLength(fmt.Sprintf("Newer schema version (%d) "+
 				"than this binary expects. Please use a newer version of the boundary "+
-				"binary.", ckState.CurrentSchemaVersion)))
+				"binary.", ckState.DatabaseSchemaVersion)))
 			return 1
 		}
 	}

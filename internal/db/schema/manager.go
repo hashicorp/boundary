@@ -38,10 +38,10 @@ type Manager struct {
 func NewManager(ctx context.Context, dialect string, db *sql.DB) (*Manager, error) {
 	const op = "schema.NewManager"
 	dbM := Manager{db: db, dialect: dialect}
-	var err error
 	switch dialect {
-	case "postgres", "postgresql":
-		dbM.driver, err = postgres.NewPostgres(ctx, db)
+	case "postgres":
+		var err error
+		dbM.driver, err = postgres.New(ctx, db)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -58,8 +58,8 @@ type State struct {
 	InitializationStarted bool
 	// Dirty is set to true if the database failed in a previous migration/initialization.
 	Dirty bool
-	// CurrentSchemaVersion is the schema version that is currently running in the database.
-	CurrentSchemaVersion int
+	// DatabaseSchemaVersion is the schema version that is currently running in the database.
+	DatabaseSchemaVersion int
 	// BinarySchemaVersion is the schema version which this boundary binary supports.
 	BinarySchemaVersion int
 }
@@ -77,7 +77,7 @@ func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 		return &dbS, nil
 	}
 	dbS.InitializationStarted = true
-	dbS.CurrentSchemaVersion = v
+	dbS.DatabaseSchemaVersion = v
 	dbS.Dirty = dirty
 	return &dbS, nil
 }
@@ -93,8 +93,8 @@ func (b *Manager) SharedLock(ctx context.Context) error {
 	return nil
 }
 
-// ExclusiveLock attempts to obtain an exclusive lock on the database.  If the
-// lock can be obtained an error is returned.
+// ExclusiveLock attempts to obtain an exclusive lock on the database.
+// An error is returned if a lock was unable to be obtained.
 func (b *Manager) ExclusiveLock(ctx context.Context) error {
 	const op = "schema.(Manager).ExclusiveLock"
 	if err := b.driver.TryLock(ctx); err != nil {

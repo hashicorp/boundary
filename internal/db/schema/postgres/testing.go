@@ -26,9 +26,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// Package testing has the database tests.
-// All database drivers must pass the Test function.
-// This lives in it's own package so it stays a test dependency.
 package postgres
 
 import (
@@ -93,7 +90,6 @@ func TestLockAndUnlock(t *testing.T, d *Postgres) {
 	if err := d.Unlock(ctx); err != nil {
 		t.Fatalf("got error, expected none: %v", err)
 	}
-
 }
 
 func TestRun(t *testing.T, d *Postgres, migration io.Reader) {
@@ -159,7 +155,7 @@ func open(t *testing.T, ctx context.Context, u string) (*Postgres, error) {
 	db, err := sql.Open("postgres", u)
 	require.NoError(t, err)
 
-	px, err := NewPostgres(ctx, db)
+	px, err := New(ctx, db)
 	require.NoError(t, err)
 
 	return px, nil

@@ -163,9 +163,9 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: MissingTable,
 		},
 		{
-			name: "MigrationGeneration",
-			c:    MigrationGeneration,
-			want: MigrationGeneration,
+			name: "MigrationIntegrity",
+			c:    MigrationIntegrity,
+			want: MigrationIntegrity,
 		},
 		{
 			name: "MigrationData",
