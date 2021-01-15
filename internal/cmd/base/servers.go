@@ -471,7 +471,8 @@ func (b *Server) CreateDevDatabase(ctx context.Context, dialect string, opt ...O
 			return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
 		}
 
-		_, err := schema.InitStore(ctx, dialect, url)
+		// Let migrate store manage the dirty bit since dev DBs should be ephemeral anyways.
+		_, err := schema.MigrateStore(ctx, dialect, url)
 		if err != nil {
 			err = fmt.Errorf("unable to initialize dev database with dialect %s: %w", dialect, err)
 			if c != nil {
@@ -484,7 +485,8 @@ func (b *Server) CreateDevDatabase(ctx context.Context, dialect string, opt ...O
 		b.DatabaseUrl = url
 
 	default:
-		if _, err := schema.InitStore(ctx, dialect, b.DatabaseUrl); err != nil {
+		// Let migrate store manage the dirty bit since dev DBs should be ephemeral anyways.
+		if _, err := schema.MigrateStore(ctx, dialect, b.DatabaseUrl); err != nil {
 			err = fmt.Errorf("error initializing store: %w", err)
 			if c != nil {
 				err = multierror.Append(err, c())

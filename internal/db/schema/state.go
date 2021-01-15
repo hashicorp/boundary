@@ -6,7 +6,7 @@ const nilVersion = -1
 // contains the internal representation of a schema in the current binary.
 type migrationState struct {
 	// devMigration is true if the database schema that would be applied by
-	// InitStore would be from files in the /dev directory which indicates it would
+	// MigrateStore would be from files in the /dev directory which indicates it would
 	// not be safe to run in a non dev environment.
 	devMigration bool
 

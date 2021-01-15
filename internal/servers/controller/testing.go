@@ -412,7 +412,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	if opts.DatabaseUrl != "" {
 		tc.b.DatabaseUrl = opts.DatabaseUrl
-		if _, err := schema.InitStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
+		if _, err := schema.MigrateStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
 			t.Fatal(err)
 		}
 		if err := tc.b.ConnectToDatabase("postgres"); err != nil {

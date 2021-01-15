@@ -19,13 +19,24 @@ type driver interface {
 	Unlock(context.Context) error
 	Run(context.Context, io.Reader) error
 	// A value of -1 indicates no version is set.
-	SetVersion(context.Context, int, bool) error
+	SetVersion(context.Context, int) error
+	SetDirty(context.Context, bool) error
 	// A value of -1 indicates no version is set.
-	Version(context.Context) (int, bool, error)
+	CurrentState(context.Context) (int, bool, error)
 }
 
 // Manager provides a way to run operations and retrieve information regarding
-// the underlying boundary database schema.
+// the underlying boundary database schema.  The expected use of the manager
+// for modifying the schema and issuing other data that needs to be done
+// with exclusive access is (error handling omitted):
+//
+// mgr, err := NewManager(ctx, dialect, db)
+// err = mgr.ExclusiveLock(ctx)
+// err = mgr.SetDirty(ctx)
+//  ... do writes to the db and schema
+// err = mgr.UnsetDirty(ctx)
+// // end the db session to release the ExclusiveLock.
+//
 // Manager is not thread safe.
 type Manager struct {
 	db      *sql.DB
@@ -69,7 +80,7 @@ func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 	dbS := State{
 		BinarySchemaVersion: BinarySchemaVersion(b.dialect),
 	}
-	v, dirty, err := b.driver.Version(ctx)
+	v, dirty, err := b.driver.CurrentState(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -82,9 +93,27 @@ func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 	return &dbS, nil
 }
 
-// SharedLock attempts to obtain a shared lock on the database.  This can fail if
-// an exclusive lock is already held with the same key.  An error is returned if
-// a lock was unable to be obtained.
+// SetDirty sets a dirty bit to true for the schema.  Checking the dirty bit can be done through CurrentState.
+func (b *Manager) SetDirty(ctx context.Context) error {
+	const op = "schema.(Manager).SetDirty"
+	if err := b.driver.SetDirty(ctx, true); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
+}
+
+// UnsetDirty sets a dirty bit to false for the schema.  Checking the dirty bit can be done through CurrentState.
+func (b *Manager) UnsetDirty(ctx context.Context) error {
+	const op = "schema.(Manager).SetDirty"
+	if err := b.driver.SetDirty(ctx, false); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
+}
+
+// SharedLock attempts to obtain a shared lock on the database.  This can fail
+// if an exclusive lock is already held.  If the lock can't be obtained an
+// error is returned.
 func (b *Manager) SharedLock(ctx context.Context) error {
 	const op = "schema.(Manager).SharedLock"
 	if err := b.driver.TrySharedLock(ctx); err != nil {
@@ -94,7 +123,7 @@ func (b *Manager) SharedLock(ctx context.Context) error {
 }
 
 // ExclusiveLock attempts to obtain an exclusive lock on the database.  If the
-// lock can be obtained an error is returned.
+// lock can't be obtained an error is returned.
 func (b *Manager) ExclusiveLock(ctx context.Context) error {
 	const op = "schema.(Manager).ExclusiveLock"
 	if err := b.driver.TryLock(ctx); err != nil {
@@ -104,8 +133,9 @@ func (b *Manager) ExclusiveLock(ctx context.Context) error {
 }
 
 // RollForward updates the database schema to match the latest version known by
-// the boundary binary.  An error is not returned if the database is already at
-// the most recent version.
+// the boundary binary. It is not an error for the database to be at the
+// most recent version.
+// An error is returned if the dirty bit has not been set.
 func (b *Manager) RollForward(ctx context.Context) error {
 	const op = "schema.(Manager).RollForward"
 
@@ -117,13 +147,13 @@ func (b *Manager) RollForward(ctx context.Context) error {
 		b.driver.Unlock(ctx)
 	}()
 
-	curVersion, dirty, err := b.driver.Version(ctx)
+	curVersion, dirty, err := b.driver.CurrentState(ctx)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
 
-	if dirty {
-		return errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("schema is dirty with version %d", curVersion))
+	if !dirty {
+		return errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("dirty bit not set"))
 	}
 
 	sp, err := newStatementProvider(b.dialect, curVersion)
@@ -147,7 +177,7 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 		}
 
 		// set version with dirty state
-		if err := b.driver.SetVersion(ctx, qp.Version(), true); err != nil {
+		if err := b.driver.SetVersion(ctx, qp.Version()); err != nil {
 			return errors.Wrap(err, op)
 		}
 
@@ -156,7 +186,7 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 		}
 
 		// set clean state
-		if err := b.driver.SetVersion(ctx, qp.Version(), false); err != nil {
+		if err := b.driver.SetVersion(ctx, qp.Version()); err != nil {
 			return errors.Wrap(err, op)
 		}
 	}

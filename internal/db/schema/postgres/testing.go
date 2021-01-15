@@ -52,14 +52,14 @@ func Test(t *testing.T, d *Postgres, migration []byte) {
 	TestNilVersion(t, d) // test first
 	TestLockAndUnlock(t, d)
 	TestRun(t, d, bytes.NewReader(migration))
-	TestSetVersion(t, d) // also tests Version()
+	TestSetVersion(t, d) // also tests CurrentState()
 	// drop breaks the driver, so test it last.
 	TestDrop(t, d)
 }
 
 func TestNilVersion(t *testing.T, d *Postgres) {
 	ctx := context.Background()
-	v, _, err := d.Version(ctx)
+	v, _, err := d.CurrentState(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,11 +136,14 @@ func TestSetVersion(t *testing.T, d *Postgres) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := d.SetVersion(ctx, tc.version, tc.dirty)
+			if err := d.SetDirty(ctx, tc.dirty); err != nil {
+				t.Fatal(err)
+			}
+			err := d.SetVersion(ctx, tc.version)
 			if err != tc.expectedErr {
 				t.Fatal("Got unexpected error:", err, "!=", tc.expectedErr)
 			}
-			v, dirty, readErr := d.Version(ctx)
+			v, dirty, readErr := d.CurrentState(ctx)
 			if readErr != tc.expectedReadErr {
 				t.Fatal("Got unexpected error:", readErr, "!=", tc.expectedReadErr)
 			}

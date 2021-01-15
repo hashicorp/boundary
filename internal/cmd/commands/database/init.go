@@ -116,7 +116,7 @@ func (c *InitCommand) Flags() *base.FlagSets {
 		Usage:      `Log format. Supported values are "standard" and "json".`,
 	})
 
-	f = set.NewFlagSet("Init Options")
+	f = set.NewFlagSet("Init options")
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "allow-development-migrations",
@@ -257,15 +257,15 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		migrationUrlToParse = urlToParse
 	}
 
-	dbaseUrl, err := config.ParseAddress(urlToParse)
+	migrationUrl, err := config.ParseAddress(migrationUrlToParse)
 	if err != nil && err != config.ErrNotAUrl {
-		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
+		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
 		return 1
 	}
 
 	// This database is used to keep an exclusive lock on the database for the
 	// remainder of the command
-	dBase, err := sql.Open(dialect, dbaseUrl)
+	dBase, err := sql.Open(dialect, migrationUrl)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error establishing db connection for locking: %w", err).Error())
 		return 1
@@ -275,6 +275,12 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Error(fmt.Errorf("Error setting up schema manager for locking: %w", err).Error())
 		return 1
 	}
+	// This is an advisory locks on the DB which is released when the db session ends.
+	if err := man.ExclusiveLock(c.Context); err != nil {
+		c.UI.Error(fmt.Errorf("Error capturing an exclusive lock: %w", err).Error())
+		return 1
+	}
+
 	{
 		st, err := man.CurrentState(c.Context)
 		if err != nil {
@@ -287,11 +293,6 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 			return 1
 		}
 		if st.InitializationStarted {
-			// TODO: Separate from the "dirty" bit maintained by the schema
-			//  manager maintain a bit which indicates that this full command
-			//  was completed successfully (with all default resources being created).
-			//  Use that bit to determine if a previous init was completed
-			//  successfully or not.
 			c.UI.Error(base.WrapAtLength("Database has already been " +
 				"initialized. If the initialization did not complete successfully " +
 				"please revert the database to its fresh state."))
@@ -299,22 +300,17 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}
 	}
 
-	// This is an advisory locks on the DB which is released when the db session ends.
-	if err := man.ExclusiveLock(c.Context); err != nil {
-		c.UI.Error(fmt.Errorf("Error capturing an exclusive lock: %w", err).Error())
-		return 1
-	}
-
-	migrationUrl, err := config.ParseAddress(migrationUrlToParse)
-	if err != nil && err != config.ErrNotAUrl {
-		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
+	// The initialization is dirty as long as it doesn't complete successfully.
+	if err := man.SetDirty(c.Context); err != nil {
+		c.UI.Error(base.WrapAtLength("Database could not be marked as dirty in " +
+			"preperation for it's initialization."))
 		return 1
 	}
 
 	// Core migrations using the migration URL
 	{
 		migrationUrl = strings.TrimSpace(migrationUrl)
-		ran, err := schema.InitStore(c.Context, dialect, migrationUrl)
+		ran, err := schema.MigrateStore(c.Context, dialect, migrationUrl, schema.WithSkipSetDirty(true), schema.WithSkipUnsetDirty(true))
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
 			return 1
@@ -322,12 +318,18 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		if !ran {
 			if base.Format(c.UI) == "table" {
 				c.UI.Info("Database already initialized.")
-				return 0
+				return c.unsetDirty(man)
 			}
 		}
 		if base.Format(c.UI) == "table" {
 			c.UI.Info("Migrations successfully run.")
 		}
+	}
+
+	dbaseUrl, err := config.ParseAddress(urlToParse)
+	if err != nil && err != config.ErrNotAUrl {
+		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
+		return 1
 	}
 
 	// Everything after is done with normal database URL and is affecting actual data
@@ -360,7 +362,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipInitialLoginRoleCreation {
-		return 0
+		return c.unsetDirty(man)
 	}
 
 	role, err := c.srv.CreateInitialLoginRole(c.Context)
@@ -381,7 +383,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipAuthMethodCreation {
-		return 0
+		return c.unsetDirty(man)
 	}
 
 	// Use an easy name, at least
@@ -409,7 +411,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipScopesCreation {
-		return 0
+		return c.unsetDirty(man)
 	}
 
 	orgScope, projScope, err := c.srv.CreateInitialScopes(c.Context)
@@ -443,7 +445,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipHostResourcesCreation {
-		return 0
+		return c.unsetDirty(man)
 	}
 
 	hc, hs, h, err := c.srv.CreateInitialHostResources(c.Context)
@@ -470,7 +472,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipTargetCreation {
-		return 0
+		return c.unsetDirty(man)
 	}
 
 	c.srv.DevTargetSessionConnectionLimit = -1
@@ -496,7 +498,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		jsonMap["target"] = targetInfo
 	}
 
-	return 0
+	return c.unsetDirty(man)
 }
 
 func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
@@ -539,5 +541,14 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 		return 1
 	}
 
+	return 0
+}
+
+func (c *InitCommand) unsetDirty(man *schema.Manager) int {
+	if err := man.UnsetDirty(c.Context); err != nil {
+		c.UI.Error(base.WrapAtLength("Database could not be marked undirty after" +
+			"initialization."))
+		return 1
+	}
 	return 0
 }

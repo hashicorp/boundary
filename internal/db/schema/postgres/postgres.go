@@ -47,7 +47,15 @@ import (
 const schemaAccessLockId int64 = 3865661975
 const nilVersion = -1
 
-var defaultMigrationsTable = "boundary_schema_version"
+var defaultMigrationsTablePrefix = "boundary_schema_"
+
+func versionTable() string {
+	return fmt.Sprintf("%sversion", defaultMigrationsTablePrefix)
+}
+
+func dirtTable() string {
+	return fmt.Sprintf("%sdirt", defaultMigrationsTablePrefix)
+}
 
 // Postgres is a driver usable by a boundary schema manager.
 type Postgres struct {
@@ -73,7 +81,7 @@ func NewPostgres(ctx context.Context, instance *sql.DB) (*Postgres, error) {
 		db:   instance,
 	}
 
-	if err := px.ensureVersionTable(ctx); err != nil {
+	if err := px.ensureVersionAndDirtTable(ctx); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 
@@ -213,16 +221,14 @@ func runesLastIndex(input []rune, target rune) int {
 	return -1
 }
 
-// SetVersion sets the version number, and whether the database is in a dirty state.
-// A version value of -1 indicates no version is set.
-func (p *Postgres) SetVersion(ctx context.Context, version int, dirty bool) error {
-	const op = "postgres.(Postgres).SetVersion"
+func (p *Postgres) SetDirty(ctx context.Context, d bool) error {
+	const op = "postgres.(Postgres).SetDirty"
 	tx, err := p.conn.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return err
 	}
 
-	query := `TRUNCATE ` + pq.QuoteIdentifier(defaultMigrationsTable)
+	query := `TRUNCATE ` + pq.QuoteIdentifier(dirtTable())
 	if _, err := tx.ExecContext(ctx, query); err != nil {
 		if errRollback := tx.Rollback(); errRollback != nil {
 			err = multierror.Append(err, errRollback)
@@ -230,18 +236,45 @@ func (p *Postgres) SetVersion(ctx context.Context, version int, dirty bool) erro
 		return errors.Wrap(err, op)
 	}
 
-	// Also re-write the schema Version for nil dirty versions to prevent
-	// empty schema Version for failed down migration on the first migration
-	// See: https://github.com/golang-migrate/migrate/issues/330
-	if version >= 0 || (version == nilVersion && dirty) {
-		query = `INSERT INTO ` + pq.QuoteIdentifier(defaultMigrationsTable) +
-			` (Version, dirty) VALUES ($1, $2)`
-		if _, err := tx.ExecContext(ctx, query, version, dirty); err != nil {
-			if errRollback := tx.Rollback(); errRollback != nil {
-				err = multierror.Append(err, errRollback)
-			}
-			return errors.Wrap(err, op)
+	query = `INSERT INTO ` + pq.QuoteIdentifier(dirtTable()) +
+		` (dirty) VALUES ($1)`
+	if _, err := tx.ExecContext(ctx, query, d); err != nil {
+		if errRollback := tx.Rollback(); errRollback != nil {
+			err = multierror.Append(err, errRollback)
 		}
+		return errors.Wrap(err, op)
+	}
+	if err := tx.Commit(); err != nil {
+		return errors.Wrap(err, op)
+	}
+
+	return nil
+}
+
+// SetVersion sets the version number. A version value of -1 indicates no
+// version is set.
+func (p *Postgres) SetVersion(ctx context.Context, version int) error {
+	const op = "postgres.(Postgres).SetVersion"
+	tx, err := p.conn.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	query := `TRUNCATE ` + pq.QuoteIdentifier(versionTable())
+	if _, err := tx.ExecContext(ctx, query); err != nil {
+		if errRollback := tx.Rollback(); errRollback != nil {
+			err = multierror.Append(err, errRollback)
+		}
+		return errors.Wrap(err, op)
+	}
+
+	query = `INSERT INTO ` + pq.QuoteIdentifier(versionTable()) +
+		` (Version) VALUES ($1)`
+	if _, err := tx.ExecContext(ctx, query, version); err != nil {
+		if errRollback := tx.Rollback(); errRollback != nil {
+			err = multierror.Append(err, errRollback)
+		}
+		return errors.Wrap(err, op)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -251,11 +284,13 @@ func (p *Postgres) SetVersion(ctx context.Context, version int, dirty bool) erro
 	return nil
 }
 
-// Version returns the version, if the database is currently in a dirty state, and any error.
+// CurrentState returns the version, if the database is currently in a dirty state, and any error.
 // A version value of -1 indicates no version is set.
-func (p *Postgres) Version(ctx context.Context) (version int, dirty bool, err error) {
+func (p *Postgres) CurrentState(ctx context.Context) (version int, dirty bool, err error) {
 	const op = "postgres.(Postgres).Version"
-	query := `SELECT Version, dirty FROM ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` LIMIT 1`
+	query := `SELECT
+		COALESCE((SELECT Version FROM ` + pq.QuoteIdentifier(versionTable()) + ` LIMIT 1), -1) as Version,
+		COALESCE((SELECT dirty FROM ` + pq.QuoteIdentifier(dirtTable()) + ` LIMIT 1), false) as dirty`
 	err = p.conn.QueryRowContext(ctx, query).Scan(&version, &dirty)
 	switch {
 	case err == sql.ErrNoRows:
@@ -317,11 +352,11 @@ func (p *Postgres) drop(ctx context.Context) (err error) {
 	return nil
 }
 
-// ensureVersionTable checks if versions table exists and, if not, creates it.
+// ensureVersionAndDirtTable checks if versions table exists and, if not, creates it.
 // Note that this function locks the database, which deviates from the usual
 // convention of "caller locks" in the postgres type.
-func (p *Postgres) ensureVersionTable(ctx context.Context) (err error) {
-	const op = "postgres.(Postgres).ensureVersionTable"
+func (p *Postgres) ensureVersionAndDirtTable(ctx context.Context) (err error) {
+	const op = "postgres.(Postgres).ensureVersionAndDirtTable"
 	if err = p.Lock(ctx); err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -332,7 +367,12 @@ func (p *Postgres) ensureVersionTable(ctx context.Context) (err error) {
 		}
 	}()
 
-	query := `CREATE TABLE IF NOT EXISTS ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` (Version bigint not null primary key, dirty boolean not null)`
+	query := `CREATE TABLE IF NOT EXISTS ` + pq.QuoteIdentifier(versionTable()) + ` (Version bigint not null primary key)`
+	if _, err = p.conn.ExecContext(ctx, query); err != nil {
+		return errors.Wrap(err, op)
+	}
+
+	query = `CREATE TABLE IF NOT EXISTS ` + pq.QuoteIdentifier(dirtTable()) + ` (dirty boolean not null primary key)`
 	if _, err = p.conn.ExecContext(ctx, query); err != nil {
 		return errors.Wrap(err, op)
 	}

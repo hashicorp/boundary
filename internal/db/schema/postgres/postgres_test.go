@@ -135,10 +135,10 @@ func TestVersion_NoVersionTable(t *testing.T) {
 				t.Error(err)
 			}
 		}()
-		// Drop the version table so calls to Version don't rely on that
+		// Drop the version table so calls to CurrentState don't rely on that
 		d.drop(ctx)
 
-		v, dirt, err := d.Version(ctx)
+		v, dirt, err := d.CurrentState(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, v, nilVersion)
 		assert.False(t, dirt)
@@ -201,7 +201,7 @@ func TestWithSchema(t *testing.T) {
 		if err := d.Run(ctx, strings.NewReader("CREATE SCHEMA foobar AUTHORIZATION postgres")); err != nil {
 			t.Fatal(err)
 		}
-		if err := d.SetVersion(ctx, 1, false); err != nil {
+		if err := d.SetVersion(ctx, 1); err != nil {
 			t.Fatal(err)
 		}
 
@@ -217,7 +217,7 @@ func TestWithSchema(t *testing.T) {
 			}
 		}()
 
-		version, _, err := d2.Version(ctx)
+		version, _, err := d2.CurrentState(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -225,11 +225,11 @@ func TestWithSchema(t *testing.T) {
 			t.Fatal("expected NilVersion")
 		}
 
-		// now update Version and compare
-		if err := d2.SetVersion(ctx, 2, false); err != nil {
+		// now update CurrentState and compare
+		if err := d2.SetVersion(ctx, 2); err != nil {
 			t.Fatal(err)
 		}
-		version, _, err = d2.Version(ctx)
+		version, _, err = d2.CurrentState(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -237,8 +237,8 @@ func TestWithSchema(t *testing.T) {
 			t.Fatal("expected Version 2")
 		}
 
-		// meanwhile, the public schema still has the other Version
-		version, _, err = d.Version(ctx)
+		// meanwhile, the public schema still has the other CurrentState
+		version, _, err = d.CurrentState(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}

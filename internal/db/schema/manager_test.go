@@ -58,7 +58,8 @@ func TestCurrentState(t *testing.T) {
 
 	testDriver, err := postgres.NewPostgres(ctx, d)
 	require.NoError(t, err)
-	require.NoError(t, testDriver.SetVersion(ctx, 2, true))
+	require.NoError(t, testDriver.SetVersion(ctx, 2))
+	require.NoError(t, testDriver.SetDirty(ctx, true))
 
 	want = &State{
 		InitializationStarted: true,
@@ -83,13 +84,10 @@ func TestRollForward(t *testing.T) {
 	ctx := context.Background()
 	m, err := NewManager(ctx, "postgres", d)
 	require.NoError(t, err)
-	assert.NoError(t, m.RollForward(ctx))
-
-	// Now set to dirty at an early version
-	testDriver, err := postgres.NewPostgres(ctx, d)
-	require.NoError(t, err)
-	testDriver.SetVersion(ctx, 0, true)
+	// dirty bit must be set for RollForward to proceed.
 	assert.Error(t, m.RollForward(ctx))
+	require.NoError(t, m.SetDirty(ctx))
+	assert.NoError(t, m.RollForward(ctx))
 }
 
 func TestRollForward_NotFromFresh(t *testing.T) {
@@ -111,12 +109,12 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 	ctx := context.Background()
 	m, err := NewManager(ctx, dialect, d)
 	require.NoError(t, err)
-	assert.NoError(t, m.RollForward(ctx))
+	assert.NoError(t, m.SetDirty(ctx))
 
-	ver, dirty, err := m.driver.Version(ctx)
+	assert.NoError(t, m.RollForward(ctx))
+	ver, _, err := m.driver.CurrentState(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, nState.binarySchemaVersion, ver)
-	assert.False(t, dirty)
 
 	// Restore the full set of sql scripts and roll the rest of the way forward.
 	migrationStates[dialect] = oState
@@ -124,10 +122,9 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 	newM, err := NewManager(ctx, dialect, d)
 	require.NoError(t, err)
 	assert.NoError(t, newM.RollForward(ctx))
-	ver, dirty, err = newM.driver.Version(ctx)
+	ver, _, err = newM.driver.CurrentState(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, oState.binarySchemaVersion, ver)
-	assert.False(t, dirty)
 }
 
 func TestManager_ExclusiveLock(t *testing.T) {
