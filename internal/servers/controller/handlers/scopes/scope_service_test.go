@@ -62,27 +62,29 @@ func TestGet(t *testing.T) {
 	}
 
 	oScope := &pb.Scope{
-		Id:          org.GetPublicId(),
-		ScopeId:     org.GetParentId(),
-		Scope:       &pb.ScopeInfo{Id: "global", Type: scope.Global.String()},
-		Name:        &wrapperspb.StringValue{Value: org.GetName()},
-		Description: &wrapperspb.StringValue{Value: org.GetDescription()},
-		CreatedTime: org.CreateTime.GetTimestamp(),
-		UpdatedTime: org.UpdateTime.GetTimestamp(),
-		Version:     2,
-		Type:        scope.Org.String(),
+		Id:                org.GetPublicId(),
+		ScopeId:           org.GetParentId(),
+		Scope:             &pb.ScopeInfo{Id: "global", Type: scope.Global.String()},
+		Name:              &wrapperspb.StringValue{Value: org.GetName()},
+		Description:       &wrapperspb.StringValue{Value: org.GetDescription()},
+		CreatedTime:       org.CreateTime.GetTimestamp(),
+		UpdatedTime:       org.UpdateTime.GetTimestamp(),
+		Version:           2,
+		Type:              scope.Org.String(),
+		AuthorizedActions: []string{"read", "update", "delete"},
 	}
 
 	pScope := &pb.Scope{
-		Id:          proj.GetPublicId(),
-		ScopeId:     proj.GetParentId(),
-		Scope:       &pb.ScopeInfo{Id: oScope.Id, Type: scope.Org.String()},
-		Name:        &wrapperspb.StringValue{Value: proj.GetName()},
-		Description: &wrapperspb.StringValue{Value: proj.GetDescription()},
-		CreatedTime: proj.CreateTime.GetTimestamp(),
-		UpdatedTime: proj.UpdateTime.GetTimestamp(),
-		Version:     2,
-		Type:        scope.Project.String(),
+		Id:                proj.GetPublicId(),
+		ScopeId:           proj.GetParentId(),
+		Scope:             &pb.ScopeInfo{Id: oScope.Id, Type: scope.Org.String()},
+		Name:              &wrapperspb.StringValue{Value: proj.GetName()},
+		Description:       &wrapperspb.StringValue{Value: proj.GetDescription()},
+		CreatedTime:       proj.CreateTime.GetTimestamp(),
+		UpdatedTime:       proj.UpdateTime.GetTimestamp(),
+		Version:           2,
+		Type:              scope.Project.String(),
+		AuthorizedActions: []string{"read", "update", "delete"},
 	}
 
 	cases := []struct {
@@ -174,8 +176,10 @@ func TestList(t *testing.T) {
 	globalScope := &pb.ScopeInfo{Id: "global", Type: scope.Global.String()}
 	oNoProjectsProto := scopes.ToProto(oNoProjects)
 	oNoProjectsProto.Scope = globalScope
+	oNoProjectsProto.AuthorizedActions = []string{"read", "update", "delete"}
 	oWithProjectsProto := scopes.ToProto(oWithProjects)
 	oWithProjectsProto.Scope = globalScope
+	oWithProjectsProto.AuthorizedActions = []string{"read", "update", "delete"}
 	initialOrgs = append(initialOrgs, oNoProjectsProto, oWithProjectsProto)
 	scopes.SortScopes(initialOrgs)
 
@@ -227,13 +231,14 @@ func TestList(t *testing.T) {
 		o, err := repo.CreateScope(context.Background(), newO, "")
 		require.NoError(t, err)
 		wantOrgs = append(wantOrgs, &pb.Scope{
-			Id:          o.GetPublicId(),
-			ScopeId:     globalScope.GetId(),
-			Scope:       globalScope,
-			CreatedTime: o.GetCreateTime().GetTimestamp(),
-			UpdatedTime: o.GetUpdateTime().GetTimestamp(),
-			Version:     1,
-			Type:        scope.Org.String(),
+			Id:                o.GetPublicId(),
+			ScopeId:           globalScope.GetId(),
+			Scope:             globalScope,
+			CreatedTime:       o.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       o.GetUpdateTime().GetTimestamp(),
+			Version:           1,
+			Type:              scope.Org.String(),
+			AuthorizedActions: []string{"read", "update", "delete"},
 		})
 	}
 	wantOrgs = append(wantOrgs, initialOrgs...)
@@ -246,13 +251,14 @@ func TestList(t *testing.T) {
 		p, err := repo.CreateScope(context.Background(), newP, "")
 		require.NoError(t, err)
 		wantProjects = append(wantProjects, &pb.Scope{
-			Id:          p.GetPublicId(),
-			ScopeId:     oWithProjects.GetPublicId(),
-			Scope:       &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String()},
-			CreatedTime: p.GetCreateTime().GetTimestamp(),
-			UpdatedTime: p.GetUpdateTime().GetTimestamp(),
-			Version:     1,
-			Type:        scope.Project.String(),
+			Id:                p.GetPublicId(),
+			ScopeId:           oWithProjects.GetPublicId(),
+			Scope:             &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String()},
+			CreatedTime:       p.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       p.GetUpdateTime().GetTimestamp(),
+			Version:           1,
+			Type:              scope.Project.String(),
+			AuthorizedActions: []string{"read", "update", "delete"},
 		})
 	}
 	scopes.SortScopes(wantProjects)
@@ -433,12 +439,13 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateScopeResponse{
 				Uri: "scopes/p_",
 				Item: &pb.Scope{
-					ScopeId:     defaultOrg.GetPublicId(),
-					Scope:       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
-					Type:        scope.Project.String(),
+					ScopeId:           defaultOrg.GetPublicId(),
+					Scope:             &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					Type:              scope.Project.String(),
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -455,12 +462,13 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateScopeResponse{
 				Uri: "scopes/o_",
 				Item: &pb.Scope{
-					ScopeId:     scope.Global.String(),
-					Scope:       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
-					Type:        scope.Org.String(),
+					ScopeId:           scope.Global.String(),
+					Scope:             &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					Type:              scope.Org.String(),
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -477,11 +485,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateScopeResponse{
 				Uri: "scopes/p_",
 				Item: &pb.Scope{
-					ScopeId:     defaultOrg.GetPublicId(),
-					Scope:       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
-					Type:        scope.Project.String(),
+					ScopeId:           defaultOrg.GetPublicId(),
+					Scope:             &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					Type:              scope.Project.String(),
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -498,11 +507,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateScopeResponse{
 				Uri: "scopes/o_",
 				Item: &pb.Scope{
-					ScopeId:     scope.Global.String(),
-					Scope:       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
-					Type:        scope.Org.String(),
+					ScopeId:           scope.Global.String(),
+					Scope:             &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					Type:              scope.Org.String(),
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -704,13 +714,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
-					Id:          proj.GetPublicId(),
-					ScopeId:     org.GetPublicId(),
-					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: proj.GetCreateTime().GetTimestamp(),
-					Type:        scope.Project.String(),
+					Id:                proj.GetPublicId(),
+					ScopeId:           org.GetPublicId(),
+					Scope:             &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:       proj.GetCreateTime().GetTimestamp(),
+					Type:              scope.Project.String(),
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -729,13 +740,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
-					Id:          org.GetPublicId(),
-					ScopeId:     scope.Global.String(),
-					Scope:       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: org.GetCreateTime().GetTimestamp(),
-					Type:        scope.Org.String(),
+					Id:                org.GetPublicId(),
+					ScopeId:           scope.Global.String(),
+					Scope:             &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:       org.GetCreateTime().GetTimestamp(),
+					Type:              scope.Org.String(),
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -753,13 +765,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
-					Id:          proj.GetPublicId(),
-					ScopeId:     org.GetPublicId(),
-					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: proj.GetCreateTime().GetTimestamp(),
-					Type:        scope.Project.String(),
+					Id:                proj.GetPublicId(),
+					ScopeId:           org.GetPublicId(),
+					Scope:             &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:       proj.GetCreateTime().GetTimestamp(),
+					Type:              scope.Project.String(),
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -825,12 +838,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
-					Id:          proj.GetPublicId(),
-					ScopeId:     org.GetPublicId(),
-					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
-					Description: &wrapperspb.StringValue{Value: "defaultProj"},
-					CreatedTime: proj.GetCreateTime().GetTimestamp(),
-					Type:        scope.Project.String(),
+					Id:                proj.GetPublicId(),
+					ScopeId:           org.GetPublicId(),
+					Scope:             &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Description:       &wrapperspb.StringValue{Value: "defaultProj"},
+					CreatedTime:       proj.GetCreateTime().GetTimestamp(),
+					Type:              scope.Project.String(),
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -847,12 +861,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
-					Id:          proj.GetPublicId(),
-					ScopeId:     org.GetPublicId(),
-					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
-					Name:        &wrappers.StringValue{Value: "defaultProj"},
-					CreatedTime: proj.GetCreateTime().GetTimestamp(),
-					Type:        scope.Project.String(),
+					Id:                proj.GetPublicId(),
+					ScopeId:           org.GetPublicId(),
+					Scope:             &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Name:              &wrappers.StringValue{Value: "defaultProj"},
+					CreatedTime:       proj.GetCreateTime().GetTimestamp(),
+					Type:              scope.Project.String(),
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -870,13 +885,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
-					Id:          proj.GetPublicId(),
-					ScopeId:     org.GetPublicId(),
-					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "updated"},
-					Description: &wrapperspb.StringValue{Value: "defaultProj"},
-					CreatedTime: proj.GetCreateTime().GetTimestamp(),
-					Type:        scope.Project.String(),
+					Id:                proj.GetPublicId(),
+					ScopeId:           org.GetPublicId(),
+					Scope:             &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Name:              &wrapperspb.StringValue{Value: "updated"},
+					Description:       &wrapperspb.StringValue{Value: "defaultProj"},
+					CreatedTime:       proj.GetCreateTime().GetTimestamp(),
+					Type:              scope.Project.String(),
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -894,13 +910,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
-					Id:          proj.GetPublicId(),
-					ScopeId:     org.GetPublicId(),
-					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "defaultProj"},
-					Description: &wrapperspb.StringValue{Value: "notignored"},
-					CreatedTime: proj.GetCreateTime().GetTimestamp(),
-					Type:        scope.Project.String(),
+					Id:                proj.GetPublicId(),
+					ScopeId:           org.GetPublicId(),
+					Scope:             &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Name:              &wrapperspb.StringValue{Value: "defaultProj"},
+					Description:       &wrapperspb.StringValue{Value: "notignored"},
+					CreatedTime:       proj.GetCreateTime().GetTimestamp(),
+					Type:              scope.Project.String(),
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
