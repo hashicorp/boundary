@@ -111,8 +111,17 @@ func generateGroupTableOutput(in *groups.Group) string {
 		"",
 		"Group information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
+		"",
 		"  Scope:",
 		base.ScopeInfoForOutput(in.Scope, maxLength),
+	}
+
+	if len(in.AuthorizedActions) > 0 {
+		ret = append(ret,
+			"",
+			"  Authorized Actions:",
+			base.WrapSlice(4, in.AuthorizedActions),
+		)
 	}
 
 	if len(in.Members) > 0 {

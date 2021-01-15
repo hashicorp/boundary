@@ -49,9 +49,9 @@ func generateAuthMethodTableOutput(in *authmethods.AuthMethod) string {
 
 	if len(in.AuthorizedActions) > 0 {
 		ret = append(ret,
+			"",
 			"  Authorized Actions:",
 			base.WrapSlice(4, in.AuthorizedActions),
-			"",
 		)
 	}
 

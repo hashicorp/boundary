@@ -37,9 +37,9 @@ func generateHostTableOutput(in *hosts.Host) string {
 
 	if len(in.AuthorizedActions) > 0 {
 		ret = append(ret,
+			"",
 			"  Authorized Actions:",
 			base.WrapSlice(4, in.AuthorizedActions),
-			"",
 		)
 	}
 
