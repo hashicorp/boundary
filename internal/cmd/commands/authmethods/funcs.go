@@ -47,6 +47,14 @@ func generateAuthMethodTableOutput(in *authmethods.AuthMethod) string {
 		base.ScopeInfoForOutput(in.Scope, maxLength),
 	}
 
+	if len(in.AuthorizedActions) > 0 {
+		ret = append(ret,
+			"  Authorized Actions:",
+			base.WrapSlice(4, in.AuthorizedActions),
+			"",
+		)
+	}
+
 	if len(in.Attributes) > 0 {
 		ret = append(ret,
 			"",

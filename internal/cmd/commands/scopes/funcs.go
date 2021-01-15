@@ -33,5 +33,13 @@ func generateScopeTableOutput(in *scopes.Scope) string {
 		base.ScopeInfoForOutput(in.Scope, maxLength),
 	}
 
+	if len(in.AuthorizedActions) > 0 {
+		ret = append(ret,
+			"  Authorized Actions:",
+			base.WrapSlice(4, in.AuthorizedActions),
+			"",
+		)
+	}
+
 	return base.WrapForHelpText(ret)
 }
