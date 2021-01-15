@@ -1,6 +1,8 @@
 package authmethods
 
 import (
+	"fmt"
+	"sort"
 	"time"
 
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -53,6 +55,24 @@ func generateAuthMethodTableOutput(in *authmethods.AuthMethod) string {
 			"  Authorized Actions:",
 			base.WrapSlice(4, in.AuthorizedActions),
 		)
+	}
+
+	if len(in.CollectionAuthorizedActions) > 0 {
+		keys := make([]string, 0, len(in.CollectionAuthorizedActions))
+		for k := range in.CollectionAuthorizedActions {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		ret = append(ret,
+			"",
+			"  Authorized Actions on Auth Method's Collections:",
+		)
+		for _, key := range keys {
+			ret = append(ret,
+				fmt.Sprintf("    %ss:", key),
+				base.WrapSlice(6, in.CollectionAuthorizedActions[key]),
+			)
+		}
 	}
 
 	if len(in.Attributes) > 0 {

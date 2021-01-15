@@ -19,12 +19,20 @@ import (
 
 // Service handles request as described by the pbs.AuthTokenServiceServer interface.
 
-// AuthTokenIdActions contains the set of actions that can be performed on
-// individual target resources
-var AuthTokenIdActions = action.Actions{
-	action.Read,
-	action.Delete,
-}
+var (
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.Actions{
+		action.Read,
+		action.Delete,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.Actions{
+		action.List,
+	}
+)
 
 type Service struct {
 	pbs.UnimplementedAuthTokenServiceServer
@@ -66,12 +74,12 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, AuthTokenIdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
 	}
-	return &pbs.ListAuthTokensResponse{Items: ul}, nil
+	return &pbs.ListAuthTokensResponse{Items: finalItems}, nil
 }
 
 // GetAuthToken implements the interface pbs.AuthTokenServiceServer.
@@ -88,7 +96,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, AuthTokenIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.GetAuthTokenResponse{Item: u}, nil
 }
 

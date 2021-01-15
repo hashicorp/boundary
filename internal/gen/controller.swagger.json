@@ -2421,6 +2421,17 @@
           },
           "description": "Output only. The available actions on this resource for this user.",
           "readOnly": true
+        },
+        "collection_authorized_actions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The authorized actions for the scope's collections.",
+          "readOnly": true
         }
       },
       "title": "AuthMethod contains all fields related to an Auth Method resource"
@@ -2637,6 +2648,17 @@
             "type": "string"
           },
           "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        },
+        "collection_authorized_actions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The authorized actions for the scope's collections.",
           "readOnly": true
         }
       },
@@ -2984,6 +3006,17 @@
             "type": "string"
           },
           "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        },
+        "collection_authorized_actions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The authorized actions for the scope's collections.",
           "readOnly": true
         }
       },

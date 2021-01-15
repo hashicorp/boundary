@@ -19,12 +19,20 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
-// SessionIdActions contains the set of actions that can be performed on
-// individual session resources
-var SessionIdActions = action.Actions{
-	action.Read,
-	action.Cancel,
-}
+var (
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.Actions{
+		action.Read,
+		action.Cancel,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.Actions{
+		action.List,
+	}
+)
 
 // Service handles request as described by the pbs.SessionServiceServer interface.
 type Service struct {
@@ -61,7 +69,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 		return nil, err
 	}
 	ses.Scope = authResults.Scope
-	ses.AuthorizedActions = authResults.FetchActionsForId(ctx, ses.Id, SessionIdActions).Strings()
+	ses.AuthorizedActions = authResults.FetchActionsForId(ctx, ses.Id, IdActions).Strings()
 	return &pbs.GetSessionResponse{Item: ses}, nil
 }
 
@@ -85,7 +93,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	}
 	for _, item := range seslist {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, SessionIdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -107,7 +115,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		return nil, err
 	}
 	ses.Scope = authResults.Scope
-	ses.AuthorizedActions = authResults.FetchActionsForId(ctx, ses.Id, SessionIdActions).Strings()
+	ses.AuthorizedActions = authResults.FetchActionsForId(ctx, ses.Id, IdActions).Strings()
 	return &pbs.CancelSessionResponse{Item: ses}, nil
 }
 

@@ -20,11 +20,14 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -36,13 +39,24 @@ const (
 var (
 	maskManager handlers.MaskManager
 
-	// AuthMethodIdActions contains the set of actions that can be performed on
-	// individual authmethod resources
-	AuthMethodIdActions = action.Actions{
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.Actions{
 		action.Read,
 		action.Update,
 		action.Delete,
 		action.Authenticate,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.Actions{
+		action.Create,
+		action.List,
+	}
+
+	collectionTypeMap = map[resource.Type]action.Actions{
+		resource.Account: accounts.CollectionActions,
 	}
 )
 
@@ -99,7 +113,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, AuthMethodIdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -121,7 +135,27 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, AuthMethodIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	resource := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Pin:     u.Id,
+	}
+	// Range over the defined collections and check permissions against those
+	// collections
+	for k, v := range collectionTypeMap {
+		resource.Type = k
+		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
+		if len(acts) > 0 {
+			if u.CollectionAuthorizedActions == nil {
+				u.CollectionAuthorizedActions = make(map[string]*structpb.ListValue)
+			}
+			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
+			if err != nil {
+				return nil, err
+			}
+			u.CollectionAuthorizedActions[k.String()] = lv
+		}
+	}
 	return &pbs.GetAuthMethodResponse{Item: u}, nil
 }
 
@@ -139,7 +173,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, AuthMethodIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.CreateAuthMethodResponse{Item: u, Uri: fmt.Sprintf("auth-methods/%s", u.GetId())}, nil
 }
 
@@ -157,7 +191,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, AuthMethodIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.UpdateAuthMethodResponse{Item: u}, nil
 }
 
@@ -195,7 +229,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.AuthToken,
 	}
-	tok.AuthorizedActions = authResults.FetchActionsForId(ctx, tok.Id, authtokens.AuthTokenIdActions, auth.WithResource(resource)).Strings()
+	tok.AuthorizedActions = authResults.FetchActionsForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(resource)).Strings()
 	return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
 }
 

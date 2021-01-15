@@ -25,15 +25,22 @@ import (
 var (
 	maskManager handlers.MaskManager
 
-	// UserIdActions contains the set of actions that can be performed on
-	// individual user resources
-	UserIdActions = action.Actions{
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.Actions{
 		action.Read,
 		action.Update,
 		action.Delete,
 		action.AddAccounts,
 		action.SetAccounts,
 		action.RemoveAccounts,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.Actions{
+		action.Create,
+		action.List,
 	}
 )
 
@@ -81,7 +88,7 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, UserIdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -103,7 +110,7 @@ func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.Get
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, UserIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.GetUserResponse{Item: u}, nil
 }
 
@@ -121,7 +128,7 @@ func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*p
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, UserIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.CreateUserResponse{Item: u, Uri: fmt.Sprintf("users/%s", u.GetId())}, nil
 }
 
@@ -139,7 +146,7 @@ func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*p
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, UserIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.UpdateUserResponse{Item: u}, nil
 }
 
@@ -173,7 +180,7 @@ func (s Service) AddUserAccounts(ctx context.Context, req *pbs.AddUserAccountsRe
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, UserIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.AddUserAccountsResponse{Item: u}, nil
 }
 
@@ -191,7 +198,7 @@ func (s Service) SetUserAccounts(ctx context.Context, req *pbs.SetUserAccountsRe
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, UserIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.SetUserAccountsResponse{Item: u}, nil
 }
 
@@ -209,7 +216,7 @@ func (s Service) RemoveUserAccounts(ctx context.Context, req *pbs.RemoveUserAcco
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, UserIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.RemoveUserAccountsResponse{Item: u}, nil
 }
 

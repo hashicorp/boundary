@@ -15,22 +15,51 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
 	maskManager handlers.MaskManager
 
-	// ScopeIdActions contains the set of actions that can be performed on
-	// individual scope resources
-	ScopeIdActions = action.Actions{
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.Actions{
 		action.Read,
 		action.Update,
 		action.Delete,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.Actions{
+		action.Create,
+		action.List,
+	}
+
+	collectionTypeMap = map[resource.Type]action.Actions{
+		resource.AuthMethod:  authmethods.CollectionActions,
+		resource.AuthToken:   authtokens.CollectionActions,
+		resource.Group:       groups.CollectionActions,
+		resource.HostCatalog: host_catalogs.CollectionActions,
+		resource.Role:        roles.CollectionActions,
+		resource.Scope:       CollectionActions,
+		resource.Session:     sessions.CollectionActions,
+		resource.Target:      targets.CollectionActions,
+		resource.User:        users.CollectionActions,
 	}
 )
 
@@ -81,7 +110,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 	}
 	for _, item := range pl {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, ScopeIdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -104,7 +133,32 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 		return nil, err
 	}
 	p.Scope = authResults.Scope
-	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, ScopeIdActions).Strings()
+	act := IdActions
+	// Can't delete global so elide it
+	if p.Id == "global" {
+		act = act[0:2]
+	}
+	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, act).Strings()
+	resource := &perms.Resource{
+		ScopeId: p.Id,
+	}
+	// Range over the defined collections and check permissions against those
+	// collections. We use ths ID of this scope being returned, not its parent,
+	// hence passing in a resource here.
+	for k, v := range collectionTypeMap {
+		resource.Type = k
+		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
+		if len(acts) > 0 {
+			if p.CollectionAuthorizedActions == nil {
+				p.CollectionAuthorizedActions = make(map[string]*structpb.ListValue)
+			}
+			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
+			if err != nil {
+				return nil, err
+			}
+			p.CollectionAuthorizedActions[k.String()] = lv
+		}
+	}
 	return &pbs.GetScopeResponse{Item: p}, nil
 }
 
@@ -122,7 +176,7 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 		return nil, err
 	}
 	p.Scope = authResults.Scope
-	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, ScopeIdActions).Strings()
+	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, IdActions).Strings()
 	return &pbs.CreateScopeResponse{Item: p, Uri: fmt.Sprintf("scopes/%s", p.GetId())}, nil
 }
 
@@ -140,7 +194,7 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 		return nil, err
 	}
 	p.Scope = authResults.Scope
-	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, ScopeIdActions).Strings()
+	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, IdActions).Strings()
 	return &pbs.UpdateScopeResponse{Item: p}, nil
 }
 

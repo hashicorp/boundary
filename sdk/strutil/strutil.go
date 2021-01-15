@@ -445,3 +445,11 @@ func Difference(a, b []string, lowercase bool) []string {
 	sort.Strings(items)
 	return items
 }
+
+func StringListToInterfaceList(in []string) []interface{} {
+	ret := make([]interface{}, len(in))
+	for i, v := range in {
+		ret[i] = v
+	}
+	return ret
+}

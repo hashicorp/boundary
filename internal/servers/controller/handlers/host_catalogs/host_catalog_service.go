@@ -14,22 +14,38 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
 	maskManager handlers.MaskManager
 
-	// HostCatalogIdActions contains the set of actions that can be performed on
-	// individual host-catalog resources
-	HostCatalogIdActions = action.Actions{
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.Actions{
 		action.Read,
 		action.Update,
 		action.Delete,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.Actions{
+		action.Create,
+		action.List,
+	}
+
+	collectionTypeMap = map[resource.Type]action.Actions{
+		resource.HostSet: host_sets.CollectionActions,
+		resource.Host:    hosts.CollectionActions,
 	}
 )
 
@@ -80,7 +96,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, HostCatalogIdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -102,7 +118,28 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, HostCatalogIdActions).Strings()
+	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
+	resource := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Pin:     hc.Id,
+	}
+	// Range over the defined collections and check permissions against those
+	// collections. We use ths ID of this scope being returned, not its parent,
+	// hence passing in a resource here.
+	for k, v := range collectionTypeMap {
+		resource.Type = k
+		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
+		if len(acts) > 0 {
+			if hc.CollectionAuthorizedActions == nil {
+				hc.CollectionAuthorizedActions = make(map[string]*structpb.ListValue)
+			}
+			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
+			if err != nil {
+				return nil, err
+			}
+			hc.CollectionAuthorizedActions[k.String()] = lv
+		}
+	}
 	return &pbs.GetHostCatalogResponse{Item: hc}, nil
 }
 
@@ -120,7 +157,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, HostCatalogIdActions).Strings()
+	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
 	return &pbs.CreateHostCatalogResponse{
 		Item: hc,
 		Uri:  fmt.Sprintf("host-catalogs/%s", hc.GetId()),
@@ -141,7 +178,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, HostCatalogIdActions).Strings()
+	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
 	return &pbs.UpdateHostCatalogResponse{Item: hc}, nil
 }
 

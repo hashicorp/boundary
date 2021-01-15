@@ -1,6 +1,8 @@
 package scopes
 
 import (
+	"fmt"
+	"sort"
 	"time"
 
 	"github.com/hashicorp/boundary/api/scopes"
@@ -40,6 +42,21 @@ func generateScopeTableOutput(in *scopes.Scope) string {
 			base.WrapSlice(4, in.AuthorizedActions),
 			"",
 		)
+	}
+
+	if len(in.CollectionAuthorizedActions) > 0 {
+		keys := make([]string, 0, len(in.CollectionAuthorizedActions))
+		for k := range in.CollectionAuthorizedActions {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		ret = append(ret, "  Authorized Actions on Scope's Collections:")
+		for _, key := range keys {
+			ret = append(ret,
+				fmt.Sprintf("    %ss:", key),
+				base.WrapSlice(6, in.CollectionAuthorizedActions[key]),
+			)
+		}
 	}
 
 	return base.WrapForHelpText(ret)

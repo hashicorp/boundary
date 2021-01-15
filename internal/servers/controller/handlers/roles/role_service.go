@@ -24,9 +24,9 @@ import (
 var (
 	maskManager handlers.MaskManager
 
-	// RoleIdActions contains the set of actions that can be performed on
-	// individual role resources
-	RoleIdActions = action.Actions{
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.Actions{
 		action.Read,
 		action.Update,
 		action.Delete,
@@ -36,6 +36,13 @@ var (
 		action.AddGrants,
 		action.SetGrants,
 		action.RemoveGrants,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.Actions{
+		action.Create,
+		action.List,
 	}
 )
 
@@ -83,7 +90,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 	}
 	for _, item := range gl {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, RoleIdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -105,7 +112,7 @@ func (s Service) GetRole(ctx context.Context, req *pbs.GetRoleRequest) (*pbs.Get
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, RoleIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.GetRoleResponse{Item: u}, nil
 }
 
@@ -123,7 +130,7 @@ func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*p
 		return nil, err
 	}
 	r.Scope = authResults.Scope
-	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, RoleIdActions).Strings()
+	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.CreateRoleResponse{Item: r, Uri: fmt.Sprintf("roles/%s", r.GetId())}, nil
 }
 
@@ -141,7 +148,7 @@ func (s Service) UpdateRole(ctx context.Context, req *pbs.UpdateRoleRequest) (*p
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, RoleIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.UpdateRoleResponse{Item: u}, nil
 }
 
@@ -175,7 +182,7 @@ func (s Service) AddRolePrincipals(ctx context.Context, req *pbs.AddRolePrincipa
 		return nil, err
 	}
 	r.Scope = authResults.Scope
-	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, RoleIdActions).Strings()
+	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.AddRolePrincipalsResponse{Item: r}, nil
 }
 
@@ -193,7 +200,7 @@ func (s Service) SetRolePrincipals(ctx context.Context, req *pbs.SetRolePrincipa
 		return nil, err
 	}
 	r.Scope = authResults.Scope
-	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, RoleIdActions).Strings()
+	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.SetRolePrincipalsResponse{Item: r}, nil
 }
 
@@ -211,7 +218,7 @@ func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePr
 		return nil, err
 	}
 	r.Scope = authResults.Scope
-	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, RoleIdActions).Strings()
+	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.RemoveRolePrincipalsResponse{Item: r}, nil
 }
 
@@ -229,7 +236,7 @@ func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsReques
 		return nil, err
 	}
 	r.Scope = authResults.Scope
-	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, RoleIdActions).Strings()
+	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.AddRoleGrantsResponse{Item: r}, nil
 }
 
@@ -247,7 +254,7 @@ func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsReques
 		return nil, err
 	}
 	r.Scope = authResults.Scope
-	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, RoleIdActions).Strings()
+	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.SetRoleGrantsResponse{Item: r}, nil
 }
 
@@ -265,7 +272,7 @@ func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrants
 		return nil, err
 	}
 	r.Scope = authResults.Scope
-	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, RoleIdActions).Strings()
+	r.AuthorizedActions = authResults.FetchActionsForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.RemoveRoleGrantsResponse{Item: r}, nil
 }
 

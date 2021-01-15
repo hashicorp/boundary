@@ -1,6 +1,8 @@
 package hostcatalogs
 
 import (
+	"fmt"
+	"sort"
 	"time"
 
 	"github.com/hashicorp/boundary/api/hostcatalogs"
@@ -40,6 +42,23 @@ func generateHostCatalogTableOutput(in *hostcatalogs.HostCatalog) string {
 			"  Authorized Actions:",
 			base.WrapSlice(4, in.AuthorizedActions),
 		)
+	}
+
+	if len(in.CollectionAuthorizedActions) > 0 {
+		keys := make([]string, 0, len(in.CollectionAuthorizedActions))
+		for k := range in.CollectionAuthorizedActions {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		ret = append(ret, "",
+			"  Authorized Actions on Host Catalog's Collections:",
+		)
+		for _, key := range keys {
+			ret = append(ret,
+				fmt.Sprintf("    %ss:", key),
+				base.WrapSlice(6, in.CollectionAuthorizedActions[key]),
+			)
+		}
 	}
 
 	if len(in.Attributes) > 0 {

@@ -6,6 +6,7 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/r
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
+import "google/protobuf/struct.proto";
 import "controller/custom_options/v1/options.proto";
 
 message ScopeInfo {
@@ -57,4 +58,7 @@ message Scope {
 
 	// Output only. The available actions on this resource for this user.
 	repeated string authorized_actions = 300 [json_name="authorized_actions"];
+
+	// Output only. The authorized actions for the scope's collections.
+	map<string, google.protobuf.ListValue> collection_authorized_actions = 310 [json_name="collection_authorized_actions"];
 }

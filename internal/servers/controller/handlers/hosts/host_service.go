@@ -25,12 +25,19 @@ import (
 var (
 	maskManager handlers.MaskManager
 
-	// HostIdActions contains the set of actions that can be performed on
-	// individual host resources
-	HostIdActions = action.Actions{
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.Actions{
 		action.Read,
 		action.Update,
 		action.Delete,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.Actions{
+		action.Create,
+		action.List,
 	}
 )
 
@@ -74,10 +81,11 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 	resource := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.Host,
+		Pin:     req.GetHostCatalogId(),
 	}
 	for _, item := range hl {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, HostIdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -99,7 +107,7 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, HostIdActions).Strings()
+	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
 	return &pbs.GetHostResponse{Item: hc}, nil
 }
 
@@ -117,7 +125,7 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 		return nil, err
 	}
 	h.Scope = authResults.Scope
-	h.AuthorizedActions = authResults.FetchActionsForId(ctx, h.Id, HostIdActions).Strings()
+	h.AuthorizedActions = authResults.FetchActionsForId(ctx, h.Id, IdActions).Strings()
 	return &pbs.CreateHostResponse{
 		Item: h,
 		Uri:  fmt.Sprintf("hosts/%s", h.GetId()),
@@ -138,7 +146,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, HostIdActions).Strings()
+	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
 	return &pbs.UpdateHostResponse{Item: hc}, nil
 }
 

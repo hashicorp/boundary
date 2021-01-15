@@ -555,8 +555,18 @@ func (r *VerifyResults) AdditionalVerification(ctx context.Context, opt ...Optio
 }
 
 // FetchActionsForId returns the allowed actions for a given ID using the
-// current set of ACLs and all other parameters the same (user, scope, etc.)
+// current set of ACLs and all other parameters the same (user, etc.)
 func (r *VerifyResults) FetchActionsForId(ctx context.Context, id string, availableActions action.Actions, opt ...Option) action.Actions {
+	return r.fetchActions(ctx, id, resource.Unknown, availableActions, opt...)
+}
+
+// FetchActionsForType returns the allowed actions for a given collection type
+// using the current set of ACLs and all other parameters the same (user, etc.)
+func (r *VerifyResults) FetchActionsForType(ctx context.Context, typ resource.Type, availableActions action.Actions, opt ...Option) action.Actions {
+	return r.fetchActions(ctx, "", typ, availableActions, opt...)
+}
+
+func (r *VerifyResults) fetchActions(ctx context.Context, id string, typ resource.Type, availableActions action.Actions, opt ...Option) action.Actions {
 	switch {
 	case r.v.requestInfo.DisableAuthEntirely,
 		r.v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms:
@@ -573,7 +583,12 @@ func (r *VerifyResults) FetchActionsForId(ctx context.Context, id string, availa
 	if res == nil {
 		res = new(perms.Resource)
 	}
-	res.Id = id
+	if id != "" {
+		res.Id = id
+	}
+	if typ != resource.Unknown {
+		res.Type = typ
+	}
 
 	ret := make(action.Actions, 0, len(availableActions))
 	for _, act := range availableActions {
