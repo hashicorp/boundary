@@ -114,7 +114,7 @@ func TestDbStuff(t *testing.T) {
 				t.Error(err)
 			}
 		}()
-		Test(t, d, []byte("SELECT 1"))
+		test(t, d, []byte("SELECT 1"))
 	})
 }
 
@@ -263,7 +263,7 @@ func TestPostgres_Lock(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		Test(t, ps, []byte("SELECT 1"))
+		test(t, ps, []byte("SELECT 1"))
 
 		err = ps.Lock(ctx)
 		if err != nil {
