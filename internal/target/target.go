@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target/store"
 )
@@ -79,6 +80,7 @@ func (t *targetView) SetTableName(n string) {
 
 // targetSubType converts the target view to the concrete subtype
 func (t *targetView) targetSubType() (Target, error) {
+	const op = "target.targetView.targetSubType"
 	switch t.Type {
 	case TcpTargetType.String():
 		tcpTarget := allocTcpTarget()
@@ -94,5 +96,5 @@ func (t *targetView) targetSubType() (Target, error) {
 		tcpTarget.SessionConnectionLimit = t.SessionConnectionLimit
 		return &tcpTarget, nil
 	}
-	return nil, fmt.Errorf("%s is an unknown target subtype of %s", t.PublicId, t.Type)
+	return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unknown target subtype of %s", t.PublicId, t.Type))
 }

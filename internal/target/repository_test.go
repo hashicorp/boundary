@@ -60,7 +60,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil kms",
+			wantErrString: "target.NewRepository: nil kms: parameter violation: error #100",
 		},
 		{
 			name: "nil-writer",
@@ -71,7 +71,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil writer",
+			wantErrString: "target.NewRepository: nil writer: parameter violation: error #100",
 		},
 		{
 			name: "nil-reader",
@@ -82,7 +82,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil reader",
+			wantErrString: "target.NewRepository: nil reader: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {
@@ -358,7 +358,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete target: missing public id invalid parameter",
+			wantErrMsg:      "target.(Repository).DeleteTarget: missing public id: parameter violation: error #100",
 		},
 		{
 			name: "not-found",
@@ -373,7 +373,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete target: failed db.LookupById: record not found",
+			wantErrMsg:      "db.LookupById: record not found, search issue: error #1100",
 		},
 	}
 	for _, tt := range tests {
@@ -565,7 +565,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		args            args
 		wantRowsDeleted int
 		wantErr         bool
-		wantIsErr       error
+		wantIsErr       errors.Code
 	}{
 		{
 			name: "valid",
@@ -595,7 +595,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 		{
 			name: "not-found",
@@ -618,7 +618,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -630,7 +630,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 		{
 			name: "bad-version",
@@ -681,9 +681,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
-				if tt.wantIsErr != nil {
-					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "unexpected error %s", err.Error())
 				// TODO (jimlambrt 9/2020) - unfortunately, we can currently
 				// test to make sure that the oplog entry for a target update
 				// doesn't exist because the db.TestVerifyOplog doesn't really
