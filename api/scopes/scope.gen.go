@@ -23,7 +23,7 @@ type Scope struct {
 	Version                     uint32              `json:"version,omitempty"`
 	Type                        string              `json:"type,omitempty"`
 	AuthorizedActions           []string            `json:"authorized_actions,omitempty"`
-	CollectionAuthorizedActions map[string][]string `json:"collection_authorized_actions,omitempty"`
+	AuthorizedCollectionActions map[string][]string `json:"authorized_collection_actions,omitempty"`
 
 	response *api.Response
 }

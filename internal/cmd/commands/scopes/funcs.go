@@ -44,9 +44,9 @@ func generateScopeTableOutput(in *scopes.Scope) string {
 		)
 	}
 
-	if len(in.CollectionAuthorizedActions) > 0 {
-		keys := make([]string, 0, len(in.CollectionAuthorizedActions))
-		for k := range in.CollectionAuthorizedActions {
+	if len(in.AuthorizedCollectionActions) > 0 {
+		keys := make([]string, 0, len(in.AuthorizedCollectionActions))
+		for k := range in.AuthorizedCollectionActions {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
@@ -54,7 +54,7 @@ func generateScopeTableOutput(in *scopes.Scope) string {
 		for _, key := range keys {
 			ret = append(ret,
 				fmt.Sprintf("    %ss:", key),
-				base.WrapSlice(6, in.CollectionAuthorizedActions[key]),
+				base.WrapSlice(6, in.AuthorizedCollectionActions[key]),
 			)
 		}
 	}

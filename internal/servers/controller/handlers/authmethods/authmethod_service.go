@@ -116,6 +116,29 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
+
+			// Now get that resource's authorized collection actions
+			resource := &perms.Resource{
+				ScopeId: authResults.Scope.Id,
+				Pin:     item.Id,
+			}
+			// Range over the defined collections and check permissions against those
+			// collections. We use ths ID of this scope being returned, not its parent,
+			// hence passing in a resource here.
+			for k, v := range collectionTypeMap {
+				resource.Type = k
+				acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
+				if len(acts) > 0 {
+					if item.AuthorizedCollectionActions == nil {
+						item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
+					}
+					lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
+					if err != nil {
+						return nil, err
+					}
+					item.AuthorizedCollectionActions[k.String()] = lv
+				}
+			}
 		}
 	}
 	return &pbs.ListAuthMethodsResponse{Items: finalItems}, nil
@@ -146,14 +169,14 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		resource.Type = k
 		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
 		if len(acts) > 0 {
-			if u.CollectionAuthorizedActions == nil {
-				u.CollectionAuthorizedActions = make(map[string]*structpb.ListValue)
+			if u.AuthorizedCollectionActions == nil {
+				u.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
 			}
 			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
 			if err != nil {
 				return nil, err
 			}
-			u.CollectionAuthorizedActions[k.String()] = lv
+			u.AuthorizedCollectionActions[k.String()] = lv
 		}
 	}
 	return &pbs.GetAuthMethodResponse{Item: u}, nil

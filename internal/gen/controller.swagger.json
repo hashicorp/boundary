@@ -2422,7 +2422,7 @@
           "description": "Output only. The available actions on this resource for this user.",
           "readOnly": true
         },
-        "collection_authorized_actions": {
+        "authorized_collection_actions": {
           "type": "object",
           "additionalProperties": {
             "type": "array",
@@ -2650,7 +2650,7 @@
           "description": "Output only. The available actions on this resource for this user.",
           "readOnly": true
         },
-        "collection_authorized_actions": {
+        "authorized_collection_actions": {
           "type": "object",
           "additionalProperties": {
             "type": "array",
@@ -3008,7 +3008,7 @@
           "description": "Output only. The available actions on this resource for this user.",
           "readOnly": true
         },
-        "collection_authorized_actions": {
+        "authorized_collection_actions": {
           "type": "object",
           "additionalProperties": {
             "type": "array",

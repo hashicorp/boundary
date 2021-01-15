@@ -47,5 +47,5 @@ message HostCatalog {
 	repeated string authorized_actions = 300 [json_name="authorized_actions"];
 
 	// Output only. The authorized actions for the scope's collections.
-	map<string, google.protobuf.ListValue> collection_authorized_actions = 310 [json_name="collection_authorized_actions"];
+	map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name="authorized_collection_actions"];
 }

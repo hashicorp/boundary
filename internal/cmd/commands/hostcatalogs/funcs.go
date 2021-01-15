@@ -44,9 +44,9 @@ func generateHostCatalogTableOutput(in *hostcatalogs.HostCatalog) string {
 		)
 	}
 
-	if len(in.CollectionAuthorizedActions) > 0 {
-		keys := make([]string, 0, len(in.CollectionAuthorizedActions))
-		for k := range in.CollectionAuthorizedActions {
+	if len(in.AuthorizedCollectionActions) > 0 {
+		keys := make([]string, 0, len(in.AuthorizedCollectionActions))
+		for k := range in.AuthorizedCollectionActions {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
@@ -56,7 +56,7 @@ func generateHostCatalogTableOutput(in *hostcatalogs.HostCatalog) string {
 		for _, key := range keys {
 			ret = append(ret,
 				fmt.Sprintf("    %ss:", key),
-				base.WrapSlice(6, in.CollectionAuthorizedActions[key]),
+				base.WrapSlice(6, in.AuthorizedCollectionActions[key]),
 			)
 		}
 	}
