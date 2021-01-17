@@ -25,7 +25,7 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.Actions{
+	IdActions = action.ActionSet{
 		action.Read,
 		action.Update,
 		action.Delete,
@@ -35,7 +35,7 @@ var (
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.Actions{
+	CollectionActions = action.ActionSet{
 		action.Create,
 		action.List,
 	}

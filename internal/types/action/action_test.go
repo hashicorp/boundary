@@ -87,22 +87,22 @@ func TestAction(t *testing.T) {
 func TestActionStrings(t *testing.T) {
 	tests := []struct {
 		name    string
-		actions Actions
+		actions ActionSet
 		want    []string
 	}{
 		{
 			name:    "basic test",
-			actions: Actions{Read, AuthorizeSession},
+			actions: ActionSet{Read, AuthorizeSession},
 			want:    []string{"read", "authorize-session"},
 		},
 		{
 			name:    "reverse test to check ordering",
-			actions: Actions{AuthorizeSession, Read},
+			actions: ActionSet{AuthorizeSession, Read},
 			want:    []string{"authorize-session", "read"},
 		},
 		{
 			name:    "another test",
-			actions: Actions{Delete, AddGrants},
+			actions: ActionSet{Delete, AddGrants},
 			want:    []string{"delete", "add-grants"},
 		},
 	}
