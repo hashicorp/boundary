@@ -17,8 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
-// Service handles request as described by the pbs.AuthTokenServiceServer interface.
-
 var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
@@ -34,6 +32,7 @@ var (
 	}
 )
 
+// Service handles request as described by the pbs.AuthTokenServiceServer interface.
 type Service struct {
 	pbs.UnimplementedAuthTokenServiceServer
 

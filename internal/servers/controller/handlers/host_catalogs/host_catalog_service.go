@@ -106,7 +106,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 				Pin:     item.Id,
 			}
 			// Range over the defined collections and check permissions against those
-			// collections. We use ths ID of this scope being returned, not its parent,
+			// collections. We use the ID of this scope being returned, not its parent,
 			// hence passing in a resource here.
 			for k, v := range collectionTypeMap {
 				resource.Type = k
@@ -147,7 +147,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 		Pin:     hc.Id,
 	}
 	// Range over the defined collections and check permissions against those
-	// collections. We use ths ID of this scope being returned, not its parent,
+	// collections. We use the ID of this scope being returned, not its parent,
 	// hence passing in a resource here.
 	for k, v := range collectionTypeMap {
 		resource.Type = k

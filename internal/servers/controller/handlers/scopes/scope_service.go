@@ -119,7 +119,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 				ScopeId: item.Id,
 			}
 			// Range over the defined collections and check permissions against those
-			// collections. We use ths ID of this scope being returned, not its parent,
+			// collections. We use the ID of this scope being returned, not its parent,
 			// hence passing in a resource here.
 			for k, v := range collectionTypeMap {
 				resource.Type = k
@@ -165,7 +165,7 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 		ScopeId: p.Id,
 	}
 	// Range over the defined collections and check permissions against those
-	// collections. We use ths ID of this scope being returned, not its parent,
+	// collections. We use the ID of this scope being returned, not its parent,
 	// hence passing in a resource here.
 	for k, v := range collectionTypeMap {
 		resource.Type = k
