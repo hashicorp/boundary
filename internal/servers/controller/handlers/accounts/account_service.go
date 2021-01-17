@@ -3,6 +3,7 @@ package accounts
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -89,6 +90,11 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
+	}
+	if len(finalItems) > 0 {
+		sort.Slice(finalItems, func(i, j int) bool {
+			return finalItems[i].GetId() < finalItems[j].GetId()
+		})
 	}
 	return &pbs.ListAccountsResponse{Items: finalItems}, nil
 }

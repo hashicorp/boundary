@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
+	"sort"
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
@@ -136,6 +137,11 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
+	}
+	if len(finalItems) > 0 {
+		sort.Slice(finalItems, func(i, j int) bool {
+			return finalItems[i].GetId() < finalItems[j].GetId()
+		})
 	}
 	return &pbs.ListTargetsResponse{Items: finalItems}, nil
 }

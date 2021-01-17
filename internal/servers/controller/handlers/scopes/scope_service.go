@@ -137,7 +137,11 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 			}
 		}
 	}
-
+	if len(finalItems) > 0 {
+		sort.Slice(finalItems, func(i, j int) bool {
+			return finalItems[i].GetId() < finalItems[j].GetId()
+		})
+	}
 	return &pbs.ListScopesResponse{Items: finalItems}, nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
@@ -140,6 +141,11 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 				}
 			}
 		}
+	}
+	if len(finalItems) > 0 {
+		sort.Slice(finalItems, func(i, j int) bool {
+			return finalItems[i].GetId() < finalItems[j].GetId()
+		})
 	}
 	return &pbs.ListAuthMethodsResponse{Items: finalItems}, nil
 }

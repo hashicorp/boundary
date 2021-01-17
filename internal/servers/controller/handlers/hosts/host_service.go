@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
@@ -89,6 +90,11 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
+	}
+	if len(finalItems) > 0 {
+		sort.Slice(finalItems, func(i, j int) bool {
+			return finalItems[i].GetId() < finalItems[j].GetId()
+		})
 	}
 	return &pbs.ListHostsResponse{Items: finalItems}, nil
 }
