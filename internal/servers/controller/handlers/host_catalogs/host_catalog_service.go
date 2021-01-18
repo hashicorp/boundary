@@ -65,6 +65,33 @@ type Service struct {
 
 var _ pbs.HostCatalogServiceServer = Service{}
 
+func populateCollectionAuthorizedActions(ctx context.Context,
+	authResults auth.VerifyResults,
+	item *pb.HostCatalog) error {
+	resource := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Pin:     item.Id,
+	}
+	// Range over the defined collections and check permissions against those
+	// collections. We use the ID of this scope being returned, not its parent,
+	// hence passing in a resource here.
+	for k, v := range collectionTypeMap {
+		resource.Type = k
+		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
+		if len(acts) > 0 {
+			if item.AuthorizedCollectionActions == nil {
+				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
+			}
+			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
+			if err != nil {
+				return err
+			}
+			item.AuthorizedCollectionActions[k.String()+"s"] = lv
+		}
+	}
+	return nil
+}
+
 // NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.
 func NewService(repoFn common.StaticRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
@@ -99,28 +126,8 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
-
-			// Now get that resource's authorized collection actions
-			resource := &perms.Resource{
-				ScopeId: authResults.Scope.Id,
-				Pin:     item.Id,
-			}
-			// Range over the defined collections and check permissions against those
-			// collections. We use the ID of this scope being returned, not its parent,
-			// hence passing in a resource here.
-			for k, v := range collectionTypeMap {
-				resource.Type = k
-				acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
-				if len(acts) > 0 {
-					if item.AuthorizedCollectionActions == nil {
-						item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
-					}
-					lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
-					if err != nil {
-						return nil, err
-					}
-					item.AuthorizedCollectionActions[k.String()+"s"] = lv
-				}
+			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -142,26 +149,8 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	}
 	hc.Scope = authResults.Scope
 	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
-	resource := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Pin:     hc.Id,
-	}
-	// Range over the defined collections and check permissions against those
-	// collections. We use the ID of this scope being returned, not its parent,
-	// hence passing in a resource here.
-	for k, v := range collectionTypeMap {
-		resource.Type = k
-		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
-		if len(acts) > 0 {
-			if hc.AuthorizedCollectionActions == nil {
-				hc.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
-			}
-			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
-			if err != nil {
-				return nil, err
-			}
-			hc.AuthorizedCollectionActions[k.String()+"s"] = lv
-		}
+	if err := populateCollectionAuthorizedActions(ctx, authResults, hc); err != nil {
+		return nil, err
 	}
 	return &pbs.GetHostCatalogResponse{Item: hc}, nil
 }
@@ -181,6 +170,9 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 	}
 	hc.Scope = authResults.Scope
 	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, hc); err != nil {
+		return nil, err
+	}
 	return &pbs.CreateHostCatalogResponse{
 		Item: hc,
 		Uri:  fmt.Sprintf("host-catalogs/%s", hc.GetId()),
@@ -202,6 +194,9 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	}
 	hc.Scope = authResults.Scope
 	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, hc); err != nil {
+		return nil, err
+	}
 	return &pbs.UpdateHostCatalogResponse{Item: hc}, nil
 }
 

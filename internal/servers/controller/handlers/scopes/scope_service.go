@@ -94,12 +94,12 @@ var _ pbs.ScopeServiceServer = Service{}
 
 func populateCollectionAuthorizedActions(ctx context.Context,
 	authResults auth.VerifyResults,
-	p *pb.Scope) error {
+	item *pb.Scope) error {
 	resource := &perms.Resource{
-		ScopeId: p.Id,
+		ScopeId: item.Id,
 	}
 	mapToRange := orgCollectionTypeMap
-	if p.Type == "project" {
+	if item.Type == "project" {
 		mapToRange = projectCollectionTypeMap
 	}
 	// Range over the defined collections and check permissions against those
@@ -109,14 +109,14 @@ func populateCollectionAuthorizedActions(ctx context.Context,
 		resource.Type = k
 		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
 		if len(acts) > 0 {
-			if p.AuthorizedCollectionActions == nil {
-				p.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
+			if item.AuthorizedCollectionActions == nil {
+				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
 			}
 			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
 			if err != nil {
 				return err
 			}
-			p.AuthorizedCollectionActions[k.String()+"s"] = lv
+			item.AuthorizedCollectionActions[k.String()+"s"] = lv
 		}
 	}
 	return nil

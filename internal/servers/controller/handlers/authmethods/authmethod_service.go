@@ -67,6 +67,33 @@ func init() {
 	}
 }
 
+func populateCollectionAuthorizedActions(ctx context.Context,
+	authResults auth.VerifyResults,
+	item *pb.AuthMethod) error {
+	resource := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Pin:     item.Id,
+	}
+	// Range over the defined collections and check permissions against those
+	// collections. We use the ID of this scope being returned, not its parent,
+	// hence passing in a resource here.
+	for k, v := range collectionTypeMap {
+		resource.Type = k
+		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
+		if len(acts) > 0 {
+			if item.AuthorizedCollectionActions == nil {
+				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
+			}
+			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
+			if err != nil {
+				return err
+			}
+			item.AuthorizedCollectionActions[k.String()+"s"] = lv
+		}
+	}
+	return nil
+}
+
 // Service handles request as described by the pbs.AuthMethodServiceServer interface.
 type Service struct {
 	pbs.UnimplementedAuthMethodServiceServer
@@ -116,28 +143,8 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
-
-			// Now get that resource's authorized collection actions
-			resource := &perms.Resource{
-				ScopeId: authResults.Scope.Id,
-				Pin:     item.Id,
-			}
-			// Range over the defined collections and check permissions against those
-			// collections. We use the ID of this scope being returned, not its parent,
-			// hence passing in a resource here.
-			for k, v := range collectionTypeMap {
-				resource.Type = k
-				acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
-				if len(acts) > 0 {
-					if item.AuthorizedCollectionActions == nil {
-						item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
-					}
-					lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
-					if err != nil {
-						return nil, err
-					}
-					item.AuthorizedCollectionActions[k.String()+"s"] = lv
-				}
+			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -159,25 +166,8 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 	}
 	u.Scope = authResults.Scope
 	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
-	resource := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Pin:     u.Id,
-	}
-	// Range over the defined collections and check permissions against those
-	// collections
-	for k, v := range collectionTypeMap {
-		resource.Type = k
-		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
-		if len(acts) > 0 {
-			if u.AuthorizedCollectionActions == nil {
-				u.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
-			}
-			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
-			if err != nil {
-				return nil, err
-			}
-			u.AuthorizedCollectionActions[k.String()+"s"] = lv
-		}
+	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
+		return nil, err
 	}
 	return &pbs.GetAuthMethodResponse{Item: u}, nil
 }
@@ -197,6 +187,9 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 	}
 	u.Scope = authResults.Scope
 	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
+		return nil, err
+	}
 	return &pbs.CreateAuthMethodResponse{Item: u, Uri: fmt.Sprintf("auth-methods/%s", u.GetId())}, nil
 }
 
@@ -215,6 +208,9 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 	}
 	u.Scope = authResults.Scope
 	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
+		return nil, err
+	}
 	return &pbs.UpdateAuthMethodResponse{Item: u}, nil
 }
 
