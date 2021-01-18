@@ -119,7 +119,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 					if err != nil {
 						return nil, err
 					}
-					item.AuthorizedCollectionActions[k.String()] = lv
+					item.AuthorizedCollectionActions[k.String()+"s"] = lv
 				}
 			}
 		}
@@ -160,7 +160,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 			if err != nil {
 				return nil, err
 			}
-			hc.AuthorizedCollectionActions[k.String()] = lv
+			hc.AuthorizedCollectionActions[k.String()+"s"] = lv
 		}
 	}
 	return &pbs.GetHostCatalogResponse{Item: hc}, nil

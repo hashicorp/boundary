@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
@@ -55,6 +56,76 @@ func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*
 	return oRes, pRes, repoFn
 }
 
+var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
+	"auth-methods": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"auth-tokens": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("list"),
+		},
+	},
+	"groups": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"roles": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"scopes": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"sessions": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("list"),
+		},
+	},
+	"users": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+}
+
+var projectAuthorizedCollectionActions = map[string]*structpb.ListValue{
+	"groups": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"host-catalogs": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"roles": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"targets": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+}
+
 func TestGet(t *testing.T) {
 	org, proj, repo := createDefaultScopesAndRepo(t)
 	toMerge := &pbs.GetScopeRequest{
@@ -62,29 +133,31 @@ func TestGet(t *testing.T) {
 	}
 
 	oScope := &pb.Scope{
-		Id:                org.GetPublicId(),
-		ScopeId:           org.GetParentId(),
-		Scope:             &pb.ScopeInfo{Id: "global", Type: scope.Global.String()},
-		Name:              &wrapperspb.StringValue{Value: org.GetName()},
-		Description:       &wrapperspb.StringValue{Value: org.GetDescription()},
-		CreatedTime:       org.CreateTime.GetTimestamp(),
-		UpdatedTime:       org.UpdateTime.GetTimestamp(),
-		Version:           2,
-		Type:              scope.Org.String(),
-		AuthorizedActions: []string{"read", "update", "delete"},
+		Id:                          org.GetPublicId(),
+		ScopeId:                     org.GetParentId(),
+		Scope:                       &pb.ScopeInfo{Id: "global", Type: scope.Global.String()},
+		Name:                        &wrapperspb.StringValue{Value: org.GetName()},
+		Description:                 &wrapperspb.StringValue{Value: org.GetDescription()},
+		CreatedTime:                 org.CreateTime.GetTimestamp(),
+		UpdatedTime:                 org.UpdateTime.GetTimestamp(),
+		Version:                     2,
+		Type:                        scope.Org.String(),
+		AuthorizedActions:           []string{"read", "update", "delete"},
+		AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 	}
 
 	pScope := &pb.Scope{
-		Id:                proj.GetPublicId(),
-		ScopeId:           proj.GetParentId(),
-		Scope:             &pb.ScopeInfo{Id: oScope.Id, Type: scope.Org.String()},
-		Name:              &wrapperspb.StringValue{Value: proj.GetName()},
-		Description:       &wrapperspb.StringValue{Value: proj.GetDescription()},
-		CreatedTime:       proj.CreateTime.GetTimestamp(),
-		UpdatedTime:       proj.UpdateTime.GetTimestamp(),
-		Version:           2,
-		Type:              scope.Project.String(),
-		AuthorizedActions: []string{"read", "update", "delete"},
+		Id:                          proj.GetPublicId(),
+		ScopeId:                     proj.GetParentId(),
+		Scope:                       &pb.ScopeInfo{Id: oScope.Id, Type: scope.Org.String()},
+		Name:                        &wrapperspb.StringValue{Value: proj.GetName()},
+		Description:                 &wrapperspb.StringValue{Value: proj.GetDescription()},
+		CreatedTime:                 proj.CreateTime.GetTimestamp(),
+		UpdatedTime:                 proj.UpdateTime.GetTimestamp(),
+		Version:                     2,
+		Type:                        scope.Project.String(),
+		AuthorizedActions:           []string{"read", "update", "delete"},
+		AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 	}
 
 	cases := []struct {
@@ -177,9 +250,11 @@ func TestList(t *testing.T) {
 	oNoProjectsProto := scopes.ToProto(oNoProjects)
 	oNoProjectsProto.Scope = globalScope
 	oNoProjectsProto.AuthorizedActions = []string{"read", "update", "delete"}
+	oNoProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
 	oWithProjectsProto := scopes.ToProto(oWithProjects)
 	oWithProjectsProto.Scope = globalScope
 	oWithProjectsProto.AuthorizedActions = []string{"read", "update", "delete"}
+	oWithProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
 	initialOrgs = append(initialOrgs, oNoProjectsProto, oWithProjectsProto)
 	scopes.SortScopes(initialOrgs)
 
@@ -231,14 +306,15 @@ func TestList(t *testing.T) {
 		o, err := repo.CreateScope(context.Background(), newO, "")
 		require.NoError(t, err)
 		wantOrgs = append(wantOrgs, &pb.Scope{
-			Id:                o.GetPublicId(),
-			ScopeId:           globalScope.GetId(),
-			Scope:             globalScope,
-			CreatedTime:       o.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       o.GetUpdateTime().GetTimestamp(),
-			Version:           1,
-			Type:              scope.Org.String(),
-			AuthorizedActions: []string{"read", "update", "delete"},
+			Id:                          o.GetPublicId(),
+			ScopeId:                     globalScope.GetId(),
+			Scope:                       globalScope,
+			CreatedTime:                 o.GetCreateTime().GetTimestamp(),
+			UpdatedTime:                 o.GetUpdateTime().GetTimestamp(),
+			Version:                     1,
+			Type:                        scope.Org.String(),
+			AuthorizedActions:           []string{"read", "update", "delete"},
+			AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 		})
 	}
 	wantOrgs = append(wantOrgs, initialOrgs...)
@@ -251,14 +327,15 @@ func TestList(t *testing.T) {
 		p, err := repo.CreateScope(context.Background(), newP, "")
 		require.NoError(t, err)
 		wantProjects = append(wantProjects, &pb.Scope{
-			Id:                p.GetPublicId(),
-			ScopeId:           oWithProjects.GetPublicId(),
-			Scope:             &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String()},
-			CreatedTime:       p.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       p.GetUpdateTime().GetTimestamp(),
-			Version:           1,
-			Type:              scope.Project.String(),
-			AuthorizedActions: []string{"read", "update", "delete"},
+			Id:                          p.GetPublicId(),
+			ScopeId:                     oWithProjects.GetPublicId(),
+			Scope:                       &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String()},
+			CreatedTime:                 p.GetCreateTime().GetTimestamp(),
+			UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
+			Version:                     1,
+			Type:                        scope.Project.String(),
+			AuthorizedActions:           []string{"read", "update", "delete"},
+			AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 		})
 	}
 	scopes.SortScopes(wantProjects)

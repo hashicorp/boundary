@@ -50,16 +50,21 @@ var (
 		action.List,
 	}
 
-	collectionTypeMap = map[resource.Type]action.ActionSet{
-		resource.AuthMethod:  authmethods.CollectionActions,
-		resource.AuthToken:   authtokens.CollectionActions,
+	orgCollectionTypeMap = map[resource.Type]action.ActionSet{
+		resource.AuthMethod: authmethods.CollectionActions,
+		resource.AuthToken:  authtokens.CollectionActions,
+		resource.Group:      groups.CollectionActions,
+		resource.Role:       roles.CollectionActions,
+		resource.Scope:      CollectionActions,
+		resource.Session:    sessions.CollectionActions,
+		resource.User:       users.CollectionActions,
+	}
+
+	projectCollectionTypeMap = map[resource.Type]action.ActionSet{
 		resource.Group:       groups.CollectionActions,
 		resource.HostCatalog: host_catalogs.CollectionActions,
 		resource.Role:        roles.CollectionActions,
-		resource.Scope:       CollectionActions,
-		resource.Session:     sessions.CollectionActions,
 		resource.Target:      targets.CollectionActions,
-		resource.User:        users.CollectionActions,
 	}
 )
 
@@ -118,10 +123,14 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 			resource := &perms.Resource{
 				ScopeId: item.Id,
 			}
+			mapToRange := orgCollectionTypeMap
+			if item.Type == "project" {
+				mapToRange = projectCollectionTypeMap
+			}
 			// Range over the defined collections and check permissions against those
 			// collections. We use the ID of this scope being returned, not its parent,
 			// hence passing in a resource here.
-			for k, v := range collectionTypeMap {
+			for k, v := range mapToRange {
 				resource.Type = k
 				acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
 				if len(acts) > 0 {
@@ -132,7 +141,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 					if err != nil {
 						return nil, err
 					}
-					item.AuthorizedCollectionActions[k.String()] = lv
+					item.AuthorizedCollectionActions[k.String()+"s"] = lv
 				}
 			}
 		}
@@ -164,10 +173,14 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 	resource := &perms.Resource{
 		ScopeId: p.Id,
 	}
+	mapToRange := orgCollectionTypeMap
+	if p.Type == "project" {
+		mapToRange = projectCollectionTypeMap
+	}
 	// Range over the defined collections and check permissions against those
 	// collections. We use the ID of this scope being returned, not its parent,
 	// hence passing in a resource here.
-	for k, v := range collectionTypeMap {
+	for k, v := range mapToRange {
 		resource.Type = k
 		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
 		if len(acts) > 0 {
@@ -178,7 +191,7 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 			if err != nil {
 				return nil, err
 			}
-			p.AuthorizedCollectionActions[k.String()] = lv
+			p.AuthorizedCollectionActions[k.String()+"s"] = lv
 		}
 	}
 	return &pbs.GetScopeResponse{Item: p}, nil

@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -75,6 +76,20 @@ func TestGet(t *testing.T) {
 		UpdatedTime:       hc.UpdateTime.GetTimestamp(),
 		Type:              "static",
 		AuthorizedActions: []string{"read", "update", "delete"},
+		AuthorizedCollectionActions: map[string]*structpb.ListValue{
+			"host-sets": {
+				Values: []*structpb.Value{
+					structpb.NewStringValue("create"),
+					structpb.NewStringValue("list"),
+				},
+			},
+			"hosts": {
+				Values: []*structpb.Value{
+					structpb.NewStringValue("create"),
+					structpb.NewStringValue("list"),
+				},
+			},
+		},
 	}
 
 	cases := []struct {
@@ -158,6 +173,20 @@ func TestList(t *testing.T) {
 			Version:           1,
 			Type:              "static",
 			AuthorizedActions: []string{"read", "update", "delete"},
+			AuthorizedCollectionActions: map[string]*structpb.ListValue{
+				"host-sets": {
+					Values: []*structpb.Value{
+						structpb.NewStringValue("create"),
+						structpb.NewStringValue("list"),
+					},
+				},
+				"hosts": {
+					Values: []*structpb.Value{
+						structpb.NewStringValue("create"),
+						structpb.NewStringValue("list"),
+					},
+				},
+			},
 		})
 	}
 
@@ -172,6 +201,20 @@ func TestList(t *testing.T) {
 			Version:           1,
 			Type:              "static",
 			AuthorizedActions: []string{"read", "update", "delete"},
+			AuthorizedCollectionActions: map[string]*structpb.ListValue{
+				"host-sets": {
+					Values: []*structpb.Value{
+						structpb.NewStringValue("create"),
+						structpb.NewStringValue("list"),
+					},
+				},
+				"hosts": {
+					Values: []*structpb.Value{
+						structpb.NewStringValue("create"),
+						structpb.NewStringValue("list"),
+					},
+				},
+			},
 		})
 	}
 

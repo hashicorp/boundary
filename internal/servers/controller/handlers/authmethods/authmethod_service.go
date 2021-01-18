@@ -136,7 +136,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 					if err != nil {
 						return nil, err
 					}
-					item.AuthorizedCollectionActions[k.String()] = lv
+					item.AuthorizedCollectionActions[k.String()+"s"] = lv
 				}
 			}
 		}
@@ -176,7 +176,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 			if err != nil {
 				return nil, err
 			}
-			u.AuthorizedCollectionActions[k.String()] = lv
+			u.AuthorizedCollectionActions[k.String()+"s"] = lv
 		}
 	}
 	return &pbs.GetAuthMethodResponse{Item: u}, nil

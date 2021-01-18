@@ -71,6 +71,14 @@ func TestGet(t *testing.T) {
 			Type: o.GetType(),
 		},
 		AuthorizedActions: []string{"read", "update", "delete", "authenticate"},
+		AuthorizedCollectionActions: map[string]*structpb.ListValue{
+			"accounts": {
+				Values: []*structpb.Value{
+					structpb.NewStringValue("create"),
+					structpb.NewStringValue("list"),
+				},
+			},
+		},
 	}
 
 	cases := []struct {
@@ -160,6 +168,14 @@ func TestList(t *testing.T) {
 				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
 			AuthorizedActions: []string{"read", "update", "delete", "authenticate"},
+			AuthorizedCollectionActions: map[string]*structpb.ListValue{
+				"accounts": {
+					Values: []*structpb.Value{
+						structpb.NewStringValue("create"),
+						structpb.NewStringValue("list"),
+					},
+				},
+			},
 		})
 	}
 
@@ -178,6 +194,14 @@ func TestList(t *testing.T) {
 				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
 			AuthorizedActions: []string{"read", "update", "delete", "authenticate"},
+			AuthorizedCollectionActions: map[string]*structpb.ListValue{
+				"accounts": {
+					Values: []*structpb.Value{
+						structpb.NewStringValue("create"),
+						structpb.NewStringValue("list"),
+					},
+				},
+			},
 		})
 	}
 
