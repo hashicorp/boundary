@@ -92,6 +92,36 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 
 var _ pbs.ScopeServiceServer = Service{}
 
+func populateCollectionAuthorizedActions(ctx context.Context,
+	authResults auth.VerifyResults,
+	p *pb.Scope) error {
+	resource := &perms.Resource{
+		ScopeId: p.Id,
+	}
+	mapToRange := orgCollectionTypeMap
+	if p.Type == "project" {
+		mapToRange = projectCollectionTypeMap
+	}
+	// Range over the defined collections and check permissions against those
+	// collections. We use the ID of this scope being returned, not its parent,
+	// hence passing in a resource here.
+	for k, v := range mapToRange {
+		resource.Type = k
+		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
+		if len(acts) > 0 {
+			if p.AuthorizedCollectionActions == nil {
+				p.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
+			}
+			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
+			if err != nil {
+				return err
+			}
+			p.AuthorizedCollectionActions[k.String()+"s"] = lv
+		}
+	}
+	return nil
+}
+
 // ListScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {
 	if req.GetScopeId() == "" {
@@ -118,31 +148,8 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
-
-			// Now get that resource's authorized collection actions
-			resource := &perms.Resource{
-				ScopeId: item.Id,
-			}
-			mapToRange := orgCollectionTypeMap
-			if item.Type == "project" {
-				mapToRange = projectCollectionTypeMap
-			}
-			// Range over the defined collections and check permissions against those
-			// collections. We use the ID of this scope being returned, not its parent,
-			// hence passing in a resource here.
-			for k, v := range mapToRange {
-				resource.Type = k
-				acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
-				if len(acts) > 0 {
-					if item.AuthorizedCollectionActions == nil {
-						item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
-					}
-					lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
-					if err != nil {
-						return nil, err
-					}
-					item.AuthorizedCollectionActions[k.String()+"s"] = lv
-				}
+			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -170,29 +177,8 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 		act = act[0:2]
 	}
 	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, act).Strings()
-	resource := &perms.Resource{
-		ScopeId: p.Id,
-	}
-	mapToRange := orgCollectionTypeMap
-	if p.Type == "project" {
-		mapToRange = projectCollectionTypeMap
-	}
-	// Range over the defined collections and check permissions against those
-	// collections. We use the ID of this scope being returned, not its parent,
-	// hence passing in a resource here.
-	for k, v := range mapToRange {
-		resource.Type = k
-		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
-		if len(acts) > 0 {
-			if p.AuthorizedCollectionActions == nil {
-				p.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
-			}
-			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
-			if err != nil {
-				return nil, err
-			}
-			p.AuthorizedCollectionActions[k.String()+"s"] = lv
-		}
+	if err := populateCollectionAuthorizedActions(ctx, authResults, p); err != nil {
+		return nil, err
 	}
 	return &pbs.GetScopeResponse{Item: p}, nil
 }
@@ -212,6 +198,9 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 	}
 	p.Scope = authResults.Scope
 	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, p); err != nil {
+		return nil, err
+	}
 	return &pbs.CreateScopeResponse{Item: p, Uri: fmt.Sprintf("scopes/%s", p.GetId())}, nil
 }
 
@@ -230,6 +219,9 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 	}
 	p.Scope = authResults.Scope
 	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, p); err != nil {
+		return nil, err
+	}
 	return &pbs.UpdateScopeResponse{Item: p}, nil
 }
 
