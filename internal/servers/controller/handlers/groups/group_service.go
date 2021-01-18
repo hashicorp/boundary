@@ -3,7 +3,6 @@ package groups
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -92,11 +91,6 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
-	}
-	if len(finalItems) > 0 {
-		sort.Slice(finalItems, func(i, j int) bool {
-			return finalItems[i].GetId() < finalItems[j].GetId()
-		})
 	}
 	return &pbs.ListGroupsResponse{Items: finalItems}, nil
 }

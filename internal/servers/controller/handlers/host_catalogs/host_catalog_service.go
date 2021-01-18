@@ -3,7 +3,6 @@ package host_catalogs
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -124,11 +123,6 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 				}
 			}
 		}
-	}
-	if len(finalItems) > 0 {
-		sort.Slice(finalItems, func(i, j int) bool {
-			return finalItems[i].GetId() < finalItems[j].GetId()
-		})
 	}
 	return &pbs.ListHostCatalogsResponse{Items: finalItems}, nil
 }

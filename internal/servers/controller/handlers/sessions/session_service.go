@@ -4,7 +4,6 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
-	"sort"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -98,11 +97,6 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
-	}
-	if len(finalItems) > 0 {
-		sort.Slice(finalItems, func(i, j int) bool {
-			return finalItems[i].GetId() < finalItems[j].GetId()
-		})
 	}
 	return &pbs.ListSessionsResponse{Items: finalItems}, nil
 }
