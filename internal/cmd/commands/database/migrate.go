@@ -103,13 +103,13 @@ func (c *MigrateCommand) Flags() *base.FlagSets {
 	f.BoolVar(&base.BoolVar{
 		Name:   "allow-development-migrations",
 		Target: &c.flagAllowDevMigrations,
-		Usage:  "If set the init will continue even if the schema includes database update steps that may not be supported in the next official release.  Boundary does not provide a rollback mechanism so a backup should be taken independently if needed.",
+		Usage:  "If set the migrate command will continue even if the schema includes database update steps that may not be supported in the next official release.  Boundary does not provide a rollback mechanism so a backup should be taken independently if needed.",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:   "migration-url",
 		Target: &c.flagMigrationUrl,
-		Usage:  `If set, overrides a migration URL set in config, and specifies the URL used to connect to the database for migration. This can allow different permissions for the user running initialization vs. normal operation. This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
+		Usage:  `If set, overrides a migration URL set in config, and specifies the URL used to connect to the database for migration. This can allow different permissions for the user running initialization or migration vs. normal operation. This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
 	})
 
 	return set
@@ -223,6 +223,11 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		c.UI.Error(fmt.Errorf("Error capturing an exclusive lock: %w", err).Error())
 		return 1
 	}
+	defer func() {
+		if err := man.ExclusiveUnlock(c.Context); err != nil {
+			c.UI.Error(fmt.Errorf("Unable to release exclusive lock to the database: %w", err).Error())
+		}
+	}()
 	{
 		st, err := man.CurrentState(c.Context)
 		if err != nil {
@@ -234,7 +239,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 				"state.  Please revert back to the last known good state."))
 			return 1
 		}
-		if st.BinarySchemaVersion == st.CurrentSchemaVersion {
+		if st.BinarySchemaVersion == st.DatabaseSchemaVersion {
 			c.UI.Info(base.WrapAtLength("Database is already up to date."))
 			return 0
 		}
@@ -250,7 +255,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		}
 		if !ran {
 			if base.Format(c.UI) == "table" {
-				c.UI.Info("Database already initialized.")
+				c.UI.Info("Database is already up to date.")
 				return 0
 			}
 		}

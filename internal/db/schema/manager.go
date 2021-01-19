@@ -85,12 +85,12 @@ func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
+	dbS.DatabaseSchemaVersion = v
+	dbS.Dirty = dirty
 	if v == nilVersion {
 		return &dbS, nil
 	}
 	dbS.InitializationStarted = true
-	dbS.DatabaseSchemaVersion = v
-	dbS.Dirty = dirty
 	return &dbS, nil
 }
 

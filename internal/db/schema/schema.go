@@ -24,20 +24,20 @@ func MigrateStore(ctx context.Context, dialect string, url string, opt ...option
 		return false, errors.Wrap(err, op)
 	}
 
+	if !opts.skipSetDirty {
+		sMan.SetDirty(ctx)
+	}
+
 	st, err := sMan.CurrentState(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, op)
 	}
-	if st.Dirty {
-		return false, errors.New(errors.MigrationIntegrity, op, "db marked dirty")
+	if !st.Dirty {
+		return false, errors.New(errors.MigrationIntegrity, op, "db not marked dirty when migrating")
 	}
 
 	if st.InitializationStarted && st.DatabaseSchemaVersion == st.BinarySchemaVersion {
 		return false, nil
-	}
-
-	if !opts.skipSetDirty {
-		sMan.SetDirty(ctx)
 	}
 
 	if err := sMan.RollForward(ctx); err != nil {
