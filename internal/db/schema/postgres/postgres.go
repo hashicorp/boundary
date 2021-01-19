@@ -44,8 +44,10 @@ import (
 
 // schemaAccessLockId is a Lock key used to ensure a single boundary binary is operating
 // on a postgres server at a time.  The value has no meaning and was picked randomly.
-const schemaAccessLockId int64 = 3865661975
-const nilVersion = -1
+const (
+	schemaAccessLockId int64 = 3865661975
+	nilVersion               = -1
+)
 
 var defaultMigrationsTablePrefix = "boundary_schema_"
 
@@ -64,10 +66,10 @@ type Postgres struct {
 	db   *sql.DB
 }
 
-// NewPostgres returns a postgres pointer with the provided db verified as
+// New returns a postgres pointer with the provided db verified as
 // connectable and a version table being initialized.
-func NewPostgres(ctx context.Context, instance *sql.DB) (*Postgres, error) {
-	const op = "postgres.NewPostgres"
+func New(ctx context.Context, instance *sql.DB) (*Postgres, error) {
+	const op = "postgres.New"
 	if err := instance.PingContext(ctx); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -92,7 +94,7 @@ func NewPostgres(ctx context.Context, instance *sql.DB) (*Postgres, error) {
 // https://www.postgresql.org/docs/9.6/static/explicit-locking.html#ADVISORY-LOCKS
 func (p *Postgres) TrySharedLock(ctx context.Context) error {
 	const op = "postgres.(Postgres).TrySharedLock"
-	r := p.db.QueryRowContext(ctx, "SELECT pg_try_advisory_lock_shared($1)", schemaAccessLockId)
+	r := p.conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock_shared($1)", schemaAccessLockId)
 	if r.Err() != nil {
 		return errors.Wrap(r.Err(), op)
 	}
@@ -111,7 +113,7 @@ func (p *Postgres) TrySharedLock(ctx context.Context) error {
 func (p *Postgres) TryLock(ctx context.Context) error {
 	const op = "postgres.(Postgres).TryLock"
 
-	r := p.db.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", schemaAccessLockId)
+	r := p.conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", schemaAccessLockId)
 	if r.Err() != nil {
 		return errors.Wrap(r.Err(), op)
 	}
@@ -125,7 +127,8 @@ func (p *Postgres) TryLock(ctx context.Context) error {
 	return nil
 }
 
-// Lock calls pg_advisory_lock with the provided context and returns an error if one is returned.
+// Lock calls pg_advisory_lock with the provided context and returns an error
+// if we were unable to get the lock before the context cancels.
 func (p *Postgres) Lock(ctx context.Context) error {
 	const op = "postgres.(Postgres).Lock"
 
@@ -138,11 +141,23 @@ func (p *Postgres) Lock(ctx context.Context) error {
 	return nil
 }
 
-// Unlock calls pg_advisory_unlock and returns an error if one is returned.
+// Unlock calls pg_advisory_unlock and returns an error if we were unable to
+// release the lock before the context cancels.
 func (p *Postgres) Unlock(ctx context.Context) error {
 	const op = "postgres.(Postgres).Unlock"
 
 	query := `SELECT pg_advisory_unlock($1)`
+	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
+}
+
+// UnlockShared calls pg_advisory_unlock_shared and returns an error if we were unable to
+// release the lock before the context cancels.
+func (p *Postgres) UnlockShared(ctx context.Context) error {
+	const op = "postgres.(Postgres).UnlockShared"
+	query := `SELECT pg_advisory_unlock_shared($1)`
 	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -367,12 +382,12 @@ func (p *Postgres) ensureVersionAndDirtTable(ctx context.Context) (err error) {
 		}
 	}()
 
-	query := `CREATE TABLE IF NOT EXISTS ` + pq.QuoteIdentifier(versionTable()) + ` (Version bigint not null primary key)`
+	query := `CREATE TABLE IF NOT EXISTS ` + pq.QuoteIdentifier(versionTable()) + ` (Version bigint primary key)`
 	if _, err = p.conn.ExecContext(ctx, query); err != nil {
 		return errors.Wrap(err, op)
 	}
 
-	query = `CREATE TABLE IF NOT EXISTS ` + pq.QuoteIdentifier(dirtTable()) + ` (dirty boolean not null primary key)`
+	query = `CREATE TABLE IF NOT EXISTS ` + pq.QuoteIdentifier(dirtTable()) + ` (dirty boolean primary key)`
 	if _, err = p.conn.ExecContext(ctx, query); err != nil {
 		return errors.Wrap(err, op)
 	}

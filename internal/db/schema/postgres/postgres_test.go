@@ -56,7 +56,8 @@ const (
 var (
 	opts = dktest.Options{
 		Env:          map[string]string{"POSTGRES_PASSWORD": pgPassword},
-		PortRequired: true, ReadyFunc: isReady}
+		PortRequired: true, ReadyFunc: isReady,
+	}
 	// Supported versions: https://www.postgresql.org/support/versioning/
 	specs = []dktesting.ContainerSpec{
 		{ImageName: "postgres:12", Options: opts},
@@ -113,7 +114,7 @@ func TestDbStuff(t *testing.T) {
 				t.Error(err)
 			}
 		}()
-		Test(t, d, []byte("SELECT 1"))
+		test(t, d, []byte("SELECT 1"))
 	})
 }
 
@@ -262,7 +263,7 @@ func TestPostgres_Lock(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		Test(t, ps, []byte("SELECT 1"))
+		test(t, ps, []byte("SELECT 1"))
 
 		err = ps.Lock(ctx)
 		if err != nil {
@@ -293,7 +294,7 @@ func TestWithInstance_Concurrent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// The number of concurrent processes running NewPostgres
+		// The number of concurrent processes running New
 		const concurrency = 30
 
 		// We can instantiate a single database handle because it is
@@ -320,7 +321,7 @@ func TestWithInstance_Concurrent(t *testing.T) {
 		for i := 0; i < concurrency; i++ {
 			go func(i int) {
 				defer wg.Done()
-				_, err := NewPostgres(context.Background(), db)
+				_, err := New(context.Background(), db)
 				if err != nil {
 					t.Errorf("process %d error: %s", i, err)
 				}

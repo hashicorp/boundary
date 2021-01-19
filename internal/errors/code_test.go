@@ -163,14 +163,14 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: MissingTable,
 		},
 		{
-			name: "MigrationGeneration",
-			c:    MigrationGeneration,
-			want: MigrationGeneration,
+			name: "MigrationIntegrity",
+			c:    MigrationIntegrity,
+			want: MigrationIntegrity,
 		},
 		{
-			name: "MigrationData",
-			c:    MigrationData,
-			want: MigrationData,
+			name: "MigrationLock",
+			c:    MigrationLock,
+			want: MigrationLock,
 		},
 	}
 	for _, tt := range tests {

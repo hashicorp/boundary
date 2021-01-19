@@ -280,6 +280,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Error(fmt.Errorf("Error capturing an exclusive lock: %w", err).Error())
 		return 1
 	}
+	defer func() {
+		if err := man.ExclusiveUnlock(c.Context); err != nil {
+			c.UI.Error(fmt.Errorf("Unable to release exclusive lock to the database: %w", err).Error())
+		}
+	}()
 
 	{
 		st, err := man.CurrentState(c.Context)

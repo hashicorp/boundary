@@ -56,7 +56,7 @@ func TestCurrentState(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, want, s)
 
-	testDriver, err := postgres.NewPostgres(ctx, d)
+	testDriver, err := postgres.New(ctx, d)
 	require.NoError(t, err)
 	require.NoError(t, testDriver.SetVersion(ctx, 2))
 	require.NoError(t, testDriver.SetDirty(ctx, true))
@@ -65,7 +65,7 @@ func TestCurrentState(t *testing.T) {
 		InitializationStarted: true,
 		BinarySchemaVersion:   BinarySchemaVersion("postgres"),
 		Dirty:                 true,
-		CurrentSchemaVersion:  2,
+		DatabaseSchemaVersion: 2,
 	}
 	s, err = m.CurrentState(ctx)
 	require.NoError(t, err)

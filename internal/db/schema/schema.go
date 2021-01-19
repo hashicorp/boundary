@@ -3,34 +3,36 @@ package schema
 import (
 	"context"
 	"database/sql"
-	"fmt"
+
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
-// MigrateStore will execute the migrations needed to setup the datastore. It
-// returns true if migrations actually ran; false if we were already current
+// MigrateStore executes the migrations needed to initialize the store. It
+// returns true if migrations actually ran; false if the database is already current
 // or if there was an error.
 func MigrateStore(ctx context.Context, dialect string, url string, opt ...option) (bool, error) {
+	const op = "schema.MigrateStore"
 	opts := getOpts(opt...)
 
 	d, err := sql.Open(dialect, url)
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, op)
 	}
 
 	sMan, err := NewManager(ctx, dialect, d)
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, op)
 	}
 
 	st, err := sMan.CurrentState(ctx)
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, op)
 	}
 	if st.Dirty {
-		return false, fmt.Errorf("The passed in database has had a failed migration applied to it.")
+		return false, errors.New(errors.MigrationIntegrity, op, "db marked dirty")
 	}
 
-	if st.InitializationStarted && st.CurrentSchemaVersion == st.BinarySchemaVersion {
+	if st.InitializationStarted && st.DatabaseSchemaVersion == st.BinarySchemaVersion {
 		return false, nil
 	}
 
@@ -39,7 +41,7 @@ func MigrateStore(ctx context.Context, dialect string, url string, opt ...option
 	}
 
 	if err := sMan.RollForward(ctx); err != nil {
-		return false, err
+		return false, errors.Wrap(err, op)
 	}
 
 	if !opts.skipUnsetDirty {

@@ -26,9 +26,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// Package testing has the database tests.
-// All database drivers must pass the Test function.
-// This lives in it's own package so it stays a test dependency.
 package postgres
 
 import (
@@ -43,21 +40,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test runs tests against database implementations.
-func Test(t *testing.T, d *Postgres, migration []byte) {
+// test runs tests against database implementations.
+func test(t *testing.T, d *Postgres, migration []byte) {
 	if migration == nil {
 		t.Fatal("test must provide migration reader")
 	}
 
-	TestNilVersion(t, d) // test first
-	TestLockAndUnlock(t, d)
-	TestRun(t, d, bytes.NewReader(migration))
-	TestSetVersion(t, d) // also tests CurrentState()
+	testNilVersion(t, d) // test first
+	testLockAndUnlock(t, d)
+	testRun(t, d, bytes.NewReader(migration))
+	testSetVersion(t, d) // also tests CurrentState()
 	// drop breaks the driver, so test it last.
-	TestDrop(t, d)
+	testDrop(t, d)
 }
 
-func TestNilVersion(t *testing.T, d *Postgres) {
+func testNilVersion(t *testing.T, d *Postgres) {
 	ctx := context.Background()
 	v, _, err := d.CurrentState(ctx)
 	if err != nil {
@@ -68,7 +65,7 @@ func TestNilVersion(t *testing.T, d *Postgres) {
 	}
 }
 
-func TestLockAndUnlock(t *testing.T, d *Postgres) {
+func testLockAndUnlock(t *testing.T, d *Postgres) {
 	ctx := context.Background()
 
 	ctx, _ = context.WithTimeout(ctx, 15*time.Second)
@@ -93,10 +90,9 @@ func TestLockAndUnlock(t *testing.T, d *Postgres) {
 	if err := d.Unlock(ctx); err != nil {
 		t.Fatalf("got error, expected none: %v", err)
 	}
-
 }
 
-func TestRun(t *testing.T, d *Postgres, migration io.Reader) {
+func testRun(t *testing.T, d *Postgres, migration io.Reader) {
 	ctx := context.Background()
 	if migration == nil {
 		t.Fatal("migration can't be nil")
@@ -107,14 +103,14 @@ func TestRun(t *testing.T, d *Postgres, migration io.Reader) {
 	}
 }
 
-func TestDrop(t *testing.T, d *Postgres) {
+func testDrop(t *testing.T, d *Postgres) {
 	ctx := context.Background()
 	if err := d.drop(ctx); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestSetVersion(t *testing.T, d *Postgres) {
+func testSetVersion(t *testing.T, d *Postgres) {
 	ctx := context.Background()
 	// nolint:maligned
 	testCases := []struct {
@@ -162,7 +158,7 @@ func open(t *testing.T, ctx context.Context, u string) (*Postgres, error) {
 	db, err := sql.Open("postgres", u)
 	require.NoError(t, err)
 
-	px, err := NewPostgres(ctx, db)
+	px, err := New(ctx, db)
 	require.NoError(t, err)
 
 	return px, nil

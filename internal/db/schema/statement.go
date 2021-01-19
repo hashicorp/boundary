@@ -21,11 +21,11 @@ func newStatementProvider(dialect string, curVer int) (*statementProvider, error
 	qp := statementProvider{pos: -1}
 	qp.up, qp.down = getUpMigration(dialect), getDownMigration(dialect)
 	if len(qp.up) != len(qp.down) {
-		return nil, errors.New(errors.MigrationData, op, fmt.Sprintf("Mismatch up/down size: up %d vs. down %d", len(qp.up), len(qp.down)))
+		return nil, errors.New(errors.MigrationIntegrity, op, fmt.Sprintf("Mismatch up/down size: up %d vs. down %d", len(qp.up), len(qp.down)))
 	}
 	for k := range qp.up {
 		if _, ok := qp.down[k]; !ok {
-			return nil, errors.New(errors.MigrationData, op, fmt.Sprintf("Up key %d doesn't exist in down %v", k, qp.down))
+			return nil, errors.New(errors.MigrationIntegrity, op, fmt.Sprintf("Up key %d doesn't exist in down %v", k, qp.down))
 		}
 		qp.versions = append(qp.versions, k)
 	}

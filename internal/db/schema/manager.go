@@ -17,6 +17,7 @@ type driver interface {
 	TryLock(context.Context) error
 	Lock(context.Context) error
 	Unlock(context.Context) error
+	UnlockShared(context.Context) error
 	Run(context.Context, io.Reader) error
 	// A value of -1 indicates no version is set.
 	SetVersion(context.Context, int) error
@@ -49,10 +50,10 @@ type Manager struct {
 func NewManager(ctx context.Context, dialect string, db *sql.DB) (*Manager, error) {
 	const op = "schema.NewManager"
 	dbM := Manager{db: db, dialect: dialect}
-	var err error
 	switch dialect {
-	case "postgres", "postgresql":
-		dbM.driver, err = postgres.NewPostgres(ctx, db)
+	case "postgres":
+		var err error
+		dbM.driver, err = postgres.New(ctx, db)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -69,8 +70,8 @@ type State struct {
 	InitializationStarted bool
 	// Dirty is set to true if the database failed in a previous migration/initialization.
 	Dirty bool
-	// CurrentSchemaVersion is the schema version that is currently running in the database.
-	CurrentSchemaVersion int
+	// DatabaseSchemaVersion is the schema version that is currently running in the database.
+	DatabaseSchemaVersion int
 	// BinarySchemaVersion is the schema version which this boundary binary supports.
 	BinarySchemaVersion int
 }
@@ -88,7 +89,7 @@ func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 		return &dbS, nil
 	}
 	dbS.InitializationStarted = true
-	dbS.CurrentSchemaVersion = v
+	dbS.DatabaseSchemaVersion = v
 	dbS.Dirty = dirty
 	return &dbS, nil
 }
@@ -122,11 +123,33 @@ func (b *Manager) SharedLock(ctx context.Context) error {
 	return nil
 }
 
-// ExclusiveLock attempts to obtain an exclusive lock on the database.  If the
-// lock can't be obtained an error is returned.
+// SharedUnlock releases a shared lock on the database.  If this
+// fails for whatever reason an error is returned.  Unlocking a lock
+// that is not held is not an error.
+func (b *Manager) SharedUnlock(ctx context.Context) error {
+	const op = "schema.(Manager).SharedUnlock"
+	if err := b.driver.UnlockShared(ctx); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
+}
+
+// ExclusiveLock attempts to obtain an exclusive lock on the database.
+// An error is returned if a lock was unable to be obtained.
 func (b *Manager) ExclusiveLock(ctx context.Context) error {
 	const op = "schema.(Manager).ExclusiveLock"
 	if err := b.driver.TryLock(ctx); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
+}
+
+// ExclusiveUnlock releases a shared lock on the database.  If this
+// fails for whatever reason an error is returned.  Unlocking a lock
+// that is not held is not an error.
+func (b *Manager) ExclusiveUnlock(ctx context.Context) error {
+	const op = "schema.(Manager).ExclusiveUnlock"
+	if err := b.driver.Unlock(ctx); err != nil {
 		return errors.Wrap(err, op)
 	}
 	return nil
