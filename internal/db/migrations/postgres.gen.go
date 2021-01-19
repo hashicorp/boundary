@@ -1491,7 +1491,7 @@ commit;
 		bytes: []byte(`
 begin;
 
-drop table server_tags;
+drop table server_tag;
 
 commit;
 `),
@@ -1585,7 +1585,7 @@ create view session_with_state as
   where
     s.public_id = ss.session_id;
 
-create table server_tags (
+create table server_tag (
   server_id text
     references server(private_id)
     on delete cascade

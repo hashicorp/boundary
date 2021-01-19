@@ -82,11 +82,16 @@ func (r *Repository) listServersWithReader(ctx context.Context, reader db.Reader
 	return servers, nil
 }
 
-// ServerTag holds the information for the server_tags table for Gorm.
+// ServerTag holds the information for the server_tag table for Gorm.
 type ServerTag struct {
 	ServerId string
 	Key      string
 	Value    string
+}
+
+// TableName overrides the table name used by ServerTag to `server_tag`
+func (ServerTag) TableName() string {
+	return "server_tag"
 }
 
 // ListTagsForServers pulls out tag tuples into ServerTag structs for the
