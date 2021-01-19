@@ -352,6 +352,41 @@ func TestRun_Error(t *testing.T) {
 	})
 }
 
+func TestSetDirty(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		p, err := open(t, ctx, addr)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		t.Cleanup(func() {
+			require.NoError(t, p.close(t))
+		})
+		v, d, err := p.CurrentState(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, nilVersion, v)
+		assert.False(t, d)
+
+		p.SetDirty(ctx, true)
+		v, d, err = p.CurrentState(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, nilVersion, v)
+		assert.True(t, d)
+
+		p.SetDirty(ctx, false)
+		v, d, err = p.CurrentState(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, nilVersion, v)
+		assert.False(t, d)
+	})
+}
+
 func Test_computeLineFromPos(t *testing.T) {
 	testcases := []struct {
 		pos      int
