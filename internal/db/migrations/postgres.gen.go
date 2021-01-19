@@ -1596,7 +1596,7 @@ create table server_tag (
   value text
     constraint server_tag_value_must_not_be_empty
     check(length(trim(value)) > 0),
-  unique(server_id, key, value)
+  primary key(server_id, key, value)
 );
 
 commit;
