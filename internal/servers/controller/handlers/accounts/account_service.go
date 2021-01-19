@@ -85,7 +85,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -107,7 +107,7 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.GetAccountResponse{Item: u}, nil
 }
 
@@ -125,7 +125,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.CreateAccountResponse{Item: u, Uri: fmt.Sprintf("accounts/%s", u.GetId())}, nil
 }
 
@@ -143,7 +143,7 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.UpdateAccountResponse{Item: u}, nil
 }
 
@@ -177,7 +177,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.ChangePasswordResponse{Item: u}, nil
 }
 
@@ -195,7 +195,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.SetPasswordResponse{Item: u}, nil
 }
 

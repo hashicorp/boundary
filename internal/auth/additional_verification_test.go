@@ -153,7 +153,7 @@ func TestAdditionalVerification(t *testing.T) {
 	}
 }
 
-func TestFetchActionsForId(t *testing.T) {
+func TestFetchActionSetForId(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
@@ -239,7 +239,7 @@ func TestFetchActionsForId(t *testing.T) {
 				auth.WithType(typ),
 			}...)
 			req.NoError(res.Error)
-			assert.Equal(t, tt.allowed, res.FetchActionsForId(ctx, tt.id, tt.avail))
+			assert.Equal(t, tt.allowed, res.FetchActionSetForId(ctx, tt.id, tt.avail))
 		})
 	}
 }

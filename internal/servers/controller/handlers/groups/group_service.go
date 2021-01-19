@@ -87,7 +87,7 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 	}
 	for _, item := range gl {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -109,7 +109,7 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.GetGroupResponse{Item: u}, nil
 }
 
@@ -127,7 +127,7 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("groups/%s", u.GetId())}, nil
 }
 
@@ -145,7 +145,7 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.UpdateGroupResponse{Item: u}, nil
 }
 
@@ -179,7 +179,7 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 		return nil, err
 	}
 	g.Scope = authResults.Scope
-	g.AuthorizedActions = authResults.FetchActionsForId(ctx, g.Id, IdActions).Strings()
+	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
 	return &pbs.AddGroupMembersResponse{Item: g}, nil
 }
 
@@ -197,7 +197,7 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 		return nil, err
 	}
 	g.Scope = authResults.Scope
-	g.AuthorizedActions = authResults.FetchActionsForId(ctx, g.Id, IdActions).Strings()
+	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
 	return &pbs.SetGroupMembersResponse{Item: g}, nil
 }
 
@@ -215,7 +215,7 @@ func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMem
 		return nil, err
 	}
 	g.Scope = authResults.Scope
-	g.AuthorizedActions = authResults.FetchActionsForId(ctx, g.Id, IdActions).Strings()
+	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
 	return &pbs.RemoveGroupMembersResponse{Item: g}, nil
 }
 

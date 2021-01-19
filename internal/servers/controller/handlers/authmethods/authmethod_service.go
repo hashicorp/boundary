@@ -79,7 +79,7 @@ func populateCollectionAuthorizedActions(ctx context.Context,
 	// hence passing in a resource here.
 	for k, v := range collectionTypeMap {
 		resource.Type = k
-		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
+		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(resource)).Strings()
 		if len(acts) > 0 {
 			if item.AuthorizedCollectionActions == nil {
 				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
@@ -140,7 +140,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
@@ -165,7 +165,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
 		return nil, err
 	}
@@ -248,7 +248,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.AuthToken,
 	}
-	tok.AuthorizedActions = authResults.FetchActionsForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(resource)).Strings()
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(resource)).Strings()
 	return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
 }
 

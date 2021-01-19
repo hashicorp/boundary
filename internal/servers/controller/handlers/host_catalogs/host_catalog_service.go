@@ -77,7 +77,7 @@ func populateCollectionAuthorizedActions(ctx context.Context,
 	// hence passing in a resource here.
 	for k, v := range collectionTypeMap {
 		resource.Type = k
-		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
+		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(resource)).Strings()
 		if len(acts) > 0 {
 			if item.AuthorizedCollectionActions == nil {
 				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
@@ -123,7 +123,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
@@ -148,7 +148,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
+	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, hc); err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
+	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, hc); err != nil {
 		return nil, err
 	}
@@ -193,7 +193,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
+	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, hc); err != nil {
 		return nil, err
 	}

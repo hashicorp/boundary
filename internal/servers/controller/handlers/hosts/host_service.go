@@ -85,7 +85,7 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 	}
 	for _, item := range hl {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -107,7 +107,7 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
+	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
 	return &pbs.GetHostResponse{Item: hc}, nil
 }
 
@@ -125,7 +125,7 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 		return nil, err
 	}
 	h.Scope = authResults.Scope
-	h.AuthorizedActions = authResults.FetchActionsForId(ctx, h.Id, IdActions).Strings()
+	h.AuthorizedActions = authResults.FetchActionSetForId(ctx, h.Id, IdActions).Strings()
 	return &pbs.CreateHostResponse{
 		Item: h,
 		Uri:  fmt.Sprintf("hosts/%s", h.GetId()),
@@ -146,7 +146,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
+	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
 	return &pbs.UpdateHostResponse{Item: hc}, nil
 }
 

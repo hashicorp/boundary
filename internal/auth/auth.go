@@ -554,15 +554,15 @@ func (r *VerifyResults) AdditionalVerification(ctx context.Context, opt ...Optio
 	return
 }
 
-// FetchActionsForId returns the allowed actions for a given ID using the
+// FetchActionSetForId returns the allowed actions for a given ID using the
 // current set of ACLs and all other parameters the same (user, etc.)
-func (r *VerifyResults) FetchActionsForId(ctx context.Context, id string, availableActions action.ActionSet, opt ...Option) action.ActionSet {
+func (r *VerifyResults) FetchActionSetForId(ctx context.Context, id string, availableActions action.ActionSet, opt ...Option) action.ActionSet {
 	return r.fetchActions(ctx, id, resource.Unknown, availableActions, opt...)
 }
 
-// FetchActionsForType returns the allowed actions for a given collection type
+// FetchActionSetForType returns the allowed actions for a given collection type
 // using the current set of ACLs and all other parameters the same (user, etc.)
-func (r *VerifyResults) FetchActionsForType(ctx context.Context, typ resource.Type, availableActions action.ActionSet, opt ...Option) action.ActionSet {
+func (r *VerifyResults) FetchActionSetForType(ctx context.Context, typ resource.Type, availableActions action.ActionSet, opt ...Option) action.ActionSet {
 	return r.fetchActions(ctx, "", typ, availableActions, opt...)
 }
 

@@ -107,7 +107,7 @@ func populateCollectionAuthorizedActions(ctx context.Context,
 	// hence passing in a resource here.
 	for k, v := range mapToRange {
 		resource.Type = k
-		acts := authResults.FetchActionsForType(ctx, k, v, auth.WithResource(resource)).Strings()
+		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(resource)).Strings()
 		if len(acts) > 0 {
 			if item.AuthorizedCollectionActions == nil {
 				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
@@ -145,7 +145,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 	}
 	for _, item := range pl {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
@@ -176,7 +176,7 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 	if p.Id == "global" {
 		act = act[0:2]
 	}
-	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, act).Strings()
+	p.AuthorizedActions = authResults.FetchActionSetForId(ctx, p.Id, act).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, p); err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 		return nil, err
 	}
 	p.Scope = authResults.Scope
-	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, IdActions).Strings()
+	p.AuthorizedActions = authResults.FetchActionSetForId(ctx, p.Id, IdActions).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, p); err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 		return nil, err
 	}
 	p.Scope = authResults.Scope
-	p.AuthorizedActions = authResults.FetchActionsForId(ctx, p.Id, IdActions).Strings()
+	p.AuthorizedActions = authResults.FetchActionSetForId(ctx, p.Id, IdActions).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, p); err != nil {
 		return nil, err
 	}

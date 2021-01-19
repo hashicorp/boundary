@@ -69,7 +69,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 		return nil, err
 	}
 	ses.Scope = authResults.Scope
-	ses.AuthorizedActions = authResults.FetchActionsForId(ctx, ses.Id, IdActions).Strings()
+	ses.AuthorizedActions = authResults.FetchActionSetForId(ctx, ses.Id, IdActions).Strings()
 	return &pbs.GetSessionResponse{Item: ses}, nil
 }
 
@@ -93,7 +93,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	}
 	for _, item := range seslist {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -115,7 +115,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		return nil, err
 	}
 	ses.Scope = authResults.Scope
-	ses.AuthorizedActions = authResults.FetchActionsForId(ctx, ses.Id, IdActions).Strings()
+	ses.AuthorizedActions = authResults.FetchActionSetForId(ctx, ses.Id, IdActions).Strings()
 	return &pbs.CancelSessionResponse{Item: ses}, nil
 }
 

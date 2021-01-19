@@ -87,7 +87,7 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 	}
 	for _, item := range hl {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -109,7 +109,7 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
+	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
 	return &pbs.GetHostSetResponse{Item: hc}, nil
 }
 
@@ -127,7 +127,7 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 		return nil, err
 	}
 	h.Scope = authResults.Scope
-	h.AuthorizedActions = authResults.FetchActionsForId(ctx, h.Id, IdActions).Strings()
+	h.AuthorizedActions = authResults.FetchActionSetForId(ctx, h.Id, IdActions).Strings()
 	return &pbs.CreateHostSetResponse{
 		Item: h,
 		Uri:  fmt.Sprintf("host-sets/%s", h.GetId()),
@@ -148,7 +148,7 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionsForId(ctx, hc.Id, IdActions).Strings()
+	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
 	return &pbs.UpdateHostSetResponse{Item: hc}, nil
 }
 
@@ -182,7 +182,7 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 		return nil, err
 	}
 	g.Scope = authResults.Scope
-	g.AuthorizedActions = authResults.FetchActionsForId(ctx, g.Id, IdActions).Strings()
+	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
 	return &pbs.AddHostSetHostsResponse{Item: g}, nil
 }
 
@@ -200,7 +200,7 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 		return nil, err
 	}
 	g.Scope = authResults.Scope
-	g.AuthorizedActions = authResults.FetchActionsForId(ctx, g.Id, IdActions).Strings()
+	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
 	return &pbs.SetHostSetHostsResponse{Item: g}, nil
 }
 
@@ -218,7 +218,7 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 		return nil, err
 	}
 	g.Scope = authResults.Scope
-	g.AuthorizedActions = authResults.FetchActionsForId(ctx, g.Id, IdActions).Strings()
+	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
 	return &pbs.RemoveHostSetHostsResponse{Item: g}, nil
 }
 
