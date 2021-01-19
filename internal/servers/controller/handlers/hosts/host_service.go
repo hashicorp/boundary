@@ -78,14 +78,14 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 		return nil, err
 	}
 	finalItems := make([]*pb.Host, 0, len(hl))
-	resource := &perms.Resource{
+	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.Host,
 		Pin:     req.GetHostCatalogId(),
 	}
 	for _, item := range hl {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}

@@ -84,13 +84,13 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 		return nil, err
 	}
 	finalItems := make([]*pb.Role, 0, len(gl))
-	resource := &perms.Resource{
+	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.Role,
 	}
 	for _, item := range gl {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}

@@ -70,7 +70,7 @@ func init() {
 func populateCollectionAuthorizedActions(ctx context.Context,
 	authResults auth.VerifyResults,
 	item *pb.AuthMethod) error {
-	resource := &perms.Resource{
+	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Pin:     item.Id,
 	}
@@ -78,8 +78,8 @@ func populateCollectionAuthorizedActions(ctx context.Context,
 	// collections. We use the ID of this scope being returned, not its parent,
 	// hence passing in a resource here.
 	for k, v := range collectionTypeMap {
-		resource.Type = k
-		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(resource)).Strings()
+		res.Type = k
+		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(res)).Strings()
 		if len(acts) > 0 {
 			if item.AuthorizedCollectionActions == nil {
 				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
@@ -134,13 +134,13 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		return nil, err
 	}
 	finalItems := make([]*pb.AuthMethod, 0, len(ul))
-	resource := &perms.Resource{
+	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.AuthMethod,
 	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
@@ -244,11 +244,11 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	if err != nil {
 		return nil, err
 	}
-	resource := &perms.Resource{
+	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.AuthToken,
 	}
-	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(resource)).Strings()
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
 	return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
 }
 

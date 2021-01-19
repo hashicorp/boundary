@@ -81,13 +81,13 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 		return nil, err
 	}
 	finalItems := make([]*pb.Group, 0, len(gl))
-	resource := &perms.Resource{
+	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.Group,
 	}
 	for _, item := range gl {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}

@@ -68,7 +68,7 @@ var _ pbs.HostCatalogServiceServer = Service{}
 func populateCollectionAuthorizedActions(ctx context.Context,
 	authResults auth.VerifyResults,
 	item *pb.HostCatalog) error {
-	resource := &perms.Resource{
+	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Pin:     item.Id,
 	}
@@ -76,8 +76,8 @@ func populateCollectionAuthorizedActions(ctx context.Context,
 	// collections. We use the ID of this scope being returned, not its parent,
 	// hence passing in a resource here.
 	for k, v := range collectionTypeMap {
-		resource.Type = k
-		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(resource)).Strings()
+		res.Type = k
+		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(res)).Strings()
 		if len(acts) > 0 {
 			if item.AuthorizedCollectionActions == nil {
 				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
@@ -117,13 +117,13 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 		return nil, err
 	}
 	finalItems := make([]*pb.HostCatalog, 0, len(ul))
-	resource := &perms.Resource{
+	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.HostCatalog,
 	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {

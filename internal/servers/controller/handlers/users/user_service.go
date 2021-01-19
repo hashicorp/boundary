@@ -82,13 +82,13 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 		return nil, err
 	}
 	finalItems := make([]*pb.User, 0, len(ul))
-	resource := &perms.Resource{
+	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.User,
 	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(resource)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
