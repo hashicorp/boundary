@@ -168,9 +168,9 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: MigrationIntegrity,
 		},
 		{
-			name: "MigrationData",
-			c:    MigrationData,
-			want: MigrationData,
+			name: "MigrationLock",
+			c:    MigrationLock,
+			want: MigrationLock,
 		},
 	}
 	for _, tt := range tests {

@@ -145,6 +145,17 @@ func (p *Postgres) Unlock(ctx context.Context) error {
 	return nil
 }
 
+// UnlockShared calls pg_advisory_unlock_shared and returns an error if we were unable to
+// release the lock before the context cancels.
+func (p *Postgres) UnlockShared(ctx context.Context) error {
+	const op = "postgres.(Postgres).UnlockShared"
+	query := `SELECT pg_advisory_unlock_shared($1)`
+	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
+}
+
 // Executes the sql provided in the passed in io.Reader.  The contents of the reader must
 // fit in memory as the full content is read into a string before being passed to the
 // backing database.

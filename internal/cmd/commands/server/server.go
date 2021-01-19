@@ -353,6 +353,11 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Unable to gain shared access to the database: %w", err).Error())
 			return 1
 		}
+		defer func() {
+			if err := sMan.SharedUnlock(c.Context); err != nil {
+				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
+			}
+		}()
 		ckState, err := sMan.CurrentState(c.Context)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error checking schema state: %w", err).Error())
