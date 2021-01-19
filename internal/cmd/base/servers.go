@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -442,7 +443,7 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 	return nil
 }
 
-func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
+func (b *Server) CreateDevDatabase(ctx context.Context, dialect string, opt ...Option) error {
 	opts := getOpts(opt...)
 
 	var container, url string
@@ -470,17 +471,25 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 			return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
 		}
 
-		_, err := db.InitStore(dialect, c, url)
+		_, err := schema.InitStore(ctx, dialect, url)
 		if err != nil {
-			return fmt.Errorf("unable to initialize dev database with dialect %s: %w", dialect, err)
+			err = fmt.Errorf("unable to initialize dev database with dialect %s: %w", dialect, err)
+			if c != nil {
+				err = multierror.Append(err, c())
+			}
+			return err
 		}
 
 		b.DevDatabaseCleanupFunc = c
 		b.DatabaseUrl = url
 
 	default:
-		if _, err := db.InitStore(dialect, c, b.DatabaseUrl); err != nil {
-			return fmt.Errorf("error initializing store: %w", err)
+		if _, err := schema.InitStore(ctx, dialect, b.DatabaseUrl); err != nil {
+			err = fmt.Errorf("error initializing store: %w", err)
+			if c != nil {
+				err = multierror.Append(err, c())
+			}
+			return err
 		}
 	}
 
@@ -492,16 +501,25 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 	}
 
 	if err := b.ConnectToDatabase(dialect); err != nil {
+		if c != nil {
+			err = multierror.Append(err, c())
+		}
 		return err
 	}
 
 	b.Database.LogMode(true)
 
-	if err := b.CreateGlobalKmsKeys(context.Background()); err != nil {
+	if err := b.CreateGlobalKmsKeys(ctx); err != nil {
+		if c != nil {
+			err = multierror.Append(err, c())
+		}
 		return err
 	}
 
-	if _, err := b.CreateInitialLoginRole(context.Background()); err != nil {
+	if _, err := b.CreateInitialLoginRole(ctx); err != nil {
+		if c != nil {
+			err = multierror.Append(err, c())
+		}
 		return err
 	}
 
@@ -512,7 +530,7 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		return nil
 	}
 
-	if _, _, err := b.CreateInitialAuthMethod(context.Background()); err != nil {
+	if _, _, err := b.CreateInitialAuthMethod(ctx); err != nil {
 		return err
 	}
 
@@ -523,7 +541,7 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		return nil
 	}
 
-	if _, _, err := b.CreateInitialScopes(context.Background()); err != nil {
+	if _, _, err := b.CreateInitialScopes(ctx); err != nil {
 		return err
 	}
 
@@ -545,7 +563,7 @@ func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
 		return nil
 	}
 
-	if _, err := b.CreateInitialTarget(context.Background()); err != nil {
+	if _, err := b.CreateInitialTarget(ctx); err != nil {
 		return err
 	}
 

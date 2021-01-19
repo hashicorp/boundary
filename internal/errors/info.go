@@ -124,4 +124,12 @@ var errorCodeInfo = map[Code]Info{
 		Message: "too many retries",
 		Kind:    Transaction,
 	},
+	MigrationIntegrity: {
+		Message: "migration integrity",
+		Kind:    Integrity,
+	},
+	MigrationLock: {
+		Message: "bad db lock",
+		Kind:    Integrity,
+	},
 }
