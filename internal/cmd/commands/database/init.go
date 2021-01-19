@@ -116,7 +116,7 @@ func (c *InitCommand) Flags() *base.FlagSets {
 		Usage:      `Log format. Supported values are "standard" and "json".`,
 	})
 
-	f = set.NewFlagSet("Init options")
+	f = set.NewFlagSet("Init Options")
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "allow-development-migrations",
