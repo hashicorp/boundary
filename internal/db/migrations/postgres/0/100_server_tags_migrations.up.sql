@@ -90,11 +90,19 @@ create table server_tag (
     on delete cascade
     on update cascade,
   key text
-    constraint server_tag_key_must_not_be_empty
-    check(length(trim(key)) > 0),
+    constraint server_tag_key_size_limits
+    check(
+      length(trim(key)) > 0
+        and
+      length(key) < 1025
+    ),
   value text
-    constraint server_tag_value_must_not_be_empty
-    check(length(trim(value)) > 0),
+    constraint server_tag_value_size_limits
+    check(
+      length(trim(value)) > 0
+        and
+      length(value) < 1025
+    ),
   primary key(server_id, key, value)
 );
 
