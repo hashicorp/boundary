@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/hashicorp/errwrap"
 	glob "github.com/ryanuber/go-glob"
@@ -444,4 +445,10 @@ func Difference(a, b []string, lowercase bool) []string {
 	}
 	sort.Strings(items)
 	return items
+}
+
+func Printable(s string) bool {
+	return strings.IndexFunc(s, func(c rune) bool {
+		return !unicode.IsPrint(c)
+	}) == -1
 }

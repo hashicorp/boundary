@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/sdk/strutil"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/shared-secure-libs/configutil"
@@ -237,6 +238,9 @@ func Parse(d string) (*Config, error) {
 		if result.Controller.Name != strings.ToLower(result.Controller.Name) {
 			return nil, errors.New("Controller name must be all lower-case")
 		}
+		if !strutil.Printable(result.Controller.Name) {
+			return nil, errors.New("Controller name contains non-printable characters")
+		}
 		if result.Controller.AuthTokenTimeToLive != "" {
 			t, err := parseutil.ParseDurationSecond(result.Controller.AuthTokenTimeToLive)
 			if err != nil {
@@ -258,6 +262,9 @@ func Parse(d string) (*Config, error) {
 	if result.Worker != nil {
 		if result.Worker.Name != strings.ToLower(result.Worker.Name) {
 			return nil, errors.New("Worker name must be all lower-case")
+		}
+		if !strutil.Printable(result.Worker.Name) {
+			return nil, errors.New("Worker name contains non-printable characters")
 		}
 		if result.Worker.TagsRaw != nil {
 			switch t := result.Worker.TagsRaw.(type) {
@@ -300,9 +307,15 @@ func Parse(d string) (*Config, error) {
 			if k != strings.ToLower(k) {
 				return nil, fmt.Errorf("Tag key %q is not all lower-case letters", k)
 			}
+			if !strutil.Printable(k) {
+				return nil, fmt.Errorf("Tag key %q contains non-printable characters", k)
+			}
 			for _, val := range v {
 				if val != strings.ToLower(val) {
 					return nil, fmt.Errorf("Tag value %q for tag key %q is not all lower-case letters", val, k)
+				}
+				if !strutil.Printable(k) {
+					return nil, fmt.Errorf("Tag value %q for tag key %q contains non-printable characters", v, k)
 				}
 			}
 		}

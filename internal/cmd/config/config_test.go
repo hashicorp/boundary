@@ -171,4 +171,21 @@ func TestDevWorker(t *testing.T) {
 
 	_, err = Parse(devConfig + devWorkerKeyValueConfig)
 	assert.Error(t, err)
+
+	// Redo with non-printable characters to validate the strutil function
+	devWorkerKeyValueConfig = `
+	listener "tcp" {
+		purpose = "proxy"
+	}
+
+	worker {
+		name = "dev-work\u0000er"
+		description = "A default worker created in dev mode"
+		controllers = ["127.0.0.1"]
+		tags = ["type=dev", "type=local"]
+	}
+	`
+
+	_, err = Parse(devConfig + devWorkerKeyValueConfig)
+	assert.Error(t, err)
 }

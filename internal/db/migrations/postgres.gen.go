@@ -1491,7 +1491,10 @@ commit;
 		bytes: []byte(`
 begin;
 
+drop domain wt_bexprfilter;
+
 drop table server_tag;
+drop domain wt_tagpair;
 
 commit;
 `),
@@ -1519,6 +1522,15 @@ alter table session
   references server(private_id)
   on delete set null
   on update cascade;
+
+create domain wt_bexprfilter as text
+check(
+  length(trim(value)) > 0
+    and
+  length(trim(value)) <= 2048
+);
+comment on domain wt_bexprfilter is
+  'Text field with constraints for go-bexpr filters';
 
 -- Add the worker filter to the target_tcp table and session table
 alter table target_tcp
@@ -1585,25 +1597,24 @@ create view session_with_state as
   where
     s.public_id = ss.session_id;
 
+create domain wt_tagpair as text
+check(
+  length(trim(value)) > 0
+    and
+  length(trim(value)) <= 512
+    and
+  lower(trim(value)) = value
+);
+comment on domain wt_tagpair is
+  'Text field with constraints for key/value pairs';
+
 create table server_tag (
   server_id text
     references server(private_id)
     on delete cascade
     on update cascade,
-  key text
-    constraint server_tag_key_size_limits
-    check(
-      length(trim(key)) > 0
-        and
-      length(key) < 1025
-    ),
-  value text
-    constraint server_tag_value_size_limits
-    check(
-      length(trim(value)) > 0
-        and
-      length(value) < 1025
-    ),
+  key wt_tagpair,
+  value wt_tagpair,
   primary key(server_id, key, value)
 );
 
