@@ -4889,9 +4889,13 @@ alter table session
 
 create domain wt_bexprfilter as text
 check(
-  length(trim(value)) > 0
-    and
-  length(trim(value)) <= 2048
+  value is null
+    or
+    (
+      length(trim(value)) > 0
+        and
+      length(trim(value)) <= 2048
+    )
 );
 comment on domain wt_bexprfilter is
   'Text field with constraints for go-bexpr filters';

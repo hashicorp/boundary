@@ -3233,7 +3233,7 @@
         },
         "worker_filter": {
           "type": "string",
-          "description": "A boolean expression to filter the workers that are allowed to satisfy this request."
+          "description": "Optional boolean expression to filter the workers that are allowed to satisfy this request."
         },
         "authorized_actions": {
           "type": "array",

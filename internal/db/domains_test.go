@@ -170,7 +170,7 @@ func TestDomain_Bexprfilter(t *testing.T) {
 	const (
 		createTable = `
 create table if not exists test_table (
-  filter wt_bexprfilter primary key
+  filter wt_bexprfilter
 );
 `
 		insert = `
@@ -231,6 +231,10 @@ values ($1);
 			}
 		})
 	}
+	t.Run("null", func(t *testing.T) {
+		_, err := db.Query("insert into test_table values (null);")
+		assert.NoError(t, err)
+	})
 }
 
 func TestDomain_Timestamp(t *testing.T) {

@@ -60,8 +60,8 @@ message Target {
 	// Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1.
 	google.protobuf.Int32Value session_connection_limit = 130 [json_name="session_connection_limit", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "session_connection_limit" that: "SessionConnectionLimit"}];
 
-	// A boolean expression to filter the workers that are allowed to satisfy this request.
-	string worker_filter = 140 [json_name="worker_filter", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "worker_filter" that: "WorkerFilter"}];
+	// Optional boolean expression to filter the workers that are allowed to satisfy this request.
+	google.protobuf.StringValue worker_filter = 140 [json_name="worker_filter", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "worker_filter" that: "WorkerFilter"}];
 
 	// Output only. The available actions on this resource for this user.
 	repeated string authorized_actions = 150 [json_name="authorized_actions"];
