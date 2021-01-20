@@ -52,7 +52,6 @@ func (c *MigrateCommand) Help() string {
 		"",
 		"    $ boundary database migrate -config=/etc/boundary/controller.hcl",
 		"",
-		"",
 		"  For a full list of examples, please see the documentation.",
 	}) + c.Flags().Help()
 }
@@ -98,7 +97,7 @@ func (c *MigrateCommand) Flags() *base.FlagSets {
 		Usage:      `Log format. Supported values are "standard" and "json".`,
 	})
 
-	f = set.NewFlagSet("Init options")
+	f = set.NewFlagSet("Migration options")
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "allow-development-migrations",
@@ -181,12 +180,6 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	urlToParse := c.Config.Controller.Database.Url
-	if urlToParse == "" {
-		c.UI.Error(`"url" not specified in "database" config block"`)
-		return 1
-	}
-
 	var migrationUrlToParse string
 	if c.Config.Controller.Database.MigrationUrl != "" {
 		migrationUrlToParse = c.Config.Controller.Database.MigrationUrl
@@ -196,7 +189,12 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 	}
 	// Fallback to using database URL for everything
 	if migrationUrlToParse == "" {
-		migrationUrlToParse = urlToParse
+		migrationUrlToParse = c.Config.Controller.Database.Url
+	}
+
+	if migrationUrlToParse == "" {
+		c.UI.Error(base.WrapAtLength(`neither "url" nor "migration_url" correctly set in "database" config block nor was the "migration-url" flag used`))
+		return 1
 	}
 
 	migrationUrl, err := config.ParseAddress(migrationUrlToParse)

@@ -241,7 +241,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	urlToParse := c.Config.Controller.Database.Url
 	if urlToParse == "" {
-		c.UI.Error(`"url" not specified in "database" config block"`)
+		c.UI.Error(`"url" not specified in "database" config block`)
 		return 1
 	}
 
@@ -275,7 +275,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Error(fmt.Errorf("Error setting up schema manager for locking: %w", err).Error())
 		return 1
 	}
-	// This is an advisory locks on the DB which is released when the db session ends.
+	// This is an advisory lock on the DB which is released when the DB session ends.
 	if err := man.ExclusiveLock(c.Context); err != nil {
 		c.UI.Error(fmt.Errorf("Error capturing an exclusive lock: %w", err).Error())
 		return 1
@@ -308,13 +308,16 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	// The initialization is dirty as long as it doesn't complete successfully.
 	if err := man.SetDirty(c.Context); err != nil {
 		c.UI.Error(base.WrapAtLength("Database could not be marked as dirty in " +
-			"preperation for it's initialization."))
+			"preparation for it's initialization."))
 		return 1
 	}
 
 	// Core migrations using the migration URL
 	{
 		migrationUrl = strings.TrimSpace(migrationUrl)
+		// We skip setting and unsetting dirty in MigrateStore so this command can manage it instead
+		// since this command does more than simply mutate the schema and erroring out prior to adding
+		// the initial resources would leave the initialization in a dirty state.
 		ran, err := schema.MigrateStore(c.Context, dialect, migrationUrl, schema.WithSkipSetDirty(true), schema.WithSkipUnsetDirty(true))
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
@@ -551,8 +554,7 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 
 func (c *InitCommand) unsetDirty(man *schema.Manager) int {
 	if err := man.UnsetDirty(c.Context); err != nil {
-		c.UI.Error(base.WrapAtLength("Database could not be marked undirty after" +
-			"initialization."))
+		c.UI.Error(base.WrapAtLength("Database could not be marked undirty after initialization."))
 		return 1
 	}
 	return 0
