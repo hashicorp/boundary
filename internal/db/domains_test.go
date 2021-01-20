@@ -160,6 +160,10 @@ values ($1);
 			}
 		})
 	}
+	t.Run("null", func(t *testing.T) {
+		_, err := db.Query("insert into test_table values (null);")
+		assert.Contains(t, err.Error(), "violates check constraint")
+	})
 }
 
 func TestDomain_Bexprfilter(t *testing.T) {

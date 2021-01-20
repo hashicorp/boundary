@@ -95,6 +95,8 @@ create view session_with_state as
 
 create domain wt_tagpair as text
 check(
+  value is not null
+    and
   length(trim(value)) > 0
     and
   length(trim(value)) <= 512

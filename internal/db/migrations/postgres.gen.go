@@ -1534,9 +1534,9 @@ comment on domain wt_bexprfilter is
 
 -- Add the worker filter to the target_tcp table and session table
 alter table target_tcp
-  add column worker_filter text;
+  add column worker_filter wt_bexprfilter;
 alter table session
-  add column worker_filter text;
+  add column worker_filter wt_bexprfilter;
 
 -- Replace the immutable columns trigger from 50 to add worker_filter
 drop trigger immutable_columns on session;
@@ -1599,6 +1599,8 @@ create view session_with_state as
 
 create domain wt_tagpair as text
 check(
+  value is not null
+    and
   length(trim(value)) > 0
     and
   length(trim(value)) <= 512
