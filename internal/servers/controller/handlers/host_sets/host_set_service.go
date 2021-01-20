@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -20,7 +21,27 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var maskManager handlers.MaskManager
+var (
+	maskManager handlers.MaskManager
+
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.ActionSet{
+		action.Read,
+		action.Update,
+		action.Delete,
+		action.AddHosts,
+		action.SetHosts,
+		action.RemoveHosts,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.ActionSet{
+		action.Create,
+		action.List,
+	}
+)
 
 func init() {
 	var err error
@@ -58,10 +79,20 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 	if err != nil {
 		return nil, err
 	}
+	finalItems := make([]*pb.HostSet, 0, len(hl))
+	res := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.HostSet,
+		Pin:     req.GetHostCatalogId(),
+	}
 	for _, item := range hl {
 		item.Scope = authResults.Scope
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
+		if len(item.AuthorizedActions) > 0 {
+			finalItems = append(finalItems, item)
+		}
 	}
-	return &pbs.ListHostSetsResponse{Items: hl}, nil
+	return &pbs.ListHostSetsResponse{Items: finalItems}, nil
 }
 
 // GetHostSet implements the interface pbs.HostSetServiceServer.
@@ -78,6 +109,7 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
+	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
 	return &pbs.GetHostSetResponse{Item: hc}, nil
 }
 
@@ -95,6 +127,7 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 		return nil, err
 	}
 	h.Scope = authResults.Scope
+	h.AuthorizedActions = authResults.FetchActionSetForId(ctx, h.Id, IdActions).Strings()
 	return &pbs.CreateHostSetResponse{
 		Item: h,
 		Uri:  fmt.Sprintf("host-sets/%s", h.GetId()),
@@ -115,6 +148,7 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
+	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
 	return &pbs.UpdateHostSetResponse{Item: hc}, nil
 }
 
@@ -148,6 +182,7 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 		return nil, err
 	}
 	g.Scope = authResults.Scope
+	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
 	return &pbs.AddHostSetHostsResponse{Item: g}, nil
 }
 
@@ -165,6 +200,7 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 		return nil, err
 	}
 	g.Scope = authResults.Scope
+	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
 	return &pbs.SetHostSetHostsResponse{Item: g}, nil
 }
 
@@ -182,6 +218,7 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 		return nil, err
 	}
 	g.Scope = authResults.Scope
+	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
 	return &pbs.RemoveHostSetHostsResponse{Item: g}, nil
 }
 

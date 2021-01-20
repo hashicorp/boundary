@@ -177,6 +177,12 @@ func (c *Command) Run(args []string) int {
 					fmt.Sprintf("    Updated Time:                %s", t.UpdatedTime.Local().Format(time.RFC1123)),
 					fmt.Sprintf("    User ID:                     %s", t.UserId),
 				)
+				if len(t.AuthorizedActions) > 0 {
+					output = append(output,
+						"    Authorized Actions:",
+						base.WrapSlice(6, t.AuthorizedActions),
+					)
+				}
 			}
 			c.UI.Output(base.WrapForHelpText(output))
 		}

@@ -26,10 +26,26 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var authorizedCollectionActions = map[string]*structpb.ListValue{
+	"host-sets": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"hosts": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+}
 
 func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Scope, common.StaticRepoFactory, common.IamRepoFactory) {
 	t.Helper()
@@ -66,14 +82,16 @@ func TestGet(t *testing.T) {
 	}
 
 	pHostCatalog := &pb.HostCatalog{
-		Id:          hc.GetPublicId(),
-		ScopeId:     hc.GetScopeId(),
-		Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-		Name:        &wrappers.StringValue{Value: hc.GetName()},
-		Description: &wrappers.StringValue{Value: hc.GetDescription()},
-		CreatedTime: hc.CreateTime.GetTimestamp(),
-		UpdatedTime: hc.UpdateTime.GetTimestamp(),
-		Type:        "static",
+		Id:                          hc.GetPublicId(),
+		ScopeId:                     hc.GetScopeId(),
+		Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+		Name:                        &wrappers.StringValue{Value: hc.GetName()},
+		Description:                 &wrappers.StringValue{Value: hc.GetDescription()},
+		CreatedTime:                 hc.CreateTime.GetTimestamp(),
+		UpdatedTime:                 hc.UpdateTime.GetTimestamp(),
+		Type:                        "static",
+		AuthorizedActions:           []string{"read", "update", "delete"},
+		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
 	cases := []struct {
@@ -149,26 +167,30 @@ func TestList(t *testing.T) {
 	var wantSomeCatalogs []*pb.HostCatalog
 	for _, hc := range static.TestCatalogs(t, conn, pWithCatalogs.GetPublicId(), 3) {
 		wantSomeCatalogs = append(wantSomeCatalogs, &pb.HostCatalog{
-			Id:          hc.GetPublicId(),
-			ScopeId:     hc.GetScopeId(),
-			CreatedTime: hc.GetCreateTime().GetTimestamp(),
-			UpdatedTime: hc.GetUpdateTime().GetTimestamp(),
-			Scope:       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String()},
-			Version:     1,
-			Type:        "static",
+			Id:                          hc.GetPublicId(),
+			ScopeId:                     hc.GetScopeId(),
+			CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
+			UpdatedTime:                 hc.GetUpdateTime().GetTimestamp(),
+			Scope:                       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String()},
+			Version:                     1,
+			Type:                        "static",
+			AuthorizedActions:           []string{"read", "update", "delete"},
+			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
 
 	var wantOtherCatalogs []*pb.HostCatalog
 	for _, hc := range static.TestCatalogs(t, conn, pWithOtherCatalogs.GetPublicId(), 3) {
 		wantOtherCatalogs = append(wantOtherCatalogs, &pb.HostCatalog{
-			Id:          hc.GetPublicId(),
-			ScopeId:     hc.GetScopeId(),
-			CreatedTime: hc.GetCreateTime().GetTimestamp(),
-			UpdatedTime: hc.GetUpdateTime().GetTimestamp(),
-			Scope:       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String()},
-			Version:     1,
-			Type:        "static",
+			Id:                          hc.GetPublicId(),
+			ScopeId:                     hc.GetScopeId(),
+			CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
+			UpdatedTime:                 hc.GetUpdateTime().GetTimestamp(),
+			Scope:                       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String()},
+			Version:                     1,
+			Type:                        "static",
+			AuthorizedActions:           []string{"read", "update", "delete"},
+			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
 
@@ -314,11 +336,13 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateHostCatalogResponse{
 				Uri: fmt.Sprintf("host-catalogs/%s_", static.HostCatalogPrefix),
 				Item: &pb.HostCatalog{
-					ScopeId:     proj.GetPublicId(),
-					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "name"},
-					Description: &wrappers.StringValue{Value: "desc"},
-					Type:        "static",
+					ScopeId:                     proj.GetPublicId(),
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:                        &wrappers.StringValue{Value: "name"},
+					Description:                 &wrappers.StringValue{Value: "desc"},
+					Type:                        "static",
+					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -465,13 +489,15 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
-					Id:          hc.GetPublicId(),
-					ScopeId:     hc.GetScopeId(),
-					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
-					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        "static",
+					Id:                          hc.GetPublicId(),
+					ScopeId:                     hc.GetScopeId(),
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:                        &wrappers.StringValue{Value: "new"},
+					Description:                 &wrappers.StringValue{Value: "desc"},
+					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
+					Type:                        "static",
+					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -489,13 +515,15 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
-					Id:          hc.GetPublicId(),
-					ScopeId:     hc.GetScopeId(),
-					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
-					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        "static",
+					Id:                          hc.GetPublicId(),
+					ScopeId:                     hc.GetScopeId(),
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:                        &wrappers.StringValue{Value: "new"},
+					Description:                 &wrappers.StringValue{Value: "desc"},
+					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
+					Type:                        "static",
+					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -543,12 +571,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
-					Id:          hc.GetPublicId(),
-					ScopeId:     hc.GetScopeId(),
-					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Description: &wrappers.StringValue{Value: "default"},
-					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        "static",
+					Id:                          hc.GetPublicId(),
+					ScopeId:                     hc.GetScopeId(),
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Description:                 &wrappers.StringValue{Value: "default"},
+					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
+					Type:                        "static",
+					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -564,12 +594,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
-					Id:          hc.GetPublicId(),
-					ScopeId:     hc.GetScopeId(),
-					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "default"},
-					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        "static",
+					Id:                          hc.GetPublicId(),
+					ScopeId:                     hc.GetScopeId(),
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:                        &wrappers.StringValue{Value: "default"},
+					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
+					Type:                        "static",
+					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -586,13 +618,15 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
-					Id:          hc.GetPublicId(),
-					ScopeId:     hc.GetScopeId(),
-					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "updated"},
-					Description: &wrappers.StringValue{Value: "default"},
-					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        "static",
+					Id:                          hc.GetPublicId(),
+					ScopeId:                     hc.GetScopeId(),
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:                        &wrappers.StringValue{Value: "updated"},
+					Description:                 &wrappers.StringValue{Value: "default"},
+					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
+					Type:                        "static",
+					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -609,13 +643,15 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
-					Id:          hc.GetPublicId(),
-					ScopeId:     hc.GetScopeId(),
-					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
-					Name:        &wrappers.StringValue{Value: "default"},
-					Description: &wrappers.StringValue{Value: "notignored"},
-					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        "static",
+					Id:                          hc.GetPublicId(),
+					ScopeId:                     hc.GetScopeId(),
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Name:                        &wrappers.StringValue{Value: "default"},
+					Description:                 &wrappers.StringValue{Value: "notignored"},
+					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
+					Type:                        "static",
+					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},

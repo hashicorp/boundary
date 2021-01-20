@@ -36,6 +36,15 @@ const (
 	testLoginName = "default"
 )
 
+var authorizedCollectionActions = map[string]*structpb.ListValue{
+	"accounts": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+}
+
 func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -70,6 +79,8 @@ func TestGet(t *testing.T) {
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
+		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
 	cases := []struct {
@@ -158,6 +169,8 @@ func TestList(t *testing.T) {
 				"min_password_length":   structpb.NewNumberValue(8),
 				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
+			AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
 
@@ -175,6 +188,8 @@ func TestList(t *testing.T) {
 				"min_password_length":   structpb.NewNumberValue(8),
 				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
+			AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
 
@@ -368,6 +383,8 @@ func TestCreate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -395,6 +412,8 @@ func TestCreate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -568,7 +587,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -594,7 +615,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -660,7 +683,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -685,7 +710,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -710,7 +737,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -807,7 +836,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(42),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -836,7 +867,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(42),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},

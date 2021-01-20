@@ -17,12 +17,17 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -31,13 +36,62 @@ const (
 	pwKey        = "password"
 )
 
-var maskManager handlers.MaskManager
+var (
+	maskManager handlers.MaskManager
+
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.ActionSet{
+		action.Read,
+		action.Update,
+		action.Delete,
+		action.Authenticate,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.ActionSet{
+		action.Create,
+		action.List,
+	}
+
+	collectionTypeMap = map[resource.Type]action.ActionSet{
+		resource.Account: accounts.CollectionActions,
+	}
+)
 
 func init() {
 	var err error
 	if maskManager, err = handlers.NewMaskManager(&store.AuthMethod{}, &pb.AuthMethod{}, &pb.PasswordAuthMethodAttributes{}); err != nil {
 		panic(err)
 	}
+}
+
+func populateCollectionAuthorizedActions(ctx context.Context,
+	authResults auth.VerifyResults,
+	item *pb.AuthMethod) error {
+	res := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Pin:     item.Id,
+	}
+	// Range over the defined collections and check permissions against those
+	// collections. We use the ID of this scope being returned, not its parent,
+	// hence passing in a resource here.
+	for k, v := range collectionTypeMap {
+		res.Type = k
+		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(res)).Strings()
+		if len(acts) > 0 {
+			if item.AuthorizedCollectionActions == nil {
+				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
+			}
+			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
+			if err != nil {
+				return err
+			}
+			item.AuthorizedCollectionActions[k.String()+"s"] = lv
+		}
+	}
+	return nil
 }
 
 // Service handles request as described by the pbs.AuthMethodServiceServer interface.
@@ -79,10 +133,22 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	if err != nil {
 		return nil, err
 	}
+	finalItems := make([]*pb.AuthMethod, 0, len(ul))
+	res := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.AuthMethod,
+	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
+		if len(item.AuthorizedActions) > 0 {
+			finalItems = append(finalItems, item)
+			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
+				return nil, err
+			}
+		}
 	}
-	return &pbs.ListAuthMethodsResponse{Items: ul}, nil
+	return &pbs.ListAuthMethodsResponse{Items: finalItems}, nil
 }
 
 // GetAuthMethod implements the interface pbs.AuthMethodServiceServer.
@@ -99,6 +165,10 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
+		return nil, err
+	}
 	return &pbs.GetAuthMethodResponse{Item: u}, nil
 }
 
@@ -116,6 +186,10 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
+		return nil, err
+	}
 	return &pbs.CreateAuthMethodResponse{Item: u, Uri: fmt.Sprintf("auth-methods/%s", u.GetId())}, nil
 }
 
@@ -133,6 +207,10 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
+		return nil, err
+	}
 	return &pbs.UpdateAuthMethodResponse{Item: u}, nil
 }
 
@@ -166,6 +244,11 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	if err != nil {
 		return nil, err
 	}
+	res := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.AuthToken,
+	}
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
 	return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
 }
 
