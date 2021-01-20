@@ -14,19 +14,20 @@ import (
 )
 
 type Role struct {
-	Id           string            `json:"id,omitempty"`
-	ScopeId      string            `json:"scope_id,omitempty"`
-	Scope        *scopes.ScopeInfo `json:"scope,omitempty"`
-	Name         string            `json:"name,omitempty"`
-	Description  string            `json:"description,omitempty"`
-	CreatedTime  time.Time         `json:"created_time,omitempty"`
-	UpdatedTime  time.Time         `json:"updated_time,omitempty"`
-	Version      uint32            `json:"version,omitempty"`
-	GrantScopeId string            `json:"grant_scope_id,omitempty"`
-	PrincipalIds []string          `json:"principal_ids,omitempty"`
-	Principals   []*Principal      `json:"principals,omitempty"`
-	GrantStrings []string          `json:"grant_strings,omitempty"`
-	Grants       []*Grant          `json:"grants,omitempty"`
+	Id                string            `json:"id,omitempty"`
+	ScopeId           string            `json:"scope_id,omitempty"`
+	Scope             *scopes.ScopeInfo `json:"scope,omitempty"`
+	Name              string            `json:"name,omitempty"`
+	Description       string            `json:"description,omitempty"`
+	CreatedTime       time.Time         `json:"created_time,omitempty"`
+	UpdatedTime       time.Time         `json:"updated_time,omitempty"`
+	Version           uint32            `json:"version,omitempty"`
+	GrantScopeId      string            `json:"grant_scope_id,omitempty"`
+	PrincipalIds      []string          `json:"principal_ids,omitempty"`
+	Principals        []*Principal      `json:"principals,omitempty"`
+	GrantStrings      []string          `json:"grant_strings,omitempty"`
+	Grants            []*Grant          `json:"grants,omitempty"`
+	AuthorizedActions []string          `json:"authorized_actions,omitempty"`
 
 	response *api.Response
 }

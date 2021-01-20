@@ -14,16 +14,17 @@ import (
 )
 
 type Group struct {
-	Id          string            `json:"id,omitempty"`
-	ScopeId     string            `json:"scope_id,omitempty"`
-	Scope       *scopes.ScopeInfo `json:"scope,omitempty"`
-	Name        string            `json:"name,omitempty"`
-	Description string            `json:"description,omitempty"`
-	CreatedTime time.Time         `json:"created_time,omitempty"`
-	UpdatedTime time.Time         `json:"updated_time,omitempty"`
-	Version     uint32            `json:"version,omitempty"`
-	MemberIds   []string          `json:"member_ids,omitempty"`
-	Members     []*Member         `json:"members,omitempty"`
+	Id                string            `json:"id,omitempty"`
+	ScopeId           string            `json:"scope_id,omitempty"`
+	Scope             *scopes.ScopeInfo `json:"scope,omitempty"`
+	Name              string            `json:"name,omitempty"`
+	Description       string            `json:"description,omitempty"`
+	CreatedTime       time.Time         `json:"created_time,omitempty"`
+	UpdatedTime       time.Time         `json:"updated_time,omitempty"`
+	Version           uint32            `json:"version,omitempty"`
+	MemberIds         []string          `json:"member_ids,omitempty"`
+	Members           []*Member         `json:"members,omitempty"`
+	AuthorizedActions []string          `json:"authorized_actions,omitempty"`
 
 	response *api.Response
 }

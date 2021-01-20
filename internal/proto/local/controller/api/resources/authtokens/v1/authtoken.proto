@@ -42,4 +42,7 @@ message AuthToken {
 
 	// Output only. The time this Auth Token expires.
 	google.protobuf.Timestamp expiration_time = 110 [json_name="expiration_time"];
+
+	// Output only. The available actions on this resource for this user.
+	repeated string authorized_actions = 300 [json_name="authorized_actions"];
 }

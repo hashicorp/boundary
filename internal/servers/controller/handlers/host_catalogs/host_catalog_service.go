@@ -11,16 +11,43 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var maskManager handlers.MaskManager
+var (
+	maskManager handlers.MaskManager
+
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.ActionSet{
+		action.Read,
+		action.Update,
+		action.Delete,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.ActionSet{
+		action.Create,
+		action.List,
+	}
+
+	collectionTypeMap = map[resource.Type]action.ActionSet{
+		resource.HostSet: host_sets.CollectionActions,
+		resource.Host:    hosts.CollectionActions,
+	}
+)
 
 func init() {
 	var err error
@@ -37,6 +64,33 @@ type Service struct {
 }
 
 var _ pbs.HostCatalogServiceServer = Service{}
+
+func populateCollectionAuthorizedActions(ctx context.Context,
+	authResults auth.VerifyResults,
+	item *pb.HostCatalog) error {
+	res := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Pin:     item.Id,
+	}
+	// Range over the defined collections and check permissions against those
+	// collections. We use the ID of this scope being returned, not its parent,
+	// hence passing in a resource here.
+	for k, v := range collectionTypeMap {
+		res.Type = k
+		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(res)).Strings()
+		if len(acts) > 0 {
+			if item.AuthorizedCollectionActions == nil {
+				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
+			}
+			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
+			if err != nil {
+				return err
+			}
+			item.AuthorizedCollectionActions[k.String()+"s"] = lv
+		}
+	}
+	return nil
+}
 
 // NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.
@@ -62,10 +116,22 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	if err != nil {
 		return nil, err
 	}
+	finalItems := make([]*pb.HostCatalog, 0, len(ul))
+	res := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.HostCatalog,
+	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
+		if len(item.AuthorizedActions) > 0 {
+			finalItems = append(finalItems, item)
+			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
+				return nil, err
+			}
+		}
 	}
-	return &pbs.ListHostCatalogsResponse{Items: ul}, nil
+	return &pbs.ListHostCatalogsResponse{Items: finalItems}, nil
 }
 
 // GetHostCatalog implements the interface pbs.HostCatalogServiceServer.
@@ -82,6 +148,10 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
+	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, hc); err != nil {
+		return nil, err
+	}
 	return &pbs.GetHostCatalogResponse{Item: hc}, nil
 }
 
@@ -99,6 +169,10 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
+	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, hc); err != nil {
+		return nil, err
+	}
 	return &pbs.CreateHostCatalogResponse{
 		Item: hc,
 		Uri:  fmt.Sprintf("host-catalogs/%s", hc.GetId()),
@@ -119,6 +193,10 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
+	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, hc); err != nil {
+		return nil, err
+	}
 	return &pbs.UpdateHostCatalogResponse{Item: hc}, nil
 }
 
