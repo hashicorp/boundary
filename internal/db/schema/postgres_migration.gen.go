@@ -4,8 +4,8 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		devMigration:        false,
-		binarySchemaVersion: 69,
+		devMigration:        true,
+		binarySchemaVersion: 1085,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 begin;
@@ -4862,6 +4862,406 @@ begin;
 commit;
 
 `),
+			1080: []byte(`
+begin;
+
+-- wt_email defines a type for email which must be less than 320 chars and only
+-- contain lower case values.  The type is defined to allow nulls and not be
+-- unique, which can be overriden as needed when used in tables.
+create domain wt_email as text
+    check (length(trim(value)) < 320)
+    check (lower(value) = value);
+comment on domain wt_email is
+'standard column for email addresses';
+
+
+-- wt_url defines a type for URLs which must be longer that 3 chars and
+-- less than 4k chars.  It's defined to allow nulls, which can be overriden as
+-- needed when used in tables.
+create domain wt_url as text
+    check (length(trim(value)) > 3)
+    check (length(trim(value)) < 4000);
+comment on domain wt_email is
+'standard column for URLs';
+
+-- wt_name defines a type for resource names that must be less than 128 chars.
+--  It's defined to allow nulls.
+create domain wt_name as text
+    check (length(trim(value)) < 128);
+comment on domain wt_email is
+'standard column for resource names';
+
+-- wt_description defines a type for resource descriptionss that must be less
+-- than 1024 chars. It's defined to allow nulls.
+create domain wt_description as text
+    check (length(trim(value)) < 1024);
+comment on domain wt_email is
+'standard column for resource descriptions';
+
+commit;
+`),
+			1081: []byte(`
+begin;
+
+-- email is added to the iam_user as an external data point to deduce which user
+-- is being represented by the iam_user.
+alter table iam_user
+add column email wt_email; -- intentionally, can be null and not unique
+
+commit;
+`),
+			1082: []byte(`
+begin;
+
+-- kms_oidc_key entries are DEKs for encrypting oidc entries.
+create table kms_oidc_key (
+  private_id wt_private_id primary key,
+  root_key_id wt_private_id not null unique -- there can be only one oidc dek per root key
+    references kms_root_key(private_id)
+    on delete cascade
+    on update cascade,
+  create_time wt_timestamp
+);
+
+ -- define the immutable fields for kms_oidc_key (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_oidc_key
+  for each row execute procedure immutable_columns('private_id', 'root_key_id', 'create_time');
+
+-- define the value of kms_oidc_key's create_time
+create trigger 
+  default_create_time_column
+before
+insert on kms_oidc_key
+  for each row execute procedure default_create_time();
+
+-- kms_oidc_key_version entries are version of DEK keys used to encrypt oidc
+-- entries. 
+create table kms_oidc_key_version (
+  private_id wt_private_id primary key,
+  oidc_key_id wt_private_id not null
+    references kms_oidc_key(private_id) 
+    on delete cascade 
+    on update cascade, 
+  root_key_version_id wt_private_id not null
+    references kms_root_key_version(private_id) 
+    on delete cascade 
+    on update cascade,
+  version wt_version,
+  key bytea not null,
+  create_time wt_timestamp,
+  unique(oidc_key_id, version)
+);
+
+ -- define the immutable fields for kms_oidc_key_version (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_oidc_key_version
+  for each row execute procedure immutable_columns('private_id', 'oidc_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
+  
+-- define the value of kms_oidc_key_version's create_time
+create trigger 
+  default_create_time_column
+before
+insert on kms_oidc_key_version
+  for each row execute procedure default_create_time();
+
+-- define the value of kms_oidc_key_version's version column
+create trigger
+	kms_version_column
+before insert on kms_oidc_key_version
+	for each row execute procedure kms_version_column('oidc_key_id');
+
+commit;
+
+`),
+			1083: []byte(`
+begin;
+
+-- auth_oidc_method_state_enum entries define the possible oidc auth method
+-- states. 
+create table auth_oidc_method_state_enm (
+  name text primary key
+    constraint only_predefined_oidc_method_states_allowed
+    check (
+        name in ('inactive', 'active-private', 'active-public', 'stopping')
+    )
+);
+
+-- populate the values of auth_oidc_method_state_enm
+insert into auth_oidc_method_state_enm(name)
+  values
+    ('inactive'),
+    ('active-private'),
+    ('active-public'),
+    ('stopping'); 
+
+ -- define the immutable fields for auth_oidc_method_state_enm (all of them)
+create trigger 
+  immutable_columns
+before
+update on auth_oidc_method_state_enm
+  for each row execute procedure immutable_columns('name');
+
+
+-- auth_oidc_signing_alg entries define the supported oidc auth method
+-- signing algorithms.
+create table auth_oidc_signing_alg_enm (
+  name text primary key
+    constraint only_predefined_auth_oidc_signing_algs_allowed
+    check (
+        name in (
+          'RS256', 
+          'RS384', 
+          'RS512', 
+          'ES256', 
+          'ES384', 
+          'ES512', 
+          'PS256', 
+          'PS384', 
+          'PS512', 
+          'EdDSA')
+    )
+);
+
+-- populate the values of auth_oidc_signing_alg
+insert into auth_oidc_signing_alg_enm (name)
+  values
+    ('RS256'),
+    ('RS384'),
+    ('RS512'),
+    ('ES256'),
+    ('ES384'),
+    ('ES512'),
+    ('PS256'),
+    ('PS384'),
+    ('PS512'),
+    ('EdDSA')
+    ; 
+
+ -- define the immutable fields for auth_oidc_signing_alg (all of them)
+create trigger 
+  immutable_columns
+before
+update on auth_oidc_signing_alg_enm
+  for each row execute procedure immutable_columns('name');
+
+commit;
+
+`),
+			1084: []byte(`
+begin;
+
+-- auth_oidc_method entries are the current oidc auth methods configured for
+-- existing scopes. 
+create table auth_oidc_method (
+  public_id wt_public_id
+    primary key,
+  scope_id wt_scope_id
+    not null,
+  name wt_name,
+  description wt_description, 
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  version wt_version,
+  state text not null,
+      -- references auth_oidc_method_state_enm(name),
+  discovery_url wt_url not null, -- oidc discovery URL without any .well-known component
+  client_id text not null, -- oidc client identifier issued by the oidc provider.
+  client_secret bytea not null, -- encrypted oidc client secret issued by the oidc provider.
+  key_id wt_private_id not null -- key used to encrypt entries via wrapping wrapper. 
+    references kms_oidc_key_version(private_id) 
+    on delete restrict
+    on update cascade, 
+  max_age int not null, -- the allowable elapsed time in secs since the last time the user was authenticated. 
+  unique(scope_id, name),
+  unique(scope_id, public_id)
+);
+
+-- auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc
+-- auth method.  There must be at least one allowed alg for each oidc auth method.
+create table auth_oidc_signing_alg (
+  oidc_method_id wt_public_id 
+    references auth_oidc_method(public_id)
+    on delete cascade
+    on update cascade,
+  signing_alg_name text 
+    references auth_oidc_signing_alg_enm(name)
+    on delete cascade
+    on update cascade,
+  primary key(oidc_method_id, signing_alg_name)
+);
+
+-- auth_oidc_callback_url entries are the callback URLs allowed for a specific
+-- oidc auth method.  There must be at least one callback url for each oidc auth
+-- method. 
+create table auth_oidc_callback_url (
+  oidc_method_id wt_public_id 
+    references auth_oidc_method(public_id)
+    on delete cascade
+    on update cascade,
+  callback_url wt_url not null
+);
+
+-- auth_oidc_aud_claim entries are the audience claims for a specific oidc auth
+-- method.  There can be 0 or more for each parent oidc auth method.  If an auth
+-- method has any aud claims, an ID token must contain one of them to be valid. 
+create table auth_oidc_aud_claim (
+  oidc_method_id wt_public_id 
+    references auth_oidc_method(public_id)
+    on delete cascade
+    on update cascade,
+  aud_claim text not null
+    constraint aud_claim_must_not_be_empty
+    check(length(trim(aud_claim)) > 0) 
+    constraint aud_claim_must_be_less_than_1024_chars
+      check(length(trim(aud_claim)) < 1024),
+  primary key(oidc_method_id, aud_claim)
+);
+
+-- auth_oidc_certificate entries are optional PEM encoded x509 certificates.
+-- Each entry is a single certificate.  An oidc auth method may have 0 or more
+-- of these optional x509s.  If an auth method has any cert entries, they are
+-- used as trust anchors when connecting to the auth method's oidc provider
+-- (instead of the host system's cert chain).
+create table auth_oidc_certificate (
+  oidc_method_id wt_public_id 
+    references auth_oidc_method(public_id)
+    on delete cascade
+    on update cascade,
+  certificate bytea not null,
+  primary key(oidc_method_id, certificate)
+);
+
+
+create table auth_oidc_account (
+    public_id wt_public_id
+      primary key,
+    auth_method_id wt_public_id
+      not null,
+    -- NOTE(mgaffney): The scope_id type is not wt_scope_id because the domain
+    -- check is executed before the insert trigger which retrieves the scope_id
+    -- causing an insert to fail.
+    scope_id text not null,
+    name wt_name,
+    description wt_description,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    version wt_version,
+    issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim
+    subject_id text not null -- case-senstive string that maps to an id_token's sub claim
+      constraint subject_id_must_be_less_than_256_chars 
+      check(
+        length(trim(subject_id)) <= 255 -- length limit per OIDC spec
+      ),
+    subject_name text not null -- maps to an id_token's name claim
+      constraint subject_name_must_be_less_than_512_chars
+      check(
+          length(trim(subject_id)) <= 512 -- gotta pick some upper limit.
+      ),
+    foreign key (scope_id, auth_method_id)
+      references auth_password_method (scope_id, public_id)
+      on delete cascade
+      on update cascade,
+    foreign key (scope_id, auth_method_id, public_id)
+      references auth_account (scope_id, auth_method_id, public_id)
+      on delete cascade
+      on update cascade,
+    unique(auth_method_id, name),
+    unique(auth_method_id, subject_id),
+    unique(auth_method_id, public_id)
+);
+
+-- auth_oidc_method column triggers
+create trigger
+  update_time_column
+before
+update on auth_oidc_method
+  for each row execute procedure update_time_column();
+
+create trigger
+  immutable_columns
+before
+update on auth_oidc_method
+  for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_method
+  for each row execute procedure default_create_time();
+
+create trigger
+  update_version_column
+after update on auth_oidc_method
+  for each row execute procedure update_version_column();
+
+
+-- auth_oidc_account column triggers
+create trigger
+  update_time_column
+before
+update on auth_oidc_account
+  for each row execute procedure update_time_column();
+
+create trigger
+  immutable_columns
+before
+update on auth_oidc_account
+  for each row execute procedure immutable_columns('public_id', 'auth_method_id', 'scope_id', 'create_time', 'issuer_id', 'subject_id');
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_account
+  for each row execute procedure default_create_time();
+
+create trigger
+  update_version_column
+after update on auth_oidc_account
+  for each row execute procedure update_version_column();
+
+create trigger
+  insert_auth_account_subtype
+before insert on auth_oidc_account
+  for each row execute procedure insert_auth_account_subtype();
+
+commit;
+`),
+			1085: []byte(`
+begin;
+
+-- auth_token_status_enm entries define the possible auth token
+-- states. 
+create table auth_token_status_enm (
+  name text primary key
+    constraint only_predefined_auth_token_states_allowed
+    check (
+        name in ('auth token pending','token issued', 'authentication failed', 'system error')
+    )
+);
+
+-- populate the values of auth_token_status_enm
+insert into auth_token_status_enm(name)
+  values
+    ('auth token pending'),
+    ('token issued'),
+    ('authentication failed'),
+    ('system error'); 
+
+
+-- add the state column with a default to the auth_token table.
+alter table auth_token
+add column status text 
+not null
+default 'token issued' -- consistent with current behavior.
+references auth_token_status_enm(name);
+
+commit;
+`),
 		},
 		downMigrations: map[int][]byte{
 			1: []byte(`
@@ -5213,6 +5613,59 @@ begin;
   drop function wh_insert_session;
 
   drop function wh_rollup_connections;
+
+commit;
+
+`),
+			1080: []byte(`
+begin;
+
+drop domain wt_email;
+drop domain wt_url;
+
+commit;
+`),
+			1081: []byte(`
+begin;
+
+alter table iam_user drop column email;
+
+commit;
+`),
+			1082: []byte(`
+begin;
+
+drop table kms_oidc_key;
+drop table kms_oidc_version;
+
+commit;
+`),
+			1083: []byte(`
+begin;
+
+drop table auth_oidc_method_state_enm;
+drop table auth_oidc_signing_alg_enm;
+
+commit;
+`),
+			1084: []byte(`
+begin;
+
+drop table auth_oidc_method;
+drop table auth_oidc_signing_alg;
+drop table auth_oidc_callback_url;
+drop table auth_oidc_aud_claim;
+drop table auth_oidc_certificate;
+drop table auth_oidc_account;
+
+commit;
+
+`),
+			1085: []byte(`
+begin;
+
+alter table auth_token drop column status;
+
 
 commit;
 
