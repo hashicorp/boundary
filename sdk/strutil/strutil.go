@@ -452,3 +452,11 @@ func Printable(s string) bool {
 		return !unicode.IsPrint(c)
 	}) == -1
 }
+
+func StringListToInterfaceList(in []string) []interface{} {
+	ret := make([]interface{}, len(in))
+	for i, v := range in {
+		ret[i] = v
+	}
+	return ret
+}

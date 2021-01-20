@@ -14,7 +14,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * targets: You can now specify a Boolean-expression filter against worker tags
   to control which workers are allowed to handle any given target's sessions
   ([PR](https://github.com/hashicorp/boundary/pull/862))
-
+* api/cli: On listing/reading, return a list of actions the user is authorized
+  to perform on the identified resources or their associated collections
+  ([PR](https://github.com/hashicorp/boundary/pull/870))
+  
 ### Bug Fixes
 
 * cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`

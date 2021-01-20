@@ -2352,6 +2352,14 @@
         "attributes": {
           "type": "object",
           "description": "The attributes that are applicable for the specific Account type."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
         }
       },
       "title": "Account contains all fields related to an Account resource"
@@ -2405,6 +2413,25 @@
         "attributes": {
           "type": "object",
           "description": "The attributes that are applicable for the specific Auth Method type."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        },
+        "authorized_collection_actions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The authorized actions for the scope's collections.",
+          "readOnly": true
         }
       },
       "title": "AuthMethod contains all fields related to an Auth Method resource"
@@ -2469,6 +2496,14 @@
           "format": "date-time",
           "description": "Output only. The time this Auth Token expires.",
           "readOnly": true
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
         }
       },
       "title": "AuthToken contains all fields related to an Auth Token resource"
@@ -2529,6 +2564,14 @@
             "$ref": "#/definitions/controller.api.resources.groups.v1.Member"
           },
           "description": "Output only. The members of this Group.",
+          "readOnly": true
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
           "readOnly": true
         }
       },
@@ -2598,6 +2641,25 @@
         "attributes": {
           "type": "object",
           "description": "Attributes specific to the catalog type."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        },
+        "authorized_collection_actions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The authorized actions for the scope's collections.",
+          "readOnly": true
         }
       },
       "title": "HostCatalog manages Hosts and Host Sets"
@@ -2659,6 +2721,14 @@
         "attributes": {
           "type": "object",
           "description": "The attributes that are applicable to the specific Host type."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
         }
       },
       "title": "Host contains all fields related to a Host resource"
@@ -2720,6 +2790,14 @@
         "attributes": {
           "type": "object",
           "description": "The attributes that are applicable for the specific Host Set type."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
         }
       },
       "title": "HostSet is a collection of Hosts created and managed by a Host Catalog"
@@ -2864,6 +2942,14 @@
           },
           "description": "Output only. The parsed grant information.",
           "readOnly": true
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
         }
       },
       "title": "Role contains all fields related to a Role resource"
@@ -2913,6 +2999,25 @@
         "type": {
           "type": "string",
           "description": "The type of the resource."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        },
+        "authorized_collection_actions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The authorized actions for the scope's collections.",
+          "readOnly": true
         }
       },
       "title": "Scope contains all fields related to a Scope resource"
@@ -3053,6 +3158,14 @@
         "termination_reason": {
           "type": "string",
           "description": "Output only. If the session is terminated, this provides a short description as to why.",
+          "readOnly": true
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
           "readOnly": true
         }
       },
@@ -3235,6 +3348,10 @@
           "type": "string",
           "description": "Optional boolean expression to filter the workers that are allowed to satisfy this request."
         },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applicable for the specific Target."
+        },
         "authorized_actions": {
           "type": "array",
           "items": {
@@ -3242,10 +3359,6 @@
           },
           "description": "Output only. The available actions on this resource for this user.",
           "readOnly": true
-        },
-        "attributes": {
-          "type": "object",
-          "description": "The attributes that are applicable for the specific Target."
         }
       },
       "title": "Target contains all fields related to a Target resource"
@@ -3321,6 +3434,14 @@
             "$ref": "#/definitions/controller.api.resources.users.v1.Account"
           },
           "description": "Output only. The Accounts linked to this User.",
+          "readOnly": true
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
           "readOnly": true
         }
       },

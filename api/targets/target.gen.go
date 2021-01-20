@@ -28,8 +28,8 @@ type Target struct {
 	SessionMaxSeconds      uint32                 `json:"session_max_seconds,omitempty"`
 	SessionConnectionLimit int32                  `json:"session_connection_limit,omitempty"`
 	WorkerFilter           string                 `json:"worker_filter,omitempty"`
-	AuthorizedActions      []string               `json:"authorized_actions,omitempty"`
 	Attributes             map[string]interface{} `json:"attributes,omitempty"`
+	AuthorizedActions      []string               `json:"authorized_actions,omitempty"`
 
 	response *api.Response
 }

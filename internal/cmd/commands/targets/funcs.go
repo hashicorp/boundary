@@ -70,6 +70,14 @@ func generateTargetTableOutput(in *targets.Target) string {
 		base.ScopeInfoForOutput(in.Scope, maxLength),
 	}
 
+	if len(in.AuthorizedActions) > 0 {
+		ret = append(ret,
+			"",
+			"  Authorized Actions:",
+			base.WrapSlice(4, in.AuthorizedActions),
+		)
+	}
+
 	if len(in.HostSets) > 0 {
 		ret = append(ret,
 			"",
@@ -81,14 +89,6 @@ func generateTargetTableOutput(in *targets.Target) string {
 				"",
 			)
 		}
-	}
-
-	if len(in.AuthorizedActions) > 0 {
-		ret = append(ret,
-			"  Authorized Actions:",
-			base.WrapSlice(4, in.AuthorizedActions),
-			"",
-		)
 	}
 
 	if len(in.Attributes) > 0 {

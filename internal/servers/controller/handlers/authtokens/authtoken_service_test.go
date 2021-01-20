@@ -52,6 +52,7 @@ func TestGet(t *testing.T) {
 		ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 		ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 		Scope:                   &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+		AuthorizedActions:       []string{"read", "delete"},
 	}
 
 	cases := []struct {
@@ -127,6 +128,7 @@ func TestList(t *testing.T) {
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 			Scope:                   &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String()},
+			AuthorizedActions:       []string{"read", "delete"},
 		})
 	}
 
@@ -145,6 +147,7 @@ func TestList(t *testing.T) {
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 			Scope:                   &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String()},
+			AuthorizedActions:       []string{"read", "delete"},
 		})
 	}
 

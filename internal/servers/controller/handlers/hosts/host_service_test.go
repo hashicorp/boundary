@@ -56,6 +56,7 @@ func TestGet(t *testing.T) {
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"address": structpb.NewStringValue(h.GetAddress()),
 		}},
+		AuthorizedActions: []string{"read", "update", "delete"},
 	}
 
 	cases := []struct {
@@ -134,6 +135,7 @@ func TestList(t *testing.T) {
 			Type:          host.StaticSubtype.String(), Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 				"address": structpb.NewStringValue(h.GetAddress()),
 			}},
+			AuthorizedActions: []string{"read", "update", "delete"},
 		})
 	}
 
@@ -307,6 +309,7 @@ func TestCreate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("123.456.789"),
 					}},
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -365,6 +368,7 @@ func TestCreate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("123.456.789"),
 					}},
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -500,6 +504,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -527,6 +532,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -596,6 +602,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -620,6 +627,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -646,6 +654,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},
@@ -672,6 +681,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
+					AuthorizedActions: []string{"read", "update", "delete"},
 				},
 			},
 		},

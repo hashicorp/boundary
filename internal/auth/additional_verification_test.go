@@ -153,7 +153,7 @@ func TestAdditionalVerification(t *testing.T) {
 	}
 }
 
-func TestFetchActionsForId(t *testing.T) {
+func TestFetchActionSetForId(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
@@ -182,8 +182,8 @@ func TestFetchActionsForId(t *testing.T) {
 	cases := []struct {
 		name         string
 		id           string
-		avail        action.Actions
-		allowed      action.Actions
+		avail        action.ActionSet
+		allowed      action.ActionSet
 		typeOverride resource.Type
 	}{
 		{
@@ -192,13 +192,13 @@ func TestFetchActionsForId(t *testing.T) {
 		{
 			name:  "no match",
 			id:    "zip",
-			avail: action.Actions{action.Read, action.Update},
+			avail: action.ActionSet{action.Read, action.Update},
 		},
 		{
 			name:    "disjoint match",
 			id:      "bar",
-			avail:   action.Actions{action.Delete, action.AddGrants, action.Read, action.RemoveHostSets},
-			allowed: action.Actions{action.Delete, action.Read},
+			avail:   action.ActionSet{action.Delete, action.AddGrants, action.Read, action.RemoveHostSets},
+			allowed: action.ActionSet{action.Delete, action.Read},
 		},
 		{
 			name:         "different type",
@@ -209,8 +209,8 @@ func TestFetchActionsForId(t *testing.T) {
 			name:         "type match",
 			id:           "anything",
 			typeOverride: resource.Role,
-			avail:        action.Actions{action.Read, action.AddGrants},
-			allowed:      action.Actions{action.AddGrants},
+			avail:        action.ActionSet{action.Read, action.AddGrants},
+			allowed:      action.ActionSet{action.AddGrants},
 		},
 	}
 	for _, tt := range cases {
@@ -239,7 +239,7 @@ func TestFetchActionsForId(t *testing.T) {
 				auth.WithType(typ),
 			}...)
 			req.NoError(res.Error)
-			assert.Equal(t, tt.allowed, res.FetchActionsForId(ctx, tt.id, tt.avail))
+			assert.Equal(t, tt.allowed, res.FetchActionSetForId(ctx, tt.id, tt.avail))
 		})
 	}
 }

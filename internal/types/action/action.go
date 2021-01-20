@@ -108,11 +108,11 @@ func (a Type) String() string {
 	}[a]
 }
 
-// Actions stores a slice of action types
-type Actions []Type
+// ActionSet stores a slice of action types
+type ActionSet []Type
 
 // Strings converts Actions into a slice of the actions' string equivalents
-func (a Actions) Strings() []string {
+func (a ActionSet) Strings() []string {
 	if a == nil {
 		return nil
 	}

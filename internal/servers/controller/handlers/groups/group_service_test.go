@@ -106,6 +106,7 @@ func TestGet(t *testing.T) {
 				ScopeId: u.GetScopeId(),
 			},
 		},
+		AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 	}
 
 	wantProjGroup := &pb.Group{
@@ -124,6 +125,7 @@ func TestGet(t *testing.T) {
 				ScopeId: u.GetScopeId(),
 			},
 		},
+		AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 	}
 
 	cases := []struct {
@@ -218,21 +220,23 @@ func TestList(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		og := iam.TestGroup(t, conn, oWithGroups.GetPublicId())
 		wantOrgGroups = append(wantOrgGroups, &pb.Group{
-			Id:          og.GetPublicId(),
-			ScopeId:     og.GetScopeId(),
-			Scope:       &scopes.ScopeInfo{Id: oWithGroups.GetPublicId(), Type: scope.Org.String()},
-			CreatedTime: og.GetCreateTime().GetTimestamp(),
-			UpdatedTime: og.GetUpdateTime().GetTimestamp(),
-			Version:     1,
+			Id:                og.GetPublicId(),
+			ScopeId:           og.GetScopeId(),
+			Scope:             &scopes.ScopeInfo{Id: oWithGroups.GetPublicId(), Type: scope.Org.String()},
+			CreatedTime:       og.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       og.GetUpdateTime().GetTimestamp(),
+			Version:           1,
+			AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 		})
 		pg := iam.TestGroup(t, conn, pWithGroups.GetPublicId())
 		wantProjGroups = append(wantProjGroups, &pb.Group{
-			Id:          pg.GetPublicId(),
-			ScopeId:     pg.GetScopeId(),
-			Scope:       &scopes.ScopeInfo{Id: pWithGroups.GetPublicId(), Type: scope.Project.String()},
-			CreatedTime: pg.GetCreateTime().GetTimestamp(),
-			UpdatedTime: pg.GetUpdateTime().GetTimestamp(),
-			Version:     1,
+			Id:                pg.GetPublicId(),
+			ScopeId:           pg.GetScopeId(),
+			Scope:             &scopes.ScopeInfo{Id: pWithGroups.GetPublicId(), Type: scope.Project.String()},
+			CreatedTime:       pg.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       pg.GetUpdateTime().GetTimestamp(),
+			Version:           1,
+			AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 		})
 	}
 
@@ -397,11 +401,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateGroupResponse{
 				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
 				Item: &pb.Group{
-					ScopeId:     defaultOGroup.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: defaultOGroup.GetScopeId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
+					ScopeId:           defaultOGroup.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: defaultOGroup.GetScopeId(), Type: scope.Org.String()},
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -415,11 +420,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateGroupResponse{
 				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
 				Item: &pb.Group{
-					ScopeId:     scope.Global.String(),
-					Scope:       &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
+					ScopeId:           scope.Global.String(),
+					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -435,11 +441,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateGroupResponse{
 				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
 				Item: &pb.Group{
-					ScopeId:     defaultPGroup.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: defaultPGroup.GetScopeId(), Type: scope.Project.String()},
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
+					ScopeId:           defaultPGroup.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: defaultPGroup.GetScopeId(), Type: scope.Project.String()},
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -581,6 +588,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -611,6 +619,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -642,6 +651,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -673,6 +683,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -735,6 +746,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -765,6 +777,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -795,6 +808,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},

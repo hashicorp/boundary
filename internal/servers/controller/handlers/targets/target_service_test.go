@@ -81,7 +81,7 @@ func TestGet(t *testing.T) {
 		Attributes:             new(structpb.Struct),
 		SessionMaxSeconds:      wrapperspb.UInt32(28800),
 		SessionConnectionLimit: wrapperspb.Int32(1),
-		AuthorizedActions:      targets.TargetIdActions.Strings(),
+		AuthorizedActions:      targets.IdActions.Strings(),
 	}
 	for _, ihs := range hs {
 		pTar.HostSets = append(pTar.HostSets, &pb.HostSet{Id: ihs.GetPublicId(), HostCatalogId: ihs.GetCatalogId()})
@@ -164,7 +164,7 @@ func TestList(t *testing.T) {
 			Attributes:             new(structpb.Struct),
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(1),
-			AuthorizedActions:      targets.TargetIdActions.Strings(),
+			AuthorizedActions:      targets.IdActions.Strings(),
 		})
 	}
 
@@ -320,7 +320,7 @@ func TestCreate(t *testing.T) {
 					}},
 					SessionMaxSeconds:      wrapperspb.UInt32(28800),
 					SessionConnectionLimit: wrapperspb.Int32(1),
-					AuthorizedActions:      targets.TargetIdActions.Strings(),
+					AuthorizedActions:      targets.IdActions.Strings(),
 				},
 			},
 		},
@@ -491,7 +491,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.TargetIdActions.Strings(),
+					AuthorizedActions:      targets.IdActions.Strings(),
 				},
 			},
 		},
@@ -523,7 +523,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.TargetIdActions.Strings(),
+					AuthorizedActions:      targets.IdActions.Strings(),
 				},
 			},
 		},
@@ -608,7 +608,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.TargetIdActions.Strings(),
+					AuthorizedActions:      targets.IdActions.Strings(),
 				},
 			},
 		},
@@ -639,7 +639,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.TargetIdActions.Strings(),
+					AuthorizedActions:      targets.IdActions.Strings(),
 				},
 			},
 		},
@@ -670,7 +670,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.TargetIdActions.Strings(),
+					AuthorizedActions:      targets.IdActions.Strings(),
 				},
 			},
 		},
