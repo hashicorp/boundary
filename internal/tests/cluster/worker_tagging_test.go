@@ -122,7 +122,11 @@ func TestWorkerTagging(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
 
-			tgt, err := tcl.Update(ctx, "ttcp_1234567890", 0, targets.WithAutomaticVersioning(true), targets.WithWorkerFilter(tc.filter))
+			opts := []targets.Option{targets.WithAutomaticVersioning(true), targets.WithDescription(tc.name)}
+			if tc.filter != "" {
+				opts = append(opts, targets.WithWorkerFilter(tc.filter))
+			}
+			tgt, err := tcl.Update(ctx, "ttcp_1234567890", 0, opts...)
 			require.NoError(err)
 			require.NotNil(tgt)
 
