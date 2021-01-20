@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/sdk/wrapper"
@@ -339,6 +340,46 @@ func (c *Command) Run(args []string) int {
 		c.DatabaseUrl = strings.TrimSpace(dbaseUrl)
 		if err := c.ConnectToDatabase("postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
+			return 1
+		}
+
+		sMan, err := schema.NewManager(c.Context, "postgres", c.Database.DB())
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Can't get schema manager: %w.", err).Error())
+			return 1
+		}
+		// This is an advisory locks on the DB which is released when the db session ends.
+		if err := sMan.SharedLock(c.Context); err != nil {
+			c.UI.Error(fmt.Errorf("Unable to gain shared access to the database: %w", err).Error())
+			return 1
+		}
+		defer func() {
+			if err := sMan.SharedUnlock(c.Context); err != nil {
+				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
+			}
+		}()
+		ckState, err := sMan.CurrentState(c.Context)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error checking schema state: %w", err).Error())
+			return 1
+		}
+		if !ckState.InitializationStarted {
+			c.UI.Error("Database has not been initialized. Please run `boundary database init`.")
+			return 1
+		}
+		if ckState.Dirty {
+			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
+			return 1
+		}
+		if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
+			// TODO: Add the command to migrate up the schema version once that command exists.
+			c.UI.Error("Older schema version is than is expected from this binary.")
+			return 1
+		}
+		if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {
+			c.UI.Error(base.WrapAtLength(fmt.Sprintf("Newer schema version (%d) "+
+				"than this binary expects. Please use a newer version of the boundary "+
+				"binary.", ckState.DatabaseSchemaVersion)))
 			return 1
 		}
 	}

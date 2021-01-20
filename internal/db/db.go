@@ -1,15 +1,10 @@
 package db
 
 import (
-	"errors"
 	"fmt"
-	"os"
 
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/hashicorp/boundary/internal/db/migrations"
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-multierror"
 	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
 )
@@ -38,66 +33,6 @@ func Open(dbType DbType, connectionUrl string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("unable to open database: %w", err)
 	}
 	return db, nil
-}
-
-// Migrate a database schema
-func Migrate(connectionUrl string, migrationsDirectory string) error {
-	if connectionUrl == "" {
-		return errors.New("connection url is unset")
-	}
-	if _, err := os.Stat(migrationsDirectory); os.IsNotExist(err) {
-		return errors.New("error migrations directory does not exist")
-	}
-	// run migrations
-	m, err := migrate.New(fmt.Sprintf("file://%s", migrationsDirectory), connectionUrl)
-	if err != nil {
-		return fmt.Errorf("unable to create migrations: %w", err)
-	}
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("unable to run migrations: %w", err)
-	}
-	return nil
-}
-
-// InitStore will execute the migrations needed to initialize the store. It
-// returns true if migrations actually ran; false if we were already current.
-func InitStore(dialect string, cleanup func() error, url string) (bool, error) {
-	var mErr *multierror.Error
-	// run migrations
-	source, err := migrations.NewMigrationSource(dialect)
-	if err != nil {
-		mErr = multierror.Append(mErr, fmt.Errorf("error creating migration driver: %w", err))
-		if cleanup != nil {
-			if err := cleanup(); err != nil {
-				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating driver: %w", err))
-			}
-		}
-		return false, mErr.ErrorOrNil()
-	}
-	m, err := migrate.NewWithSourceInstance("httpfs", source, url)
-	if err != nil {
-		mErr = multierror.Append(mErr, fmt.Errorf("error creating migrations: %w", err))
-		if cleanup != nil {
-			if err := cleanup(); err != nil {
-				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating migrations: %w", err))
-			}
-		}
-		return false, mErr.ErrorOrNil()
-
-	}
-	if err := m.Up(); err != nil {
-		if err == migrate.ErrNoChange {
-			return false, nil
-		}
-		mErr = multierror.Append(mErr, fmt.Errorf("error running migrations: %w", err))
-		if cleanup != nil {
-			if err := cleanup(); err != nil {
-				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from running migrations: %w", err))
-			}
-		}
-		return false, mErr.ErrorOrNil()
-	}
-	return true, mErr.ErrorOrNil()
 }
 
 func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages []interface{}) {

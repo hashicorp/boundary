@@ -77,7 +77,7 @@ perms-table:
 gen: cleangen proto api migrations fmt
 
 migrations:
-	$(MAKE) --environment-overrides -C internal/db/migrations/genmigrations migrations
+	$(MAKE) --environment-overrides -C internal/db/schema/migrations/generate migrations
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40

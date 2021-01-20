@@ -9,6 +9,7 @@ replace github.com/hashicorp/boundary/sdk => ./sdk
 require (
 	github.com/armon/go-metrics v0.3.5
 	github.com/bufbuild/buf v0.33.0
+	github.com/dhui/dktest v0.3.3
 	github.com/fatih/color v1.10.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
 	github.com/go-bindata/go-bindata/v3 v3.1.3

@@ -162,6 +162,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    MissingTable,
 			want: MissingTable,
 		},
+		{
+			name: "MigrationIntegrity",
+			c:    MigrationIntegrity,
+			want: MigrationIntegrity,
+		},
+		{
+			name: "MigrationLock",
+			c:    MigrationLock,
+			want: MigrationLock,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
