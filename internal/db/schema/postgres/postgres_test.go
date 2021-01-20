@@ -202,7 +202,7 @@ func TestWithSchema(t *testing.T) {
 		if err := d.Run(ctx, strings.NewReader("CREATE SCHEMA foobar AUTHORIZATION postgres")); err != nil {
 			t.Fatal(err)
 		}
-		if err := d.SetVersion(ctx, 1); err != nil {
+		if err := d.SetVersion(ctx, 1, false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -227,7 +227,7 @@ func TestWithSchema(t *testing.T) {
 		}
 
 		// now update CurrentState and compare
-		if err := d2.SetVersion(ctx, 2); err != nil {
+		if err := d2.SetVersion(ctx, 2, false); err != nil {
 			t.Fatal(err)
 		}
 		version, _, err = d2.CurrentState(ctx)
@@ -349,41 +349,6 @@ func TestRun_Error(t *testing.T) {
 
 		err = p.Run(ctx, bytes.NewReader([]byte("SELECT *\nFROM foo")))
 		assert.Error(t, err)
-	})
-}
-
-func TestSetDirty(t *testing.T) {
-	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ctx := context.Background()
-		ip, port, err := c.FirstPort()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		addr := pgConnectionString(ip, port)
-		p, err := open(t, ctx, addr)
-		if err != nil {
-			require.NoError(t, err)
-		}
-		t.Cleanup(func() {
-			require.NoError(t, p.close(t))
-		})
-		v, d, err := p.CurrentState(ctx)
-		require.NoError(t, err)
-		assert.Equal(t, nilVersion, v)
-		assert.False(t, d)
-
-		p.SetDirty(ctx, true)
-		v, d, err = p.CurrentState(ctx)
-		require.NoError(t, err)
-		assert.Equal(t, nilVersion, v)
-		assert.True(t, d)
-
-		p.SetDirty(ctx, false)
-		v, d, err = p.CurrentState(ctx)
-		require.NoError(t, err)
-		assert.Equal(t, nilVersion, v)
-		assert.False(t, d)
 	})
 }
 

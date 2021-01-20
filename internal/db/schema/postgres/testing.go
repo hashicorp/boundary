@@ -132,10 +132,7 @@ func testSetVersion(t *testing.T, d *Postgres) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := d.SetDirty(ctx, tc.dirty); err != nil {
-				t.Fatal(err)
-			}
-			err := d.SetVersion(ctx, tc.version)
+			err := d.SetVersion(ctx, tc.version, tc.dirty)
 			if err != tc.expectedErr {
 				t.Fatal("Got unexpected error:", err, "!=", tc.expectedErr)
 			}

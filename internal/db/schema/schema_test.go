@@ -20,11 +20,6 @@ func TestMigrateStore(t *testing.T) {
 		require.NoError(t, c())
 	})
 
-	db, err := sql.Open(dialect, u)
-	require.NoError(t, err)
-	m, err := NewManager(ctx, dialect, db)
-	require.NoError(t, m.driver.SetDirty(ctx, true))
-
 	// Set the possible migration state to be only part of the full migration
 	oState := migrationStates[dialect]
 	nState := createPartialMigrationState(oState, 8)
@@ -48,7 +43,7 @@ func TestMigrateStore(t *testing.T) {
 	assert.False(t, ran)
 }
 
-func TestMigrateStore_NotDirty(t *testing.T) {
+func TestMigrateStore_Dirty(t *testing.T) {
 	dialect := "postgres"
 	ctx := context.Background()
 
@@ -58,7 +53,13 @@ func TestMigrateStore_NotDirty(t *testing.T) {
 		require.NoError(t, c())
 	})
 
-	b, err := MigrateStore(ctx, dialect, u, WithSkipSetDirty(true))
+	// Mark the db as dirty indicating a previously run failed migration
+	db, err := sql.Open(dialect, u)
+	require.NoError(t, err)
+	m, err := NewManager(ctx, dialect, db)
+	m.driver.SetVersion(ctx, -1, true)
+
+	b, err := MigrateStore(ctx, dialect, u)
 	assert.Error(t, err)
 	assert.False(t, b)
 }

@@ -87,7 +87,5 @@ func testInitStore(t *testing.T, cleanup func() error, url string) {
 	require.NoError(t, err)
 	sm, err := schema.NewManager(ctx, dialect, d)
 	require.NoError(t, err)
-	require.NoError(t, sm.SetDirty(ctx))
 	require.NoError(t, sm.RollForward(ctx))
-	require.NoError(t, sm.UnsetDirty(ctx))
 }

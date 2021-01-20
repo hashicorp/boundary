@@ -297,28 +297,12 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 				"state.  Please revert back to the last known good state."))
 			return 1
 		}
-		if st.InitializationStarted {
-			c.UI.Error(base.WrapAtLength("Database has already been " +
-				"initialized. If the initialization did not complete successfully " +
-				"please revert the database to its fresh state."))
-			return 1
-		}
-	}
-
-	// The initialization is dirty as long as it doesn't complete successfully.
-	if err := man.SetDirty(c.Context); err != nil {
-		c.UI.Error(base.WrapAtLength("Database could not be marked as dirty in " +
-			"preparation for it's initialization."))
-		return 1
 	}
 
 	// Core migrations using the migration URL
 	{
 		migrationUrl = strings.TrimSpace(migrationUrl)
-		// We skip setting and unsetting dirty in MigrateStore so this command can manage it instead
-		// since this command does more than simply mutate the schema and erroring out prior to adding
-		// the initial resources would leave the initialization in a dirty state.
-		ran, err := schema.MigrateStore(c.Context, dialect, migrationUrl, schema.WithSkipSetDirty(true), schema.WithSkipUnsetDirty(true))
+		ran, err := schema.MigrateStore(c.Context, dialect, migrationUrl)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
 			return 1
@@ -326,7 +310,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		if !ran {
 			if base.Format(c.UI) == "table" {
 				c.UI.Info("Database already initialized.")
-				return c.unsetDirty(man)
+				return 0
 			}
 		}
 		if base.Format(c.UI) == "table" {
@@ -346,6 +330,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Error(fmt.Errorf("Error connecting to database after migrations: %w", err).Error())
 		return 1
 	}
+	// TODO: Check to see if oplog exists and has a non zero number of records in it.  If so exit with an error
+	// indicating the database was initialized previously.
 	if err := c.srv.CreateGlobalKmsKeys(c.Context); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating global-scope KMS keys: %w", err).Error())
 		return 1
@@ -370,7 +356,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipInitialLoginRoleCreation {
-		return c.unsetDirty(man)
+		return 0
 	}
 
 	role, err := c.srv.CreateInitialLoginRole(c.Context)
@@ -391,7 +377,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipAuthMethodCreation {
-		return c.unsetDirty(man)
+		return 0
 	}
 
 	// Use an easy name, at least
@@ -419,7 +405,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipScopesCreation {
-		return c.unsetDirty(man)
+		return 0
 	}
 
 	orgScope, projScope, err := c.srv.CreateInitialScopes(c.Context)
@@ -453,7 +439,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipHostResourcesCreation {
-		return c.unsetDirty(man)
+		return 0
 	}
 
 	hc, hs, h, err := c.srv.CreateInitialHostResources(c.Context)
@@ -480,7 +466,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipTargetCreation {
-		return c.unsetDirty(man)
+		return 0
 	}
 
 	c.srv.DevTargetSessionConnectionLimit = -1
@@ -506,7 +492,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		jsonMap["target"] = targetInfo
 	}
 
-	return c.unsetDirty(man)
+	return 0
 }
 
 func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
@@ -549,13 +535,5 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 		return 1
 	}
 
-	return 0
-}
-
-func (c *InitCommand) unsetDirty(man *schema.Manager) int {
-	if err := man.UnsetDirty(c.Context); err != nil {
-		c.UI.Error(base.WrapAtLength("Database could not be marked undirty after initialization."))
-		return 1
-	}
 	return 0
 }
