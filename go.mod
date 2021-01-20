@@ -44,7 +44,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/gox v1.0.1
 	github.com/mr-tron/base58 v1.2.0
-	github.com/oligot/go-mod-upgrade v0.2.1
+	github.com/oligot/go-mod-upgrade v0.3.0
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.3.3
