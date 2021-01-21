@@ -177,7 +177,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 						}
 					}
 					if err = w.CreateItems(ctx, tags); err != nil {
-						return fmt.Errorf("error storing tags for worker %s: %w", server.PrivateId, err)
+						return fmt.Errorf("error inserting tags for worker %s: %w", server.PrivateId, err)
 					}
 				}
 			}
