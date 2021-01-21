@@ -168,14 +168,20 @@ func (c *Command) Run(args []string) int {
 					output = append(output, "")
 				}
 				output = append(output,
-					fmt.Sprintf("  ID:                 %s", t.Id),
-					fmt.Sprintf("    Status:           %s", t.Status),
-					fmt.Sprintf("    Created Time:     %s", t.CreatedTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    Expiration Time:  %s", t.ExpirationTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    Updated Time:     %s", t.UpdatedTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    User ID:          %s", t.UserId),
-					fmt.Sprintf("    Target ID:        %s", t.TargetId),
+					fmt.Sprintf("  ID:                    %s", t.Id),
+					fmt.Sprintf("    Status:              %s", t.Status),
+					fmt.Sprintf("    Created Time:        %s", t.CreatedTime.Local().Format(time.RFC1123)),
+					fmt.Sprintf("    Expiration Time:     %s", t.ExpirationTime.Local().Format(time.RFC1123)),
+					fmt.Sprintf("    Updated Time:        %s", t.UpdatedTime.Local().Format(time.RFC1123)),
+					fmt.Sprintf("    User ID:             %s", t.UserId),
+					fmt.Sprintf("    Target ID:           %s", t.TargetId),
 				)
+				if len(t.AuthorizedActions) > 0 {
+					output = append(output,
+						"    Authorized Actions:",
+						base.WrapSlice(6, t.AuthorizedActions),
+					)
+				}
 			}
 			c.UI.Output(base.WrapForHelpText(output))
 		}

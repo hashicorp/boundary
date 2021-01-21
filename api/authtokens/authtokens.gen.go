@@ -24,6 +24,7 @@ type AuthToken struct {
 	UpdatedTime             time.Time         `json:"updated_time,omitempty"`
 	ApproximateLastUsedTime time.Time         `json:"approximate_last_used_time,omitempty"`
 	ExpirationTime          time.Time         `json:"expiration_time,omitempty"`
+	AuthorizedActions       []string          `json:"authorized_actions,omitempty"`
 
 	response *api.Response
 }

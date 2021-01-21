@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -23,6 +24,7 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*gorm.DB, strin
 	var cleanup func() error
 	var url string
 	var err error
+	ctx := context.Background()
 
 	opts := getTestOpts(opt...)
 
@@ -36,13 +38,14 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*gorm.DB, strin
 			assert.NoError(t, cleanup(), "Got error cleaning up db in docker.")
 		})
 	default:
-		cleanup = func() error { return nil }
 		url = opts.withTestDatabaseUrl
 	}
-	_, err = InitStore(dialect, cleanup, url)
+
+	_, err = schema.InitStore(ctx, dialect, url)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Couldn't init store on existing db: %v", err)
 	}
+
 	db, err := gorm.Open(dialect, url)
 	if err != nil {
 		t.Fatal(err)

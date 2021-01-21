@@ -7,9 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/db/migrations"
-	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -186,8 +184,10 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}()
 	}
 
-	if migrations.DevMigration != c.flagAllowDevMigrations {
-		if migrations.DevMigration {
+	dialect := "postgres"
+
+	if schema.DevMigration(dialect) != c.flagAllowDevMigrations {
+		if schema.DevMigration(dialect) {
 			c.UI.Error(base.WrapAtLength("This version of the binary has " +
 				"dev database schema updates which may not be supported in the " +
 				"next official release. To proceed anyways please use the " +
@@ -257,58 +257,79 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		migrationUrlToParse = urlToParse
 	}
 
-	dbaseUrl, err := config.ParseAddress(urlToParse)
-	if err != nil && err != config.ErrNotAUrl {
-		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
-		return 1
-	}
-
 	migrationUrl, err := config.ParseAddress(migrationUrlToParse)
 	if err != nil && err != config.ErrNotAUrl {
 		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
 		return 1
 	}
+	migrationUrl = strings.TrimSpace(migrationUrl)
 
-	// Core migrations using the migration URL
+	// This database is used to keep an exclusive lock on the database for the
+	// remainder of the command
+	dBase, err := sql.Open(dialect, migrationUrl)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error establishing db connection for locking: %w", err).Error())
+		return 1
+	}
+	man, err := schema.NewManager(c.Context, dialect, dBase)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error setting up schema manager for locking: %w", err).Error())
+		return 1
+	}
 	{
-		c.srv.DatabaseUrl = strings.TrimSpace(migrationUrl)
-		ldb, err := sql.Open("postgres", c.srv.DatabaseUrl)
+		st, err := man.CurrentState(c.Context)
 		if err != nil {
-			c.UI.Error(fmt.Errorf("Error opening database to check init status: %w", err).Error())
+			c.UI.Error(fmt.Errorf("Error getting database state: %w", err).Error())
 			return 1
 		}
-		_, err = ldb.QueryContext(c.Context, "select version from schema_migrations")
-		switch {
-		case err == nil:
-			if base.Format(c.UI) == "table" {
-				c.UI.Info("Database already initialized.")
-				return 0
-			}
-		case errors.IsMissingTableError(err):
-			// Doesn't exist so we continue on
-		default:
-			c.UI.Error(fmt.Errorf("Error querying database for init status: %w", err).Error())
+		if st.Dirty {
+			c.UI.Error(base.WrapAtLength("Database is in a bad initialization " +
+				"state.  Please revert back to the last known good state."))
 			return 1
 		}
-		ran, err := db.InitStore("postgres", nil, c.srv.DatabaseUrl)
-		if err != nil {
+		if st.InitializationStarted {
+			// TODO: Separate from the "dirty" bit maintained by the schema
+			//  manager maintain a bit which indicates that this full command
+			//  was completed successfully (with all default resources being created).
+			//  Use that bit to determine if a previous init was completed
+			//  successfully or not.
+			c.UI.Error(base.WrapAtLength("Database has already been " +
+				"initialized. If the initialization did not complete successfully " +
+				"please revert the database to its fresh state."))
+			return 1
+		}
+	}
+
+	// This is an advisory locks on the DB which is released when the db session ends.
+	if err := man.ExclusiveLock(c.Context); err != nil {
+		c.UI.Error(fmt.Errorf("Error capturing an exclusive lock: %w", err).Error())
+		return 1
+	}
+	defer func() {
+		if err := man.ExclusiveUnlock(c.Context); err != nil {
+			c.UI.Error(fmt.Errorf("Unable to release exclusive lock to the database: %w", err).Error())
+		}
+	}()
+
+	{
+		if err := man.RollForward(c.Context); err != nil {
 			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
 			return 1
-		}
-		if !ran {
-			if base.Format(c.UI) == "table" {
-				c.UI.Info("Database already initialized.")
-				return 0
-			}
 		}
 		if base.Format(c.UI) == "table" {
 			c.UI.Info("Migrations successfully run.")
 		}
 	}
 
+	dbaseUrl, err := config.ParseAddress(urlToParse)
+	if err != nil && err != config.ErrNotAUrl {
+		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
+		return 1
+	}
+
 	// Everything after is done with normal database URL and is affecting actual data
 	c.srv.DatabaseUrl = strings.TrimSpace(dbaseUrl)
-	if err := c.srv.ConnectToDatabase("postgres"); err != nil {
+	if err := c.srv.ConnectToDatabase(dialect); err != nil {
 		c.UI.Error(fmt.Errorf("Error connecting to database after migrations: %w", err).Error())
 		return 1
 	}

@@ -4,11 +4,19 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Security
+
+* Boundary now uses Go's execabs package for execution of binaries in `boundary
+  connect`. This is for defense-in-depth rather than a specific issue. See the
+  [Go blog post](https://blog.golang.org/path-security) for more details.
+  ([PR](https://github.com/hashicorp/boundary/pull/873))
+
 ### New and Improved
 
-* controller: Improved error handling in kms, oplog and perms repos
-  ([PR1](https://github.com/hashicorp/boundary/pull/848), [PR2](https://github.com/hashicorp/boundary/pull/854))
-  
+* api/cli: On listing/reading, return a list of actions the user is authorized
+  to perform on the identified resources
+  ([PR](https://github.com/hashicorp/boundary/pull/870))
+
 ### Bug Fixes
 
 * cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`
@@ -38,7 +46,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   setup when running the binary
   ([Issue](https://github.com/hashicorp/boundary/issues/830))
   ([PR](https://github.com/hashicorp/boundary/pull/846))
-  
+
 ## 0.1.3 (2020/12/18)
 
 ### Changes/Deprecations

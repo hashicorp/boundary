@@ -3,6 +3,6 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 migrations:
 	go run .
-	goimports -w ${GEN_BASEPATH}/internal/db/migrations
+	goimports -w ${GEN_BASEPATH}/internal/db/schema
 
 .PHONY: migrations

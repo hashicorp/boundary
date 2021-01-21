@@ -399,7 +399,7 @@ func (c *Command) Run(args []string) int {
 		if c.flagDisableDatabaseDestruction {
 			opts = append(opts, base.WithSkipDatabaseDestruction())
 		}
-		if err := c.CreateDevDatabase("postgres", opts...); err != nil {
+		if err := c.CreateDevDatabase(c.Context, "postgres", opts...); err != nil {
 			if err == docker.ErrDockerUnsupported {
 				c.UI.Error("Automatically starting a Docker container running Postgres is not currently supported on this platform. Please use -database-url to pass in a URL (or an env var or file reference to a URL) for connecting to an existing empty database.")
 				return 1
@@ -417,7 +417,7 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		c.DatabaseUrl = strings.TrimSpace(dbaseUrl)
-		if err := c.CreateDevDatabase("postgres"); err != nil {
+		if err := c.CreateDevDatabase(c.Context, "postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return 1
 		}

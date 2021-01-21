@@ -300,18 +300,24 @@ func (c *Command) Run(args []string) int {
 				}
 				if true {
 					output = append(output,
-						fmt.Sprintf("  ID:            %s", r.Id),
-						fmt.Sprintf("    Version:     %d", r.Version),
+						fmt.Sprintf("  ID:                    %s", r.Id),
+						fmt.Sprintf("    Version:             %d", r.Version),
 					)
 				}
 				if r.Name != "" {
 					output = append(output,
-						fmt.Sprintf("    Name:        %s", r.Name),
+						fmt.Sprintf("    Name:                %s", r.Name),
 					)
 				}
 				if r.Description != "" {
 					output = append(output,
-						fmt.Sprintf("    Description: %s", r.Description),
+						fmt.Sprintf("    Description:         %s", r.Description),
+					)
+				}
+				if len(r.AuthorizedActions) > 0 {
+					output = append(output,
+						"    Authorized Actions:",
+						base.WrapSlice(6, r.AuthorizedActions),
 					)
 				}
 			}

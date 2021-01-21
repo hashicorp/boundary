@@ -9,6 +9,7 @@ replace github.com/hashicorp/boundary/sdk => ./sdk
 require (
 	github.com/armon/go-metrics v0.3.5
 	github.com/bufbuild/buf v0.33.0
+	github.com/dhui/dktest v0.3.3
 	github.com/fatih/color v1.10.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
 	github.com/go-bindata/go-bindata/v3 v3.1.3
@@ -43,7 +44,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/gox v1.0.1
 	github.com/mr-tron/base58 v1.2.0
-	github.com/oligot/go-mod-upgrade v0.2.1
+	github.com/oligot/go-mod-upgrade v0.3.0
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.3.3
@@ -53,6 +54,7 @@ require (
 	github.com/zalando/go-keyring v0.1.0
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20201208171446-5f87f3452ae9
+	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
 	golang.org/x/tools v0.0.0-20210101214203-2dba1e4ea05c
 	google.golang.org/genproto v0.0.0-20201214200347-8c77b98c765d
 	google.golang.org/grpc v1.34.0

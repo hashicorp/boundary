@@ -65,7 +65,12 @@ func parsePBs() {
 				if pkg != "" && pkg != in.generatedStructure.pkg {
 					name = fmt.Sprintf("%s.%s", pkg, name)
 				}
-				fi.FieldType = sliceText + ptr + name
+				switch name {
+				case "v1.AuthorizedCollectionActionsEntry":
+					fi.FieldType = "map[string][]string"
+				default:
+					fi.FieldType = sliceText + ptr + name
+				}
 			case protoreflect.BytesKind:
 				fi.FieldType = "[]byte"
 			default:

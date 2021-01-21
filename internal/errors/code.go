@@ -56,10 +56,14 @@ const (
 	NotNull              Code = 1001 // NotNull represents a value must not be null error
 	NotUnique            Code = 1002 // NotUnique represents a value must be unique error
 	NotSpecificIntegrity Code = 1003 // NotSpecificIntegrity represents an integrity error that has no specific domain error code
-	MissingTable         Code = 1004 // Missing table represents an undefined table error
+	MissingTable         Code = 1004 // MissingTable represents an undefined table error
 	RecordNotFound       Code = 1100 // RecordNotFound represents that a record/row was not found matching the criteria
 	MultipleRecords      Code = 1101 // MultipleRecords represents that multiple records/rows were found matching the criteria
 	ColumnNotFound       Code = 1102 // ColumnNotFound represent that a column was not found in the underlying db
 	MaxRetries           Code = 1103 // MaxRetries represent that a db Tx hit max retires allowed
 	Exception            Code = 1104 // Exception represent that an underlying db exception was raised
+
+	// Migration setup errors are codes 2000-3000
+	MigrationIntegrity Code = 2000 // MigrationIntegrity represents an error with the generated migration related code
+	MigrationLock      Code = 2001 // MigrationLock represents an error related to locking of the DB
 )

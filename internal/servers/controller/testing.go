@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -324,10 +324,10 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 
 	// Base server
-	tc.b = base.NewServer(nil)
-	tc.b.Command = &base.Command{
+	tc.b = base.NewServer(&base.Command{
+		Context:    ctx,
 		ShutdownCh: make(chan struct{}),
-	}
+	})
 
 	// Get dev config, or use a provided one
 	var err error
@@ -412,7 +412,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	if opts.DatabaseUrl != "" {
 		tc.b.DatabaseUrl = opts.DatabaseUrl
-		if _, err := db.InitStore("postgres", nil, tc.b.DatabaseUrl); err != nil {
+		if _, err := schema.InitStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
 			t.Fatal(err)
 		}
 		if err := tc.b.ConnectToDatabase("postgres"); err != nil {
@@ -423,7 +423,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 				t.Fatal(err)
 			}
 			if !opts.DisableInitialLoginRoleCreation {
-				if _, err := tc.b.CreateInitialLoginRole(context.Background()); err != nil {
+				if _, err := tc.b.CreateInitialLoginRole(ctx); err != nil {
 					t.Fatal(err)
 				}
 				if !opts.DisableAuthMethodCreation {
@@ -453,7 +453,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
 		}
-		if err := tc.b.CreateDevDatabase("postgres", createOpts...); err != nil {
+		if err := tc.b.CreateDevDatabase(ctx, "postgres", createOpts...); err != nil {
 			t.Fatal(err)
 		}
 	}

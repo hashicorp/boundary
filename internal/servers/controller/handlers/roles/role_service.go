@@ -21,7 +21,30 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var maskManager handlers.MaskManager
+var (
+	maskManager handlers.MaskManager
+
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.ActionSet{
+		action.Read,
+		action.Update,
+		action.Delete,
+		action.AddPrincipals,
+		action.SetPrincipals,
+		action.RemovePrincipals,
+		action.AddGrants,
+		action.SetGrants,
+		action.RemoveGrants,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.ActionSet{
+		action.Create,
+		action.List,
+	}
+)
 
 func init() {
 	var err error
@@ -60,10 +83,19 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 	if err != nil {
 		return nil, err
 	}
+	finalItems := make([]*pb.Role, 0, len(gl))
+	res := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.Role,
+	}
 	for _, item := range gl {
 		item.Scope = authResults.Scope
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
+		if len(item.AuthorizedActions) > 0 {
+			finalItems = append(finalItems, item)
+		}
 	}
-	return &pbs.ListRolesResponse{Items: gl}, nil
+	return &pbs.ListRolesResponse{Items: finalItems}, nil
 }
 
 // GetRoles implements the interface pbs.RoleServiceServer.
@@ -80,6 +112,7 @@ func (s Service) GetRole(ctx context.Context, req *pbs.GetRoleRequest) (*pbs.Get
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.GetRoleResponse{Item: u}, nil
 }
 
@@ -97,6 +130,7 @@ func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*p
 		return nil, err
 	}
 	r.Scope = authResults.Scope
+	r.AuthorizedActions = authResults.FetchActionSetForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.CreateRoleResponse{Item: r, Uri: fmt.Sprintf("roles/%s", r.GetId())}, nil
 }
 
@@ -114,6 +148,7 @@ func (s Service) UpdateRole(ctx context.Context, req *pbs.UpdateRoleRequest) (*p
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.UpdateRoleResponse{Item: u}, nil
 }
 
@@ -147,6 +182,7 @@ func (s Service) AddRolePrincipals(ctx context.Context, req *pbs.AddRolePrincipa
 		return nil, err
 	}
 	r.Scope = authResults.Scope
+	r.AuthorizedActions = authResults.FetchActionSetForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.AddRolePrincipalsResponse{Item: r}, nil
 }
 
@@ -164,6 +200,7 @@ func (s Service) SetRolePrincipals(ctx context.Context, req *pbs.SetRolePrincipa
 		return nil, err
 	}
 	r.Scope = authResults.Scope
+	r.AuthorizedActions = authResults.FetchActionSetForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.SetRolePrincipalsResponse{Item: r}, nil
 }
 
@@ -181,6 +218,7 @@ func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePr
 		return nil, err
 	}
 	r.Scope = authResults.Scope
+	r.AuthorizedActions = authResults.FetchActionSetForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.RemoveRolePrincipalsResponse{Item: r}, nil
 }
 
@@ -198,6 +236,7 @@ func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsReques
 		return nil, err
 	}
 	r.Scope = authResults.Scope
+	r.AuthorizedActions = authResults.FetchActionSetForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.AddRoleGrantsResponse{Item: r}, nil
 }
 
@@ -215,6 +254,7 @@ func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsReques
 		return nil, err
 	}
 	r.Scope = authResults.Scope
+	r.AuthorizedActions = authResults.FetchActionSetForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.SetRoleGrantsResponse{Item: r}, nil
 }
 
@@ -232,6 +272,7 @@ func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrants
 		return nil, err
 	}
 	r.Scope = authResults.Scope
+	r.AuthorizedActions = authResults.FetchActionSetForId(ctx, r.Id, IdActions).Strings()
 	return &pbs.RemoveRoleGrantsResponse{Item: r}, nil
 }
 

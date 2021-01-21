@@ -10,6 +10,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -20,7 +21,27 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var maskManager handlers.MaskManager
+var (
+	maskManager handlers.MaskManager
+
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.ActionSet{
+		action.Read,
+		action.Update,
+		action.Delete,
+		action.AddMembers,
+		action.SetMembers,
+		action.RemoveMembers,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.ActionSet{
+		action.Create,
+		action.List,
+	}
+)
 
 func init() {
 	var err error
@@ -59,10 +80,19 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 	if err != nil {
 		return nil, err
 	}
+	finalItems := make([]*pb.Group, 0, len(gl))
+	res := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.Group,
+	}
 	for _, item := range gl {
 		item.Scope = authResults.Scope
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
+		if len(item.AuthorizedActions) > 0 {
+			finalItems = append(finalItems, item)
+		}
 	}
-	return &pbs.ListGroupsResponse{Items: gl}, nil
+	return &pbs.ListGroupsResponse{Items: finalItems}, nil
 }
 
 // GetGroups implements the interface pbs.GroupServiceServer.
@@ -79,6 +109,7 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.GetGroupResponse{Item: u}, nil
 }
 
@@ -96,6 +127,7 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("groups/%s", u.GetId())}, nil
 }
 
@@ -113,6 +145,7 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.UpdateGroupResponse{Item: u}, nil
 }
 
@@ -146,6 +179,7 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 		return nil, err
 	}
 	g.Scope = authResults.Scope
+	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
 	return &pbs.AddGroupMembersResponse{Item: g}, nil
 }
 
@@ -163,6 +197,7 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 		return nil, err
 	}
 	g.Scope = authResults.Scope
+	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
 	return &pbs.SetGroupMembersResponse{Item: g}, nil
 }
 
@@ -180,6 +215,7 @@ func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMem
 		return nil, err
 	}
 	g.Scope = authResults.Scope
+	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
 	return &pbs.RemoveGroupMembersResponse{Item: g}, nil
 }
 
