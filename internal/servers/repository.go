@@ -2,12 +2,12 @@ package servers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
@@ -37,14 +37,15 @@ type Repository struct {
 // NewRepository creates a new servers Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) {
+	const op = "servers.NewRepository"
 	if r == nil {
-		return nil, errors.New("error creating server repository with nil reader")
+		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.New("error creating server repository with nil writer")
+		return nil, errors.New(errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.New("error creating server repository with nil kms")
+		return nil, errors.New(errors.InvalidParameter, op, "nil kms")
 	}
 	return &Repository{
 		reader: r,
@@ -77,7 +78,7 @@ func (r *Repository) listServersWithReader(ctx context.Context, reader db.Reader
 		[]interface{}{serverType, updateTime.Format(time.RFC3339)},
 		db.WithLimit(-1),
 	); err != nil {
-		return nil, fmt.Errorf("error listing servers: %w", err)
+		return nil, errors.Wrap(err, "servers.listServersWithReader")
 	}
 	return servers, nil
 }
@@ -105,15 +106,17 @@ func (r *Repository) ListTagsForServers(ctx context.Context, serverIds []string,
 		[]interface{}{serverIds},
 		db.WithLimit(-1),
 	); err != nil {
-		return nil, fmt.Errorf("error listing server tags with server IDs %#v: %w", serverIds, err)
+		return nil, errors.Wrap(err, "servers.ListTagsForServers", errors.WithMsg(fmt.Sprintf("server IDs %v", serverIds)))
 	}
 	return serverTags, nil
 }
 
 // UpsertServer adds or updates a server in the DB
 func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Option) ([]*Server, int, error) {
+	const op = "servers.UpsertServer"
+
 	if server == nil {
-		return nil, db.NoRowsAffected, errors.New("cannot update server that is nil")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "server is nil")
 	}
 
 	opts := getOpts(opt...)
@@ -136,7 +139,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 					time.Now().Format(time.RFC3339),
 				})
 			if err != nil {
-				return fmt.Errorf("error performing status upsert: %w", err)
+				return errors.Wrap(err, op+":Upsert")
 			}
 
 			// If it's a worker, fetch the current controllers to feed to them
@@ -144,7 +147,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 				// Fetch current controllers to feed to the workers
 				controllers, err = r.listServersWithReader(ctx, read, ServerTypeController)
 				if err != nil {
-					return fmt.Errorf("error fetching list of controllers to send to worker: %w", err)
+					return errors.Wrap(err, op+":ListServer")
 				}
 			}
 
@@ -155,7 +158,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 			if opts.withUpdateTags {
 				_, err = w.Delete(ctx, &ServerTag{}, db.WithWhere(deleteTagsSql, server.PrivateId))
 				if err != nil {
-					return fmt.Errorf("error deleting worker tags: %w", err)
+					return errors.Wrap(err, op+":DeleteTags", errors.WithMsg(server.PrivateId))
 				}
 
 				// If tags were cleared out entirely, then we'll have nothing
@@ -166,7 +169,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 					tags := make([]interface{}, 0, len(server.Tags))
 					for k, v := range server.Tags {
 						if v == nil {
-							return fmt.Errorf("found nil tag value for worker %s and key %s", server.PrivateId, k)
+							return errors.New(errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s and key %s", server.PrivateId, k))
 						}
 						for _, val := range v.Values {
 							tags = append(tags, ServerTag{
@@ -177,7 +180,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 						}
 					}
 					if err = w.CreateItems(ctx, tags); err != nil {
-						return fmt.Errorf("error inserting tags for worker %s: %w", server.PrivateId, err)
+						return errors.Wrap(err, op+":CreateTags", errors.WithMsg(server.PrivateId))
 					}
 				}
 			}
@@ -198,12 +201,13 @@ type RecoveryNonce struct {
 
 // AddRecoveryNonce adds a nonce
 func (r *Repository) AddRecoveryNonce(ctx context.Context, nonce string, opt ...Option) error {
+	const op = "servers.AddRecoveryNonce"
 	if nonce == "" {
-		return errors.New("empty nonce provided")
+		return errors.New(errors.InvalidParameter, op, "empty nonce")
 	}
 	rn := &RecoveryNonce{Nonce: nonce}
 	if err := r.writer.Create(ctx, rn); err != nil {
-		return fmt.Errorf("error performing nonce insertion: %w", err)
+		return errors.Wrap(err, op+":Insertion")
 	}
 	return nil
 }
@@ -215,7 +219,7 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, err
 
 	rows, err := r.writer.Delete(ctx, &RecoveryNonce{}, db.WithWhere(deleteWhereCreateTimeSql, endTime))
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("error performing nonce cleanup: %w", err)
+		return db.NoRowsAffected, errors.Wrap(err, "servers.CleanupNonces")
 	}
 	return rows, nil
 }
@@ -224,7 +228,7 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, err
 func (r *Repository) ListNonces(ctx context.Context, opt ...Option) ([]*RecoveryNonce, error) {
 	var nonces []*RecoveryNonce
 	if err := r.reader.SearchWhere(ctx, &nonces, "", nil, db.WithLimit(-1)); err != nil {
-		return nil, fmt.Errorf("error listing nonces: %w", err)
+		return nil, errors.Wrap(err, "servers.ListNonces")
 	}
 	return nonces, nil
 }

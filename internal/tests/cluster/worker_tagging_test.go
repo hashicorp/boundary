@@ -117,6 +117,11 @@ func TestWorkerTagging(t *testing.T) {
 			filter:     `"/name" matches "w[13]" and "west" in "/tags/region"`,
 			expWorkers: []string{w3Addr},
 		},
+		{
+			name:       "name and az",
+			filter:     `"/name" matches "w[23]" and "three" in "/tags/az"`,
+			expWorkers: []string{w2Addr, w3Addr},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
