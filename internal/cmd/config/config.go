@@ -298,9 +298,9 @@ func ParseAddress(addr string) (string, error) {
 		if err != nil {
 			return addr, fmt.Errorf("error reading file at %s: %w", addr, err)
 		}
-		return string(contents), nil
+		return strings.TrimSpace(string(contents)), nil
 	case "env":
-		return os.Getenv(strings.TrimPrefix(addr, "env://")), nil
+		return strings.TrimSpace(os.Getenv(strings.TrimPrefix(addr, "env://"))), nil
 	}
 
 	return addr, nil

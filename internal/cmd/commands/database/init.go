@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
@@ -239,18 +238,18 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	urlToParse := c.Config.Controller.Database.Url
-	if urlToParse == "" {
-		c.UI.Error(`"url" not specified in "database" config block`)
-		return 1
-	}
-
 	var migrationUrlToParse string
 	if c.Config.Controller.Database.MigrationUrl != "" {
 		migrationUrlToParse = c.Config.Controller.Database.MigrationUrl
 	}
 	if c.flagMigrationUrl != "" {
 		migrationUrlToParse = c.flagMigrationUrl
+	}
+
+	urlToParse := c.Config.Controller.Database.Url
+	if urlToParse == "" {
+		c.UI.Error(`"url" not specified in "database" config block`)
+		return 1
 	}
 	// Fallback to using database URL for everything
 	if migrationUrlToParse == "" {
@@ -286,38 +285,31 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}
 	}()
 
-	{
-		st, err := man.CurrentState(c.Context)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error getting database state: %w", err).Error())
-			return 1
-		}
-		if st.Dirty {
-			c.UI.Error(base.WrapAtLength("Database is in a bad initialization " +
-				"state.  Please revert back to the last known good state."))
-			return 1
-		}
+	st, err := man.CurrentState(c.Context)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error getting database state: %w", err).Error())
+		return 1
+	}
+	if st.Dirty {
+		c.UI.Error(base.WrapAtLength("Database is in a bad initialization " +
+			"state.  Please revert back to the last known good state."))
+		return 1
+	}
+	if err := man.RollForward(c.Context); err != nil {
+		c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
+		return 1
+	}
+	if base.Format(c.UI) == "table" {
+		c.UI.Info("Migrations successfully run.")
 	}
 
-	// Core migrations using the migration URL
-	{
-		if err := man.RollForward(c.Context); err != nil {
-			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
-			return 1
-		}
-		if base.Format(c.UI) == "table" {
-			c.UI.Info("Migrations successfully run.")
-		}
-	}
-
-	dbaseUrl, err := config.ParseAddress(urlToParse)
+	c.srv.DatabaseUrl, err = config.ParseAddress(urlToParse)
 	if err != nil && err != config.ErrNotAUrl {
 		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 		return 1
 	}
 
 	// Everything after is done with normal database URL and is affecting actual data
-	c.srv.DatabaseUrl = strings.TrimSpace(dbaseUrl)
 	if err := c.srv.ConnectToDatabase(dialect); err != nil {
 		c.UI.Error(fmt.Errorf("Error connecting to database after migrations: %w", err).Error())
 		return 1

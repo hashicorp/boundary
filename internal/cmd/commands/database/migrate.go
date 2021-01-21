@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
@@ -145,9 +144,8 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 				"'-allow-development-migrations' flag."))
 			return 2
 		} else {
-			c.UI.Error(base.WrapAtLength("The '-allow-development-migrations' " +
+			c.UI.Warn(base.WrapAtLength("The '-allow-development-migrations' " +
 				"flag was set but this binary has no dev database schema updates."))
-			return 3
 		}
 	}
 
@@ -245,17 +243,9 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 
 	// Core migrations using the migration URL
 	{
-		migrationUrl = strings.TrimSpace(migrationUrl)
-		ran, err := schema.MigrateStore(c.Context, dialect, migrationUrl)
-		if err != nil {
+		if err := man.RollForward(c.Context); err != nil {
 			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
 			return 1
-		}
-		if !ran {
-			if base.Format(c.UI) == "table" {
-				c.UI.Info("Database is already up to date.")
-				return 0
-			}
 		}
 		if base.Format(c.UI) == "table" {
 			c.UI.Info("Migrations successfully run.")

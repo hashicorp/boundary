@@ -332,12 +332,12 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`"url" not specified in "controller.database" config block"`)
 			return 1
 		}
-		dbaseUrl, err := config.ParseAddress(c.Config.Controller.Database.Url)
+		var err error
+		c.DatabaseUrl, err = config.ParseAddress(c.Config.Controller.Database.Url)
 		if err != nil && err != config.ErrNotAUrl {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return 1
 		}
-		c.DatabaseUrl = strings.TrimSpace(dbaseUrl)
 		if err := c.ConnectToDatabase("postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return 1
@@ -372,8 +372,7 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
-			// TODO: Add the command to migrate up the schema version once that command exists.
-			c.UI.Error("Older schema version is than is expected from this binary.")
+			c.UI.Error(base.WrapAtLength("Older schema version is than is expected from this binary. Run 'boundary database migrate' to update the database."))
 			return 1
 		}
 		if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {
