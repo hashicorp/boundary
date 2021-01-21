@@ -14,8 +14,7 @@ type migrationState struct {
 	// this binary.
 	binarySchemaVersion int
 
-	upMigrations   map[int][]byte
-	downMigrations map[int][]byte
+	upMigrations map[int][]byte
 }
 
 // migrationStates is populated by the generated migration code with the key being the dialect.
@@ -27,14 +26,6 @@ func getUpMigration(dialect string) map[int][]byte {
 		return nil
 	}
 	return ms.upMigrations
-}
-
-func getDownMigration(dialect string) map[int][]byte {
-	ms, ok := migrationStates[dialect]
-	if !ok {
-		return nil
-	}
-	return ms.downMigrations
 }
 
 // DevMigration returns true iff the provided dialect has changes which are still in development.

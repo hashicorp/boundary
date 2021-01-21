@@ -149,11 +149,7 @@ func (b *Manager) RollForward(ctx context.Context) error {
 		return errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("schema is dirty with version %d", curVersion))
 	}
 
-	sp, err := newStatementProvider(b.dialect, curVersion)
-	if err != nil {
-		return errors.Wrap(err, op)
-	}
-	return b.runMigrations(ctx, sp)
+	return b.runMigrations(ctx, newStatementProvider(b.dialect, curVersion))
 }
 
 // runMigrations passes migration queries to a database driver and manages

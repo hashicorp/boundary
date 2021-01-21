@@ -185,9 +185,8 @@ func TestManager_SharedLock(t *testing.T) {
 // Creates a new migrationState only with the versions <= the provided maxVer
 func createPartialMigrationState(om migrationState, maxVer int) migrationState {
 	nState := migrationState{
-		devMigration:   om.devMigration,
-		upMigrations:   make(map[int][]byte),
-		downMigrations: make(map[int][]byte),
+		devMigration: om.devMigration,
+		upMigrations: make(map[int][]byte),
 	}
 	for k := range om.upMigrations {
 		if k > maxVer {
@@ -195,7 +194,6 @@ func createPartialMigrationState(om migrationState, maxVer int) migrationState {
 			continue
 		}
 		nState.upMigrations[k] = om.upMigrations[k]
-		nState.downMigrations[k] = om.downMigrations[k]
 		if nState.binarySchemaVersion < k {
 			nState.binarySchemaVersion = k
 		}
