@@ -4906,7 +4906,14 @@ begin;
 -- email is added to the iam_user as an external data point to deduce which user
 -- is being represented by the iam_user.
 alter table iam_user
-add column email wt_email; -- intentionally, can be null and not unique
+add column email wt_email, -- intentionally, can be null and not unique
+add column wt_name text;
+
+alter table iam_user
+rename column name to resource_name;  -- disambiguate name 
+
+alter table iam_user                 
+rename column description to resource_description; -- disambiguate description
 
 commit;
 `),
@@ -5171,7 +5178,7 @@ create table auth_oidc_account (
       on delete cascade
       on update cascade,
     unique(auth_method_id, name),
-    unique(auth_method_id, subject_id),
+    unique(issuer_id, subject_id),
     unique(auth_method_id, public_id)
 );
 
@@ -5257,7 +5264,7 @@ insert into auth_token_status_enm(name)
 alter table auth_token
 add column status text 
 not null
-default 'token issued' -- consistent with current behavior.
+default 'token issued' -- safest default
 references auth_token_status_enm(name);
 
 commit;
@@ -5622,6 +5629,8 @@ begin;
 
 drop domain wt_email;
 drop domain wt_url;
+drop domain wt_name;
+drop domain wt_description;
 
 commit;
 `),
@@ -5664,6 +5673,7 @@ commit;
 			1085: []byte(`
 begin;
 
+drop table auth_token_status_enm;
 alter table auth_token drop column status;
 
 
