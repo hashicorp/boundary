@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/recovery"
@@ -77,4 +78,105 @@ func TestRecoveryNonces(t *testing.T) {
 		require.NoError(err)
 		assert.Len(nonces, 0)
 	}
+}
+
+func TestTagUpdatingListing(t *testing.T) {
+	require := require.New(t)
+
+	wrapper := db.TestWrapper(t)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		RecoveryKms: wrapper,
+	})
+	defer tc.Shutdown()
+
+	repo := tc.ServersRepo()
+	srv := &servers.Server{
+		PrivateId: "test1",
+		Type:      "worker",
+		Address:   "127.0.0.1",
+		Tags: map[string]*servers.TagValues{
+			"tag1": {
+				Values: []string{"value1", "value2"},
+			},
+		},
+	}
+	_, _, err := repo.UpsertServer(tc.Context(), srv, servers.WithUpdateTags(true))
+	require.NoError(err)
+
+	srv = &servers.Server{
+		PrivateId: "test2",
+		Type:      "worker",
+		Address:   "127.0.0.1",
+		Tags: map[string]*servers.TagValues{
+			"tag2": {
+				Values: []string{"value1", "value2"},
+			},
+		},
+	}
+	_, _, err = repo.UpsertServer(tc.Context(), srv, servers.WithUpdateTags(true))
+	require.NoError(err)
+
+	tags, err := repo.ListTagsForServers(tc.Context(), []string{"test1", "test2"})
+	require.NoError(err)
+
+	// Base case
+	exp := []*servers.ServerTag{
+		{
+			ServerId: "test1",
+			Key:      "tag1",
+			Value:    "value1",
+		},
+		{
+			ServerId: "test1",
+			Key:      "tag1",
+			Value:    "value2",
+		},
+		{
+			ServerId: "test2",
+			Key:      "tag2",
+			Value:    "value1",
+		},
+		{
+			ServerId: "test2",
+			Key:      "tag2",
+			Value:    "value2",
+		},
+	}
+	require.Equal(exp, tags)
+
+	// Update without saying to update tags
+	srv = &servers.Server{
+		PrivateId: "test2",
+		Type:      "worker",
+		Address:   "192.168.1.1",
+		Tags: map[string]*servers.TagValues{
+			"tag22": {
+				Values: []string{"value21", "value22"},
+			},
+		},
+	}
+	_, _, err = repo.UpsertServer(tc.Context(), srv)
+	require.NoError(err)
+	tags, err = repo.ListTagsForServers(tc.Context(), []string{"test1", "test2"})
+	require.NoError(err)
+	require.Equal(exp, tags)
+
+	// Update tags and test again
+	_, _, err = repo.UpsertServer(tc.Context(), srv, servers.WithUpdateTags(true))
+	require.NoError(err)
+	tags, err = repo.ListTagsForServers(tc.Context(), []string{"test1", "test2"})
+	require.NoError(err)
+	require.NotEqual(exp, tags)
+	// Update and try again
+	exp[2] = &servers.ServerTag{
+		ServerId: "test2",
+		Key:      "tag22",
+		Value:    "value21",
+	}
+	exp[3] = &servers.ServerTag{
+		ServerId: "test2",
+		Key:      "tag22",
+		Value:    "value22",
+	}
+	require.Equal(exp, tags)
 }

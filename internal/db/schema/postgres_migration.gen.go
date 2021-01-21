@@ -4,8 +4,8 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		devMigration:        false,
-		binarySchemaVersion: 69,
+		devMigration:        true,
+		binarySchemaVersion: 1001,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 begin;
@@ -2930,6 +2930,7 @@ before insert on target_tcp
 
 
 -- target_all_subtypes is a union of all target subtypes 
+-- NOTE: this is replaced in 100 to add worker_filter
 create view target_all_subtypes
 as 
 select 
@@ -3127,6 +3128,7 @@ begin;
     endpoint text -- not part of the warehouse, used to send info to the worker
   );
 
+  -- Replaced in 100 to add worker_filter
   create trigger 
     immutable_columns
   before
@@ -3422,6 +3424,7 @@ begin;
   create trigger insert_session_state before insert on session_state
     for each row execute procedure insert_session_state();
 
+  -- Replaced in 100 to add worker_filter
   create view session_with_state as
   select
     s.public_id,
@@ -4861,6 +4864,496 @@ begin;
 
 commit;
 
+`),
+			1001: []byte(`
+begin;
+
+-- This series of expressions fixes the primary key on the server table
+alter table session
+  drop constraint session_server_id_server_type_fkey;
+alter table server
+  drop constraint server_pkey;
+alter table server
+  drop column name;
+alter table server
+  add primary key (private_id);
+alter table server
+  add constraint server_id_must_not_be_empty
+  check(length(trim(private_id)) > 0);
+alter table session
+  add constraint session_server_id_fkey
+  foreign key (server_id)
+  references server(private_id)
+  on delete set null
+  on update cascade;
+
+create domain wt_bexprfilter as text
+check(
+  value is null
+    or
+    (
+      length(trim(value)) > 0
+        and
+      length(trim(value)) <= 2048
+    )
+);
+comment on domain wt_bexprfilter is
+  'Text field with constraints for go-bexpr filters';
+
+-- Add the worker filter to the target_tcp table and session table
+alter table target_tcp
+  add column worker_filter wt_bexprfilter;
+alter table session
+  add column worker_filter wt_bexprfilter;
+
+-- Replace the immutable columns trigger from 50 to add worker_filter
+drop trigger immutable_columns on session;
+create trigger immutable_columns
+  before update on session
+    for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time', 'endpoint', 'worker_filter');
+
+-- Replaces the view created in 41 to include worker_filter
+drop view target_all_subtypes;
+create view target_all_subtypes
+as
+select
+  public_id,
+  scope_id,
+  name,
+  description,
+  default_port,
+  session_max_seconds,
+  session_connection_limit,
+  version,
+  create_time,
+  update_time,
+  worker_filter,
+  'tcp' as type
+from target_tcp;
+
+-- Replaces the view created in 50 to include worker_filter
+drop view session_with_state;
+create view session_with_state as
+  select
+    s.public_id,
+    s.user_id,
+    s.host_id,
+    s.server_id,
+    s.server_type,
+    s.target_id,
+    s.host_set_id,
+    s.auth_token_id,
+    s.scope_id,
+    s.certificate,
+    s.expiration_time,
+    s.connection_limit,
+    s.tofu_token,
+    s.key_id,
+    s.termination_reason,
+    s.version,
+    s.create_time,
+    s.update_time,
+    s.endpoint,
+    s.worker_filter,
+    ss.state,
+    ss.previous_end_time,
+    ss.start_time,
+    ss.end_time
+  from
+    session s,
+    session_state ss
+  where
+    s.public_id = ss.session_id;
+
+create domain wt_tagpair as text
+check(
+  value is not null
+    and
+  length(trim(value)) > 0
+    and
+  length(trim(value)) <= 512
+    and
+  lower(trim(value)) = value
+);
+comment on domain wt_tagpair is
+  'Text field with constraints for key/value pairs';
+
+create table server_tag (
+  server_id text
+    references server(private_id)
+    on delete cascade
+    on update cascade,
+  key wt_tagpair,
+  value wt_tagpair,
+  primary key(server_id, key, value)
+);
+
+commit;
+`),
+		},
+		downMigrations: map[int][]byte{
+			1: []byte(`
+begin;
+
+drop domain wt_timestamp;
+drop domain wt_public_id;
+drop domain wt_private_id;
+drop domain wt_scope_id;
+drop domain wt_user_id;
+drop domain wt_version;
+
+drop function default_create_time;
+drop function update_time_column;
+drop function update_version_column;
+drop function immutable_columns;
+
+commit;
+
+`),
+			2: []byte(`
+begin;
+
+drop table oplog_metadata cascade;
+drop table oplog_ticket cascade;
+drop table oplog_entry cascade;
+
+commit;
+
+`),
+			3: []byte(`
+begin;
+
+drop table db_test_rental cascade;
+drop table db_test_car cascade;
+drop table db_test_user cascade;
+drop table db_test_scooter cascade;
+
+commit;
+
+`),
+			6: []byte(`
+BEGIN;
+
+drop table iam_group cascade;
+drop table iam_user cascade;
+drop table iam_scope_project cascade;
+drop table iam_scope_org cascade;
+drop table iam_scope_global cascade;
+drop table iam_scope cascade;
+drop table iam_scope_type_enm cascade;
+drop table iam_role cascade;
+drop view iam_principal_role cascade;
+drop table iam_group_role cascade;
+drop table iam_user_role cascade;
+drop table iam_group_member_user cascade;
+drop view iam_group_member cascade;
+drop table iam_role_grant cascade;
+
+drop function iam_sub_names cascade;
+drop function iam_immutable_scope_type_func cascade;
+drop function iam_sub_scopes_func cascade;
+drop function iam_immutable_role_principal cascade;
+drop function iam_user_role_scope_check cascade;
+drop function iam_group_role_scope_check cascade;
+drop function iam_group_member_scope_check cascade;
+drop function iam_immutable_group_member cascade;
+drop function get_scoped_member_id cascade;
+drop function grant_scope_id_valid cascade;
+drop function disallow_global_scope_deletion cascade;
+drop function user_scope_id_valid cascade;
+drop function iam_immutable_role_grant cascade;
+drop function disallow_iam_predefined_user_deletion cascade;
+drop function recovery_user_not_allowed cascade;
+
+COMMIT;
+
+`),
+			7: []byte(`
+begin;
+
+  drop function update_iam_user_auth_account;
+  drop function insert_auth_account_subtype;
+  drop function insert_auth_method_subtype;
+
+  drop table auth_account cascade;
+  drop table auth_method cascade;
+
+commit;
+
+`),
+			8: []byte(`
+begin;
+
+  drop table server;
+
+commit;
+
+`),
+			11: []byte(`
+begin;
+
+  drop view auth_token_account cascade;
+  drop table auth_token cascade;
+
+  drop function update_last_access_time cascade;
+  drop function immutable_auth_token_columns cascade;
+  drop function expire_time_not_older_than_token cascade;
+
+commit;
+
+`),
+			12: []byte(`
+begin;
+
+  drop table auth_password_credential;
+  drop table auth_password_conf cascade;
+  drop table if exists auth_password_account;
+  drop table if exists auth_password_method;
+
+  drop function insert_auth_password_credential_subtype;
+  drop function insert_auth_password_conf_subtype;
+
+commit;
+
+`),
+			13: []byte(`
+begin;
+
+  drop table auth_password_argon2_cred;
+  drop table auth_password_argon2_conf;
+
+commit;
+
+`),
+			14: []byte(`
+begin;
+
+  drop view auth_password_current_conf;
+  drop view auth_password_conf_union;
+
+commit;
+
+`),
+			20: []byte(`
+begin;
+
+  drop table host_set;
+  drop table host;
+  drop table host_catalog;
+
+  drop function insert_host_set_subtype;
+  drop function insert_host_subtype;
+  drop function insert_host_catalog_subtype;
+
+  delete
+    from oplog_ticket
+   where name in (
+          'host_catalog',
+          'host',
+          'host_set'
+        );
+
+commit;
+
+`),
+			22: []byte(`
+begin;
+
+  drop table static_host_set_member cascade;
+  drop table static_host_set cascade;
+  drop table static_host cascade;
+  drop table static_host_catalog cascade;
+
+  delete
+    from oplog_ticket
+   where name in (
+          'static_host_catalog',
+          'static_host',
+          'static_host_set',
+          'static_host_set_member'
+        );
+
+commit;
+
+`),
+			30: []byte(`
+begin;
+
+drop function kms_version_column cascade;
+
+commit;
+
+`),
+			31: []byte(`
+begin;
+
+drop table kms_root_key cascade;
+drop table kms_root_key_version cascade;
+drop table kms_database_key cascade;
+drop table kms_database_key_version cascade;
+drop table kms_oplog_key cascade;
+drop table kms_oplog_key_version cascade;
+drop table kms_session_key cascade;
+drop table kms_session_key_version cascade;
+
+commit;
+
+`),
+			40: []byte(`
+begin;
+
+drop function insert_target_subtype;
+drop function delete_target_subtype;
+drop function target_scope_valid;
+drop function target_host_set_scope_valid
+
+commit;
+
+`),
+			41: []byte(`
+begin;
+
+drop table target cascade;
+drop table target_host_set cascade;
+drop table target_tcp;
+drop view target_all_subtypes;
+drop view target_host_set_catalog;
+
+
+delete
+from oplog_ticket
+where name in (
+        'target_tcp'
+    );
+
+commit;
+`),
+			50: []byte(`
+begin;
+
+  drop table session_state;
+  drop table session_state_enm;
+  drop table session;
+  drop table session_termination_reason_enm;
+  drop function insert_session_state;
+  drop function insert_new_session_state;
+  drop function insert_session;
+  drop function update_session_state_on_termination_reason;
+  drop function insert_session_state;
+
+
+  delete
+  from oplog_ticket
+  where name in (
+          'session'
+      );
+
+commit;
+
+`),
+			51: []byte(`
+begin;
+
+  drop table session_connection_state;
+  drop table session_connection_state_enm;
+  drop table session_connection;
+  drop table session_connection_closed_reason_enm;
+  drop function insert_session_connection_state;
+  drop function insert_new_connection_state;
+  drop function update_connection_state_on_closed_reason;
+commit;
+
+`),
+			60: []byte(`
+begin;
+
+  drop function wh_current_time_id;
+  drop function wh_current_date_id;
+  drop function wh_time_id;
+  drop function wh_date_id;
+  drop domain wh_dim_text;
+  drop domain wh_timestamp;
+  drop domain wh_public_id;
+  drop domain wh_dim_id;
+  drop function wh_dim_id;
+  drop domain wh_bytes_transmitted;
+  drop domain wh_inet_port;
+
+commit;
+
+`),
+			62: []byte(`
+begin;
+
+  drop table wh_time_of_day_dimension;
+  drop table wh_date_dimension;
+
+commit;
+
+`),
+			65: []byte(`
+begin;
+
+  drop view whx_user_dimension_target;
+  drop view whx_user_dimension_source;
+  drop view whx_host_dimension_target;
+  drop view whx_host_dimension_source;
+  drop table wh_user_dimension;
+  drop table wh_host_dimension;
+
+commit;
+
+`),
+			66: []byte(`
+begin;
+
+  drop function wh_upsert_user;
+  drop function wh_upsert_host;
+
+commit;
+
+`),
+			68: []byte(`
+begin;
+
+  drop table wh_session_connection_accumulating_fact;
+  drop table wh_session_accumulating_fact;
+
+commit;
+
+`),
+			69: []byte(`
+begin;
+
+  drop trigger wh_insert_session_connection_state on session_connection_state;
+  drop function wh_insert_session_connection_state;
+
+  drop trigger wh_insert_session_state on session_state;
+  drop function wh_insert_session_state;
+
+  drop trigger wh_update_session_connection on session_connection;
+  drop function wh_update_session_connection;
+
+  drop trigger wh_insert_session_connection on session_connection;
+  drop function wh_insert_session_connection;
+
+  drop trigger wh_insert_session on session;
+  drop function wh_insert_session;
+
+  drop function wh_rollup_connections;
+
+commit;
+
+`),
+			1001: []byte(`
+begin;
+
+drop domain wt_bexprfilter;
+
+drop table server_tag;
+drop domain wt_tagpair;
+
+commit;
 `),
 		},
 	}

@@ -547,7 +547,7 @@ func (c *Command) WaitForInterrupt() int {
 			shutdownTriggered = true
 
 		case <-c.SighupCh:
-			c.UI.Output("==> Boundary controller reload triggered")
+			c.UI.Output("==> Boundary server reload triggered")
 
 			// Check for new log level
 			var level hclog.Level
@@ -592,7 +592,7 @@ func (c *Command) WaitForInterrupt() int {
 
 		RUNRELOADFUNCS:
 			if err := c.Reload(); err != nil {
-				c.UI.Error(fmt.Errorf("Error(s) were encountered during controller reload: %w", err).Error())
+				c.UI.Error(fmt.Errorf("Error(s) were encountered during server reload: %w", err).Error())
 			}
 
 		case <-c.SigUSR2Ch:

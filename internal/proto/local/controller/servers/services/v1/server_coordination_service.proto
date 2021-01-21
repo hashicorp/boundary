@@ -65,6 +65,12 @@ message StatusRequest {
 
   // Jobs which this worker wants to report the status.
   repeated JobStatus jobs = 20;
+
+  // Whether to update tags from the Server block on this RPC. We only need to
+  // do this at startup or (at some point) SIGHUP, so specifying when it's
+  // changed allows us to avoid constant database operations for something that
+  // won't change very often, if ever.
+  bool update_tags = 30;
 }
 
 enum CHANGETYPE {
