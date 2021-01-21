@@ -169,7 +169,7 @@ func TestRepository_DeleteConnection(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete connection: missing public id invalid parameter",
+			wantErrMsg:      "session.(Repository).DeleteConnection: missing public id: parameter violation: error #100",
 		},
 		{
 			name: "not-found",
@@ -184,7 +184,7 @@ func TestRepository_DeleteConnection(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete connection: failed db.LookupById: record not found",
+			wantErrMsg:      "db.LookupById: record not found",
 		},
 	}
 	for _, tt := range tests {

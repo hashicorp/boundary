@@ -66,4 +66,6 @@ const (
 	// Migration setup errors are codes 2000-3000
 	MigrationIntegrity Code = 2000 // MigrationIntegrity represents an error with the generated migration related code
 	MigrationLock      Code = 2001 // MigrationLock represents an error related to locking of the DB
+
+	FixMe Code = 1111
 )
