@@ -40,7 +40,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/dhui/dktest"
@@ -283,49 +282,6 @@ func TestPostgres_Lock(t *testing.T) {
 		err = ps.Unlock(ctx)
 		if err != nil {
 			t.Fatal(err)
-		}
-	})
-}
-
-func TestWithInstance_Concurrent(t *testing.T) {
-	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ip, port, err := c.FirstPort()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// The number of concurrent processes running New
-		const concurrency = 30
-
-		// We can instantiate a single database handle because it is
-		// actually a connection pool, and so, each of the below go
-		// routines will have a high probability of using a separate
-		// connection, which is something we want to exercise.
-		db, err := sql.Open("postgres", pgConnectionString(ip, port))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() {
-			if err := db.Close(); err != nil {
-				t.Error(err)
-			}
-		}()
-
-		db.SetMaxIdleConns(concurrency)
-		db.SetMaxOpenConns(concurrency)
-
-		var wg sync.WaitGroup
-		defer wg.Wait()
-
-		wg.Add(concurrency)
-		for i := 0; i < concurrency; i++ {
-			go func(i int) {
-				defer wg.Done()
-				_, err := New(context.Background(), db)
-				if err != nil {
-					t.Errorf("process %d error: %s", i, err)
-				}
-			}(i)
 		}
 	})
 }

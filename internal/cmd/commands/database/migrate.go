@@ -1,7 +1,6 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -201,55 +200,10 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	// This database is used to keep an exclusive lock on the database for the
-	// remainder of the command
-	dBase, err := sql.Open(dialect, migrationUrl)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error establishing db connection for locking: %w", err).Error())
-		return 1
-	}
-	man, err := schema.NewManager(c.Context, dialect, dBase)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error setting up schema manager for locking: %w", err).Error())
-		return 1
-	}
-
-	// This is an advisory locks on the DB which is released when the db session ends.
-	if err := man.ExclusiveLock(c.Context); err != nil {
-		c.UI.Error(fmt.Errorf("Error capturing an exclusive lock: %w", err).Error())
-		return 1
-	}
-	defer func() {
-		if err := man.ExclusiveUnlock(c.Context); err != nil {
-			c.UI.Error(fmt.Errorf("Unable to release exclusive lock to the database: %w", err).Error())
-		}
-	}()
-	{
-		st, err := man.CurrentState(c.Context)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error getting database state: %w", err).Error())
-			return 1
-		}
-		if st.Dirty {
-			c.UI.Error(base.WrapAtLength("Database is in a bad initialization " +
-				"state.  Please revert back to the last known good state."))
-			return 1
-		}
-		if st.BinarySchemaVersion == st.DatabaseSchemaVersion {
-			c.UI.Info(base.WrapAtLength("Database is already up to date."))
-			return 0
-		}
-	}
-
-	// Core migrations using the migration URL
-	{
-		if err := man.RollForward(c.Context); err != nil {
-			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
-			return 1
-		}
-		if base.Format(c.UI) == "table" {
-			c.UI.Info("Migrations successfully run.")
-		}
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl)
+	defer clean()
+	if errCode != 0 {
+		return errCode
 	}
 
 	return 0

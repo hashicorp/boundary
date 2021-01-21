@@ -26,17 +26,7 @@ type driver interface {
 }
 
 // Manager provides a way to run operations and retrieve information regarding
-// the underlying boundary database schema.  The expected use of the manager
-// for modifying the schema and issuing other data that needs to be done
-// with exclusive access is (error handling omitted):
-//
-// mgr, err := NewManager(ctx, dialect, db)
-// err = mgr.ExclusiveLock(ctx)
-// err = mgr.SetDirty(ctx)
-//  ... do writes to the db and schema
-// err = mgr.UnsetDirty(ctx)
-// // end the db session to release the ExclusiveLock.
-//
+// the underlying boundary database schema.
 // Manager is not thread safe.
 type Manager struct {
 	db      *sql.DB
@@ -184,6 +174,8 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 			return errors.Wrap(err, op)
 		}
 
+		// TODO: Wrap all the queries provided by the statementProvider into a
+		//  single transaction which includes setting the version number.
 		if err := b.driver.Run(ctx, bytes.NewReader(qp.ReadUp())); err != nil {
 			return errors.Wrap(err, op)
 		}
