@@ -305,6 +305,9 @@ type TestControllerOpts struct {
 	// generated, unless provided in a non-nil Config
 	Name string
 
+	// The suffix to use for initial resources
+	InitialResourcesSuffix string
+
 	// The logger to use, or one will be created
 	Logger hclog.Logger
 }
@@ -382,6 +385,18 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		tc.b.Logger.Info("controller name generated", "name", opts.Config.Controller.Name)
 	}
 	tc.name = opts.Config.Controller.Name
+
+	if opts.InitialResourcesSuffix != "" {
+		suffix := opts.InitialResourcesSuffix
+		tc.b.DevAuthMethodId = "ampw_" + suffix
+		tc.b.DevHostCatalogId = "hcst_" + suffix
+		tc.b.DevHostId = "hst_" + suffix
+		tc.b.DevHostSetId = "hsst_" + suffix
+		tc.b.DevOrgId = "o_" + suffix
+		tc.b.DevProjectId = "p_" + suffix
+		tc.b.DevTargetId = "ttcp_" + suffix
+		tc.b.DevUserId = "u_" + suffix
+	}
 
 	// Set up KMSes
 	switch {

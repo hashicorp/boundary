@@ -13,10 +13,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/sdk/strutil"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/vault/sdk/helper/parseutil"
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -77,6 +79,9 @@ worker {
 	name = "dev-worker"
 	description = "A default worker created in dev mode"
 	controllers = ["127.0.0.1"]
+	tags {
+		type = ["dev", "local"]
+	}
 }
 `
 )
@@ -117,6 +122,12 @@ type Worker struct {
 	Description string   `hcl:"description"`
 	Controllers []string `hcl:"controllers"`
 	PublicAddr  string   `hcl:"public_addr"`
+
+	// We use a raw interface for parsing so that people can use JSON-like
+	// syntax that maps directly to the filter input or possibly more familiar
+	// key=value syntax. This is trued up in the Parse function below.
+	TagsRaw interface{}         `hcl:"tags"`
+	Tags    map[string][]string `hcl:"-"`
 }
 
 type Database struct {
@@ -224,6 +235,12 @@ func Parse(d string) (*Config, error) {
 
 	// Perform controller configuration overrides for auth token settings
 	if result.Controller != nil {
+		if result.Controller.Name != strings.ToLower(result.Controller.Name) {
+			return nil, errors.New("Controller name must be all lower-case")
+		}
+		if !strutil.Printable(result.Controller.Name) {
+			return nil, errors.New("Controller name contains non-printable characters")
+		}
 		if result.Controller.AuthTokenTimeToLive != "" {
 			t, err := parseutil.ParseDurationSecond(result.Controller.AuthTokenTimeToLive)
 			if err != nil {
@@ -238,6 +255,69 @@ func Parse(d string) (*Config, error) {
 				return result, err
 			}
 			result.Controller.AuthTokenTimeToStaleDuration = t
+		}
+	}
+
+	// Parse worker tags
+	if result.Worker != nil {
+		if result.Worker.Name != strings.ToLower(result.Worker.Name) {
+			return nil, errors.New("Worker name must be all lower-case")
+		}
+		if !strutil.Printable(result.Worker.Name) {
+			return nil, errors.New("Worker name contains non-printable characters")
+		}
+		if result.Worker.TagsRaw != nil {
+			switch t := result.Worker.TagsRaw.(type) {
+			// HCL allows multiple labeled blocks with the same name, turning it
+			// into a slice of maps, hence the slice here. This format is the
+			// one that ends up matching the JSON that we use in the expression.
+			case []map[string]interface{}:
+				if err := mapstructure.WeakDecode(t, &result.Worker.Tags); err != nil {
+					return nil, fmt.Errorf("Error decoding the worker's %q section: %w", "tags", err)
+				}
+
+			// However for those that are used to other systems, we also accept
+			// key=value pairs
+			case []interface{}:
+				var strs []string
+				if err := mapstructure.WeakDecode(t, &strs); err != nil {
+					return nil, fmt.Errorf("Error decoding the worker's %q section: %w", "tags", err)
+				}
+				result.Worker.Tags = make(map[string][]string, len(strs))
+				// Aggregate the values by key. We care about the first equal
+				// sign only, to allow equals to be in values if needed. This
+				// also means we don't support equal signs in keys.
+				for _, str := range strs {
+					splitStr := strings.SplitN(str, "=", 2)
+					switch len(splitStr) {
+					case 1:
+						return nil, fmt.Errorf("Error decoding tag %q from string: must be in key = value format", str)
+					case 2:
+						key := splitStr[0]
+						v := result.Worker.Tags[key]
+						if len(v) == 0 {
+							v = make([]string, 0, 1)
+						}
+						result.Worker.Tags[key] = append(v, splitStr[1])
+					}
+				}
+			}
+		}
+		for k, v := range result.Worker.Tags {
+			if k != strings.ToLower(k) {
+				return nil, fmt.Errorf("Tag key %q is not all lower-case letters", k)
+			}
+			if !strutil.Printable(k) {
+				return nil, fmt.Errorf("Tag key %q contains non-printable characters", k)
+			}
+			for _, val := range v {
+				if val != strings.ToLower(val) {
+					return nil, fmt.Errorf("Tag value %q for tag key %q is not all lower-case letters", val, k)
+				}
+				if !strutil.Printable(k) {
+					return nil, fmt.Errorf("Tag value %q for tag key %q contains non-printable characters", v, k)
+				}
+			}
 		}
 	}
 

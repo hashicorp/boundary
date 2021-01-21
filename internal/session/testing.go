@@ -180,7 +180,7 @@ func TestWorker(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *servers.
 	id, err := uuid.GenerateUUID()
 	require.NoError(t, err)
 	worker := &servers.Server{
-		Name:        "test-session-worker-" + id,
+		PrivateId:   "test-session-worker-" + id,
 		Type:        servers.ServerTypeWorker.String(),
 		Description: "Test Session Worker",
 		Address:     "127.0.0.1",

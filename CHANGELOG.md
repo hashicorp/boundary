@@ -6,15 +6,23 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Security
 
-* Boundary now uses Go's execabs package for execution of binaries in `boundary
-  connect`. This is for defense-in-depth rather than a specific issue. See the
-  [Go blog post](https://blog.golang.org/path-security) for more details.
-  ([PR](https://github.com/hashicorp/boundary/pull/873))
+* Boundary now uses Go's new execabs package for execution of binaries in
+  `boundary connect`. This is for defense-in-depth rather than a specific
+  issue. See the [Go blog post](https://blog.golang.org/path-security) for more
+  details.  ([PR](https://github.com/hashicorp/boundary/pull/873))
+
+### Changes/Deprecations
+
+* controller/worker: Require names to be all lowercase. This removes ambiguity
+  or accidental mismatching when using upcoming filtering features.
 
 ### New and Improved
 
+* targets: You can now specify a Boolean-expression filter against worker tags
+  to control which workers are allowed to handle any given target's sessions
+  ([PR](https://github.com/hashicorp/boundary/pull/862))
 * api/cli: On listing/reading, return a list of actions the user is authorized
-  to perform on the identified resources
+  to perform on the identified resources or their associated collections
   ([PR](https://github.com/hashicorp/boundary/pull/870))
 
 ### Bug Fixes

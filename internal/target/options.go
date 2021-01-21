@@ -28,6 +28,7 @@ type options struct {
 	withSessionMaxSeconds      uint32
 	withSessionConnectionLimit int32
 	withPublicId               string
+	withWorkerFilter           string
 }
 
 func getDefaultOptions() options {
@@ -44,6 +45,7 @@ func getDefaultOptions() options {
 		withSessionMaxSeconds:      uint32((8 * time.Hour).Seconds()),
 		withSessionConnectionLimit: 1,
 		withPublicId:               "",
+		withWorkerFilter:           "",
 	}
 }
 
@@ -128,5 +130,12 @@ func WithSessionConnectionLimit(limit int32) Option {
 func WithPublicId(id string) Option {
 	return func(o *options) {
 		o.withPublicId = id
+	}
+}
+
+// WithWorkerFilter provides an optional worker filter
+func WithWorkerFilter(filter string) Option {
+	return func(o *options) {
+		o.withWorkerFilter = filter
 	}
 }

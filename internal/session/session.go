@@ -45,6 +45,11 @@ type ComposedOf struct {
 	ExpirationTime *timestamp.Timestamp
 	// Max connections for the session
 	ConnectionLimit int32
+	// Worker filter. Active filter when the session was created, used to
+	// validate the session via the same set of rules at consumption time as
+	// existed at creation time. Round tripping it through here saves a lookup
+	// in the DB. It is not stored in the warehouse.
+	WorkerFilter string
 }
 
 // Session contains information about a user's session with a target
@@ -89,6 +94,8 @@ type Session struct {
 	Endpoint string `json:"-" gorm:"default:null"`
 	// Maximum number of connections in a session
 	ConnectionLimit int32 `json:"connection_limit,omitempty" gorm:"default:null"`
+	// Worker filter
+	WorkerFilter string `json:"-" gorm:"default:null"`
 
 	// key_id is the key ID that was used for the encryption operation. It can be
 	// used to identify a specific version of the key needed to decrypt the value,
@@ -123,6 +130,7 @@ func New(c ComposedOf, opt ...Option) (*Session, error) {
 		Endpoint:        c.Endpoint,
 		ExpirationTime:  c.ExpirationTime,
 		ConnectionLimit: c.ConnectionLimit,
+		WorkerFilter:    c.WorkerFilter,
 	}
 	if err := s.validateNewSession("new session:"); err != nil {
 		return nil, err
@@ -151,6 +159,7 @@ func (s *Session) Clone() interface{} {
 		Version:           s.Version,
 		Endpoint:          s.Endpoint,
 		ConnectionLimit:   s.ConnectionLimit,
+		WorkerFilter:      s.WorkerFilter,
 	}
 	if len(s.States) > 0 {
 		clone.States = make([]*State, 0, len(s.States))
@@ -239,6 +248,8 @@ func (s *Session) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 			return fmt.Errorf("session vet for write: expiration time is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "ConnectionLimit"):
 			return fmt.Errorf("session vet for write: connection limit is immutable: %w", errors.ErrInvalidParameter)
+		case contains(opts.WithFieldMaskPaths, "WorkerFilter"):
+			return fmt.Errorf("session vet for write: worker filter is immutable: %w", errors.ErrInvalidParameter)
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
 			if _, err := convertToReason(s.TerminationReason); err != nil {
 				return fmt.Errorf("session vet for write: termination reason '%s' is invalid: %w", s.TerminationReason, errors.ErrInvalidParameter)
@@ -304,6 +315,7 @@ func (s *Session) validateNewSession(errorPrefix string) error {
 	if s.CtTofuToken != nil {
 		return fmt.Errorf("%s ct must be empty: %w", errorPrefix, errors.ErrInvalidParameter)
 	}
+	// It is okay for the worker filter to be empty, so it is not checked here.
 	return nil
 }
 

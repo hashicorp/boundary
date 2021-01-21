@@ -41,6 +41,9 @@ func generateTargetTableOutput(in *targets.Target) string {
 	if in.Description != "" {
 		nonAttributeMap["Description"] = in.Description
 	}
+	if in.WorkerFilter != "" {
+		nonAttributeMap["Worker Filter"] = in.WorkerFilter
+	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, in.Attributes, keySubstMap)
 

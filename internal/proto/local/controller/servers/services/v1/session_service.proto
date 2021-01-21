@@ -33,6 +33,9 @@ service SessionService {
 message LookupSessionRequest {
 	// The session ID from the client
 	string session_id = 10;
+	// The name of the requesting worker, used for filtering to ensure this
+	// worker is allowed to handle this session.
+	string server_id = 20;
 }
 
 // LookupSessionResponse contains information necessary for a client to

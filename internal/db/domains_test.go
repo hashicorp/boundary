@@ -95,6 +95,148 @@ returning id;
 	}
 }
 
+func TestDomain_TagPairs(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table (
+  pair wt_tagpair primary key
+);
+`
+		insert = `
+insert into test_table
+values ($1);
+`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	if _, err := db.Exec(createTable); err != nil {
+		t.Fatalf("query: \n%s\n error: %s", createTable, err)
+	}
+
+	tests := []struct {
+		value string
+		fail  bool
+	}{
+		{
+			" ",
+			true,
+		},
+		{
+			"00000009",
+			false,
+		},
+		{
+			"ABC123",
+			true,
+		},
+		{
+			"092h3oiuansdfh98wh3piornasiopudhfp98aw384rhfaouisdhnfios",
+			false,
+		},
+		{
+			strings.Repeat("1234567890", 51),
+			false,
+		},
+		{
+			strings.Repeat("1234567890", 52),
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.value, func(t *testing.T) {
+			// t.Logf("insert value: %q", tt.value)
+			_, err := db.Query(insert, tt.value)
+			switch {
+			case err == nil && tt.fail:
+				t.Errorf("want error, got no error for inserting value: %s", tt.value)
+			case err == nil && !tt.fail:
+				// All good
+			case err != nil && tt.fail:
+				// All good
+			default:
+				t.Errorf("expected no error, got error: %s", err)
+			}
+		})
+	}
+	t.Run("null", func(t *testing.T) {
+		_, err := db.Query("insert into test_table values (null);")
+		assert.Contains(t, err.Error(), "violates check constraint")
+	})
+}
+
+func TestDomain_Bexprfilter(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table (
+  filter wt_bexprfilter
+);
+`
+		insert = `
+insert into test_table
+values ($1);
+`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	if _, err := db.Exec(createTable); err != nil {
+		t.Fatalf("query: \n%s\n error: %s", createTable, err)
+	}
+
+	tests := []struct {
+		value string
+		fail  bool
+	}{
+		{
+			" ",
+			true,
+		},
+		{
+			"00000009",
+			false,
+		},
+		{
+			"ABC123",
+			false,
+		},
+		{
+			`"/foo/bar" in "/values"`,
+			false,
+		},
+		{
+			strings.Repeat("1234567890", 204),
+			false,
+		},
+		{
+			strings.Repeat("1234567890", 205),
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.value, func(t *testing.T) {
+			// t.Logf("insert value: %q", tt.value)
+			_, err := db.Query(insert, tt.value)
+			switch {
+			case err == nil && tt.fail:
+				t.Errorf("want error, got no error for inserting value: %s", tt.value)
+			case err == nil && !tt.fail:
+				// All good
+			case err != nil && tt.fail:
+				// All good
+			default:
+				t.Errorf("expected no error, got error: %s", err)
+			}
+		})
+	}
+	t.Run("null", func(t *testing.T) {
+		_, err := db.Query("insert into test_table values (null);")
+		assert.NoError(t, err)
+	})
+}
+
 func TestDomain_Timestamp(t *testing.T) {
 	const (
 		createTable = `

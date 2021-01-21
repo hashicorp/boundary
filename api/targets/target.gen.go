@@ -27,6 +27,7 @@ type Target struct {
 	HostSets               []*HostSet             `json:"host_sets,omitempty"`
 	SessionMaxSeconds      uint32                 `json:"session_max_seconds,omitempty"`
 	SessionConnectionLimit int32                  `json:"session_connection_limit,omitempty"`
+	WorkerFilter           string                 `json:"worker_filter,omitempty"`
 	Attributes             map[string]interface{} `json:"attributes,omitempty"`
 	AuthorizedActions      []string               `json:"authorized_actions,omitempty"`
 
