@@ -52,6 +52,8 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 	}()
 }
 
+// LastStatusSuccess is used in tests (it's exported for tests in other
+// packages) to verify the last time we sent status
 func (w *Worker) LastStatusSuccess() *LastStatusInformation {
 	return w.lastStatusSuccess.Load().(*LastStatusInformation)
 }
