@@ -155,7 +155,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 			if opts.withUpdateTags {
 				_, err = w.Delete(ctx, &ServerTag{}, db.WithWhere(deleteTagsSql, server.PrivateId))
 				if err != nil {
-					return fmt.Errorf("error clearing worker tags: %w", err)
+					return fmt.Errorf("error deleting worker tags: %w", err)
 				}
 
 				// If tags were cleared out entirely, then we'll have nothing
