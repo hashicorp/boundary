@@ -5,7 +5,7 @@ package schema
 func init() {
 	migrationStates["postgres"] = migrationState{
 		devMigration:        true,
-		binarySchemaVersion: 1070,
+		binarySchemaVersion: 1001,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 begin;
@@ -4865,7 +4865,7 @@ begin;
 commit;
 
 `),
-			1070: []byte(`
+			1001: []byte(`
 begin;
 
 -- This series of expressions fixes the primary key on the server table
@@ -5345,7 +5345,7 @@ begin;
 commit;
 
 `),
-			1070: []byte(`
+			1001: []byte(`
 begin;
 
 drop domain wt_bexprfilter;
