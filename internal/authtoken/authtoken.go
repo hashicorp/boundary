@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -61,9 +62,10 @@ func (s *AuthToken) toWritableAuthToken() *writableAuthToken {
 
 // encrypt the entry's data using the provided cipher (wrapping.Wrapper)
 func (s *writableAuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "authtoken.(Repository).encrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
-		return fmt.Errorf("error encrypting auth token: %w", err)
+		return errors.Wrap(err, op)
 	}
 	s.KeyId = cipher.KeyID()
 	return nil
@@ -71,9 +73,10 @@ func (s *writableAuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper
 
 // decrypt will decrypt the auth token's value using the provided cipher (wrapping.Wrapper)
 func (s *AuthToken) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "authtoken.(Repository).decrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
-		return fmt.Errorf("error decrypting auth token: %w", err)
+		return errors.Wrap(err, op)
 	}
 	return nil
 }
