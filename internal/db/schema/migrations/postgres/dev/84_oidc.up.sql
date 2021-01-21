@@ -116,7 +116,7 @@ create table auth_oidc_account (
       on delete cascade
       on update cascade,
     unique(auth_method_id, name),
-    unique(auth_method_id, subject_id),
+    unique(issuer_id, subject_id),
     unique(auth_method_id, public_id)
 );
 
