@@ -301,17 +301,9 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	// Core migrations using the migration URL
 	{
-		migrationUrl = strings.TrimSpace(migrationUrl)
-		ran, err := schema.MigrateStore(c.Context, dialect, migrationUrl)
-		if err != nil {
+		if err := man.RollForward(c.Context); err != nil {
 			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
 			return 1
-		}
-		if !ran {
-			if base.Format(c.UI) == "table" {
-				c.UI.Info("Database already initialized.")
-				return 0
-			}
 		}
 		if base.Format(c.UI) == "table" {
 			c.UI.Info("Migrations successfully run.")
