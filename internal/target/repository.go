@@ -595,7 +595,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 			msgs := make([]*oplog.Message, 0, 2)
 			targetTicket, err := w.GetTicket(target)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedTarget := target.(Cloneable).Clone()
 			var targetOplogMsg oplog.Message
