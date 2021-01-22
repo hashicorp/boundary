@@ -58,6 +58,8 @@ type Postgres struct {
 	// Locking and unlocking need to use the same connection
 	conn *sql.Conn
 	db   *sql.DB
+
+	tx *sql.Tx
 }
 
 // New returns a postgres pointer with the provided db verified as
@@ -155,10 +157,41 @@ func (p *Postgres) UnlockShared(ctx context.Context) error {
 	return nil
 }
 
+// StartRun starts a transaction that all subsequent calls to Run will use.
+func (p *Postgres) StartRun(ctx context.Context) error {
+	tx, err := p.conn.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	p.tx = tx
+ 	return nil
+}
+
+// CommitRun commits the pending transaction if there is one
+func (p *Postgres) CommitRun() error {
+	const op = "postgres.(Postgres).CommitRun"
+	defer func() {
+		p.tx = nil
+	}()
+	if p.tx == nil {
+		return errors.New(errors.MigrationIntegrity, op, "no pending transaction")
+	}
+	if err := p.tx.Commit(); err != nil {
+		if errRollback := p.tx.Rollback(); errRollback != nil {
+			return multierror.Append(err, errRollback)
+		}
+	}
+	return nil
+}
+
+type execContexter interface {
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+}
+
 // Executes the sql provided in the passed in io.Reader.  The contents of the reader must
 // fit in memory as the full content is read into a string before being passed to the
 // backing database.
-func (p *Postgres) Run(ctx context.Context, migration io.Reader) error {
+func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int) error {
 	const op = "postgres.(Postgres).Run"
 	migr, err := ioutil.ReadAll(migration)
 	if err != nil {
@@ -166,7 +199,26 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader) error {
 	}
 	// Run migration
 	query := string(migr)
-	if _, err := p.conn.ExecContext(ctx, query); err != nil {
+
+	var extr execContexter = p.conn
+	rollback := func() error {return nil}
+	if p.tx != nil {
+		extr = p.tx
+		rollback = func() error {
+			defer func() {p.tx = nil}()
+			return p.tx.Rollback()
+		}
+		// A transaction is already active, don't nest more transactions.
+		query = strings.ReplaceAll(query, "BEGIN;", "")
+		query = strings.ReplaceAll(query, "begin;", "")
+		query = strings.ReplaceAll(query, "COMMIT;", "")
+		query = strings.ReplaceAll(query, "commit;", "")
+	}
+
+	if _, err := extr.ExecContext(ctx, query); err != nil {
+		if rollbackErr := rollback(); rollbackErr != nil {
+			err = multierror.Append(err, rollbackErr)
+		}
 		if pgErr, ok := err.(*pq.Error); ok {
 			var line uint
 			var col uint
@@ -187,6 +239,9 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader) error {
 			return errors.Wrap(err, op, errors.WithMsg(message))
 		}
 		return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("migration failed: %s", migr)))
+	}
+	if err := p.setVersion(ctx, version, false); err != nil {
+		return errors.Wrap(err, op)
 	}
 
 	return nil
@@ -229,16 +284,24 @@ func runesLastIndex(input []rune, target rune) int {
 
 // SetVersion sets the version number, and whether the database is in a dirty state.
 // A version value of -1 indicates no version is set.
-func (p *Postgres) SetVersion(ctx context.Context, version int, dirty bool) error {
+func (p *Postgres) setVersion(ctx context.Context, version int, dirty bool) error {
 	const op = "postgres.(Postgres).SetVersion"
-	tx, err := p.conn.BeginTx(ctx, &sql.TxOptions{})
-	if err != nil {
-		return err
+	tx := p.tx
+	var err error
+	if tx == nil {
+		tx, err = p.conn.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+	}
+	rollback := func() error {
+		defer func() {p.tx = nil}()
+		return tx.Rollback()
 	}
 
 	query := `TRUNCATE ` + pq.QuoteIdentifier(defaultMigrationsTable)
 	if _, err := tx.ExecContext(ctx, query); err != nil {
-		if errRollback := tx.Rollback(); errRollback != nil {
+		if errRollback := rollback(); errRollback != nil {
 			err = multierror.Append(err, errRollback)
 		}
 		return errors.Wrap(err, op)
@@ -251,24 +314,25 @@ func (p *Postgres) SetVersion(ctx context.Context, version int, dirty bool) erro
 		query = `INSERT INTO ` + pq.QuoteIdentifier(defaultMigrationsTable) +
 			` (Version, dirty) VALUES ($1, $2)`
 		if _, err := tx.ExecContext(ctx, query, version, dirty); err != nil {
-			if errRollback := tx.Rollback(); errRollback != nil {
+			if errRollback := rollback(); errRollback != nil {
 				err = multierror.Append(err, errRollback)
 			}
 			return errors.Wrap(err, op)
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		return errors.Wrap(err, op)
+	if p.tx == nil {
+		if err := tx.Commit(); err != nil {
+			return errors.Wrap(err, op)
+		}
 	}
-
 	return nil
 }
 
 // CurrentState returns the version, if the database is currently in a dirty state, and any error.
 // A version value of -1 indicates no version is set.
 func (p *Postgres) CurrentState(ctx context.Context) (version int, dirty bool, err error) {
-	const op = "postgres.(Postgres).Version"
+	const op = "postgres.(Postgres).CurrentState"
 	query := `SELECT Version, dirty FROM ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` LIMIT 1`
 	err = p.conn.QueryRowContext(ctx, query).Scan(&version, &dirty)
 	switch {

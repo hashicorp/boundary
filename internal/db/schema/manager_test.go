@@ -3,6 +3,7 @@ package schema
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/schema/postgres"
@@ -61,12 +62,11 @@ func TestCurrentState(t *testing.T) {
 
 	testDriver, err := postgres.New(ctx, d)
 	require.NoError(t, err)
-	require.NoError(t, testDriver.SetVersion(ctx, 2, true))
+	require.NoError(t, testDriver.Run(ctx, strings.NewReader("SELECT 1"), 2))
 
 	want = &State{
 		InitializationStarted: true,
 		BinarySchemaVersion:   BinarySchemaVersion(dialect),
-		Dirty:                 true,
 		DatabaseSchemaVersion: 2,
 	}
 	s, err = m.CurrentState(ctx)
@@ -87,10 +87,13 @@ func TestRollForward(t *testing.T) {
 	ctx := context.Background()
 	m, err := NewManager(ctx, dialect, d)
 	require.NoError(t, err)
+	assert.NoError(t, m.RollForward(ctx))
+
 	// Now set to dirty at an early version
-	testDriver, err := postgres.New(ctx, d)
+	_, err = postgres.New(ctx, d)
 	require.NoError(t, err)
-	testDriver.SetVersion(ctx, 0, true)
+	// TODO: Extract out a way to mock the db to test failing rollforwards.
+	_, err = d.ExecContext(ctx, "TRUNCATE boundary_schema_version; INSERT INTO boundary_schema_version (Version, dirty) VALUES (2, true)")
 	assert.Error(t, m.RollForward(ctx))
 }
 
@@ -115,10 +118,10 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 	require.NoError(t, err)
 	assert.NoError(t, m.RollForward(ctx))
 
-	ver, dirty, err := m.driver.CurrentState(ctx)
-	assert.NoError(t, err)
-	assert.Equal(t, nState.binarySchemaVersion, ver)
-	assert.False(t, dirty)
+	state, err := m.CurrentState(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, nState.binarySchemaVersion, state.DatabaseSchemaVersion)
+	assert.False(t, state.Dirty)
 
 	// Restore the full set of sql scripts and roll the rest of the way forward.
 	migrationStates[dialect] = oState
@@ -126,10 +129,10 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 	newM, err := NewManager(ctx, dialect, d)
 	require.NoError(t, err)
 	assert.NoError(t, newM.RollForward(ctx))
-	ver, dirty, err = newM.driver.CurrentState(ctx)
-	assert.NoError(t, err)
-	assert.Equal(t, oState.binarySchemaVersion, ver)
-	assert.False(t, dirty)
+	state, err = newM.CurrentState(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, oState.binarySchemaVersion, state.DatabaseSchemaVersion)
+	assert.False(t, state.Dirty)
 }
 
 func TestManager_ExclusiveLock(t *testing.T) {

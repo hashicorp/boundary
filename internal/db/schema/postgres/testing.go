@@ -98,7 +98,7 @@ func testRun(t *testing.T, d *Postgres, migration io.Reader) {
 		t.Fatal("migration can't be nil")
 	}
 
-	if err := d.Run(ctx, migration); err != nil {
+	if err := d.Run(ctx, migration, 1); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -132,7 +132,7 @@ func testSetVersion(t *testing.T, d *Postgres) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := d.SetVersion(ctx, tc.version, tc.dirty)
+			err := d.setVersion(ctx, tc.version, tc.dirty)
 			if err != tc.expectedErr {
 				t.Fatal("Got unexpected error:", err, "!=", tc.expectedErr)
 			}
