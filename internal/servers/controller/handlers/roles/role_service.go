@@ -79,16 +79,57 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	gl, err := s.listFromRepo(ctx, req.GetScopeId())
+
+	// Get the list of scope IDs. If it's recursive, check ACLs.
+	var scopeIds []string
+	var err error
+	switch req.GetRecursive() {
+	case true:
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, err
+		}
+		scps, err := repo.ListScopesRecursively(ctx, req.GetScopeId())
+		if err != nil {
+			return nil, err
+		}
+		scopeIds = make([]string, 0, len(scps))
+		res := perms.Resource{
+			Type: resource.Role,
+		}
+		for _, scp := range scps {
+			scpId := scp.GetPublicId()
+			// We already checked the incoming ID so we can definitely add it
+			if scpId == authResults.Scope.Id {
+				scopeIds = append(scopeIds, scp.GetPublicId())
+				continue
+			}
+			res.ScopeId = scpId
+			aSet := authResults.FetchActionSetForType(ctx,
+				resource.Role,
+				action.ActionSet{action.List},
+				auth.WithResource(&res),
+			)
+			if len(aSet) == 1 && aSet[0] == action.List {
+				scopeIds = append(scopeIds, scp.GetPublicId())
+			}
+		}
+
+	default:
+		scopeIds = []string{req.GetScopeId()}
+	}
+
+	items, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
-	finalItems := make([]*pb.Role, 0, len(gl))
+
+	finalItems := make([]*pb.Role, 0, len(items))
 	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.Role,
 	}
-	for _, item := range gl {
+	for _, item := range items {
 		item.Scope = authResults.Scope
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
@@ -374,12 +415,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Role, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Role, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	rl, err := repo.ListRoles(ctx, scopeId)
+	rl, err := repo.ListRoles(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
