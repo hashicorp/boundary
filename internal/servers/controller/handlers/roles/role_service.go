@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
@@ -82,6 +83,11 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 
 	// Get the list of scope IDs. If it's recursive, check ACLs.
 	var scopeIds []string
+	// This will be used to memoize scope info so we can put the right scope
+	// info for each returned value
+	scopeInfoMap := map[string]*scopes.ScopeInfo{
+		req.GetScopeId(): authResults.Scope,
+	}
 	var err error
 	switch req.GetRecursive() {
 	case true:
@@ -89,6 +95,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 		if err != nil {
 			return nil, err
 		}
+		// Get all scopes recursively
 		scps, err := repo.ListScopesRecursively(ctx, req.GetScopeId())
 		if err != nil {
 			return nil, err
@@ -97,6 +104,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 		res := perms.Resource{
 			Type: resource.Role,
 		}
+		// For each scope, see if we have permission to list on that scope
 		for _, scp := range scps {
 			scpId := scp.GetPublicId()
 			// We already checked the incoming ID so we can definitely add it
@@ -110,11 +118,22 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 				action.ActionSet{action.List},
 				auth.WithResource(&res),
 			)
+			// We only passed one action in, so anything other than that one
+			// action back should not be included. Assuming it's correct, add
+			// the scope ID for lookup and memoize the scope info if needed.
 			if len(aSet) == 1 && aSet[0] == action.List {
-				scopeIds = append(scopeIds, scp.GetPublicId())
+				scopeIds = append(scopeIds, scpId)
+				if scopeInfoMap[scpId] == nil {
+					scopeInfoMap[scpId] = &scopes.ScopeInfo{
+						Id:            scp.GetPublicId(),
+						Type:          scp.GetType(),
+						Name:          scp.GetName(),
+						Description:   scp.GetDescription(),
+						ParentScopeId: scp.GetParentId(),
+					}
+				}
 			}
 		}
-
 	default:
 		scopeIds = []string{req.GetScopeId()}
 	}
@@ -130,7 +149,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 		Type:    resource.Role,
 	}
 	for _, item := range items {
-		item.Scope = authResults.Scope
+		item.Scope = scopeInfoMap[item.GetScopeId()]
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)

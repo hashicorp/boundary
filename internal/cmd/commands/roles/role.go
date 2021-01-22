@@ -304,6 +304,15 @@ func (c *Command) Run(args []string) int {
 				if true {
 					output = append(output,
 						fmt.Sprintf("  ID:                    %s", r.Id),
+					)
+				}
+				if c.FlagRecursive {
+					output = append(output,
+						fmt.Sprintf("    Scope ID:            %s", r.Scope.Id),
+					)
+				}
+				if true {
+					output = append(output,
 						fmt.Sprintf("    Version:             %d", r.Version),
 					)
 				}
