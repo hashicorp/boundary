@@ -257,15 +257,16 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		migrationUrlToParse = urlToParse
 	}
 
-	dbaseUrl, err := config.ParseAddress(urlToParse)
+	migrationUrl, err := config.ParseAddress(migrationUrlToParse)
 	if err != nil && err != config.ErrNotAUrl {
-		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
+		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
 		return 1
 	}
+	migrationUrl = strings.TrimSpace(migrationUrl)
 
 	// This database is used to keep an exclusive lock on the database for the
 	// remainder of the command
-	dBase, err := sql.Open(dialect, dbaseUrl)
+	dBase, err := sql.Open(dialect, migrationUrl)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error establishing db connection for locking: %w", err).Error())
 		return 1
@@ -310,29 +311,20 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}
 	}()
 
-	migrationUrl, err := config.ParseAddress(migrationUrlToParse)
-	if err != nil && err != config.ErrNotAUrl {
-		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
-		return 1
-	}
-
-	// Core migrations using the migration URL
 	{
-		migrationUrl = strings.TrimSpace(migrationUrl)
-		ran, err := schema.InitStore(c.Context, dialect, migrationUrl)
-		if err != nil {
+		if err := man.RollForward(c.Context); err != nil {
 			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
 			return 1
-		}
-		if !ran {
-			if base.Format(c.UI) == "table" {
-				c.UI.Info("Database already initialized.")
-				return 0
-			}
 		}
 		if base.Format(c.UI) == "table" {
 			c.UI.Info("Migrations successfully run.")
 		}
+	}
+
+	dbaseUrl, err := config.ParseAddress(urlToParse)
+	if err != nil && err != config.ErrNotAUrl {
+		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
+		return 1
 	}
 
 	// Everything after is done with normal database URL and is affecting actual data

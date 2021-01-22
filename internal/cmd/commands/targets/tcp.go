@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/go-bexpr"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -27,6 +28,7 @@ type TcpCommand struct {
 	flagDefaultPort            string
 	flagSessionMaxSeconds      string
 	flagSessionConnectionLimit string
+	flagWorkerFilter           string
 }
 
 func (c *TcpCommand) Synopsis() string {
@@ -34,8 +36,8 @@ func (c *TcpCommand) Synopsis() string {
 }
 
 var tcpFlagsMap = map[string][]string{
-	"create": {"scope-id", "name", "description", "default-port", "session-max-seconds", "session-connection-limit"},
-	"update": {"id", "name", "description", "version", "default-port", "session-max-seconds", "session-connection-limit"},
+	"create": {"scope-id", "name", "description", "default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
+	"update": {"id", "name", "description", "version", "default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
 }
 
 func (c *TcpCommand) Help() string {
@@ -90,6 +92,12 @@ func (c *TcpCommand) Flags() *base.FlagSets {
 				Name:   "session-connection-limit",
 				Target: &c.flagSessionConnectionLimit,
 				Usage:  "The maximum number of connections allowed for a session. -1 means unlimited.",
+			})
+		case "worker-filter":
+			f.StringVar(&base.StringVar{
+				Name:   "worker-filter",
+				Target: &c.flagWorkerFilter,
+				Usage:  "A boolean expression to filter which workers can handle sessions for this target.",
 			})
 		}
 	}
@@ -194,6 +202,18 @@ func (c *TcpCommand) Run(args []string) int {
 			return 1
 		}
 		opts = append(opts, targets.WithSessionConnectionLimit(int32(limit)))
+	}
+
+	switch c.flagWorkerFilter {
+	case "":
+	case "null":
+		opts = append(opts, targets.DefaultWorkerFilter())
+	default:
+		if _, err := bexpr.CreateEvaluator(c.flagWorkerFilter); err != nil {
+			c.UI.Error(fmt.Sprintf("Unable to successfully parse filter expression: %s", err))
+			return 1
+		}
+		opts = append(opts, targets.WithWorkerFilter(c.flagWorkerFilter))
 	}
 
 	targetClient := targets.NewClient(client)

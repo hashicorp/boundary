@@ -158,3 +158,15 @@ func DefaultSessionMaxSeconds() Option {
 		o.postMap["session_max_seconds"] = nil
 	}
 }
+
+func WithWorkerFilter(inWorkerFilter string) Option {
+	return func(o *options) {
+		o.postMap["worker_filter"] = inWorkerFilter
+	}
+}
+
+func DefaultWorkerFilter() Option {
+	return func(o *options) {
+		o.postMap["worker_filter"] = nil
+	}
+}

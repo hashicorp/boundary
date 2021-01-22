@@ -3,8 +3,11 @@ package strutil
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestStrUtil_StrListDelete(t *testing.T) {
@@ -596,5 +599,37 @@ func TestStrUtil_EqualStringMaps(t *testing.T) {
 		if actual != test.result {
 			t.Fatalf("case %d, expected %v, got %v", i, test.result, actual)
 		}
+	}
+}
+
+func TestPrintable(t *testing.T) {
+	cases := []struct {
+		input string
+		err   bool
+	}{
+		{
+			input: "/valid",
+		},
+		{
+			input: "foobarvalid",
+		},
+		{
+			input: "/invalid\u000A",
+			err:   true,
+		},
+		{
+			input: "/invalid\u000D",
+			err:   true,
+		},
+		{
+			input: "/invalid\u0000",
+			err:   true,
+		},
+	}
+
+	for i, tc := range cases {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			require.True(t, Printable(tc.input) != tc.err)
+		})
 	}
 }
