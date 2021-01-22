@@ -19,7 +19,6 @@ import (
 	"syscall"
 	"time"
 
-	exec "golang.org/x/sys/execabs"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
@@ -32,6 +31,7 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
+	exec "golang.org/x/sys/execabs"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wspb"

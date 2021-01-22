@@ -108,9 +108,9 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 // UpdateTcpTarget will update a target in the repository and return the written
 // target. fieldMaskPaths provides field_mask.proto paths for fields that should
 // be updated.  Fields will be set to NULL if the field is a zero value and
-// included in fieldMask. Name and Description are the only updatable fields,
-// If no updatable fields are included in the fieldMaskPaths, then an error is
-// returned.
+// included in fieldMask. Name, Description, and WorkerFilter are the only
+// updatable fields. If no updatable fields are included in the fieldMaskPaths,
+// then an error is returned.
 func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, version uint32, fieldMaskPaths []string, _ ...Option) (Target, []*TargetSet, int, error) {
 	const op = "target.(Repository).UpdateTcpTarget"
 	if target == nil {
@@ -129,6 +129,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		case strings.EqualFold("defaultport", f):
 		case strings.EqualFold("sessionmaxseconds", f):
 		case strings.EqualFold("sessionconnectionlimit", f):
+		case strings.EqualFold("workerfilter", f):
 		default:
 			return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -141,6 +142,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 			"DefaultPort":            target.DefaultPort,
 			"SessionMaxSeconds":      target.SessionMaxSeconds,
 			"SessionConnectionLimit": target.SessionConnectionLimit,
+			"WorkerFilter":           target.WorkerFilter,
 		},
 		fieldMaskPaths,
 		[]string{"SessionMaxSeconds", "SessionConnectionLimit"},

@@ -67,6 +67,7 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 
 	w.logger.Trace("looking up session", "session_id", sessionId)
 	resp, err := conn.LookupSession(timeoutContext, &pbs.LookupSessionRequest{
+		ServerId:  w.conf.RawConfig.Worker.Name,
 		SessionId: sessionId,
 	})
 	if err != nil {

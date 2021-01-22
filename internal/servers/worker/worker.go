@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
@@ -33,6 +34,14 @@ type Worker struct {
 
 	controllerSessionConn *atomic.Value
 	sessionInfoMap        *sync.Map
+
+	// We store the current set in an atomic value so that we can add
+	// reload-on-sighup behavior later
+	tags *atomic.Value
+	// This stores whether or not to send updated tags on the next status
+	// request. It can be set via startup in New below, or (eventually) via
+	// SIGHUP.
+	updateTags ua.Bool
 }
 
 func New(conf *Config) (*Worker, error) {
@@ -44,11 +53,14 @@ func New(conf *Config) (*Worker, error) {
 		controllerResolver:    new(atomic.Value),
 		controllerSessionConn: new(atomic.Value),
 		sessionInfoMap:        new(sync.Map),
+		tags:                  new(atomic.Value),
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
-	w.started.Store(false)
 	w.controllerResolver.Store((*manual.Resolver)(nil))
+
+	w.parseAndStoreTags(conf.RawConfig.Worker.Tags)
+	w.updateTags.Store(true)
 
 	if conf.SecureRandomReader == nil {
 		conf.SecureRandomReader = rand.Reader
@@ -134,4 +146,18 @@ func (w *Worker) Resolver() *manual.Resolver {
 		panic("nil resolver")
 	}
 	return raw.(*manual.Resolver)
+}
+
+func (w *Worker) parseAndStoreTags(incoming map[string][]string) {
+	if len(incoming) == 0 {
+		w.tags.Store(map[string]*servers.TagValues{})
+		return
+	}
+	tags := make(map[string]*servers.TagValues, len(incoming))
+	for k, v := range incoming {
+		tags[k] = &servers.TagValues{
+			Values: append(make([]string, 0, len(v)), v...),
+		}
+	}
+	w.tags.Store(tags)
 }
