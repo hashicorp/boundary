@@ -8,8 +8,4 @@ var (
 	// ErrInvalidStateForOperation indicates the session's state does not allow the
 	// operation.
 	ErrInvalidStateForOperation = errors.New("state is invalid for operation")
-
-	// ErrSessionNotPending indicates that a session cannot be activated
-	// because it's not in a pending state.
-	ErrSessionNotPending = errors.New("session is not in a pending state")
 )

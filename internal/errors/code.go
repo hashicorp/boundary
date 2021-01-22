@@ -32,7 +32,7 @@ const (
 	Io                    Code = 108 // Io represents that an io error occurred in an underlying call (i.e binary.Write)
 	SessionNotFound       Code = 109 // SessionNotFound represents that the session was not found
 	InvalidSessionState   Code = 110 // InvalidSessionState represents that the session was in an invalid state
-	TokenMismatch         Code = 111 // TokenMismatch represents that the ticket was not found
+	TokenMismatch         Code = 111 // TokenMismatch represents that there was a token mismatch
 
 	// PasswordTooShort results from attempting to set a password which is to short.
 	PasswordTooShort Code = 200
