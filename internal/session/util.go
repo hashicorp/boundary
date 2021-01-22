@@ -37,7 +37,7 @@ func DeriveED25519Key(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.P
 	}
 	pub, pvt, err := ed25519.GenerateKey(limitedReader)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithCode(errors.FixMe))
+		return nil, nil, errors.Wrap(err, op, errors.WithCode(errors.GenKey))
 	}
 	return pub, pvt, nil
 }

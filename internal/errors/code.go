@@ -30,6 +30,9 @@ const (
 	TicketAlreadyRedeemed Code = 106 // TicketAlreadyRedeemed represents that the ticket version has already been redeemed
 	TicketNotFound        Code = 107 // TicketNotFound represents that the ticket was not found
 	Io                    Code = 108 // Io represents that an io error occurred in an underlying call (i.e binary.Write)
+	SessionNotFound       Code = 109 // SessionNotFound represents that the session was not found
+	InvalidSessionState   Code = 110 // InvalidSessionState represents that the session was in an invalid state
+	TokenMismatch         Code = 111 // TokenMismatch represents that the ticket was not found
 
 	// PasswordTooShort results from attempting to set a password which is to short.
 	PasswordTooShort Code = 200
@@ -50,6 +53,8 @@ const (
 	Decrypt Code = 301 // Decrypt represents an error occurred during the underlying decryption process
 	Encode  Code = 302 // Encode represents an error occurred during the underlying encoding/marshaling process
 	Decode  Code = 303 // Decode represents an error occurred during the underlying decoding/unmarshaling process
+	GenKey  Code = 304 // GenKey represents an error occurred during the underlying key generation process
+	GenCert Code = 305 // GenCert represents an error occurred during the underlying certificate generation process
 
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
@@ -66,6 +71,4 @@ const (
 	// Migration setup errors are codes 2000-3000
 	MigrationIntegrity Code = 2000 // MigrationIntegrity represents an error with the generated migration related code
 	MigrationLock      Code = 2001 // MigrationLock represents an error related to locking of the DB
-
-	FixMe Code = 1111
 )

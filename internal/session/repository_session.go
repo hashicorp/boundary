@@ -96,11 +96,11 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("%d states found for new session %s", len(foundStates), returnedSession.PublicId))
 			}
 			if len(foundStates) == 0 {
-				return errors.New(errors.FixMe, op, fmt.Sprintf("no states found for new session %s", returnedSession.PublicId))
+				return errors.New(errors.SessionNotFound, op, fmt.Sprintf("no states found for new session %s", returnedSession.PublicId))
 			}
 			returnedSession.States = foundStates
 			if returnedSession.States[0].Status != StatusPending {
-				return errors.New(errors.FixMe, op, fmt.Sprintf("new session %s state is not valid: %s", returnedSession.PublicId, returnedSession.States[0].Status))
+				return errors.New(errors.InvalidSessionState, op, fmt.Sprintf("new session %s state is not valid: %s", returnedSession.PublicId, returnedSession.States[0].Status))
 			}
 			return nil
 		},
@@ -317,7 +317,7 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to terminate session %s", sessionId)))
 			}
 			if rowsAffected == 0 {
-				return errors.New(errors.FixMe, op, fmt.Sprintf("unable to terminate session %s", sessionId))
+				return errors.New(errors.SessionNotFound, op, fmt.Sprintf("unable to terminate session %s", sessionId))
 			}
 			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"TerminationReason"}, nil, db.WithVersion(&sessionVersion))
 			if err != nil {
@@ -602,7 +602,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to activate session %s", sessionId)))
 			}
 			if rowsAffected == 0 {
-				return errors.New(errors.FixMe, op, "session is not in a pending state")
+				return errors.New(errors.InvalidSessionState, op, "session is not in a pending state")
 			}
 			foundSession := AllocSession()
 			foundSession.PublicId = sessionId
@@ -614,7 +614,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 				return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 			}
 			if len(foundSession.TofuToken) > 0 && subtle.ConstantTimeCompare(foundSession.TofuToken, tofuToken) != 1 {
-				return errors.New(errors.FixMe, op, "tofu token mismatch")
+				return errors.New(errors.TokenMismatch, op, "tofu token mismatch")
 			}
 
 			updatedSession.TofuToken = tofuToken
@@ -706,7 +706,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 				return errors.Wrap(err, op)
 			}
 			if len(returnedStates) < 1 && returnedStates[0].Status != s {
-				return errors.New(errors.FixMe, op, fmt.Sprintf("failed to update %s to a state of %s", sessionId, s.String()))
+				return errors.New(errors.SessionNotFound, op, fmt.Sprintf("failed to update %s to a state of %s", sessionId, s.String()))
 			}
 			return nil
 		},

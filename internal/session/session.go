@@ -349,7 +349,7 @@ func newCert(wrapper wrapping.Wrapper, userId, jobId string, exp time.Time) (ed2
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pubKey, privKey)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithCode(errors.FixMe))
+		return nil, nil, errors.Wrap(err, op, errors.WithCode(errors.GenCert))
 	}
 	return privKey, certBytes, nil
 }
