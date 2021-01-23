@@ -4869,6 +4869,7 @@ begin;
 -- contain lower case values.  The type is defined to allow nulls and not be
 -- unique, which can be overriden as needed when used in tables.
 create domain wt_email as text
+    check (length(trim(value)) > 0)
     check (length(trim(value)) < 320)
     check (lower(value) = value);
 comment on domain wt_email is
@@ -4887,6 +4888,7 @@ comment on domain wt_email is
 -- wt_name defines a type for resource names that must be less than 128 chars.
 --  It's defined to allow nulls.
 create domain wt_name as text
+    check (length(trim(value)) > 0)
     check (length(trim(value)) < 128);
 comment on domain wt_email is
 'standard column for resource names';
@@ -4894,6 +4896,7 @@ comment on domain wt_email is
 -- wt_description defines a type for resource descriptionss that must be less
 -- than 1024 chars. It's defined to allow nulls.
 create domain wt_description as text
+    check (length(trim(value)) > 0)
     check (length(trim(value)) < 1024);
 comment on domain wt_email is
 'standard column for resource descriptions';
@@ -4903,17 +4906,7 @@ commit;
 			1081: []byte(`
 begin;
 
--- email is added to the iam_user as an external data point to deduce which user
--- is being represented by the iam_user.
-alter table iam_user
-add column email wt_email, -- intentionally, can be null and not unique
-add column wt_name text;
 
-alter table iam_user
-rename column name to resource_name;  -- disambiguate name 
-
-alter table iam_user                 
-rename column description to resource_description; -- disambiguate description
 
 commit;
 `),
