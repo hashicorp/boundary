@@ -340,6 +340,9 @@ func TestList(t *testing.T) {
 	}
 	scopes.SortScopes(wantProjects)
 
+	totalScopes := append(wantOrgs, wantProjects...)
+	scopes.SortScopes(totalScopes)
+
 	cases = []struct {
 		name    string
 		scopeId string
@@ -358,6 +361,12 @@ func TestList(t *testing.T) {
 			scopeId: oWithProjects.GetPublicId(),
 			req:     &pbs.ListScopesRequest{ScopeId: oWithProjects.GetPublicId()},
 			res:     &pbs.ListScopesResponse{Items: wantProjects},
+		},
+		{
+			name:    "List Global Recursively",
+			scopeId: scope.Global.String(),
+			req:     &pbs.ListScopesRequest{ScopeId: scope.Global.String(), Recursive: true},
+			res:     &pbs.ListScopesResponse{Items: totalScopes},
 		},
 	}
 	for _, tc := range cases {
