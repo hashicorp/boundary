@@ -704,7 +704,7 @@ func TestCreate(t *testing.T) {
 					if withUserId {
 						repo, err := repoFn()
 						require.NoError(err)
-						roles, err := repo.ListRoles(ctx, got.GetItem().GetId())
+						roles, err := repo.ListRoles(ctx, []string{got.GetItem().GetId()})
 						require.NoError(err)
 						switch tc.scopeId {
 						case defaultOrg.PublicId:

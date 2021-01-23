@@ -449,9 +449,9 @@ func (r *Repository) ListOrgs(ctx context.Context, opt ...Option) ([]*Scope, err
 	return orgs, nil
 }
 
-// ListRecursively allows for recursive listing of scopes based on a root scope
+// ListScopesRecursively allows for recursive listing of scopes based on a root scope
 // ID. It returns the root scope ID as a part of the set.
-func (r *Repository) ListRecursively(ctx context.Context, rootScopeId string, opt ...Option) ([]*Scope, error) {
+func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId string, opt ...Option) ([]*Scope, error) {
 	const op = "iam.(Repository).ListRecursively"
 	var orgs []*Scope
 	var where string
