@@ -99,14 +99,14 @@ create table auth_oidc_account (
     issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim
     subject_id text not null -- case-senstive string that maps to an id_token's sub claim
       constraint subject_id_must_be_less_than_256_chars 
+      check (
+        length(trim(subject_id)) > 0
+      )
       check(
         length(trim(subject_id)) <= 255 -- length limit per OIDC spec
       ),
-    subject_name text not null -- maps to an id_token's name claim
-      constraint subject_name_must_be_less_than_512_chars
-      check(
-          length(trim(subject_id)) <= 512 -- gotta pick some upper limit.
-      ),
+    full_name wt_full_name, -- may be null and maps to an id_token's name claim
+    email wt_email, -- may be null and maps to the id_token's email claim
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)
       on delete cascade
