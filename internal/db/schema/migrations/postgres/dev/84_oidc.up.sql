@@ -100,7 +100,7 @@ create table auth_oidc_account (
     subject_id text not null -- case-senstive string that maps to an id_token's sub claim
       constraint subject_id_must_be_less_than_256_chars 
       check (
-        length(trim(value)) > 0
+        length(trim(subject_id)) > 0
       )
       check(
         length(trim(subject_id)) <= 255 -- length limit per OIDC spec
