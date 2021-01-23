@@ -5,7 +5,7 @@ package schema
 func init() {
 	migrationStates["postgres"] = migrationState{
 		devMigration:        true,
-		binarySchemaVersion: 1085,
+		binarySchemaVersion: 1086,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 begin;
@@ -4875,6 +4875,14 @@ create domain wt_email as text
 comment on domain wt_email is
 'standard column for email addresses';
 
+-- wt_full_name defines a type for a person's full name which must be less than
+-- 512 chars.  The type is defined to allow nulls and not be unique, which can
+-- be overriden as needed when used in tables. 
+create domain wt_full_name text 
+    check (length(trim(value)) > 0)
+    check(length(trim(value)) <= 512); -- gotta pick some upper limit.
+comment on domain wt_full_name is
+'standard column for the full name of a person';
 
 -- wt_url defines a type for URLs which must be longer that 3 chars and
 -- less than 4k chars.  It's defined to allow nulls, which can be overriden as
@@ -4900,13 +4908,6 @@ create domain wt_description as text
     check (length(trim(value)) < 1024);
 comment on domain wt_email is
 'standard column for resource descriptions';
-
-commit;
-`),
-			1081: []byte(`
-begin;
-
-
 
 commit;
 `),
@@ -5154,14 +5155,14 @@ create table auth_oidc_account (
     issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim
     subject_id text not null -- case-senstive string that maps to an id_token's sub claim
       constraint subject_id_must_be_less_than_256_chars 
+      check (
+        length(trim(subject_id)) > 0
+      )
       check(
         length(trim(subject_id)) <= 255 -- length limit per OIDC spec
       ),
-    subject_name text not null -- maps to an id_token's name claim
-      constraint subject_name_must_be_less_than_512_chars
-      check(
-          length(trim(subject_id)) <= 512 -- gotta pick some upper limit.
-      ),
+    full_name wt_full_name, -- may be null and maps to an id_token's name claim
+    email wt_email, -- may be null and maps to the id_token's email claim
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)
       on delete cascade
@@ -5259,6 +5260,68 @@ add column status text
 not null
 default 'token issued' -- safest default
 references auth_token_status_enm(name);
+
+commit;
+`),
+			1086: []byte(`
+begin;
+
+-- add the account_info_auth_method_id which determines which auth_method is
+-- designated as for "account info" in the user's scope.  
+alter table iam_scope
+add column account_info_auth_method_id wt_public_id -- allowed to be null and is mutable of course.
+references auth_method(public_id)
+on update cascade
+on delete cascade;
+
+-- iam_user_acct_info provides account info for users by determining which
+-- auth_method is designated as for "account info" in the user's scope via the
+-- scope's account_info_auth_method_id.  Every sub-type of auth_account must be
+-- added to this view's union.
+create view iam_acct_info as
+select 
+    aa.iam_user_id,
+    oa.subject_id as login_name,
+    oa.full_name as full_name,
+    oa.email as email
+from 	
+    iam_scope s,
+    auth_account aa,
+	auth_oidc_account oa
+where
+    aa.public_id = oa.public_id and 
+    aa.auth_method_id = s.account_info_auth_method_id 
+union 
+select 
+    iam_user_id,
+    pa.login_name,
+    '' as full_name,
+    '' as email
+from 	
+    iam_scope s,
+    auth_account aa,
+	auth_password_account pa
+where
+    aa.public_id = pa.public_id and 
+    aa.auth_method_id = s.account_info_auth_method_id;
+
+-- iam_user_acct_info provides a simple way to retrieve entries that include
+-- both the iam_user fields with an outer join to the user's account info.
+create view iam_user_acct_info as
+select 
+    u.public_id,
+    u.scope_id,
+    u.name,
+    u.description, 
+    u.create_time,
+    u.update_time,
+    u.version,
+    i.login_name,
+    i.full_name,
+    i.email
+from 	
+	iam_user u
+left outer join iam_acct_info i on u.public_id = i.iam_user_id;
 
 commit;
 `),
@@ -5620,45 +5683,21 @@ commit;
 			1080: []byte(`
 begin;
 
-drop domain wt_email;
-drop domain wt_url;
-drop domain wt_name;
-drop domain wt_description;
-
-commit;
-`),
-			1081: []byte(`
-begin;
-
-alter table iam_user drop column email;
 
 commit;
 `),
 			1082: []byte(`
 begin;
 
-drop table kms_oidc_key;
-drop table kms_oidc_version;
-
 commit;
 `),
 			1083: []byte(`
 begin;
 
-drop table auth_oidc_method_state_enm;
-drop table auth_oidc_signing_alg_enm;
-
 commit;
 `),
 			1084: []byte(`
 begin;
-
-drop table auth_oidc_method;
-drop table auth_oidc_signing_alg;
-drop table auth_oidc_callback_url;
-drop table auth_oidc_aud_claim;
-drop table auth_oidc_certificate;
-drop table auth_oidc_account;
 
 commit;
 
@@ -5666,12 +5705,13 @@ commit;
 			1085: []byte(`
 begin;
 
-drop table auth_token_status_enm;
-alter table auth_token drop column status;
-
-
 commit;
 
+`),
+			1086: []byte(`
+begin;
+
+commit;
 `),
 		},
 	}
