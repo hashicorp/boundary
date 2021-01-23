@@ -133,16 +133,17 @@ func (c *Command) Run(args []string) int {
 	default:
 		opts = append(opts, roles.WithDescription(c.FlagDescription))
 	}
+	switch c.FlagRecursive {
+	case true:
+		opts = append(opts, roles.WithRecursive(true))
+	}
+
 	switch c.flagGrantScopeId {
 	case "":
 	case "null":
 		opts = append(opts, roles.DefaultGrantScopeId())
 	default:
 		opts = append(opts, roles.WithGrantScopeId(c.flagGrantScopeId))
-	}
-	switch c.FlagRecursive {
-	case true:
-		opts = append(opts, roles.WithRecursive(true))
 	}
 
 	principals := c.flagPrincipals
