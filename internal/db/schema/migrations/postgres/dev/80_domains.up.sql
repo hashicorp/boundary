@@ -15,7 +15,7 @@ comment on domain wt_email is
 -- be overriden as needed when used in tables. 
 create domain wt_full_name text 
     check (length(trim(value)) > 0)
-    check(length(trim(subject_id)) <= 512); -- gotta pick some upper limit.
+    check(length(trim(value)) <= 512); -- gotta pick some upper limit.
 comment on domain wt_full_name is
 'standard column for the full name of a person';
 
