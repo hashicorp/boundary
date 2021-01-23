@@ -244,7 +244,14 @@ func TestList(t *testing.T) {
 			res:  &pbs.ListRolesResponse{},
 		},
 		{
-			name: "List org role recursively",
+			name: "List proj roles recursively",
+			req:  &pbs.ListRolesRequest{ScopeId: pWithRoles.GetPublicId(), Recursive: true},
+			res: &pbs.ListRolesResponse{
+				Items: wantProjRoles,
+			},
+		},
+		{
+			name: "List org roles recursively",
 			req:  &pbs.ListRolesRequest{ScopeId: oNoRoles.GetPublicId(), Recursive: true},
 			res: &pbs.ListRolesResponse{
 				Items: wantProjRoles,

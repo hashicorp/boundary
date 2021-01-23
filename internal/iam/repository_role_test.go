@@ -646,18 +646,20 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 
-	// Remove all existing roles
 	require.NoError(t, conn.Where("1=1").Delete(allocRole()).Error)
 
-	const rolesPerScope = 10
-	testRoles := make([]*Role, 0, 30)
-	for i := 0; i < rolesPerScope; i++ {
-		testRoles = append(testRoles, TestRole(t, conn, "global"))
-		testRoles = append(testRoles, TestRole(t, conn, org.GetPublicId()))
-		testRoles = append(testRoles, TestRole(t, conn, proj.GetPublicId()))
+	const numPerScope = 10
+	var total int
+	for i := 0; i < numPerScope; i++ {
+		TestRole(t, conn, "global")
+		total++
+		TestRole(t, conn, org.GetPublicId())
+		total++
+		TestRole(t, conn, proj.GetPublicId())
+		total++
 	}
 
 	got, err := repo.ListRoles(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
 	require.NoError(t, err)
-	assert.Equal(t, len(testRoles), len(got))
+	assert.Equal(t, total, len(got))
 }

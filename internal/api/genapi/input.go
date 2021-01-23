@@ -150,6 +150,7 @@ var inputStructs = []*structInfo{
 		},
 		versionEnabled:      true,
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	// User related resources
 	{
@@ -174,6 +175,7 @@ var inputStructs = []*structInfo{
 		pathArgs:            []string{"user"},
 		versionEnabled:      true,
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	// Group related resources
 	{
@@ -198,6 +200,7 @@ var inputStructs = []*structInfo{
 		pathArgs:            []string{"group"},
 		versionEnabled:      true,
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	// Role related resources
 	{
@@ -251,6 +254,7 @@ var inputStructs = []*structInfo{
 		typeOnCreate:        true,
 		versionEnabled:      true,
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	{
 		inProto:     &authmethods.PasswordAuthMethodAttributes{},
@@ -291,6 +295,7 @@ var inputStructs = []*structInfo{
 		},
 		pathArgs:            []string{"auth-token"},
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	// Host related resources
 	{
@@ -308,6 +313,7 @@ var inputStructs = []*structInfo{
 		typeOnCreate:        true,
 		versionEnabled:      true,
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	{
 		inProto: &hosts.Host{},
@@ -391,6 +397,7 @@ var inputStructs = []*structInfo{
 		versionEnabled:      true,
 		typeOnCreate:        true,
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	{
 		inProto:     &targets.TcpTargetAttributes{},
@@ -408,6 +415,7 @@ var inputStructs = []*structInfo{
 		pathArgs:            []string{"session"},
 		createResponseTypes: true,
 		fieldFilter:         []string{"private_key"},
+		recursiveListing:    true,
 	},
 	{
 		inProto: &sessions.SessionState{},
