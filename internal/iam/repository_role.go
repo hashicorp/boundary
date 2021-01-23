@@ -181,7 +181,7 @@ func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, _ ...O
 	return rowsDeleted, nil
 }
 
-// ListRoles in a scope and supports WithLimit option.
+// ListRoles in the given scopes and supports WithLimit option.
 func (r *Repository) ListRoles(ctx context.Context, withScopeIds []string, opt ...Option) ([]*Role, error) {
 	const op = "iam.(Repository).ListRoles"
 	if len(withScopeIds) == 0 {
