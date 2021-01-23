@@ -124,13 +124,13 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 			if len(aSet) == 1 && aSet[0] == action.List {
 				scopeIds = append(scopeIds, scpId)
 				if scopeInfoMap[scpId] == nil {
-					scopeInfoMap[scpId] = &scopes.ScopeInfo{
-						Id:            scp.GetPublicId(),
-						Type:          scp.GetType(),
-						Name:          scp.GetName(),
-						Description:   scp.GetDescription(),
-						ParentScopeId: scp.GetParentId(),
+					scopeInfo := &scopes.ScopeInfo{
+						Id:          scp.GetPublicId(),
+						Type:        scp.GetType(),
+						Name:        scp.GetName(),
+						Description: scp.GetDescription(),
 					}
+					scopeInfoMap[scpId] = scopeInfo
 				}
 			}
 		}
