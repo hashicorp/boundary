@@ -2,6 +2,7 @@ package target
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strconv"
 	"testing"
@@ -316,6 +317,34 @@ func TestRepository_ListTargets(t *testing.T) {
 			assert.Equal(tt.wantCnt, len(got))
 		})
 	}
+}
+
+func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	_, proj2 := iam.TestScopes(t, iamRepo)
+	rw := db.New(conn)
+	repo, err := NewRepository(rw, rw, testKms)
+	require.NoError(t, err)
+
+	require.NoError(t, conn.Where("1=1").Delete(allocTcpTarget()).Error)
+
+	const numPerScope = 10
+	var total int
+	for i := 0; i < numPerScope; i++ {
+		TestTcpTarget(t, conn, proj1.GetPublicId(), fmt.Sprintf("proj1-%d", i))
+		total++
+		TestTcpTarget(t, conn, proj2.GetPublicId(), fmt.Sprintf("proj2-%d", i))
+		total++
+	}
+
+	got, err := repo.ListTargets(context.Background(), WithScopeIds([]string{"global", proj1.GetPublicId(), proj2.GetPublicId()}))
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
 }
 
 func TestRepository_DeleteTarget(t *testing.T) {

@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
@@ -122,17 +123,25 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}
+
+	ul, err := s.listFromRepo(ctx, scopeIds)
+	if err != nil {
+		return nil, err
+	}
+
 	finalItems := make([]*pb.Target, 0, len(ul))
 	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Target,
+		Type: resource.Target,
 	}
 	for _, item := range ul {
-		item.Scope = authResults.Scope
+		item.Scope = scopeInfoMap[item.GetScopeId()]
+		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
@@ -660,12 +669,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Target, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Target, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListTargets(ctx, target.WithScopeId(scopeId))
+	ul, err := repo.ListTargets(ctx, target.WithScopeIds(scopeIds))
 	if err != nil {
 		return nil, err
 	}
@@ -931,7 +940,7 @@ func validateDeleteRequest(req *pbs.DeleteTargetRequest) error {
 
 func validateListRequest(req *pbs.ListTargetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
+	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) && !req.GetRecursive() {
 		badFields["scope_id"] = "This field is required to have a properly formatted project scope id."
 	}
 	if len(badFields) > 0 {

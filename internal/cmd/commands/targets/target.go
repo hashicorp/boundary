@@ -44,7 +44,7 @@ var flagsMap = map[string][]string{
 	"authorize-session": {"id", "host-id"},
 	"read":              {"id"},
 	"delete":            {"id"},
-	"list":              {"scope-id"},
+	"list":              {"scope-id", "recursive"},
 	"add-host-sets":     {"id", "host-set", "version"},
 	"remove-host-sets":  {"id", "host-set", "version"},
 	"set-host-sets":     {"id", "host-set", "version"},
@@ -281,19 +281,22 @@ func (c *Command) Run(args []string) int {
 	default:
 		opts = append(opts, targets.WithName(c.FlagName))
 	}
-
-	switch c.FlagScopeName {
-	case "":
-	default:
-		opts = append(opts, targets.WithScopeName(c.FlagScopeName))
-	}
-
 	switch c.FlagDescription {
 	case "":
 	case "null":
 		opts = append(opts, targets.DefaultDescription())
 	default:
 		opts = append(opts, targets.WithDescription(c.FlagDescription))
+	}
+	switch c.FlagRecursive {
+	case true:
+		opts = append(opts, targets.WithRecursive(true))
+	}
+
+	switch c.FlagScopeName {
+	case "":
+	default:
+		opts = append(opts, targets.WithScopeName(c.FlagScopeName))
 	}
 
 	hostSets := c.flagHostSets
@@ -428,6 +431,15 @@ func (c *Command) Run(args []string) int {
 				if true {
 					output = append(output,
 						fmt.Sprintf("  ID:                    %s", m.Id),
+					)
+				}
+				if c.FlagRecursive {
+					output = append(output,
+						fmt.Sprintf("    Scope ID:            %s", m.Scope.Id),
+					)
+				}
+				if true {
+					output = append(output,
 						fmt.Sprintf("    Version:             %d", m.Version),
 						fmt.Sprintf("    Type:                %s", m.Type),
 					)

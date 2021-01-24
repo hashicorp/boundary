@@ -370,7 +370,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		in        string
+		in        []string
 		opts      []Option
 		want      []*AuthMethod
 		wantIsErr error
@@ -381,12 +381,12 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 		},
 		{
 			name: "Scope with no auth methods",
-			in:   noAuthMethodOrg.GetPublicId(),
+			in:   []string{noAuthMethodOrg.GetPublicId()},
 			want: []*AuthMethod{},
 		},
 		{
 			name: "With populated scope id",
-			in:   o.GetPublicId(),
+			in:   []string{o.GetPublicId()},
 			want: authMethods,
 		},
 	}
@@ -398,7 +398,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAuthMethods(context.Background(), []string{tt.in}, tt.opts...)
+			got, err := repo.ListAuthMethods(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
