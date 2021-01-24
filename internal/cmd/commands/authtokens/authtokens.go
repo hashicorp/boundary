@@ -175,15 +175,26 @@ func (c *Command) Run(args []string) int {
 				if i > 0 {
 					output = append(output, "")
 				}
-				output = append(output,
-					fmt.Sprintf("  ID:                            %s", t.Id),
-					fmt.Sprintf("    Approximate Last Used Time:  %s", t.ApproximateLastUsedTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    Auth Method ID:              %s", t.AuthMethodId),
-					fmt.Sprintf("    Created Time:                %s", t.CreatedTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    Expiration Time:             %s", t.ExpirationTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    Updated Time:                %s", t.UpdatedTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    User ID:                     %s", t.UserId),
-				)
+				if true {
+					output = append(output,
+						fmt.Sprintf("  ID:                            %s", t.Id),
+					)
+				}
+				if c.FlagRecursive {
+					output = append(output,
+						fmt.Sprintf("    Scope ID:                    %s", t.Scope.Id),
+					)
+				}
+				if true {
+					output = append(output,
+						fmt.Sprintf("    Approximate Last Used Time:  %s", t.ApproximateLastUsedTime.Local().Format(time.RFC1123)),
+						fmt.Sprintf("    Auth Method ID:              %s", t.AuthMethodId),
+						fmt.Sprintf("    Created Time:                %s", t.CreatedTime.Local().Format(time.RFC1123)),
+						fmt.Sprintf("    Expiration Time:             %s", t.ExpirationTime.Local().Format(time.RFC1123)),
+						fmt.Sprintf("    Updated Time:                %s", t.UpdatedTime.Local().Format(time.RFC1123)),
+						fmt.Sprintf("    User ID:                     %s", t.UserId),
+					)
+				}
 				if len(t.AuthorizedActions) > 0 {
 					output = append(output,
 						"    Authorized Actions:",

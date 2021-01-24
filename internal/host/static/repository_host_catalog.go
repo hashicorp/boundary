@@ -200,10 +200,10 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 	return c, nil
 }
 
-// ListCatalogs returns a slice of HostCatalogs for the scopeId. WithLimit is the only option supported.
-func (r *Repository) ListCatalogs(ctx context.Context, scopeId string, opt ...Option) ([]*HostCatalog, error) {
+// ListCatalogs returns a slice of HostCatalogs for the scope IDs. WithLimit is the only option supported.
+func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ...Option) ([]*HostCatalog, error) {
 	const op = "static.(Repository).ListCatalogs"
-	if scopeId == "" {
+	if len(scopeIds) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
 	opts := getOpts(opt...)
@@ -213,7 +213,7 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeId string, opt ...Op
 		limit = opts.withLimit
 	}
 	var hostCatalogs []*HostCatalog
-	err := r.reader.SearchWhere(ctx, &hostCatalogs, "scope_id = ?", []interface{}{scopeId}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &hostCatalogs, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
