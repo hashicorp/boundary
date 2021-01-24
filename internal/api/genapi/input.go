@@ -370,6 +370,11 @@ var inputStructs = []*structInfo{
 		subtypeName: "WorkerInfo",
 	},
 	{
+		inProto:     &targets.TcpTargetAttributes{},
+		outFile:     "targets/tcp_target_attributes.gen.go",
+		subtypeName: "TcpTarget",
+	},
+	{
 		inProto: &targets.Target{},
 		outFile: "targets/target.gen.go",
 		templates: []*template.Template{
@@ -408,11 +413,6 @@ var inputStructs = []*structInfo{
 		typeOnCreate:        true,
 		createResponseTypes: true,
 		recursiveListing:    true,
-	},
-	{
-		inProto:     &targets.TcpTargetAttributes{},
-		outFile:     "targets/tcp_target_attributes.gen.go",
-		subtypeName: "TcpTarget",
 	},
 	{
 		inProto: &sessions.SessionState{},
