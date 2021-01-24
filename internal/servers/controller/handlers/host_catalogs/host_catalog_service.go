@@ -453,8 +453,9 @@ func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
 
 func validateListRequest(req *pbs.ListHostCatalogsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) && !req.GetRecursive() {
-		badFields["scope_id"] = "This field must be a valid project scope id."
+	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+		!req.GetRecursive() {
+		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

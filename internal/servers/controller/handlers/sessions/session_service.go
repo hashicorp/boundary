@@ -270,8 +270,9 @@ func validateGetRequest(req *pbs.GetSessionRequest) error {
 
 func validateListRequest(req *pbs.ListSessionsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) && !req.GetRecursive() {
-		badFields["scope_id"] = "This field is required to have a properly formatted project scope id."
+	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+		!req.GetRecursive() {
+		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
