@@ -33,7 +33,7 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"delete": {"id"},
-	"list":   {"scope-id"},
+	"list":   {"scope-id", "recursive"},
 }
 
 func (c *Command) Help() string {
@@ -92,21 +92,28 @@ func (c *Command) Run(args []string) int {
 
 	authtokenClient := authtokens.NewClient(client)
 
+	var opts []authtokens.Option
+
+	switch c.FlagRecursive {
+	case true:
+		opts = append(opts, authtokens.WithRecursive(true))
+	}
+
 	existed := true
 	var result api.GenericResult
 	var listResult api.GenericListResult
 
 	switch c.Func {
 	case "read":
-		result, err = authtokenClient.Read(c.Context, c.FlagId)
+		result, err = authtokenClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		_, err = authtokenClient.Delete(c.Context, c.FlagId)
+		_, err = authtokenClient.Delete(c.Context, c.FlagId, opts...)
 		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
 			existed = false
 			err = nil
 		}
 	case "list":
-		listResult, err = authtokenClient.List(c.Context, c.FlagScopeId)
+		listResult, err = authtokenClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "auth token"
