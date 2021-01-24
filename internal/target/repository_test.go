@@ -248,7 +248,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     5,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithTargetType(TcpTargetType), WithScopeId(proj.PublicId)},
+				opt: []Option{WithTargetType(TcpTargetType), WithScopeIds([]string{proj.PublicId})},
 			},
 			wantCnt: 5,
 			wantErr: false,
@@ -258,7 +258,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     testLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithLimit(-1), WithScopeId(proj.PublicId)},
+				opt: []Option{WithLimit(-1), WithScopeIds([]string{proj.PublicId})},
 			},
 			wantCnt: testLimit + 1,
 			wantErr: false,
@@ -268,7 +268,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     testLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithScopeId(proj.PublicId)},
+				opt: []Option{WithScopeIds([]string{proj.PublicId})},
 			},
 			wantCnt: testLimit,
 			wantErr: false,
@@ -278,7 +278,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     testLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithLimit(3), WithScopeId(proj.PublicId)},
+				opt: []Option{WithLimit(3), WithScopeIds([]string{proj.PublicId})},
 			},
 			wantCnt: 3,
 			wantErr: false,
@@ -288,7 +288,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     1,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithScopeId("bad-id")},
+				opt: []Option{WithScopeIds([]string{"bad-id"})},
 			},
 			wantCnt: 0,
 			wantErr: false,
