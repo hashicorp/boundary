@@ -9,7 +9,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Boundary now uses Go's new execabs package for execution of binaries in
   `boundary connect`. This is for defense-in-depth rather than a specific
   issue. See the [Go blog post](https://blog.golang.org/path-security) for more
-  details.  ([PR](https://github.com/hashicorp/boundary/pull/873))
+  details. ([PR](https://github.com/hashicorp/boundary/pull/873))
 
 ### Changes/Deprecations
 
@@ -24,6 +24,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * api/cli: On listing/reading, return a list of actions the user is authorized
   to perform on the identified resources or their associated collections
   ([PR](https://github.com/hashicorp/boundary/pull/870))
+* api/cli: Most resource types now support recursive listing, allowing listing
+  to occur down a scope tree
+  ([PR](https://github.com/hashicorp/boundary/pull/885))
 
 ### Bug Fixes
 
