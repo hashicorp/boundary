@@ -240,6 +240,11 @@ var inputStructs = []*structInfo{
 	},
 	// Auth Methods related resources
 	{
+		inProto:     &authmethods.PasswordAuthMethodAttributes{},
+		outFile:     "authmethods/password_auth_method_attributes.gen.go",
+		subtypeName: "PasswordAuthMethod",
+	},
+	{
 		inProto: &authmethods.AuthMethod{},
 		outFile: "authmethods/authmethods.gen.go",
 		templates: []*template.Template{
@@ -256,12 +261,12 @@ var inputStructs = []*structInfo{
 		createResponseTypes: true,
 		recursiveListing:    true,
 	},
-	{
-		inProto:     &authmethods.PasswordAuthMethodAttributes{},
-		outFile:     "authmethods/password_auth_method_attributes.gen.go",
-		subtypeName: "PasswordAuthMethod",
-	},
 	// Accounts
+	{
+		inProto:     &accounts.PasswordAccountAttributes{},
+		outFile:     "accounts/password_account_attributes.gen.go",
+		subtypeName: "PasswordAccount",
+	},
 	{
 		inProto: &accounts.Account{},
 		outFile: "accounts/account.gen.go",
@@ -277,11 +282,6 @@ var inputStructs = []*structInfo{
 		parentTypeName:      "auth-method",
 		versionEnabled:      true,
 		createResponseTypes: true,
-	},
-	{
-		inProto:     &accounts.PasswordAccountAttributes{},
-		outFile:     "accounts/password_account_attributes.gen.go",
-		subtypeName: "PasswordAccount",
 	},
 	// Auth Tokens
 	{
@@ -360,6 +360,16 @@ var inputStructs = []*structInfo{
 		outFile: "targets/host_set.gen.go",
 	},
 	{
+		inProto:     &targets.SessionAuthorization{},
+		outFile:     "targets/session_authorization.gen.go",
+		subtypeName: "SessionAuthorization",
+	},
+	{
+		inProto:     &targets.WorkerInfo{},
+		outFile:     "targets/worker_info.gen.go",
+		subtypeName: "WorkerInfo",
+	},
+	{
 		inProto: &targets.Target{},
 		outFile: "targets/target.gen.go",
 		templates: []*template.Template{
@@ -405,6 +415,14 @@ var inputStructs = []*structInfo{
 		subtypeName: "TcpTarget",
 	},
 	{
+		inProto: &sessions.SessionState{},
+		outFile: "sessions/state.gen.go",
+	},
+	{
+		inProto: &sessions.WorkerInfo{},
+		outFile: "sessions/workers.gen.go",
+	},
+	{
 		inProto: &sessions.Session{},
 		outFile: "sessions/session.gen.go",
 		templates: []*template.Template{
@@ -416,23 +434,5 @@ var inputStructs = []*structInfo{
 		createResponseTypes: true,
 		fieldFilter:         []string{"private_key"},
 		recursiveListing:    true,
-	},
-	{
-		inProto: &sessions.SessionState{},
-		outFile: "sessions/state.gen.go",
-	},
-	{
-		inProto: &sessions.WorkerInfo{},
-		outFile: "sessions/workers.gen.go",
-	},
-	{
-		inProto:     &targets.SessionAuthorization{},
-		outFile:     "targets/session_authorization.gen.go",
-		subtypeName: "SessionAuthorization",
-	},
-	{
-		inProto:     &targets.WorkerInfo{},
-		outFile:     "targets/worker_info.gen.go",
-		subtypeName: "WorkerInfo",
 	},
 }

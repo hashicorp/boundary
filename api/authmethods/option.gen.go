@@ -1,6 +1,8 @@
 package authmethods
 
 import (
+	"strconv"
+
 	"github.com/hashicorp/boundary/api"
 )
 
@@ -18,6 +20,7 @@ type options struct {
 	queryMap                map[string]string
 	withAutomaticVersioning bool
 	withSkipCurlOutput      bool
+	withRecursive           bool
 }
 
 func getDefaultOptions() options {
@@ -35,6 +38,9 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	var apiOpts []api.Option
 	if opts.withSkipCurlOutput {
 		apiOpts = append(apiOpts, api.WithSkipCurlOutput(true))
+	}
+	if opts.withRecursive {
+		opts.queryMap["recursive"] = strconv.FormatBool(opts.withRecursive)
 	}
 	return opts, apiOpts
 }
@@ -54,6 +60,14 @@ func WithAutomaticVersioning(enable bool) Option {
 func WithSkipCurlOutput(skip bool) Option {
 	return func(o *options) {
 		o.withSkipCurlOutput = true
+	}
+}
+
+// WithRecursive tells the API to use recursion for listing operations on this
+// resource
+func WithRecursive(recurse bool) Option {
+	return func(o *options) {
+		o.withRecursive = true
 	}
 }
 

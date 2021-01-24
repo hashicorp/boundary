@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
@@ -129,17 +130,24 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
+	if err != nil {
+		return nil, err
+	}
+
+	ul, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
 	finalItems := make([]*pb.AuthMethod, 0, len(ul))
 	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.AuthMethod,
+		Type: resource.AuthMethod,
 	}
 	for _, item := range ul {
-		item.Scope = authResults.Scope
+		item.Scope = scopeInfoMap[item.GetScopeId()]
+		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
@@ -270,12 +278,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 	return toAuthMethodProto(u)
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.AuthMethod, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.AuthMethod, error) {
 	repo, err := s.pwRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListAuthMethods(ctx, scopeId)
+	ul, err := repo.ListAuthMethods(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
