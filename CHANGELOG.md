@@ -24,9 +24,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * api/cli: On listing/reading, return a list of actions the user is authorized
   to perform on the identified resources or their associated collections
   ([PR](https://github.com/hashicorp/boundary/pull/870))
+* cli: Add a `database migrate` command which updates a database's schema to 
+  the version supported by the boundary binary ([PR](https://github.com/hashicorp/boundary/pull/872)).
 
 ### Bug Fixes
 
+* controller/db: Correctly check if db init previously completed successfully 
+  when starting a controller or when running `database init` 
+  ([Issue](https://github.com/hashicorp/boundary/issues/805))
+  ([PR](https://github.com/hashicorp/boundary/pull/842))
 * cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`
   commands and automatic versioning is being used (that is, no `-version` flag
   is given), it will now display the final call instead of the `GET` that
