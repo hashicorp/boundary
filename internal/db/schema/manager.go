@@ -22,7 +22,7 @@ type driver interface {
 	// A value of -1 indicates no version is set.
 	SetVersion(context.Context, int, bool) error
 	// A value of -1 indicates no version is set.
-	Version(context.Context) (int, bool, error)
+	CurrentState(context.Context) (int, bool, error)
 }
 
 // Manager provides a way to run operations and retrieve information regarding
@@ -70,22 +70,22 @@ func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 	dbS := State{
 		BinarySchemaVersion: BinarySchemaVersion(b.dialect),
 	}
-	v, dirty, err := b.driver.Version(ctx)
+	v, dirty, err := b.driver.CurrentState(ctx)
 	if err != nil {
 		return nil, err
 	}
+	dbS.DatabaseSchemaVersion = v
+	dbS.Dirty = dirty
 	if v == nilVersion {
 		return &dbS, nil
 	}
 	dbS.InitializationStarted = true
-	dbS.DatabaseSchemaVersion = v
-	dbS.Dirty = dirty
 	return &dbS, nil
 }
 
-// SharedLock attempts to obtain a shared lock on the database.  This can fail if
-// an exclusive lock is already held with the same key.  An error is returned if
-// a lock was unable to be obtained.
+// SharedLock attempts to obtain a shared lock on the database.  This can fail
+// if an exclusive lock is already held.  If the lock can't be obtained an
+// error is returned.
 func (b *Manager) SharedLock(ctx context.Context) error {
 	const op = "schema.(Manager).SharedLock"
 	if err := b.driver.TrySharedLock(ctx); err != nil {
@@ -140,7 +140,7 @@ func (b *Manager) RollForward(ctx context.Context) error {
 		b.driver.Unlock(ctx)
 	}()
 
-	curVersion, dirty, err := b.driver.Version(ctx)
+	curVersion, dirty, err := b.driver.CurrentState(ctx)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -149,11 +149,7 @@ func (b *Manager) RollForward(ctx context.Context) error {
 		return errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("schema is dirty with version %d", curVersion))
 	}
 
-	sp, err := newStatementProvider(b.dialect, curVersion)
-	if err != nil {
-		return errors.Wrap(err, op)
-	}
-	return b.runMigrations(ctx, sp)
+	return b.runMigrations(ctx, newStatementProvider(b.dialect, curVersion))
 }
 
 // runMigrations passes migration queries to a database driver and manages
@@ -174,6 +170,8 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 			return errors.Wrap(err, op)
 		}
 
+		// TODO: Wrap all the queries provided by the statementProvider into a
+		//  single transaction which includes setting the version number.
 		if err := b.driver.Run(ctx, bytes.NewReader(qp.ReadUp())); err != nil {
 			return errors.Wrap(err, op)
 		}

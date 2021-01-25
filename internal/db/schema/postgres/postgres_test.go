@@ -40,7 +40,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/dhui/dktest"
@@ -136,10 +135,10 @@ func TestVersion_NoVersionTable(t *testing.T) {
 				t.Error(err)
 			}
 		}()
-		// Drop the version table so calls to Version don't rely on that
+		// Drop the version table so calls to CurrentState don't rely on that
 		d.drop(ctx)
 
-		v, dirt, err := d.Version(ctx)
+		v, dirt, err := d.CurrentState(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, v, nilVersion)
 		assert.False(t, dirt)
@@ -218,7 +217,7 @@ func TestWithSchema(t *testing.T) {
 			}
 		}()
 
-		version, _, err := d2.Version(ctx)
+		version, _, err := d2.CurrentState(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -226,11 +225,11 @@ func TestWithSchema(t *testing.T) {
 			t.Fatal("expected NilVersion")
 		}
 
-		// now update Version and compare
+		// now update CurrentState and compare
 		if err := d2.SetVersion(ctx, 2, false); err != nil {
 			t.Fatal(err)
 		}
-		version, _, err = d2.Version(ctx)
+		version, _, err = d2.CurrentState(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -238,8 +237,8 @@ func TestWithSchema(t *testing.T) {
 			t.Fatal("expected Version 2")
 		}
 
-		// meanwhile, the public schema still has the other Version
-		version, _, err = d.Version(ctx)
+		// meanwhile, the public schema still has the other CurrentState
+		version, _, err = d.CurrentState(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -283,49 +282,6 @@ func TestPostgres_Lock(t *testing.T) {
 		err = ps.Unlock(ctx)
 		if err != nil {
 			t.Fatal(err)
-		}
-	})
-}
-
-func TestWithInstance_Concurrent(t *testing.T) {
-	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ip, port, err := c.FirstPort()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// The number of concurrent processes running New
-		const concurrency = 30
-
-		// We can instantiate a single database handle because it is
-		// actually a connection pool, and so, each of the below go
-		// routines will have a high probability of using a separate
-		// connection, which is something we want to exercise.
-		db, err := sql.Open("postgres", pgConnectionString(ip, port))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() {
-			if err := db.Close(); err != nil {
-				t.Error(err)
-			}
-		}()
-
-		db.SetMaxIdleConns(concurrency)
-		db.SetMaxOpenConns(concurrency)
-
-		var wg sync.WaitGroup
-		defer wg.Wait()
-
-		wg.Add(concurrency)
-		for i := 0; i < concurrency; i++ {
-			go func(i int) {
-				defer wg.Done()
-				_, err := New(context.Background(), db)
-				if err != nil {
-					t.Errorf("process %d error: %s", i, err)
-				}
-			}(i)
 		}
 	})
 }
