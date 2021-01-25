@@ -52,8 +52,7 @@ const (
 var defaultMigrationsTable = "boundary_schema_version"
 
 // Postgres is a driver usable by a boundary schema manager.
-// Postgres is not thread safe to be thread safe it should separate the schema access lock id used for internal
-// operations and the one exposed externally.
+// This struct is not thread safe.
 type Postgres struct {
 	// Locking and unlocking need to use the same connection
 	conn *sql.Conn

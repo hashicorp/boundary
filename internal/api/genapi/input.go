@@ -78,6 +78,10 @@ type structInfo struct {
 	// implementation of an abstract type and thus a type field is necessary
 	typeOnCreate bool
 
+	// recursiveListing indicates that the collection supports recursion when
+	// listing
+	recursiveListing bool
+
 	// extraOptions allows specifying extra options that will be created for a
 	// given type, e.g. arguments only valid for one call or purpose and not
 	// conveyed within the item itself
@@ -229,6 +233,7 @@ var inputStructs = []*structInfo{
 		pathArgs:            []string{"role"},
 		versionEnabled:      true,
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	// Auth Methods related resources
 	{

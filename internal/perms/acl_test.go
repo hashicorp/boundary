@@ -35,6 +35,7 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_a",
 			grants: []string{
 				"id=a_bar;actions=read,update",
+				"id=a_baz;actions=read:self,update",
 				"type=host-catalog;actions=create",
 				"type=target;actions=list",
 				"id=*;type=host-set;actions=list,create",
@@ -59,6 +60,7 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_d",
 			grants: []string{
 				"id=*;type=*;actions=create,update",
+				"type=session;actions=list:self",
 			},
 		},
 	}
@@ -251,6 +253,42 @@ func Test_ACLAllowed(t *testing.T) {
 				{action: action.Update, allowed: true},
 			},
 			userId: "u_abcd1234",
+		},
+		{
+			name:        "list self with top level list",
+			resource:    Resource{ScopeId: "o_a", Type: resource.Target},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: action.List, allowed: true},
+				{action: action.ListSelf, allowed: true},
+			},
+		},
+		{
+			name:        "list self with top level list self",
+			resource:    Resource{ScopeId: "o_d", Type: resource.Session},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: action.List},
+				{action: action.ListSelf, allowed: true},
+			},
+		},
+		{
+			name:        "read self with top level read",
+			resource:    Resource{ScopeId: "o_a", Id: "a_bar"},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: action.Read, allowed: true},
+				{action: action.ReadSelf, allowed: true},
+			},
+		},
+		{
+			name:        "read self only",
+			resource:    Resource{ScopeId: "o_a", Id: "a_baz"},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: action.Read},
+				{action: action.ReadSelf, allowed: true},
+			},
 		},
 	}
 

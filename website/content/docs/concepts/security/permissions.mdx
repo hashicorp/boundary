@@ -1092,6 +1092,24 @@ wildcard or templated grant strings.
             <ul>
               <li><code>id=&lt;id&gt;;actions=cancel</code></li>
             </ul>
+          <li>
+            <code>read:self</code>: Read a session, which must belong to the calling user
+          </li>
+            <ul>
+              <li><code>id=*;type=session;actions=read:self</code></li>
+            </ul>
+          <li>
+            <code>list:self</code>: List sessions that belong to the calling user
+          </li>
+            <ul>
+              <li><code>type=session;actions=list:self</code></li>
+            </ul>
+          <li>
+            <code>cancel:self</code>: Cancel a session, which must belong to the calling user
+          </li>
+            <ul>
+              <li><code>id=*;type=session;actions=cancel:self</code></li>
+            </ul>
         </ul>
       </td>
     </tr>

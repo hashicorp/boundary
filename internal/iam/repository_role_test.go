@@ -573,11 +573,11 @@ func TestRepository_ListRoles(t *testing.T) {
 				withScopeId: org.PublicId,
 				opt:         []Option{WithLimit(-1)},
 			},
-			wantCnt: repo.defaultLimit + 2,
+			wantCnt: repo.defaultLimit + 1,
 			wantErr: false,
 		},
 		{
-			name:          "no-limit-proj-group",
+			name:          "no-limit-proj-role",
 			createCnt:     repo.defaultLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
@@ -622,13 +622,13 @@ func TestRepository_ListRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocGroup()).Error)
+			require.NoError(conn.Where("1=1").Delete(allocRole()).Error)
 			testRoles := []*Role{}
 			for i := 0; i < tt.createCnt; i++ {
 				testRoles = append(testRoles, TestRole(t, conn, tt.createScopeId))
 			}
 			assert.Equal(tt.createCnt, len(testRoles))
-			got, err := repo.ListRoles(context.Background(), tt.args.withScopeId, tt.args.opt...)
+			got, err := repo.ListRoles(context.Background(), []string{tt.args.withScopeId}, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -637,4 +637,27 @@ func TestRepository_ListRoles(t *testing.T) {
 			assert.Equal(tt.wantCnt, len(got))
 		})
 	}
+}
+
+func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
+
+	// Remove all existing roles
+	require.NoError(t, conn.Where("1=1").Delete(allocRole()).Error)
+
+	const rolesPerScope = 10
+	testRoles := make([]*Role, 0, 30)
+	for i := 0; i < rolesPerScope; i++ {
+		testRoles = append(testRoles, TestRole(t, conn, "global"))
+		testRoles = append(testRoles, TestRole(t, conn, org.GetPublicId()))
+		testRoles = append(testRoles, TestRole(t, conn, proj.GetPublicId()))
+	}
+
+	got, err := repo.ListRoles(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
+	require.NoError(t, err)
+	assert.Equal(t, len(testRoles), len(got))
 }
