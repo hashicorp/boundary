@@ -27,14 +27,14 @@ where
     aa.auth_method_id = s.account_info_auth_method_id 
 union 
 select 
-    iam_user_id,
+    aa.iam_user_id,
     pa.login_name,
     '' as full_name,
     '' as email
 from 	
     iam_scope s,
     auth_account aa,
-	auth_password_account pa
+    auth_password_account pa
 where
     aa.public_id = pa.public_id and 
     aa.auth_method_id = s.account_info_auth_method_id;
