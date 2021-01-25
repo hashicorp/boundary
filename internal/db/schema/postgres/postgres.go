@@ -163,7 +163,7 @@ func (p *Postgres) StartRun(ctx context.Context) error {
 		return err
 	}
 	p.tx = tx
- 	return nil
+	return nil
 }
 
 // CommitRun commits the pending transaction if there is one
@@ -200,18 +200,13 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int) er
 	query := string(migr)
 
 	var extr execContexter = p.conn
-	rollback := func() error {return nil}
+	rollback := func() error { return nil }
 	if p.tx != nil {
 		extr = p.tx
 		rollback = func() error {
-			defer func() {p.tx = nil}()
+			defer func() { p.tx = nil }()
 			return p.tx.Rollback()
 		}
-		// A transaction is already active, don't nest more transactions.
-		query = strings.ReplaceAll(query, "BEGIN;", "")
-		query = strings.ReplaceAll(query, "begin;", "")
-		query = strings.ReplaceAll(query, "COMMIT;", "")
-		query = strings.ReplaceAll(query, "commit;", "")
 	}
 
 	if _, err := extr.ExecContext(ctx, query); err != nil {
@@ -294,7 +289,7 @@ func (p *Postgres) setVersion(ctx context.Context, version int, dirty bool) erro
 		}
 	}
 	rollback := func() error {
-		defer func() {p.tx = nil}()
+		defer func() { p.tx = nil }()
 		return tx.Rollback()
 	}
 

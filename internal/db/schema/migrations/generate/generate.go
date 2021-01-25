@@ -75,12 +75,6 @@ func generate(dialect string) {
 				continue
 			}
 
-			contents, err := ioutil.ReadFile(fmt.Sprintf("%s/%s/%s/%s", srcDir, dialect, ver, name))
-			if err != nil {
-				fmt.Printf("error opening file %s with dialect %s: %v", name, dialect, err)
-				os.Exit(1)
-			}
-
 			nameParts := strings.SplitN(name, "_", 2)
 			if len(nameParts) != 2 {
 				continue
@@ -96,9 +90,23 @@ func generate(dialect string) {
 			if fullV > largestSchemaVersion {
 				largestSchemaVersion = fullV
 			}
+
+			cbts, err := ioutil.ReadFile(fmt.Sprintf("%s/%s/%s/%s", srcDir, dialect, ver, name))
+			if err != nil {
+				fmt.Printf("error opening file %s with dialect %s: %v", name, dialect, err)
+				os.Exit(1)
+			}
+
+			contents := strings.TrimSpace(string(cbts))
+			contents = strings.TrimPrefix(contents, "begin;")
+			contents = strings.TrimPrefix(contents, "BEGIN;")
+			contents = strings.TrimSuffix(contents, "commit;")
+			contents = strings.TrimSuffix(contents, "COMMIT;")
+			contents = strings.TrimSpace(contents)
+
 			cv := ContentValues{
 				Name:    fmt.Sprint(fullV),
-				Content: string(contents),
+				Content: contents,
 			}
 			switch {
 			case strings.Contains(nameParts[1], ".up."):
