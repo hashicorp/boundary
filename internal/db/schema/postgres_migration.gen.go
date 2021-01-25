@@ -5098,7 +5098,8 @@ create table auth_oidc_method (
       on delete cascade
       on update cascade,
   unique(scope_id, name),
-  unique(scope_id, public_id)
+  unique(scope_id, public_id),
+  unique(scope_id, discovery_url, client_id) -- a client_id must be unique for a provider within a scope.
 );
 
 -- auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc
@@ -5192,7 +5193,7 @@ create table auth_oidc_account (
       on delete cascade
       on update cascade,
     unique(auth_method_id, name),
-    unique(auth_method_id, issuer_id, subject_id),
+    unique(auth_method_id, issuer_id, subject_id), -- subject must be unique for a provider within specific auth method
     unique(auth_method_id, public_id)
 );
 
