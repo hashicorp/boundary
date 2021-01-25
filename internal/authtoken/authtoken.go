@@ -92,8 +92,7 @@ func newAuthTokenId() (string, error) {
 	const op = "authtoken.newAuthTokenId"
 	id, err := db.NewPublicId(AuthTokenPrefix)
 	if err != nil {
-		//WIP Note: It looks like this bubbles up the errs made in `newId` so I don't think we need `WithCode` here.
-		return "", errors.Wrap(err, op)
+		return "", errors.Wrap(err, op, errors.WithCode(errors.Io))
 	}
 	return id, err
 }
@@ -103,9 +102,7 @@ func newAuthToken() (string, error) {
 	const op = "authtoken.newAuthToken"
 	token, err := base62.Random(tokenLength)
 	if err != nil {
-		//WIP Note: Is there a better option than Unknown to use here? Looks like
-		// the errors bubbled up from UUID are either nilerr or unable to read
-		return "", errors.Wrap(err, op, errors.WithCode(errors.Unknown))
+		return "", errors.Wrap(err, op, errors.WithCode(errors.Io))
 	}
 	return fmt.Sprintf("%s%s", TokenValueVersionPrefix, token), nil
 }
@@ -124,7 +121,7 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 
 	marshaledS1Info, err := proto.Marshal(s1Info)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("unable to marshal"))
+		return "", errors.Wrap(err, op, errors.WithCode(errors.Encode))
 	}
 
 	tokenWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeTokens)
@@ -139,7 +136,7 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 
 	marshaledBlob, err := proto.Marshal(blobInfo)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("unable to marshal encrypted token"))
+		return "", errors.Wrap(err, op, errors.WithCode(errors.Encode))
 	}
 
 	encoded := base58.FastBase58Encoding(marshaledBlob)
