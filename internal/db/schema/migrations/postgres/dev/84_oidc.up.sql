@@ -43,7 +43,7 @@ create table auth_oidc_signing_alg (
     on update cascade,
   signing_alg_name text 
     references auth_oidc_signing_alg_enm(name)
-    on delete cascade
+    on delete restrict
     on update cascade,
   primary key(oidc_method_id, signing_alg_name)
 );
