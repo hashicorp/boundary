@@ -6,7 +6,7 @@ alter table iam_scope
 add column account_info_auth_method_id wt_public_id -- allowed to be null and is mutable of course.
 references auth_method(public_id)
 on update cascade
-on delete cascade;
+on delete set null;
 
 -- iam_user_acct_info provides account info for users by determining which
 -- auth_method is designated as for "account info" in the user's scope via the
@@ -21,7 +21,7 @@ select
 from 	
     iam_scope s,
     auth_account aa,
-	auth_oidc_account oa
+    auth_oidc_account oa
 where
     aa.public_id = oa.public_id and 
     aa.auth_method_id = s.account_info_auth_method_id 

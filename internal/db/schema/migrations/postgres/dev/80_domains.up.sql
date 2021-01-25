@@ -4,9 +4,10 @@ begin;
 -- contain lower case values.  The type is defined to allow nulls and not be
 -- unique, which can be overriden as needed when used in tables.
 create domain wt_email as text
-    check (length(trim(value)) > 0)
-    check (length(trim(value)) < 320)
-    check (lower(value) = value);
+    constraint wt_email_too_short
+        check (length(trim(value)) > 0)
+    constraint wt_email_too_long
+        check (length(trim(value)) < 320);
 comment on domain wt_email is
 'standard column for email addresses';
 
@@ -14,8 +15,10 @@ comment on domain wt_email is
 -- 512 chars.  The type is defined to allow nulls and not be unique, which can
 -- be overriden as needed when used in tables. 
 create domain wt_full_name text 
-    check (length(trim(value)) > 0)
-    check(length(trim(value)) <= 512); -- gotta pick some upper limit.
+    constraint wt_full_name_too_short
+        check (length(trim(value)) > 0)
+    constraint wt_full_name_too_long
+        check(length(trim(value)) <= 512); -- gotta pick some upper limit.
 comment on domain wt_full_name is
 'standard column for the full name of a person';
 
@@ -23,24 +26,32 @@ comment on domain wt_full_name is
 -- less than 4k chars.  It's defined to allow nulls, which can be overriden as
 -- needed when used in tables.
 create domain wt_url as text
-    check (length(trim(value)) > 3)
-    check (length(trim(value)) < 4000);
+    constraint wt_url_too_short
+        check (length(trim(value)) > 3)
+    constraint wt_url_too_long
+        check (length(trim(value)) < 4000)
+    constraint wt_url_invalid_protocol
+        check (value ~ 'https?:\/\/*');
 comment on domain wt_email is
 'standard column for URLs';
 
 -- wt_name defines a type for resource names that must be less than 128 chars.
 --  It's defined to allow nulls.
 create domain wt_name as text
-    check (length(trim(value)) > 0)
-    check (length(trim(value)) < 128);
+    constraint wt_name_too_short
+        check (length(trim(value)) > 0)
+    constraint wt_name_too_long
+        check (length(trim(value)) < 128);
 comment on domain wt_email is
 'standard column for resource names';
 
 -- wt_description defines a type for resource descriptionss that must be less
 -- than 1024 chars. It's defined to allow nulls.
 create domain wt_description as text
-    check (length(trim(value)) > 0)
-    check (length(trim(value)) < 1024);
+    constraint wt_description_too_short
+        check (length(trim(value)) > 0)
+    constraint wt_description_too_long
+        check (length(trim(value)) < 1024);
 comment on domain wt_email is
 'standard column for resource descriptions';
 

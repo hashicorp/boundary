@@ -527,3 +527,234 @@ set id = null;
 		assert.Equal(orig.CreateTime, found.CreateTime)
 	})
 }
+
+func TestDomain_wt_url(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table_wt_url (
+  id bigint generated always as identity primary key,
+  url wt_url
+);
+`
+		insert = `
+insert into test_table_wt_url(url)
+values ($1)
+returning id;
+`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	if _, err := db.Exec(createTable); err != nil {
+		t.Fatalf("query: \n%s\n error: %s", createTable, err)
+	}
+
+	failTests := []struct {
+		value     string
+		exception string
+	}{
+		{"http://", ""},
+		{"htt://", "wt_url_invalid_protocol"},
+		{"ht", "wt_url_invalid_protocol"},
+		{"http://" + strings.Repeat("a", 4001), "wt_url_too_long"},
+	}
+	for _, tt := range failTests {
+		t.Run(tt.value, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			t.Logf("insert value: %q", tt.value)
+			_, err := db.Query(insert, tt.value)
+			if tt.exception != "" {
+				require.Error(err)
+				assert.Containsf(err.Error(), tt.exception, "missing %s from err: %s", tt.exception, err.Error())
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
+
+func TestDomain_wt_email(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table_wt_email (
+  id bigint generated always as identity primary key,
+  email wt_email
+);
+`
+		insert = `
+insert into test_table_wt_email(email)
+values ($1)
+returning id;
+`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	if _, err := db.Exec(createTable); err != nil {
+		t.Fatalf("query: \n%s\n error: %s", createTable, err)
+	}
+
+	failTests := []struct {
+		value     string
+		exception string
+	}{
+		{"   ", "wt_email_too_short"},
+		{"1" + strings.Repeat("1", 320), "wt_email_too_long"},
+		{"alice@bob.com", ""},
+	}
+	for _, tt := range failTests {
+		t.Run(tt.value, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			t.Logf("insert value: %q", tt.value)
+			_, err := db.Query(insert, tt.value)
+			if tt.exception != "" {
+				require.Error(err)
+				assert.Containsf(err.Error(), tt.exception, "missing %s from err: %s", tt.exception, err.Error())
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
+
+func TestDomain_wt_full_name(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table_wt_full_name (
+  id bigint generated always as identity primary key,
+  full_name wt_full_name
+);
+`
+		insert = `
+insert into test_table_wt_full_name(full_name)
+values ($1)
+returning id;
+`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	if _, err := db.Exec(createTable); err != nil {
+		t.Fatalf("query: \n%s\n error: %s", createTable, err)
+	}
+
+	failTests := []struct {
+		value     string
+		exception string
+	}{
+		{"   ", "wt_full_name_too_short"},
+		{"1" + strings.Repeat("1", 512), "wt_full_name_too_long"},
+		{"alice and bob's dinner", ""},
+	}
+	for _, tt := range failTests {
+		t.Run(tt.value, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			t.Logf("insert value: %q", tt.value)
+			_, err := db.Query(insert, tt.value)
+			if tt.exception != "" {
+				require.Error(err)
+				assert.Containsf(err.Error(), tt.exception, "missing %s from err: %s", tt.exception, err.Error())
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
+
+func TestDomain_wt_name(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table_wt_name (
+  id bigint generated always as identity primary key,
+  name wt_name
+);
+`
+		insert = `
+insert into test_table_wt_name(name)
+values ($1)
+returning id;
+`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	if _, err := db.Exec(createTable); err != nil {
+		t.Fatalf("query: \n%s\n error: %s", createTable, err)
+	}
+
+	failTests := []struct {
+		value     string
+		exception string
+	}{
+		{"   ", "wt_name_too_short"},
+		{"1" + strings.Repeat("1", 512), "wt_name_too_long"},
+		{"alice and bob's dinner", ""},
+	}
+	for _, tt := range failTests {
+		t.Run(tt.value, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			t.Logf("insert value: %q", tt.value)
+			_, err := db.Query(insert, tt.value)
+			if tt.exception != "" {
+				require.Error(err)
+				assert.Containsf(err.Error(), tt.exception, "missing %s from err: %s", tt.exception, err.Error())
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
+
+func TestDomain_wt_description(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table_wt_description (
+  id bigint generated always as identity primary key,
+  description wt_description
+);
+`
+		insert = `
+insert into test_table_wt_description(description)
+values ($1)
+returning id;
+`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	if _, err := db.Exec(createTable); err != nil {
+		t.Fatalf("query: \n%s\n error: %s", createTable, err)
+	}
+
+	failTests := []struct {
+		value     string
+		exception string
+	}{
+		{"   ", "wt_description_too_short"},
+		{"1" + strings.Repeat("1", 1024), "wt_description_too_long"},
+		{"alice and bob's dinner has delicious pancakes", ""},
+	}
+	for _, tt := range failTests {
+		t.Run(tt.value, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			t.Logf("insert value: %q", tt.value)
+			_, err := db.Query(insert, tt.value)
+			if tt.exception != "" {
+				require.Error(err)
+				assert.Containsf(err.Error(), tt.exception, "missing %s from err: %s", tt.exception, err.Error())
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}

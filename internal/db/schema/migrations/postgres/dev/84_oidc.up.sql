@@ -12,16 +12,24 @@ create table auth_oidc_method (
   create_time wt_timestamp,
   update_time wt_timestamp,
   version wt_version,
-  state text not null,
-      -- references auth_oidc_method_state_enm(name),
+  state text not null
+    references auth_oidc_method_state_enm(name),
   discovery_url wt_url not null, -- oidc discovery URL without any .well-known component
-  client_id text not null, -- oidc client identifier issued by the oidc provider.
+  client_id text not null -- oidc client identifier issued by the oidc provider.
+    constraint client_id_not_empty
+    check(length(trim(client_id)) > 0), 
   client_secret bytea not null, -- encrypted oidc client secret issued by the oidc provider.
   key_id wt_private_id not null -- key used to encrypt entries via wrapping wrapper. 
     references kms_oidc_key_version(private_id) 
     on delete restrict
     on update cascade, 
-  max_age int not null, -- the allowable elapsed time in secs since the last time the user was authenticated. 
+  max_age int not null -- the allowable elapsed time in secs since the last time the user was authenticated. zero is allowed and should force the user to be re-authenticated.
+    constraint max_age_greater_than_zero
+    check(max_age >= 0), 
+  foreign key (scope_id, public_id)
+      references auth_method (scope_id, public_id)
+      on delete cascade
+      on update cascade,
   unique(scope_id, name),
   unique(scope_id, public_id)
 );
@@ -122,6 +130,11 @@ create table auth_oidc_account (
 
 -- auth_oidc_method column triggers
 create trigger
+  insert_auth_method_subtype
+before insert on auth_oidc_method
+  for each row execute procedure insert_auth_method_subtype();
+
+create trigger
   update_time_column
 before
 update on auth_oidc_method
@@ -143,7 +156,6 @@ create trigger
   update_version_column
 after update on auth_oidc_method
   for each row execute procedure update_version_column();
-
 
 -- auth_oidc_account column triggers
 create trigger

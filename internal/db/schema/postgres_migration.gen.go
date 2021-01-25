@@ -4869,9 +4869,10 @@ begin;
 -- contain lower case values.  The type is defined to allow nulls and not be
 -- unique, which can be overriden as needed when used in tables.
 create domain wt_email as text
-    check (length(trim(value)) > 0)
-    check (length(trim(value)) < 320)
-    check (lower(value) = value);
+    constraint wt_email_too_short
+        check (length(trim(value)) > 0)
+    constraint wt_email_too_long
+        check (length(trim(value)) < 320);
 comment on domain wt_email is
 'standard column for email addresses';
 
@@ -4879,8 +4880,10 @@ comment on domain wt_email is
 -- 512 chars.  The type is defined to allow nulls and not be unique, which can
 -- be overriden as needed when used in tables. 
 create domain wt_full_name text 
-    check (length(trim(value)) > 0)
-    check(length(trim(value)) <= 512); -- gotta pick some upper limit.
+    constraint wt_full_name_too_short
+        check (length(trim(value)) > 0)
+    constraint wt_full_name_too_long
+        check(length(trim(value)) <= 512); -- gotta pick some upper limit.
 comment on domain wt_full_name is
 'standard column for the full name of a person';
 
@@ -4888,24 +4891,32 @@ comment on domain wt_full_name is
 -- less than 4k chars.  It's defined to allow nulls, which can be overriden as
 -- needed when used in tables.
 create domain wt_url as text
-    check (length(trim(value)) > 3)
-    check (length(trim(value)) < 4000);
+    constraint wt_url_too_short
+        check (length(trim(value)) > 3)
+    constraint wt_url_too_long
+        check (length(trim(value)) < 4000)
+    constraint wt_url_invalid_protocol
+        check (value ~ 'https?:\/\/*');
 comment on domain wt_email is
 'standard column for URLs';
 
 -- wt_name defines a type for resource names that must be less than 128 chars.
 --  It's defined to allow nulls.
 create domain wt_name as text
-    check (length(trim(value)) > 0)
-    check (length(trim(value)) < 128);
+    constraint wt_name_too_short
+        check (length(trim(value)) > 0)
+    constraint wt_name_too_long
+        check (length(trim(value)) < 128);
 comment on domain wt_email is
 'standard column for resource names';
 
 -- wt_description defines a type for resource descriptionss that must be less
 -- than 1024 chars. It's defined to allow nulls.
 create domain wt_description as text
-    check (length(trim(value)) > 0)
-    check (length(trim(value)) < 1024);
+    constraint wt_description_too_short
+        check (length(trim(value)) > 0)
+    constraint wt_description_too_long
+        check (length(trim(value)) < 1024);
 comment on domain wt_email is
 'standard column for resource descriptions';
 
@@ -5068,16 +5079,24 @@ create table auth_oidc_method (
   create_time wt_timestamp,
   update_time wt_timestamp,
   version wt_version,
-  state text not null,
-      -- references auth_oidc_method_state_enm(name),
+  state text not null
+    references auth_oidc_method_state_enm(name),
   discovery_url wt_url not null, -- oidc discovery URL without any .well-known component
-  client_id text not null, -- oidc client identifier issued by the oidc provider.
+  client_id text not null -- oidc client identifier issued by the oidc provider.
+    constraint client_id_not_empty
+    check(length(trim(client_id)) > 0), 
   client_secret bytea not null, -- encrypted oidc client secret issued by the oidc provider.
   key_id wt_private_id not null -- key used to encrypt entries via wrapping wrapper. 
     references kms_oidc_key_version(private_id) 
     on delete restrict
     on update cascade, 
-  max_age int not null, -- the allowable elapsed time in secs since the last time the user was authenticated. 
+  max_age int not null -- the allowable elapsed time in secs since the last time the user was authenticated. zero is allowed and should force the user to be re-authenticated.
+    constraint max_age_greater_than_zero
+    check(max_age >= 0), 
+  foreign key (scope_id, public_id)
+      references auth_method (scope_id, public_id)
+      on delete cascade
+      on update cascade,
   unique(scope_id, name),
   unique(scope_id, public_id)
 );
@@ -5178,6 +5197,11 @@ create table auth_oidc_account (
 
 -- auth_oidc_method column triggers
 create trigger
+  insert_auth_method_subtype
+before insert on auth_oidc_method
+  for each row execute procedure insert_auth_method_subtype();
+
+create trigger
   update_time_column
 before
 update on auth_oidc_method
@@ -5199,7 +5223,6 @@ create trigger
   update_version_column
 after update on auth_oidc_method
   for each row execute procedure update_version_column();
-
 
 -- auth_oidc_account column triggers
 create trigger
@@ -5272,7 +5295,7 @@ alter table iam_scope
 add column account_info_auth_method_id wt_public_id -- allowed to be null and is mutable of course.
 references auth_method(public_id)
 on update cascade
-on delete cascade;
+on delete set null;
 
 -- iam_user_acct_info provides account info for users by determining which
 -- auth_method is designated as for "account info" in the user's scope via the
@@ -5287,7 +5310,7 @@ select
 from 	
     iam_scope s,
     auth_account aa,
-	auth_oidc_account oa
+    auth_oidc_account oa
 where
     aa.public_id = oa.public_id and 
     aa.auth_method_id = s.account_info_auth_method_id 
