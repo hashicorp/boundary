@@ -372,7 +372,7 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
-			c.UI.Error(base.WrapAtLength("Older schema version is than is expected from this binary. Run 'boundary database migrate' to update the database."))
+			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database."))
 			return 1
 		}
 		if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {
