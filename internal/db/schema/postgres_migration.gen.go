@@ -5110,7 +5110,7 @@ create table auth_oidc_signing_alg (
     on update cascade,
   signing_alg_name text 
     references auth_oidc_signing_alg_enm(name)
-    on delete cascade
+    on delete restrict
     on update cascade,
   primary key(oidc_method_id, signing_alg_name)
 );
@@ -5173,17 +5173,18 @@ create table auth_oidc_account (
     version wt_version,
     issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim
     subject_id text not null -- case-senstive string that maps to an id_token's sub claim
-      constraint subject_id_must_be_less_than_256_chars 
+      constraint subject_id_must_not_be_empty 
       check (
         length(trim(subject_id)) > 0
       )
+      constraint subject_id_must_be_less_than_256_chars 
       check(
         length(trim(subject_id)) <= 255 -- length limit per OIDC spec
       ),
     full_name wt_full_name, -- may be null and maps to an id_token's name claim
     email wt_email, -- may be null and maps to the id_token's email claim
     foreign key (scope_id, auth_method_id)
-      references auth_password_method (scope_id, public_id)
+      references auth_oidc_method (scope_id, public_id)
       on delete cascade
       on update cascade,
     foreign key (scope_id, auth_method_id, public_id)
@@ -5191,7 +5192,7 @@ create table auth_oidc_account (
       on delete cascade
       on update cascade,
     unique(auth_method_id, name),
-    unique(issuer_id, subject_id),
+    unique(auth_method_id, issuer_id, subject_id),
     unique(auth_method_id, public_id)
 );
 
@@ -5254,6 +5255,7 @@ before insert on auth_oidc_account
   for each row execute procedure insert_auth_account_subtype();
 
 commit;
+
 `),
 			1085: []byte(`
 begin;
@@ -5282,7 +5284,9 @@ alter table auth_token
 add column status text 
 not null
 default 'token issued' -- safest default
-references auth_token_status_enm(name);
+references auth_token_status_enm(name)
+  on update cascade
+  on delete restrict;
 
 commit;
 `),
@@ -5316,14 +5320,14 @@ where
     aa.auth_method_id = s.account_info_auth_method_id 
 union 
 select 
-    iam_user_id,
+    aa.iam_user_id,
     pa.login_name,
     '' as full_name,
     '' as email
 from 	
     iam_scope s,
     auth_account aa,
-	auth_password_account pa
+    auth_password_account pa
 where
     aa.public_id = pa.public_id and 
     aa.auth_method_id = s.account_info_auth_method_id;
