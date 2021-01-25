@@ -120,7 +120,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 			require.NoError(err)
 			assert.True(proto.Equal(foundScope, s))
 
-			foundRoles, err := repo.ListRoles(context.Background(), foundScope.GetPublicId())
+			foundRoles, err := repo.ListRoles(context.Background(), []string{foundScope.GetPublicId()})
 			require.NoError(err)
 			numFound := 2
 			if skipCreate {
@@ -605,6 +605,57 @@ func Test_Repository_ListOrgs(t *testing.T) {
 			}
 			assert.Equal(tt.createCnt, len(testOrgs))
 			got, err := repo.ListOrgs(context.Background(), tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+}
+
+func Test_Repository_ListRecursive(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	var testOrgs []*Scope
+	var testProjects []*Scope
+	const subPerScope = 5
+	for i := 0; i < subPerScope; i++ {
+		org := testOrg(t, repo, fmt.Sprint(i), "")
+		testOrgs = append(testOrgs, org)
+		for j := 0; j < subPerScope; j++ {
+			testProjects = append(testProjects, testProject(t, repo, org.PublicId, WithName(fmt.Sprintf("%d-%d", i, j))))
+		}
+	}
+	tests := []struct {
+		name        string
+		rootScopeId string
+		wantCnt     int
+		wantErr     bool
+	}{
+		{
+			name:        "global",
+			rootScopeId: "global",
+			wantCnt:     1 + len(testOrgs) + len(testProjects),
+		},
+		{
+			name:        "org",
+			rootScopeId: testOrgs[0].PublicId,
+			wantCnt:     1 + subPerScope,
+		},
+		{
+			name:        "project",
+			rootScopeId: testProjects[16].PublicId,
+			wantCnt:     1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := repo.ListScopesRecursively(context.Background(), tt.rootScopeId)
 			if tt.wantErr {
 				require.Error(err)
 				return

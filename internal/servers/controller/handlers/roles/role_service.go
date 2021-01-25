@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
@@ -79,17 +80,76 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	gl, err := s.listFromRepo(ctx, req.GetScopeId())
+
+	// Get the list of scope IDs. If it's recursive, check ACLs.
+	var scopeIds []string
+	// This will be used to memoize scope info so we can put the right scope
+	// info for each returned value
+	scopeInfoMap := map[string]*scopes.ScopeInfo{
+		req.GetScopeId(): authResults.Scope,
+	}
+	var err error
+	switch req.GetRecursive() {
+	case true:
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, err
+		}
+		// Get all scopes recursively
+		scps, err := repo.ListScopesRecursively(ctx, req.GetScopeId())
+		if err != nil {
+			return nil, err
+		}
+		scopeIds = make([]string, 0, len(scps))
+		res := perms.Resource{
+			Type: resource.Role,
+		}
+		// For each scope, see if we have permission to list on that scope
+		for _, scp := range scps {
+			scpId := scp.GetPublicId()
+			// We already checked the incoming ID so we can definitely add it
+			if scpId == authResults.Scope.Id {
+				scopeIds = append(scopeIds, scp.GetPublicId())
+				continue
+			}
+			res.ScopeId = scpId
+			aSet := authResults.FetchActionSetForType(ctx,
+				resource.Role,
+				action.ActionSet{action.List},
+				auth.WithResource(&res),
+			)
+			// We only passed one action in, so anything other than that one
+			// action back should not be included. Assuming it's correct, add
+			// the scope ID for lookup and memoize the scope info if needed.
+			if len(aSet) == 1 && aSet[0] == action.List {
+				scopeIds = append(scopeIds, scpId)
+				if scopeInfoMap[scpId] == nil {
+					scopeInfo := &scopes.ScopeInfo{
+						Id:          scp.GetPublicId(),
+						Type:        scp.GetType(),
+						Name:        scp.GetName(),
+						Description: scp.GetDescription(),
+					}
+					scopeInfoMap[scpId] = scopeInfo
+				}
+			}
+		}
+	default:
+		scopeIds = []string{req.GetScopeId()}
+	}
+
+	items, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
-	finalItems := make([]*pb.Role, 0, len(gl))
+
+	finalItems := make([]*pb.Role, 0, len(items))
 	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.Role,
 	}
-	for _, item := range gl {
-		item.Scope = authResults.Scope
+	for _, item := range items {
+		item.Scope = scopeInfoMap[item.GetScopeId()]
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
@@ -374,12 +434,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Role, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Role, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	rl, err := repo.ListRoles(ctx, scopeId)
+	rl, err := repo.ListRoles(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}

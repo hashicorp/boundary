@@ -48,11 +48,14 @@ type templateInput struct {
 	VersionEnabled        bool
 	TypeOnCreate          bool
 	CreateResponseTypes   bool
+	RecursiveListing      bool
 }
 
 func fillTemplates() {
 	optionsMap := map[string]map[string]fieldInfo{}
+	inputMap := map[string]*structInfo{}
 	for _, in := range inputStructs {
+		inputMap[in.generatedStructure.pkg] = in
 		outBuf := new(bytes.Buffer)
 		input := templateInput{
 			Name:                in.generatedStructure.name,
@@ -64,6 +67,7 @@ func fillTemplates() {
 			VersionEnabled:      in.versionEnabled,
 			TypeOnCreate:        in.typeOnCreate,
 			CreateResponseTypes: in.createResponseTypes,
+			RecursiveListing:    in.recursiveListing,
 		}
 
 		if len(in.pathArgs) > 0 {
@@ -154,6 +158,7 @@ func fillTemplates() {
 			Package: pkg,
 			Fields:  fields,
 		}
+		input.RecursiveListing = inputMap[pkg].recursiveListing
 
 		if err := optionTemplate.Execute(outBuf, input); err != nil {
 			fmt.Printf("error executing option template for package %s: %v\n", pkg, err)
@@ -196,9 +201,7 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
-	{{ if ( eq .CollectionPath "\"scopes\"" ) }}
-	opts.queryMap["scope_id"] = scopeId
-	{{ end }}
+
 	if len(opts.queryMap) > 0 {
 		q := url.Values{}
 		for k, v := range opts.queryMap {
@@ -635,9 +638,7 @@ var optionTemplate = template.Must(template.New("").Parse(`
 package {{ .Package }}
 
 import (
-	"context"
-	"fmt"
-	"time"
+	"strconv"
 
 	"github.com/hashicorp/boundary/api"
 )
@@ -656,6 +657,7 @@ type options struct {
 	queryMap map[string]string
 	withAutomaticVersioning bool
 	withSkipCurlOutput bool
+	{{ if .RecursiveListing }} withRecursive bool {{ end }}
 }
 
 func getDefaultOptions() options {
@@ -673,7 +675,10 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	var apiOpts []api.Option
 	if opts.withSkipCurlOutput {
 		apiOpts = append(apiOpts, api.WithSkipCurlOutput(true))
-	}
+	} {{ if .RecursiveListing }}
+	if opts.withRecursive {
+		opts.queryMap["recursive"] = strconv.FormatBool(opts.withRecursive)
+	} {{ end }}
 	return opts, apiOpts
 }
 
@@ -694,7 +699,15 @@ func WithSkipCurlOutput(skip bool) Option {
 		o.withSkipCurlOutput = true
 	}
 }
-
+{{ if .RecursiveListing }}
+// WithRecursive tells the API to use recursion for listing operations on this
+// resource
+func WithRecursive(recurse bool) Option {
+	return func(o *options) {
+		o.withRecursive = true
+	}
+}
+{{ end }}
 {{ range .Fields }}
 func With{{ .SubtypeName }}{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
 	return func(o *options) {		{{ if ( not ( eq .SubtypeName "" ) ) }}
