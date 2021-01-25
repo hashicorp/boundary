@@ -15,6 +15,9 @@ export GEN_BASEPATH := $(shell pwd)
 api:
 	$(MAKE) --environment-overrides -C internal/api/genapi api
 
+cli:
+	$(MAKE) --environment-overrides -C internal/cmd/gencli cli
+
 tools:
 	go generate -tags tools tools/tools.go
 
@@ -74,7 +77,7 @@ endif
 perms-table:
 	@go run internal/website/permstable/permstable.go
 
-gen: cleangen proto api migrations fmt
+gen: cleangen proto api cli migrations fmt
 
 migrations:
 	$(MAKE) --environment-overrides -C internal/db/schema/migrations/generate migrations
@@ -178,7 +181,7 @@ docker-publish:
 	docker push $(IMAGE_TAG)
 	docker push hashicorp/boundary:latest
 
-.PHONY: api tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish 
+.PHONY: api cli tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish 
 
 .NOTPARALLEL:
 

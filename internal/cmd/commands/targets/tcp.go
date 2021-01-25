@@ -254,7 +254,7 @@ func (c *TcpCommand) Run(args []string) int {
 	target := result.GetItem().(*targets.Target)
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateTargetTableOutput(target))
+		c.UI.Output(printItemTable(target))
 	case "json":
 		b, err := base.JsonFormatter{}.Format(target)
 		if err != nil {
