@@ -92,7 +92,7 @@ func newAuthTokenId() (string, error) {
 	const op = "authtoken.newAuthTokenId"
 	id, err := db.NewPublicId(AuthTokenPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithCode(errors.Io))
+		return id, errors.Wrap(err, op)
 	}
 	return id, err
 }
