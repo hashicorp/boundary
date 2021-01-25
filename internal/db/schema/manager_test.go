@@ -135,6 +135,35 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 	assert.False(t, state.Dirty)
 }
 
+func TestRollForward_BadSQL(t *testing.T) {
+	dialect := "postgres"
+	oState := migrationStates[dialect]
+
+	nState := createPartialMigrationState(oState, 8)
+	nState.binarySchemaVersion = 10
+	nState.upMigrations[10] = []byte("SELECT 1 FROM NonExistantTable;")
+	migrationStates[dialect] = nState
+
+	c, u, _, err := docker.StartDbInDocker(dialect)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, c())
+	})
+	d, err := sql.Open(dialect, u)
+	require.NoError(t, err)
+
+	// Initialize the DB with only a portion of the current sql scripts.
+	ctx := context.Background()
+	m, err := NewManager(ctx, dialect, d)
+	require.NoError(t, err)
+	assert.Error(t, m.RollForward(ctx))
+
+	state, err := m.CurrentState(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, nilVersion, state.DatabaseSchemaVersion)
+	assert.False(t, state.Dirty)
+}
+
 func TestManager_ExclusiveLock(t *testing.T) {
 	ctx := context.Background()
 	dialect := "postgres"

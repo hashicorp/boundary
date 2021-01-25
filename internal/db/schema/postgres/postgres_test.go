@@ -178,6 +178,45 @@ func TestMultiStatement(t *testing.T) {
 	})
 }
 
+func TestTransaction(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		d, err := open(t, ctx, addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if err := d.close(t); err != nil {
+				t.Error(err)
+			}
+		}()
+
+		assert.NoError(t, d.StartRun(ctx))
+		assert.NoError(t, d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text);"), 2))
+		assert.NoError(t, d.Run(ctx, strings.NewReader("SELECT 1"), 3))
+		assert.NoError(t, d.CommitRun())
+		v, dirty, err := d.CurrentState(ctx)
+		assert.NoError(t, err)
+		assert.False(t, dirty)
+		assert.Equal(t, 3, v)
+
+		assert.NoError(t, d.StartRun(ctx))
+		assert.NoError(t, d.Run(ctx, strings.NewReader("CREATE TABLE bar (bar text);"), 20))
+		assert.Error(t, d.Run(ctx, strings.NewReader("SELECT 1 FROM NonExistingTable"), 30))
+		assert.Error(t, d.CommitRun())
+		v, dirty, err = d.CurrentState(ctx)
+		assert.NoError(t, err)
+		assert.False(t, dirty)
+		assert.Equal(t, 3, v)
+	})
+}
+
 func TestWithSchema(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
 		ctx := context.Background()
