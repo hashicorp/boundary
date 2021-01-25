@@ -24,6 +24,8 @@ alter table auth_token
 add column status text 
 not null
 default 'token issued' -- safest default
-references auth_token_status_enm(name);
+references auth_token_status_enm(name)
+  on update cascade
+  on delete restrict;
 
 commit;
