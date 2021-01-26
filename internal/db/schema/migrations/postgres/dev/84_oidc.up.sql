@@ -13,7 +13,9 @@ create table auth_oidc_method (
   update_time wt_timestamp,
   version wt_version,
   state text not null
-    references auth_oidc_method_state_enm(name),
+    references auth_oidc_method_state_enm(name)
+    on delete restrict
+    on update cascade,
   discovery_url wt_url not null, -- oidc discovery URL without any .well-known component
   client_id text not null -- oidc client identifier issued by the oidc provider.
     constraint client_id_not_empty
@@ -24,7 +26,7 @@ create table auth_oidc_method (
     on delete restrict
     on update cascade, 
   max_age int not null -- the allowable elapsed time in secs since the last time the user was authenticated. zero is allowed and should force the user to be re-authenticated.
-    constraint max_age_greater_than_zero
+    constraint max_age_equal_or_greater_than_zero
     check(max_age >= 0), 
   foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
