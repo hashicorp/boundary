@@ -34,7 +34,6 @@ func generate(dialect string) {
 		Content string
 	}
 	var upContents []ContentValues
-	var downContents []ContentValues
 
 	isDev := false
 	var lRelVer, largestSchemaVersion int
@@ -102,27 +101,21 @@ func generate(dialect string) {
 				Content: string(contents),
 			}
 			switch {
-			case strings.Contains(nameParts[1], ".down."):
-				downContents = append(downContents, cv)
 			case strings.Contains(nameParts[1], ".up."):
 				upContents = append(upContents, cv)
 			}
 		}
 	}
 
-	// fmt.Printf("Got upcontent: %#v\n\n downcontents: %#v", upContents[:1], downContents[:1])
-
 	outBuf := bytes.NewBuffer(nil)
 	if err := migrationsTemplate.Execute(outBuf, struct {
 		Type                string
 		UpValues            []ContentValues
-		DownValues          []ContentValues
 		DevMigration        bool
 		BinarySchemaVersion int
 	}{
 		Type:                dialect,
 		UpValues:            upContents,
-		DownValues:          downContents,
 		DevMigration:        isDev,
 		BinarySchemaVersion: largestSchemaVersion,
 	}); err != nil {
@@ -149,9 +142,6 @@ func init() {
 		binarySchemaVersion: {{ .BinarySchemaVersion }},
 		upMigrations: map[int][]byte{
 			{{range .UpValues }}{{ template "Content" . }}{{end}}
-		},
-		downMigrations: map[int][]byte{
-			{{range .DownValues }}{{ template "Content" . }}{{end}}
 		},
 	}
 }
