@@ -70,8 +70,14 @@ type cmdInfo struct {
 	// this in favor of custom logic.
 	HasId bool
 
-	// HasName controls whether to add scope ID options
+	// HasScopeIdOption controls whether to generate for a required scope ID;
+	// see HasScopeIdOption as well
 	HasScopeId bool
+
+	// HasScopeIdOption controls whether to add scope ID options. Some commands
+	// require a scope ID rather than have an option so this can prevent
+	// generating when we shouldn't.
+	HasScopeIdOption bool
 
 	// HasName controls whether to add name options
 	HasName bool
@@ -111,6 +117,7 @@ var inputStructs = map[string][]*cmdInfo{
 			HasExtraFlagHandlingFunc: true,
 			HasName:                  true,
 			HasDescription:           true,
+			HasScopeIdOption:         true,
 			VersionedActions:         []string{"add-host-sets", "remove-host-sets", "set-host-sets"},
 			HasExtraActionsOutput:    true,
 		},
@@ -128,8 +135,28 @@ var inputStructs = map[string][]*cmdInfo{
 			HasExtraFlagHandlingFunc: true,
 			HasId:                    true,
 			HasName:                  true,
+			HasScopeIdOption:         true,
 			HasDescription:           true,
 			VersionedActions:         []string{"update"},
+		},
+	},
+	"groups": {
+		{
+			ResourceType:             resource.Group.String(),
+			PkgPath:                  "github.com/hashicorp/boundary/api/groups",
+			StdActions:               []string{"create", "read", "update", "delete", "list"},
+			HasCustomActionFlags:     true,
+			HasExtraCommandVars:      true,
+			HasExtraSynopsisFunc:     true,
+			HasExtraActions:          true,
+			HasExtraFlagsFunc:        true,
+			HasExtraHelpFunc:         true,
+			HasExtraFlagHandlingFunc: true,
+			HasId:                    true,
+			HasScopeId:               true,
+			HasName:                  true,
+			HasDescription:           true,
+			VersionedActions:         []string{"update", "add-members", "remove-members", "set-members"},
 		},
 	},
 }

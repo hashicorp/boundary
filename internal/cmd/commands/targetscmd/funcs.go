@@ -1,4 +1,4 @@
-package targets
+package targetscmd
 
 import (
 	"fmt"
@@ -97,7 +97,7 @@ func (c *Command) extraFlagsFunc(f *base.FlagSet) {
 	}
 }
 
-func (c *Command) extraHelpFunc() string {
+func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
 	case "":
@@ -262,10 +262,9 @@ func (c *Command) executeExtraActions(origResult api.GenericResult, origError er
 	return origResult, origError
 }
 
-func (c *Command) printListTable(items []*targets.Target) {
+func (c *Command) printListTable(items []*targets.Target) string {
 	if len(items) == 0 {
-		c.UI.Output("No targets found")
-		return
+		return "No targets found"
 	}
 	var output []string
 	output = []string{
@@ -309,7 +308,8 @@ func (c *Command) printListTable(items []*targets.Target) {
 			)
 		}
 	}
-	c.UI.Output(base.WrapForHelpText(output))
+
+	return base.WrapForHelpText(output)
 }
 
 func printItemTable(item *targets.Target) string {

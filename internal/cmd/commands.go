@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/cmd/commands/database"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
-	"github.com/hashicorp/boundary/internal/cmd/commands/groups"
+	"github.com/hashicorp/boundary/internal/cmd/commands/groupscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hosts"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsets"
@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessions"
-	"github.com/hashicorp/boundary/internal/cmd/commands/targets"
+	"github.com/hashicorp/boundary/internal/cmd/commands/targetscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/users"
 	"github.com/hashicorp/boundary/internal/cmd/commands/version"
 
@@ -293,54 +293,54 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 
 		"groups": func() (cli.Command, error) {
-			return &groups.Command{
+			return &groupscmd.Command{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"groups create": func() (cli.Command, error) {
-			return &groups.Command{
+			return &groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
 		"groups update": func() (cli.Command, error) {
-			return &groups.Command{
+			return &groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
 		},
 		"groups read": func() (cli.Command, error) {
-			return &groups.Command{
+			return &groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}, nil
 		},
 		"groups delete": func() (cli.Command, error) {
-			return &groups.Command{
+			return &groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}, nil
 		},
 		"groups list": func() (cli.Command, error) {
-			return &groups.Command{
+			return &groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}, nil
 		},
 		"groups add-members": func() (cli.Command, error) {
-			return &groups.Command{
+			return &groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-members",
 			}, nil
 		},
 		"groups set-members": func() (cli.Command, error) {
-			return &groups.Command{
+			return &groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-members",
 			}, nil
 		},
 		"groups remove-members": func() (cli.Command, error) {
-			return &groups.Command{
+			return &groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-members",
 			}, nil
@@ -641,72 +641,72 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 
 		"targets": func() (cli.Command, error) {
-			return &targets.Command{
+			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"targets authorize-session": func() (cli.Command, error) {
-			return &targets.Command{
+			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "authorize-session",
 			}, nil
 		},
 		"targets read": func() (cli.Command, error) {
-			return &targets.Command{
+			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}, nil
 		},
 		"targets delete": func() (cli.Command, error) {
-			return &targets.Command{
+			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}, nil
 		},
 		"targets list": func() (cli.Command, error) {
-			return &targets.Command{
+			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}, nil
 		},
 		"targets create": func() (cli.Command, error) {
-			return &targets.Command{
+			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
 		"targets create tcp": func() (cli.Command, error) {
-			return &targets.TcpCommand{
+			return &targetscmd.TcpCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
 		"targets update": func() (cli.Command, error) {
-			return &targets.Command{
+			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
 		},
 		"targets update tcp": func() (cli.Command, error) {
-			return &targets.TcpCommand{
+			return &targetscmd.TcpCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
 		},
 		"targets add-host-sets": func() (cli.Command, error) {
-			return &targets.Command{
+			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-host-sets",
 			}, nil
 		},
 		"targets remove-host-sets": func() (cli.Command, error) {
-			return &targets.Command{
+			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-host-sets",
 			}, nil
 		},
 		"targets set-host-sets": func() (cli.Command, error) {
-			return &targets.Command{
+			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-host-sets",
 			}, nil

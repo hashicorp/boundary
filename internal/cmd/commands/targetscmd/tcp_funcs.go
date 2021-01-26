@@ -1,4 +1,4 @@
-package targets
+package targetscmd
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ func (c *TcpCommand) extraTcpSynopsisFunc() string {
 	return fmt.Sprintf("%s a tcp-type target", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
-func (c *TcpCommand) extraTcpHelpFunc() string {
+func (c *TcpCommand) extraTcpHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
 	case "create":

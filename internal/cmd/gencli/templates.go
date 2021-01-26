@@ -26,7 +26,7 @@ func fillTemplates() {
 			if data.SubActionPrefix != "" {
 				fName = fmt.Sprintf("%s_%s", data.SubActionPrefix, fName)
 			}
-			outFile, err := filepath.Abs(fmt.Sprintf("%s/%s/%s.gen.go", os.Getenv("CLI_GEN_BASEPATH"), pkg, fName))
+			outFile, err := filepath.Abs(fmt.Sprintf("%s/%scmd/%s.gen.go", os.Getenv("CLI_GEN_BASEPATH"), pkg, fName))
 			if err != nil {
 				fmt.Printf("error opening file for package %s: %v\n", pkg, err)
 				os.Exit(1)
@@ -58,7 +58,7 @@ var cmdTemplate = template.Must(template.New("").Funcs(
 	},
 ).Parse(`
 {{ $input := . }}
-package {{ .ResourceType }}s
+package {{ .ResourceType }}scmd
 
 import (
 	"fmt"
@@ -120,25 +120,25 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Synopsis() string {
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
-	{{ if not .SkipNormalHelp }}
-	helpMap := common.HelpMap("{{ .ResourceType }}")
 	var helpStr string
-	{{ end }}
+	helpMap := common.HelpMap("{{ .ResourceType }}")
+
 	switch c.Func {
 	{{ if not .SkipNormalHelp }}
 	{{ range $i, $action := .StdActions }}
 	case "{{ $action }}":
-		helpStr = helpMap[c.Func]()
+		helpStr = helpMap[c.Func]() + c.Flags().Help()
 	{{ end }}
 	{{ end }}
 	{{ if .HasExtraHelpFunc }}
 	default:
-		return c.extra{{ camelCase .SubActionPrefix }}HelpFunc()
+		helpStr = c.extra{{ camelCase .SubActionPrefix }}HelpFunc(helpMap)
 	{{ end }}
 	}
-	{{ if not .SkipNormalHelp }}
-	return helpStr + c.Flags().Help()
-	{{ end }}
+
+	// Keep linter from complaining if we don't actually generate code using it
+	_ = helpMap
+	return helpStr
 }
 
 var flags{{ camelCase .SubActionPrefix }}Map = map[string][]string{
@@ -185,12 +185,14 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 	{{ end }}
 
-	{{ if .IsAbstractType }}
 	switch c.Func {
-	case "", "create", "update":
+	case "":
 		return cli.RunResultHelp
-	}
+	{{ if .IsAbstractType }}
+	case "create", "update":
+		return cli.RunResultHelp
 	{{ end }}
+	}
 
 	c.plural = "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ .ResourceType }}"
 	switch c.Func {
@@ -206,22 +208,28 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 
 	{{ if .HasId }}
-	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "id") {
-		if c.FlagId == "" {
+	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "id") && c.FlagId == "" {
 			c.UI.Error("ID is required but not passed in via -id")
 			return 1
-		}
+	}
+	{{ end }}
+
+	{{ if .HasScopeId }}
+	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "scope-id") && c.FlagScopeId == "" {
+		c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
+		return 1
 	}
 	{{ end }}
 
 	var opts []{{ .ResourceType }}s.Option
 
+	{{ if .HasScopeIdOption }}
 	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "scope-id") {
 		switch c.Func {
 		{{ if hasAction .StdActions "list" }}
 		case "list":
 			if c.FlagScopeId == "" {
-				c.UI.Error("Scope ID must be passed in via -scope-id")
+				c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
 				return 1
 			}
 		{{ end }}
@@ -231,6 +239,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 			}
 		}
 	}
+	{{ end }}
 
 	client, err := c.Client()
 	if err != nil {
@@ -305,7 +314,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ range $i, $action := $input.StdActions }}
 	{{ if eq $action "create" }}
 	case "create":
-		result, err = {{ $input.ResourceType }}Client.Create(c.Context, "{{ $input.SubActionPrefix }}", c.FlagScopeId, opts...)
+		result, err = {{ $input.ResourceType }}Client.Create(c.Context, {{ if $input.SubActionPrefix }}"{{ $input.SubActionPrefix }}",{{ end }} c.FlagScopeId, opts...)
 	{{ end }}
 	{{ if eq $action "read" }}
 	case "read":
@@ -395,7 +404,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 			}
 
 		case "table":
-			c.printListTable(listedItems)
+			c.UI.Output(c.printListTable(listedItems))
 		}
 
 		return 0

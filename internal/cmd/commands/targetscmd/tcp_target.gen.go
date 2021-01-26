@@ -1,4 +1,4 @@
-package targets
+package targetscmd
 
 import (
 	"fmt"
@@ -53,10 +53,17 @@ func (c *TcpCommand) Synopsis() string {
 }
 
 func (c *TcpCommand) Help() string {
+	var helpStr string
+	helpMap := common.HelpMap("target")
+
 	switch c.Func {
 	default:
-		return c.extraTcpHelpFunc()
+		helpStr = c.extraTcpHelpFunc(helpMap)
 	}
+
+	// Keep linter from complaining if we don't actually generate code using it
+	_ = helpMap
+	return helpStr
 }
 
 var flagsTcpMap = map[string][]string{
@@ -81,6 +88,11 @@ func (c *TcpCommand) Flags() *base.FlagSets {
 }
 
 func (c *TcpCommand) Run(args []string) int {
+	switch c.Func {
+	case "":
+		return cli.RunResultHelp
+	}
+
 	c.plural = "tcp-type target"
 	switch c.Func {
 	case "list":
@@ -94,11 +106,9 @@ func (c *TcpCommand) Run(args []string) int {
 		return 1
 	}
 
-	if strutil.StrListContains(flagsTcpMap[c.Func], "id") {
-		if c.FlagId == "" {
-			c.UI.Error("ID is required but not passed in via -id")
-			return 1
-		}
+	if strutil.StrListContains(flagsTcpMap[c.Func], "id") && c.FlagId == "" {
+		c.UI.Error("ID is required but not passed in via -id")
+		return 1
 	}
 
 	var opts []targets.Option

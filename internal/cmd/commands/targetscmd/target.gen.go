@@ -1,4 +1,4 @@
-package targets
+package targetscmd
 
 import (
 	"fmt"
@@ -55,26 +55,28 @@ func (c *Command) Synopsis() string {
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("target")
 	var helpStr string
+	helpMap := common.HelpMap("target")
 
 	switch c.Func {
 
 	case "read":
-		helpStr = helpMap[c.Func]()
+		helpStr = helpMap[c.Func]() + c.Flags().Help()
 
 	case "delete":
-		helpStr = helpMap[c.Func]()
+		helpStr = helpMap[c.Func]() + c.Flags().Help()
 
 	case "list":
-		helpStr = helpMap[c.Func]()
+		helpStr = helpMap[c.Func]() + c.Flags().Help()
 
 	default:
-		return c.extraHelpFunc()
+		helpStr = c.extraHelpFunc(helpMap)
 
 	}
 
-	return helpStr + c.Flags().Help()
+	// Keep linter from complaining if we don't actually generate code using it
+	_ = helpMap
+	return helpStr
 }
 
 var flagsMap = map[string][]string{
@@ -107,8 +109,12 @@ func (c *Command) Run(args []string) int {
 	}
 
 	switch c.Func {
-	case "", "create", "update":
+	case "":
 		return cli.RunResultHelp
+
+	case "create", "update":
+		return cli.RunResultHelp
+
 	}
 
 	c.plural = "target"
@@ -131,7 +137,7 @@ func (c *Command) Run(args []string) int {
 
 		case "list":
 			if c.FlagScopeId == "" {
-				c.UI.Error("Scope ID must be passed in via -scope-id")
+				c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
 				return 1
 			}
 
@@ -284,7 +290,7 @@ func (c *Command) Run(args []string) int {
 			}
 
 		case "table":
-			c.printListTable(listedItems)
+			c.UI.Output(c.printListTable(listedItems))
 		}
 
 		return 0
