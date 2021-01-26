@@ -3,8 +3,10 @@ begin;
 -- add the account_info_auth_method_id which determines which auth_method is
 -- designated as for "account info" in the user's scope.  
 alter table iam_scope
-add column account_info_auth_method_id wt_public_id -- allowed to be null and is mutable of course.
-references auth_method(public_id)
+add column account_info_auth_method_id wt_public_id;  -- allowed to be null and is mutable of course.
+
+alter table iam_scope add
+foreign key (public_id, account_info_auth_method_id) references auth_method(scope_id, public_id)
 on update cascade
 on delete set null;
 
