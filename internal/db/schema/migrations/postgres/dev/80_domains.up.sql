@@ -52,7 +52,7 @@ create domain wt_description as text
         check (length(trim(value)) > 0)
     constraint wt_description_too_long
         check (length(trim(value)) < 1024);
-comment on domain wt_email is
+comment on domain wt_description is
 'standard column for resource descriptions';
 
 commit;
