@@ -32,7 +32,7 @@ create domain wt_url as text
         check (length(trim(value)) < 4000)
     constraint wt_url_invalid_protocol
         check (value ~ 'https?:\/\/*');
-comment on domain wt_email is
+comment on domain wt_url is
 'standard column for URLs';
 
 -- wt_name defines a type for resource names that must be less than 128 chars.
