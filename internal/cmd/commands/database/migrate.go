@@ -39,7 +39,7 @@ type MigrateCommand struct {
 }
 
 func (c *MigrateCommand) Synopsis() string {
-	return "Initialize Boundary's database"
+	return "Migrate Boundary's database to the most recent schema supported by this binary."
 }
 
 func (c *MigrateCommand) Help() string {
