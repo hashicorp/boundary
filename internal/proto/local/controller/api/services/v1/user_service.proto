@@ -145,6 +145,7 @@ message GetUserResponse {
 
 message ListUsersRequest {
   string scope_id = 1;
+  bool recursive = 20 [json_name="recursive"];
 }
 
 message ListUsersResponse {

@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
@@ -134,17 +135,25 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	pl, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
+		ctx, s.repoFn, authResults, req.GetScopeId(), req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}
+
+	pl, err := s.listFromRepo(ctx, scopeIds)
+	if err != nil {
+		return nil, err
+	}
+
 	finalItems := make([]*pb.Scope, 0, len(pl))
 	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Scope,
+		Type: resource.Scope,
 	}
 	for _, item := range pl {
-		item.Scope = authResults.Scope
+		item.Scope = scopeInfoMap[item.GetScopeId()]
+		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
@@ -354,22 +363,12 @@ func SortScopes(scps []*pb.Scope) {
 	})
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-
-	var scps []*iam.Scope
-	switch {
-	case scopeId == "global":
-		scps, err = repo.ListOrgs(ctx)
-	case strings.HasPrefix(scopeId, scope.Org.Prefix()):
-		scps, err = repo.ListProjects(ctx, scopeId)
-	default:
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{"scope_id": "This field must be 'global' or a valid org scope id."})
-	}
+	scps, err := repo.ListScopes(ctx, scopeIds)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to list scopes: %v", err)
 	}

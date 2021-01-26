@@ -32,7 +32,7 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"delete": {"id"},
-	"list":   {"scope-id"},
+	"list":   {"scope-id", "recursive"},
 }
 
 func (c *Command) Help() string {
@@ -138,13 +138,16 @@ func (c *Command) Run(args []string) int {
 	default:
 		opts = append(opts, authmethods.WithName(c.FlagName))
 	}
-
 	switch c.FlagDescription {
 	case "":
 	case "null":
 		opts = append(opts, authmethods.DefaultDescription())
 	default:
 		opts = append(opts, authmethods.WithDescription(c.FlagDescription))
+	}
+	switch c.FlagRecursive {
+	case true:
+		opts = append(opts, authmethods.WithRecursive(true))
 	}
 
 	authmethodClient := authmethods.NewClient(client)
@@ -230,14 +233,24 @@ func (c *Command) Run(args []string) int {
 						fmt.Sprintf("  ID:                    %s", m.Id),
 					)
 				}
-				if m.Description != "" {
+				if c.FlagRecursive {
 					output = append(output,
-						fmt.Sprintf("    Description:         %s", m.Description),
+						fmt.Sprintf("    Scope ID:            %s", m.Scope.Id),
+					)
+				}
+				if true {
+					output = append(output,
+						fmt.Sprintf("    Version:             %d", m.Version),
 					)
 				}
 				if m.Name != "" {
 					output = append(output,
 						fmt.Sprintf("    Name:                %s", m.Name),
+					)
+				}
+				if m.Description != "" {
+					output = append(output,
+						fmt.Sprintf("    Description:         %s", m.Description),
 					)
 				}
 				if true {

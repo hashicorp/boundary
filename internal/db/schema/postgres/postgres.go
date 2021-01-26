@@ -52,6 +52,7 @@ const (
 var defaultMigrationsTable = "boundary_schema_version"
 
 // Postgres is a driver usable by a boundary schema manager.
+// This struct is not thread safe.
 type Postgres struct {
 	// Locking and unlocking need to use the same connection
 	conn *sql.Conn
@@ -86,7 +87,8 @@ func New(ctx context.Context, instance *sql.DB) (*Postgres, error) {
 // https://www.postgresql.org/docs/9.6/static/explicit-locking.html#ADVISORY-LOCKS
 func (p *Postgres) TrySharedLock(ctx context.Context) error {
 	const op = "postgres.(Postgres).TrySharedLock"
-	r := p.conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock_shared($1)", schemaAccessLockId)
+	const query = "SELECT pg_try_advisory_lock_shared($1)"
+	r := p.conn.QueryRowContext(ctx, query, schemaAccessLockId)
 	if r.Err() != nil {
 		return errors.Wrap(r.Err(), op)
 	}
@@ -104,8 +106,8 @@ func (p *Postgres) TrySharedLock(ctx context.Context) error {
 // https://www.postgresql.org/docs/9.6/static/explicit-locking.html#ADVISORY-LOCKS
 func (p *Postgres) TryLock(ctx context.Context) error {
 	const op = "postgres.(Postgres).TryLock"
-
-	r := p.conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", schemaAccessLockId)
+	const query = "SELECT pg_try_advisory_lock($1)"
+	r := p.conn.QueryRowContext(ctx, query, schemaAccessLockId)
 	if r.Err() != nil {
 		return errors.Wrap(r.Err(), op)
 	}
@@ -123,13 +125,10 @@ func (p *Postgres) TryLock(ctx context.Context) error {
 // if we were unable to get the lock before the context cancels.
 func (p *Postgres) Lock(ctx context.Context) error {
 	const op = "postgres.(Postgres).Lock"
-
-	// This will wait indefinitely until the Lock can be acquired.
-	query := `SELECT pg_advisory_lock($1)`
+	const query = "SELECT pg_advisory_lock($1)"
 	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
 		return errors.Wrap(err, op)
 	}
-
 	return nil
 }
 
@@ -137,8 +136,7 @@ func (p *Postgres) Lock(ctx context.Context) error {
 // release the lock before the context cancels.
 func (p *Postgres) Unlock(ctx context.Context) error {
 	const op = "postgres.(Postgres).Unlock"
-
-	query := `SELECT pg_advisory_unlock($1)`
+	const query = `SELECT pg_advisory_unlock($1)`
 	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -266,9 +264,9 @@ func (p *Postgres) SetVersion(ctx context.Context, version int, dirty bool) erro
 	return nil
 }
 
-// Version returns the version, if the database is currently in a dirty state, and any error.
+// CurrentState returns the version, if the database is currently in a dirty state, and any error.
 // A version value of -1 indicates no version is set.
-func (p *Postgres) Version(ctx context.Context) (version int, dirty bool, err error) {
+func (p *Postgres) CurrentState(ctx context.Context) (version int, dirty bool, err error) {
 	const op = "postgres.(Postgres).Version"
 	query := `SELECT Version, dirty FROM ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` LIMIT 1`
 	err = p.conn.QueryRowContext(ctx, query).Scan(&version, &dirty)
@@ -337,7 +335,7 @@ func (p *Postgres) drop(ctx context.Context) (err error) {
 // convention of "caller locks" in the postgres type.
 func (p *Postgres) ensureVersionTable(ctx context.Context) (err error) {
 	const op = "postgres.(Postgres).ensureVersionTable"
-	if err = p.Lock(ctx); err != nil {
+	if err = p.TryLock(ctx); err != nil {
 		return errors.Wrap(err, op)
 	}
 

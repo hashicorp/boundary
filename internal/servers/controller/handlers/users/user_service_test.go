@@ -122,7 +122,24 @@ func TestList(t *testing.T) {
 	oNoUsers, _ := iam.TestScopes(t, repo)
 	oWithUsers, _ := iam.TestScopes(t, repo)
 
+	s, err := users.NewService(repoFn)
+
 	var wantUsers []*pb.User
+
+	// Populate expected values for recursive test
+	var totalUsers []*pb.User
+	ctx := auth.DisabledAuthTestContext(auth.WithScopeId("global"))
+	anon, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_anon"})
+	require.NoError(t, err)
+	totalUsers = append(totalUsers, anon.GetItem())
+	authUser, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_auth"})
+	require.NoError(t, err)
+	totalUsers = append(totalUsers, authUser.GetItem())
+	recovery, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_recovery"})
+	require.NoError(t, err)
+	totalUsers = append(totalUsers, recovery.GetItem())
+
+	// Add new users
 	for i := 0; i < 10; i++ {
 		newU, err := iam.NewUser(oWithUsers.GetPublicId())
 		require.NoError(t, err)
@@ -139,6 +156,11 @@ func TestList(t *testing.T) {
 		})
 	}
 
+	// Populate these users into the total
+	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(oWithUsers.GetPublicId()))
+	usersInOrg, err := s.ListUsers(ctx, &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId()})
+	require.NoError(t, err)
+	totalUsers = append(totalUsers, usersInOrg.GetItems()...)
 	cases := []struct {
 		name string
 		req  *pbs.ListUsersRequest
@@ -155,11 +177,20 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListUsersRequest{ScopeId: oNoUsers.GetPublicId()},
 			res:  &pbs.ListUsersResponse{},
 		},
+		{
+			name: "List Recursively in Org",
+			req:  &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId(), Recursive: true},
+			res:  &pbs.ListUsersResponse{Items: wantUsers},
+		},
+		{
+			name: "List Recursively in Global",
+			req:  &pbs.ListUsersRequest{ScopeId: "global", Recursive: true},
+			res:  &pbs.ListUsersResponse{Items: totalUsers},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := users.NewService(repoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)

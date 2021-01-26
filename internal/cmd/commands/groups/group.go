@@ -48,7 +48,7 @@ var flagsMap = map[string][]string{
 	"update":         {"id", "name", "description", "version"},
 	"read":           {"id"},
 	"delete":         {"id"},
-	"list":           {"scope-id"},
+	"list":           {"scope-id", "recursive"},
 	"add-members":    {"id", "member", "version"},
 	"set-members":    {"id", "member", "version"},
 	"remove-members": {"id", "member", "version"},
@@ -114,13 +114,16 @@ func (c *Command) Run(args []string) int {
 	default:
 		opts = append(opts, groups.WithName(c.FlagName))
 	}
-
 	switch c.FlagDescription {
 	case "":
 	case "null":
 		opts = append(opts, groups.DefaultDescription())
 	default:
 		opts = append(opts, groups.WithDescription(c.FlagDescription))
+	}
+	switch c.FlagRecursive {
+	case true:
+		opts = append(opts, groups.WithRecursive(true))
 	}
 
 	members := c.flagMembers
@@ -248,6 +251,15 @@ func (c *Command) Run(args []string) int {
 				if true {
 					output = append(output,
 						fmt.Sprintf("  ID:                    %s", g.Id),
+					)
+				}
+				if c.FlagRecursive {
+					output = append(output,
+						fmt.Sprintf("    Scope ID:            %s", g.Scope.Id),
+					)
+				}
+				if true {
+					output = append(output,
 						fmt.Sprintf("    Version:             %d", g.Version),
 					)
 				}

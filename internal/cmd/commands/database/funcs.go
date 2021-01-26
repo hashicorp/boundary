@@ -1,10 +1,70 @@
 package database
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/mitchellh/cli"
 )
+
+// migrateDatabase updates the schema to the most recent version known by the binary.
+// It owns the reporting to the UI any errors.
+// Returns a cleanup function which must be called even if an error is returned and
+// an error code where a non-zero value indicates an error happened.
+func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string) (func(), int) {
+	noop := func() {}
+	// This database is used to keep an exclusive lock on the database for the
+	// remainder of the command
+	dBase, err := sql.Open(dialect, u)
+	if err != nil {
+		ui.Error(fmt.Errorf("Error establishing db connection: %w", err).Error())
+		return noop, 1
+	}
+	if err := dBase.PingContext(ctx); err != nil {
+		ui.Error(fmt.Sprintf("Unable to connect to the database at %q", u))
+		return noop, 1
+	}
+	man, err := schema.NewManager(ctx, dialect, dBase)
+	if err != nil {
+		if errors.Match(errors.T(errors.MigrationLock), err) {
+			ui.Error("Unable to capture a lock on the database.")
+		} else {
+			ui.Error(fmt.Errorf("Error setting up schema manager: %w", err).Error())
+		}
+		return noop, 1
+	}
+	// This is an advisory lock on the DB which is released when the DB session ends.
+	if err := man.ExclusiveLock(ctx); err != nil {
+		ui.Error("Unable to capture a lock on the database.")
+		return noop, 1
+	}
+	unlock := func() {
+		// We don't report anything since this should resolve itself anyways.
+		_ = man.ExclusiveUnlock(ctx)
+	}
+
+	st, err := man.CurrentState(ctx)
+	if err != nil {
+		ui.Error(fmt.Errorf("Error getting database state: %w", err).Error())
+		return unlock, 1
+	}
+	if st.Dirty {
+		ui.Error(base.WrapAtLength("Database is in a bad state.  Please revert back to the last known good state."))
+		return unlock, 1
+	}
+	if err := man.RollForward(ctx); err != nil {
+		ui.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
+		return unlock, 1
+	}
+	if base.Format(ui) == "table" {
+		ui.Info("Migrations successfully run.")
+	}
+	return unlock, 0
+}
 
 type RoleInfo struct {
 	RoleId string `json:"scope_id"`

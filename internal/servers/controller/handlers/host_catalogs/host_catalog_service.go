@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
@@ -112,17 +113,25 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}
+
+	ul, err := s.listFromRepo(ctx, scopeIds)
+	if err != nil {
+		return nil, err
+	}
+
 	finalItems := make([]*pb.HostCatalog, 0, len(ul))
 	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.HostCatalog,
+		Type: resource.HostCatalog,
 	}
 	for _, item := range ul {
-		item.Scope = authResults.Scope
+		item.Scope = scopeInfoMap[item.GetScopeId()]
+		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
@@ -231,12 +240,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, e
 	return toProto(hc), nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.HostCatalog, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.HostCatalog, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListCatalogs(ctx, scopeId)
+	ul, err := repo.ListCatalogs(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
@@ -444,8 +453,9 @@ func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
 
 func validateListRequest(req *pbs.ListHostCatalogsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
-		badFields["scope_id"] = "This field must be a valid project scope id."
+	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+		!req.GetRecursive() {
+		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

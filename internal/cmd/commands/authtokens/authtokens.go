@@ -33,7 +33,7 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"delete": {"id"},
-	"list":   {"scope-id"},
+	"list":   {"scope-id", "recursive"},
 }
 
 func (c *Command) Help() string {
@@ -92,21 +92,28 @@ func (c *Command) Run(args []string) int {
 
 	authtokenClient := authtokens.NewClient(client)
 
+	var opts []authtokens.Option
+
+	switch c.FlagRecursive {
+	case true:
+		opts = append(opts, authtokens.WithRecursive(true))
+	}
+
 	existed := true
 	var result api.GenericResult
 	var listResult api.GenericListResult
 
 	switch c.Func {
 	case "read":
-		result, err = authtokenClient.Read(c.Context, c.FlagId)
+		result, err = authtokenClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		_, err = authtokenClient.Delete(c.Context, c.FlagId)
+		_, err = authtokenClient.Delete(c.Context, c.FlagId, opts...)
 		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
 			existed = false
 			err = nil
 		}
 	case "list":
-		listResult, err = authtokenClient.List(c.Context, c.FlagScopeId)
+		listResult, err = authtokenClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "auth token"
@@ -168,15 +175,26 @@ func (c *Command) Run(args []string) int {
 				if i > 0 {
 					output = append(output, "")
 				}
-				output = append(output,
-					fmt.Sprintf("  ID:                            %s", t.Id),
-					fmt.Sprintf("    Approximate Last Used Time:  %s", t.ApproximateLastUsedTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    Auth Method ID:              %s", t.AuthMethodId),
-					fmt.Sprintf("    Created Time:                %s", t.CreatedTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    Expiration Time:             %s", t.ExpirationTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    Updated Time:                %s", t.UpdatedTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    User ID:                     %s", t.UserId),
-				)
+				if true {
+					output = append(output,
+						fmt.Sprintf("  ID:                            %s", t.Id),
+					)
+				}
+				if c.FlagRecursive {
+					output = append(output,
+						fmt.Sprintf("    Scope ID:                    %s", t.Scope.Id),
+					)
+				}
+				if true {
+					output = append(output,
+						fmt.Sprintf("    Approximate Last Used Time:  %s", t.ApproximateLastUsedTime.Local().Format(time.RFC1123)),
+						fmt.Sprintf("    Auth Method ID:              %s", t.AuthMethodId),
+						fmt.Sprintf("    Created Time:                %s", t.CreatedTime.Local().Format(time.RFC1123)),
+						fmt.Sprintf("    Expiration Time:             %s", t.ExpirationTime.Local().Format(time.RFC1123)),
+						fmt.Sprintf("    Updated Time:                %s", t.UpdatedTime.Local().Format(time.RFC1123)),
+						fmt.Sprintf("    User ID:                     %s", t.UserId),
+					)
+				}
 				if len(t.AuthorizedActions) > 0 {
 					output = append(output,
 						"    Authorized Actions:",
