@@ -98,10 +98,12 @@ func generate(dialect string) {
 			}
 
 			contents := strings.TrimSpace(string(cbts))
-			contents = strings.TrimPrefix(contents, "begin;")
-			contents = strings.TrimPrefix(contents, "BEGIN;")
-			contents = strings.TrimSuffix(contents, "commit;")
-			contents = strings.TrimSuffix(contents, "COMMIT;")
+			if strings.ToLower(contents[:len("begin;")]) == "begin;" {
+				contents = contents[len("begin;"):]
+			}
+			if strings.ToLower(contents[len(contents)-len("commit;"):]) == "commit;" {
+				contents = contents[:len(contents)-len("commit;")]
+			}
 			contents = strings.TrimSpace(contents)
 
 			cv := ContentValues{

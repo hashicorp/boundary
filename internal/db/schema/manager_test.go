@@ -138,7 +138,7 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 func TestRollForward_BadSQL(t *testing.T) {
 	dialect := "postgres"
 	oState := migrationStates[dialect]
-	defer func() {migrationStates[dialect] = oState}()
+	defer func() { migrationStates[dialect] = oState }()
 
 	nState := createPartialMigrationState(oState, 8)
 	nState.binarySchemaVersion = 10
