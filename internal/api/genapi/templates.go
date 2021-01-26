@@ -155,10 +155,10 @@ func fillTemplates() {
 		}
 
 		input := templateInput{
-			Package: pkg,
-			Fields:  fields,
+			Package:          pkg,
+			Fields:           fields,
+			RecursiveListing: inputMap[pkg].recursiveListing,
 		}
-		input.RecursiveListing = inputMap[pkg].recursiveListing
 
 		if err := optionTemplate.Execute(outBuf, input); err != nil {
 			fmt.Printf("error executing option template for package %s: %v\n", pkg, err)

@@ -150,6 +150,7 @@ var inputStructs = []*structInfo{
 		},
 		versionEnabled:      true,
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	// User related resources
 	{
@@ -174,6 +175,7 @@ var inputStructs = []*structInfo{
 		pathArgs:            []string{"user"},
 		versionEnabled:      true,
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	// Group related resources
 	{
@@ -198,6 +200,7 @@ var inputStructs = []*structInfo{
 		pathArgs:            []string{"group"},
 		versionEnabled:      true,
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	// Role related resources
 	{
@@ -237,6 +240,11 @@ var inputStructs = []*structInfo{
 	},
 	// Auth Methods related resources
 	{
+		inProto:     &authmethods.PasswordAuthMethodAttributes{},
+		outFile:     "authmethods/password_auth_method_attributes.gen.go",
+		subtypeName: "PasswordAuthMethod",
+	},
+	{
 		inProto: &authmethods.AuthMethod{},
 		outFile: "authmethods/authmethods.gen.go",
 		templates: []*template.Template{
@@ -251,13 +259,14 @@ var inputStructs = []*structInfo{
 		typeOnCreate:        true,
 		versionEnabled:      true,
 		createResponseTypes: true,
-	},
-	{
-		inProto:     &authmethods.PasswordAuthMethodAttributes{},
-		outFile:     "authmethods/password_auth_method_attributes.gen.go",
-		subtypeName: "PasswordAuthMethod",
+		recursiveListing:    true,
 	},
 	// Accounts
+	{
+		inProto:     &accounts.PasswordAccountAttributes{},
+		outFile:     "accounts/password_account_attributes.gen.go",
+		subtypeName: "PasswordAccount",
+	},
 	{
 		inProto: &accounts.Account{},
 		outFile: "accounts/account.gen.go",
@@ -274,11 +283,6 @@ var inputStructs = []*structInfo{
 		versionEnabled:      true,
 		createResponseTypes: true,
 	},
-	{
-		inProto:     &accounts.PasswordAccountAttributes{},
-		outFile:     "accounts/password_account_attributes.gen.go",
-		subtypeName: "PasswordAccount",
-	},
 	// Auth Tokens
 	{
 		inProto: &authtokens.AuthToken{},
@@ -291,6 +295,7 @@ var inputStructs = []*structInfo{
 		},
 		pathArgs:            []string{"auth-token"},
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	// Host related resources
 	{
@@ -308,6 +313,7 @@ var inputStructs = []*structInfo{
 		typeOnCreate:        true,
 		versionEnabled:      true,
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	{
 		inProto: &hosts.Host{},
@@ -354,6 +360,21 @@ var inputStructs = []*structInfo{
 		outFile: "targets/host_set.gen.go",
 	},
 	{
+		inProto:     &targets.SessionAuthorization{},
+		outFile:     "targets/session_authorization.gen.go",
+		subtypeName: "SessionAuthorization",
+	},
+	{
+		inProto:     &targets.WorkerInfo{},
+		outFile:     "targets/worker_info.gen.go",
+		subtypeName: "WorkerInfo",
+	},
+	{
+		inProto:     &targets.TcpTargetAttributes{},
+		outFile:     "targets/tcp_target_attributes.gen.go",
+		subtypeName: "TcpTarget",
+	},
+	{
 		inProto: &targets.Target{},
 		outFile: "targets/target.gen.go",
 		templates: []*template.Template{
@@ -391,11 +412,15 @@ var inputStructs = []*structInfo{
 		versionEnabled:      true,
 		typeOnCreate:        true,
 		createResponseTypes: true,
+		recursiveListing:    true,
 	},
 	{
-		inProto:     &targets.TcpTargetAttributes{},
-		outFile:     "targets/tcp_target_attributes.gen.go",
-		subtypeName: "TcpTarget",
+		inProto: &sessions.SessionState{},
+		outFile: "sessions/state.gen.go",
+	},
+	{
+		inProto: &sessions.WorkerInfo{},
+		outFile: "sessions/workers.gen.go",
 	},
 	{
 		inProto: &sessions.Session{},
@@ -408,23 +433,6 @@ var inputStructs = []*structInfo{
 		pathArgs:            []string{"session"},
 		createResponseTypes: true,
 		fieldFilter:         []string{"private_key"},
-	},
-	{
-		inProto: &sessions.SessionState{},
-		outFile: "sessions/state.gen.go",
-	},
-	{
-		inProto: &sessions.WorkerInfo{},
-		outFile: "sessions/workers.gen.go",
-	},
-	{
-		inProto:     &targets.SessionAuthorization{},
-		outFile:     "targets/session_authorization.gen.go",
-		subtypeName: "SessionAuthorization",
-	},
-	{
-		inProto:     &targets.WorkerInfo{},
-		outFile:     "targets/worker_info.gen.go",
-		subtypeName: "WorkerInfo",
+		recursiveListing:    true,
 	},
 }

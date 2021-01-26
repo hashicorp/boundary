@@ -11,6 +11,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -62,17 +63,24 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ul, err := s.listFromRepo(ctx, req.GetScopeId())
+
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
+	if err != nil {
+		return nil, err
+	}
+
+	ul, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
 	finalItems := make([]*pb.AuthToken, 0, len(ul))
 	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.AuthToken,
+		Type: resource.AuthToken,
 	}
 	for _, item := range ul {
-		item.Scope = authResults.Scope
+		item.Scope = scopeInfoMap[item.GetScopeId()]
+		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
@@ -148,13 +156,13 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.AuthToken, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.AuthToken, error) {
 	repo, err := s.repoFn()
 	_ = repo
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListAuthTokens(ctx, orgId)
+	ul, err := repo.ListAuthTokens(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
