@@ -92,9 +92,9 @@ func newAuthTokenId() (string, error) {
 	const op = "authtoken.newAuthTokenId"
 	id, err := db.NewPublicId(AuthTokenPrefix)
 	if err != nil {
-		return id, errors.Wrap(err, op)
+		return "", errors.Wrap(err, op)
 	}
-	return id, err
+	return id, nil
 }
 
 // newAuthToken generates a token with a version prefix.
