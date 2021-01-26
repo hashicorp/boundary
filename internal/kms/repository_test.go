@@ -244,6 +244,19 @@ func TestCreateKeysTx(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tk.PrivateId, tkv.TokenKeyId)
 			assert.Equal(rkv.PrivateId, tkv.RootKeyVersionId)
+
+			oidcK := kms.AllocOidcKey()
+			oidcK.PrivateId = keys[kms.KeyTypeOidcKey].GetPrivateId()
+			err = rw.LookupById(context.Background(), &oidcK)
+			require.NoError(err)
+			assert.Equal(rk.PrivateId, oidcK.RootKeyId)
+
+			oidcKv := kms.AllocOidcKeyVersion()
+			oidcKv.PrivateId = keys[kms.KeyTypeOidcKeyVersion].GetPrivateId()
+			err = rw.LookupById(context.Background(), &oidcKv)
+			require.NoError(err)
+			assert.Equal(oidcK.PrivateId, oidcKv.OidcKeyId)
+			assert.Equal(rkv.PrivateId, oidcKv.RootKeyVersionId)
 		})
 	}
 }
