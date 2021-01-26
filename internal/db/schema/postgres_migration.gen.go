@@ -4897,7 +4897,7 @@ create domain wt_url as text
         check (length(trim(value)) < 4000)
     constraint wt_url_invalid_protocol
         check (value ~ 'https?:\/\/*');
-comment on domain wt_email is
+comment on domain wt_url is
 'standard column for URLs';
 
 -- wt_name defines a type for resource names that must be less than 128 chars.
@@ -5080,7 +5080,9 @@ create table auth_oidc_method (
   update_time wt_timestamp,
   version wt_version,
   state text not null
-    references auth_oidc_method_state_enm(name),
+    references auth_oidc_method_state_enm(name)
+    on delete restrict
+    on update cascade,
   discovery_url wt_url not null, -- oidc discovery URL without any .well-known component
   client_id text not null -- oidc client identifier issued by the oidc provider.
     constraint client_id_not_empty
@@ -5091,7 +5093,7 @@ create table auth_oidc_method (
     on delete restrict
     on update cascade, 
   max_age int not null -- the allowable elapsed time in secs since the last time the user was authenticated. zero is allowed and should force the user to be re-authenticated.
-    constraint max_age_greater_than_zero
+    constraint max_age_equal_or_greater_than_zero
     check(max_age >= 0), 
   foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
@@ -5297,8 +5299,10 @@ begin;
 -- add the account_info_auth_method_id which determines which auth_method is
 -- designated as for "account info" in the user's scope.  
 alter table iam_scope
-add column account_info_auth_method_id wt_public_id -- allowed to be null and is mutable of course.
-references auth_method(public_id)
+add column account_info_auth_method_id wt_public_id;  -- allowed to be null and is mutable of course.
+
+alter table iam_scope add
+foreign key (public_id, account_info_auth_method_id) references auth_method(scope_id, public_id)
 on update cascade
 on delete set null;
 
