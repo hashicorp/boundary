@@ -27,9 +27,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * api/cli: Most resource types now support recursive listing, allowing listing
   to occur down a scope tree
   ([PR](https://github.com/hashicorp/boundary/pull/885))
+* cli: Add a `database migrate` command which updates a database's schema to 
+  the version supported by the boundary binary ([PR](https://github.com/hashicorp/boundary/pull/872)).
 
 ### Bug Fixes
 
+* controller/db: Correctly check if db init previously completed successfully 
+  when starting a controller or when running `database init` 
+  ([Issue](https://github.com/hashicorp/boundary/issues/805))
+  ([PR](https://github.com/hashicorp/boundary/pull/842))
 * cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`
   commands and automatic versioning is being used (that is, no `-version` flag
   is given), it will now display the final call instead of the `GET` that

@@ -286,6 +286,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
+		"database migrate": func() (cli.Command, error) {
+			return &database.MigrateCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
 
 		"groups": func() (cli.Command, error) {
 			return &groups.Command{

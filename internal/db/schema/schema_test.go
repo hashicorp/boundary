@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInitStore(t *testing.T) {
+func TestMigrateStore(t *testing.T) {
 	dialect := "postgres"
 	ctx := context.Background()
 
@@ -25,25 +25,25 @@ func TestInitStore(t *testing.T) {
 	nState := createPartialMigrationState(oState, 8)
 	migrationStates[dialect] = nState
 
-	ran, err := InitStore(ctx, dialect, u)
+	ran, err := MigrateStore(ctx, dialect, u)
 	assert.NoError(t, err)
 	assert.True(t, ran)
-	ran, err = InitStore(ctx, dialect, u)
+	ran, err = MigrateStore(ctx, dialect, u)
 	assert.NoError(t, err)
 	assert.False(t, ran)
 
 	// Reset the possible migration state to contain everything
 	migrationStates[dialect] = oState
 
-	ran, err = InitStore(ctx, dialect, u)
+	ran, err = MigrateStore(ctx, dialect, u)
 	assert.NoError(t, err)
 	assert.True(t, ran)
-	ran, err = InitStore(ctx, dialect, u)
+	ran, err = MigrateStore(ctx, dialect, u)
 	assert.NoError(t, err)
 	assert.False(t, ran)
 }
 
-func TestInitStore_Dirty(t *testing.T) {
+func TestMigrateStore_Dirty(t *testing.T) {
 	dialect := "postgres"
 	ctx := context.Background()
 
@@ -59,7 +59,7 @@ func TestInitStore_Dirty(t *testing.T) {
 	m, err := NewManager(ctx, dialect, db)
 	m.driver.SetVersion(ctx, -1, true)
 
-	b, err := InitStore(ctx, dialect, u)
+	b, err := MigrateStore(ctx, dialect, u)
 	assert.Error(t, err)
 	assert.False(t, b)
 }
