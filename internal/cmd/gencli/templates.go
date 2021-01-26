@@ -8,30 +8,37 @@ import (
 	"path/filepath"
 	"text/template"
 
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/iancoleman/strcase"
 )
 
 func fillTemplates() {
-	for pkg, data := range inputStructs {
-		outBuf := new(bytes.Buffer)
+	for pkg, structs := range inputStructs {
+		for _, data := range structs {
+			outBuf := new(bytes.Buffer)
 
-		if err := cmdTemplate.Execute(outBuf, data); err != nil {
-			fmt.Printf("error executing struct template for resource %s: %v\n", pkg, err)
-			os.Exit(1)
-		}
+			if err := cmdTemplate.Execute(outBuf, data); err != nil {
+				fmt.Printf("error executing struct template for resource %s: %v\n", pkg, err)
+				os.Exit(1)
+			}
 
-		outFile, err := filepath.Abs(fmt.Sprintf("%s/%s/%s.gen.go", os.Getenv("CLI_GEN_BASEPATH"), pkg, data.ResourceType))
-		if err != nil {
-			fmt.Printf("error opening file for package %s: %v\n", pkg, err)
-			os.Exit(1)
-		}
-		outDir := filepath.Dir(outFile)
-		if _, err := os.Stat(outDir); os.IsNotExist(err) {
-			_ = os.Mkdir(outDir, os.ModePerm)
-		}
-		if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0o644); err != nil {
-			fmt.Printf("error writing file %q: %v\n", outFile, err)
-			os.Exit(1)
+			fName := data.ResourceType
+			if data.SubActionPrefix != "" {
+				fName = fmt.Sprintf("%s_%s", data.SubActionPrefix, fName)
+			}
+			outFile, err := filepath.Abs(fmt.Sprintf("%s/%s/%s.gen.go", os.Getenv("CLI_GEN_BASEPATH"), pkg, fName))
+			if err != nil {
+				fmt.Printf("error opening file for package %s: %v\n", pkg, err)
+				os.Exit(1)
+			}
+			outDir := filepath.Dir(outFile)
+			if _, err := os.Stat(outDir); os.IsNotExist(err) {
+				_ = os.Mkdir(outDir, os.ModePerm)
+			}
+			if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0o644); err != nil {
+				fmt.Printf("error writing file %q: %v\n", outFile, err)
+				os.Exit(1)
+			}
 		}
 	}
 }
@@ -40,9 +47,14 @@ func camelCase(in string) string {
 	return strcase.ToCamel(in)
 }
 
+func hasAction(in []string, action string) bool {
+	return strutil.StrListContains(in, action)
+}
+
 var cmdTemplate = template.Must(template.New("").Funcs(
 	template.FuncMap{
 		"camelCase": camelCase,
+		"hasAction": hasAction,
 	},
 ).Parse(`
 {{ $input := . }}
@@ -64,19 +76,19 @@ import (
 )
 
 func init() {
-	{{ if .HasExtraActions }}
-	for k, v := range extraActionsFlagsMap {
-		flagsMap[k] = v
+	{{ if .HasCustomActionFlags }}
+	for k, v := range extra{{ camelCase .SubActionPrefix }}ActionsFlagsMap {
+		flags{{ camelCase .SubActionPrefix }}Map[k] = append(flags{{ camelCase .SubActionPrefix }}Map[k], v...)
 	}
 	{{ end }}
 }
 
 var (
-	_ cli.Command             = (*Command)(nil)
-	_ cli.CommandAutocomplete = (*Command)(nil)
+	_ cli.Command             = (*{{ camelCase .SubActionPrefix }}Command)(nil)
+	_ cli.CommandAutocomplete = (*{{ camelCase .SubActionPrefix }}Command)(nil)
 )
 
-type Command struct {
+type {{ camelCase .SubActionPrefix }}Command struct {
 	*base.Command
 
 	Func string
@@ -86,74 +98,86 @@ type Command struct {
 	// Used in some output
 	plural string
 	{{ if .HasExtraCommandVars }}
-	extraCmdVars
+	extra{{ camelCase .SubActionPrefix }}CmdVars
 	{{ end }}
 }
 
-func (c *Command) AutocompleteArgs() complete.Predictor {
+func (c *{{ camelCase .SubActionPrefix }}Command) AutocompleteArgs() complete.Predictor {
 	return complete.PredictAnything
 }
 
-func (c *Command) AutocompleteFlags() complete.Flags {
+func (c *{{ camelCase .SubActionPrefix }}Command) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *Command) Synopsis() string {
+func (c *{{ camelCase .SubActionPrefix }}Command) Synopsis() string {
 	{{ if .HasExtraSynopsisFunc }}
-	if extra := c.extraSynopsisFunc(); extra != "" {
+	if extra := c.extra{{ camelCase .SubActionPrefix }}SynopsisFunc(); extra != "" {
 		return extra
 	} 
 	{{ end }}
 	return common.SynopsisFunc(c.Func, "{{ .ResourceType }}")
 }
 
-func (c *Command) Help() string {
+func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
+	{{ if not .SkipNormalHelp }}
 	helpMap := common.HelpMap("{{ .ResourceType }}")
 	var helpStr string
+	{{ end }}
 	switch c.Func {
+	{{ if not .SkipNormalHelp }}
 	{{ range $i, $action := .StdActions }}
 	case "{{ $action }}":
 		helpStr = helpMap[c.Func]()
 	{{ end }}
+	{{ end }}
 	{{ if .HasExtraHelpFunc }}
 	default:
-		return c.extraHelpFunc()
+		return c.extra{{ camelCase .SubActionPrefix }}HelpFunc()
 	{{ end }}
 	}
+	{{ if not .SkipNormalHelp }}
 	return helpStr + c.Flags().Help()
+	{{ end }}
 }
 
-var flagsMap = map[string][]string{
+var flags{{ camelCase .SubActionPrefix }}Map = map[string][]string{
 	{{ range $i, $action := .StdActions }}
+	{{ if eq $action "create" }}
+	"create": { {{ if $input.CustomParentIdType }}"{{ $input.CustomParentIdType }}"{{ else }}"scope-id"{{ end }}, "name", "description" },
+	{{ end }}
 	{{ if eq $action "read" }}
 	"read": {"id"},
+	{{ end }}
+	{{ if eq $action "update" }}
+	"update": {"id", "name", "description" {{ if hasAction $input.VersionedActions "update" }}, "version" {{ end }} },
 	{{ end }}
 	{{ if eq $action "delete" }}
 	"delete": {"id"},
 	{{ end }}
 	{{ if eq $action "list" }}
-	"list": {"scope-id" {{ if not $input.IsSubtype }} , "recursive" {{ end }} },
+	"list": { {{ if $input.CustomParentIdType }}"{{ $input.CustomParentIdType }}"{{ else }}"scope-id", "recursive"{{ end }} },
 	{{ end }}
 	{{ end }}
 }
 
-func (c *Command) Flags() *base.FlagSets {
-	if len(flagsMap[c.Func]) == 0 {
+func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
+	if len(flags{{ camelCase .SubActionPrefix }}Map[c.Func]) == 0 {
 		return c.FlagSet(base.FlagSetNone)
 	}
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "{{ .ResourceType }}", flagsMap[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ .ResourceType }}", flags{{ camelCase .SubActionPrefix }}Map[c.Func])
 
 	{{ if .HasExtraFlagsFunc }}
-	c.extraFlagsFunc(f)
+	c.extra{{ camelCase .SubActionPrefix }}FlagsFunc(f)
 	{{ end }}
 
 	return set
 }
 
-func (c *Command) Run(args []string) int {
+func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ if .HasExampleCliOutput }}
 	if os.Getenv("BOUNDARY_EXAMPLE_CLI_OUTPUT") != "" {
 		c.UI.Output(exampleOutput())
@@ -168,7 +192,7 @@ func (c *Command) Run(args []string) int {
 	}
 	{{ end }}
 
-	c.plural = "{{ .ResourceType }}"
+	c.plural = "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ .ResourceType }}"
 	switch c.Func {
 	case "list":
 		c.plural = "{{ .ResourceType }}s"		
@@ -182,7 +206,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	{{ if .HasId }}
-	if strutil.StrListContains(flagsMap[c.Func], "id") {
+	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "id") {
 		if c.FlagId == "" {
 			c.UI.Error("ID is required but not passed in via -id")
 			return 1
@@ -192,13 +216,15 @@ func (c *Command) Run(args []string) int {
 
 	var opts []{{ .ResourceType }}s.Option
 
-	if strutil.StrListContains(flagsMap[c.Func], "scope-id") {
+	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "scope-id") {
 		switch c.Func {
+		{{ if hasAction .StdActions "list" }}
 		case "list":
 			if c.FlagScopeId == "" {
 				c.UI.Error("Scope ID must be passed in via -scope-id")
 				return 1
 			}
+		{{ end }}
 		default:
 			if c.FlagScopeId != "" {
 				opts = append(opts, {{ .ResourceType }}s.WithScopeId(c.FlagScopeId))
@@ -233,7 +259,7 @@ func (c *Command) Run(args []string) int {
 	}
 	{{ end }}
 
-	{{ if not .IsSubtype }}
+	{{ if not .CustomParentIdType }}
 	switch c.FlagRecursive {
 	case true:
 		opts = append(opts, {{ .ResourceType }}s.WithRecursive(true))
@@ -263,21 +289,31 @@ func (c *Command) Run(args []string) int {
 	}
 	{{ end }}
 
-	{{ if .HasFlagHandlingFunc }}
-	if ret := c.extraFlagHandlingFunc(&opts); ret != 0 {
+	{{ if .HasExtraFlagHandlingFunc }}
+	if ret := c.extra{{ camelCase .SubActionPrefix }}FlagHandlingFunc(&opts); ret != 0 {
 		return ret
 	}
 	{{ end }}
 
 	c.existed = true
 	var result api.GenericResult
+	{{ if hasAction .StdActions "list" }}
 	var listResult api.GenericListResult
+	{{ end }}
 
 	switch c.Func {
-	{{ range $i, $action := .StdActions }}
+	{{ range $i, $action := $input.StdActions }}
+	{{ if eq $action "create" }}
+	case "create":
+		result, err = {{ $input.ResourceType }}Client.Create(c.Context, "{{ $input.SubActionPrefix }}", c.FlagScopeId, opts...)
+	{{ end }}
 	{{ if eq $action "read" }}
 	case "read":
-		result, err = {{ $input.ResourceType}}Client.Read(c.Context, c.FlagId, opts...)
+		result, err = {{ $input.ResourceType }}Client.Read(c.Context, c.FlagId, opts...)
+	{{ end }}
+	{{ if eq $action "update" }}
+	case "update":
+		result, err = {{ $input.ResourceType }}Client.Update(c.Context, c.FlagId, version, opts...)
 	{{ end }}
 	{{ if eq $action "delete" }}
 	case "delete":

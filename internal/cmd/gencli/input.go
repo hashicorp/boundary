@@ -20,6 +20,10 @@ type cmdInfo struct {
 	// Standard actions (with standard parameters) used by this resource
 	StdActions []string
 
+	// HasCustomActionFlags controls whether to generate code to add extra
+	// flags, useful for subtype actions
+	HasCustomActionFlags bool
+
 	// HasExtraCommandVars controls whether to generate an embedded struct with
 	// extra command variables
 	HasExtraCommandVars bool
@@ -36,6 +40,10 @@ type cmdInfo struct {
 	// the map
 	HasExtraFlagsFunc bool
 
+	// SkipNormalHelp indicates skipping the normal help case for when it needs
+	// to be only custom (mainly for subactions)
+	SkipNormalHelp bool
+
 	// HasExtraHelpFunc controls whether to include a default statement chaining
 	// to an extra help function
 	HasExtraHelpFunc bool
@@ -44,22 +52,26 @@ type cmdInfo struct {
 	// output env var and print
 	HasExampleCliOutput bool
 
-	// IsSubtype indicates whether it is a resource type that isn't at the
-	// scope, e.g. a host-set, host, or account
-	IsSubtype bool
+	// CustomParentIdType indicates whether it is a resource type that isn't at
+	// the scope, e.g. a host-set, host, or account, to allow formatting correct
+	// options
+	CustomParentIdType string
 
 	// IsAbstractType triggers some behavior specialized for abstract types,
 	// e.g. those that have subcommands for create/update
 	IsAbstractType bool
 
-	// HasFlagHandlingFunc controls whether to call out to an external command
+	// HasExtraFlagHandlingFunc controls whether to call out to an external command
 	// for extra flag handling
-	HasFlagHandlingFunc bool
+	HasExtraFlagHandlingFunc bool
 
 	// HasId controls whether to add ID emptiness checking. Note that some
 	// commands that allow name/scope id or name/scope name handling may skip
 	// this in favor of custom logic.
 	HasId bool
+
+	// HasName controls whether to add scope ID options
+	HasScopeId bool
 
 	// HasName controls whether to add name options
 	HasName bool
@@ -76,24 +88,48 @@ type cmdInfo struct {
 	// HasExtraActionsOutput controls whether to generate code to call a
 	// function for custom output
 	HasExtraActionsOutput bool
+
+	// SubActionPrefix specifies the prefix to use when generating sub-action
+	// commands (e.g. "targets update tcp")
+	SubActionPrefix string
 }
 
-var inputStructs = map[string]*cmdInfo{
+var inputStructs = map[string][]*cmdInfo{
 	"targets": {
-		ResourceType:          resource.Target.String(),
-		PkgPath:               "github.com/hashicorp/boundary/api/targets",
-		StdActions:            []string{"read", "delete", "list"},
-		HasExtraCommandVars:   true,
-		HasExtraSynopsisFunc:  true,
-		HasExtraActions:       true,
-		HasExtraFlagsFunc:     true,
-		HasExtraHelpFunc:      true,
-		HasExampleCliOutput:   true,
-		IsAbstractType:        true,
-		HasFlagHandlingFunc:   true,
-		HasName:               true,
-		HasDescription:        true,
-		VersionedActions:      []string{"add-host-sets", "remove-host-sets", "set-host-sets"},
-		HasExtraActionsOutput: true,
+		{
+			ResourceType:             resource.Target.String(),
+			PkgPath:                  "github.com/hashicorp/boundary/api/targets",
+			StdActions:               []string{"read", "delete", "list"},
+			HasCustomActionFlags:     true,
+			HasExtraCommandVars:      true,
+			HasExtraSynopsisFunc:     true,
+			HasExtraActions:          true,
+			HasExtraFlagsFunc:        true,
+			HasExtraHelpFunc:         true,
+			HasExampleCliOutput:      true,
+			IsAbstractType:           true,
+			HasExtraFlagHandlingFunc: true,
+			HasName:                  true,
+			HasDescription:           true,
+			VersionedActions:         []string{"add-host-sets", "remove-host-sets", "set-host-sets"},
+			HasExtraActionsOutput:    true,
+		},
+		{
+			ResourceType:             resource.Target.String(),
+			PkgPath:                  "github.com/hashicorp/boundary/api/targets",
+			StdActions:               []string{"create", "update"},
+			HasCustomActionFlags:     true,
+			SubActionPrefix:          "tcp",
+			HasExtraCommandVars:      true,
+			HasExtraSynopsisFunc:     true,
+			SkipNormalHelp:           true,
+			HasExtraHelpFunc:         true,
+			HasExtraFlagsFunc:        true,
+			HasExtraFlagHandlingFunc: true,
+			HasId:                    true,
+			HasName:                  true,
+			HasDescription:           true,
+			VersionedActions:         []string{"update"},
+		},
 	},
 }

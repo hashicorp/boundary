@@ -16,7 +16,7 @@ import (
 
 func init() {
 	for k, v := range extraActionsFlagsMap {
-		flagsMap[k] = v
+		flagsMap[k] = append(flagsMap[k], v...)
 	}
 }
 
@@ -57,6 +57,7 @@ func (c *Command) Synopsis() string {
 func (c *Command) Help() string {
 	helpMap := common.HelpMap("target")
 	var helpStr string
+
 	switch c.Func {
 
 	case "read":
@@ -72,6 +73,7 @@ func (c *Command) Help() string {
 		return c.extraHelpFunc()
 
 	}
+
 	return helpStr + c.Flags().Help()
 }
 
@@ -126,11 +128,13 @@ func (c *Command) Run(args []string) int {
 
 	if strutil.StrListContains(flagsMap[c.Func], "scope-id") {
 		switch c.Func {
+
 		case "list":
 			if c.FlagScopeId == "" {
 				c.UI.Error("Scope ID must be passed in via -scope-id")
 				return 1
 			}
+
 		default:
 			if c.FlagScopeId != "" {
 				opts = append(opts, targets.WithScopeId(c.FlagScopeId))
@@ -201,6 +205,7 @@ func (c *Command) Run(args []string) int {
 
 	c.existed = true
 	var result api.GenericResult
+
 	var listResult api.GenericListResult
 
 	switch c.Func {

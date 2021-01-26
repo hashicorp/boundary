@@ -366,9 +366,12 @@ func printItemTable(item *targets.Target) string {
 		)
 	}
 
+	ret = append(ret,
+		"",
+	)
+
 	if len(item.HostSets) > 0 {
 		ret = append(ret,
-			"",
 			"  Host Sets:",
 		)
 		for _, m := range hostSetMaps {
