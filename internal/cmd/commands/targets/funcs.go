@@ -279,6 +279,15 @@ func (c *Command) printListTable(items []*targets.Target) {
 		if true {
 			output = append(output,
 				fmt.Sprintf("  ID:                    %s", m.Id),
+			)
+		}
+		if c.FlagRecursive {
+			output = append(output,
+				fmt.Sprintf("    Scope ID:            %s", m.Scope.Id),
+			)
+		}
+		if true {
+			output = append(output,
 				fmt.Sprintf("    Version:             %d", m.Version),
 				fmt.Sprintf("    Type:                %s", m.Type),
 			)

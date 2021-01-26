@@ -149,14 +149,14 @@ func fetchSets(ctx context.Context, r db.Reader, targetId string) ([]*TargetSet,
 func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, error) {
 	const op = "target.(Repository).ListTargets"
 	opts := getOpts(opt...)
-	if opts.withScopeId == "" && opts.withUserId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "must specify either a scope id or user id")
+	if len(opts.withScopeIds) == 0 && opts.withUserId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "must specify either scope id or user id")
 	}
 	// TODO (jimlambrt 8/2020) - implement WithUserId() optional filtering.
 	var where []string
 	var args []interface{}
-	if opts.withScopeId != "" {
-		where, args = append(where, "scope_id = ?"), append(args, opts.withScopeId)
+	if len(opts.withScopeIds) != 0 {
+		where, args = append(where, "scope_id in (?)"), append(args, opts.withScopeIds)
 	}
 	if opts.withTargetType != nil {
 		where, args = append(where, "type = ?"), append(args, opts.withTargetType.String())

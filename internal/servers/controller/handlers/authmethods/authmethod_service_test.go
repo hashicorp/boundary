@@ -194,30 +194,37 @@ func TestList(t *testing.T) {
 	}
 
 	cases := []struct {
-		name    string
-		scopeId string
-		res     *pbs.ListAuthMethodsResponse
-		err     error
+		name string
+		req  *pbs.ListAuthMethodsRequest
+		res  *pbs.ListAuthMethodsResponse
+		err  error
 	}{
 		{
-			name:    "List Some Auth Methods",
-			scopeId: oWithAuthMethods.GetPublicId(),
-			res:     &pbs.ListAuthMethodsResponse{Items: wantSomeAuthMethods},
+			name: "List Some Auth Methods",
+			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithAuthMethods.GetPublicId()},
+			res:  &pbs.ListAuthMethodsResponse{Items: wantSomeAuthMethods},
 		},
 		{
-			name:    "List Other Auth Methods",
-			scopeId: oWithOtherAuthMethods.GetPublicId(),
-			res:     &pbs.ListAuthMethodsResponse{Items: wantOtherAuthMethods},
+			name: "List Other Auth Methods",
+			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithOtherAuthMethods.GetPublicId()},
+			res:  &pbs.ListAuthMethodsResponse{Items: wantOtherAuthMethods},
 		},
 		{
-			name:    "List No Auth Methods",
-			scopeId: oNoAuthMethods.GetPublicId(),
-			res:     &pbs.ListAuthMethodsResponse{},
+			name: "List No Auth Methods",
+			req:  &pbs.ListAuthMethodsRequest{ScopeId: oNoAuthMethods.GetPublicId()},
+			res:  &pbs.ListAuthMethodsResponse{},
 		},
 		{
-			name:    "Unfound Auth Method",
-			scopeId: "o_DoesntExis",
-			err:     handlers.ApiErrorWithCode(codes.NotFound),
+			name: "Unfound Auth Method",
+			req:  &pbs.ListAuthMethodsRequest{ScopeId: "o_DoesntExis"},
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "List All Auth Methods Recursively",
+			req:  &pbs.ListAuthMethodsRequest{ScopeId: "global", Recursive: true},
+			res: &pbs.ListAuthMethodsResponse{
+				Items: append(wantSomeAuthMethods, wantOtherAuthMethods...),
+			},
 		},
 	}
 	for _, tc := range cases {
@@ -226,12 +233,12 @@ func TestList(t *testing.T) {
 			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListAuthMethodsRequest{ScopeId: tc.scopeId})
+			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.scopeId, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.scopeId, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 		})
 	}
 }

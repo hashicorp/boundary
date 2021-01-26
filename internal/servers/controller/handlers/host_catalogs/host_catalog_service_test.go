@@ -195,35 +195,42 @@ func TestList(t *testing.T) {
 	}
 
 	cases := []struct {
-		name    string
-		scopeId string
-		res     *pbs.ListHostCatalogsResponse
-		err     error
+		name string
+		req  *pbs.ListHostCatalogsRequest
+		res  *pbs.ListHostCatalogsResponse
+		err  error
 	}{
 		{
-			name:    "List Some Catalogs",
-			scopeId: pWithCatalogs.GetPublicId(),
-			res:     &pbs.ListHostCatalogsResponse{Items: wantSomeCatalogs},
+			name: "List Some Catalogs",
+			req:  &pbs.ListHostCatalogsRequest{ScopeId: pWithCatalogs.GetPublicId()},
+			res:  &pbs.ListHostCatalogsResponse{Items: wantSomeCatalogs},
 		},
 		{
-			name:    "List Other Catalogs",
-			scopeId: pWithOtherCatalogs.GetPublicId(),
-			res:     &pbs.ListHostCatalogsResponse{Items: wantOtherCatalogs},
+			name: "List Other Catalogs",
+			req:  &pbs.ListHostCatalogsRequest{ScopeId: pWithOtherCatalogs.GetPublicId()},
+			res:  &pbs.ListHostCatalogsResponse{Items: wantOtherCatalogs},
 		},
 		{
-			name:    "List No Catalogs",
-			scopeId: pNoCatalogs.GetPublicId(),
-			res:     &pbs.ListHostCatalogsResponse{},
+			name: "List No Catalogs",
+			req:  &pbs.ListHostCatalogsRequest{ScopeId: pNoCatalogs.GetPublicId()},
+			res:  &pbs.ListHostCatalogsResponse{},
 		},
 		{
-			name:    "Unfound Catalogs",
-			scopeId: scope.Project.Prefix() + "_DoesntExis",
-			err:     handlers.ApiErrorWithCode(codes.NotFound),
+			name: "Unfound Catalogs",
+			req:  &pbs.ListHostCatalogsRequest{ScopeId: scope.Project.Prefix() + "_DoesntExis"},
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name:    "Bad scope level",
-			scopeId: scope.Global.String(),
-			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
+			name: "Bad scope level (not recursive)",
+			req:  &pbs.ListHostCatalogsRequest{ScopeId: scope.Global.String()},
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "List recursively",
+			req:  &pbs.ListHostCatalogsRequest{ScopeId: scope.Global.String(), Recursive: true},
+			res: &pbs.ListHostCatalogsResponse{
+				Items: append(wantSomeCatalogs, wantOtherCatalogs...),
+			},
 		},
 	}
 	for _, tc := range cases {
@@ -232,12 +239,12 @@ func TestList(t *testing.T) {
 			s, err := host_catalogs.NewService(repoFn, iamRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.ListHostCatalogs(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListHostCatalogsRequest{ScopeId: tc.scopeId})
+			got, gErr := s.ListHostCatalogs(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "ListHostCatalogs() for scope %q got error %v, wanted %v", tc.scopeId, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "ListHostCatalogs() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostCatalogs() for scope %q got response %q, wanted %q", tc.scopeId, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostCatalogs() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 		})
 	}
 }

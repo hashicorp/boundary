@@ -81,7 +81,7 @@ var flagsMap = map[string][]string{
 
 	"delete": {"id"},
 
-	"list": {"scope-id"},
+	"list": {"scope-id", "recursive"},
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -159,6 +159,11 @@ func (c *Command) Run(args []string) int {
 		opts = append(opts, targets.DefaultDescription())
 	default:
 		opts = append(opts, targets.WithDescription(c.FlagDescription))
+	}
+
+	switch c.FlagRecursive {
+	case true:
+		opts = append(opts, targets.WithRecursive(true))
 	}
 
 	var version uint32
@@ -260,8 +265,11 @@ func (c *Command) Run(args []string) int {
 		switch base.Format(c.UI) {
 		case "json":
 			switch {
+			case listedItems == nil:
+				c.UI.Output("null")
+
 			case len(listedItems) == 0:
-				c.UI.Output("{}")
+				c.UI.Output("[]")
 
 			default:
 				b, err := base.JsonFormatter{}.Format(listedItems)

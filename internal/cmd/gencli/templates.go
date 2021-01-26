@@ -132,7 +132,7 @@ var flagsMap = map[string][]string{
 	"delete": {"id"},
 	{{ end }}
 	{{ if eq $action "list" }}
-	"list": {"scope-id"},
+	"list": {"scope-id" {{ if not $input.IsSubtype }} , "recursive" {{ end }} },
 	{{ end }}
 	{{ end }}
 }
@@ -230,6 +230,13 @@ func (c *Command) Run(args []string) int {
 		opts = append(opts, {{ .ResourceType }}s.DefaultDescription())
 	default:
 		opts = append(opts, {{ .ResourceType }}s.WithDescription(c.FlagDescription))
+	}
+	{{ end }}
+
+	{{ if not .IsSubtype }}
+	switch c.FlagRecursive {
+	case true:
+		opts = append(opts, {{ .ResourceType }}s.WithRecursive(true))
 	}
 	{{ end }}
 

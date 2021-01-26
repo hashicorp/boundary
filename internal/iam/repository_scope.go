@@ -424,29 +424,18 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...
 	return rowsDeleted, nil
 }
 
-// ListProjects in an org and supports the WithLimit option.
-func (r *Repository) ListProjects(ctx context.Context, withOrgId string, opt ...Option) ([]*Scope, error) {
-	const op = "iam.(Repository).ListProjects"
-	if withOrgId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing org id")
+// ListScopes with the parent IDs, supports the WithLimit option.
+func (r *Repository) ListScopes(ctx context.Context, withParentIds []string, opt ...Option) ([]*Scope, error) {
+	const op = "iam.(Repository).ListScopes"
+	if len(withParentIds) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "missing parent id")
 	}
-	var projects []*Scope
-	err := r.list(ctx, &projects, "parent_id = ? and type = ?", []interface{}{withOrgId, scope.Project.String()}, opt...)
+	var items []*Scope
+	err := r.list(ctx, &items, "parent_id in (?)", []interface{}{withParentIds}, opt...)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	return projects, nil
-}
-
-// ListOrgs supports the WithLimit option.
-func (r *Repository) ListOrgs(ctx context.Context, opt ...Option) ([]*Scope, error) {
-	const op = "iam.(Repository).ListOrgs"
-	var orgs []*Scope
-	err := r.list(ctx, &orgs, "parent_id = ? and type = ?", []interface{}{"global", scope.Org.String()}, opt...)
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	return orgs, nil
+	return items, nil
 }
 
 // ListScopesRecursively allows for recursive listing of scopes based on a root scope

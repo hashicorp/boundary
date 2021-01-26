@@ -44,6 +44,10 @@ type cmdInfo struct {
 	// output env var and print
 	HasExampleCliOutput bool
 
+	// IsSubtype indicates whether it is a resource type that isn't at the
+	// scope, e.g. a host-set, host, or account
+	IsSubtype bool
+
 	// IsAbstractType triggers some behavior specialized for abstract types,
 	// e.g. those that have subcommands for create/update
 	IsAbstractType bool
