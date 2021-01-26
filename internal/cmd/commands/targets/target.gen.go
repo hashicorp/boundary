@@ -265,11 +265,9 @@ func (c *Command) Run(args []string) int {
 		switch base.Format(c.UI) {
 		case "json":
 			switch {
-			case listedItems == nil:
-				c.UI.Output("null")
 
 			case len(listedItems) == 0:
-				c.UI.Output("[]")
+				c.UI.Output("null")
 
 			default:
 				b, err := base.JsonFormatter{}.Format(listedItems)
