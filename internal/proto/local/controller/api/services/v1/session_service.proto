@@ -31,9 +31,22 @@ service SessionService {
 	rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
 		option (google.api.http) = {
 			get: "/v1/sessions"
-    	};
+			additional_bindings {
+				get: "/v1/sessions:list"
+			}
+    };
 		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
 			summary: "Lists all Sessions."
+		};
+	}
+
+	// ListSelfSessions returns a list of stored Sessions for the requester.
+	rpc ListSelfSessions(ListSelfSessionsRequest) returns (ListSelfSessionsResponse) {
+		option (google.api.http) = {
+			get: "/v1/sessions:list:self"
+    	};
+		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+			summary: "Lists all Sessions owned by the requester."
 		};
 	}
 
@@ -58,6 +71,15 @@ message GetSessionRequest {
 
 message GetSessionResponse {
 	resources.sessions.v1.Session item = 1;
+}
+
+message ListSelfSessionsRequest {
+	string scope_id = 1;
+	bool recursive = 20 [json_name="recursive"];
+}
+
+message ListSelfSessionsResponse {
+	repeated resources.sessions.v1.Session items = 1;
 }
 
 message ListSessionsRequest {

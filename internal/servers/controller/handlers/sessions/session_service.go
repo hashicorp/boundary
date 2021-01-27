@@ -79,35 +79,55 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+	sl, err := s.listSessions(ctx, action.List, req.GetScopeId(), req.GetRecursive())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.ListSessionsResponse{Items: sl}, nil
+}
+
+// ListSelfSessions implements the interface pbs.SessionServiceServer.
+func (s Service) ListSelfSessions(ctx context.Context, req *pbs.ListSelfSessionsRequest) (*pbs.ListSelfSessionsResponse, error) {
+	if err := validateListSelfRequest(req); err != nil {
+		return nil, err
+	}
+	sl, err := s.listSessions(ctx, action.ListSelf, req.GetScopeId(), req.GetRecursive())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.ListSelfSessionsResponse{Items: sl}, nil
+}
+
+func (s Service) listSessions(ctx context.Context, a action.Type, scopeId string, recursive bool) ([]*pb.Session, error) {
+	authResults := s.authResult(ctx, scopeId, a)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-
-	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
-		ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(ctx, s.iamRepoFn, authResults, scopeId, recursive)
 	if err != nil {
 		return nil, err
 	}
-
-	seslist, err := s.listFromRepo(ctx, scopeIds)
+	opts := []session.Option{session.WithScopeIds(scopeIds)}
+	if a == action.ListSelf {
+		opts = append(opts, session.WithUserId(authResults.UserId))
+	}
+	seslist, err := s.listFromRepo(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
-
 	finalItems := make([]*pb.Session, 0, len(seslist))
 	res := &perms.Resource{
-		Type: resource.Session,
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.Session,
 	}
 	for _, item := range seslist {
 		item.Scope = scopeInfoMap[item.GetScopeId()]
-		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
 	}
-	return &pbs.ListSessionsResponse{Items: finalItems}, nil
+	return finalItems, err
 }
 
 // CancelSession implements the interface pbs.SessionServiceServer.
@@ -146,12 +166,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	return toProto(sess), nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Session, error) {
+func (s Service) listFromRepo(ctx context.Context, opts ...session.Option) ([]*pb.Session, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	seslist, err := repo.ListSessions(ctx, session.WithScopeIds(scopeIds))
+	seslist, err := repo.ListSessions(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -196,6 +216,8 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			res.Error = handlers.NotFoundError()
 			return res
 		}
+	case action.ListSelf:
+		// TODO: DO NOT SUBMIT until this is populated
 	case action.Read, action.Cancel:
 		repo, err := s.repoFn()
 		if err != nil {
@@ -269,6 +291,18 @@ func validateGetRequest(req *pbs.GetSessionRequest) error {
 }
 
 func validateListRequest(req *pbs.ListSessionsRequest) error {
+	badFields := map[string]string{}
+	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+		!req.GetRecursive() {
+		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+	}
+	return nil
+}
+
+func validateListSelfRequest(req *pbs.ListSelfSessionsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
 		!req.GetRecursive() {

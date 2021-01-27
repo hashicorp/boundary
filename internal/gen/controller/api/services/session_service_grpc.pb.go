@@ -27,6 +27,8 @@ type SessionServiceClient interface {
 	// the Sessions being retrieved. If the scope ID is missing, malformed, or
 	// reference a non existing scope, an error is returned.
 	ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error)
+	// ListSelfSessions returns a list of stored Sessions for the requester.
+	ListSelfSessions(ctx context.Context, in *ListSelfSessionsRequest, opts ...grpc.CallOption) (*ListSelfSessionsResponse, error)
 	// CancelSession cancels an existing Session in boundary.  An error
 	// is returned if the request attempts to cancel a Session that does
 	// not exist.
@@ -59,6 +61,15 @@ func (c *sessionServiceClient) ListSessions(ctx context.Context, in *ListSession
 	return out, nil
 }
 
+func (c *sessionServiceClient) ListSelfSessions(ctx context.Context, in *ListSelfSessionsRequest, opts ...grpc.CallOption) (*ListSelfSessionsResponse, error) {
+	out := new(ListSelfSessionsResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.SessionService/ListSelfSessions", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *sessionServiceClient) CancelSession(ctx context.Context, in *CancelSessionRequest, opts ...grpc.CallOption) (*CancelSessionResponse, error) {
 	out := new(CancelSessionResponse)
 	err := c.cc.Invoke(ctx, "/controller.api.services.v1.SessionService/CancelSession", in, out, opts...)
@@ -82,6 +93,8 @@ type SessionServiceServer interface {
 	// the Sessions being retrieved. If the scope ID is missing, malformed, or
 	// reference a non existing scope, an error is returned.
 	ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error)
+	// ListSelfSessions returns a list of stored Sessions for the requester.
+	ListSelfSessions(context.Context, *ListSelfSessionsRequest) (*ListSelfSessionsResponse, error)
 	// CancelSession cancels an existing Session in boundary.  An error
 	// is returned if the request attempts to cancel a Session that does
 	// not exist.
@@ -98,6 +111,9 @@ func (UnimplementedSessionServiceServer) GetSession(context.Context, *GetSession
 }
 func (UnimplementedSessionServiceServer) ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSessions not implemented")
+}
+func (UnimplementedSessionServiceServer) ListSelfSessions(context.Context, *ListSelfSessionsRequest) (*ListSelfSessionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListSelfSessions not implemented")
 }
 func (UnimplementedSessionServiceServer) CancelSession(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelSession not implemented")
@@ -151,6 +167,24 @@ func _SessionService_ListSessions_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SessionService_ListSelfSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSelfSessionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SessionServiceServer).ListSelfSessions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.SessionService/ListSelfSessions",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SessionServiceServer).ListSelfSessions(ctx, req.(*ListSelfSessionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SessionService_CancelSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CancelSessionRequest)
 	if err := dec(in); err != nil {
@@ -180,6 +214,10 @@ var _SessionService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSessions",
 			Handler:    _SessionService_ListSessions_Handler,
+		},
+		{
+			MethodName: "ListSelfSessions",
+			Handler:    _SessionService_ListSelfSessions_Handler,
 		},
 		{
 			MethodName: "CancelSession",
