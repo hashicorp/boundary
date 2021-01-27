@@ -5299,12 +5299,16 @@ begin;
 -- add the account_info_auth_method_id which determines which auth_method is
 -- designated as for "account info" in the user's scope.  
 alter table iam_scope
-add column account_info_auth_method_id wt_public_id;  -- allowed to be null and is mutable of course.
+add column account_info_auth_method_id wt_public_id  -- allowed to be null and is mutable of course.
+references auth_method(public_id)
+    on update cascade
+    on delete set null;
 
-alter table iam_scope add
-foreign key (public_id, account_info_auth_method_id) references auth_method(scope_id, public_id)
-on update cascade
-on delete set null;
+-- establish a compond fk, but there's no cascading of deletes or updates, since
+-- we only want to cascade changes to the account_info_auth_method_id portion of
+-- the compond fk and that is handled in a separate fk declaration.
+alter table iam_scope
+add foreign key (public_id, account_info_auth_method_id) references auth_method(scope_id, public_id); 
 
 -- iam_user_acct_info provides account info for users by determining which
 -- auth_method is designated as for "account info" in the user's scope via the
