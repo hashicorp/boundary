@@ -62,7 +62,7 @@ func (s *AuthToken) toWritableAuthToken() *writableAuthToken {
 
 // encrypt the entry's data using the provided cipher (wrapping.Wrapper)
 func (s *writableAuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "authtoken.(Repository).encrypt"
+	const op = "authtoken.writableAuthToken.encrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
@@ -73,7 +73,7 @@ func (s *writableAuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper
 
 // decrypt will decrypt the auth token's value using the provided cipher (wrapping.Wrapper)
 func (s *AuthToken) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "authtoken.(Repository).decrypt"
+	const op = "authtoken.AuthToken.decrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
@@ -121,7 +121,7 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 
 	marshaledS1Info, err := proto.Marshal(s1Info)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithCode(errors.Encode))
+		return "", errors.Wrap(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
 	}
 
 	tokenWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeTokens)
@@ -131,12 +131,12 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 
 	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(marshaledS1Info), []byte(publicId))
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return "", errors.Wrap(err, op, errors.WithMsg("marshaling token info"), errors.WithCode(errors.Encrypt))
 	}
 
 	marshaledBlob, err := proto.Marshal(blobInfo)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithCode(errors.Encode))
+		return "", errors.Wrap(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
 	}
 
 	encoded := base58.FastBase58Encoding(marshaledBlob)

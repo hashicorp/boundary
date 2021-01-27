@@ -74,8 +74,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 	at.AuthAccountId = withAuthAccountId
 	id, err := newAuthTokenId()
 	if err != nil {
-		//Unsure on this one
-		return nil, errors.Wrap(err, op, errors.WithMsg("auth token id"))
+		return nil, errors.Wrap(err, op)
 	}
 	at.PublicId = id
 
@@ -87,7 +86,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeDatabase)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
 	// We truncate the expiration time to the nearest second to make testing in different platforms with
@@ -158,10 +157,10 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	if opts.withTokenValue {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(at.GetKeyId()))
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+			return nil, errors.Wrap(err, op)
 		}
 		if err := at.decrypt(ctx, databaseWrapper); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+			return nil, errors.Wrap(err, op)
 		}
 	}
 
@@ -307,7 +306,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		if errors.IsNotFoundError(err) {
 			return db.NoRowsAffected, nil
 		}
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.InvalidParameter))
+		return db.NoRowsAffected, errors.Wrap(err, op)
 	}
 	if at == nil {
 		return db.NoRowsAffected, nil
