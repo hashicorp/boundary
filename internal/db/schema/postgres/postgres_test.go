@@ -44,6 +44,7 @@ import (
 
 	"github.com/dhui/dktest"
 	"github.com/golang-migrate/migrate/v4/dktesting"
+	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -93,6 +94,10 @@ func isReady(ctx context.Context, c dktest.ContainerInfo) bool {
 	}
 
 	return true
+}
+
+func TestStuff(t *testing.T) {
+	docker.StartDbInDocker("postgres")
 }
 
 func TestDbStuff(t *testing.T) {

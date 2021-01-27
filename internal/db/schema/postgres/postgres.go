@@ -78,10 +78,6 @@ func New(ctx context.Context, instance *sql.DB) (*Postgres, error) {
 		db:   instance,
 	}
 
-	if err := px.ensureVersionTable(ctx); err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-
 	return px, nil
 }
 
@@ -389,24 +385,54 @@ func (p *Postgres) drop(ctx context.Context) (err error) {
 	return nil
 }
 
-// ensureVersionTable checks if versions table exists and, if not, creates it.
-// Note that this function locks the database, which deviates from the usual
-// convention of "caller locks" in the postgres type.
-func (p *Postgres) ensureVersionTable(ctx context.Context) (err error) {
+// MigrationEverRan indicates if any migration has ever ran, which means any version of the tables
+// exist.
+func (p *Postgres) MigrationEverRan(ctx context.Context) (bool, error) {
+	const op = "postgres.(Postgres).MigrationEverRan"
+	query := `SELECT exists (SELECT 1 FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_name in ('schema_migrations', '` + defaultMigrationsTable + `'));`
+	ran := false
+	if err := p.conn.QueryRowContext(ctx, query).Scan(&ran); err != nil {
+		return false, errors.Wrap(err, op)
+	}
+	return ran, nil
+}
+
+// EnsureVersionTable checks if versions table exists and, if not, creates it.
+func (p *Postgres) EnsureVersionTable(ctx context.Context) (err error) {
 	const op = "postgres.(Postgres).ensureVersionTable"
-	if err = p.TryLock(ctx); err != nil {
+
+	tx := p.tx
+	if tx == nil {
+		tx, err = p.conn.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+	}
+	rollback := func() error {
+		defer func() { p.tx = nil }()
+		return tx.Rollback()
+	}
+
+	updateQuery := `ALTER TABLE IF EXISTS schema_migrations RENAME TO ` + defaultMigrationsTable +`;`
+	if _, err = tx.ExecContext(ctx, updateQuery); err != nil {
+		if wpErr := rollback(); wpErr != nil {
+			return multierror.Append(err, wpErr)
+		}
 		return errors.Wrap(err, op)
 	}
 
-	defer func() {
-		if e := p.Unlock(ctx); e != nil {
-			err = multierror.Append(err, e)
-		}
-	}()
-
 	query := `CREATE TABLE IF NOT EXISTS ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` (Version bigint primary key, dirty boolean not null)`
-	if _, err = p.conn.ExecContext(ctx, query); err != nil {
+	if _, err = tx.ExecContext(ctx, query); err != nil {
+		if wpErr := rollback(); wpErr != nil {
+			return multierror.Append(err, wpErr)
+		}
 		return errors.Wrap(err, op)
+	}
+
+	if p.tx == nil {
+		if err := tx.Commit(); err != nil {
+			return errors.Wrap(err, op)
+		}
 	}
 
 	return nil
