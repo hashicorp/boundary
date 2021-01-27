@@ -62,7 +62,7 @@ func (s *AuthToken) toWritableAuthToken() *writableAuthToken {
 
 // encrypt the entry's data using the provided cipher (wrapping.Wrapper)
 func (s *writableAuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "authtoken.writableAuthToken.encrypt"
+	const op = "authtoken.(writableAuthToken).encrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
@@ -73,7 +73,7 @@ func (s *writableAuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper
 
 // decrypt will decrypt the auth token's value using the provided cipher (wrapping.Wrapper)
 func (s *AuthToken) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "authtoken.AuthToken.decrypt"
+	const op = "authtoken.(AuthToken).decrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
