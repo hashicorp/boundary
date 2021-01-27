@@ -18,10 +18,17 @@ type driver interface {
 	Lock(context.Context) error
 	Unlock(context.Context) error
 	UnlockShared(context.Context) error
-	Run(context.Context, io.Reader) error
-	// A value of -1 indicates no version is set.
-	SetVersion(context.Context, int, bool) error
-	// A value of -1 indicates no version is set.
+	// Either starts a transactioon internal to the driver or sets a dirty
+	// bit so if the Run fails the CurrentState reflects it.
+	StartRun(context.Context) error
+	// Either commits the transaction or clears the dirty bit.
+	CommitRun() error
+	// Performs the mutation on the driver.  This should always be
+	// wrapped by StartRun and CommitRun.  The driver must properly
+	// handle the transaction or dirty bit in case of error when
+	// executing Run.
+	Run(context.Context, io.Reader, int) error
+	// A version of -1 indicates no version is set.
 	CurrentState(context.Context) (int, bool, error)
 }
 
@@ -157,6 +164,10 @@ func (b *Manager) RollForward(ctx context.Context) error {
 // through the passed in context.
 func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) error {
 	const op = "schema.(Manager).runMigrations"
+
+	if err := b.driver.StartRun(ctx); err != nil {
+		return err
+	}
 	for qp.Next() {
 		select {
 		case <-ctx.Done():
@@ -164,22 +175,12 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 		default:
 			// context is not done yet. Continue on to the next query to execute.
 		}
-
-		// set version with dirty state
-		if err := b.driver.SetVersion(ctx, qp.Version(), true); err != nil {
+		if err := b.driver.Run(ctx, bytes.NewReader(qp.ReadUp()), qp.Version()); err != nil {
 			return errors.Wrap(err, op)
 		}
-
-		// TODO: Wrap all the queries provided by the statementProvider into a
-		//  single transaction which includes setting the version number.
-		if err := b.driver.Run(ctx, bytes.NewReader(qp.ReadUp())); err != nil {
-			return errors.Wrap(err, op)
-		}
-
-		// set clean state
-		if err := b.driver.SetVersion(ctx, qp.Version(), false); err != nil {
-			return errors.Wrap(err, op)
-		}
+	}
+	if err := b.driver.CommitRun(); err != nil {
+		return err
 	}
 	return nil
 }

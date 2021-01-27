@@ -163,7 +163,7 @@ func TestMultiStatement(t *testing.T) {
 				t.Error(err)
 			}
 		}()
-		if err := d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text); CREATE TABLE bar (bar text);")); err != nil {
+		if err := d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text); CREATE TABLE bar (bar text);"), 2); err != nil {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
@@ -175,6 +175,45 @@ func TestMultiStatement(t *testing.T) {
 		if !exists {
 			t.Fatalf("expected table bar to exist")
 		}
+	})
+}
+
+func TestTransaction(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		d, err := open(t, ctx, addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if err := d.close(t); err != nil {
+				t.Error(err)
+			}
+		}()
+
+		assert.NoError(t, d.StartRun(ctx))
+		assert.NoError(t, d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text);"), 2))
+		assert.NoError(t, d.Run(ctx, strings.NewReader("SELECT 1"), 3))
+		assert.NoError(t, d.CommitRun())
+		v, dirty, err := d.CurrentState(ctx)
+		assert.NoError(t, err)
+		assert.False(t, dirty)
+		assert.Equal(t, 3, v)
+
+		assert.NoError(t, d.StartRun(ctx))
+		assert.NoError(t, d.Run(ctx, strings.NewReader("CREATE TABLE bar (bar text);"), 20))
+		assert.Error(t, d.Run(ctx, strings.NewReader("SELECT 1 FROM NonExistingTable"), 30))
+		assert.Error(t, d.CommitRun())
+		v, dirty, err = d.CurrentState(ctx)
+		assert.NoError(t, err)
+		assert.False(t, dirty)
+		assert.Equal(t, 3, v)
 	})
 }
 
@@ -198,10 +237,7 @@ func TestWithSchema(t *testing.T) {
 		}()
 
 		// create foobar schema
-		if err := d.Run(ctx, strings.NewReader("CREATE SCHEMA foobar AUTHORIZATION postgres")); err != nil {
-			t.Fatal(err)
-		}
-		if err := d.SetVersion(ctx, 1, false); err != nil {
+		if err := d.Run(ctx, strings.NewReader("CREATE SCHEMA foobar AUTHORIZATION postgres"), 1); err != nil {
 			t.Fatal(err)
 		}
 
@@ -226,7 +262,7 @@ func TestWithSchema(t *testing.T) {
 		}
 
 		// now update CurrentState and compare
-		if err := d2.SetVersion(ctx, 2, false); err != nil {
+		if err := d2.setVersion(ctx, 2, false); err != nil {
 			t.Fatal(err)
 		}
 		version, _, err = d2.CurrentState(ctx)
@@ -303,7 +339,7 @@ func TestRun_Error(t *testing.T) {
 			require.NoError(t, p.close(t))
 		})
 
-		err = p.Run(ctx, bytes.NewReader([]byte("SELECT *\nFROM foo")))
+		err = p.Run(ctx, bytes.NewReader([]byte("SELECT *\nFROM foo")), 2)
 		assert.Error(t, err)
 	})
 }

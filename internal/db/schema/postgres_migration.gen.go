@@ -8,8 +8,6 @@ func init() {
 		binarySchemaVersion: 1086,
 		upMigrations: map[int][]byte{
 			1: []byte(`
-begin;
-
 create domain wt_public_id as text
 check(
   length(trim(value)) > 10
@@ -164,13 +162,8 @@ comment on function
   immutable_columns()
 is
   'function used in before update triggers to make columns immutable';
-
-commit;
-
 `),
 			2: []byte(`
-begin;
-
 -- TODO (jimlambrt 7/2020) remove update_time
 create table if not exists oplog_entry (
   id bigint generated always as identity primary key,
@@ -278,15 +271,8 @@ values
   ('db_test_scooter', 1),
   ('auth_account', 1),
   ('iam_principal_role', 1);
-  
-
-commit;
-
-
 `),
 			3: []byte(`
-begin;
-
 -- create test tables used in the unit tests for the internal/db package 
 -- these tables (db_test_user, db_test_car, db_test_rental, db_test_scooter) are
 -- not part of the boundary domain model... they are simply used for testing
@@ -414,13 +400,8 @@ create trigger
 before
 insert on db_test_scooter
   for each row execute procedure default_create_time();
-
-commit;
-
 `),
 			6: []byte(`
-begin;
-
 create table iam_scope_type_enm (
   string text not null primary key
     constraint only_predefined_scope_types_allowed
@@ -1123,14 +1104,8 @@ from
 where
   gm.member_id = u.public_id and
   gm.group_id = g.public_id;
-  
-
-commit;
-
 `),
 			7: []byte(`
-begin;
-
 /*
 
   ┌────────────────┐               ┌────────────────┐
@@ -1293,13 +1268,8 @@ begin;
     before update of iam_user_id on auth_account
     for each row
     execute procedure update_iam_user_auth_account();
-
-commit;
-
 `),
 			8: []byte(`
-begin;
-
 -- For now at least the IDs will be the same as the name, because this allows us
 -- to not have to persist some generated ID to worker and controller nodes.
 -- Eventually we may want them to diverge, so we have both here for now.
@@ -1346,14 +1316,9 @@ create trigger
 before
 update on recovery_nonces
   for each row execute procedure immutable_columns('nonce', 'create_time');
-
-commit;
-
 `),
 			11: []byte(`
-begin;
-
-  -- an auth token belongs to 1 and only 1 auth account
+-- an auth token belongs to 1 and only 1 auth account
   -- an auth account can have 0 to many auth tokens
   create table auth_token (
     public_id wt_public_id primary key,
@@ -1485,13 +1450,8 @@ begin;
   before
   update on auth_token
     for each row execute procedure immutable_columns('public_id', 'auth_account_id', 'create_time');
-
-commit;
-
 `),
 			12: []byte(`
-begin;
-
 /*
 
        ┌────────────────┐                 ┌──────────────────────┐             ┌────────────────────────────┐
@@ -1784,14 +1744,9 @@ begin;
     ('auth_password_method', 1),
     ('auth_password_account', 1),
     ('auth_password_credential', 1);
-
-commit;
-
 `),
 			13: []byte(`
-begin;
-
-  create table auth_password_argon2_conf (
+create table auth_password_argon2_conf (
     private_id wt_private_id primary key
       references auth_password_conf (private_id)
       on delete cascade
@@ -1936,14 +1891,9 @@ begin;
   values
     ('auth_password_argon2_conf', 1),
     ('auth_password_argon2_cred', 1);
-
-commit;
-
 `),
 			14: []byte(`
-begin;
-
-  -- auth_password_conf_union is a union of the configuration settings
+-- auth_password_conf_union is a union of the configuration settings
   -- of all supported key derivation functions.
   -- It will be updated as new key derivation functions are supported.
   create or replace view auth_password_conf_union as
@@ -1964,13 +1914,8 @@ begin;
         from auth_password_method pm
   inner join auth_password_conf_union c
           on pm.password_conf_id = c.password_conf_id;
-
-commit;
-
 `),
 			20: []byte(`
-begin;
-
 /*
 
                                ┌─────────────────┐
@@ -2135,13 +2080,8 @@ begin;
     ('host_catalog', 1),
     ('host', 1),
     ('host_set', 1);
-
-commit;
-
 `),
 			22: []byte(`
-begin;
-
 /*
 
   ┌─────────────────┐          ┌─────────────────────┐
@@ -2339,13 +2279,8 @@ begin;
     ('static_host', 1),
     ('static_host_set', 1),
     ('static_host_set_member', 1);
-
-commit;
-
 `),
 			30: []byte(`
-begin;
-
 -- kms_version_column() will increment the version column whenever row data
 -- is inserted and should only be used in an before insert trigger.  This
 -- function will overwrite any explicit values to the version column.
@@ -2371,12 +2306,8 @@ comment on function
   kms_version_column()
 is
   'function used in before insert triggers to properly set version columns for kms_* tables with a version column';
-  
-  commit;
 `),
 			31: []byte(`
-begin;
-
 /*
              ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐            
              ├────────────────────────────────────────────────────────────────────────────────────────────┐                           ○            
@@ -2698,13 +2629,8 @@ before insert on kms_token_key_version
   values
     ('kms_root_key', 1),
     ('kms_root_key_version', 1);
-    
-commit;
 `),
 			40: []byte(`
-begin;
-
-
 -- insert_target_subtype() is a before insert trigger
 -- function for subtypes of target
 create or replace function
@@ -2770,8 +2696,6 @@ end if;
 return new;
 end;
 $$ language plpgsql;
-
-commit;
 `),
 			41: []byte(`
 /*
@@ -2808,8 +2732,6 @@ commit;
 └─────────────────┘                                                                            
 
 */
-
-begin;
 
 create table target (
   public_id wt_public_id primary key,
@@ -2963,13 +2885,8 @@ insert into oplog_ticket
   (name, version)
 values
   ('target_tcp', 1);
-
-commit;
-
 `),
 			50: []byte(`
-begin;
-
 /*
 
              ┌─────────────────┐               ┌─────────────────┐   ┌─────────────────┐
@@ -3455,13 +3372,8 @@ begin;
     session_state ss
   where 
     s.public_id = ss.session_id;
-
-commit;
-
 `),
 			51: []byte(`
-begin;
-
 /*
 
                ┌────────────────┐
@@ -3835,15 +3747,9 @@ create or replace function
     );
  end;
   $$ language plpgsql;
-
-
-commit;
-
 `),
 			60: []byte(`
-begin;
-
-  create extension if not exists "pgcrypto";
+create extension if not exists "pgcrypto";
 
   create domain wh_inet_port as integer
   check(
@@ -3923,14 +3829,9 @@ begin;
   as $$
     select wh_time_id(current_timestamp);
   $$ language sql;
-
-commit;
-
 `),
 			62: []byte(`
-begin;
-
-  create table wh_date_dimension (
+create table wh_date_dimension (
     id                            integer      primary key,
     date                          date         not null,
     calendar_quarter              wh_dim_text,
@@ -4023,14 +3924,9 @@ begin;
            date_trunc('day', current_timestamp) + interval '24 hours' - interval '1 second',
            interval '1 second'
          ) as t(second);
-
-commit;
-
 `),
 			65: []byte(`
-begin;
-
-  create table wh_host_dimension (
+create table wh_host_dimension (
     -- random id generated using encode(digest(gen_random_bytes(16), 'sha256'), 'base64')
     -- this is done to prevent conflicts with rows in other clusters
     -- which enables warehouse data from multiple clusters to be loaded into a
@@ -4255,14 +4151,9 @@ begin;
       from wh_user_dimension
      where current_row_indicator = 'Current'
   ;
-
-commit;
-
 `),
 			66: []byte(`
-begin;
-
-  -- wh_upsert_host returns the wh_host_dimension id for p_host_id,
+-- wh_upsert_host returns the wh_host_dimension id for p_host_id,
   -- p_host_set_id, and p_target_id. wh_upsert_host compares the current values
   -- in the wh_host_dimension with the current values in the operational tables
   -- for the provide parameters. If the values between the operational tables
@@ -4397,13 +4288,9 @@ begin;
 
   end;
   $$ language plpgsql;
-commit;
-
 `),
 			68: []byte(`
-begin;
-
-  -- Column names for numeric fields that are not a measurement end in id or
+-- Column names for numeric fields that are not a measurement end in id or
   -- number. This naming convention enables automatic field type detection in
   -- certain data analysis tools.
   -- https://help.tableau.com/current/pro/desktop/en-us/data_clean_adm.htm
@@ -4585,14 +4472,9 @@ begin;
     'additive measurement.';
 
   create index on wh_session_connection_accumulating_fact(session_id);
-
-commit;
-
 `),
 			69: []byte(`
-begin;
-
-  -- wh_rollup_connections calculates the aggregate values from
+-- wh_rollup_connections calculates the aggregate values from
   -- wh_session_connection_accumulating_fact for p_session_id and updates
   -- wh_session_accumulating_fact for p_session_id with those values.
   create or replace function wh_rollup_connections(p_session_id wt_public_id)
@@ -4861,13 +4743,8 @@ begin;
     after insert on session_connection_state
     for each row
     execute function wh_insert_session_connection_state();
-
-commit;
-
 `),
 			1001: []byte(`
-begin;
-
 -- This series of expressions fixes the primary key on the server table
 alter table session
   drop constraint session_server_id_server_type_fkey;
@@ -4987,8 +4864,6 @@ create table server_tag (
   value wt_tagpair,
   primary key(server_id, key, value)
 );
-
-commit;
 `),
 			1080: []byte(`
 begin;
