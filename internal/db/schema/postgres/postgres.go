@@ -276,7 +276,7 @@ func runesLastIndex(input []rune, target rune) int {
 	return -1
 }
 
-// SetVersion sets the version number, and whether the database is in a dirty state.
+// setVersion sets the version number, and whether the database is in a dirty state.
 // A version value of -1 indicates no version is set.
 func (p *Postgres) setVersion(ctx context.Context, version int, dirty bool) error {
 	const op = "postgres.(Postgres).SetVersion"
