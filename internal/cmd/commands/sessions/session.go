@@ -32,7 +32,7 @@ func (c *Command) Synopsis() string {
 var flagsMap = map[string][]string{
 	"read":   {"id"},
 	"cancel": {"id"},
-	"list":   {"scope-id"},
+	"list":   {"scope-id", "recursive"},
 }
 
 func (c *Command) Help() string {
@@ -112,16 +112,23 @@ func (c *Command) Run(args []string) int {
 
 	sessionClient := sessions.NewClient(client)
 
+	var opts []sessions.Option
+
+	switch c.FlagRecursive {
+	case true:
+		opts = append(opts, sessions.WithRecursive(true))
+	}
+
 	var result api.GenericResult
 	var listResult api.GenericListResult
 
 	switch c.Func {
 	case "read":
-		result, err = sessionClient.Read(c.Context, c.FlagId)
+		result, err = sessionClient.Read(c.Context, c.FlagId, opts...)
 	case "cancel":
-		result, err = sessionClient.Cancel(c.Context, c.FlagId, 0, sessions.WithAutomaticVersioning(true))
+		result, err = sessionClient.Cancel(c.Context, c.FlagId, 0, append(opts, sessions.WithAutomaticVersioning(true))...)
 	case "list":
-		listResult, err = sessionClient.List(c.Context, c.FlagScopeId)
+		listResult, err = sessionClient.List(c.Context, c.FlagScopeId, opts...)
 	}
 
 	plural := "session"
@@ -167,15 +174,32 @@ func (c *Command) Run(args []string) int {
 				if i > 0 {
 					output = append(output, "")
 				}
-				output = append(output,
-					fmt.Sprintf("  ID:                 %s", t.Id),
-					fmt.Sprintf("    Status:           %s", t.Status),
-					fmt.Sprintf("    Created Time:     %s", t.CreatedTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    Expiration Time:  %s", t.ExpirationTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    Updated Time:     %s", t.UpdatedTime.Local().Format(time.RFC1123)),
-					fmt.Sprintf("    User ID:          %s", t.UserId),
-					fmt.Sprintf("    Target ID:        %s", t.TargetId),
-				)
+				if true {
+					output = append(output,
+						fmt.Sprintf("  ID:                    %s", t.Id),
+					)
+				}
+				if c.FlagRecursive {
+					output = append(output,
+						fmt.Sprintf("    Scope ID:            %s", t.Scope.Id),
+					)
+				}
+				if true {
+					output = append(output,
+						fmt.Sprintf("    Status:              %s", t.Status),
+						fmt.Sprintf("    Created Time:        %s", t.CreatedTime.Local().Format(time.RFC1123)),
+						fmt.Sprintf("    Expiration Time:     %s", t.ExpirationTime.Local().Format(time.RFC1123)),
+						fmt.Sprintf("    Updated Time:        %s", t.UpdatedTime.Local().Format(time.RFC1123)),
+						fmt.Sprintf("    User ID:             %s", t.UserId),
+						fmt.Sprintf("    Target ID:           %s", t.TargetId),
+					)
+				}
+				if len(t.AuthorizedActions) > 0 {
+					output = append(output,
+						"    Authorized Actions:",
+						base.WrapSlice(6, t.AuthorizedActions),
+					)
+				}
 			}
 			c.UI.Output(base.WrapForHelpText(output))
 		}

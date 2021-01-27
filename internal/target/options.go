@@ -21,6 +21,7 @@ type options struct {
 	withDefaultPort            uint32
 	withLimit                  int
 	withScopeId                string
+	withScopeIds               []string
 	withScopeName              string
 	withUserId                 string
 	withTargetType             *TargetType
@@ -28,6 +29,7 @@ type options struct {
 	withSessionMaxSeconds      uint32
 	withSessionConnectionLimit int32
 	withPublicId               string
+	withWorkerFilter           string
 }
 
 func getDefaultOptions() options {
@@ -37,6 +39,7 @@ func getDefaultOptions() options {
 		withLimit:                  0,
 		withDefaultPort:            0,
 		withScopeId:                "",
+		withScopeIds:               nil,
 		withScopeName:              "",
 		withUserId:                 "",
 		withTargetType:             nil,
@@ -44,6 +47,7 @@ func getDefaultOptions() options {
 		withSessionMaxSeconds:      uint32((8 * time.Hour).Seconds()),
 		withSessionConnectionLimit: 1,
 		withPublicId:               "",
+		withWorkerFilter:           "",
 	}
 }
 
@@ -81,6 +85,13 @@ func WithDefaultPort(p uint32) Option {
 func WithScopeId(scopeId string) Option {
 	return func(o *options) {
 		o.withScopeId = scopeId
+	}
+}
+
+// WithScopeId provides an option to search by multiple scope id
+func WithScopeIds(scopeIds []string) Option {
+	return func(o *options) {
+		o.withScopeIds = scopeIds
 	}
 }
 
@@ -128,5 +139,12 @@ func WithSessionConnectionLimit(limit int32) Option {
 func WithPublicId(id string) Option {
 	return func(o *options) {
 		o.withPublicId = id
+	}
+}
+
+// WithWorkerFilter provides an optional worker filter
+func WithWorkerFilter(filter string) Option {
+	return func(o *options) {
+		o.withWorkerFilter = filter
 	}
 }

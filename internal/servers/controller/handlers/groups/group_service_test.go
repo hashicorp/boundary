@@ -106,6 +106,7 @@ func TestGet(t *testing.T) {
 				ScopeId: u.GetScopeId(),
 			},
 		},
+		AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 	}
 
 	wantProjGroup := &pb.Group{
@@ -124,6 +125,7 @@ func TestGet(t *testing.T) {
 				ScopeId: u.GetScopeId(),
 			},
 		},
+		AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 	}
 
 	cases := []struct {
@@ -215,52 +217,78 @@ func TestList(t *testing.T) {
 	oWithGroups, pNoGroups := iam.TestScopes(t, iamRepo)
 	var wantOrgGroups []*pb.Group
 	var wantProjGroups []*pb.Group
+	var totalGroups []*pb.Group
 	for i := 0; i < 10; i++ {
 		og := iam.TestGroup(t, conn, oWithGroups.GetPublicId())
 		wantOrgGroups = append(wantOrgGroups, &pb.Group{
-			Id:          og.GetPublicId(),
-			ScopeId:     og.GetScopeId(),
-			Scope:       &scopes.ScopeInfo{Id: oWithGroups.GetPublicId(), Type: scope.Org.String()},
-			CreatedTime: og.GetCreateTime().GetTimestamp(),
-			UpdatedTime: og.GetUpdateTime().GetTimestamp(),
-			Version:     1,
+			Id:                og.GetPublicId(),
+			ScopeId:           og.GetScopeId(),
+			Scope:             &scopes.ScopeInfo{Id: oWithGroups.GetPublicId(), Type: scope.Org.String()},
+			CreatedTime:       og.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       og.GetUpdateTime().GetTimestamp(),
+			Version:           1,
+			AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 		})
+		totalGroups = append(totalGroups, wantOrgGroups[i])
 		pg := iam.TestGroup(t, conn, pWithGroups.GetPublicId())
 		wantProjGroups = append(wantProjGroups, &pb.Group{
-			Id:          pg.GetPublicId(),
-			ScopeId:     pg.GetScopeId(),
-			Scope:       &scopes.ScopeInfo{Id: pWithGroups.GetPublicId(), Type: scope.Project.String()},
-			CreatedTime: pg.GetCreateTime().GetTimestamp(),
-			UpdatedTime: pg.GetUpdateTime().GetTimestamp(),
-			Version:     1,
+			Id:                pg.GetPublicId(),
+			ScopeId:           pg.GetScopeId(),
+			Scope:             &scopes.ScopeInfo{Id: pWithGroups.GetPublicId(), Type: scope.Project.String()},
+			CreatedTime:       pg.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       pg.GetUpdateTime().GetTimestamp(),
+			Version:           1,
+			AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 		})
+		totalGroups = append(totalGroups, wantProjGroups[i])
 	}
 
 	cases := []struct {
-		name    string
-		scopeId string
-		res     *pbs.ListGroupsResponse
-		err     error
+		name string
+		req  *pbs.ListGroupsRequest
+		res  *pbs.ListGroupsResponse
+		err  error
 	}{
 		{
-			name:    "List Many Group",
-			scopeId: oWithGroups.GetPublicId(),
-			res:     &pbs.ListGroupsResponse{Items: wantOrgGroups},
+			name: "List Many Group",
+			req:  &pbs.ListGroupsRequest{ScopeId: oWithGroups.GetPublicId()},
+			res:  &pbs.ListGroupsResponse{Items: wantOrgGroups},
 		},
 		{
-			name:    "List No Groups",
-			scopeId: oNoGroups.GetPublicId(),
-			res:     &pbs.ListGroupsResponse{},
+			name: "List No Groups",
+			req:  &pbs.ListGroupsRequest{ScopeId: oNoGroups.GetPublicId()},
+			res:  &pbs.ListGroupsResponse{},
 		},
 		{
-			name:    "List Many Project Group",
-			scopeId: pWithGroups.GetPublicId(),
-			res:     &pbs.ListGroupsResponse{Items: wantProjGroups},
+			name: "List Many Project Group",
+			req:  &pbs.ListGroupsRequest{ScopeId: pWithGroups.GetPublicId()},
+			res:  &pbs.ListGroupsResponse{Items: wantProjGroups},
 		},
 		{
-			name:    "List No Project Groups",
-			scopeId: pNoGroups.GetPublicId(),
-			res:     &pbs.ListGroupsResponse{},
+			name: "List No Project Groups",
+			req:  &pbs.ListGroupsRequest{ScopeId: pNoGroups.GetPublicId()},
+			res:  &pbs.ListGroupsResponse{},
+		},
+		{
+			name: "List proj groups recursively",
+			req:  &pbs.ListGroupsRequest{ScopeId: pWithGroups.GetPublicId(), Recursive: true},
+			res: &pbs.ListGroupsResponse{
+				Items: wantProjGroups,
+			},
+		},
+		{
+			name: "List org groups recursively",
+			req:  &pbs.ListGroupsRequest{ScopeId: oNoGroups.GetPublicId(), Recursive: true},
+			res: &pbs.ListGroupsResponse{
+				Items: wantProjGroups,
+			},
+		},
+		{
+			name: "List global groups recursively",
+			req:  &pbs.ListGroupsRequest{ScopeId: "global", Recursive: true},
+			res: &pbs.ListGroupsResponse{
+				Items: totalGroups,
+			},
 		},
 	}
 	for _, tc := range cases {
@@ -269,12 +297,12 @@ func TestList(t *testing.T) {
 			s, err := groups.NewService(repoFn)
 			require.NoError(err, "Couldn't create new group service.")
 
-			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListGroupsRequest{ScopeId: tc.scopeId})
+			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "ListGroups(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "ListGroups(%q) got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListGroups(%q) got response %q, wanted %q", tc.scopeId, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListGroups(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 		})
 	}
 }
@@ -397,11 +425,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateGroupResponse{
 				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
 				Item: &pb.Group{
-					ScopeId:     defaultOGroup.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: defaultOGroup.GetScopeId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
+					ScopeId:           defaultOGroup.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: defaultOGroup.GetScopeId(), Type: scope.Org.String()},
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -415,11 +444,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateGroupResponse{
 				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
 				Item: &pb.Group{
-					ScopeId:     scope.Global.String(),
-					Scope:       &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
+					ScopeId:           scope.Global.String(),
+					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -435,11 +465,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateGroupResponse{
 				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
 				Item: &pb.Group{
-					ScopeId:     defaultPGroup.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: defaultPGroup.GetScopeId(), Type: scope.Project.String()},
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
+					ScopeId:           defaultPGroup.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: defaultPGroup.GetScopeId(), Type: scope.Project.String()},
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -581,6 +612,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -611,6 +643,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -642,6 +675,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -673,6 +707,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -735,6 +770,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -765,6 +801,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},
@@ -795,6 +832,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
+					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
 				},
 			},
 		},

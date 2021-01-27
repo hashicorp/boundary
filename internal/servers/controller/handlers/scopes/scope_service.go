@@ -12,16 +12,62 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var maskManager handlers.MaskManager
+var (
+	maskManager handlers.MaskManager
+
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.ActionSet{
+		action.Read,
+		action.Update,
+		action.Delete,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.ActionSet{
+		action.Create,
+		action.List,
+	}
+
+	orgCollectionTypeMap = map[resource.Type]action.ActionSet{
+		resource.AuthMethod: authmethods.CollectionActions,
+		resource.AuthToken:  authtokens.CollectionActions,
+		resource.Group:      groups.CollectionActions,
+		resource.Role:       roles.CollectionActions,
+		resource.Scope:      CollectionActions,
+		resource.Session:    sessions.CollectionActions,
+		resource.User:       users.CollectionActions,
+	}
+
+	projectCollectionTypeMap = map[resource.Type]action.ActionSet{
+		resource.Group:       groups.CollectionActions,
+		resource.HostCatalog: host_catalogs.CollectionActions,
+		resource.Role:        roles.CollectionActions,
+		resource.Target:      targets.CollectionActions,
+	}
+)
 
 func init() {
 	var err error
@@ -47,6 +93,36 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 
 var _ pbs.ScopeServiceServer = Service{}
 
+func populateCollectionAuthorizedActions(ctx context.Context,
+	authResults auth.VerifyResults,
+	item *pb.Scope) error {
+	res := &perms.Resource{
+		ScopeId: item.Id,
+	}
+	mapToRange := orgCollectionTypeMap
+	if item.Type == "project" {
+		mapToRange = projectCollectionTypeMap
+	}
+	// Range over the defined collections and check permissions against those
+	// collections. We use the ID of this scope being returned, not its parent,
+	// hence passing in a resource here.
+	for k, v := range mapToRange {
+		res.Type = k
+		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(res)).Strings()
+		if len(acts) > 0 {
+			if item.AuthorizedCollectionActions == nil {
+				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
+			}
+			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
+			if err != nil {
+				return err
+			}
+			item.AuthorizedCollectionActions[k.String()+"s"] = lv
+		}
+	}
+	return nil
+}
+
 // ListScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {
 	if req.GetScopeId() == "" {
@@ -59,16 +135,35 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	pl, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
+		ctx, s.repoFn, authResults, req.GetScopeId(), req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}
 
-	for _, item := range pl {
-		item.Scope = authResults.Scope
+	pl, err := s.listFromRepo(ctx, scopeIds)
+	if err != nil {
+		return nil, err
 	}
 
-	return &pbs.ListScopesResponse{Items: pl}, nil
+	finalItems := make([]*pb.Scope, 0, len(pl))
+	res := &perms.Resource{
+		Type: resource.Scope,
+	}
+	for _, item := range pl {
+		item.Scope = scopeInfoMap[item.GetScopeId()]
+		res.ScopeId = item.Scope.Id
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
+		if len(item.AuthorizedActions) > 0 {
+			finalItems = append(finalItems, item)
+			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return &pbs.ListScopesResponse{Items: finalItems}, nil
 }
 
 // GetScopes implements the interface pbs.ScopeServiceServer.
@@ -85,6 +180,15 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 		return nil, err
 	}
 	p.Scope = authResults.Scope
+	act := IdActions
+	// Can't delete global so elide it
+	if p.Id == "global" {
+		act = act[0:2]
+	}
+	p.AuthorizedActions = authResults.FetchActionSetForId(ctx, p.Id, act).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, p); err != nil {
+		return nil, err
+	}
 	return &pbs.GetScopeResponse{Item: p}, nil
 }
 
@@ -102,6 +206,10 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 		return nil, err
 	}
 	p.Scope = authResults.Scope
+	p.AuthorizedActions = authResults.FetchActionSetForId(ctx, p.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, p); err != nil {
+		return nil, err
+	}
 	return &pbs.CreateScopeResponse{Item: p, Uri: fmt.Sprintf("scopes/%s", p.GetId())}, nil
 }
 
@@ -119,6 +227,10 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 		return nil, err
 	}
 	p.Scope = authResults.Scope
+	p.AuthorizedActions = authResults.FetchActionSetForId(ctx, p.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, p); err != nil {
+		return nil, err
+	}
 	return &pbs.UpdateScopeResponse{Item: p}, nil
 }
 
@@ -251,22 +363,12 @@ func SortScopes(scps []*pb.Scope) {
 	})
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-
-	var scps []*iam.Scope
-	switch {
-	case scopeId == "global":
-		scps, err = repo.ListOrgs(ctx)
-	case strings.HasPrefix(scopeId, scope.Org.Prefix()):
-		scps, err = repo.ListProjects(ctx, scopeId)
-	default:
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{"scope_id": "This field must be 'global' or a valid org scope id."})
-	}
+	scps, err := repo.ListScopes(ctx, scopeIds)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to list scopes: %v", err)
 	}

@@ -75,6 +75,18 @@ func TestAction(t *testing.T) {
 			action: Deauthenticate,
 			want:   "deauthenticate",
 		},
+		{
+			action: ReadSelf,
+			want:   "read:self",
+		},
+		{
+			action: CancelSelf,
+			want:   "cancel:self",
+		},
+		{
+			action: ListSelf,
+			want:   "list:self",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
@@ -87,22 +99,22 @@ func TestAction(t *testing.T) {
 func TestActionStrings(t *testing.T) {
 	tests := []struct {
 		name    string
-		actions Actions
+		actions ActionSet
 		want    []string
 	}{
 		{
 			name:    "basic test",
-			actions: Actions{Read, AuthorizeSession},
+			actions: ActionSet{Read, AuthorizeSession},
 			want:    []string{"read", "authorize-session"},
 		},
 		{
 			name:    "reverse test to check ordering",
-			actions: Actions{AuthorizeSession, Read},
+			actions: ActionSet{AuthorizeSession, Read},
 			want:    []string{"authorize-session", "read"},
 		},
 		{
 			name:    "another test",
-			actions: Actions{Delete, AddGrants},
+			actions: ActionSet{Delete, AddGrants},
 			want:    []string{"delete", "add-grants"},
 		},
 	}

@@ -24,7 +24,6 @@ type Command struct {
 
 	Func string
 
-	flagScope        string
 	flagGrantScopeId string
 	flagPrincipals   []string
 	flagGrants       []string
@@ -58,7 +57,7 @@ var flagsMap = map[string][]string{
 	"update":            {"id", "name", "description", "grantscopeid", "version"},
 	"read":              {"id"},
 	"delete":            {"id"},
-	"list":              {"scope-id"},
+	"list":              {"scope-id", "recursive"},
 	"add-principals":    {"id", "principal", "version"},
 	"set-principals":    {"id", "principal", "version"},
 	"remove-principals": {"id", "principal", "version"},
@@ -134,6 +133,11 @@ func (c *Command) Run(args []string) int {
 	default:
 		opts = append(opts, roles.WithDescription(c.FlagDescription))
 	}
+	switch c.FlagRecursive {
+	case true:
+		opts = append(opts, roles.WithRecursive(true))
+	}
+
 	switch c.flagGrantScopeId {
 	case "":
 	case "null":
@@ -300,18 +304,33 @@ func (c *Command) Run(args []string) int {
 				}
 				if true {
 					output = append(output,
-						fmt.Sprintf("  ID:            %s", r.Id),
-						fmt.Sprintf("    Version:     %d", r.Version),
+						fmt.Sprintf("  ID:                    %s", r.Id),
+					)
+				}
+				if c.FlagRecursive {
+					output = append(output,
+						fmt.Sprintf("    Scope ID:            %s", r.Scope.Id),
+					)
+				}
+				if true {
+					output = append(output,
+						fmt.Sprintf("    Version:             %d", r.Version),
 					)
 				}
 				if r.Name != "" {
 					output = append(output,
-						fmt.Sprintf("    Name:        %s", r.Name),
+						fmt.Sprintf("    Name:                %s", r.Name),
 					)
 				}
 				if r.Description != "" {
 					output = append(output,
-						fmt.Sprintf("    Description: %s", r.Description),
+						fmt.Sprintf("    Description:         %s", r.Description),
+					)
+				}
+				if len(r.AuthorizedActions) > 0 {
+					output = append(output,
+						"    Authorized Actions:",
+						base.WrapSlice(6, r.AuthorizedActions),
 					)
 				}
 			}

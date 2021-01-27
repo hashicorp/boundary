@@ -14,16 +14,17 @@ import (
 )
 
 type User struct {
-	Id          string            `json:"id,omitempty"`
-	ScopeId     string            `json:"scope_id,omitempty"`
-	Scope       *scopes.ScopeInfo `json:"scope,omitempty"`
-	Name        string            `json:"name,omitempty"`
-	Description string            `json:"description,omitempty"`
-	CreatedTime time.Time         `json:"created_time,omitempty"`
-	UpdatedTime time.Time         `json:"updated_time,omitempty"`
-	Version     uint32            `json:"version,omitempty"`
-	AccountIds  []string          `json:"account_ids,omitempty"`
-	Accounts    []*Account        `json:"accounts,omitempty"`
+	Id                string            `json:"id,omitempty"`
+	ScopeId           string            `json:"scope_id,omitempty"`
+	Scope             *scopes.ScopeInfo `json:"scope,omitempty"`
+	Name              string            `json:"name,omitempty"`
+	Description       string            `json:"description,omitempty"`
+	CreatedTime       time.Time         `json:"created_time,omitempty"`
+	UpdatedTime       time.Time         `json:"updated_time,omitempty"`
+	Version           uint32            `json:"version,omitempty"`
+	AccountIds        []string          `json:"account_ids,omitempty"`
+	Accounts          []*Account        `json:"accounts,omitempty"`
+	AuthorizedActions []string          `json:"authorized_actions,omitempty"`
 
 	response *api.Response
 }

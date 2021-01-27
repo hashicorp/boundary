@@ -24,6 +24,10 @@ const (
 
 	// KeyPurposeSessions is used as a base key to derive session-specific encryption keys
 	KeyPurposeSessions
+
+	// KeyPurposeOidc is used for encrypting oidc states included in
+	// authentication URLs
+	KeyPurposeOidc
 )
 
 // String returns the key purpose cast as a string, just so it can be called as
@@ -40,6 +44,8 @@ func (k KeyPurpose) String() string {
 		return "tokens"
 	case KeyPurposeSessions:
 		return "sessions"
+	case KeyPurposeOidc:
+		return "oidc"
 	default:
 		return "unknown"
 	}
@@ -61,6 +67,8 @@ const (
 	KeyTypeTokenKeyVersion
 	KeyTypeSessionKey
 	KeyTypeSessionKeyVersion
+	KeyTypeOidcKey
+	KeyTypeOidcKeyVersion
 )
 
 // String returns the key type cast as a string, just so it can be called as
@@ -87,6 +95,10 @@ func (k KeyType) String() string {
 		return "sessionKey"
 	case KeyTypeSessionKeyVersion:
 		return "sessionKeyVersion"
+	case KeyTypeOidcKey:
+		return "oidcKey"
+	case KeyTypeOidcKeyVersion:
+		return "oidcKeyVersion"
 
 	default:
 		return "unknown"

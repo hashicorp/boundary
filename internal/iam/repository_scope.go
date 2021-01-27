@@ -424,27 +424,46 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...
 	return rowsDeleted, nil
 }
 
-// ListProjects in an org and supports the WithLimit option.
-func (r *Repository) ListProjects(ctx context.Context, withOrgId string, opt ...Option) ([]*Scope, error) {
-	const op = "iam.(Repository).ListProjects"
-	if withOrgId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing org id")
+// ListScopes with the parent IDs, supports the WithLimit option.
+func (r *Repository) ListScopes(ctx context.Context, withParentIds []string, opt ...Option) ([]*Scope, error) {
+	const op = "iam.(Repository).ListScopes"
+	if len(withParentIds) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "missing parent id")
 	}
-	var projects []*Scope
-	err := r.list(ctx, &projects, "parent_id = ? and type = ?", []interface{}{withOrgId, scope.Project.String()}, opt...)
+	var items []*Scope
+	err := r.list(ctx, &items, "parent_id in (?)", []interface{}{withParentIds}, opt...)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	return projects, nil
+	return items, nil
 }
 
-// ListOrgs and supports the WithLimit option.
-func (r *Repository) ListOrgs(ctx context.Context, opt ...Option) ([]*Scope, error) {
-	const op = "iam.(Repository).ListOrgs"
+// ListScopesRecursively allows for recursive listing of scopes based on a root scope
+// ID. It returns the root scope ID as a part of the set.
+func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId string, opt ...Option) ([]*Scope, error) {
+	const op = "iam.(Repository).ListRecursively"
 	var orgs []*Scope
-	err := r.list(ctx, &orgs, "parent_id = ? and type = ?", []interface{}{"global", scope.Org.String()}, opt...)
+	var where string
+	var args []interface{}
+	switch {
+	case rootScopeId == "global":
+		// Nothing -- we want all scopes
+	case strings.HasPrefix(rootScopeId, "o_"):
+		// The org itself and any projects that have it as parent
+		where = "public_id = ? or parent_id = ?"
+		args = append(args, rootScopeId, rootScopeId)
+	case strings.HasPrefix(rootScopeId, "p_"):
+		// No scopes can (currently) live under projects, so just the project
+		// itself
+		where = "public_id = ?"
+		args = append(args, rootScopeId)
+	default:
+		// We have no idea what scope type this is so bail
+		return nil, errors.New(errors.InvalidPublicId, op+":TypeSwitch", "invalid scope ID")
+	}
+	err := r.list(ctx, &orgs, where, args, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(err, op+":ListQuery")
 	}
 	return orgs, nil
 }

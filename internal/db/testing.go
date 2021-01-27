@@ -41,7 +41,7 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*gorm.DB, strin
 		url = opts.withTestDatabaseUrl
 	}
 
-	_, err = schema.InitStore(ctx, dialect, url)
+	_, err = schema.MigrateStore(ctx, dialect, url)
 	if err != nil {
 		t.Fatalf("Couldn't init store on existing db: %v", err)
 	}

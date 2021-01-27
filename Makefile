@@ -12,8 +12,7 @@ CGO_ENABLED?=0
 
 export GEN_BASEPATH := $(shell pwd)
 
-api: apigen fmt
-apigen:
+api:
 	$(MAKE) --environment-overrides -C internal/api/genapi api
 
 tools:
@@ -127,14 +126,15 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/database_key.pb.go	
 	@protoc-go-inject-tag -input=./internal/kms/store/oplog_key.pb.go	
 	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go	
-	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go	
+	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go		
 	@protoc-go-inject-tag -input=./internal/target/store/target.pb.go
 
 	@rm -R ${TMP_DIR}
 
 protolint:
 	@buf check lint
-	@buf check breaking --against 'https://github.com/hashicorp/boundary.git'
+	@buf check breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website'
 
 # must have nodejs and npm installed
 website: website-install website-start

@@ -16,6 +16,8 @@ const (
 	TokenKeyVersionPrefix    = "ktv"
 	SessionKeyPrefix         = "ksk"
 	SessionKeyVersionPrefix  = "kskv"
+	OidcKeyPrefix            = "koidck"
+	OidcKeyVersionPrefix     = "koidckv"
 )
 
 func newRootKeyId() (string, error) {
@@ -102,6 +104,24 @@ func newSessionKeyId() (string, error) {
 func newSessionKeyVersionId() (string, error) {
 	const op = "kms.newSessionKeyVersionId"
 	id, err := db.NewPublicId(SessionKeyVersionPrefix)
+	if err != nil {
+		return "", errors.Wrap(err, op)
+	}
+	return id, nil
+}
+
+func newOidcKeyId() (string, error) {
+	const op = "kms.newOidcKeyId"
+	id, err := db.NewPublicId(OidcKeyPrefix)
+	if err != nil {
+		return "", errors.Wrap(err, op)
+	}
+	return id, nil
+}
+
+func newOidcKeyVersionId() (string, error) {
+	const op = "kms.newOidcKeyVersionId"
+	id, err := db.NewPublicId(OidcKeyVersionPrefix)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}

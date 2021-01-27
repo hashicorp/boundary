@@ -52,6 +52,7 @@ func TestGet(t *testing.T) {
 		ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 		ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 		Scope:                   &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+		AuthorizedActions:       []string{"read", "delete"},
 	}
 
 	cases := []struct {
@@ -112,6 +113,24 @@ func TestList(t *testing.T) {
 
 	orgNoTokens, _ := iam.TestScopes(t, iamRepo)
 
+	var globalTokens []*pb.AuthToken
+	for i := 0; i < 3; i++ {
+		at := authtoken.TestAuthToken(t, conn, kms, scope.Global.String())
+		globalTokens = append(globalTokens, &pb.AuthToken{
+			Id:                      at.GetPublicId(),
+			ScopeId:                 at.GetScopeId(),
+			UserId:                  at.GetIamUserId(),
+			AuthMethodId:            at.GetAuthMethodId(),
+			AccountId:               at.GetAuthAccountId(),
+			CreatedTime:             at.GetCreateTime().GetTimestamp(),
+			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
+			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
+			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
+			Scope:                   &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+			AuthorizedActions:       []string{"read", "delete"},
+		})
+	}
+
 	orgWithSomeTokens, _ := iam.TestScopes(t, iamRepo)
 	var wantSomeTokens []*pb.AuthToken
 	for i := 0; i < 3; i++ {
@@ -127,6 +146,7 @@ func TestList(t *testing.T) {
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 			Scope:                   &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String()},
+			AuthorizedActions:       []string{"read", "delete"},
 		})
 	}
 
@@ -145,35 +165,44 @@ func TestList(t *testing.T) {
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 			Scope:                   &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String()},
+			AuthorizedActions:       []string{"read", "delete"},
 		})
 	}
 
+	allTokens := append(globalTokens, wantSomeTokens...)
+	allTokens = append(allTokens, wantOtherTokens...)
+
 	cases := []struct {
-		name  string
-		scope string
-		res   *pbs.ListAuthTokensResponse
-		err   error
+		name string
+		req  *pbs.ListAuthTokensRequest
+		res  *pbs.ListAuthTokensResponse
+		err  error
 	}{
 		{
-			name:  "List Some Tokens",
-			scope: orgWithSomeTokens.GetPublicId(),
-			res:   &pbs.ListAuthTokensResponse{Items: wantSomeTokens},
+			name: "List Some Tokens",
+			req:  &pbs.ListAuthTokensRequest{ScopeId: orgWithSomeTokens.GetPublicId()},
+			res:  &pbs.ListAuthTokensResponse{Items: wantSomeTokens},
 		},
 		{
-			name:  "List Other Tokens",
-			scope: orgWithOtherTokens.GetPublicId(),
-			res:   &pbs.ListAuthTokensResponse{Items: wantOtherTokens},
+			name: "List Other Tokens",
+			req:  &pbs.ListAuthTokensRequest{ScopeId: orgWithOtherTokens.GetPublicId()},
+			res:  &pbs.ListAuthTokensResponse{Items: wantOtherTokens},
 		},
 		{
-			name:  "List No Token",
-			scope: orgNoTokens.GetPublicId(),
-			res:   &pbs.ListAuthTokensResponse{},
+			name: "List No Token",
+			req:  &pbs.ListAuthTokensRequest{ScopeId: orgNoTokens.GetPublicId()},
+			res:  &pbs.ListAuthTokensResponse{},
 		},
 		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
 		{
-			name:  "Unfound Org",
-			scope: scope.Org.Prefix() + "_DoesntExis",
-			err:   handlers.ApiErrorWithCode(codes.NotFound),
+			name: "Unfound Org",
+			req:  &pbs.ListAuthTokensRequest{ScopeId: scope.Org.Prefix() + "_DoesntExis"},
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "List Recursively",
+			req:  &pbs.ListAuthTokensRequest{ScopeId: "global", Recursive: true},
+			res:  &pbs.ListAuthTokensResponse{Items: allTokens},
 		},
 	}
 	for _, tc := range cases {
@@ -181,12 +210,12 @@ func TestList(t *testing.T) {
 			s, err := authtokens.NewService(repoFn, iamRepoFn)
 			require.NoError(t, err, "Couldn't create new user service.")
 
-			got, gErr := s.ListAuthTokens(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scope)), &pbs.ListAuthTokensRequest{ScopeId: tc.scope})
+			got, gErr := s.ListAuthTokens(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(t, gErr)
-				assert.True(t, errors.Is(gErr, tc.err), "ListAuthTokens() with scope %q got error %v, wanted %v", tc.scope, gErr, tc.err)
+				assert.True(t, errors.Is(gErr, tc.err), "ListAuthTokens() with scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
 			}
-			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAuthTokens() with scope %q got response %q, wanted %q", tc.scope, got, tc.res)
+			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAuthTokens() with scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 		})
 	}
 }

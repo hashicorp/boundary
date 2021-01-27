@@ -37,6 +37,9 @@ const (
 	AddAccounts      Type = 28
 	SetAccounts      Type = 29
 	RemoveAccounts   Type = 30
+	ReadSelf         Type = 31
+	ListSelf         Type = 32
+	CancelSelf       Type = 33
 )
 
 var Map = map[string]Type{
@@ -70,6 +73,9 @@ var Map = map[string]Type{
 	AddAccounts.String():      AddAccounts,
 	SetAccounts.String():      SetAccounts,
 	RemoveAccounts.String():   RemoveAccounts,
+	ReadSelf.String():         ReadSelf,
+	ListSelf.String():         ListSelf,
+	CancelSelf.String():       CancelSelf,
 }
 
 func (a Type) String() string {
@@ -105,14 +111,17 @@ func (a Type) String() string {
 		"add-accounts",
 		"set-accounts",
 		"remove-accounts",
+		"read:self",
+		"list:self",
+		"cancel:self",
 	}[a]
 }
 
-// Actions stores a slice of action types
-type Actions []Type
+// ActionSet stores a slice of action types
+type ActionSet []Type
 
 // Strings converts Actions into a slice of the actions' string equivalents
-func (a Actions) Strings() []string {
+func (a ActionSet) Strings() []string {
 	if a == nil {
 		return nil
 	}

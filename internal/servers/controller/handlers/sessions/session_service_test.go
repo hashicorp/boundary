@@ -64,23 +64,24 @@ func TestGetSession(t *testing.T) {
 	})
 
 	wireSess := &pb.Session{
-		Id:             sess.GetPublicId(),
-		ScopeId:        p.GetPublicId(),
-		AuthTokenId:    at.GetPublicId(),
-		Endpoint:       sess.Endpoint,
-		UserId:         at.GetIamUserId(),
-		TargetId:       sess.TargetId,
-		HostSetId:      sess.HostSetId,
-		HostId:         sess.HostId,
-		Version:        sess.Version,
-		Status:         session.StatusPending.String(),
-		UpdatedTime:    sess.UpdateTime.GetTimestamp(),
-		CreatedTime:    sess.CreateTime.GetTimestamp(),
-		ExpirationTime: sess.ExpirationTime.GetTimestamp(),
-		Scope:          &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
-		States:         []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
-		Certificate:    sess.Certificate,
-		Type:           target.TcpSubType.String(),
+		Id:                sess.GetPublicId(),
+		ScopeId:           p.GetPublicId(),
+		AuthTokenId:       at.GetPublicId(),
+		Endpoint:          sess.Endpoint,
+		UserId:            at.GetIamUserId(),
+		TargetId:          sess.TargetId,
+		HostSetId:         sess.HostSetId,
+		HostId:            sess.HostId,
+		Version:           sess.Version,
+		Status:            session.StatusPending.String(),
+		UpdatedTime:       sess.UpdateTime.GetTimestamp(),
+		CreatedTime:       sess.CreateTime.GetTimestamp(),
+		ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
+		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
+		States:            []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
+		Certificate:       sess.Certificate,
+		Type:              target.TcpSubType.String(),
+		AuthorizedActions: []string{"read", "cancel"},
 	}
 
 	cases := []struct {
@@ -156,16 +157,28 @@ func TestList(t *testing.T) {
 
 	_, pNoSessions := iam.TestScopes(t, iamRepo)
 	o, pWithSessions := iam.TestScopes(t, iamRepo)
+	oOther, pWithOtherSessions := iam.TestScopes(t, iamRepo)
 
 	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
 	uId := at.GetIamUserId()
+
+	atOther := authtoken.TestAuthToken(t, conn, kms, oOther.GetPublicId())
+	uIdOther := atOther.GetIamUserId()
+
 	hc := static.TestCatalogs(t, conn, pWithSessions.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
 	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
 
+	hcOther := static.TestCatalogs(t, conn, pWithOtherSessions.GetPublicId(), 1)[0]
+	hsOther := static.TestSets(t, conn, hcOther.GetPublicId(), 1)[0]
+	hOther := static.TestHosts(t, conn, hcOther.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hsOther.GetPublicId(), []*static.Host{hOther})
+	tarOther := target.TestTcpTarget(t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSets([]string{hsOther.GetPublicId()}))
+
 	var wantSession []*pb.Session
+	var totalSession []*pb.Session
 	for i := 0; i < 10; i++ {
 		sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 			UserId:      uId,
@@ -180,23 +193,59 @@ func TestList(t *testing.T) {
 		status, states := convertStates(sess.States)
 
 		wantSession = append(wantSession, &pb.Session{
-			Id:             sess.GetPublicId(),
-			ScopeId:        pWithSessions.GetPublicId(),
-			AuthTokenId:    at.GetPublicId(),
-			UserId:         at.GetIamUserId(),
-			TargetId:       sess.TargetId,
-			Endpoint:       sess.Endpoint,
-			HostSetId:      sess.HostSetId,
-			HostId:         sess.HostId,
-			Version:        sess.Version,
-			UpdatedTime:    sess.UpdateTime.GetTimestamp(),
-			CreatedTime:    sess.CreateTime.GetTimestamp(),
-			ExpirationTime: sess.ExpirationTime.GetTimestamp(),
-			Scope:          &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String()},
-			Status:         status,
-			States:         states,
-			Certificate:    sess.Certificate,
-			Type:           target.TcpSubType.String(),
+			Id:                sess.GetPublicId(),
+			ScopeId:           pWithSessions.GetPublicId(),
+			AuthTokenId:       at.GetPublicId(),
+			UserId:            at.GetIamUserId(),
+			TargetId:          sess.TargetId,
+			Endpoint:          sess.Endpoint,
+			HostSetId:         sess.HostSetId,
+			HostId:            sess.HostId,
+			Version:           sess.Version,
+			UpdatedTime:       sess.UpdateTime.GetTimestamp(),
+			CreatedTime:       sess.CreateTime.GetTimestamp(),
+			ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
+			Scope:             &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String()},
+			Status:            status,
+			States:            states,
+			Certificate:       sess.Certificate,
+			Type:              target.TcpSubType.String(),
+			AuthorizedActions: []string{"read", "cancel"},
+		})
+
+		totalSession = append(totalSession, wantSession[i])
+
+		sess = session.TestSession(t, conn, wrap, session.ComposedOf{
+			UserId:      uIdOther,
+			HostId:      hOther.GetPublicId(),
+			TargetId:    tarOther.GetPublicId(),
+			HostSetId:   hsOther.GetPublicId(),
+			AuthTokenId: atOther.GetPublicId(),
+			ScopeId:     pWithOtherSessions.GetPublicId(),
+			Endpoint:    "tcp://127.0.0.1:22",
+		})
+
+		status, states = convertStates(sess.States)
+
+		totalSession = append(totalSession, &pb.Session{
+			Id:                sess.GetPublicId(),
+			ScopeId:           pWithOtherSessions.GetPublicId(),
+			AuthTokenId:       atOther.GetPublicId(),
+			UserId:            atOther.GetIamUserId(),
+			TargetId:          sess.TargetId,
+			Endpoint:          sess.Endpoint,
+			HostSetId:         sess.HostSetId,
+			HostId:            sess.HostId,
+			Version:           sess.Version,
+			UpdatedTime:       sess.UpdateTime.GetTimestamp(),
+			CreatedTime:       sess.CreateTime.GetTimestamp(),
+			ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
+			Scope:             &scopes.ScopeInfo{Id: pWithOtherSessions.GetPublicId(), Type: scope.Project.String()},
+			Status:            status,
+			States:            states,
+			Certificate:       sess.Certificate,
+			Type:              target.TcpSubType.String(),
+			AuthorizedActions: []string{"read", "cancel"},
 		})
 	}
 
@@ -215,6 +264,11 @@ func TestList(t *testing.T) {
 			name: "List No Sessions",
 			req:  &pbs.ListSessionsRequest{ScopeId: pNoSessions.GetPublicId()},
 			res:  &pbs.ListSessionsResponse{},
+		},
+		{
+			name: "List Sessions Recursively",
+			req:  &pbs.ListSessionsRequest{ScopeId: scope.Global.String(), Recursive: true},
+			res:  &pbs.ListSessionsResponse{Items: totalSession},
 		},
 	}
 	for _, tc := range cases {
@@ -293,21 +347,22 @@ func TestCancel(t *testing.T) {
 	})
 
 	wireSess := &pb.Session{
-		Id:             sess.GetPublicId(),
-		ScopeId:        p.GetPublicId(),
-		AuthTokenId:    at.GetPublicId(),
-		UserId:         at.GetIamUserId(),
-		TargetId:       sess.TargetId,
-		HostSetId:      sess.HostSetId,
-		HostId:         sess.HostId,
-		Version:        sess.Version,
-		Endpoint:       sess.Endpoint,
-		CreatedTime:    sess.CreateTime.GetTimestamp(),
-		ExpirationTime: sess.ExpirationTime.GetTimestamp(),
-		Scope:          &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
-		Status:         session.StatusCanceling.String(),
-		Certificate:    sess.Certificate,
-		Type:           target.TcpSubType.String(),
+		Id:                sess.GetPublicId(),
+		ScopeId:           p.GetPublicId(),
+		AuthTokenId:       at.GetPublicId(),
+		UserId:            at.GetIamUserId(),
+		TargetId:          sess.TargetId,
+		HostSetId:         sess.HostSetId,
+		HostId:            sess.HostId,
+		Version:           sess.Version,
+		Endpoint:          sess.Endpoint,
+		CreatedTime:       sess.CreateTime.GetTimestamp(),
+		ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
+		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
+		Status:            session.StatusCanceling.String(),
+		Certificate:       sess.Certificate,
+		Type:              target.TcpSubType.String(),
+		AuthorizedActions: []string{"read", "cancel"},
 	}
 
 	version := wireSess.GetVersion()

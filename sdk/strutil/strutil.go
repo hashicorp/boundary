@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/hashicorp/errwrap"
 	glob "github.com/ryanuber/go-glob"
@@ -444,4 +445,22 @@ func Difference(a, b []string, lowercase bool) []string {
 	}
 	sort.Strings(items)
 	return items
+}
+
+// Printable returns true if all characters in the string are printable
+// according to Unicode
+func Printable(s string) bool {
+	return strings.IndexFunc(s, func(c rune) bool {
+		return !unicode.IsPrint(c)
+	}) == -1
+}
+
+// StringListToInterfaceList simply takes a []string and turns it into a
+// []interface{} to satisfy the input requirements for other library functions
+func StringListToInterfaceList(in []string) []interface{} {
+	ret := make([]interface{}, len(in))
+	for i, v := range in {
+		ret[i] = v
+	}
+	return ret
 }

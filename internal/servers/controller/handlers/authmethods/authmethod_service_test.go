@@ -36,6 +36,15 @@ const (
 	testLoginName = "default"
 )
 
+var authorizedCollectionActions = map[string]*structpb.ListValue{
+	"accounts": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+}
+
 func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -70,6 +79,8 @@ func TestGet(t *testing.T) {
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
+		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
 	cases := []struct {
@@ -158,6 +169,8 @@ func TestList(t *testing.T) {
 				"min_password_length":   structpb.NewNumberValue(8),
 				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
+			AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
 
@@ -175,34 +188,43 @@ func TestList(t *testing.T) {
 				"min_password_length":   structpb.NewNumberValue(8),
 				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
+			AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
 
 	cases := []struct {
-		name    string
-		scopeId string
-		res     *pbs.ListAuthMethodsResponse
-		err     error
+		name string
+		req  *pbs.ListAuthMethodsRequest
+		res  *pbs.ListAuthMethodsResponse
+		err  error
 	}{
 		{
-			name:    "List Some Auth Methods",
-			scopeId: oWithAuthMethods.GetPublicId(),
-			res:     &pbs.ListAuthMethodsResponse{Items: wantSomeAuthMethods},
+			name: "List Some Auth Methods",
+			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithAuthMethods.GetPublicId()},
+			res:  &pbs.ListAuthMethodsResponse{Items: wantSomeAuthMethods},
 		},
 		{
-			name:    "List Other Auth Methods",
-			scopeId: oWithOtherAuthMethods.GetPublicId(),
-			res:     &pbs.ListAuthMethodsResponse{Items: wantOtherAuthMethods},
+			name: "List Other Auth Methods",
+			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithOtherAuthMethods.GetPublicId()},
+			res:  &pbs.ListAuthMethodsResponse{Items: wantOtherAuthMethods},
 		},
 		{
-			name:    "List No Auth Methods",
-			scopeId: oNoAuthMethods.GetPublicId(),
-			res:     &pbs.ListAuthMethodsResponse{},
+			name: "List No Auth Methods",
+			req:  &pbs.ListAuthMethodsRequest{ScopeId: oNoAuthMethods.GetPublicId()},
+			res:  &pbs.ListAuthMethodsResponse{},
 		},
 		{
-			name:    "Unfound Auth Method",
-			scopeId: "o_DoesntExis",
-			err:     handlers.ApiErrorWithCode(codes.NotFound),
+			name: "Unfound Auth Method",
+			req:  &pbs.ListAuthMethodsRequest{ScopeId: "o_DoesntExis"},
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "List All Auth Methods Recursively",
+			req:  &pbs.ListAuthMethodsRequest{ScopeId: "global", Recursive: true},
+			res: &pbs.ListAuthMethodsResponse{
+				Items: append(wantSomeAuthMethods, wantOtherAuthMethods...),
+			},
 		},
 	}
 	for _, tc := range cases {
@@ -211,12 +233,12 @@ func TestList(t *testing.T) {
 			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListAuthMethodsRequest{ScopeId: tc.scopeId})
+			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.scopeId, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.scopeId, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 		})
 	}
 }
@@ -368,6 +390,8 @@ func TestCreate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -395,6 +419,8 @@ func TestCreate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -568,7 +594,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -594,7 +622,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -660,7 +690,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -685,7 +717,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -710,7 +744,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -807,7 +843,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(42),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},
@@ -836,7 +874,9 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(42),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
 		},

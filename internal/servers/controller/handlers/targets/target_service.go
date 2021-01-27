@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
@@ -28,6 +29,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/go-bexpr"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
@@ -38,9 +40,9 @@ import (
 var (
 	maskManager handlers.MaskManager
 
-	// TargetIdActions contains the set of actions that can be performed on
-	// individual target resources
-	TargetIdActions = action.Actions{
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.ActionSet{
 		action.Read,
 		action.Update,
 		action.Delete,
@@ -48,6 +50,13 @@ var (
 		action.SetHostSets,
 		action.RemoveHostSets,
 		action.AuthorizeSession,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.ActionSet{
+		action.Create,
+		action.List,
 	}
 )
 
@@ -114,18 +123,26 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}
+
+	ul, err := s.listFromRepo(ctx, scopeIds)
+	if err != nil {
+		return nil, err
+	}
+
 	finalItems := make([]*pb.Target, 0, len(ul))
-	resource := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Target,
+	res := &perms.Resource{
+		Type: resource.Target,
 	}
 	for _, item := range ul {
-		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionsForId(ctx, item.Id, TargetIdActions, auth.WithResource(resource)).Strings()
+		item.Scope = scopeInfoMap[item.GetScopeId()]
+		res.ScopeId = item.Scope.Id
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
 		}
@@ -147,7 +164,7 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, TargetIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.GetTargetResponse{Item: u}, nil
 }
 
@@ -165,7 +182,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, TargetIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.CreateTargetResponse{Item: u, Uri: fmt.Sprintf("targets/%s", u.GetId())}, nil
 }
 
@@ -183,7 +200,7 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, TargetIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.UpdateTargetResponse{Item: u}, nil
 }
 
@@ -217,7 +234,7 @@ func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSe
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, TargetIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.AddTargetHostSetsResponse{Item: u}, nil
 }
 
@@ -235,7 +252,7 @@ func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSe
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, TargetIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.SetTargetHostSetsResponse{Item: u}, nil
 }
 
@@ -253,7 +270,7 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionsForId(ctx, u.Id, TargetIdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.RemoveTargetHostSetsResponse{Item: u}, nil
 }
 
@@ -411,6 +428,7 @@ HostSetIterationLoop:
 		Endpoint:        endpointUrl.String(),
 		ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
 		ConnectionLimit: t.GetSessionConnectionLimit(),
+		WorkerFilter:    t.GetWorkerFilter(),
 	}
 
 	sess, err := session.New(sessionComposition)
@@ -426,13 +444,75 @@ HostSetIterationLoop:
 		return nil, err
 	}
 
+	// WorkerInfo only contains the address; worker IDs below is used to contain
+	// their IDs in the same order. This is used to fetch tags for filtering.
+	// But we avoid allocation unless we actually need it.
 	var workers []*pb.WorkerInfo
+	var workerIds []string
+	hasWorkerFilter := len(t.GetWorkerFilter()) > 0
 	servers, err := serversRepo.ListServers(ctx, servers.ServerTypeWorker)
 	if err != nil {
 		return nil, err
 	}
 	for _, v := range servers {
+		if hasWorkerFilter {
+			workerIds = append(workerIds, v.GetPrivateId())
+		}
 		workers = append(workers, &pb.WorkerInfo{Address: v.Address})
+	}
+
+	if hasWorkerFilter && len(workerIds) > 0 {
+		finalWorkers := make([]*pb.WorkerInfo, 0, len(workers))
+		// Fetch the tags for the given worker IDs
+		tags, err := serversRepo.ListTagsForServers(ctx, workerIds)
+		if err != nil {
+			return nil, err
+		}
+		// Build the map for filtering. This is similar to the filter map we
+		// built from the worker config, but with one extra level: a map of the
+		// worker's ID to its filter map.
+		tagMap := make(map[string]map[string][]string)
+		for _, tag := range tags {
+			currWorkerMap := tagMap[tag.ServerId]
+			if currWorkerMap == nil {
+				currWorkerMap = make(map[string][]string)
+				tagMap[tag.ServerId] = currWorkerMap
+			}
+			currWorkerMap[tag.Key] = append(currWorkerMap[tag.Key], tag.Value)
+			// We don't need to reinsert after the fact because maps are
+			// reference types, so we don't need to re-insert into tagMap
+		}
+
+		// Create the evaluator
+		eval, err := bexpr.CreateEvaluator(t.GetWorkerFilter())
+		if err != nil {
+			return nil, err
+		}
+
+		// Iterate through the known worker IDs, and evaluate. If evaluation
+		// returns true, add to the final worker slice, which is assigned back
+		// to workers after this.
+		for i, worker := range workerIds {
+			filterInput := map[string]interface{}{
+				"name": worker,
+				"tags": tagMap[worker],
+			}
+			ok, err := eval.Evaluate(filterInput)
+			if err != nil {
+				return nil, handlers.ApiErrorWithCodeAndMessage(
+					codes.FailedPrecondition,
+					fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
+			}
+			if ok {
+				finalWorkers = append(finalWorkers, workers[i])
+			}
+		}
+		workers = finalWorkers
+	}
+	if len(workers) == 0 {
+		return nil, handlers.ApiErrorWithCodeAndMessage(
+			codes.FailedPrecondition,
+			"No workers are available to handle this session, or all have been filtered.")
 	}
 
 	sad := &pb.SessionAuthorizationData{
@@ -498,6 +578,9 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	if item.GetSessionConnectionLimit() != nil {
 		opts = append(opts, target.WithSessionConnectionLimit(item.GetSessionConnectionLimit().GetValue()))
 	}
+	if item.GetWorkerFilter() != nil {
+		opts = append(opts, target.WithWorkerFilter(item.GetWorkerFilter().GetValue()))
+	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
@@ -536,6 +619,9 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	if item.GetSessionConnectionLimit() != nil {
 		opts = append(opts, target.WithSessionConnectionLimit(item.GetSessionConnectionLimit().GetValue()))
+	}
+	if filter := item.GetWorkerFilter(); filter != nil {
+		opts = append(opts, target.WithWorkerFilter(item.GetWorkerFilter().GetValue()))
 	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
@@ -583,12 +669,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Target, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Target, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListTargets(ctx, target.WithScopeId(scopeId))
+	ul, err := repo.ListTargets(ctx, target.WithScopeIds(scopeIds))
 	if err != nil {
 		return nil, err
 	}
@@ -730,6 +816,9 @@ func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 	if in.GetName() != "" {
 		out.Name = wrapperspb.String(in.GetName())
 	}
+	if in.GetWorkerFilter() != "" {
+		out.WorkerFilter = wrapperspb.String(in.GetWorkerFilter())
+	}
 	attrs := &pb.TcpTargetAttributes{}
 	if in.GetDefaultPort() > 0 {
 		attrs.DefaultPort = &wrappers.UInt32Value{Value: in.GetDefaultPort()}
@@ -796,6 +885,11 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 		default:
 			badFields["type"] = "Unknown type provided."
 		}
+		if filter := req.GetItem().GetWorkerFilter(); filter != nil {
+			if _, err := bexpr.CreateEvaluator(filter.GetValue()); err != nil {
+				badFields["worker_filter"] = "Unable to successfully parse filter expression."
+			}
+		}
 		return badFields
 	})
 }
@@ -831,6 +925,11 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 				badFields["attributes.default_port"] = "This optional field cannot be set to 0."
 			}
 		}
+		if filter := req.GetItem().GetWorkerFilter(); filter != nil {
+			if _, err := bexpr.CreateEvaluator(filter.GetValue()); err != nil {
+				badFields["worker_filter"] = "Unable to successfully parse filter expression."
+			}
+		}
 		return badFields
 	})
 }
@@ -841,8 +940,9 @@ func validateDeleteRequest(req *pbs.DeleteTargetRequest) error {
 
 func validateListRequest(req *pbs.ListTargetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) {
-		badFields["scope_id"] = "This field is required to have a properly formatted project scope id."
+	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+		!req.GetRecursive() {
+		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

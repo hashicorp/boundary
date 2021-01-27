@@ -9,11 +9,28 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+)
+
+var (
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.ActionSet{
+		action.Read,
+		action.Delete,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.ActionSet{
+		action.List,
+	}
 )
 
 // Service handles request as described by the pbs.AuthTokenServiceServer interface.
@@ -46,14 +63,30 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ul, err := s.listFromRepo(ctx, req.GetScopeId())
+
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}
-	for _, item := range ul {
-		item.Scope = authResults.Scope
+
+	ul, err := s.listFromRepo(ctx, scopeIds)
+	if err != nil {
+		return nil, err
 	}
-	return &pbs.ListAuthTokensResponse{Items: ul}, nil
+	finalItems := make([]*pb.AuthToken, 0, len(ul))
+	res := &perms.Resource{
+		Type: resource.AuthToken,
+	}
+	for _, item := range ul {
+		item.Scope = scopeInfoMap[item.GetScopeId()]
+		res.ScopeId = item.Scope.Id
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
+		if len(item.AuthorizedActions) > 0 {
+			finalItems = append(finalItems, item)
+		}
+	}
+	return &pbs.ListAuthTokensResponse{Items: finalItems}, nil
 }
 
 // GetAuthToken implements the interface pbs.AuthTokenServiceServer.
@@ -70,6 +103,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 		return nil, err
 	}
 	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.GetAuthTokenResponse{Item: u}, nil
 }
 
@@ -122,13 +156,13 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.AuthToken, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.AuthToken, error) {
 	repo, err := s.repoFn()
 	_ = repo
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListAuthTokens(ctx, orgId)
+	ul, err := repo.ListAuthTokens(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}

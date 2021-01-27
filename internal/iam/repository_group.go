@@ -170,14 +170,14 @@ func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, _ ...
 	return rowsDeleted, nil
 }
 
-// ListGroups in a scope and supports WithLimit option.
-func (r *Repository) ListGroups(ctx context.Context, withScopeId string, opt ...Option) ([]*Group, error) {
+// ListGroups lists groups in the given scopes and supports WithLimit option.
+func (r *Repository) ListGroups(ctx context.Context, withScopeIds []string, opt ...Option) ([]*Group, error) {
 	const op = "iam.(Repository).ListGroups"
-	if withScopeId == "" {
+	if len(withScopeIds) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	var grps []*Group
-	err := r.list(ctx, &grps, "scope_id = ?", []interface{}{withScopeId}, opt...)
+	err := r.list(ctx, &grps, "scope_id in (?)", []interface{}{withScopeIds}, opt...)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -186,7 +186,7 @@ func (r *Repository) ListGroups(ctx context.Context, withScopeId string, opt ...
 
 // ListGroupMembers of a group and supports WithLimit option.
 func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, opt ...Option) ([]*GroupMember, error) {
-	const op = "iam.(Repository).ListGroups"
+	const op = "iam.(Repository).ListGroupMembers"
 	if withGroupId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing group id")
 	}

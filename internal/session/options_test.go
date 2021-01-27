@@ -33,9 +33,9 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithScopeId", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithScopeId("o_1234"))
+		opts := getOpts(WithScopeIds([]string{"o_1234"}))
 		testOpts := getDefaultOptions()
-		testOpts.withScopeId = "o_1234"
+		testOpts.withScopeIds = []string{"o_1234"}
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithOrder", func(t *testing.T) {

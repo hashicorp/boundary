@@ -20,7 +20,7 @@ type Option func(*options)
 type options struct {
 	withLimit          int
 	withOrder          string
-	withScopeId        string
+	withScopeIds       []string
 	withUserId         string
 	withExpirationTime *timestamp.Timestamp
 	withTestTofu       []byte
@@ -49,9 +49,9 @@ func WithOrder(order string) Option {
 }
 
 // WithScopeId allows specifying a scope ID criteria for the function.
-func WithScopeId(scopeId string) Option {
+func WithScopeIds(scopeIds []string) Option {
 	return func(o *options) {
-		o.withScopeId = scopeId
+		o.withScopeIds = scopeIds
 	}
 }
 

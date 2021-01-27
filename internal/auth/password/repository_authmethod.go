@@ -113,8 +113,8 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 }
 
 // ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit is the only option supported.
-func (r *Repository) ListAuthMethods(ctx context.Context, scopeId string, opt ...Option) ([]*AuthMethod, error) {
-	if scopeId == "" {
+func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
+	if len(scopeIds) == 0 {
 		return nil, fmt.Errorf("list: password auth method: missing scope id: %w", errors.ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
@@ -124,7 +124,7 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeId string, opt ..
 		limit = opts.withLimit
 	}
 	var authMethods []*AuthMethod
-	err := r.reader.SearchWhere(ctx, &authMethods, "scope_id = ?", []interface{}{scopeId}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &authMethods, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit))
 	if err != nil {
 		return nil, fmt.Errorf("list: password auth method: %w", err)
 	}

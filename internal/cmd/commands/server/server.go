@@ -9,9 +9,13 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -332,12 +336,12 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`"url" not specified in "controller.database" config block"`)
 			return 1
 		}
-		dbaseUrl, err := config.ParseAddress(c.Config.Controller.Database.Url)
+		var err error
+		c.DatabaseUrl, err = config.ParseAddress(c.Config.Controller.Database.Url)
 		if err != nil && err != config.ErrNotAUrl {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return 1
 		}
-		c.DatabaseUrl = strings.TrimSpace(dbaseUrl)
 		if err := c.ConnectToDatabase("postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return 1
@@ -363,23 +367,22 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error checking schema state: %w", err).Error())
 			return 1
 		}
-		if !ckState.InitializationStarted {
-			c.UI.Error("Database has not been initialized. Please run `boundary database init`.")
-			return 1
-		}
 		if ckState.Dirty {
 			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
 			return 1
 		}
 		if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
-			// TODO: Add the command to migrate up the schema version once that command exists.
-			c.UI.Error("Older schema version is than is expected from this binary.")
+			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database."))
 			return 1
 		}
 		if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {
 			c.UI.Error(base.WrapAtLength(fmt.Sprintf("Newer schema version (%d) "+
 				"than this binary expects. Please use a newer version of the boundary "+
 				"binary.", ckState.DatabaseSchemaVersion)))
+			return 1
+		}
+		if err := c.verifyKmsSetup(); err != nil {
+			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
 			return 1
 		}
 	}
@@ -544,7 +547,7 @@ func (c *Command) WaitForInterrupt() int {
 			shutdownTriggered = true
 
 		case <-c.SighupCh:
-			c.UI.Output("==> Boundary controller reload triggered")
+			c.UI.Output("==> Boundary server reload triggered")
 
 			// Check for new log level
 			var level hclog.Level
@@ -589,7 +592,7 @@ func (c *Command) WaitForInterrupt() int {
 
 		RUNRELOADFUNCS:
 			if err := c.Reload(); err != nil {
-				c.UI.Error(fmt.Errorf("Error(s) were encountered during controller reload: %w", err).Error())
+				c.UI.Error(fmt.Errorf("Error(s) were encountered during server reload: %w", err).Error())
 			}
 
 		case <-c.SigUSR2Ch:
@@ -629,4 +632,24 @@ func (c *Command) Reload() error {
 	}
 
 	return reloadErrors.ErrorOrNil()
+}
+
+func (c *Command) verifyKmsSetup() error {
+	const op = "server.(Command).verifyKmsExists"
+	rw := db.New(c.Database)
+
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return fmt.Errorf("error creating kms repository: %w", err)
+	}
+	rks, err := kmsRepo.ListRootKeys(c.Context, kms.WithLimit(1))
+	if err != nil {
+		return err
+	}
+	for _, rk := range rks {
+		if rk.GetScopeId() == scope.Global.String() {
+			return nil
+		}
+	}
+	return errors.New(errors.MigrationIntegrity, op, "can't find global scoped root key")
 }

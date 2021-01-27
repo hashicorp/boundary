@@ -49,14 +49,15 @@ func TestGet(t *testing.T) {
 	}
 
 	wantU := &pb.User{
-		Id:          u.GetPublicId(),
-		ScopeId:     u.GetScopeId(),
-		Scope:       &scopes.ScopeInfo{Id: u.ScopeId, Type: scope.Org.String()},
-		Name:        &wrapperspb.StringValue{Value: u.GetName()},
-		Description: &wrapperspb.StringValue{Value: u.GetDescription()},
-		CreatedTime: u.CreateTime.GetTimestamp(),
-		UpdatedTime: u.UpdateTime.GetTimestamp(),
-		Version:     1,
+		Id:                u.GetPublicId(),
+		ScopeId:           u.GetScopeId(),
+		Scope:             &scopes.ScopeInfo{Id: u.ScopeId, Type: scope.Org.String()},
+		Name:              &wrapperspb.StringValue{Value: u.GetName()},
+		Description:       &wrapperspb.StringValue{Value: u.GetDescription()},
+		CreatedTime:       u.CreateTime.GetTimestamp(),
+		UpdatedTime:       u.UpdateTime.GetTimestamp(),
+		Version:           1,
+		AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
 	}
 
 	cases := []struct {
@@ -121,22 +122,45 @@ func TestList(t *testing.T) {
 	oNoUsers, _ := iam.TestScopes(t, repo)
 	oWithUsers, _ := iam.TestScopes(t, repo)
 
+	s, err := users.NewService(repoFn)
+
 	var wantUsers []*pb.User
+
+	// Populate expected values for recursive test
+	var totalUsers []*pb.User
+	ctx := auth.DisabledAuthTestContext(auth.WithScopeId("global"))
+	anon, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_anon"})
+	require.NoError(t, err)
+	totalUsers = append(totalUsers, anon.GetItem())
+	authUser, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_auth"})
+	require.NoError(t, err)
+	totalUsers = append(totalUsers, authUser.GetItem())
+	recovery, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_recovery"})
+	require.NoError(t, err)
+	totalUsers = append(totalUsers, recovery.GetItem())
+
+	// Add new users
 	for i := 0; i < 10; i++ {
 		newU, err := iam.NewUser(oWithUsers.GetPublicId())
 		require.NoError(t, err)
 		u, err := repo.CreateUser(context.Background(), newU)
 		require.NoError(t, err)
 		wantUsers = append(wantUsers, &pb.User{
-			Id:          u.GetPublicId(),
-			ScopeId:     u.GetScopeId(),
-			Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
-			CreatedTime: u.GetCreateTime().GetTimestamp(),
-			UpdatedTime: u.GetUpdateTime().GetTimestamp(),
-			Version:     1,
+			Id:                u.GetPublicId(),
+			ScopeId:           u.GetScopeId(),
+			Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
+			CreatedTime:       u.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       u.GetUpdateTime().GetTimestamp(),
+			Version:           1,
+			AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
 		})
 	}
 
+	// Populate these users into the total
+	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(oWithUsers.GetPublicId()))
+	usersInOrg, err := s.ListUsers(ctx, &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId()})
+	require.NoError(t, err)
+	totalUsers = append(totalUsers, usersInOrg.GetItems()...)
 	cases := []struct {
 		name string
 		req  *pbs.ListUsersRequest
@@ -153,11 +177,20 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListUsersRequest{ScopeId: oNoUsers.GetPublicId()},
 			res:  &pbs.ListUsersResponse{},
 		},
+		{
+			name: "List Recursively in Org",
+			req:  &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId(), Recursive: true},
+			res:  &pbs.ListUsersResponse{Items: wantUsers},
+		},
+		{
+			name: "List Recursively in Global",
+			req:  &pbs.ListUsersRequest{ScopeId: "global", Recursive: true},
+			res:  &pbs.ListUsersResponse{Items: totalUsers},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := users.NewService(repoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
@@ -254,11 +287,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateUserResponse{
 				Uri: fmt.Sprintf("users/%s_", iam.UserPrefix),
 				Item: &pb.User{
-					ScopeId:     defaultUser.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: defaultUser.GetScopeId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
+					ScopeId:           defaultUser.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: defaultUser.GetScopeId(), Type: scope.Org.String()},
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
 				},
 			},
 		},
@@ -272,11 +306,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateUserResponse{
 				Uri: fmt.Sprintf("users/%s_", iam.UserPrefix),
 				Item: &pb.User{
-					ScopeId:     scope.Global.String(),
-					Scope:       &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
+					ScopeId:           scope.Global.String(),
+					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
 				},
 			},
 		},
@@ -381,12 +416,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
-					Id:          u.GetPublicId(),
-					ScopeId:     u.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					Id:                u.GetPublicId(),
+					ScopeId:           u.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:       u.GetCreateTime().GetTimestamp(),
+					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
 				},
 			},
 		},
@@ -403,12 +439,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
-					Id:          u.GetPublicId(),
-					ScopeId:     u.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					Id:                u.GetPublicId(),
+					ScopeId:           u.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:       u.GetCreateTime().GetTimestamp(),
+					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
 				},
 			},
 		},
@@ -456,11 +493,12 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
-					Id:          u.GetPublicId(),
-					ScopeId:     u.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
-					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					Id:                u.GetPublicId(),
+					ScopeId:           u.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
+					Description:       &wrapperspb.StringValue{Value: "default"},
+					CreatedTime:       u.GetCreateTime().GetTimestamp(),
+					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
 				},
 			},
 		},
@@ -477,12 +515,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
-					Id:          u.GetPublicId(),
-					ScopeId:     u.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "updated"},
-					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					Id:                u.GetPublicId(),
+					ScopeId:           u.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
+					Name:              &wrapperspb.StringValue{Value: "updated"},
+					Description:       &wrapperspb.StringValue{Value: "default"},
+					CreatedTime:       u.GetCreateTime().GetTimestamp(),
+					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
 				},
 			},
 		},
@@ -499,12 +538,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
-					Id:          u.GetPublicId(),
-					ScopeId:     u.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "default"},
-					Description: &wrapperspb.StringValue{Value: "notignored"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					Id:                u.GetPublicId(),
+					ScopeId:           u.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
+					Name:              &wrapperspb.StringValue{Value: "default"},
+					Description:       &wrapperspb.StringValue{Value: "notignored"},
+					CreatedTime:       u.GetCreateTime().GetTimestamp(),
+					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
 				},
 			},
 		},

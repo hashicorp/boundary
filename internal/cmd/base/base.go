@@ -76,6 +76,7 @@ type Command struct {
 	FlagAuthMethodId  string
 	FlagHostCatalogId string
 	FlagVersion       int
+	FlagRecursive     bool
 
 	client *api.Client
 }
