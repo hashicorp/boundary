@@ -327,6 +327,110 @@ func TestPostgres_Lock(t *testing.T) {
 	})
 }
 
+func TestEnsureTable_Fresh(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		p, err := open(t, ctx, addr)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		t.Cleanup(func() {
+			require.NoError(t, p.close(t))
+		})
+
+		tableCreated := false
+		query := "SELECT exists (SELECT 1 FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_name = '" + defaultMigrationsTable + "')"
+		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableCreated))
+		assert.False(t, tableCreated)
+
+		assert.NoError(t, p.EnsureVersionTable(ctx))
+		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableCreated))
+		assert.True(t, tableCreated)
+	})
+}
+
+func TestEnsureTable_OldTable(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		p, err := open(t, ctx, addr)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		t.Cleanup(func() {
+			require.NoError(t, p.close(t))
+		})
+
+		oldTableCreate := `CREATE TABLE IF NOT EXISTS schema_migrations (Version bigint primary key, dirty boolean not null)`
+		_, err = p.db.ExecContext(ctx, oldTableCreate)
+		assert.NoError(t, err)
+
+		tableExists := false
+		oldTableCheck := "SELECT exists (SELECT 1 FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_name = 'schema_migrations')"
+		assert.NoError(t, p.db.QueryRowContext(ctx, oldTableCheck).Scan(&tableExists))
+		assert.True(t, tableExists)
+
+		query := "SELECT exists (SELECT 1 FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_name = '" + defaultMigrationsTable + "')"
+		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableExists))
+		assert.False(t, tableExists)
+
+		assert.NoError(t, p.EnsureVersionTable(ctx))
+
+		assert.NoError(t, p.db.QueryRowContext(ctx, oldTableCheck).Scan(&tableExists))
+		assert.False(t, tableExists)
+		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableExists))
+		assert.True(t, tableExists)
+	})
+}
+
+func TestPostgres_MigrationEverRan(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		p, err := open(t, ctx, addr)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		t.Cleanup(func() {
+			require.NoError(t, p.close(t))
+		})
+
+		ran, err := p.MigrationEverRan(ctx)
+		assert.NoError(t, err)
+		assert.False(t, ran)
+
+		oldTableCreate := `CREATE TABLE IF NOT EXISTS schema_migrations (Version bigint primary key, dirty boolean not null)`
+		_, err = p.db.ExecContext(ctx, oldTableCreate)
+		assert.NoError(t, err)
+
+		ran, err = p.MigrationEverRan(ctx)
+		assert.NoError(t, err)
+		assert.True(t, ran)
+
+		assert.NoError(t, p.EnsureVersionTable(ctx))
+
+		ran, err = p.MigrationEverRan(ctx)
+		assert.NoError(t, err)
+		assert.True(t, ran)
+	})
+}
+
 func TestRun_Error(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
 		ctx := context.Background()
