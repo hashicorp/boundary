@@ -42,7 +42,7 @@ create domain wt_name as text
         check (length(trim(value)) > 0)
     constraint wt_name_too_long
         check (length(trim(value)) < 128);
-comment on domain wt_email is
+comment on domain wt_name is
 'standard column for resource names';
 
 -- wt_description defines a type for resource descriptionss that must be less
@@ -52,7 +52,7 @@ create domain wt_description as text
         check (length(trim(value)) > 0)
     constraint wt_description_too_long
         check (length(trim(value)) < 1024);
-comment on domain wt_email is
+comment on domain wt_description is
 'standard column for resource descriptions';
 
 commit;
