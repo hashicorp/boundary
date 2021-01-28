@@ -4,7 +4,6 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		devMigration:        false,
 		binarySchemaVersion: 1003,
 		upMigrations: map[int][]byte{
 			1: []byte(`
