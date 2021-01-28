@@ -277,10 +277,10 @@ func TestWithSchema(t *testing.T) {
 		version, alreadyRan, _, err := d2.CurrentState(ctx)
 		require.NoError(t, err)
 		require.Equal(t, nilVersion, version)
-		require.NoError(t, d2.EnsureVersionTable(ctx))
-		assert.True(t, alreadyRan)
+		assert.False(t, alreadyRan)
 
 		// now update CurrentState and compare
+		require.NoError(t, d2.EnsureVersionTable(ctx))
 		require.NoError(t, d2.setVersion(ctx, 2, false))
 		version, alreadyRan, _, err = d2.CurrentState(ctx)
 		require.NoError(t, err)
