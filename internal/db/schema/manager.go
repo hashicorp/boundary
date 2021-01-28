@@ -157,6 +157,10 @@ func (b *Manager) RollForward(ctx context.Context) error {
 		b.driver.Unlock(ctx)
 	}()
 
+	if err := b.driver.EnsureVersionTable(ctx); err != nil {
+		return errors.Wrap(err, op)
+	}
+
 	curVersion, dirty, err := b.driver.CurrentState(ctx)
 	if err != nil {
 		return errors.Wrap(err, op)
@@ -181,10 +185,6 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) (err
 	if err := b.driver.StartRun(ctx); err != nil {
 		return errors.Wrap(err, op)
 	}
-	if err := b.driver.EnsureVersionTable(ctx); err != nil {
-		return errors.Wrap(err, op)
-	}
-
 	for qp.Next() {
 		select {
 		case <-ctx.Done():
