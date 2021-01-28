@@ -19,7 +19,7 @@ func TestMigrateDatabase(t *testing.T) {
 
 	cases := []struct {
 		name           string
-		requireFresh bool
+		requireFresh   bool
 		urlProvider    func() string
 		expectedCode   int
 		expectedOutput string
@@ -54,7 +54,7 @@ func TestMigrateDatabase(t *testing.T) {
 				require.NoError(t, err)
 				return u
 			},
-			expectedCode:  0,
+			expectedCode:   0,
 			expectedOutput: "Migrations successfully run.\n",
 		},
 		{
@@ -86,7 +86,7 @@ func TestMigrateDatabase(t *testing.T) {
 			expectedError: "Unable to capture a lock on the database.\n",
 		},
 		{
-			name: "basic_require_fresh",
+			name:         "basic_require_fresh",
 			requireFresh: true,
 			urlProvider: func() string {
 				c, u, _, err := db.StartDbInDocker(dialect)
@@ -100,7 +100,7 @@ func TestMigrateDatabase(t *testing.T) {
 			expectedOutput: "Migrations successfully run.\n",
 		},
 		{
-			name: "old_version_table_used_require_fresh",
+			name:         "old_version_table_used_require_fresh",
 			requireFresh: true,
 			urlProvider: func() string {
 				c, u, _, err := db.StartDbInDocker(dialect)
@@ -121,13 +121,13 @@ func TestMigrateDatabase(t *testing.T) {
 		},
 		{
 			name:          "bad_url_require_fresh",
-			requireFresh: true,
+			requireFresh:  true,
 			urlProvider:   func() string { return "badurl" },
 			expectedCode:  1,
 			expectedError: "Unable to connect to the database at \"badurl\"\n",
 		},
 		{
-			name: "cant_get_lock_require_fresh",
+			name:         "cant_get_lock_require_fresh",
 			requireFresh: true,
 			urlProvider: func() string {
 				c, u, _, err := db.StartDbInDocker(dialect)

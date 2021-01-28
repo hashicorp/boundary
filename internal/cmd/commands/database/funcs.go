@@ -11,7 +11,6 @@ import (
 	"github.com/mitchellh/cli"
 )
 
-
 // migrateDatabase updates the schema to the most recent version known by the binary.
 // It owns the reporting to the UI any errors.
 // Returns a cleanup function which must be called even if an error is returned and

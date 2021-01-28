@@ -77,7 +77,7 @@ type State struct {
 func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 	const op = "schema.(Manager).CurrentState"
 	dbS := State{
-		BinarySchemaVersion:   BinarySchemaVersion(b.dialect),
+		BinarySchemaVersion: BinarySchemaVersion(b.dialect),
 	}
 
 	v, initialized, dirty, err := b.driver.CurrentState(ctx)
