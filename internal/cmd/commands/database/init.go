@@ -1,8 +1,6 @@
 package database
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -262,7 +260,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	clean, errCode := initDatabase(c.Context, c.UI, dialect, migrationUrl)
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, true)
 	defer clean()
 	if errCode != 0 {
 		return errCode
@@ -491,64 +489,6 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 	}
 
 	return 0
-}
-
-// initDatabase initializes the schema to the binary's currently suppoorted version.
-// If init previously ran and left any indication that it ran an error is returned.
-// This might be the case for early versions of boundary where the migrations
-// weren't completely executed in a transaction and a version table might have
-// been left despite a rollback.
-// Returns a cleanup function which must be called even if an error is returned and
-// an error code where a non-zero value indicates an error happened.
-func initDatabase(ctx context.Context, ui cli.Ui, dialect, u string) (func(), int) {
-	noop := func() {}
-	// This database is used to keep an exclusive lock on the database for the
-	// remainder of the command
-	dBase, err := sql.Open(dialect, u)
-	if err != nil {
-		ui.Error(fmt.Errorf("Error establishing db connection: %w", err).Error())
-		return noop, 1
-	}
-	if err := dBase.PingContext(ctx); err != nil {
-		ui.Error(fmt.Sprintf("Unable to connect to the database at %q", u))
-		return noop, 1
-	}
-	man, err := schema.NewManager(ctx, dialect, dBase)
-	if err != nil {
-		ui.Error(fmt.Errorf("Error setting up schema manager: %w", err).Error())
-		return noop, 1
-	}
-	// This is an advisory lock on the DB which is released when the DB session ends.
-	if err := man.ExclusiveLock(ctx); err != nil {
-		ui.Error("Unable to capture a lock on the database.")
-		return noop, 1
-	}
-	unlock := func() {
-		// We don't report anything since this should resolve itself anyways.
-		_ = man.ExclusiveUnlock(ctx)
-	}
-
-	st, err := man.CurrentState(ctx)
-	if err != nil {
-		ui.Error(fmt.Errorf("Error getting database state: %w", err).Error())
-		return unlock, 1
-	}
-	if st.InitializationStarted {
-		ui.Error(base.WrapAtLength("Database has already been initialized.  Please use 'boundary database migrate'."))
-		return unlock, 1
-	}
-	if st.Dirty {
-		ui.Error(base.WrapAtLength("Database is in a bad state.  Please revert back to the last known good state."))
-		return unlock, 1
-	}
-	if err := man.RollForward(ctx); err != nil {
-		ui.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
-		return unlock, 1
-	}
-	if base.Format(ui) == "table" {
-		ui.Info("Migrations successfully run.")
-	}
-	return unlock, 0
 }
 
 func (c *InitCommand) verifyOplogIsEmpty() error {

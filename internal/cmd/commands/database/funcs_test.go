@@ -19,6 +19,7 @@ func TestMigrateDatabase(t *testing.T) {
 
 	cases := []struct {
 		name           string
+		requireFresh bool
 		urlProvider    func() string
 		expectedCode   int
 		expectedOutput string
@@ -84,34 +85,9 @@ func TestMigrateDatabase(t *testing.T) {
 			expectedCode:  1,
 			expectedError: "Unable to capture a lock on the database.\n",
 		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			u := tc.urlProvider()
-			ui := cli.NewMockUi()
-			clean, errCode := migrateDatabase(ctx, ui, dialect, u)
-			clean()
-			assert.EqualValues(t, tc.expectedCode, errCode)
-			assert.Equal(t, tc.expectedOutput, ui.OutputWriter.String())
-			assert.Equal(t, tc.expectedError, ui.ErrorWriter.String())
-		})
-	}
-}
-
-func TestInitDatabase(t *testing.T) {
-	ctx := context.Background()
-	dialect := "postgres"
-
-	cases := []struct {
-		name           string
-		urlProvider    func() string
-		expectedCode   int
-		expectedOutput string
-		expectedError  string
-	}{
 		{
-			name: "basic",
+			name: "basic_require_fresh",
+			requireFresh: true,
 			urlProvider: func() string {
 				c, u, _, err := db.StartDbInDocker(dialect)
 				require.NoError(t, err)
@@ -124,13 +100,35 @@ func TestInitDatabase(t *testing.T) {
 			expectedOutput: "Migrations successfully run.\n",
 		},
 		{
-			name:          "bad_url",
+			name: "old_version_table_used_require_fresh",
+			requireFresh: true,
+			urlProvider: func() string {
+				c, u, _, err := db.StartDbInDocker(dialect)
+				require.NoError(t, err)
+				t.Cleanup(func() {
+					require.NoError(t, c())
+				})
+				dBase, err := sql.Open(dialect, u)
+				require.NoError(t, err)
+
+				createStmt := `create table if not exists schema_migrations (version bigint primary key, dirty boolean not null)`
+				_, err = dBase.Exec(createStmt)
+				require.NoError(t, err)
+				return u
+			},
+			expectedCode:  1,
+			expectedError: "Database has already been initialized.  Please use 'boundary database\nmigrate'.\n",
+		},
+		{
+			name:          "bad_url_require_fresh",
+			requireFresh: true,
 			urlProvider:   func() string { return "badurl" },
 			expectedCode:  1,
 			expectedError: "Unable to connect to the database at \"badurl\"\n",
 		},
 		{
-			name: "cant_get_lock",
+			name: "cant_get_lock_require_fresh",
+			requireFresh: true,
 			urlProvider: func() string {
 				c, u, _, err := db.StartDbInDocker(dialect)
 				require.NoError(t, err)
@@ -151,32 +149,13 @@ func TestInitDatabase(t *testing.T) {
 			expectedCode:  1,
 			expectedError: "Unable to capture a lock on the database.\n",
 		},
-		{
-			name: "old_version_table_used",
-			urlProvider: func() string {
-				c, u, _, err := db.StartDbInDocker(dialect)
-				require.NoError(t, err)
-				t.Cleanup(func() {
-					require.NoError(t, c())
-				})
-				dBase, err := sql.Open(dialect, u)
-				require.NoError(t, err)
-
-				createStmt := `create table if not exists schema_migrations (version bigint primary key, dirty boolean not null)`
-				_, err = dBase.Exec(createStmt)
-				require.NoError(t, err)
-				return u
-			},
-			expectedCode:  1,
-			expectedError: "Database has already been initialized.  Please use 'boundary database\nmigrate'.\n",
-		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			u := tc.urlProvider()
 			ui := cli.NewMockUi()
-			clean, errCode := initDatabase(ctx, ui, dialect, u)
+			clean, errCode := migrateDatabase(ctx, ui, dialect, u, tc.requireFresh)
 			clean()
 			assert.EqualValues(t, tc.expectedCode, errCode)
 			assert.Equal(t, tc.expectedOutput, ui.OutputWriter.String())
