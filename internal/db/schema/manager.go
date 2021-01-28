@@ -165,7 +165,7 @@ func (b *Manager) RollForward(ctx context.Context) error {
 // runMigrations passes migration queries to a database driver and manages
 // the version and dirty bit.  Cancelation or deadline/timeout is managed
 // through the passed in context.
-func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) (err error) {
+func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) error {
 	const op = "schema.(Manager).runMigrations"
 
 	if err := b.driver.StartRun(ctx); err != nil {
