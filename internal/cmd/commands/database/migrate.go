@@ -200,7 +200,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl)
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, false)
 	defer clean()
 	if errCode != 0 {
 		return errCode

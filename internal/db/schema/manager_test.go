@@ -62,7 +62,8 @@ func TestCurrentState(t *testing.T) {
 
 	testDriver, err := postgres.New(ctx, d)
 	require.NoError(t, err)
-	require.NoError(t, testDriver.Run(ctx, strings.NewReader("SELECT 1"), 2))
+	require.NoError(t, testDriver.EnsureVersionTable(ctx))
+	require.NoError(t, testDriver.Run(ctx, strings.NewReader("select 1"), 2))
 
 	want = &State{
 		InitializationStarted: true,
@@ -93,7 +94,7 @@ func TestRollForward(t *testing.T) {
 	_, err = postgres.New(ctx, d)
 	require.NoError(t, err)
 	// TODO: Extract out a way to mock the db to test failing rollforwards.
-	_, err = d.ExecContext(ctx, "TRUNCATE boundary_schema_version; INSERT INTO boundary_schema_version (Version, dirty) VALUES (2, true)")
+	_, err = d.ExecContext(ctx, "TRUNCATE boundary_schema_version; INSERT INTO boundary_schema_version (version, dirty) VALUES (2, true)")
 	assert.Error(t, m.RollForward(ctx))
 }
 
@@ -133,6 +134,26 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, oState.binarySchemaVersion, state.DatabaseSchemaVersion)
 	assert.False(t, state.Dirty)
+}
+
+func TestRunMigration_canceledContext(t *testing.T) {
+	dialect := "postgres"
+	c, u, _, err := docker.StartDbInDocker(dialect)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, c())
+	})
+	d, err := sql.Open(dialect, u)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	m, err := NewManager(ctx, dialect, d)
+	require.NoError(t, err)
+
+	// TODO: Find a way to test different parts of the runMigrations loop.
+	ctx, cancel := context.WithCancel(ctx)
+	cancel()
+	assert.Error(t, m.runMigrations(ctx, newStatementProvider(dialect, 0)))
 }
 
 func TestRollForward_BadSQL(t *testing.T) {

@@ -367,6 +367,9 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error checking schema state: %w", err).Error())
 			return 1
 		}
+		if !ckState.InitializationStarted {
+			c.UI.Error(base.WrapAtLength("The database has not been initialized. Please run 'boundary database init'."))
+		}
 		if ckState.Dirty {
 			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
 			return 1

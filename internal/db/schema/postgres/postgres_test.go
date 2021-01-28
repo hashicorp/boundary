@@ -117,7 +117,7 @@ func TestDbStuff(t *testing.T) {
 	})
 }
 
-func TestVersion_NoVersionTable(t *testing.T) {
+func TestCurrentState_NoVersionTable(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
 		ctx := context.Background()
 		ip, port, err := c.FirstPort()
@@ -138,8 +138,43 @@ func TestVersion_NoVersionTable(t *testing.T) {
 		// Drop the version table so calls to CurrentState don't rely on that
 		d.drop(ctx)
 
-		v, dirt, err := d.CurrentState(ctx)
+		v, alreadyRan, dirt, err := d.CurrentState(ctx)
 		assert.NoError(t, err)
+		assert.False(t, alreadyRan)
+		assert.Equal(t, v, nilVersion)
+		assert.False(t, dirt)
+	})
+}
+
+func TestCurrentState_ToManyTables(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		d, err := open(t, ctx, addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if err := d.close(t); err != nil {
+				t.Error(err)
+			}
+		}()
+
+		// Create the most recent table
+		d.EnsureVersionTable(ctx)
+
+		// Create the legacy version of the table.
+		oldTableCreate := `create table if not exists schema_migrations (version bigint primary key, dirty boolean not null)`
+		_, err = d.conn.ExecContext(ctx, oldTableCreate)
+		require.NoError(t, err)
+		v, alreadyRan, dirt, err := d.CurrentState(ctx)
+		assert.Error(t, err)
+		assert.True(t, alreadyRan)
 		assert.Equal(t, v, nilVersion)
 		assert.False(t, dirt)
 	})
@@ -163,6 +198,10 @@ func TestMultiStatement(t *testing.T) {
 				t.Error(err)
 			}
 		}()
+		if err := d.EnsureVersionTable(ctx); err != nil {
+			t.Fatalf("expected err to be nil, got %v", err)
+		}
+
 		if err := d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text); CREATE TABLE bar (bar text);"), 2); err != nil {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
@@ -197,12 +236,33 @@ func TestTransaction(t *testing.T) {
 			}
 		}()
 
-		assert.NoError(t, d.StartRun(ctx))
-		assert.NoError(t, d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text);"), 2))
-		assert.NoError(t, d.Run(ctx, strings.NewReader("SELECT 1"), 3))
-		assert.NoError(t, d.CommitRun())
-		v, dirty, err := d.CurrentState(ctx)
+		v, alreadyRan, dirty, err := d.CurrentState(ctx)
 		assert.NoError(t, err)
+		assert.False(t, alreadyRan)
+		assert.False(t, dirty)
+		assert.Equal(t, -1, v)
+
+		// Fail the initial setup of the db.
+		assert.NoError(t, d.StartRun(ctx))
+		assert.NoError(t, d.EnsureVersionTable(ctx))
+		assert.Error(t, d.Run(ctx, strings.NewReader("SELECT 1 from nonExistantTable"), 3))
+		assert.Error(t, d.CommitRun())
+
+		v, alreadyRan, dirty, err = d.CurrentState(ctx)
+		assert.NoError(t, err)
+		assert.False(t, alreadyRan)
+		assert.False(t, dirty)
+		assert.Equal(t, -1, v)
+
+		assert.NoError(t, d.StartRun(ctx))
+		assert.NoError(t, d.EnsureVersionTable(ctx))
+		assert.NoError(t, d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text);"), 2))
+		assert.NoError(t, d.Run(ctx, strings.NewReader("SELECT 1;"), 3))
+		assert.NoError(t, d.CommitRun())
+
+		v, alreadyRan, dirty, err = d.CurrentState(ctx)
+		assert.NoError(t, err)
+		assert.True(t, alreadyRan)
 		assert.False(t, dirty)
 		assert.Equal(t, 3, v)
 
@@ -210,8 +270,10 @@ func TestTransaction(t *testing.T) {
 		assert.NoError(t, d.Run(ctx, strings.NewReader("CREATE TABLE bar (bar text);"), 20))
 		assert.Error(t, d.Run(ctx, strings.NewReader("SELECT 1 FROM NonExistingTable"), 30))
 		assert.Error(t, d.CommitRun())
-		v, dirty, err = d.CurrentState(ctx)
+
+		v, alreadyRan, dirty, err = d.CurrentState(ctx)
 		assert.NoError(t, err)
+		assert.True(t, alreadyRan)
 		assert.False(t, dirty)
 		assert.Equal(t, 3, v)
 	})
@@ -221,66 +283,49 @@ func TestWithSchema(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
 		ctx := context.Background()
 		ip, port, err := c.FirstPort()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		addr := pgConnectionString(ip, port)
 		d, err := open(t, ctx, addr)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer func() {
 			if err := d.close(t); err != nil {
 				t.Fatal(err)
 			}
 		}()
+		require.NoError(t, d.EnsureVersionTable(ctx))
 
 		// create foobar schema
-		if err := d.Run(ctx, strings.NewReader("CREATE SCHEMA foobar AUTHORIZATION postgres"), 1); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, d.Run(ctx, strings.NewReader("CREATE SCHEMA foobar AUTHORIZATION postgres"), 1))
 
 		// re-connect using that schema
 		d2, err := open(t, ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=foobar",
 			pgPassword, ip, port))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer func() {
 			if err := d2.close(t); err != nil {
 				t.Fatal(err)
 			}
 		}()
 
-		version, _, err := d2.CurrentState(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if version != nilVersion {
-			t.Fatal("expected NilVersion")
-		}
+		version, alreadyRan, _, err := d2.CurrentState(ctx)
+		require.NoError(t, err)
+		require.Equal(t, nilVersion, version)
+		assert.False(t, alreadyRan)
 
 		// now update CurrentState and compare
-		if err := d2.setVersion(ctx, 2, false); err != nil {
-			t.Fatal(err)
-		}
-		version, _, err = d2.CurrentState(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if version != 2 {
-			t.Fatal("expected Version 2")
-		}
+		require.NoError(t, d2.EnsureVersionTable(ctx))
+		require.NoError(t, d2.setVersion(ctx, 2, false))
+		version, alreadyRan, _, err = d2.CurrentState(ctx)
+		require.NoError(t, err)
+		require.Equal(t, 2, version)
+		assert.True(t, alreadyRan)
 
 		// meanwhile, the public schema still has the other CurrentState
-		version, _, err = d.CurrentState(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if version != 1 {
-			t.Fatal("expected Version 2")
-		}
+		version, alreadyRan, _, err = d.CurrentState(ctx)
+		require.NoError(t, err)
+		require.Equal(t, 1, version)
+		assert.True(t, alreadyRan)
 	})
 }
 
@@ -319,6 +364,130 @@ func TestPostgres_Lock(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	})
+}
+
+func TestEnsureTable_Fresh(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		p, err := open(t, ctx, addr)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		t.Cleanup(func() {
+			require.NoError(t, p.close(t))
+		})
+
+		tableCreated := false
+		query := "SELECT exists (SELECT 1 FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_name = '" + defaultMigrationsTable + "')"
+		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableCreated))
+		assert.False(t, tableCreated)
+
+		assert.NoError(t, p.EnsureVersionTable(ctx))
+		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableCreated))
+		assert.True(t, tableCreated)
+	})
+}
+
+func TestEnsureTable_ExistingTable(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		p, err := open(t, ctx, addr)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		t.Cleanup(func() {
+			require.NoError(t, p.close(t))
+		})
+		assert.NoError(t, p.EnsureVersionTable(ctx))
+
+		oldTableCreate := `CREATE TABLE IF NOT EXISTS schema_migrations (version bigint primary key, dirty boolean not null)`
+		_, err = p.db.ExecContext(ctx, oldTableCreate)
+		assert.NoError(t, err)
+
+		assert.NoError(t, p.EnsureVersionTable(ctx))
+	})
+}
+
+func TestEnsureTable_OldTable(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		p, err := open(t, ctx, addr)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		t.Cleanup(func() {
+			require.NoError(t, p.close(t))
+		})
+
+		oldTableCreate := `CREATE TABLE IF NOT EXISTS schema_migrations (version bigint primary key, dirty boolean not null)`
+		_, err = p.db.ExecContext(ctx, oldTableCreate)
+		assert.NoError(t, err)
+
+		tableExists := false
+		oldTableCheck := "SELECT exists (SELECT 1 FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_name = 'schema_migrations')"
+		assert.NoError(t, p.db.QueryRowContext(ctx, oldTableCheck).Scan(&tableExists))
+		assert.True(t, tableExists)
+
+		query := "SELECT exists (SELECT 1 FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_name = '" + defaultMigrationsTable + "')"
+		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableExists))
+		assert.False(t, tableExists)
+
+		assert.NoError(t, p.EnsureVersionTable(ctx))
+
+		assert.NoError(t, p.db.QueryRowContext(ctx, oldTableCheck).Scan(&tableExists))
+		assert.False(t, tableExists)
+		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableExists))
+		assert.True(t, tableExists)
+	})
+}
+
+func TestRollback(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		p, err := open(t, ctx, addr)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		t.Cleanup(func() {
+			require.NoError(t, p.close(t))
+		})
+
+		assert.NoError(t, p.StartRun(ctx))
+		assert.NoError(t, p.EnsureVersionTable(ctx))
+		assert.NoError(t, p.Run(ctx, bytes.NewReader([]byte("create table if not exists foo (foo text)")), 2))
+		var exists bool
+		query := "select exists (select 1 from information_schema.tables where table_name = 'foo' and table_schema = (select current_schema()))"
+		assert.NoError(t, p.conn.QueryRowContext(context.Background(), query).Scan(&exists))
+		assert.True(t, exists)
+		assert.NoError(t, p.Rollback())
+
+		assert.NoError(t, p.conn.QueryRowContext(context.Background(), query).Scan(&exists))
+		assert.False(t, exists)
 	})
 }
 
