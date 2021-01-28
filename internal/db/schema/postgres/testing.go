@@ -62,7 +62,6 @@ func test(t *testing.T, d *Postgres, migration []byte) {
 	assert.NoError(t, d.drop(ctx))
 }
 
-
 func testLockAndUnlock(t *testing.T, d *Postgres) {
 	ctx := context.Background()
 
