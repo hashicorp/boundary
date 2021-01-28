@@ -41,7 +41,7 @@ func generate(dialect string) {
 
 		verVal, err := strconv.Atoi(ver)
 		if err != nil {
-			fmt.Printf("error reading major schema version directory %q.  Must be a number or 'dev'\n", ver)
+			fmt.Printf("error reading major schema version directory %q.  Must be a number: %v\n", ver, err)
 			os.Exit(1)
 		}
 
