@@ -146,6 +146,40 @@ func TestCurrentState_NoVersionTable(t *testing.T) {
 	})
 }
 
+func TestCurrentState_ToManyTables(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		d, err := open(t, ctx, addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if err := d.close(t); err != nil {
+				t.Error(err)
+			}
+		}()
+
+		// Create the most recent table
+		d.EnsureVersionTable(ctx)
+
+		// Create the legacy version of the table.
+		oldTableCreate := `create table if not exists schema_migrations (version bigint primary key, dirty boolean not null)`
+		_, err = d.conn.ExecContext(ctx, oldTableCreate)
+		require.NoError(t, err)
+		v, alreadyRan, dirt, err := d.CurrentState(ctx)
+		assert.Error(t, err)
+		assert.True(t, alreadyRan)
+		assert.Equal(t, v, nilVersion)
+		assert.False(t, dirt)
+	})
+}
+
 func TestMultiStatement(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
 		ctx := context.Background()
@@ -223,7 +257,7 @@ func TestTransaction(t *testing.T) {
 		assert.NoError(t, d.StartRun(ctx))
 		assert.NoError(t, d.EnsureVersionTable(ctx))
 		assert.NoError(t, d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text);"), 2))
-		assert.NoError(t, d.Run(ctx, strings.NewReader("SELECT 1"), 3))
+		assert.NoError(t, d.Run(ctx, strings.NewReader("SELECT 1;"), 3))
 		assert.NoError(t, d.CommitRun())
 
 		v, alreadyRan, dirty, err = d.CurrentState(ctx)

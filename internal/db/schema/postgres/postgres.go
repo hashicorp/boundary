@@ -151,6 +151,8 @@ func (p *Postgres) UnlockShared(ctx context.Context) error {
 	return nil
 }
 
+// Rollback rolls back the outstanding transaction.
+// Calling Rollback when there is not an outstanding transaction is an error.
 func (p *Postgres) Rollback() error {
 	const op = "postgres.(Postgres).Rollback"
 	defer func() {
@@ -340,32 +342,46 @@ func (p *Postgres) setVersion(ctx context.Context, version int, dirty bool) erro
 func (p *Postgres) CurrentState(ctx context.Context) (version int, previouslyRan, dirty bool, err error) {
 	const op = "postgres.(Postgres).CurrentState"
 
+	version = nilVersion
+	previouslyRan, dirty = false, false
+
 	tableQuery := `select table_name from information_schema.tables where table_schema=(select current_schema()) and table_name in ('schema_migrations', '` + defaultMigrationsTable + `')`
+	tableResult, err := p.conn.QueryContext(ctx, tableQuery)
+	if err != nil {
+		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
+	}
+	defer tableResult.Close()
+	if !tableResult.Next() {
+		// No version table found
+		return nilVersion, previouslyRan, dirty, nil
+	}
+
 	tableName := defaultMigrationsTable
-	if err = p.conn.QueryRowContext(ctx, tableQuery).Scan(&tableName); err != nil {
-		if err == sql.ErrNoRows {
-			return nilVersion, false, false, nil
-		}
-		return nilVersion, false, false, errors.Wrap(err, op)
+	if err := tableResult.Scan(&tableName); err != nil {
+		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
+	}
+	previouslyRan = true
+	if tableResult.Next() {
+		return nilVersion, previouslyRan, dirty, errors.New(errors.MigrationIntegrity, op, "both old and new migration tables exist")
 	}
 
-	query := `select version, dirty from ` + pq.QuoteIdentifier(tableName) + ` limit 1`
-	err = p.conn.QueryRowContext(ctx, query).Scan(&version, &dirty)
-	switch {
-	case err == sql.ErrNoRows:
-		return nilVersion, true, false, nil
-
-	case err != nil:
-		if e, ok := err.(*pq.Error); ok {
-			if e.Code.Name() == "undefined_table" {
-				return nilVersion, true, false, nil
-			}
-		}
-		return 0, true, false, errors.Wrap(err, op)
-
-	default:
-		return version, true, dirty, nil
+	query := `select version, dirty from ` + pq.QuoteIdentifier(tableName)
+	results, err := p.conn.QueryContext(ctx, query)
+	if err != nil {
+		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
 	}
+	defer results.Close()
+	if !results.Next() {
+		// no version recorded
+		return nilVersion, previouslyRan, dirty, nil
+	}
+	if err := results.Scan(&version, &dirty); err != nil {
+		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
+	}
+	if results.Next() {
+		return nilVersion, previouslyRan, dirty, errors.New(errors.MigrationIntegrity, op, "to many versions in version table")
+	}
+	return version, previouslyRan, dirty, nil
 }
 
 func (p *Postgres) drop(ctx context.Context) (err error) {
