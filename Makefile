@@ -74,7 +74,7 @@ endif
 perms-table:
 	@go run internal/website/permstable/permstable.go
 
-gen: cleangen proto api migrations fmt
+gen: cleangen proto api migrations perms-table fmt
 
 migrations:
 	$(MAKE) --environment-overrides -C internal/db/schema/migrations/generate migrations
