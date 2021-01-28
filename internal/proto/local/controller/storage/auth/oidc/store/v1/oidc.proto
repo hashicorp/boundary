@@ -56,16 +56,21 @@ message AuthMethod {
   // @inject_tag: `gorm:"-" wrapping:"pt,client_secret"`
   string client_secret = 12;
 
+  // client_secret_hmac is a sha256-hmac of the unencrypted client_secret that
+  // is returned from the API for read.  It is recalculated everytime the raw
+  // client_secret is updated.
+  string client_secret_hmac = 13;
+
   // key_id is the key ID that was used for the encryption operation. It can be
   // used to identify a specific version of the key needed to decrypt the value,
   // which is useful for caching purposes.
   // @inject_tag: `gorm:"not_null"`
-  string key_id = 13;
+  string key_id = 14;
 
   // max_age is the allowed elapsed time in seconds since the last time the user
   // was actively authenticated by the OIDC provider.
   // @inject_tag: `gorm:"not_null"`
-  uint32 max_age = 14;
+  uint32 max_age = 15;
 }
 
 // Account represents an OIDC account

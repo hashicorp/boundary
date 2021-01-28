@@ -21,6 +21,9 @@ create table auth_oidc_method (
     constraint client_id_not_empty
     check(length(trim(client_id)) > 0), 
   client_secret bytea not null, -- encrypted oidc client secret issued by the oidc provider.
+  client_secret_hmac text not null
+    constraint client_secret_hmac_not_empty
+    check(length(trim(client_secret_hmac)) > 0),
   key_id wt_private_id not null -- key used to encrypt entries via wrapping wrapper. 
     references kms_oidc_key_version(private_id) 
     on delete restrict
