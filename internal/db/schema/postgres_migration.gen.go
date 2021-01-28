@@ -5,7 +5,7 @@ package schema
 func init() {
 	migrationStates["postgres"] = migrationState{
 		devMigration:        false,
-		binarySchemaVersion: 1002,
+		binarySchemaVersion: 1003,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -4865,7 +4865,7 @@ create table server_tag (
   primary key(server_id, key, value)
 );
 `),
-			1002: []byte(`
+			1003: []byte(`
 -- kms_oidc_key entries are DEKs for encrypting oidc entries.
 create table kms_oidc_key (
   private_id wt_private_id primary key,
