@@ -48,6 +48,7 @@ func test(t *testing.T, d *Postgres, migration []byte) {
 
 	testNilVersion(t, d) // test first
 	testLockAndUnlock(t, d)
+	testEnsureVersionTable(t, d)
 	testRun(t, d, bytes.NewReader(migration))
 	testSetVersion(t, d) // also tests CurrentState()
 	// drop breaks the driver, so test it last.
@@ -89,6 +90,14 @@ func testLockAndUnlock(t *testing.T, d *Postgres) {
 	}
 	if err := d.Unlock(ctx); err != nil {
 		t.Fatalf("got error, expected none: %v", err)
+	}
+}
+
+func testEnsureVersionTable(t *testing.T, d *Postgres) {
+	ctx := context.Background()
+
+	if err := d.EnsureVersionTable(ctx); err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -4866,8 +4866,6 @@ create table server_tag (
 );
 `),
 			1080: []byte(`
-begin;
-
 -- wt_email defines a type for email which must be less than 320 chars and only
 -- contain lower case values.  The type is defined to allow nulls and not be
 -- unique, which can be overriden as needed when used in tables.
@@ -4922,13 +4920,8 @@ create domain wt_description as text
         check (length(trim(value)) < 1024);
 comment on domain wt_description is
 'standard column for resource descriptions';
-
-commit;
-
 `),
 			1082: []byte(`
-begin;
-
 -- kms_oidc_key entries are DEKs for encrypting oidc entries.
 create table kms_oidc_key (
   private_id wt_private_id primary key,
@@ -4990,13 +4983,8 @@ create trigger
 	kms_version_column
 before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
-
-commit;
-
 `),
 			1083: []byte(`
-begin;
-
 -- auth_oidc_method_state_enum entries define the possible oidc auth method
 -- states. 
 create table auth_oidc_method_state_enm (
@@ -5064,13 +5052,8 @@ create trigger
 before
 update on auth_oidc_signing_alg_enm
   for each row execute procedure immutable_columns('name');
-
-commit;
-
 `),
 			1084: []byte(`
-begin;
-
 -- auth_oidc_method entries are the current oidc auth methods configured for
 -- existing scopes. 
 create table auth_oidc_method (
@@ -5260,13 +5243,8 @@ create trigger
   insert_auth_account_subtype
 before insert on auth_oidc_account
   for each row execute procedure insert_auth_account_subtype();
-
-commit;
-
 `),
 			1085: []byte(`
-begin;
-
 -- auth_token_status_enm entries define the possible auth token
 -- states. 
 create table auth_token_status_enm (
@@ -5294,12 +5272,8 @@ default 'token issued' -- safest default
 references auth_token_status_enm(name)
   on update cascade
   on delete restrict;
-
-commit;
 `),
 			1086: []byte(`
-begin;
-
 -- add the account_info_auth_method_id which determines which auth_method is
 -- designated as for "account info" in the user's scope.  
 alter table iam_scope
@@ -5362,8 +5336,6 @@ select
 from 	
 	iam_user u
 left outer join iam_acct_info i on u.public_id = i.iam_user_id;
-
-commit;
 `),
 		},
 	}

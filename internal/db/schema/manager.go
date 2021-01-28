@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/go-multierror"
 )
 
 // driver provides functionality to a database.
@@ -77,7 +78,8 @@ type State struct {
 func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 	const op = "schema.(Manager).CurrentState"
 	dbS := State{
-		BinarySchemaVersion: BinarySchemaVersion(b.dialect),
+		BinarySchemaVersion:   BinarySchemaVersion(b.dialect),
+		DatabaseSchemaVersion: nilVersion,
 	}
 
 	initialized, err := b.driver.MigrationEverRan(ctx)
@@ -173,19 +175,24 @@ func (b *Manager) RollForward(ctx context.Context) error {
 // runMigrations passes migration queries to a database driver and manages
 // the version and dirty bit.  Cancelation or deadline/timeout is managed
 // through the passed in context.
-func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) error {
+func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) (err error) {
 	const op = "schema.(Manager).runMigrations"
 
 	if err := b.driver.StartRun(ctx); err != nil {
-		return err
+		return errors.Wrap(err, op)
 	}
 	if err := b.driver.EnsureVersionTable(ctx); err != nil {
-		return err
+		return errors.Wrap(err, op)
 	}
+
 	for qp.Next() {
 		select {
 		case <-ctx.Done():
-			return errors.Wrap(ctx.Err(), op)
+			err := ctx.Err()
+			if commitErr := b.driver.CommitRun(); commitErr != nil {
+				err = multierror.Append(err, commitErr)
+			}
+			return errors.Wrap(err, op)
 		default:
 			// context is not done yet. Continue on to the next query to execute.
 		}
@@ -194,7 +201,7 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 		}
 	}
 	if err := b.driver.CommitRun(); err != nil {
-		return err
+		return errors.Wrap(err, op)
 	}
 	return nil
 }

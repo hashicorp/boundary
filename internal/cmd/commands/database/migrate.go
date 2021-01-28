@@ -1,12 +1,14 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
@@ -201,50 +203,12 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	// This database is used to keep an exclusive lock on the database for the
-	// remainder of the command
-	dBase, err := sql.Open(dialect, migrationUrl)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error establishing db connection: %w", err).Error())
-		return 1
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl)
+	defer clean()
+	if errCode != 0 {
+		return errCode
 	}
-	if err := dBase.PingContext(c.Context); err != nil {
-		c.UI.Error(fmt.Sprintf("Unable to connect to the database at %q", migrationUrl))
-		return 1
-	}
-	man, err := schema.NewManager(c.Context, dialect, dBase)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error setting up schema manager: %w", err).Error())
-		return 1
-	}
-	// This is an advisory lock on the DB which is released when the DB session ends.
-	if err := man.ExclusiveLock(c.Context); err != nil {
-		c.UI.Error("Unable to capture a lock on the database.")
-		return 1
-	}
-	defer func() {
-		// We don't report anything since this should resolve itself anyways.
-		_ = man.ExclusiveUnlock(c.Context)
-	}()
-
-	st, err := man.CurrentState(c.Context)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error getting database state: %w", err).Error())
-		return 1
-	}
-	if st.Dirty {
-		c.UI.Error(base.WrapAtLength("Database is in a bad state.  Please revert back to the last known good state."))
-		return 1
-	}
-	if err := man.RollForward(c.Context); err != nil {
-		c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
-		return 1
-	}
-	if base.Format(c.UI) == "table" {
-		c.UI.Info("Migrations successfully run.")
-	}
-
-	return 0
+	return errCode
 }
 
 func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
@@ -288,4 +252,55 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 	}
 
 	return 0
+}
+
+func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string) (func(), int) {
+	noop := func() {}
+	// This database is used to keep an exclusive lock on the database for the
+	// remainder of the command
+	dBase, err := sql.Open(dialect, u)
+	if err != nil {
+		ui.Error(fmt.Errorf("Error establishing db connection: %w", err).Error())
+		return noop, 1
+	}
+	if err := dBase.PingContext(ctx); err != nil {
+		ui.Error(fmt.Sprintf("Unable to connect to the database at %q", u))
+		return noop, 1
+	}
+	man, err := schema.NewManager(ctx, dialect, dBase)
+	if err != nil {
+		if errors.Match(errors.T(errors.MigrationLock), err) {
+			ui.Error("Unable to capture a lock on the database.")
+		} else {
+			ui.Error(fmt.Errorf("Error setting up schema manager: %w", err).Error())
+		}
+		return noop, 1
+	}
+	// This is an advisory lock on the DB which is released when the DB session ends.
+	if err := man.ExclusiveLock(ctx); err != nil {
+		ui.Error("Unable to capture a lock on the database.")
+		return noop, 1
+	}
+	unlock := func() {
+		// We don't report anything since this should resolve itself anyways.
+		_ = man.ExclusiveUnlock(ctx)
+	}
+
+	st, err := man.CurrentState(ctx)
+	if err != nil {
+		ui.Error(fmt.Errorf("Error getting database state: %w", err).Error())
+		return unlock, 1
+	}
+	if st.Dirty {
+		ui.Error(base.WrapAtLength("Database is in a bad state.  Please revert back to the last known good state."))
+		return unlock, 1
+	}
+	if err := man.RollForward(ctx); err != nil {
+		ui.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
+		return unlock, 1
+	}
+	if base.Format(ui) == "table" {
+		ui.Info("Migrations successfully run.")
+	}
+	return unlock, 0
 }

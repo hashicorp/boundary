@@ -96,8 +96,10 @@ func isReady(ctx context.Context, c dktest.ContainerInfo) bool {
 	return true
 }
 
-func TestStuff(t *testing.T) {
-	docker.StartDbInDocker("postgres")
+func TestSetup(t *testing.T) {
+	_, s1, s2, err := docker.StartDbInDocker("postgres")
+	assert.NoError(t, err)
+	t.Log(s1, s2)
 }
 
 func TestDbStuff(t *testing.T) {
@@ -168,6 +170,10 @@ func TestMultiStatement(t *testing.T) {
 				t.Error(err)
 			}
 		}()
+		if err := d.EnsureVersionTable(ctx); err != nil {
+			t.Fatalf("expected err to be nil, got %v", err)
+		}
+
 		if err := d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text); CREATE TABLE bar (bar text);"), 2); err != nil {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
@@ -203,6 +209,7 @@ func TestTransaction(t *testing.T) {
 		}()
 
 		assert.NoError(t, d.StartRun(ctx))
+		assert.NoError(t, d.EnsureVersionTable(ctx))
 		assert.NoError(t, d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text);"), 2))
 		assert.NoError(t, d.Run(ctx, strings.NewReader("SELECT 1"), 3))
 		assert.NoError(t, d.CommitRun())
@@ -226,32 +233,25 @@ func TestWithSchema(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
 		ctx := context.Background()
 		ip, port, err := c.FirstPort()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		addr := pgConnectionString(ip, port)
 		d, err := open(t, ctx, addr)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer func() {
 			if err := d.close(t); err != nil {
 				t.Fatal(err)
 			}
 		}()
+		require.NoError(t, d.EnsureVersionTable(ctx))
 
 		// create foobar schema
-		if err := d.Run(ctx, strings.NewReader("CREATE SCHEMA foobar AUTHORIZATION postgres"), 1); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, d.Run(ctx, strings.NewReader("CREATE SCHEMA foobar AUTHORIZATION postgres"), 1))
 
 		// re-connect using that schema
 		d2, err := open(t, ctx, fmt.Sprintf("postgres://postgres:%s@%v:%v/postgres?sslmode=disable&search_path=foobar",
 			pgPassword, ip, port))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer func() {
 			if err := d2.close(t); err != nil {
 				t.Fatal(err)
@@ -259,30 +259,23 @@ func TestWithSchema(t *testing.T) {
 		}()
 
 		version, _, err := d2.CurrentState(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if version != nilVersion {
 			t.Fatal("expected NilVersion")
 		}
+		require.NoError(t, d2.EnsureVersionTable(ctx))
 
 		// now update CurrentState and compare
-		if err := d2.setVersion(ctx, 2, false); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, d2.setVersion(ctx, 2, false))
 		version, _, err = d2.CurrentState(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if version != 2 {
 			t.Fatal("expected Version 2")
 		}
 
 		// meanwhile, the public schema still has the other CurrentState
 		version, _, err = d.CurrentState(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if version != 1 {
 			t.Fatal("expected Version 2")
 		}
@@ -352,6 +345,32 @@ func TestEnsureTable_Fresh(t *testing.T) {
 		assert.NoError(t, p.EnsureVersionTable(ctx))
 		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableCreated))
 		assert.True(t, tableCreated)
+	})
+}
+
+func TestEnsureTable_ExistingTable(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		p, err := open(t, ctx, addr)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		t.Cleanup(func() {
+			require.NoError(t, p.close(t))
+		})
+		assert.NoError(t, p.EnsureVersionTable(ctx))
+
+		oldTableCreate := `CREATE TABLE IF NOT EXISTS schema_migrations (Version bigint primary key, dirty boolean not null)`
+		_, err = p.db.ExecContext(ctx, oldTableCreate)
+		assert.NoError(t, err)
+
+		assert.NoError(t, p.EnsureVersionTable(ctx))
 	})
 }
 

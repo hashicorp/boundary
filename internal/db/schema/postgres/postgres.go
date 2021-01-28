@@ -77,7 +77,6 @@ func New(ctx context.Context, instance *sql.DB) (*Postgres, error) {
 		conn: conn,
 		db:   instance,
 	}
-
 	return px, nil
 }
 
@@ -173,19 +172,21 @@ func (p *Postgres) CommitRun() error {
 	}
 	if err := p.tx.Commit(); err != nil {
 		if errRollback := p.tx.Rollback(); errRollback != nil {
-			return multierror.Append(err, errRollback)
+			err = multierror.Append(err, errRollback)
 		}
+		return errors.Wrap(err, op)
 	}
 	return nil
 }
 
 type execContexter interface {
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
 }
 
-// Executes the sql provided in the passed in io.Reader.  The contents of the reader must
+// Run executes the sql provided in the passed in io.Reader.  The contents of the reader must
 // fit in memory as the full content is read into a string before being passed to the
-// backing database.
+// backing database.  EnsureVersionTable should be ran prior to this call.
 func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int) error {
 	const op = "postgres.(Postgres).Run"
 	migr, err := ioutil.ReadAll(migration)
@@ -389,7 +390,7 @@ func (p *Postgres) drop(ctx context.Context) (err error) {
 // exist.
 func (p *Postgres) MigrationEverRan(ctx context.Context) (bool, error) {
 	const op = "postgres.(Postgres).MigrationEverRan"
-	query := `SELECT exists (SELECT 1 FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_name in ('schema_migrations', '` + defaultMigrationsTable + `'));`
+	query := `select exists (select 1 from information_schema.tables where table_schema=(select current_schema()) and table_name in ('schema_migrations', '` + defaultMigrationsTable + `'));`
 	ran := false
 	if err := p.conn.QueryRowContext(ctx, query).Scan(&ran); err != nil {
 		return false, errors.Wrap(err, op)
@@ -399,40 +400,44 @@ func (p *Postgres) MigrationEverRan(ctx context.Context) (bool, error) {
 
 // EnsureVersionTable checks if versions table exists and, if not, creates it.
 func (p *Postgres) EnsureVersionTable(ctx context.Context) (err error) {
-	const op = "postgres.(Postgres).ensureVersionTable"
+	const op = "postgres.(Postgres).EnsureVersionTable"
 
-	tx := p.tx
-	if tx == nil {
-		tx, err = p.conn.BeginTx(ctx, nil)
-		if err != nil {
-			return err
+	var extr execContexter = p.conn
+	rollback := func() error { return nil }
+	if p.tx != nil {
+		extr = p.tx
+		rollback = func() error {
+			defer func() { p.tx = nil }()
+			return p.tx.Rollback()
 		}
 	}
-	rollback := func() error {
-		defer func() { p.tx = nil }()
-		return tx.Rollback()
+
+	query := `select exists (select 1 from information_schema.tables where table_schema=(select current_schema()) and table_name = '` + defaultMigrationsTable + `');`
+	exists := false
+	if err := extr.QueryRowContext(ctx, query).Scan(&exists); err != nil {
+		if wpErr := rollback(); wpErr != nil {
+			err = multierror.Append(err, wpErr)
+		}
+		return errors.Wrap(err, op)
+	}
+	if exists {
+		return nil
 	}
 
-	updateQuery := `ALTER TABLE IF EXISTS schema_migrations RENAME TO ` + defaultMigrationsTable +`;`
-	if _, err = tx.ExecContext(ctx, updateQuery); err != nil {
+	updateQuery := `alter table if exists schema_migrations rename to ` + defaultMigrationsTable + `;`
+	if _, err = extr.ExecContext(ctx, updateQuery); err != nil {
 		if wpErr := rollback(); wpErr != nil {
-			return multierror.Append(err, wpErr)
+			err = multierror.Append(err, wpErr)
 		}
 		return errors.Wrap(err, op)
 	}
 
-	query := `CREATE TABLE IF NOT EXISTS ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` (Version bigint primary key, dirty boolean not null)`
-	if _, err = tx.ExecContext(ctx, query); err != nil {
+	createStmt := `create table if not exists ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` (Version bigint primary key, dirty boolean not null)`
+	if _, err = extr.ExecContext(ctx, createStmt); err != nil {
 		if wpErr := rollback(); wpErr != nil {
-			return multierror.Append(err, wpErr)
+			err = multierror.Append(err, wpErr)
 		}
 		return errors.Wrap(err, op)
-	}
-
-	if p.tx == nil {
-		if err := tx.Commit(); err != nil {
-			return errors.Wrap(err, op)
-		}
 	}
 
 	return nil

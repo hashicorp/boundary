@@ -62,6 +62,7 @@ func TestCurrentState(t *testing.T) {
 
 	testDriver, err := postgres.New(ctx, d)
 	require.NoError(t, err)
+	require.NoError(t, testDriver.EnsureVersionTable(ctx))
 	require.NoError(t, testDriver.Run(ctx, strings.NewReader("SELECT 1"), 2))
 
 	want = &State{

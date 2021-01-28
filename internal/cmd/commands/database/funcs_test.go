@@ -37,34 +37,34 @@ func TestMigrateDatabase(t *testing.T) {
 			expectedCode:   0,
 			expectedOutput: "Migrations successfully run.\n",
 		},
-		{
-			name:          "bad_url",
-			urlProvider:   func() string { return "badurl" },
-			expectedCode:  1,
-			expectedError: "Unable to connect to the database at \"badurl\"\n",
-		},
-		{
-			name: "cant_get_lock",
-			urlProvider: func() string {
-				c, u, _, err := db.StartDbInDocker(dialect)
-				require.NoError(t, err)
-				t.Cleanup(func() {
-					require.NoError(t, c())
-				})
-				dBase, err := sql.Open(dialect, u)
-				require.NoError(t, err)
-
-				man, err := schema.NewManager(ctx, dialect, dBase)
-				require.NoError(t, err)
-				// This is an advisory lock on the DB which is released when the DB session ends.
-				err = man.ExclusiveLock(ctx)
-				require.NoError(t, err)
-
-				return u
-			},
-			expectedCode:  1,
-			expectedError: "Unable to capture a lock on the database.\n",
-		},
+		// {
+		// 	name:          "bad_url",
+		// 	urlProvider:   func() string { return "badurl" },
+		// 	expectedCode:  1,
+		// 	expectedError: "Unable to connect to the database at \"badurl\"\n",
+		// },
+		// {
+		// 	name: "cant_get_lock",
+		// 	urlProvider: func() string {
+		// 		c, u, _, err := db.StartDbInDocker(dialect)
+		// 		require.NoError(t, err)
+		// 		t.Cleanup(func() {
+		// 			require.NoError(t, c())
+		// 		})
+		// 		dBase, err := sql.Open(dialect, u)
+		// 		require.NoError(t, err)
+		//
+		// 		man, err := schema.NewManager(ctx, dialect, dBase)
+		// 		require.NoError(t, err)
+		// 		// This is an advisory lock on the DB which is released when the DB session ends.
+		// 		err = man.ExclusiveLock(ctx)
+		// 		require.NoError(t, err)
+		//
+		// 		return u
+		// 	},
+		// 	expectedCode:  1,
+		// 	expectedError: "Unable to capture a lock on the database.\n",
+		// },
 	}
 
 	for _, tc := range cases {
