@@ -44,6 +44,7 @@ import (
 
 	"github.com/dhui/dktest"
 	"github.com/golang-migrate/migrate/v4/dktesting"
+	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -93,6 +94,12 @@ func isReady(ctx context.Context, c dktest.ContainerInfo) bool {
 	}
 
 	return true
+}
+
+func TestSetupStuff(t *testing.T) {
+	_, s1, s2, err := docker.StartDbInDocker("postgres")
+	require.NoError(t, err)
+	t.Error(s1, s2)
 }
 
 func TestDbStuff(t *testing.T) {
@@ -379,7 +386,7 @@ func TestEnsureTable_ExistingTable(t *testing.T) {
 		})
 		assert.NoError(t, p.EnsureVersionTable(ctx))
 
-		oldTableCreate := `CREATE TABLE IF NOT EXISTS schema_migrations (Version bigint primary key, dirty boolean not null)`
+		oldTableCreate := `CREATE TABLE IF NOT EXISTS schema_migrations (version bigint primary key, dirty boolean not null)`
 		_, err = p.db.ExecContext(ctx, oldTableCreate)
 		assert.NoError(t, err)
 
@@ -404,7 +411,7 @@ func TestEnsureTable_OldTable(t *testing.T) {
 			require.NoError(t, p.close(t))
 		})
 
-		oldTableCreate := `CREATE TABLE IF NOT EXISTS schema_migrations (Version bigint primary key, dirty boolean not null)`
+		oldTableCreate := `CREATE TABLE IF NOT EXISTS schema_migrations (version bigint primary key, dirty boolean not null)`
 		_, err = p.db.ExecContext(ctx, oldTableCreate)
 		assert.NoError(t, err)
 

@@ -84,7 +84,7 @@ func New(ctx context.Context, instance *sql.DB) (*Postgres, error) {
 // https://www.postgresql.org/docs/9.6/static/explicit-locking.html#ADVISORY-LOCKS
 func (p *Postgres) TrySharedLock(ctx context.Context) error {
 	const op = "postgres.(Postgres).TrySharedLock"
-	const query = "SELECT pg_try_advisory_lock_shared($1)"
+	const query = "select pg_try_advisory_lock_shared($1)"
 	r := p.conn.QueryRowContext(ctx, query, schemaAccessLockId)
 	if r.Err() != nil {
 		return errors.Wrap(r.Err(), op)
@@ -103,7 +103,7 @@ func (p *Postgres) TrySharedLock(ctx context.Context) error {
 // https://www.postgresql.org/docs/9.6/static/explicit-locking.html#ADVISORY-LOCKS
 func (p *Postgres) TryLock(ctx context.Context) error {
 	const op = "postgres.(Postgres).TryLock"
-	const query = "SELECT pg_try_advisory_lock($1)"
+	const query = "select pg_try_advisory_lock($1)"
 	r := p.conn.QueryRowContext(ctx, query, schemaAccessLockId)
 	if r.Err() != nil {
 		return errors.Wrap(r.Err(), op)
@@ -122,7 +122,7 @@ func (p *Postgres) TryLock(ctx context.Context) error {
 // if we were unable to get the lock before the context cancels.
 func (p *Postgres) Lock(ctx context.Context) error {
 	const op = "postgres.(Postgres).Lock"
-	const query = "SELECT pg_advisory_lock($1)"
+	const query = "select pg_advisory_lock($1)"
 	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -133,7 +133,7 @@ func (p *Postgres) Lock(ctx context.Context) error {
 // release the lock before the context cancels.
 func (p *Postgres) Unlock(ctx context.Context) error {
 	const op = "postgres.(Postgres).Unlock"
-	const query = `SELECT pg_advisory_unlock($1)`
+	const query = `select pg_advisory_unlock($1)`
 	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -144,7 +144,7 @@ func (p *Postgres) Unlock(ctx context.Context) error {
 // release the lock before the context cancels.
 func (p *Postgres) UnlockShared(ctx context.Context) error {
 	const op = "postgres.(Postgres).UnlockShared"
-	query := `SELECT pg_advisory_unlock_shared($1)`
+	query := `select pg_advisory_unlock_shared($1)`
 	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -290,7 +290,7 @@ func (p *Postgres) setVersion(ctx context.Context, version int, dirty bool) erro
 		return tx.Rollback()
 	}
 
-	query := `TRUNCATE ` + pq.QuoteIdentifier(defaultMigrationsTable)
+	query := `truncate ` + pq.QuoteIdentifier(defaultMigrationsTable)
 	if _, err := tx.ExecContext(ctx, query); err != nil {
 		if errRollback := rollback(); errRollback != nil {
 			err = multierror.Append(err, errRollback)
@@ -302,8 +302,8 @@ func (p *Postgres) setVersion(ctx context.Context, version int, dirty bool) erro
 	// empty schema Version for failed down migration on the first migration
 	// See: https://github.com/golang-migrate/migrate/issues/330
 	if version >= 0 || (version == nilVersion && dirty) {
-		query = `INSERT INTO ` + pq.QuoteIdentifier(defaultMigrationsTable) +
-			` (Version, dirty) VALUES ($1, $2)`
+		query = `insert into ` + pq.QuoteIdentifier(defaultMigrationsTable) +
+			` (version, dirty) values ($1, $2)`
 		if _, err := tx.ExecContext(ctx, query, version, dirty); err != nil {
 			if errRollback := rollback(); errRollback != nil {
 				err = multierror.Append(err, errRollback)
@@ -335,7 +335,7 @@ func (p *Postgres) CurrentState(ctx context.Context) (version int, previouslyRan
 		return nilVersion, false, false, errors.Wrap(err, op)
 	}
 
-	query := `SELECT Version, dirty FROM ` + pq.QuoteIdentifier(tableName) + ` LIMIT 1`
+	query := `select version, dirty from ` + pq.QuoteIdentifier(tableName) + ` limit 1`
 	err = p.conn.QueryRowContext(ctx, query).Scan(&version, &dirty)
 	switch {
 	case err == sql.ErrNoRows:
@@ -357,7 +357,7 @@ func (p *Postgres) CurrentState(ctx context.Context) (version int, previouslyRan
 func (p *Postgres) drop(ctx context.Context) (err error) {
 	const op = "postgres.(Postgres).drop"
 	// select all tables in current schema
-	query := `SELECT table_name FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_type='BASE TABLE'`
+	query := `select table_name from information_schema.tables where table_schema=(select current_schema()) and table_type='BASE TABLE'`
 	tables, err := p.conn.QueryContext(ctx, query)
 	if err != nil {
 		return errors.Wrap(err, op)
@@ -387,7 +387,7 @@ func (p *Postgres) drop(ctx context.Context) (err error) {
 	if len(tableNames) > 0 {
 		// delete one by one ...
 		for _, t := range tableNames {
-			query = `DROP TABLE IF EXISTS ` + pq.QuoteIdentifier(t) + ` CASCADE`
+			query = `drop table if exists ` + pq.QuoteIdentifier(t) + ` cascade`
 			if _, err := p.conn.ExecContext(ctx, query); err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -431,7 +431,7 @@ func (p *Postgres) EnsureVersionTable(ctx context.Context) (err error) {
 		return errors.Wrap(err, op)
 	}
 
-	createStmt := `create table if not exists ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` (Version bigint primary key, dirty boolean not null)`
+	createStmt := `create table if not exists ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` (version bigint primary key, dirty boolean not null)`
 	if _, err = extr.ExecContext(ctx, createStmt); err != nil {
 		if wpErr := rollback(); wpErr != nil {
 			err = multierror.Append(err, wpErr)

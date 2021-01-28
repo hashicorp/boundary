@@ -63,7 +63,7 @@ func TestCurrentState(t *testing.T) {
 	testDriver, err := postgres.New(ctx, d)
 	require.NoError(t, err)
 	require.NoError(t, testDriver.EnsureVersionTable(ctx))
-	require.NoError(t, testDriver.Run(ctx, strings.NewReader("SELECT 1"), 2))
+	require.NoError(t, testDriver.Run(ctx, strings.NewReader("select 1"), 2))
 
 	want = &State{
 		InitializationStarted: true,
@@ -94,7 +94,7 @@ func TestRollForward(t *testing.T) {
 	_, err = postgres.New(ctx, d)
 	require.NoError(t, err)
 	// TODO: Extract out a way to mock the db to test failing rollforwards.
-	_, err = d.ExecContext(ctx, "TRUNCATE boundary_schema_version; INSERT INTO boundary_schema_version (Version, dirty) VALUES (2, true)")
+	_, err = d.ExecContext(ctx, "TRUNCATE boundary_schema_version; INSERT INTO boundary_schema_version (version, dirty) VALUES (2, true)")
 	assert.Error(t, m.RollForward(ctx))
 }
 

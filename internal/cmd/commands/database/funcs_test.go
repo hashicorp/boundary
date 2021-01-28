@@ -48,7 +48,7 @@ func TestMigrateDatabase(t *testing.T) {
 				dBase, err := sql.Open(dialect, u)
 				require.NoError(t, err)
 
-				createStmt := `create table if not exists schema_migrations (Version bigint primary key, dirty boolean not null)`
+				createStmt := `create table if not exists schema_migrations (version bigint primary key, dirty boolean not null)`
 				_, err = dBase.Exec(createStmt)
 				require.NoError(t, err)
 				return u
@@ -162,7 +162,7 @@ func TestInitDatabase(t *testing.T) {
 				dBase, err := sql.Open(dialect, u)
 				require.NoError(t, err)
 
-				createStmt := `create table if not exists schema_migrations (Version bigint primary key, dirty boolean not null)`
+				createStmt := `create table if not exists schema_migrations (version bigint primary key, dirty boolean not null)`
 				_, err = dBase.Exec(createStmt)
 				require.NoError(t, err)
 				return u
