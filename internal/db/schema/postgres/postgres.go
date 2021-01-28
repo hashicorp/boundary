@@ -320,26 +320,37 @@ func (p *Postgres) setVersion(ctx context.Context, version int, dirty bool) erro
 	return nil
 }
 
-// CurrentState returns the version, if the database is currently in a dirty state, and any error.
-// A version value of -1 indicates no version is set.
-func (p *Postgres) CurrentState(ctx context.Context) (version int, dirty bool, err error) {
+// CurrentState returns the version, if the database was ever initialized
+// previously, if it is currently in a dirty state, and any error. A version
+// value of -1 indicates no version is set.
+func (p *Postgres) CurrentState(ctx context.Context) (version int, previouslyRan, dirty bool, err error) {
 	const op = "postgres.(Postgres).CurrentState"
-	query := `SELECT Version, dirty FROM ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` LIMIT 1`
+
+	tableQuery := `select table_name from information_schema.tables where table_schema=(select current_schema()) and table_name in ('schema_migrations', '` + defaultMigrationsTable + `')`
+	tableName := defaultMigrationsTable
+	if err = p.conn.QueryRowContext(ctx, tableQuery).Scan(&tableName); err != nil {
+		if err == sql.ErrNoRows {
+			return nilVersion, false, false, nil
+		}
+		return nilVersion, false, false, errors.Wrap(err, op)
+	}
+
+	query := `SELECT Version, dirty FROM ` + pq.QuoteIdentifier(tableName) + ` LIMIT 1`
 	err = p.conn.QueryRowContext(ctx, query).Scan(&version, &dirty)
 	switch {
 	case err == sql.ErrNoRows:
-		return nilVersion, false, nil
+		return nilVersion, true, false, nil
 
 	case err != nil:
 		if e, ok := err.(*pq.Error); ok {
 			if e.Code.Name() == "undefined_table" {
-				return nilVersion, false, nil
+				return nilVersion, true, false, nil
 			}
 		}
-		return 0, false, errors.Wrap(err, op)
+		return 0, true, false, errors.Wrap(err, op)
 
 	default:
-		return version, dirty, nil
+		return version, true, dirty, nil
 	}
 }
 
@@ -384,18 +395,6 @@ func (p *Postgres) drop(ctx context.Context) (err error) {
 	}
 
 	return nil
-}
-
-// MigrationEverRan indicates if any migration has ever ran, which means any version of the tables
-// exist.
-func (p *Postgres) MigrationEverRan(ctx context.Context) (bool, error) {
-	const op = "postgres.(Postgres).MigrationEverRan"
-	query := `select exists (select 1 from information_schema.tables where table_schema=(select current_schema()) and table_name in ('schema_migrations', '` + defaultMigrationsTable + `'));`
-	ran := false
-	if err := p.conn.QueryRowContext(ctx, query).Scan(&ran); err != nil {
-		return false, errors.Wrap(err, op)
-	}
-	return ran, nil
 }
 
 // EnsureVersionTable checks if versions table exists and, if not, creates it.

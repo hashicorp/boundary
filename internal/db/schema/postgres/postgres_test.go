@@ -117,7 +117,7 @@ func TestDbStuff(t *testing.T) {
 	})
 }
 
-func TestVersion_NoVersionTable(t *testing.T) {
+func TestCurrentState_NoVersionTable(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
 		ctx := context.Background()
 		ip, port, err := c.FirstPort()
@@ -138,8 +138,9 @@ func TestVersion_NoVersionTable(t *testing.T) {
 		// Drop the version table so calls to CurrentState don't rely on that
 		d.drop(ctx)
 
-		v, dirt, err := d.CurrentState(ctx)
+		v, alreadyRan, dirt, err := d.CurrentState(ctx)
 		assert.NoError(t, err)
+		assert.False(t, alreadyRan)
 		assert.Equal(t, v, nilVersion)
 		assert.False(t, dirt)
 	})
@@ -201,13 +202,33 @@ func TestTransaction(t *testing.T) {
 			}
 		}()
 
+		v, alreadyRan, dirty, err := d.CurrentState(ctx)
+		assert.NoError(t, err)
+		assert.False(t, alreadyRan)
+		assert.False(t, dirty)
+		assert.Equal(t, -1, v)
+
+		// Fail the initial setup of the db.
+		assert.NoError(t, d.StartRun(ctx))
+		assert.NoError(t, d.EnsureVersionTable(ctx))
+		assert.Error(t, d.Run(ctx, strings.NewReader("SELECT 1 from nonExistantTable"), 3))
+		assert.Error(t, d.CommitRun())
+
+		v, alreadyRan, dirty, err = d.CurrentState(ctx)
+		assert.NoError(t, err)
+		assert.False(t, alreadyRan)
+		assert.False(t, dirty)
+		assert.Equal(t, -1, v)
+
 		assert.NoError(t, d.StartRun(ctx))
 		assert.NoError(t, d.EnsureVersionTable(ctx))
 		assert.NoError(t, d.Run(ctx, strings.NewReader("CREATE TABLE foo (foo text);"), 2))
 		assert.NoError(t, d.Run(ctx, strings.NewReader("SELECT 1"), 3))
 		assert.NoError(t, d.CommitRun())
-		v, dirty, err := d.CurrentState(ctx)
+
+		v, alreadyRan, dirty, err = d.CurrentState(ctx)
 		assert.NoError(t, err)
+		assert.True(t, alreadyRan)
 		assert.False(t, dirty)
 		assert.Equal(t, 3, v)
 
@@ -215,8 +236,10 @@ func TestTransaction(t *testing.T) {
 		assert.NoError(t, d.Run(ctx, strings.NewReader("CREATE TABLE bar (bar text);"), 20))
 		assert.Error(t, d.Run(ctx, strings.NewReader("SELECT 1 FROM NonExistingTable"), 30))
 		assert.Error(t, d.CommitRun())
-		v, dirty, err = d.CurrentState(ctx)
+
+		v, alreadyRan, dirty, err = d.CurrentState(ctx)
 		assert.NoError(t, err)
+		assert.True(t, alreadyRan)
 		assert.False(t, dirty)
 		assert.Equal(t, 3, v)
 	})
@@ -251,27 +274,24 @@ func TestWithSchema(t *testing.T) {
 			}
 		}()
 
-		version, _, err := d2.CurrentState(ctx)
+		version, alreadyRan, _, err := d2.CurrentState(ctx)
 		require.NoError(t, err)
-		if version != nilVersion {
-			t.Fatal("expected NilVersion")
-		}
+		require.Equal(t, nilVersion, version)
 		require.NoError(t, d2.EnsureVersionTable(ctx))
+		assert.True(t, alreadyRan)
 
 		// now update CurrentState and compare
 		require.NoError(t, d2.setVersion(ctx, 2, false))
-		version, _, err = d2.CurrentState(ctx)
+		version, alreadyRan, _, err = d2.CurrentState(ctx)
 		require.NoError(t, err)
-		if version != 2 {
-			t.Fatal("expected Version 2")
-		}
+		require.Equal(t, 2, version)
+		assert.True(t, alreadyRan)
 
 		// meanwhile, the public schema still has the other CurrentState
-		version, _, err = d.CurrentState(ctx)
+		version, alreadyRan, _, err = d.CurrentState(ctx)
 		require.NoError(t, err)
-		if version != 1 {
-			t.Fatal("expected Version 2")
-		}
+		require.Equal(t, 1, version)
+		assert.True(t, alreadyRan)
 	})
 }
 
@@ -403,43 +423,6 @@ func TestEnsureTable_OldTable(t *testing.T) {
 		assert.False(t, tableExists)
 		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableExists))
 		assert.True(t, tableExists)
-	})
-}
-
-func TestPostgres_MigrationEverRan(t *testing.T) {
-	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
-		ctx := context.Background()
-		ip, port, err := c.FirstPort()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		addr := pgConnectionString(ip, port)
-		p, err := open(t, ctx, addr)
-		if err != nil {
-			require.NoError(t, err)
-		}
-		t.Cleanup(func() {
-			require.NoError(t, p.close(t))
-		})
-
-		ran, err := p.MigrationEverRan(ctx)
-		assert.NoError(t, err)
-		assert.False(t, ran)
-
-		oldTableCreate := `CREATE TABLE IF NOT EXISTS schema_migrations (Version bigint primary key, dirty boolean not null)`
-		_, err = p.db.ExecContext(ctx, oldTableCreate)
-		assert.NoError(t, err)
-
-		ran, err = p.MigrationEverRan(ctx)
-		assert.NoError(t, err)
-		assert.True(t, ran)
-
-		assert.NoError(t, p.EnsureVersionTable(ctx))
-
-		ran, err = p.MigrationEverRan(ctx)
-		assert.NoError(t, err)
-		assert.True(t, ran)
 	})
 }
 

@@ -30,8 +30,7 @@ type driver interface {
 	// executing Run.
 	Run(context.Context, io.Reader, int) error
 	// A version of -1 indicates no version is set.
-	CurrentState(context.Context) (int, bool, error)
-	MigrationEverRan(ctx context.Context) (bool, error)
+	CurrentState(context.Context) (ver int, everRan bool, dirty bool, err error)
 	EnsureVersionTable(ctx context.Context) error
 }
 
@@ -79,22 +78,13 @@ func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 	const op = "schema.(Manager).CurrentState"
 	dbS := State{
 		BinarySchemaVersion:   BinarySchemaVersion(b.dialect),
-		DatabaseSchemaVersion: nilVersion,
 	}
 
-	initialized, err := b.driver.MigrationEverRan(ctx)
+	v, initialized, dirty, err := b.driver.CurrentState(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 	dbS.InitializationStarted = initialized
-	if !initialized {
-		return &dbS, nil
-	}
-
-	v, dirty, err := b.driver.CurrentState(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
 	dbS.DatabaseSchemaVersion = v
 	dbS.Dirty = dirty
 	return &dbS, nil
@@ -157,11 +147,7 @@ func (b *Manager) RollForward(ctx context.Context) error {
 		b.driver.Unlock(ctx)
 	}()
 
-	if err := b.driver.EnsureVersionTable(ctx); err != nil {
-		return errors.Wrap(err, op)
-	}
-
-	curVersion, dirty, err := b.driver.CurrentState(ctx)
+	curVersion, _, dirty, err := b.driver.CurrentState(ctx)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -183,6 +169,9 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) (err
 	const op = "schema.(Manager).runMigrations"
 
 	if err := b.driver.StartRun(ctx); err != nil {
+		return errors.Wrap(err, op)
+	}
+	if err := b.driver.EnsureVersionTable(ctx); err != nil {
 		return errors.Wrap(err, op)
 	}
 	for qp.Next() {

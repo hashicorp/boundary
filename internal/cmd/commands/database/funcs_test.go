@@ -37,34 +37,53 @@ func TestMigrateDatabase(t *testing.T) {
 			expectedCode:   0,
 			expectedOutput: "Migrations successfully run.\n",
 		},
-		// {
-		// 	name:          "bad_url",
-		// 	urlProvider:   func() string { return "badurl" },
-		// 	expectedCode:  1,
-		// 	expectedError: "Unable to connect to the database at \"badurl\"\n",
-		// },
-		// {
-		// 	name: "cant_get_lock",
-		// 	urlProvider: func() string {
-		// 		c, u, _, err := db.StartDbInDocker(dialect)
-		// 		require.NoError(t, err)
-		// 		t.Cleanup(func() {
-		// 			require.NoError(t, c())
-		// 		})
-		// 		dBase, err := sql.Open(dialect, u)
-		// 		require.NoError(t, err)
-		//
-		// 		man, err := schema.NewManager(ctx, dialect, dBase)
-		// 		require.NoError(t, err)
-		// 		// This is an advisory lock on the DB which is released when the DB session ends.
-		// 		err = man.ExclusiveLock(ctx)
-		// 		require.NoError(t, err)
-		//
-		// 		return u
-		// 	},
-		// 	expectedCode:  1,
-		// 	expectedError: "Unable to capture a lock on the database.\n",
-		// },
+		{
+			name: "old_version_table_used",
+			urlProvider: func() string {
+				c, u, _, err := db.StartDbInDocker(dialect)
+				require.NoError(t, err)
+				t.Cleanup(func() {
+					require.NoError(t, c())
+				})
+				dBase, err := sql.Open(dialect, u)
+				require.NoError(t, err)
+
+				createStmt := `create table if not exists schema_migrations (Version bigint primary key, dirty boolean not null)`
+				_, err = dBase.Exec(createStmt)
+				require.NoError(t, err)
+				return u
+			},
+			expectedCode:  0,
+			expectedOutput: "Migrations successfully run.\n",
+		},
+		{
+			name:          "bad_url",
+			urlProvider:   func() string { return "badurl" },
+			expectedCode:  1,
+			expectedError: "Unable to connect to the database at \"badurl\"\n",
+		},
+		{
+			name: "cant_get_lock",
+			urlProvider: func() string {
+				c, u, _, err := db.StartDbInDocker(dialect)
+				require.NoError(t, err)
+				t.Cleanup(func() {
+					require.NoError(t, c())
+				})
+				dBase, err := sql.Open(dialect, u)
+				require.NoError(t, err)
+
+				man, err := schema.NewManager(ctx, dialect, dBase)
+				require.NoError(t, err)
+				// This is an advisory lock on the DB which is released when the DB session ends.
+				err = man.ExclusiveLock(ctx)
+				require.NoError(t, err)
+
+				return u
+			},
+			expectedCode:  1,
+			expectedError: "Unable to capture a lock on the database.\n",
+		},
 	}
 
 	for _, tc := range cases {
@@ -72,6 +91,92 @@ func TestMigrateDatabase(t *testing.T) {
 			u := tc.urlProvider()
 			ui := cli.NewMockUi()
 			clean, errCode := migrateDatabase(ctx, ui, dialect, u)
+			clean()
+			assert.EqualValues(t, tc.expectedCode, errCode)
+			assert.Equal(t, tc.expectedOutput, ui.OutputWriter.String())
+			assert.Equal(t, tc.expectedError, ui.ErrorWriter.String())
+		})
+	}
+}
+
+func TestInitDatabase(t *testing.T) {
+	ctx := context.Background()
+	dialect := "postgres"
+
+	cases := []struct {
+		name           string
+		urlProvider    func() string
+		expectedCode   int
+		expectedOutput string
+		expectedError  string
+	}{
+		{
+			name: "basic",
+			urlProvider: func() string {
+				c, u, _, err := db.StartDbInDocker(dialect)
+				require.NoError(t, err)
+				t.Cleanup(func() {
+					require.NoError(t, c())
+				})
+				return u
+			},
+			expectedCode:   0,
+			expectedOutput: "Migrations successfully run.\n",
+		},
+		{
+			name:          "bad_url",
+			urlProvider:   func() string { return "badurl" },
+			expectedCode:  1,
+			expectedError: "Unable to connect to the database at \"badurl\"\n",
+		},
+		{
+			name: "cant_get_lock",
+			urlProvider: func() string {
+				c, u, _, err := db.StartDbInDocker(dialect)
+				require.NoError(t, err)
+				t.Cleanup(func() {
+					require.NoError(t, c())
+				})
+				dBase, err := sql.Open(dialect, u)
+				require.NoError(t, err)
+
+				man, err := schema.NewManager(ctx, dialect, dBase)
+				require.NoError(t, err)
+				// This is an advisory lock on the DB which is released when the DB session ends.
+				err = man.ExclusiveLock(ctx)
+				require.NoError(t, err)
+
+				return u
+			},
+			expectedCode:  1,
+			expectedError: "Unable to capture a lock on the database.\n",
+		},
+		{
+			name: "old_version_table_used",
+			urlProvider: func() string {
+				c, u, _, err := db.StartDbInDocker(dialect)
+				require.NoError(t, err)
+				t.Cleanup(func() {
+					require.NoError(t, c())
+				})
+				dBase, err := sql.Open(dialect, u)
+				require.NoError(t, err)
+
+				createStmt := `create table if not exists schema_migrations (Version bigint primary key, dirty boolean not null)`
+				_, err = dBase.Exec(createStmt)
+				require.NoError(t, err)
+				return u
+			},
+			expectedCode:  1,
+			expectedError: "Database has already been initialized.  Please use 'boundary database\nmigrate'.\n",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			u := tc.urlProvider()
+			ui := cli.NewMockUi()
+			clean, errCode := initDatabase(ctx, ui, dialect, u)
 			clean()
 			assert.EqualValues(t, tc.expectedCode, errCode)
 			assert.Equal(t, tc.expectedOutput, ui.OutputWriter.String())
