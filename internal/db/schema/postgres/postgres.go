@@ -151,6 +151,20 @@ func (p *Postgres) UnlockShared(ctx context.Context) error {
 	return nil
 }
 
+func (p *Postgres) Rollback() error {
+	const op = "postgres.(Postgres).Rollback"
+	defer func() {
+		p.tx = nil
+	}()
+	if p.tx == nil {
+		return errors.New(errors.MigrationIntegrity, op, "no pending transaction")
+	}
+	if err := p.tx.Rollback(); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
+}
+
 // StartRun starts a transaction that all subsequent calls to Run will use.
 func (p *Postgres) StartRun(ctx context.Context) error {
 	tx, err := p.conn.BeginTx(ctx, nil)

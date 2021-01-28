@@ -136,6 +136,26 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 	assert.False(t, state.Dirty)
 }
 
+func TestRunMigration_canceledContext(t *testing.T) {
+	dialect := "postgres"
+	c, u, _, err := docker.StartDbInDocker(dialect)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, c())
+	})
+	d, err := sql.Open(dialect, u)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	m, err := NewManager(ctx, dialect, d)
+	require.NoError(t, err)
+
+	// TODO: Find a way to test different parts of the runMigrations loop.
+	ctx, cancel := context.WithCancel(ctx)
+	cancel()
+	assert.Error(t, m.runMigrations(ctx, newStatementProvider(dialect, 0)))
+}
+
 func TestRollForward_BadSQL(t *testing.T) {
 	dialect := "postgres"
 	oState := migrationStates[dialect]

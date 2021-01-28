@@ -426,6 +426,37 @@ func TestEnsureTable_OldTable(t *testing.T) {
 	})
 }
 
+func TestRollback(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		p, err := open(t, ctx, addr)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		t.Cleanup(func() {
+			require.NoError(t, p.close(t))
+		})
+
+		assert.NoError(t, p.StartRun(ctx))
+		assert.NoError(t, p.EnsureVersionTable(ctx))
+		assert.NoError(t, p.Run(ctx, bytes.NewReader([]byte("create table if not exists foo (foo text)")), 2))
+		var exists bool
+		query := "select exists (select 1 from information_schema.tables where table_name = 'foo' and table_schema = (select current_schema()))"
+		assert.NoError(t, p.conn.QueryRowContext(context.Background(), query).Scan(&exists))
+		assert.True(t, exists)
+		assert.NoError(t, p.Rollback())
+
+		assert.NoError(t, p.conn.QueryRowContext(context.Background(), query).Scan(&exists))
+		assert.False(t, exists)
+	})
+}
+
 func TestRun_Error(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
 		ctx := context.Background()

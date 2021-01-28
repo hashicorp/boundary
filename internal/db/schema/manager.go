@@ -162,6 +162,10 @@ func (b *Manager) RollForward(ctx context.Context) error {
 	return nil
 }
 
+type rollbacker interface {
+	Rollback() error
+}
+
 // runMigrations passes migration queries to a database driver and manages
 // the version and dirty bit.  Cancelation or deadline/timeout is managed
 // through the passed in context.
@@ -178,8 +182,10 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 		select {
 		case <-ctx.Done():
 			err := ctx.Err()
-			if commitErr := b.driver.CommitRun(); commitErr != nil {
-				err = multierror.Append(err, commitErr)
+			if d, ok := b.driver.(rollbacker); ok {
+				if rbErr := d.Rollback(); rbErr != nil {
+					err = multierror.Append(err, rbErr)
+				}
 			}
 			return errors.Wrap(err, op)
 		default:
