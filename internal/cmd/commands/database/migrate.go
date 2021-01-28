@@ -208,7 +208,8 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 	if errCode != 0 {
 		return errCode
 	}
-	return errCode
+
+	return 0
 }
 
 func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
@@ -254,6 +255,10 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 	return 0
 }
 
+// migrateDatabase updates the schema to the most recent version known by the binary.
+// It owns the reporting to the UI any errors.
+// Returns a cleanup function which must be called even if an error is returned and
+// an error code where a non-zero value indicates an error happened.
 func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string) (func(), int) {
 	noop := func() {}
 	// This database is used to keep an exclusive lock on the database for the

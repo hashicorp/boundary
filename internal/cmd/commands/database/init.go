@@ -493,6 +493,13 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 	return 0
 }
 
+// initDatabase initializes the schema to the binary's currently suppoorted version.
+// If init previously ran and left any indication that it ran an error is returned.
+// This might be the case for early versions of boundary where the migrations
+// weren't completely executed in a transaction and a version table might have
+// been left despite a rollback.
+// Returns a cleanup function which must be called even if an error is returned and
+// an error code where a non-zero value indicates an error happened.
 func initDatabase(ctx context.Context, ui cli.Ui, dialect, u string) (func(), int) {
 	noop := func() {}
 	// This database is used to keep an exclusive lock on the database for the

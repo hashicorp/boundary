@@ -6,11 +6,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
-// migrateDatabase updates the schema to the most recent version known by the binary.
-// It owns the reporting to the UI any errors.
-// Returns a cleanup function which must be called even if an error is returned and
-// an error code where a non-zero value indicates an error happened.
-
 
 type RoleInfo struct {
 	RoleId string `json:"scope_id"`
