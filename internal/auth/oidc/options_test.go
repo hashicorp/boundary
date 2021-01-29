@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"crypto/x509"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,6 +40,32 @@ func Test_GetOpts(t *testing.T) {
 		opts = getOpts(WithLimit(1))
 		testOpts = getDefaultOptions()
 		testOpts.withLimit = 1
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithCallbackUrls", func(t *testing.T) {
+		assert := assert.New(t)
+		u := TestConvertToUrls(t, "https://alice.com?callback", "http://localhost:8080?callback")
+		opts := getOpts(WithCallbackUrls(u...))
+		testOpts := getDefaultOptions()
+		testOpts.withCallbackUrls = u
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithCertificates", func(t *testing.T) {
+		assert := assert.New(t)
+		testCert, _ := testGenerateCA(t, []string{"localhost"})
+		testCert2, _ := testGenerateCA(t, []string{"127.0.0.1"})
+
+		opts := getOpts(WithCertificates(testCert, testCert2))
+		testOpts := getDefaultOptions()
+		testOpts.withCertificates = []*x509.Certificate{testCert, testCert2}
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithAudClaims", func(t *testing.T) {
+		assert := assert.New(t)
+		aud := []string{"alice.com", "eve.com", "bob.com"}
+		opts := getOpts(WithAudClaims(aud...))
+		testOpts := getDefaultOptions()
+		testOpts.withAudClaims = aud
 		assert.Equal(opts, testOpts)
 	})
 }

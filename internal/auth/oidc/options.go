@@ -1,5 +1,10 @@
 package oidc
 
+import (
+	"crypto/x509"
+	"net/url"
+)
+
 // getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -14,9 +19,12 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName        string
-	withDescription string
-	withLimit       int
+	withName         string
+	withDescription  string
+	withLimit        int
+	withCallbackUrls []*url.URL
+	withCertificates []*x509.Certificate
+	withAudClaims    []string
 }
 
 func getDefaultOptions() options {
@@ -43,5 +51,26 @@ func WithName(name string) Option {
 func WithLimit(l int) Option {
 	return func(o *options) {
 		o.withLimit = l
+	}
+}
+
+// WithCallbackUrls provides optional callback URLs.
+func WithCallbackUrls(urls ...*url.URL) Option {
+	return func(o *options) {
+		o.withCallbackUrls = urls
+	}
+}
+
+// WithCertificates provides optional certificates.
+func WithCertificates(certs ...*x509.Certificate) Option {
+	return func(o *options) {
+		o.withCertificates = certs
+	}
+}
+
+// WithAudClaims provides optional audience claims
+func WithAudClaims(aud ...string) Option {
+	return func(o *options) {
+		o.withAudClaims = aud
 	}
 }
