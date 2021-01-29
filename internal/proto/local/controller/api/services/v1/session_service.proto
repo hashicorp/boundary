@@ -31,9 +31,6 @@ service SessionService {
 	rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
 		option (google.api.http) = {
 			get: "/v1/sessions"
-			additional_bindings {
-				get: "/v1/sessions:list"
-			}
     };
 		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
 			summary: "Lists all Sessions."
@@ -41,6 +38,9 @@ service SessionService {
 	}
 
 	// ListSelfSessions returns a list of stored Sessions for the requester.
+	// The request must include the scope ID for the Sessions being retrieved.
+	// If the scope ID is missing, malformed, or reference a non existing scope,
+	// an error is returned.
 	rpc ListSelfSessions(ListSelfSessionsRequest) returns (ListSelfSessionsResponse) {
 		option (google.api.http) = {
 			get: "/v1/sessions:list:self"

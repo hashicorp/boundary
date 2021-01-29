@@ -389,29 +389,29 @@ func TestListSelf(t *testing.T) {
 	}}
 
 	cases := []struct {
-		name string
+		name   string
 		userId string
-		req  *pbs.ListSelfSessionsRequest
-		res  *pbs.ListSelfSessionsResponse
-		err  error
+		req    *pbs.ListSelfSessionsRequest
+		res    *pbs.ListSelfSessionsResponse
+		err    error
 	}{
 		{
-			name: "List Many Sessions",
+			name:   "List Many Sessions",
 			userId: at1.GetIamUserId(),
-			req:  &pbs.ListSelfSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
-			res:  &pbs.ListSelfSessionsResponse{Items: wantSession},
+			req:    &pbs.ListSelfSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
+			res:    &pbs.ListSelfSessionsResponse{Items: wantSession},
 		},
 		{
-			name: "List 1 Session",
+			name:   "List 1 Session",
 			userId: at2.GetIamUserId(),
-			req:  &pbs.ListSelfSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
-			res:  &pbs.ListSelfSessionsResponse{Items: wantSession2},
+			req:    &pbs.ListSelfSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
+			res:    &pbs.ListSelfSessionsResponse{Items: wantSession2},
 		},
 		{
-			name: "List No Sessions",
+			name:   "List No Sessions",
 			userId: at1.GetIamUserId(),
-			req:  &pbs.ListSelfSessionsRequest{ScopeId: pNoSessions.GetPublicId()},
-			res:  &pbs.ListSelfSessionsResponse{},
+			req:    &pbs.ListSelfSessionsRequest{ScopeId: pNoSessions.GetPublicId()},
+			res:    &pbs.ListSelfSessionsResponse{},
 		},
 	}
 	for _, tc := range cases {

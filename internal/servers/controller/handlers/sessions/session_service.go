@@ -32,6 +32,7 @@ var (
 	// this collection
 	CollectionActions = action.ActionSet{
 		action.List,
+		action.ListSelf,
 	}
 )
 
@@ -117,11 +118,11 @@ func (s Service) listSessions(ctx context.Context, a action.Type, scopeId string
 	}
 	finalItems := make([]*pb.Session, 0, len(seslist))
 	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
 		Type:    resource.Session,
 	}
 	for _, item := range seslist {
 		item.Scope = scopeInfoMap[item.GetScopeId()]
+		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
@@ -200,7 +201,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	var parentId string
 	opts := []auth.Option{auth.WithType(resource.Session), auth.WithAction(a)}
 	switch a {
-	case action.List:
+	case action.List, action.ListSelf:
 		parentId = id
 		iamRepo, err := s.iamRepoFn()
 		if err != nil {
@@ -216,8 +217,6 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			res.Error = handlers.NotFoundError()
 			return res
 		}
-	case action.ListSelf:
-		// TODO: DO NOT SUBMIT until this is populated
 	case action.Read, action.Cancel:
 		repo, err := s.repoFn()
 		if err != nil {

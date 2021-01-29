@@ -28,6 +28,9 @@ type SessionServiceClient interface {
 	// reference a non existing scope, an error is returned.
 	ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error)
 	// ListSelfSessions returns a list of stored Sessions for the requester.
+	// The request must include the scope ID for the Sessions being retrieved.
+	// If the scope ID is missing, malformed, or reference a non existing scope,
+	// an error is returned.
 	ListSelfSessions(ctx context.Context, in *ListSelfSessionsRequest, opts ...grpc.CallOption) (*ListSelfSessionsResponse, error)
 	// CancelSession cancels an existing Session in boundary.  An error
 	// is returned if the request attempts to cancel a Session that does
@@ -94,6 +97,9 @@ type SessionServiceServer interface {
 	// reference a non existing scope, an error is returned.
 	ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error)
 	// ListSelfSessions returns a list of stored Sessions for the requester.
+	// The request must include the scope ID for the Sessions being retrieved.
+	// If the scope ID is missing, malformed, or reference a non existing scope,
+	// an error is returned.
 	ListSelfSessions(context.Context, *ListSelfSessionsRequest) (*ListSelfSessionsResponse, error)
 	// CancelSession cancels an existing Session in boundary.  An error
 	// is returned if the request attempts to cancel a Session that does
