@@ -6,71 +6,74 @@ option go_package = "github.com/hashicorp/boundary/internal/auth/oidc/store;stor
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/custom_options/v1/options.proto";
+import "google/protobuf/wrappers.proto";
 
 // AuthMethod represents an OIDC auth method.
 message AuthMethod {
   // @inject_tag: `gorm:"primary_key"`
-  string public_id = 1;
+  string public_id = 10;
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 20;
 
   // The update_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 30;
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 4;
+  string name = 40;
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 5;
+  string description = 50;
 
   // The scope_id of the owning scope. Must be set.
   // @inject_tag: `gorm:"not_null"`
-  string scope_id = 6;
+  string scope_id = 60;
 
   // @inject_tag: `gorm:"default:null"`
-  uint32 version = 7;
+  uint32 version = 70;
 
   // state is the current state of the auth_oidc_method (inactive,
   // active-private, active-public, or stopping).
   // @inject_tag: `gorm:"not_null"`
-  string state = 8;
+  string state = 80;
 
   // discovery_url is the OIDC Discovery URL without any .well-known component
   // @inject_tag: `gorm:"not_null"`
-  string discovery_url = 9;
+  string discovery_url = 90;
 
   // client_id is the OIDC client identifier
   // @inject_tag: `gorm:"not_null"`
-  string client_id = 10;
+  string client_id = 100;
 
   // ct_client_secret is the encrypted OIDC client secret which is stored in the db.
   // @inject_tag: `gorm:"column:client_secret;not_null" wrapping:"ct,client_secret"`
-  bytes ct_client_secret = 11;
+  bytes ct_client_secret = 110;
 
   // client_secret is the unencrypted OIDC client secret which is not stored in the database.
   // @inject_tag: `gorm:"-" wrapping:"pt,client_secret"`
-  string client_secret = 12;
+  string client_secret = 120;
 
   // client_secret_hmac is a sha256-hmac of the unencrypted client_secret that
   // is returned from the API for read.  It is recalculated everytime the raw
   // client_secret is updated.
-  string client_secret_hmac = 13;
+  string client_secret_hmac = 130;
 
   // key_id is the key ID that was used for the encryption operation. It can be
   // used to identify a specific version of the key needed to decrypt the value,
   // which is useful for caching purposes.
   // @inject_tag: `gorm:"not_null"`
-  string key_id = 14;
+  string key_id = 140;
 
   // max_age is the allowed elapsed time in seconds since the last time the user
-  // was actively authenticated by the OIDC provider.
-  // @inject_tag: `gorm:"not_null"`
-  uint32 max_age = 15;
+  // was actively authenticated by the OIDC provider. -1 indicates the user
+  // should be re-authenticated immediately and would represent the zero value
+  // for max age based on the oidc spec.
+  // @inject_tag: `gorm:"default:null"`
+  int32 max_age = 150;
 }
 
 // Account represents an OIDC account
@@ -78,85 +81,85 @@ message AuthMethod {
 // data integrity in the database between iam users and auth methods.
 message Account {
   // @inject_tag: `gorm:"primary_key"`
-  string public_id = 1;
+  string public_id = 10;
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 20;
 
   // The update_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 30;
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 4;
+  string name = 40;
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 5;
+  string description = 50;
 
   // @inject_tag: `gorm:"default:null"`
-  uint32 version = 6;
+  uint32 version = 60;
 
   // auth_method_id is the fk to the account's auth method.
   // @inject_tag: `gorm:"not_null"`
-  string auth_method_id = 7;
+  string auth_method_id = 70;
 
   // issuer_id is a case sensitive URL that maps to the OIDC iss claim
   // @inject_tag: `gorm:"not_null"`
-  string issuer_id = 8;
+  string issuer_id = 80;
 
   // subject_id is a case sensitive string that maps to the OIDC sub claim.
   // @inject_tag: `gorm:"not_null"`
-  string subject_id = 9;
+  string subject_id = 90;
 
   // full_name is a string that maps to the OIDC name claim
   // @inject_tag: `gorm:"not_null"`
-  string full_name = 10;
+  string full_name = 100;
 
   // email is a string that maps to the OIDC email claim.
   // @inject_tag: `gorm:"not_null"`
-  string email = 11;
+  string email = 110;
 }
 
 // SigningAlg entries are the signing algorithms allowed for an oidc auth method.
 message SigningAlg {
   // @inject_tag `gorm:"primary_key"`
-  string oidc_method_id = 1;
+  string oidc_method_id = 10;
 
-  // signing_alg_name is an enum from the auth_oidc_signing_alg_enm table
-  // @inject_tag `gorm:"primary_key"`
-  string signing_alg_name = 2;
+  // alg is an enum from the auth_oidc_signing_alg_enm table
+  // @inject_tag `gorm:"primary_key;column:signing_alg_name"`
+  string alg = 20;
 }
 
 // CallbackUrl entries are the callback URLs allowed for a specific oidc auth method.
 message CallbackUrl {
   // @inject_tag `gorm:"primary_key"`
-  string oidc_method_id = 1;
+  string oidc_method_id = 10;
 
-  // callback_url is an allowed URL configured within the OIDC provider
-  // @inject_tag `gorm:"primary_key"`
-  string callback_url = 2;
+  // url is an allowed callback URL configured within the OIDC provider
+  // @inject_tag `gorm:"primary_key;column:callback_url"`
+  string url = 20;
 }
 
 // AudClaim entries are the audience claims for a specific oidc auth method.
 message AudClaim {
   // @inject_tag `gorm:"primary_key"`
-  string oidc_method_id = 1;
+  string oidc_method_id = 10;
 
-  // aud_claim is an allowed audience claim for id_tokens
-  // @inject_tag `gorm:"primary_key"`
-  string aud_claim = 2;
+  // aud is an allowed audience claim for id_tokens
+  // @inject_tag `gorm:"primary_key;column:aud_claim"`
+  string aud = 20;
 }
 
 // Certificate entries are optional PEM encoded x509 certificates that can be
 // used as trust anchors when connecting to an OIDC provider.
 message Certificate {
   // @inject_tag `gorm:"primary_key"`
-  string oidc_method_id = 1;
+  string oidc_method_id = 10;
 
   // certificate is a PEM encoded x509
-  // @inject_tag `gorm:"primary_key"`
-  string certificate = 2;
+  // @inject_tag `gorm:"primary_key;column:certificate"`
+  string cert = 20;
 }
