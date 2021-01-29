@@ -2,7 +2,9 @@ package kms
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -11,6 +13,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/multiwrapper"
+	"golang.org/x/crypto/hkdf"
 )
 
 // ExternalWrappers holds wrappers defined outside of Boundary, e.g. in its
@@ -351,4 +354,39 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 	}
 
 	return multi, nil
+}
+
+// DerivedReaderReader returns a reader from which keys can be read, using the
+// given wrapper, reader length limit, salt and context info. Salt and info can
+// be nil.
+//
+// Example:
+//	reader, _ := NewDerivedReader(wrapper, userId, jobId)
+// 	key := ed25519.GenerateKey(reader)
+func NewDerivedReader(wrapper wrapping.Wrapper, lenLimit int64, salt, info []byte) (*io.LimitedReader, error) {
+	const op = "kms.NewDerivedReader"
+	if wrapper == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
+	}
+	if lenLimit < 20 {
+		return nil, errors.New(errors.InvalidParameter, op, "lenLimit must be >= 20")
+	}
+	var aeadWrapper *aead.Wrapper
+	switch w := wrapper.(type) {
+	case *multiwrapper.MultiWrapper:
+		raw := w.WrapperForKeyID("__base__")
+		var ok bool
+		if aeadWrapper, ok = raw.(*aead.Wrapper); !ok {
+			return nil, errors.New(errors.InvalidParameter, op, "unexpected wrapper type from multiwrapper base")
+		}
+	case *aead.Wrapper:
+		aeadWrapper = w
+	default:
+		return nil, errors.New(errors.InvalidParameter, op, "unknown wrapper type")
+	}
+	reader := hkdf.New(sha256.New, aeadWrapper.GetKeyBytes(), salt, info)
+	return &io.LimitedReader{
+		R: reader,
+		N: lenLimit,
+	}, nil
 }
