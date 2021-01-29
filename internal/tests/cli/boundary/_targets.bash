@@ -1,3 +1,5 @@
+load _authorized_actions
+
 export TGT_NAME='test'
 
 function create_tcp_target() {
@@ -12,7 +14,7 @@ function create_tcp_target() {
 }
 
 function read_target() {
-  boundary targets read -id $1
+  boundary targets read -id $1 -format json
 }
 
 function delete_target() {
@@ -51,4 +53,16 @@ function target_has_host_set_id() {
     fi
   done
   return 1 
+}
+
+function has_default_target_actions() {
+  local out=$1
+  local actions=('read' 'update' 'delete' 'add-host-sets' 'set-host-sets' 'remove-host-sets' 'authorize-session')
+
+  for action in ${actions[@]}; do
+    $(has_authorized_action "$out" "$action") || {
+      echo "failed to find $action action in output: $out"
+      return 1 
+    } 
+  done
 }

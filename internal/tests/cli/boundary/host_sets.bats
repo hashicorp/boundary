@@ -31,6 +31,15 @@ export NEW_HOST_SET='test'
 	[ "$status" -eq 0 ]
 }
 
+@test "boundary/host-sets: the $NEW_HOST_SET host set contains default authorized-actions" {
+  local hsid=$(host_set_id $NEW_HOST_SET $DEFAULT_HOST_CATALOG)
+  local out=$(read_host_set $hsid)
+
+	run has_default_host_set_actions "$out" 
+  echo "$output"
+	[ "$status" -eq 0 ]
+}
+
 @test "boundary/host-set/add-host: can associate $NEW_HOST_SET host set with default host" {	
   local hsid=$(host_set_id $NEW_HOST_SET $DEFAULT_HOST_CATALOG)
   run assoc_host_set_host $DEFAULT_HOST $hsid
