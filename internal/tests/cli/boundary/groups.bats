@@ -32,6 +32,15 @@ export NEW_GROUP='test'
 	[ "$status" -eq 0 ]
 }
 
+@test "boundary/groups: the $NEW_GROUP group contains default authorized-actions" {
+  local gid=$(group_id $NEW_GROUP)
+  local out=$(read_group $gid)
+
+	run has_default_group_actions "$out" 
+  echo "$output"
+	[ "$status" -eq 0 ]
+}
+
 @test "boundary/group/add-members: can associate $NEW_GROUP group with default user" {	
   local gid=$(group_id $NEW_GROUP)
   run assoc_group_acct 'u_1234567890' $gid
