@@ -357,7 +357,7 @@ func TestListSelf(t *testing.T) {
 	}
 
 	at2 := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
-	_ = session.TestSession(t, conn, wrap, session.ComposedOf{
+	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 		UserId:      at2.GetIamUserId(),
 		HostId:      h.GetPublicId(),
 		TargetId:    tar.GetPublicId(),
@@ -366,20 +366,50 @@ func TestListSelf(t *testing.T) {
 		ScopeId:     pWithSessions.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
+	status, states := convertStates(sess.States)
+	wantSession2 := []*pb.Session{{
+		Id:                sess.GetPublicId(),
+		ScopeId:           pWithSessions.GetPublicId(),
+		AuthTokenId:       sess.AuthTokenId,
+		UserId:            sess.UserId,
+		TargetId:          sess.TargetId,
+		Endpoint:          sess.Endpoint,
+		HostSetId:         sess.HostSetId,
+		HostId:            sess.HostId,
+		Version:           sess.Version,
+		UpdatedTime:       sess.UpdateTime.GetTimestamp(),
+		CreatedTime:       sess.CreateTime.GetTimestamp(),
+		ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
+		Scope:             &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String()},
+		Status:            status,
+		States:            states,
+		Certificate:       sess.Certificate,
+		Type:              target.TcpSubType.String(),
+		AuthorizedActions: []string{"read", "cancel"},
+	}}
 
 	cases := []struct {
 		name string
+		userId string
 		req  *pbs.ListSelfSessionsRequest
 		res  *pbs.ListSelfSessionsResponse
 		err  error
 	}{
 		{
 			name: "List Many Sessions",
+			userId: at1.GetIamUserId(),
 			req:  &pbs.ListSelfSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
 			res:  &pbs.ListSelfSessionsResponse{Items: wantSession},
 		},
 		{
+			name: "List 1 Session",
+			userId: at2.GetIamUserId(),
+			req:  &pbs.ListSelfSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
+			res:  &pbs.ListSelfSessionsResponse{Items: wantSession2},
+		},
+		{
 			name: "List No Sessions",
+			userId: at1.GetIamUserId(),
 			req:  &pbs.ListSelfSessionsRequest{ScopeId: pNoSessions.GetPublicId()},
 			res:  &pbs.ListSelfSessionsResponse{},
 		},
@@ -389,12 +419,14 @@ func TestListSelf(t *testing.T) {
 			s, err := sessions.NewService(sessRepoFn, iamRepoFn)
 			require.NoError(t, err, "Couldn't create new session service.")
 
-			got, gErr := s.ListSelfSessions(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId()), auth.WithUserId(at1.GetIamUserId())), tc.req)
+			got, gErr := s.ListSelfSessions(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId()), auth.WithUserId(tc.userId)), tc.req)
 			if tc.err != nil {
 				require.Error(t, gErr)
 				assert.True(t, errors.Is(gErr, tc.err), "ListSelfSessions(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
+			require.NoError(t, gErr)
 			if tc.res != nil {
+				require.Len(t, got.GetItems(), len(tc.res.GetItems()))
 				for i, wantSess := range tc.res.GetItems() {
 					assert.True(t, got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
 					wantSess.ExpirationTime = got.GetItems()[i].GetExpirationTime()
