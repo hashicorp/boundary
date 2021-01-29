@@ -5074,13 +5074,16 @@ create table auth_oidc_method (
     constraint client_id_not_empty
     check(length(trim(client_id)) > 0), 
   client_secret bytea not null, -- encrypted oidc client secret issued by the oidc provider.
+  client_secret_hmac text not null
+    constraint client_secret_hmac_not_empty
+    check(length(trim(client_secret_hmac)) > 0),
   key_id wt_private_id not null -- key used to encrypt entries via wrapping wrapper. 
-    references kms_oidc_key_version(private_id) 
+    references kms_database_key_version(private_id) 
     on delete restrict
     on update cascade, 
-  max_age int not null -- the allowable elapsed time in secs since the last time the user was authenticated. zero is allowed and should force the user to be re-authenticated.
-    constraint max_age_equal_or_greater_than_zero
-    check(max_age >= 0), 
+  max_age int  -- the allowable elapsed time in secs since the last time the user was authenticated. zero is allowed and should force the user to be re-authenticated.
+    constraint max_age_not_equal_zero
+    check(max_age != 0), 
   foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
       on delete cascade
