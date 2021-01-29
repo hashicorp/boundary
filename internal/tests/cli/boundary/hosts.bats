@@ -31,6 +31,15 @@ export NEW_HOST='test'
 	[ "$status" -eq 0 ]
 }
 
+@test "boundary/hosts: the $NEW_HOST host contains default authorized-actions" {
+  local hid=$(host_id $NEW_HOST $DEFAULT_HOST_CATALOG)
+  local out=$(read_host $hid)
+
+	run has_default_host_actions "$out" 
+  echo "$output"
+	[ "$status" -eq 0 ]
+}
+
 @test "boundary/host: can delete $NEW_HOST host" {
   local hid=$(host_id $NEW_HOST $DEFAULT_HOST_CATALOG)
   run delete_host $hid 

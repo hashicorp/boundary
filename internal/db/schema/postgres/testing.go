@@ -32,11 +32,11 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"io"
 	"testing"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4/database"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,24 +45,21 @@ func test(t *testing.T, d *Postgres, migration []byte) {
 	if migration == nil {
 		t.Fatal("test must provide migration reader")
 	}
+	ctx := context.Background()
 
-	testNilVersion(t, d) // test first
+	v, alreadyRan, dirty, err := d.CurrentState(ctx)
+	require.NoError(t, err)
+	assert.False(t, alreadyRan)
+	assert.False(t, dirty)
+	assert.Equal(t, nilVersion, v)
+
 	testLockAndUnlock(t, d)
-	testRun(t, d, bytes.NewReader(migration))
+	assert.NoError(t, d.EnsureVersionTable(ctx))
+	assert.NoError(t, d.Run(ctx, bytes.NewReader(migration), 1))
+
 	testSetVersion(t, d) // also tests CurrentState()
 	// drop breaks the driver, so test it last.
-	testDrop(t, d)
-}
-
-func testNilVersion(t *testing.T, d *Postgres) {
-	ctx := context.Background()
-	v, _, err := d.CurrentState(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if v != database.NilVersion {
-		t.Fatalf("Version: expected Version to be NilVersion (-1), got %v", v)
-	}
+	assert.NoError(t, d.drop(ctx))
 }
 
 func testLockAndUnlock(t *testing.T, d *Postgres) {
@@ -71,47 +68,20 @@ func testLockAndUnlock(t *testing.T, d *Postgres) {
 	ctx, _ = context.WithTimeout(ctx, 15*time.Second)
 
 	// locking twice is ok, no error
-	if err := d.Lock(ctx); err != nil {
-		t.Fatalf("got error, expected none: %v", err)
-	}
-	if err := d.Lock(ctx); err != nil {
-		t.Fatalf("got error, expected none: %v", err)
-	}
+	require.NoError(t, d.Lock(ctx))
+	assert.NoError(t, d.Lock(ctx))
 
 	// Unlock
-	if err := d.Unlock(ctx); err != nil {
-		t.Fatalf("error unlocking: %v", err)
-	}
+	assert.NoError(t, d.Unlock(ctx))
 
 	// try to Lock
-	if err := d.Lock(ctx); err != nil {
-		t.Fatalf("got error, expected none: %v", err)
-	}
-	if err := d.Unlock(ctx); err != nil {
-		t.Fatalf("got error, expected none: %v", err)
-	}
-}
-
-func testRun(t *testing.T, d *Postgres, migration io.Reader) {
-	ctx := context.Background()
-	if migration == nil {
-		t.Fatal("migration can't be nil")
-	}
-
-	if err := d.Run(ctx, migration); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func testDrop(t *testing.T, d *Postgres) {
-	ctx := context.Background()
-	if err := d.drop(ctx); err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, d.Lock(ctx))
+	assert.NoError(t, d.Unlock(ctx))
 }
 
 func testSetVersion(t *testing.T, d *Postgres) {
 	ctx := context.Background()
+	require.NoError(t, d.EnsureVersionTable(ctx))
 	// nolint:maligned
 	testCases := []struct {
 		name            string
@@ -132,11 +102,12 @@ func testSetVersion(t *testing.T, d *Postgres) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := d.SetVersion(ctx, tc.version, tc.dirty)
+			// d.EnsureVersionTable(ctx)
+			err := d.setVersion(ctx, tc.version, tc.dirty)
 			if err != tc.expectedErr {
 				t.Fatal("Got unexpected error:", err, "!=", tc.expectedErr)
 			}
-			v, dirty, readErr := d.CurrentState(ctx)
+			v, _, dirty, readErr := d.CurrentState(ctx)
 			if readErr != tc.expectedReadErr {
 				t.Fatal("Got unexpected error:", readErr, "!=", tc.expectedReadErr)
 			}

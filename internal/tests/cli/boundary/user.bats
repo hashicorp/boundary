@@ -28,6 +28,15 @@ export NEW_USER='test'
 	[ "$status" -eq 0 ]
 }
 
+@test "boundary/users: the $NEW_USER user contains default authorized-actions" {
+  local uid=$(user_id $NEW_USER)
+  local out=$(read_user $uid)
+
+	run has_default_user_actions "$out" 
+  echo "$output"
+	[ "$status" -eq 0 ]
+}
+
 @test "boundary/account/password: can add $NEW_USER account" {
 	run create_account $NEW_USER
 	[ "$status" -eq 0 ]
