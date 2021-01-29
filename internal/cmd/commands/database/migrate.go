@@ -5,7 +5,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
@@ -97,12 +96,6 @@ func (c *MigrateCommand) Flags() *base.FlagSets {
 
 	f = set.NewFlagSet("Migration options")
 
-	f.BoolVar(&base.BoolVar{
-		Name:   "allow-development-migrations",
-		Target: &c.flagAllowDevMigrations,
-		Usage:  "If set the migrate command will continue even if the schema includes database update steps that may not be supported in the next official release.  Boundary does not provide a rollback mechanism so a backup should be taken independently if needed.",
-	})
-
 	f.StringVar(&base.StringVar{
 		Name:   "migration-url",
 		Target: &c.flagMigrationUrl,
@@ -134,19 +127,6 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 	}
 
 	dialect := "postgres"
-
-	if schema.DevMigration(dialect) != c.flagAllowDevMigrations {
-		if schema.DevMigration(dialect) {
-			c.UI.Error(base.WrapAtLength("This version of the binary has " +
-				"dev database schema updates which may not be supported in the " +
-				"next official release. To proceed anyways please use the " +
-				"'-allow-development-migrations' flag."))
-			return 2
-		} else {
-			c.UI.Warn(base.WrapAtLength("The '-allow-development-migrations' " +
-				"flag was set but this binary has no dev database schema updates."))
-		}
-	}
 
 	c.srv = base.NewServer(&base.Command{UI: c.UI})
 
@@ -200,7 +180,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl)
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, false)
 	defer clean()
 	if errCode != 0 {
 		return errCode

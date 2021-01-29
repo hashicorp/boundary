@@ -218,7 +218,7 @@ $ boundary accounts create password \
   -recovery-config /tmp/recovery.hcl \
   -login-name "myuser" \
   -password "foofoofoo" \
-  -auth-method-id <auth_method_id_from_last_step"
+  -auth-method-id <auth_method_id_from_last_step>
 ```
 
 </Tab>
@@ -252,7 +252,10 @@ $ boundary users create -scope-id <org_scope_id> \
   -name "myuser" \
   -description "My user!"
 
-$ boundary users add-accounts -id <myuser_user_id> -account <myuser_account_id>
+$ boundary users add-accounts \
+  -recovery-config /tmp/recovery.hcl \
+  -id <myuser_user_id> \
+  -account <myuser_account_id>
 ```
 
 </Tab>
@@ -451,6 +454,6 @@ resource "boundary_role" "project_admin" {
 ```bash
 boundary authenticate password \
   -auth-method-id <auth_method_id> \
-  -login-name myuser
+  -login-name myuser \
   -password foofoofoo
 ```

@@ -57,6 +57,8 @@ type Postgres struct {
 	// Locking and unlocking need to use the same connection
 	conn *sql.Conn
 	db   *sql.DB
+
+	tx *sql.Tx
 }
 
 // New returns a postgres pointer with the provided db verified as
@@ -75,11 +77,6 @@ func New(ctx context.Context, instance *sql.DB) (*Postgres, error) {
 		conn: conn,
 		db:   instance,
 	}
-
-	if err := px.ensureVersionTable(ctx); err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-
 	return px, nil
 }
 
@@ -87,7 +84,7 @@ func New(ctx context.Context, instance *sql.DB) (*Postgres, error) {
 // https://www.postgresql.org/docs/9.6/static/explicit-locking.html#ADVISORY-LOCKS
 func (p *Postgres) TrySharedLock(ctx context.Context) error {
 	const op = "postgres.(Postgres).TrySharedLock"
-	const query = "SELECT pg_try_advisory_lock_shared($1)"
+	const query = "select pg_try_advisory_lock_shared($1)"
 	r := p.conn.QueryRowContext(ctx, query, schemaAccessLockId)
 	if r.Err() != nil {
 		return errors.Wrap(r.Err(), op)
@@ -106,7 +103,7 @@ func (p *Postgres) TrySharedLock(ctx context.Context) error {
 // https://www.postgresql.org/docs/9.6/static/explicit-locking.html#ADVISORY-LOCKS
 func (p *Postgres) TryLock(ctx context.Context) error {
 	const op = "postgres.(Postgres).TryLock"
-	const query = "SELECT pg_try_advisory_lock($1)"
+	const query = "select pg_try_advisory_lock($1)"
 	r := p.conn.QueryRowContext(ctx, query, schemaAccessLockId)
 	if r.Err() != nil {
 		return errors.Wrap(r.Err(), op)
@@ -125,7 +122,7 @@ func (p *Postgres) TryLock(ctx context.Context) error {
 // if we were unable to get the lock before the context cancels.
 func (p *Postgres) Lock(ctx context.Context) error {
 	const op = "postgres.(Postgres).Lock"
-	const query = "SELECT pg_advisory_lock($1)"
+	const query = "select pg_advisory_lock($1)"
 	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -136,7 +133,7 @@ func (p *Postgres) Lock(ctx context.Context) error {
 // release the lock before the context cancels.
 func (p *Postgres) Unlock(ctx context.Context) error {
 	const op = "postgres.(Postgres).Unlock"
-	const query = `SELECT pg_advisory_unlock($1)`
+	const query = `select pg_advisory_unlock($1)`
 	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -147,17 +144,66 @@ func (p *Postgres) Unlock(ctx context.Context) error {
 // release the lock before the context cancels.
 func (p *Postgres) UnlockShared(ctx context.Context) error {
 	const op = "postgres.(Postgres).UnlockShared"
-	query := `SELECT pg_advisory_unlock_shared($1)`
+	query := `select pg_advisory_unlock_shared($1)`
 	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
 		return errors.Wrap(err, op)
 	}
 	return nil
 }
 
-// Executes the sql provided in the passed in io.Reader.  The contents of the reader must
+// Rollback rolls back the outstanding transaction.
+// Calling Rollback when there is not an outstanding transaction is an error.
+func (p *Postgres) Rollback() error {
+	const op = "postgres.(Postgres).Rollback"
+	defer func() {
+		p.tx = nil
+	}()
+	if p.tx == nil {
+		return errors.New(errors.MigrationIntegrity, op, "no pending transaction")
+	}
+	if err := p.tx.Rollback(); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
+}
+
+// StartRun starts a transaction that all subsequent calls to Run will use.
+func (p *Postgres) StartRun(ctx context.Context) error {
+	tx, err := p.conn.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	p.tx = tx
+	return nil
+}
+
+// CommitRun commits the pending transaction if there is one
+func (p *Postgres) CommitRun() error {
+	const op = "postgres.(Postgres).CommitRun"
+	defer func() {
+		p.tx = nil
+	}()
+	if p.tx == nil {
+		return errors.New(errors.MigrationIntegrity, op, "no pending transaction")
+	}
+	if err := p.tx.Commit(); err != nil {
+		if errRollback := p.tx.Rollback(); errRollback != nil {
+			err = multierror.Append(err, errRollback)
+		}
+		return errors.Wrap(err, op)
+	}
+	return nil
+}
+
+type execContexter interface {
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+}
+
+// Run executes the sql provided in the passed in io.Reader.  The contents of the reader must
 // fit in memory as the full content is read into a string before being passed to the
-// backing database.
-func (p *Postgres) Run(ctx context.Context, migration io.Reader) error {
+// backing database.  EnsureVersionTable should be ran prior to this call.
+func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int) error {
 	const op = "postgres.(Postgres).Run"
 	migr, err := ioutil.ReadAll(migration)
 	if err != nil {
@@ -165,7 +211,21 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader) error {
 	}
 	// Run migration
 	query := string(migr)
-	if _, err := p.conn.ExecContext(ctx, query); err != nil {
+
+	var extr execContexter = p.conn
+	rollback := func() error { return nil }
+	if p.tx != nil {
+		extr = p.tx
+		rollback = func() error {
+			defer func() { p.tx = nil }()
+			return p.tx.Rollback()
+		}
+	}
+
+	if _, err := extr.ExecContext(ctx, query); err != nil {
+		if rollbackErr := rollback(); rollbackErr != nil {
+			err = multierror.Append(err, rollbackErr)
+		}
 		if pgErr, ok := err.(*pq.Error); ok {
 			var line uint
 			var col uint
@@ -186,6 +246,9 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader) error {
 			return errors.Wrap(err, op, errors.WithMsg(message))
 		}
 		return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("migration failed: %s", migr)))
+	}
+	if err := p.setVersion(ctx, version, false); err != nil {
+		return errors.Wrap(err, op)
 	}
 
 	return nil
@@ -226,18 +289,26 @@ func runesLastIndex(input []rune, target rune) int {
 	return -1
 }
 
-// SetVersion sets the version number, and whether the database is in a dirty state.
+// setVersion sets the version number, and whether the database is in a dirty state.
 // A version value of -1 indicates no version is set.
-func (p *Postgres) SetVersion(ctx context.Context, version int, dirty bool) error {
+func (p *Postgres) setVersion(ctx context.Context, version int, dirty bool) error {
 	const op = "postgres.(Postgres).SetVersion"
-	tx, err := p.conn.BeginTx(ctx, &sql.TxOptions{})
-	if err != nil {
-		return err
+	tx := p.tx
+	var err error
+	if tx == nil {
+		tx, err = p.conn.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+	}
+	rollback := func() error {
+		defer func() { p.tx = nil }()
+		return tx.Rollback()
 	}
 
-	query := `TRUNCATE ` + pq.QuoteIdentifier(defaultMigrationsTable)
+	query := `truncate ` + pq.QuoteIdentifier(defaultMigrationsTable)
 	if _, err := tx.ExecContext(ctx, query); err != nil {
-		if errRollback := tx.Rollback(); errRollback != nil {
+		if errRollback := rollback(); errRollback != nil {
 			err = multierror.Append(err, errRollback)
 		}
 		return errors.Wrap(err, op)
@@ -247,50 +318,76 @@ func (p *Postgres) SetVersion(ctx context.Context, version int, dirty bool) erro
 	// empty schema Version for failed down migration on the first migration
 	// See: https://github.com/golang-migrate/migrate/issues/330
 	if version >= 0 || (version == nilVersion && dirty) {
-		query = `INSERT INTO ` + pq.QuoteIdentifier(defaultMigrationsTable) +
-			` (Version, dirty) VALUES ($1, $2)`
+		query = `insert into ` + pq.QuoteIdentifier(defaultMigrationsTable) +
+			` (version, dirty) values ($1, $2)`
 		if _, err := tx.ExecContext(ctx, query, version, dirty); err != nil {
-			if errRollback := tx.Rollback(); errRollback != nil {
+			if errRollback := rollback(); errRollback != nil {
 				err = multierror.Append(err, errRollback)
 			}
 			return errors.Wrap(err, op)
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		return errors.Wrap(err, op)
+	if p.tx == nil {
+		if err := tx.Commit(); err != nil {
+			return errors.Wrap(err, op)
+		}
 	}
-
 	return nil
 }
 
-// CurrentState returns the version, if the database is currently in a dirty state, and any error.
-// A version value of -1 indicates no version is set.
-func (p *Postgres) CurrentState(ctx context.Context) (version int, dirty bool, err error) {
-	const op = "postgres.(Postgres).Version"
-	query := `SELECT Version, dirty FROM ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` LIMIT 1`
-	err = p.conn.QueryRowContext(ctx, query).Scan(&version, &dirty)
-	switch {
-	case err == sql.ErrNoRows:
-		return nilVersion, false, nil
+// CurrentState returns the version, if the database was ever initialized
+// previously, if it is currently in a dirty state, and any error. A version
+// value of -1 indicates no version is set.
+func (p *Postgres) CurrentState(ctx context.Context) (version int, previouslyRan, dirty bool, err error) {
+	const op = "postgres.(Postgres).CurrentState"
 
-	case err != nil:
-		if e, ok := err.(*pq.Error); ok {
-			if e.Code.Name() == "undefined_table" {
-				return nilVersion, false, nil
-			}
-		}
-		return 0, false, errors.Wrap(err, op)
+	version = nilVersion
+	previouslyRan, dirty = false, false
 
-	default:
-		return version, dirty, nil
+	tableQuery := `select table_name from information_schema.tables where table_schema=(select current_schema()) and table_name in ('schema_migrations', '` + defaultMigrationsTable + `')`
+	tableResult, err := p.conn.QueryContext(ctx, tableQuery)
+	if err != nil {
+		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
 	}
+	defer tableResult.Close()
+	if !tableResult.Next() {
+		// No version table found
+		return nilVersion, previouslyRan, dirty, nil
+	}
+
+	tableName := defaultMigrationsTable
+	if err := tableResult.Scan(&tableName); err != nil {
+		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
+	}
+	previouslyRan = true
+	if tableResult.Next() {
+		return nilVersion, previouslyRan, dirty, errors.New(errors.MigrationIntegrity, op, "both old and new migration tables exist")
+	}
+
+	query := `select version, dirty from ` + pq.QuoteIdentifier(tableName)
+	results, err := p.conn.QueryContext(ctx, query)
+	if err != nil {
+		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
+	}
+	defer results.Close()
+	if !results.Next() {
+		// no version recorded
+		return nilVersion, previouslyRan, dirty, nil
+	}
+	if err := results.Scan(&version, &dirty); err != nil {
+		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
+	}
+	if results.Next() {
+		return nilVersion, previouslyRan, dirty, errors.New(errors.MigrationIntegrity, op, "to many versions in version table")
+	}
+	return version, previouslyRan, dirty, nil
 }
 
 func (p *Postgres) drop(ctx context.Context) (err error) {
 	const op = "postgres.(Postgres).drop"
 	// select all tables in current schema
-	query := `SELECT table_name FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_type='BASE TABLE'`
+	query := `select table_name from information_schema.tables where table_schema=(select current_schema()) and table_type='BASE TABLE'`
 	tables, err := p.conn.QueryContext(ctx, query)
 	if err != nil {
 		return errors.Wrap(err, op)
@@ -320,7 +417,7 @@ func (p *Postgres) drop(ctx context.Context) (err error) {
 	if len(tableNames) > 0 {
 		// delete one by one ...
 		for _, t := range tableNames {
-			query = `DROP TABLE IF EXISTS ` + pq.QuoteIdentifier(t) + ` CASCADE`
+			query = `drop table if exists ` + pq.QuoteIdentifier(t) + ` cascade`
 			if _, err := p.conn.ExecContext(ctx, query); err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -330,23 +427,45 @@ func (p *Postgres) drop(ctx context.Context) (err error) {
 	return nil
 }
 
-// ensureVersionTable checks if versions table exists and, if not, creates it.
-// Note that this function locks the database, which deviates from the usual
-// convention of "caller locks" in the postgres type.
-func (p *Postgres) ensureVersionTable(ctx context.Context) (err error) {
-	const op = "postgres.(Postgres).ensureVersionTable"
-	if err = p.TryLock(ctx); err != nil {
+// EnsureVersionTable checks if versions table exists and, if not, creates it.
+func (p *Postgres) EnsureVersionTable(ctx context.Context) (err error) {
+	const op = "postgres.(Postgres).EnsureVersionTable"
+
+	var extr execContexter = p.conn
+	rollback := func() error { return nil }
+	if p.tx != nil {
+		extr = p.tx
+		rollback = func() error {
+			defer func() { p.tx = nil }()
+			return p.tx.Rollback()
+		}
+	}
+
+	query := `select exists (select 1 from information_schema.tables where table_schema=(select current_schema()) and table_name = '` + defaultMigrationsTable + `');`
+	exists := false
+	if err := extr.QueryRowContext(ctx, query).Scan(&exists); err != nil {
+		if wpErr := rollback(); wpErr != nil {
+			err = multierror.Append(err, wpErr)
+		}
+		return errors.Wrap(err, op)
+	}
+	if exists {
+		return nil
+	}
+
+	updateQuery := `alter table if exists schema_migrations rename to ` + defaultMigrationsTable + `;`
+	if _, err = extr.ExecContext(ctx, updateQuery); err != nil {
+		if wpErr := rollback(); wpErr != nil {
+			err = multierror.Append(err, wpErr)
+		}
 		return errors.Wrap(err, op)
 	}
 
-	defer func() {
-		if e := p.Unlock(ctx); e != nil {
-			err = multierror.Append(err, e)
+	createStmt := `create table if not exists ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` (version bigint primary key, dirty boolean not null)`
+	if _, err = extr.ExecContext(ctx, createStmt); err != nil {
+		if wpErr := rollback(); wpErr != nil {
+			err = multierror.Append(err, wpErr)
 		}
-	}()
-
-	query := `CREATE TABLE IF NOT EXISTS ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` (Version bigint primary key, dirty boolean not null)`
-	if _, err = p.conn.ExecContext(ctx, query); err != nil {
 		return errors.Wrap(err, op)
 	}
 
