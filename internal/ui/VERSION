@@ -1,4 +1,4 @@
-882ba37c3ecfaa19e25231b0952328ce0731c1c5 Merge pull request #427 from hashicorp/controller-to-origin-rename
+39932708b0d3306937e3fd8333db5934760bcd3b Merge pull request #432 from hashicorp/fix-scopes-nav
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
