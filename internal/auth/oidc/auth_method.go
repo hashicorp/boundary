@@ -2,15 +2,22 @@ package oidc
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"net/url"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/proto"
 )
+
+const DefaultAuthMethodTableName = "auth_oidc_method"
 
 // A AuthMethod contains accounts and password configurations. It is owned
 // by a scope.
@@ -20,9 +27,9 @@ type AuthMethod struct {
 }
 
 // NewAuthMethod creates a new in memory AuthMethod assigned to scopeId.
-// Name and description are the only valid options. All other options are
-// ignored.
-func NewAuthMethod(scopeId string, state AuthMethodState, discoveryUrl *url.URL, clientId string, clientSecret ClientSecret, maxAge uint32, opt ...Option) (*AuthMethod, error) {
+// WithMaxAge, WithName and WithDescription are the only valid options. All
+// other options are ignored.  WithMaxAge m
+func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clientSecret ClientSecret, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.NewAuthMethod"
 
 	if discoveryUrl == nil {
@@ -35,11 +42,11 @@ func NewAuthMethod(scopeId string, state AuthMethodState, discoveryUrl *url.URL,
 			ScopeId:      scopeId,
 			Name:         opts.withName,
 			Description:  opts.withDescription,
-			State:        string(state),
+			State:        string(InactiveState),
 			DiscoveryUrl: discoveryUrl.String(),
 			ClientId:     clientId,
 			ClientSecret: string(clientSecret),
-			MaxAge:       maxAge,
+			MaxAge:       int32(opts.withMaxAge),
 		},
 	}
 	if err := a.validate(op); err != nil {
@@ -68,16 +75,19 @@ func (a *AuthMethod) validate(caller errors.Op) error {
 	if len(a.ClientSecret) == 0 {
 		return errors.New(errors.InvalidParameter, caller, "client secret is empty")
 	}
+	if a.MaxAge < -1 {
+		return errors.New(errors.InvalidParameter, caller, "max age cannot be less than -1")
+	}
 	return nil
 }
 
-func allocAuthMethod() AuthMethod {
+func AllocAuthMethod() AuthMethod {
 	return AuthMethod{
 		AuthMethod: &store.AuthMethod{},
 	}
 }
 
-func (a *AuthMethod) clone() *AuthMethod {
+func (a *AuthMethod) Clone() *AuthMethod {
 	cp := proto.Clone(a.AuthMethod)
 	return &AuthMethod{
 		AuthMethod: cp.(*store.AuthMethod),
@@ -89,7 +99,7 @@ func (a *AuthMethod) TableName() string {
 	if a.tableName != "" {
 		return a.tableName
 	}
-	return "auth_oidc_method"
+	return DefaultAuthMethodTableName
 }
 
 // SetTableName sets the table name.
@@ -109,17 +119,36 @@ func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
 
 func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).encrypt"
-	if err := structwrapping.WrapStruct(ctx, cipher, a, nil); err != nil {
+	if err := structwrapping.WrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
 	}
 	a.KeyId = cipher.KeyID()
+	if err := a.hmacClientSecret(cipher); err != nil {
+		return errors.Wrap(err, op)
+	}
 	return nil
 }
 
 func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).encrypt"
-	if err := structwrapping.UnwrapStruct(ctx, cipher, a, nil); err != nil {
+	if err := structwrapping.UnwrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
 	}
+	return nil
+}
+
+func (a *AuthMethod) hmacClientSecret(cipher wrapping.Wrapper) error {
+	const op = "oidc.(AuthMethod).hmacClientSecret"
+	reader, err := kms.NewDerivedReader(cipher, 32, []byte(a.PublicId), nil)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	key, _, err := ed25519.GenerateKey(reader)
+	if err != nil {
+		return errors.New(errors.Encrypt, op, "unable to generate derived key")
+	}
+	mac := hmac.New(sha256.New, key)
+	_, _ = mac.Write([]byte(a.ClientSecret))
+	a.ClientSecretHmac = base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	return nil
 }

@@ -3,29 +3,33 @@ package oidc
 import (
 	"context"
 	"net/url"
-	"reflect"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAuthMethod_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	rw := db.New(conn)
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
 	type args struct {
 		scopeId      string
-		state        AuthMethodState
 		discoveryURL *url.URL
 		clientId     string
 		clientSecret ClientSecret
-		maxAge       uint32
 		opt          []Option
 	}
 	tests := []struct {
@@ -41,21 +45,20 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "valid",
 			args: args{
 				scopeId:      org.PublicId,
-				state:        InactiveState,
 				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
-				maxAge:       0,
-				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com")},
+				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com"), WithMaxAge(-1)},
 			},
+			create: true,
 			want: func() *AuthMethod {
-				a := allocAuthMethod()
+				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.State = string(InactiveState)
 				a.DiscoveryUrl = "http://alice.com"
 				a.ClientId = "alice_rp"
 				a.ClientSecret = "rp-secret"
-				a.MaxAge = 0
+				a.MaxAge = -1
 				a.Name = "alice.com"
 				a.Description = "alice's restaurant rp"
 				return &a
@@ -65,20 +68,19 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "valid-with-no-options",
 			args: args{
 				scopeId:      org.PublicId,
-				state:        InactiveState,
 				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
-				clientId:     "alice_rp",
+				clientId:     "eve_rp",
 				clientSecret: ClientSecret("rp-secret"),
-				maxAge:       1000,
 			},
+			create: true,
 			want: func() *AuthMethod {
-				a := allocAuthMethod()
+				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.State = string(InactiveState)
 				a.DiscoveryUrl = "http://alice.com"
-				a.ClientId = "alice_rp"
+				a.ClientId = "eve_rp"
 				a.ClientSecret = "rp-secret"
-				a.MaxAge = 1000
+				a.MaxAge = 0
 				return &a
 			}(),
 		},
@@ -86,39 +88,9 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "empty-scope-id",
 			args: args{
 				scopeId:      "",
-				state:        InactiveState,
 				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
-				maxAge:       0,
-				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com")},
-			},
-			wantErr:   true,
-			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "unknown-state-id",
-			args: args{
-				scopeId:      org.PublicId,
-				state:        UnknownState,
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
-				clientId:     "alice_rp",
-				clientSecret: ClientSecret("rp-secret"),
-				maxAge:       0,
-				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com")},
-			},
-			wantErr:   true,
-			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "bad-state-id",
-			args: args{
-				scopeId:      org.PublicId,
-				state:        AuthMethodState("bad-state"),
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
-				clientId:     "alice_rp",
-				clientSecret: ClientSecret("rp-secret"),
-				maxAge:       0,
 				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com")},
 			},
 			wantErr:   true,
@@ -128,11 +100,9 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "nil-url",
 			args: args{
 				scopeId:      org.PublicId,
-				state:        InactiveState,
 				discoveryURL: nil,
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
-				maxAge:       0,
 				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com")},
 			},
 			wantErr:   true,
@@ -142,11 +112,9 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "missing-client-id",
 			args: args{
 				scopeId:      org.PublicId,
-				state:        InactiveState,
 				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "",
 				clientSecret: ClientSecret("rp-secret"),
-				maxAge:       0,
 				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com")},
 			},
 			wantErr:   true,
@@ -156,11 +124,9 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "missing-client-secret",
 			args: args{
 				scopeId:      org.PublicId,
-				state:        InactiveState,
 				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret(""),
-				maxAge:       0,
 				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com")},
 			},
 			wantErr:   true,
@@ -170,7 +136,7 @@ func TestAuthMethod_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAuthMethod(tt.args.scopeId, tt.args.state, tt.args.discoveryURL, tt.args.clientId, tt.args.clientSecret, tt.args.maxAge, tt.args.opt...)
+			got, err := NewAuthMethod(tt.args.scopeId, tt.args.discoveryURL, tt.args.clientId, tt.args.clientSecret, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -179,42 +145,155 @@ func TestAuthMethod_Create(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
+				ctx := context.Background()
 				id, err := newAuthMethodId()
 				require.NoError(err)
 				got.PublicId = id
-				err = db.New(conn).Create(context.Background(), got)
+				err = got.encrypt(ctx, databaseWrapper)
+				require.NoError(err)
+				err = rw.Create(ctx, got)
 				if tt.wantCreateErr {
 					assert.Error(err)
 					return
 				} else {
 					assert.NoError(err)
 				}
+
+				found := AllocAuthMethod()
+				found.PublicId = got.PublicId
+				require.NoError(rw.LookupByPublicId(ctx, &found))
+				require.NoError(found.decrypt(ctx, databaseWrapper))
+				assert.Equal(got, &found)
 			}
 		})
 	}
 }
 
-func TestAuthMethod_clone(t *testing.T) {
-	type fields struct {
-		AuthMethod *store.AuthMethod
-		tableName  string
-	}
+func TestAuthMethod_Delete(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	rw := db.New(conn)
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
 	tests := []struct {
-		name   string
-		fields fields
-		want   *AuthMethod
+		name            string
+		authMethod      *AuthMethod
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "valid",
+			authMethod: TestAuthMethod(
+				t,
+				conn,
+				databaseWrapper,
+				org.PublicId,
+				InactiveState,
+				TestConvertToUrls(t, "https://alice.com")[0],
+				"alice_rp", "my-dogs-name"),
+			wantErr:         false,
+			wantRowsDeleted: 1,
+		},
+		{
+			name: "bad-id",
+			authMethod: func() *AuthMethod {
+				m := AllocAuthMethod()
+				id, err := newAuthMethodId()
+				require.NoError(t, err)
+				m.PublicId = id
+				return &m
+			}(),
+			wantErr:         false,
+			wantRowsDeleted: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := &AuthMethod{
-				AuthMethod: tt.fields.AuthMethod,
-				tableName:  tt.fields.tableName,
+			assert, require := assert.New(t), require.New(t)
+			deleteAuthMethod := AllocAuthMethod()
+			deleteAuthMethod.PublicId = tt.authMethod.PublicId
+			deletedRows, err := rw.Delete(context.Background(), &deleteAuthMethod)
+			if tt.wantErr {
+				require.Error(err)
+				return
 			}
-			if got := a.clone(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("AuthMethod.clone() = %v, want %v", got, tt.want)
+			require.NoError(err)
+			if tt.wantRowsDeleted == 0 {
+				assert.Equal(tt.wantRowsDeleted, deletedRows)
+				return
 			}
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+			foundAuthMethod := AllocAuthMethod()
+			foundAuthMethod.PublicId = tt.authMethod.PublicId
+			err = rw.LookupById(context.Background(), &foundAuthMethod)
+			require.Error(err)
+			assert.True(errors.IsNotFoundError(err))
+		})
+	}
+}
+
+func TestAuthMethod_Clone(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
+		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+		require.NoError(t, err)
+		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+
+		cp := m.Clone()
+		assert.True(proto.Equal(cp.AuthMethod, m.AuthMethod))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
+		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+		require.NoError(t, err)
+		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+		m2 := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp2", "my-dogs-name")
+
+		cp := m.Clone()
+		assert.True(!proto.Equal(cp.AuthMethod, m2.AuthMethod))
+	})
+}
+
+func TestAuthMethod_SetTableName(t *testing.T) {
+	t.Parallel()
+	defaultTableName := DefaultAuthMethodTableName
+	tests := []struct {
+		name      string
+		setNameTo string
+		want      string
+	}{
+		{
+			name:      "new-name",
+			setNameTo: "new-name",
+			want:      "new-name",
+		},
+		{
+			name:      "reset to default",
+			setNameTo: "",
+			want:      defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := AllocAuthMethod()
+			require.Equal(defaultTableName, def.TableName())
+			m := AllocAuthMethod()
+			m.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, m.TableName())
 		})
 	}
 }
