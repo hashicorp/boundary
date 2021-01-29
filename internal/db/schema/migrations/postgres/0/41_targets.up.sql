@@ -1,3 +1,5 @@
+begin;
+
 /*
                                    ┌─────────────────┐
 ┌─────────────────┐                │   target_tcp    │
@@ -32,8 +34,6 @@
 └─────────────────┘                                                                            
 
 */
-
-begin;
 
 create table target (
   public_id wt_public_id primary key,

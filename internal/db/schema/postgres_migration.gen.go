@@ -4,12 +4,9 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		devMigration:        true,
-		binarySchemaVersion: 1086,
+		binarySchemaVersion: 1003,
 		upMigrations: map[int][]byte{
 			1: []byte(`
-begin;
-
 create domain wt_public_id as text
 check(
   length(trim(value)) > 10
@@ -164,13 +161,8 @@ comment on function
   immutable_columns()
 is
   'function used in before update triggers to make columns immutable';
-
-commit;
-
 `),
 			2: []byte(`
-begin;
-
 -- TODO (jimlambrt 7/2020) remove update_time
 create table if not exists oplog_entry (
   id bigint generated always as identity primary key,
@@ -278,15 +270,8 @@ values
   ('db_test_scooter', 1),
   ('auth_account', 1),
   ('iam_principal_role', 1);
-  
-
-commit;
-
-
 `),
 			3: []byte(`
-begin;
-
 -- create test tables used in the unit tests for the internal/db package 
 -- these tables (db_test_user, db_test_car, db_test_rental, db_test_scooter) are
 -- not part of the boundary domain model... they are simply used for testing
@@ -414,13 +399,8 @@ create trigger
 before
 insert on db_test_scooter
   for each row execute procedure default_create_time();
-
-commit;
-
 `),
 			6: []byte(`
-begin;
-
 create table iam_scope_type_enm (
   string text not null primary key
     constraint only_predefined_scope_types_allowed
@@ -1123,14 +1103,8 @@ from
 where
   gm.member_id = u.public_id and
   gm.group_id = g.public_id;
-  
-
-commit;
-
 `),
 			7: []byte(`
-begin;
-
 /*
 
   ┌────────────────┐               ┌────────────────┐
@@ -1293,13 +1267,8 @@ begin;
     before update of iam_user_id on auth_account
     for each row
     execute procedure update_iam_user_auth_account();
-
-commit;
-
 `),
 			8: []byte(`
-begin;
-
 -- For now at least the IDs will be the same as the name, because this allows us
 -- to not have to persist some generated ID to worker and controller nodes.
 -- Eventually we may want them to diverge, so we have both here for now.
@@ -1346,14 +1315,9 @@ create trigger
 before
 update on recovery_nonces
   for each row execute procedure immutable_columns('nonce', 'create_time');
-
-commit;
-
 `),
 			11: []byte(`
-begin;
-
-  -- an auth token belongs to 1 and only 1 auth account
+-- an auth token belongs to 1 and only 1 auth account
   -- an auth account can have 0 to many auth tokens
   create table auth_token (
     public_id wt_public_id primary key,
@@ -1485,13 +1449,8 @@ begin;
   before
   update on auth_token
     for each row execute procedure immutable_columns('public_id', 'auth_account_id', 'create_time');
-
-commit;
-
 `),
 			12: []byte(`
-begin;
-
 /*
 
        ┌────────────────┐                 ┌──────────────────────┐             ┌────────────────────────────┐
@@ -1784,14 +1743,9 @@ begin;
     ('auth_password_method', 1),
     ('auth_password_account', 1),
     ('auth_password_credential', 1);
-
-commit;
-
 `),
 			13: []byte(`
-begin;
-
-  create table auth_password_argon2_conf (
+create table auth_password_argon2_conf (
     private_id wt_private_id primary key
       references auth_password_conf (private_id)
       on delete cascade
@@ -1936,14 +1890,9 @@ begin;
   values
     ('auth_password_argon2_conf', 1),
     ('auth_password_argon2_cred', 1);
-
-commit;
-
 `),
 			14: []byte(`
-begin;
-
-  -- auth_password_conf_union is a union of the configuration settings
+-- auth_password_conf_union is a union of the configuration settings
   -- of all supported key derivation functions.
   -- It will be updated as new key derivation functions are supported.
   create or replace view auth_password_conf_union as
@@ -1964,13 +1913,8 @@ begin;
         from auth_password_method pm
   inner join auth_password_conf_union c
           on pm.password_conf_id = c.password_conf_id;
-
-commit;
-
 `),
 			20: []byte(`
-begin;
-
 /*
 
                                ┌─────────────────┐
@@ -2135,13 +2079,8 @@ begin;
     ('host_catalog', 1),
     ('host', 1),
     ('host_set', 1);
-
-commit;
-
 `),
 			22: []byte(`
-begin;
-
 /*
 
   ┌─────────────────┐          ┌─────────────────────┐
@@ -2339,13 +2278,8 @@ begin;
     ('static_host', 1),
     ('static_host_set', 1),
     ('static_host_set_member', 1);
-
-commit;
-
 `),
 			30: []byte(`
-begin;
-
 -- kms_version_column() will increment the version column whenever row data
 -- is inserted and should only be used in an before insert trigger.  This
 -- function will overwrite any explicit values to the version column.
@@ -2371,12 +2305,8 @@ comment on function
   kms_version_column()
 is
   'function used in before insert triggers to properly set version columns for kms_* tables with a version column';
-  
-  commit;
 `),
 			31: []byte(`
-begin;
-
 /*
              ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐            
              ├────────────────────────────────────────────────────────────────────────────────────────────┐                           ○            
@@ -2698,13 +2628,8 @@ before insert on kms_token_key_version
   values
     ('kms_root_key', 1),
     ('kms_root_key_version', 1);
-    
-commit;
 `),
 			40: []byte(`
-begin;
-
-
 -- insert_target_subtype() is a before insert trigger
 -- function for subtypes of target
 create or replace function
@@ -2770,8 +2695,6 @@ end if;
 return new;
 end;
 $$ language plpgsql;
-
-commit;
 `),
 			41: []byte(`
 /*
@@ -2808,8 +2731,6 @@ commit;
 └─────────────────┘                                                                            
 
 */
-
-begin;
 
 create table target (
   public_id wt_public_id primary key,
@@ -2963,13 +2884,8 @@ insert into oplog_ticket
   (name, version)
 values
   ('target_tcp', 1);
-
-commit;
-
 `),
 			50: []byte(`
-begin;
-
 /*
 
              ┌─────────────────┐               ┌─────────────────┐   ┌─────────────────┐
@@ -3455,13 +3371,8 @@ begin;
     session_state ss
   where 
     s.public_id = ss.session_id;
-
-commit;
-
 `),
 			51: []byte(`
-begin;
-
 /*
 
                ┌────────────────┐
@@ -3835,15 +3746,9 @@ create or replace function
     );
  end;
   $$ language plpgsql;
-
-
-commit;
-
 `),
 			60: []byte(`
-begin;
-
-  create extension if not exists "pgcrypto";
+create extension if not exists "pgcrypto";
 
   create domain wh_inet_port as integer
   check(
@@ -3923,14 +3828,9 @@ begin;
   as $$
     select wh_time_id(current_timestamp);
   $$ language sql;
-
-commit;
-
 `),
 			62: []byte(`
-begin;
-
-  create table wh_date_dimension (
+create table wh_date_dimension (
     id                            integer      primary key,
     date                          date         not null,
     calendar_quarter              wh_dim_text,
@@ -4023,14 +3923,9 @@ begin;
            date_trunc('day', current_timestamp) + interval '24 hours' - interval '1 second',
            interval '1 second'
          ) as t(second);
-
-commit;
-
 `),
 			65: []byte(`
-begin;
-
-  create table wh_host_dimension (
+create table wh_host_dimension (
     -- random id generated using encode(digest(gen_random_bytes(16), 'sha256'), 'base64')
     -- this is done to prevent conflicts with rows in other clusters
     -- which enables warehouse data from multiple clusters to be loaded into a
@@ -4255,14 +4150,9 @@ begin;
       from wh_user_dimension
      where current_row_indicator = 'Current'
   ;
-
-commit;
-
 `),
 			66: []byte(`
-begin;
-
-  -- wh_upsert_host returns the wh_host_dimension id for p_host_id,
+-- wh_upsert_host returns the wh_host_dimension id for p_host_id,
   -- p_host_set_id, and p_target_id. wh_upsert_host compares the current values
   -- in the wh_host_dimension with the current values in the operational tables
   -- for the provide parameters. If the values between the operational tables
@@ -4397,13 +4287,9 @@ begin;
 
   end;
   $$ language plpgsql;
-commit;
-
 `),
 			68: []byte(`
-begin;
-
-  -- Column names for numeric fields that are not a measurement end in id or
+-- Column names for numeric fields that are not a measurement end in id or
   -- number. This naming convention enables automatic field type detection in
   -- certain data analysis tools.
   -- https://help.tableau.com/current/pro/desktop/en-us/data_clean_adm.htm
@@ -4585,14 +4471,9 @@ begin;
     'additive measurement.';
 
   create index on wh_session_connection_accumulating_fact(session_id);
-
-commit;
-
 `),
 			69: []byte(`
-begin;
-
-  -- wh_rollup_connections calculates the aggregate values from
+-- wh_rollup_connections calculates the aggregate values from
   -- wh_session_connection_accumulating_fact for p_session_id and updates
   -- wh_session_accumulating_fact for p_session_id with those values.
   create or replace function wh_rollup_connections(p_session_id wt_public_id)
@@ -4861,13 +4742,8 @@ begin;
     after insert on session_connection_state
     for each row
     execute function wh_insert_session_connection_state();
-
-commit;
-
 `),
 			1001: []byte(`
-begin;
-
 -- This series of expressions fixes the primary key on the server table
 alter table session
   drop constraint session_server_id_server_type_fkey;
@@ -4987,12 +4863,8 @@ create table server_tag (
   value wt_tagpair,
   primary key(server_id, key, value)
 );
-
-commit;
 `),
-			1080: []byte(`
-begin;
-
+			1002: []byte(`
 -- wt_email defines a type for email which must be less than 320 chars and only
 -- contain lower case values.  The type is defined to allow nulls and not be
 -- unique, which can be overriden as needed when used in tables.
@@ -5047,13 +4919,8 @@ create domain wt_description as text
         check (length(trim(value)) < 1024);
 comment on domain wt_description is
 'standard column for resource descriptions';
-
-commit;
-
 `),
-			1082: []byte(`
-begin;
-
+			1003: []byte(`
 -- kms_oidc_key entries are DEKs for encrypting oidc entries.
 create table kms_oidc_key (
   private_id wt_private_id primary key,
@@ -5115,380 +4982,6 @@ create trigger
 	kms_version_column
 before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
-
-commit;
-
-`),
-			1083: []byte(`
-begin;
-
--- auth_oidc_method_state_enum entries define the possible oidc auth method
--- states. 
-create table auth_oidc_method_state_enm (
-  name text primary key
-    constraint only_predefined_oidc_method_states_allowed
-    check (
-        name in ('inactive', 'active-private', 'active-public', 'stopping')
-    )
-);
-
--- populate the values of auth_oidc_method_state_enm
-insert into auth_oidc_method_state_enm(name)
-  values
-    ('inactive'),
-    ('active-private'),
-    ('active-public'),
-    ('stopping'); 
-
- -- define the immutable fields for auth_oidc_method_state_enm (all of them)
-create trigger 
-  immutable_columns
-before
-update on auth_oidc_method_state_enm
-  for each row execute procedure immutable_columns('name');
-
-
--- auth_oidc_signing_alg entries define the supported oidc auth method
--- signing algorithms.
-create table auth_oidc_signing_alg_enm (
-  name text primary key
-    constraint only_predefined_auth_oidc_signing_algs_allowed
-    check (
-        name in (
-          'RS256', 
-          'RS384', 
-          'RS512', 
-          'ES256', 
-          'ES384', 
-          'ES512', 
-          'PS256', 
-          'PS384', 
-          'PS512', 
-          'EdDSA')
-    )
-);
-
--- populate the values of auth_oidc_signing_alg
-insert into auth_oidc_signing_alg_enm (name)
-  values
-    ('RS256'),
-    ('RS384'),
-    ('RS512'),
-    ('ES256'),
-    ('ES384'),
-    ('ES512'),
-    ('PS256'),
-    ('PS384'),
-    ('PS512'),
-    ('EdDSA')
-    ; 
-
- -- define the immutable fields for auth_oidc_signing_alg (all of them)
-create trigger 
-  immutable_columns
-before
-update on auth_oidc_signing_alg_enm
-  for each row execute procedure immutable_columns('name');
-
-commit;
-
-`),
-			1084: []byte(`
-begin;
-
--- auth_oidc_method entries are the current oidc auth methods configured for
--- existing scopes. 
-create table auth_oidc_method (
-  public_id wt_public_id
-    primary key,
-  scope_id wt_scope_id
-    not null,
-  name wt_name,
-  description wt_description, 
-  create_time wt_timestamp,
-  update_time wt_timestamp,
-  version wt_version,
-  state text not null
-    references auth_oidc_method_state_enm(name)
-    on delete restrict
-    on update cascade,
-  discovery_url wt_url not null, -- oidc discovery URL without any .well-known component
-  client_id text not null -- oidc client identifier issued by the oidc provider.
-    constraint client_id_not_empty
-    check(length(trim(client_id)) > 0), 
-  client_secret bytea not null, -- encrypted oidc client secret issued by the oidc provider.
-  key_id wt_private_id not null -- key used to encrypt entries via wrapping wrapper. 
-    references kms_oidc_key_version(private_id) 
-    on delete restrict
-    on update cascade, 
-  max_age int not null -- the allowable elapsed time in secs since the last time the user was authenticated. zero is allowed and should force the user to be re-authenticated.
-    constraint max_age_equal_or_greater_than_zero
-    check(max_age >= 0), 
-  foreign key (scope_id, public_id)
-      references auth_method (scope_id, public_id)
-      on delete cascade
-      on update cascade,
-  unique(scope_id, name),
-  unique(scope_id, public_id),
-  unique(scope_id, discovery_url, client_id) -- a client_id must be unique for a provider within a scope.
-);
-
--- auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc
--- auth method.  There must be at least one allowed alg for each oidc auth method.
-create table auth_oidc_signing_alg (
-  oidc_method_id wt_public_id 
-    references auth_oidc_method(public_id)
-    on delete cascade
-    on update cascade,
-  signing_alg_name text 
-    references auth_oidc_signing_alg_enm(name)
-    on delete restrict
-    on update cascade,
-  primary key(oidc_method_id, signing_alg_name)
-);
-
--- auth_oidc_callback_url entries are the callback URLs allowed for a specific
--- oidc auth method.  There must be at least one callback url for each oidc auth
--- method. 
-create table auth_oidc_callback_url (
-  oidc_method_id wt_public_id 
-    references auth_oidc_method(public_id)
-    on delete cascade
-    on update cascade,
-  callback_url wt_url not null
-);
-
--- auth_oidc_aud_claim entries are the audience claims for a specific oidc auth
--- method.  There can be 0 or more for each parent oidc auth method.  If an auth
--- method has any aud claims, an ID token must contain one of them to be valid. 
-create table auth_oidc_aud_claim (
-  oidc_method_id wt_public_id 
-    references auth_oidc_method(public_id)
-    on delete cascade
-    on update cascade,
-  aud_claim text not null
-    constraint aud_claim_must_not_be_empty
-    check(length(trim(aud_claim)) > 0) 
-    constraint aud_claim_must_be_less_than_1024_chars
-      check(length(trim(aud_claim)) < 1024),
-  primary key(oidc_method_id, aud_claim)
-);
-
--- auth_oidc_certificate entries are optional PEM encoded x509 certificates.
--- Each entry is a single certificate.  An oidc auth method may have 0 or more
--- of these optional x509s.  If an auth method has any cert entries, they are
--- used as trust anchors when connecting to the auth method's oidc provider
--- (instead of the host system's cert chain).
-create table auth_oidc_certificate (
-  oidc_method_id wt_public_id 
-    references auth_oidc_method(public_id)
-    on delete cascade
-    on update cascade,
-  certificate bytea not null,
-  primary key(oidc_method_id, certificate)
-);
-
-
-create table auth_oidc_account (
-    public_id wt_public_id
-      primary key,
-    auth_method_id wt_public_id
-      not null,
-    -- NOTE(mgaffney): The scope_id type is not wt_scope_id because the domain
-    -- check is executed before the insert trigger which retrieves the scope_id
-    -- causing an insert to fail.
-    scope_id text not null,
-    name wt_name,
-    description wt_description,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    version wt_version,
-    issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim
-    subject_id text not null -- case-senstive string that maps to an id_token's sub claim
-      constraint subject_id_must_not_be_empty 
-      check (
-        length(trim(subject_id)) > 0
-      )
-      constraint subject_id_must_be_less_than_256_chars 
-      check(
-        length(trim(subject_id)) <= 255 -- length limit per OIDC spec
-      ),
-    full_name wt_full_name, -- may be null and maps to an id_token's name claim
-    email wt_email, -- may be null and maps to the id_token's email claim
-    foreign key (scope_id, auth_method_id)
-      references auth_oidc_method (scope_id, public_id)
-      on delete cascade
-      on update cascade,
-    foreign key (scope_id, auth_method_id, public_id)
-      references auth_account (scope_id, auth_method_id, public_id)
-      on delete cascade
-      on update cascade,
-    unique(auth_method_id, name),
-    unique(auth_method_id, issuer_id, subject_id), -- subject must be unique for a provider within specific auth method
-    unique(auth_method_id, public_id)
-);
-
--- auth_oidc_method column triggers
-create trigger
-  insert_auth_method_subtype
-before insert on auth_oidc_method
-  for each row execute procedure insert_auth_method_subtype();
-
-create trigger
-  update_time_column
-before
-update on auth_oidc_method
-  for each row execute procedure update_time_column();
-
-create trigger
-  immutable_columns
-before
-update on auth_oidc_method
-  for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
-
-create trigger
-  default_create_time_column
-before
-insert on auth_oidc_method
-  for each row execute procedure default_create_time();
-
-create trigger
-  update_version_column
-after update on auth_oidc_method
-  for each row execute procedure update_version_column();
-
--- auth_oidc_account column triggers
-create trigger
-  update_time_column
-before
-update on auth_oidc_account
-  for each row execute procedure update_time_column();
-
-create trigger
-  immutable_columns
-before
-update on auth_oidc_account
-  for each row execute procedure immutable_columns('public_id', 'auth_method_id', 'scope_id', 'create_time', 'issuer_id', 'subject_id');
-
-create trigger
-  default_create_time_column
-before
-insert on auth_oidc_account
-  for each row execute procedure default_create_time();
-
-create trigger
-  update_version_column
-after update on auth_oidc_account
-  for each row execute procedure update_version_column();
-
-create trigger
-  insert_auth_account_subtype
-before insert on auth_oidc_account
-  for each row execute procedure insert_auth_account_subtype();
-
-commit;
-
-`),
-			1085: []byte(`
-begin;
-
--- auth_token_status_enm entries define the possible auth token
--- states. 
-create table auth_token_status_enm (
-  name text primary key
-    constraint only_predefined_auth_token_states_allowed
-    check (
-        name in ('auth token pending','token issued', 'authentication failed', 'system error')
-    )
-);
-
--- populate the values of auth_token_status_enm
-insert into auth_token_status_enm(name)
-  values
-    ('auth token pending'),
-    ('token issued'),
-    ('authentication failed'),
-    ('system error'); 
-
-
--- add the state column with a default to the auth_token table.
-alter table auth_token
-add column status text 
-not null
-default 'token issued' -- safest default
-references auth_token_status_enm(name)
-  on update cascade
-  on delete restrict;
-
-commit;
-`),
-			1086: []byte(`
-begin;
-
--- add the account_info_auth_method_id which determines which auth_method is
--- designated as for "account info" in the user's scope.  
-alter table iam_scope
-add column account_info_auth_method_id wt_public_id  -- allowed to be null and is mutable of course.
-references auth_method(public_id)
-    on update cascade
-    on delete set null;
-
--- establish a compond fk, but there's no cascading of deletes or updates, since
--- we only want to cascade changes to the account_info_auth_method_id portion of
--- the compond fk and that is handled in a separate fk declaration.
-alter table iam_scope
-add foreign key (public_id, account_info_auth_method_id) references auth_method(scope_id, public_id); 
-
--- iam_user_acct_info provides account info for users by determining which
--- auth_method is designated as for "account info" in the user's scope via the
--- scope's account_info_auth_method_id.  Every sub-type of auth_account must be
--- added to this view's union.
-create view iam_acct_info as
-select 
-    aa.iam_user_id,
-    oa.subject_id as login_name,
-    oa.full_name as full_name,
-    oa.email as email
-from 	
-    iam_scope s,
-    auth_account aa,
-    auth_oidc_account oa
-where
-    aa.public_id = oa.public_id and 
-    aa.auth_method_id = s.account_info_auth_method_id 
-union 
-select 
-    aa.iam_user_id,
-    pa.login_name,
-    '' as full_name,
-    '' as email
-from 	
-    iam_scope s,
-    auth_account aa,
-    auth_password_account pa
-where
-    aa.public_id = pa.public_id and 
-    aa.auth_method_id = s.account_info_auth_method_id;
-
--- iam_user_acct_info provides a simple way to retrieve entries that include
--- both the iam_user fields with an outer join to the user's account info.
-create view iam_user_acct_info as
-select 
-    u.public_id,
-    u.scope_id,
-    u.name,
-    u.description, 
-    u.create_time,
-    u.update_time,
-    u.version,
-    i.login_name,
-    i.full_name,
-    i.email
-from 	
-	iam_user u
-left outer join iam_acct_info i on u.public_id = i.iam_user_id;
-
-commit;
 `),
 		},
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/go-multierror"
 )
 
 // driver provides functionality to a database.
@@ -18,11 +19,19 @@ type driver interface {
 	Lock(context.Context) error
 	Unlock(context.Context) error
 	UnlockShared(context.Context) error
-	Run(context.Context, io.Reader) error
-	// A value of -1 indicates no version is set.
-	SetVersion(context.Context, int, bool) error
-	// A value of -1 indicates no version is set.
-	CurrentState(context.Context) (int, bool, error)
+	// Either starts a transactioon internal to the driver or sets a dirty
+	// bit so if the Run fails the CurrentState reflects it.
+	StartRun(context.Context) error
+	// Either commits the transaction or clears the dirty bit.
+	CommitRun() error
+	// Performs the mutation on the driver.  This should always be
+	// wrapped by StartRun and CommitRun.  The driver must properly
+	// handle the transaction or dirty bit in case of error when
+	// executing Run.
+	Run(context.Context, io.Reader, int) error
+	// A version of -1 indicates no version is set.
+	CurrentState(context.Context) (ver int, everRan bool, dirty bool, err error)
+	EnsureVersionTable(ctx context.Context) error
 }
 
 // Manager provides a way to run operations and retrieve information regarding
@@ -54,8 +63,7 @@ func NewManager(ctx context.Context, dialect string, db *sql.DB) (*Manager, erro
 
 // State contains information regarding the current state of a boundary database's schema.
 type State struct {
-	// InitializationStarted indicates if the current database has already been initialized
-	// (successfully or not) at least once.
+	// InitializationStarted indicates if the current database has been initialized previously.
 	InitializationStarted bool
 	// Dirty is set to true if the database failed in a previous migration/initialization.
 	Dirty bool
@@ -67,19 +75,18 @@ type State struct {
 
 // CurrentState provides the state of the boundary schema contained in the backing database.
 func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
+	const op = "schema.(Manager).CurrentState"
 	dbS := State{
 		BinarySchemaVersion: BinarySchemaVersion(b.dialect),
 	}
-	v, dirty, err := b.driver.CurrentState(ctx)
+
+	v, initialized, dirty, err := b.driver.CurrentState(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
+	dbS.InitializationStarted = initialized
 	dbS.DatabaseSchemaVersion = v
 	dbS.Dirty = dirty
-	if v == nilVersion {
-		return &dbS, nil
-	}
-	dbS.InitializationStarted = true
 	return &dbS, nil
 }
 
@@ -140,7 +147,7 @@ func (b *Manager) RollForward(ctx context.Context) error {
 		b.driver.Unlock(ctx)
 	}()
 
-	curVersion, dirty, err := b.driver.CurrentState(ctx)
+	curVersion, _, dirty, err := b.driver.CurrentState(ctx)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -149,7 +156,14 @@ func (b *Manager) RollForward(ctx context.Context) error {
 		return errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("schema is dirty with version %d", curVersion))
 	}
 
-	return b.runMigrations(ctx, newStatementProvider(b.dialect, curVersion))
+	if err = b.runMigrations(ctx, newStatementProvider(b.dialect, curVersion)); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
+}
+
+type rollbacker interface {
+	Rollback() error
 }
 
 // runMigrations passes migration queries to a database driver and manages
@@ -157,29 +171,32 @@ func (b *Manager) RollForward(ctx context.Context) error {
 // through the passed in context.
 func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) error {
 	const op = "schema.(Manager).runMigrations"
+
+	if err := b.driver.StartRun(ctx); err != nil {
+		return errors.Wrap(err, op)
+	}
+	if err := b.driver.EnsureVersionTable(ctx); err != nil {
+		return errors.Wrap(err, op)
+	}
 	for qp.Next() {
 		select {
 		case <-ctx.Done():
-			return errors.Wrap(ctx.Err(), op)
+			err := ctx.Err()
+			if d, ok := b.driver.(rollbacker); ok {
+				if rbErr := d.Rollback(); rbErr != nil {
+					err = multierror.Append(err, rbErr)
+				}
+			}
+			return errors.Wrap(err, op)
 		default:
 			// context is not done yet. Continue on to the next query to execute.
 		}
-
-		// set version with dirty state
-		if err := b.driver.SetVersion(ctx, qp.Version(), true); err != nil {
+		if err := b.driver.Run(ctx, bytes.NewReader(qp.ReadUp()), qp.Version()); err != nil {
 			return errors.Wrap(err, op)
 		}
-
-		// TODO: Wrap all the queries provided by the statementProvider into a
-		//  single transaction which includes setting the version number.
-		if err := b.driver.Run(ctx, bytes.NewReader(qp.ReadUp())); err != nil {
-			return errors.Wrap(err, op)
-		}
-
-		// set clean state
-		if err := b.driver.SetVersion(ctx, qp.Version(), false); err != nil {
-			return errors.Wrap(err, op)
-		}
+	}
+	if err := b.driver.CommitRun(); err != nil {
+		return errors.Wrap(err, op)
 	}
 	return nil
 }
