@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+/// DefaultAuthMethodTableName defines the default table name for an AuthMethod
 const DefaultAuthMethodTableName = "auth_oidc_method"
 
 // A AuthMethod contains accounts and password configurations. It is owned
@@ -81,12 +82,14 @@ func (a *AuthMethod) validate(caller errors.Op) error {
 	return nil
 }
 
+// AllocAuthmehtod makes an empty one in memory
 func AllocAuthMethod() AuthMethod {
 	return AuthMethod{
 		AuthMethod: &store.AuthMethod{},
 	}
 }
 
+// Clone an auth method.
 func (a *AuthMethod) Clone() *AuthMethod {
 	cp := proto.Clone(a.AuthMethod)
 	return &AuthMethod{
@@ -107,6 +110,7 @@ func (a *AuthMethod) SetTableName(n string) {
 	a.tableName = n
 }
 
+// oplog will create oplog metadata for the auth method.
 func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{a.GetPublicId()},
@@ -117,6 +121,7 @@ func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
+// encrypt the auth method before writing it to the db
 func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).encrypt"
 	if err := structwrapping.WrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
@@ -129,6 +134,7 @@ func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 	return nil
 }
 
+// decrypt the auth method after reading it from the db
 func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).encrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
@@ -137,6 +143,7 @@ func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error
 	return nil
 }
 
+// hmacClientSecret before writing it to the db
 func (a *AuthMethod) hmacClientSecret(cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).hmacClientSecret"
 	reader, err := kms.NewDerivedReader(cipher, 32, []byte(a.PublicId), nil)
