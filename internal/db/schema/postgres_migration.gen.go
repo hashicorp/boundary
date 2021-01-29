@@ -5083,7 +5083,9 @@ create table auth_oidc_method (
     on update cascade, 
   max_age int  -- the allowable elapsed time in secs since the last time the user was authenticated. zero is allowed and should force the user to be re-authenticated.
     constraint max_age_not_equal_zero
-    check(max_age != 0), 
+      check(max_age != 0)
+    constraint max_age_not_less_then_negative_one
+      check(max_age >= -1), 
   foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
       on delete cascade
