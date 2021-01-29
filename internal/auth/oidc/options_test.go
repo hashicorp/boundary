@@ -42,6 +42,13 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withLimit = 1
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithMaxAge", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithMaxAge(1000))
+		testOpts := getDefaultOptions()
+		testOpts.withMaxAge = 1000
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithCallbackUrls", func(t *testing.T) {
 		assert := assert.New(t)
 		u := TestConvertToUrls(t, "https://alice.com?callback", "http://localhost:8080?callback")

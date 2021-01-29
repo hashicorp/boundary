@@ -22,6 +22,7 @@ type options struct {
 	withName         string
 	withDescription  string
 	withLimit        int
+	withMaxAge       int
 	withCallbackUrls []*url.URL
 	withCertificates []*x509.Certificate
 	withAudClaims    []string
@@ -54,7 +55,23 @@ func WithLimit(l int) Option {
 	}
 }
 
+// WithMaxAge provides an optional max age.   Specifies the allowable elapsed
+// time in seconds since the last time the End-User was actively authenticated
+// by the OP. If the elapsed time is greater than this value, the OP MUST
+// attempt to actively re-authenticate the End-User.  A value -1 basically
+// forces the IdP to re-authenticate the End-User.  Zero is not a valid value.
+//
+// see: https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+func WithMaxAge(max int) Option {
+	return func(o *options) {
+		o.withMaxAge = max
+	}
+}
+
 // WithCallbackUrls provides optional callback URLs.
+//
+// see redirect_uri:
+// https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 func WithCallbackUrls(urls ...*url.URL) Option {
 	return func(o *options) {
 		o.withCallbackUrls = urls
