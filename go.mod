@@ -37,6 +37,7 @@ require (
 	github.com/jackc/pgx/v4 v4.10.0
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
 	github.com/jinzhu/gorm v1.9.16
+	github.com/jinzhu/now v1.1.1 // indirect
 	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.9.0
