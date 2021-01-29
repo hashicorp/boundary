@@ -22,8 +22,12 @@ type AuthMethod struct {
 // NewAuthMethod creates a new in memory AuthMethod assigned to scopeId.
 // Name and description are the only valid options. All other options are
 // ignored.
-func NewAuthMethod(scopeId string, state AuthMethodState, discoveryUrl url.URL, clientId string, clientSecret ClientSecret, maxAge uint32, opt ...Option) (*AuthMethod, error) {
+func NewAuthMethod(scopeId string, state AuthMethodState, discoveryUrl *url.URL, clientId string, clientSecret ClientSecret, maxAge uint32, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.NewAuthMethod"
+
+	if discoveryUrl == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "empty discovery URL")
+	}
 
 	opts := getOpts(opt...)
 	a := &AuthMethod{
