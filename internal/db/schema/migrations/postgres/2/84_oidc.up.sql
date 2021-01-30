@@ -64,7 +64,8 @@ create table auth_oidc_callback_url (
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
-  callback_url wt_url not null
+  callback_url wt_url not null,
+  primary key(oidc_method_id, callback_url)
 );
 
 -- auth_oidc_aud_claim entries are the audience claims for a specific oidc auth
