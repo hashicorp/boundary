@@ -116,9 +116,10 @@ func (s Service) listSessions(ctx context.Context, a action.Type, scopeId string
 	if err != nil {
 		return nil, err
 	}
+
 	finalItems := make([]*pb.Session, 0, len(seslist))
 	res := &perms.Resource{
-		Type:    resource.Session,
+		Type: resource.Session,
 	}
 	for _, item := range seslist {
 		item.Scope = scopeInfoMap[item.GetScopeId()]
