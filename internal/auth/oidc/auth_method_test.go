@@ -33,13 +33,14 @@ func TestAuthMethod_Create(t *testing.T) {
 		opt          []Option
 	}
 	tests := []struct {
-		name          string
-		args          args
-		want          *AuthMethod
-		wantErr       bool
-		wantIsErr     errors.Code
-		create        bool
-		wantCreateErr bool
+		name            string
+		args            args
+		want            *AuthMethod
+		wantErr         bool
+		wantIsErr       errors.Code
+		create          bool
+		wantCreateErr   bool
+		wantCreateIsErr errors.Code
 	}{
 		{
 			name: "valid",
@@ -63,6 +64,31 @@ func TestAuthMethod_Create(t *testing.T) {
 				a.Description = "alice's restaurant rp"
 				return &a
 			}(),
+		},
+		{
+			name: "dup", // must follow "valid" test. combination of ScopeId, DiscoveryUrl and ClientId must be unique.
+			args: args{
+				scopeId:      org.PublicId,
+				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
+				clientId:     "alice_rp",
+				clientSecret: ClientSecret("rp-secret"),
+				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com"), WithMaxAge(-1)},
+			},
+			create: true,
+			want: func() *AuthMethod {
+				a := AllocAuthMethod()
+				a.ScopeId = org.PublicId
+				a.State = string(InactiveState)
+				a.DiscoveryUrl = "http://alice.com"
+				a.ClientId = "alice_rp"
+				a.ClientSecret = "rp-secret"
+				a.MaxAge = -1
+				a.Name = "alice.com"
+				a.Description = "alice's restaurant rp"
+				return &a
+			}(),
+			wantCreateErr:   true,
+			wantCreateIsErr: errors.NotUnique,
 		},
 		{
 			name: "valid-with-no-options",
@@ -154,6 +180,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				err = rw.Create(ctx, got)
 				if tt.wantCreateErr {
 					assert.Error(err)
+					assert.True(errors.Match(errors.T(tt.wantCreateIsErr), err))
 					return
 				} else {
 					assert.NoError(err)
@@ -176,39 +203,39 @@ func TestAuthMethod_Delete(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	rw := db.New(conn)
+	ctx := context.Background()
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
+	testResource := func(discoveryUrl string, clientId, clientSecret string) *AuthMethod {
+		got, err := NewAuthMethod(org.PublicId, TestConvertToUrls(t, discoveryUrl)[0], clientId, ClientSecret(clientSecret))
+		require.NoError(t, err)
+		id, err := newAuthMethodId()
+		require.NoError(t, err)
+		got.PublicId = id
+		err = got.encrypt(ctx, databaseWrapper)
+		require.NoError(t, err)
+		return got
+	}
 	tests := []struct {
 		name            string
 		authMethod      *AuthMethod
+		overrides       func(*AuthMethod)
 		wantRowsDeleted int
 		wantErr         bool
 		wantErrMsg      string
 	}{
 		{
-			name: "valid",
-			authMethod: TestAuthMethod(
-				t,
-				conn,
-				databaseWrapper,
-				org.PublicId,
-				InactiveState,
-				TestConvertToUrls(t, "https://alice.com")[0],
-				"alice_rp", "my-dogs-name"),
+			name:            "valid",
+			authMethod:      testResource("https://alice.com", "alice-rp", "alice's dog's name"),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
 		{
-			name: "bad-id",
-			authMethod: func() *AuthMethod {
-				m := AllocAuthMethod()
-				id, err := newAuthMethodId()
-				require.NoError(t, err)
-				m.PublicId = id
-				return &m
-			}(),
+			name:            "bad-id",
+			authMethod:      testResource("https://alice.com", "alice-rp", "alice's dog's name"),
+			overrides:       func(a *AuthMethod) { a.PublicId = "bad-id" },
 			wantErr:         false,
 			wantRowsDeleted: 0,
 		},
@@ -216,9 +243,14 @@ func TestAuthMethod_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deleteAuthMethod := AllocAuthMethod()
-			deleteAuthMethod.PublicId = tt.authMethod.PublicId
-			deletedRows, err := rw.Delete(context.Background(), &deleteAuthMethod)
+			ctx := context.Background()
+			cp := tt.authMethod.Clone()
+			require.NoError(rw.Create(ctx, &cp))
+
+			if tt.overrides != nil {
+				tt.overrides(cp)
+			}
+			deletedRows, err := rw.Delete(context.Background(), &cp)
 			if tt.wantErr {
 				require.Error(err)
 				return
