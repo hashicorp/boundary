@@ -1,4 +1,5 @@
 # Folders
+.vagrant
 _obj
 _test
 .cover

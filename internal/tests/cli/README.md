@@ -32,7 +32,7 @@ export BOUNDARY_ADDR=<your_install>
 2. Run the tests
 
 ```bash
-bats -p boundary/
+bats -p tests/
 ```
 
 ## Running Tests Against Other Deployments
@@ -43,7 +43,7 @@ You can run this suite against an arbitrary cluster by overriding the following 
 DEFAULT_LOGIN=<my_login> \ 
 DEFAULT_PASSWORD=<my_password> \
 BOUNDARY_ADDR=http://boundary-test-controller-salmon-b70f2710539143b4.elb.us-east-1.amazonaws.com:9200 \
-bats boundary/
+bats tests/
 ```
 
 ~> Note that these tests currently expect generated resources to exist. Failure to run against a Boundary deployment that does
