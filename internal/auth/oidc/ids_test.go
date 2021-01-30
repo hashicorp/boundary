@@ -10,7 +10,7 @@ import (
 
 func Test_Ids(t *testing.T) {
 	t.Parallel()
-	t.Run("tcp", func(t *testing.T) {
+	t.Run(AuthMethodPrefix, func(t *testing.T) {
 		id, err := newAuthMethodId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, AuthMethodPrefix+"_"))
