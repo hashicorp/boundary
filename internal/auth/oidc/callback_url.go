@@ -9,7 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// DefaultAuthMethodTableName defines the default table name for a CallbackUrl
+// DefaultCallbackUrlTableName defines the default table name for a CallbackUrl
 const DefaultCallbackUrlTableName = "auth_oidc_callback_url"
 
 // CallbackUrl defines an callback URL for an OIDC auth method.  Callbacks are
