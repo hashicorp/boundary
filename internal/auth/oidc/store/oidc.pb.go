@@ -376,11 +376,11 @@ type SigningAlg struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// @inject_tag `gorm:"primary_key"`
-	OidcMethodId string `protobuf:"bytes,10,opt,name=oidc_method_id,json=oidcMethodId,proto3" json:"oidc_method_id,omitempty"`
+	// @inject_tag: `gorm:"primary_key"`
+	OidcMethodId string `protobuf:"bytes,10,opt,name=oidc_method_id,json=oidcMethodId,proto3" json:"oidc_method_id,omitempty" gorm:"primary_key"`
 	// alg is an enum from the auth_oidc_signing_alg_enm table
-	// @inject_tag `gorm:"primary_key;column:signing_alg_name"`
-	Alg string `protobuf:"bytes,20,opt,name=alg,proto3" json:"alg,omitempty"`
+	// @inject_tag: `gorm:"primary_key;column:signing_alg_name"`
+	Alg string `protobuf:"bytes,20,opt,name=alg,proto3" json:"alg,omitempty" gorm:"primary_key;column:signing_alg_name"`
 }
 
 func (x *SigningAlg) Reset() {
@@ -435,11 +435,11 @@ type CallbackUrl struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// @inject_tag `gorm:"primary_key"`
-	OidcMethodId string `protobuf:"bytes,10,opt,name=oidc_method_id,json=oidcMethodId,proto3" json:"oidc_method_id,omitempty"`
+	// @inject_tag: `gorm:"primary_key"`
+	OidcMethodId string `protobuf:"bytes,10,opt,name=oidc_method_id,json=oidcMethodId,proto3" json:"oidc_method_id,omitempty" gorm:"primary_key"`
 	// url is an allowed callback URL configured within the OIDC provider
-	// @inject_tag `gorm:"primary_key;column:callback_url"`
-	Url string `protobuf:"bytes,20,opt,name=url,proto3" json:"url,omitempty"`
+	// @inject_tag: `gorm:"column:callback_url;primary_key"`
+	Url string `protobuf:"bytes,20,opt,name=url,proto3" json:"url,omitempty" gorm:"column:callback_url;primary_key"`
 }
 
 func (x *CallbackUrl) Reset() {
@@ -494,11 +494,11 @@ type AudClaim struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// @inject_tag `gorm:"primary_key"`
-	OidcMethodId string `protobuf:"bytes,10,opt,name=oidc_method_id,json=oidcMethodId,proto3" json:"oidc_method_id,omitempty"`
+	// @inject_tag: `gorm:"primary_key"`
+	OidcMethodId string `protobuf:"bytes,10,opt,name=oidc_method_id,json=oidcMethodId,proto3" json:"oidc_method_id,omitempty" gorm:"primary_key"`
 	// aud is an allowed audience claim for id_tokens
-	// @inject_tag `gorm:"primary_key;column:aud_claim"`
-	Aud string `protobuf:"bytes,20,opt,name=aud,proto3" json:"aud,omitempty"`
+	// @inject_tag: `gorm:"primary_key;column:aud_claim""`
+	Aud string `protobuf:"bytes,20,opt,name=aud,proto3" json:"aud,omitempty" gorm:"primary_key;column:aud_claim"`
 }
 
 func (x *AudClaim) Reset() {
