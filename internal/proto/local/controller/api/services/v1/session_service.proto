@@ -31,7 +31,7 @@ service SessionService {
 	rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
 		option (google.api.http) = {
 			get: "/v1/sessions"
-    };
+    	};
 		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
 			summary: "Lists all Sessions."
 		};
