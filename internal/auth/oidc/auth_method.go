@@ -82,14 +82,14 @@ func (a *AuthMethod) validate(caller errors.Op) error {
 	return nil
 }
 
-// AllocAuthmehtod makes an empty one in memory
+// AllocAuthMethod makes an empty one in memory
 func AllocAuthMethod() AuthMethod {
 	return AuthMethod{
 		AuthMethod: &store.AuthMethod{},
 	}
 }
 
-// Clone an auth method.
+// Clone an AuthMethod.
 func (a *AuthMethod) Clone() *AuthMethod {
 	cp := proto.Clone(a.AuthMethod)
 	return &AuthMethod{
@@ -110,7 +110,7 @@ func (a *AuthMethod) SetTableName(n string) {
 	a.tableName = n
 }
 
-// oplog will create oplog metadata for the auth method.
+// oplog will create oplog metadata for the AuthMethod.
 func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{a.GetPublicId()},
