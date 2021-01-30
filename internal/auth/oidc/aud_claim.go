@@ -7,6 +7,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// DefaultAuthMethodTableName defines the default table name for an AudClaim
+const DefaultAudClaimTableName = "auth_oidc_aud_claim"
+
 type AudClaim struct {
 	*store.AudClaim
 	tableName string
@@ -34,13 +37,13 @@ func (a *AudClaim) validate(caller errors.Op) error {
 	return nil
 }
 
-func allocAudClaim() AudClaim {
+func AllocAudClaim() AudClaim {
 	return AudClaim{
 		AudClaim: &store.AudClaim{},
 	}
 }
 
-func (c *AudClaim) clone() *AudClaim {
+func (c *AudClaim) Clone() *AudClaim {
 	cp := proto.Clone(c.AudClaim)
 	return &AudClaim{
 		AudClaim: cp.(*store.AudClaim),
@@ -52,7 +55,7 @@ func (c *AudClaim) TableName() string {
 	if c.tableName != "" {
 		return c.tableName
 	}
-	return "auth_oidc_aud_claim"
+	return DefaultAudClaimTableName
 }
 
 // SetTableName sets the table name.

@@ -17,10 +17,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-/// DefaultAuthMethodTableName defines the default table name for an AuthMethod
+// DefaultAuthMethodTableName defines the default table name for an AuthMethod
 const DefaultAuthMethodTableName = "auth_oidc_method"
 
-// A AuthMethod contains accounts and password configurations. It is owned
+// AuthMethod contains an OIDC auth method configuration. It is owned
 // by a scope.
 type AuthMethod struct {
 	*store.AuthMethod
