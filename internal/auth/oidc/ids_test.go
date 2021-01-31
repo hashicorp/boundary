@@ -15,4 +15,9 @@ func Test_Ids(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, AuthMethodPrefix+"_"))
 	})
+	t.Run(AccountPrefix, func(t *testing.T) {
+		id, err := newAccountId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, AccountPrefix+"_"))
+	})
 }
