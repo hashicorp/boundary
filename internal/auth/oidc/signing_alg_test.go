@@ -55,7 +55,7 @@ func TestSigningAlg_Create(t *testing.T) {
 			}(),
 		},
 		{
-			name: "dup", // must follow "valid" test. Url must be be unique for an OidcMethodId
+			name: "dup", // must follow "valid" test. Alg must be be unique for an OidcMethodId
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
 				alg:          RS256,
