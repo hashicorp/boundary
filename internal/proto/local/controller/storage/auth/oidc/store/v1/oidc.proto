@@ -156,7 +156,7 @@ message AudClaim {
 // Certificate entries are optional PEM encoded x509 certificates that can be
 // used as trust anchors when connecting to an OIDC provider.
 message Certificate {
-  // @inject_tag `gorm:"primary_key"`
+  // @inject_tag: `gorm:"primary_key"`
   string oidc_method_id = 10;
 
   // certificate is a PEM encoded x509

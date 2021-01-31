@@ -554,8 +554,8 @@ type Certificate struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// @inject_tag `gorm:"primary_key"`
-	OidcMethodId string `protobuf:"bytes,10,opt,name=oidc_method_id,json=oidcMethodId,proto3" json:"oidc_method_id,omitempty"`
+	// @inject_tag: `gorm:"primary_key"`
+	OidcMethodId string `protobuf:"bytes,10,opt,name=oidc_method_id,json=oidcMethodId,proto3" json:"oidc_method_id,omitempty" gorm:"primary_key"`
 	// certificate is a PEM encoded x509
 	// @inject_tag: `gorm:"column:certificate;primary_key"`
 	Cert string `protobuf:"bytes,20,opt,name=cert,proto3" json:"cert,omitempty" gorm:"column:certificate;primary_key"`
