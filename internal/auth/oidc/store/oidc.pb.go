@@ -557,8 +557,8 @@ type Certificate struct {
 	// @inject_tag `gorm:"primary_key"`
 	OidcMethodId string `protobuf:"bytes,10,opt,name=oidc_method_id,json=oidcMethodId,proto3" json:"oidc_method_id,omitempty"`
 	// certificate is a PEM encoded x509
-	// @inject_tag `gorm:"primary_key;column:certificate"`
-	Cert string `protobuf:"bytes,20,opt,name=cert,proto3" json:"cert,omitempty"`
+	// @inject_tag: `gorm:"column:certificate;primary_key"`
+	Cert string `protobuf:"bytes,20,opt,name=cert,proto3" json:"cert,omitempty" gorm:"column:certificate;primary_key"`
 }
 
 func (x *Certificate) Reset() {

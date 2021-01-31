@@ -160,6 +160,6 @@ message Certificate {
   string oidc_method_id = 10;
 
   // certificate is a PEM encoded x509
-  // @inject_tag `gorm:"primary_key;column:certificate"`
+  // @inject_tag: `gorm:"column:certificate;primary_key"`
   string cert = 20;
 }
