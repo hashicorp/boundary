@@ -75,4 +75,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withAudClaims = aud
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithSigningAlgs", func(t *testing.T) {
+		assert := assert.New(t)
+		algs := []Alg{RS256, RS384, RS512}
+		opts := getOpts(WithSigningAlgs(algs...))
+		testOpts := getDefaultOptions()
+		testOpts.withSigningAlgs = algs
+		assert.Equal(opts, testOpts)
+	})
 }

@@ -26,6 +26,7 @@ type options struct {
 	withCallbackUrls []*url.URL
 	withCertificates []*x509.Certificate
 	withAudClaims    []string
+	withSigningAlgs  []Alg
 }
 
 func getDefaultOptions() options {
@@ -89,5 +90,12 @@ func WithCertificates(certs ...*x509.Certificate) Option {
 func WithAudClaims(aud ...string) Option {
 	return func(o *options) {
 		o.withAudClaims = aud
+	}
+}
+
+// WithSigningAlgs provides optional signing algorithms
+func WithSigningAlgs(alg ...Alg) Option {
+	return func(o *options) {
+		o.withSigningAlgs = alg
 	}
 }
