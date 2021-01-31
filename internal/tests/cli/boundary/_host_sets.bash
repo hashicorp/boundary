@@ -1,3 +1,5 @@
+load _authorized_actions
+
 function create_host_set() {
   local hcid=$1
   local name=$2
@@ -46,4 +48,16 @@ function host_set_has_host_id() {
     fi
   done
   return 1 
+}
+
+function has_default_host_set_actions() {
+  local out=$1
+  local actions=('read' 'update' 'delete' 'add-hosts' 'set-hosts' 'remove-hosts')
+
+  for action in ${actions[@]}; do
+    $(has_authorized_action "$out" "$action") || {
+      echo "failed to find $action action in output: $out"
+      return 1 
+    } 
+  done
 }
