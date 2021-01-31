@@ -27,6 +27,8 @@ type options struct {
 	withCertificates []*x509.Certificate
 	withAudClaims    []string
 	withSigningAlgs  []Alg
+	withEmail        string
+	withFullName     string
 }
 
 func getDefaultOptions() options {
@@ -97,5 +99,19 @@ func WithAudClaims(aud ...string) Option {
 func WithSigningAlgs(alg ...Alg) Option {
 	return func(o *options) {
 		o.withSigningAlgs = alg
+	}
+}
+
+// WithEmail provides an optional email address for the account.
+func WithEmail(email string) Option {
+	return func(o *options) {
+		o.withEmail = email
+	}
+}
+
+// WithFullName provides an optional full name for the account.
+func WithFullName(n string) Option {
+	return func(o *options) {
+		o.withFullName = n
 	}
 }

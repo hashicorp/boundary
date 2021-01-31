@@ -83,4 +83,18 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withSigningAlgs = algs
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithEmail", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithEmail("bob@alice.com"))
+		testOpts := getDefaultOptions()
+		testOpts.withEmail = "bob@alice.com"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithFullName", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithFullName("Bob Eve Alice"))
+		testOpts := getDefaultOptions()
+		testOpts.withFullName = "Bob Eve Alice"
+		assert.Equal(opts, testOpts)
+	})
 }
