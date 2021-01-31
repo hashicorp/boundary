@@ -29,7 +29,8 @@ type AuthMethod struct {
 
 // NewAuthMethod creates a new in memory AuthMethod assigned to scopeId.
 // WithMaxAge, WithName and WithDescription are the only valid options. All
-// other options are ignored.  WithMaxAge m
+// other options are ignored.  If MaxAge == -1, then it indicates user should
+// always be re-authenticated.
 func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clientSecret ClientSecret, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.NewAuthMethod"
 
