@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// Alg represents asymmetric signing algorithms
 type Alg string
 
 const (
@@ -40,60 +41,75 @@ var supportedAlgorithms = map[Alg]bool{
 	EdDSA: true,
 }
 
+// DefaultSigningAlgTableName defines the default table name for a SigningAlg
+const DefaultSigningAlgTableName = "auth_oidc_signing_alg"
+
+// SigningAlg defines an signing algorithm supported by an OIDC auth method.
+// SigningAlgs are "owned" by their coresponding OIDC auth method.
 type SigningAlg struct {
 	*store.SigningAlg
 	tableName string
 }
 
+// NewSigningAlg creates a new in memory signing alg for an OIDC AuthMethod. It
+// supports no options.
 func NewSigningAlg(authMethodId string, alg Alg) (*SigningAlg, error) {
 	const op = "oidc.NewSigningAlg"
-	a := &SigningAlg{
+	s := &SigningAlg{
 		SigningAlg: &store.SigningAlg{
 			OidcMethodId: authMethodId,
 			Alg:          string(alg),
 		},
 	}
-	if err := a.validate(op); err != nil {
+	if err := s.validate(op); err != nil {
 		return nil, err // intentionally not wrapped
 	}
-	return a, nil
+	return s, nil
 }
 
-func (a *SigningAlg) validate(caller errors.Op) error {
-	if _, ok := supportedAlgorithms[Alg(a.Alg)]; !ok {
+// validate the SigningAlg.  On success, it will return nil.
+func (s *SigningAlg) validate(caller errors.Op) error {
+	if s.OidcMethodId == "" {
+		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
+	}
+	if _, ok := supportedAlgorithms[Alg(s.Alg)]; !ok {
 		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("unsupported signing algorithm: %s", a.Alg))
 	}
 	return nil
 }
-func allocSigningAlg() SigningAlg {
+
+// AllocSigningAlg makes an empty one in memory
+func AllocSigningAlg() SigningAlg {
 	return SigningAlg{
 		SigningAlg: &store.SigningAlg{},
 	}
 }
 
-func (a *SigningAlg) clone() *SigningAlg {
-	cp := proto.Clone(a.SigningAlg)
+// Clone a SigningAlg
+func (s *SigningAlg) clone() *SigningAlg {
+	cp := proto.Clone(s.SigningAlg)
 	return &SigningAlg{
 		SigningAlg: cp.(*store.SigningAlg),
 	}
 }
 
 // TableName returns the table name.
-func (a *SigningAlg) TableName() string {
-	if a.tableName != "" {
-		return a.tableName
+func (s *SigningAlg) TableName() string {
+	if s.tableName != "" {
+		return s.tableName
 	}
-	return "auth_oidc_signing_alg"
+	return DefaultSigningAlgTableName
 }
 
 // SetTableName sets the table name.
-func (a *SigningAlg) SetTableName(n string) {
-	a.tableName = n
+func (s *SigningAlg) SetTableName(n string) {
+	s.tableName = n
 }
 
-func (a *SigningAlg) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
+// oplog will create oplog metadata for the SigningAlg.
+func (s *SigningAlg) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{a.OidcMethodId}, // the auth method is the root aggregate
+		"resource-public-id": []string{s.OidcMethodId}, // the auth method is the root aggregate
 		"resource-type":      []string{"oidc auth signing alg"},
 		"op-type":            []string{op.String()},
 	}
