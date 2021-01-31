@@ -69,7 +69,8 @@ type AuthMethod struct {
 	// client_secret_hmac is a sha256-hmac of the unencrypted client_secret that
 	// is returned from the API for read.  It is recalculated everytime the raw
 	// client_secret is updated.
-	ClientSecretHmac string `protobuf:"bytes,130,opt,name=client_secret_hmac,json=clientSecretHmac,proto3" json:"client_secret_hmac,omitempty"`
+	// @inject_tag: `gorm:"not_null"`
+	ClientSecretHmac string `protobuf:"bytes,130,opt,name=client_secret_hmac,json=clientSecretHmac,proto3" json:"client_secret_hmac,omitempty" gorm:"not_null"`
 	// key_id is the key ID that was used for the encryption operation. It can be
 	// used to identify a specific version of the key needed to decrypt the value,
 	// which is useful for caching purposes.
@@ -254,11 +255,11 @@ type Account struct {
 	// @inject_tag: `gorm:"not_null"`
 	SubjectId string `protobuf:"bytes,90,opt,name=subject_id,json=subjectId,proto3" json:"subject_id,omitempty" gorm:"not_null"`
 	// full_name is a string that maps to the OIDC name claim
-	// @inject_tag: `gorm:"not_null"`
-	FullName string `protobuf:"bytes,100,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"default:null"`
+	FullName string `protobuf:"bytes,100,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty" gorm:"default:null"`
 	// email is a string that maps to the OIDC email claim.
-	// @inject_tag: `gorm:"not_null"`
-	Email string `protobuf:"bytes,110,opt,name=email,proto3" json:"email,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"default:null"`
+	Email string `protobuf:"bytes,110,opt,name=email,proto3" json:"email,omitempty" gorm:"default:null"`
 }
 
 func (x *Account) Reset() {

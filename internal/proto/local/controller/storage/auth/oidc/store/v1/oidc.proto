@@ -60,6 +60,7 @@ message AuthMethod {
   // client_secret_hmac is a sha256-hmac of the unencrypted client_secret that
   // is returned from the API for read.  It is recalculated everytime the raw
   // client_secret is updated.
+  // @inject_tag: `gorm:"not_null"`
   string client_secret_hmac = 130;
 
   // key_id is the key ID that was used for the encryption operation. It can be
@@ -115,11 +116,11 @@ message Account {
   string subject_id = 90;
 
   // full_name is a string that maps to the OIDC name claim
-  // @inject_tag: `gorm:"not_null"`
+  // @inject_tag: `gorm:"default:null"`
   string full_name = 100;
 
   // email is a string that maps to the OIDC email claim.
-  // @inject_tag: `gorm:"not_null"`
+  // @inject_tag: `gorm:"default:null"`
   string email = 110;
 }
 
