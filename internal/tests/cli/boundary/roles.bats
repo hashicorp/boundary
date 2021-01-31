@@ -28,8 +28,16 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
 
 @test "boundary/roles: can read $NEW_ROLE role" {
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
-  echo "rid $rid"
 	run read_role $rid
+  echo "$output"
+	[ "$status" -eq 0 ]
+}
+
+@test "boundary/roles: the $NEW_ROLE role contains default authorized-actions" {
+  local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
+  local out=$(read_role $rid)
+
+	run has_default_role_actions "$out" 
   echo "$output"
 	[ "$status" -eq 0 ]
 }

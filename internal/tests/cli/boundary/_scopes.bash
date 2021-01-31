@@ -1,3 +1,5 @@
+load _authorized_actions
+
 function create_scope() {
   local parent=$1
   local name=$2
@@ -26,4 +28,16 @@ function scope_id() {
   local sid=$2
   
   strip $(list_scopes $sid | jq -c ".[] | select(.name | contains(\"$name\")) | .[\"id\"]")
+}
+
+function has_default_scope_actions() {
+  local out=$1
+  local actions=('read' 'update' 'delete')
+
+  for action in ${actions[@]}; do
+    $(has_authorized_action "$out" "$action") || {
+      echo "failed to find $action action in output: $out"
+      return 1 
+    } 
+  done
 }

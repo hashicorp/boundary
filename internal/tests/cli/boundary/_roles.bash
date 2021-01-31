@@ -1,3 +1,5 @@
+load _authorized_actions
+
 function create_role() {
   local sid=$1
   local name=$2
@@ -88,4 +90,16 @@ function role_has_grant() {
     fi
   done
   return 1 
+}
+
+function has_default_role_actions() {
+  local out=$1
+  local actions=('read' 'update' 'delete' 'add-principals' 'set-principals' 'remove-principals' 'add-grants' 'set-grants' 'remove-grants')
+
+  for action in ${actions[@]}; do
+    $(has_authorized_action "$out" "$action") || {
+      echo "failed to find $action action in output: $out"
+      return 1 
+    } 
+  done
 }

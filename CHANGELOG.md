@@ -2,7 +2,10 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.1.5 (2021/01/29)
+
+*NOTE*: This version requires a database migration via the new `boundary
+database migrate` command.
 
 ### Security
 
