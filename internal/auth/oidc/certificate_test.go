@@ -144,6 +144,8 @@ func TestCertificate_Delete(t *testing.T) {
 
 	// make another test cert
 	_, pem2 := testGenerateCA(t, "localhost")
+	_, pem3 := testGenerateCA(t, "localhost")
+	_, pem4 := testGenerateCA(t, "localhost")
 
 	testResource := func(authMethodId string, cert string) *Certificate {
 		c, err := NewCertificate(authMethodId, cert)
@@ -166,14 +168,14 @@ func TestCertificate_Delete(t *testing.T) {
 		},
 		{
 			name:            "bad-OidcMethodId",
-			Certificate:     testResource(testAuthMethod.PublicId, pem2),
+			Certificate:     testResource(testAuthMethod.PublicId, pem3),
 			overrides:       func(c *Certificate) { c.OidcMethodId = "bad-id" },
 			wantErr:         false,
 			wantRowsDeleted: 0,
 		},
 		{
 			name:            "bad-pem",
-			Certificate:     testResource(testAuthMethod.PublicId, pem2),
+			Certificate:     testResource(testAuthMethod.PublicId, pem4),
 			overrides:       func(c *Certificate) { c.Cert = "bad-pem" },
 			wantErr:         false,
 			wantRowsDeleted: 0,
