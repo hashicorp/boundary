@@ -120,7 +120,7 @@ func TestConvertToUrls(t *testing.T, urls ...string) []*url.URL {
 
 // testGenerateCA will generate a test x509 CA cert, along with it encoded in a
 // PEM format.
-func testGenerateCA(t *testing.T, hosts []string) (*x509.Certificate, string) {
+func testGenerateCA(t *testing.T, hosts ...string) (*x509.Certificate, string) {
 	t.Helper()
 	require := require.New(t)
 
