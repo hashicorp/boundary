@@ -73,7 +73,7 @@ func (s *SigningAlg) validate(caller errors.Op) error {
 		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if _, ok := supportedAlgorithms[Alg(s.Alg)]; !ok {
-		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("unsupported signing algorithm: %s", a.Alg))
+		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("unsupported signing algorithm: %s", s.Alg))
 	}
 	return nil
 }
