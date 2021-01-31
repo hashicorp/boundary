@@ -59,8 +59,8 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithCertificates", func(t *testing.T) {
 		assert := assert.New(t)
-		testCert, _ := testGenerateCA(t, []string{"localhost"})
-		testCert2, _ := testGenerateCA(t, []string{"127.0.0.1"})
+		testCert, _ := testGenerateCA(t, "localhost")
+		testCert2, _ := testGenerateCA(t, "127.0.0.1")
 
 		opts := getOpts(WithCertificates(testCert, testCert2))
 		testOpts := getDefaultOptions()
