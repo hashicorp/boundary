@@ -13,7 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestCertificate_Create(t *testing.T) {
+func TestAudClaim_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -26,15 +26,14 @@ func TestCertificate_Create(t *testing.T) {
 
 	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
 
-	_, pem := testGenerateCA(t, "localhost")
 	type args struct {
 		authMethodId string
-		certificate  string
+		aud          string
 	}
 	tests := []struct {
 		name            string
 		args            args
-		want            *Certificate
+		want            *AudClaim
 		wantErr         bool
 		wantIsErr       errors.Code
 		create          bool
@@ -45,26 +44,28 @@ func TestCertificate_Create(t *testing.T) {
 			name: "valid",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				certificate:  pem,
+				aud:          "valid",
 			},
 			create: true,
-			want: func() *Certificate {
-				want, err := NewCertificate(testAuthMethod.PublicId, pem)
-				require.NoError(t, err)
-				return want
+			want: func() *AudClaim {
+				want := AllocAudClaim()
+				want.OidcMethodId = testAuthMethod.PublicId
+				want.Aud = "valid"
+				return &want
 			}(),
 		},
 		{
-			name: "dup",
+			name: "dup", // must follow "valid" test. Url must be be unique for an OidcMethodId
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				certificate:  pem,
+				aud:          "valid",
 			},
 			create: true,
-			want: func() *Certificate {
-				want, err := NewCertificate(testAuthMethod.PublicId, pem)
-				require.NoError(t, err)
-				return want
+			want: func() *AudClaim {
+				want := AllocAudClaim()
+				want.OidcMethodId = testAuthMethod.PublicId
+				want.Aud = "valid"
+				return &want
 			}(),
 			wantCreateErr:   true,
 			wantCreateIsErr: errors.NotUnique,
@@ -73,16 +74,16 @@ func TestCertificate_Create(t *testing.T) {
 			name: "empty-auth-method",
 			args: args{
 				authMethodId: "",
-				certificate:  pem,
+				aud:          "empty-auth-method",
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name: "empty-certificate",
+			name: "empty-aud",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				certificate:  "",
+				aud:          "",
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -91,7 +92,7 @@ func TestCertificate_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewCertificate(tt.args.authMethodId, tt.args.certificate)
+			got, err := NewAudClaim(tt.args.authMethodId, tt.args.aud)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -109,15 +110,15 @@ func TestCertificate_Create(t *testing.T) {
 				} else {
 					assert.NoError(err)
 				}
-				found := AllocCertificate()
-				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and certificate = ?", tt.args.authMethodId, tt.args.certificate))
+				found := AllocAudClaim()
+				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and aud_claim = ?", tt.args.authMethodId, tt.args.aud))
 				assert.Equal(got, &found)
 			}
 		})
 	}
 }
 
-func TestCertificate_Delete(t *testing.T) {
+func TestAudClaim_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -127,8 +128,6 @@ func TestCertificate_Delete(t *testing.T) {
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-
-	cert, _ := testGenerateCA(t, "localhost")
 
 	testAuthMethod :=
 		TestAuthMethod(
@@ -140,41 +139,38 @@ func TestCertificate_Delete(t *testing.T) {
 			TestConvertToUrls(t, "https://alice.com")[0],
 			"alice_rp",
 			"my-dogs-name",
-			WithCertificates(cert)) // seed an extra callback url to just make sure the delete only gets the right num of rows
+			WithAudClaims("alice.com")) // seed an extra callback url to just make sure the delete only gets the right num of rows
 
-	// make another test cert
-	_, pem2 := testGenerateCA(t, "localhost")
-
-	testResource := func(authMethodId string, cert string) *Certificate {
-		c, err := NewCertificate(authMethodId, cert)
+	testResource := func(authMethodId string, AudClaim string) *AudClaim {
+		c, err := NewAudClaim(authMethodId, AudClaim)
 		require.NoError(t, err)
 		return c
 	}
 	tests := []struct {
 		name            string
-		Certificate     *Certificate
+		AudClaim        *AudClaim
 		wantRowsDeleted int
-		overrides       func(*Certificate)
+		overrides       func(*AudClaim)
 		wantErr         bool
 		wantErrMsg      string
 	}{
 		{
 			name:            "valid",
-			Certificate:     testResource(testAuthMethod.PublicId, pem2),
+			AudClaim:        testResource(testAuthMethod.PublicId, "valid"),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
 		{
 			name:            "bad-OidcMethodId",
-			Certificate:     testResource(testAuthMethod.PublicId, pem2),
-			overrides:       func(c *Certificate) { c.OidcMethodId = "bad-id" },
+			AudClaim:        testResource(testAuthMethod.PublicId, "valid"),
+			overrides:       func(c *AudClaim) { c.OidcMethodId = "bad-id" },
 			wantErr:         false,
 			wantRowsDeleted: 0,
 		},
 		{
-			name:            "bad-pem",
-			Certificate:     testResource(testAuthMethod.PublicId, pem2),
-			overrides:       func(c *Certificate) { c.Cert = "bad-pem" },
+			name:            "bad-aud",
+			AudClaim:        testResource(testAuthMethod.PublicId, "valid"),
+			overrides:       func(c *AudClaim) { c.Aud = "bad-aud" },
 			wantErr:         false,
 			wantRowsDeleted: 0,
 		},
@@ -183,7 +179,7 @@ func TestCertificate_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
-			cp := tt.Certificate.Clone()
+			cp := tt.AudClaim.Clone()
 			require.NoError(rw.Create(ctx, &cp))
 
 			if tt.overrides != nil {
@@ -200,20 +196,18 @@ func TestCertificate_Delete(t *testing.T) {
 				return
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			found := AllocCertificate()
-			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and certificate = ?", tt.Certificate.OidcMethodId, tt.Certificate.Cert)
+			found := AllocAudClaim()
+			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and aud_claim = ?", tt.AudClaim.OidcMethodId, tt.AudClaim.Aud)
 			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }
 
-func TestCertificate_Clone(t *testing.T) {
+func TestAudClaim_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	_, pem := testGenerateCA(t, "localhost")
-	_, pem2 := testGenerateCA(t, "127.0.0.1")
 
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -221,10 +215,10 @@ func TestCertificate_Clone(t *testing.T) {
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
-		orig, err := NewCertificate(m.PublicId, pem)
+		orig, err := NewAudClaim(m.PublicId, "eve.com")
 		require.NoError(err)
 		cp := orig.Clone()
-		assert.True(proto.Equal(cp.Certificate, orig.Certificate))
+		assert.True(proto.Equal(cp.AudClaim, orig.AudClaim))
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -232,19 +226,19 @@ func TestCertificate_Clone(t *testing.T) {
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
-		orig, err := NewCertificate(m.PublicId, pem)
+		orig, err := NewAudClaim(m.PublicId, "eve.com")
 		require.NoError(err)
-		orig2, err := NewCertificate(m.PublicId, pem2)
+		orig2, err := NewAudClaim(m.PublicId, "alice.com")
 		require.NoError(err)
 
 		cp := orig.Clone()
-		assert.True(!proto.Equal(cp.Certificate, orig2.Certificate))
+		assert.True(!proto.Equal(cp.AudClaim, orig2.AudClaim))
 	})
 }
 
-func TestCertificate_SetTableName(t *testing.T) {
+func TestAudClaim_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := DefaultCertificateTableName
+	defaultTableName := DefaultAudClaimTableName
 	tests := []struct {
 		name      string
 		setNameTo string
@@ -264,9 +258,9 @@ func TestCertificate_SetTableName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			def := AllocCertificate()
+			def := AllocAudClaim()
 			require.Equal(defaultTableName, def.TableName())
-			m := AllocCertificate()
+			m := AllocAudClaim()
 			m.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, m.TableName())
 		})
