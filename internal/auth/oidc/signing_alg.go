@@ -86,7 +86,7 @@ func AllocSigningAlg() SigningAlg {
 }
 
 // Clone a SigningAlg
-func (s *SigningAlg) clone() *SigningAlg {
+func (s *SigningAlg) Clone() *SigningAlg {
 	cp := proto.Clone(s.SigningAlg)
 	return &SigningAlg{
 		SigningAlg: cp.(*store.SigningAlg),
