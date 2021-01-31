@@ -79,6 +79,16 @@ func TestAuthMethod(
 		err := rw.CreateItems(ctx, newCerts)
 		require.NoError(err)
 	}
+	if len(opts.withSigningAlgs) > 0 {
+		newAlgs := make([]interface{}, 0, len(opts.withSigningAlgs))
+		for _, a := range opts.withSigningAlgs {
+			alg, err := NewSigningAlg(authMethod.PublicId, a)
+			require.NoError(err)
+			newAlgs = append(newAlgs, alg)
+		}
+		err := rw.CreateItems(ctx, newAlgs)
+		require.NoError(err)
+	}
 	return authMethod
 }
 
