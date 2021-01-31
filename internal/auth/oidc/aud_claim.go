@@ -7,14 +7,24 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// DefaultAuthMethodTableName defines the default table name for an AudClaim
+// DefaultAudClaimTableName defines the default table name for an AudClaim
 const DefaultAudClaimTableName = "auth_oidc_aud_claim"
 
+// AudClaim defines an audience claim for an OIDC auth method.  Audiences are
+// "owned" by their coresponding OIDC auth method.
+//
+// see aud claim in the oidc spec:
+// https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 type AudClaim struct {
 	*store.AudClaim
 	tableName string
 }
 
+// NewAudClaim creates a new in memory audience claim for an OIDC AuthMethod. It
+// supports no options.
+//
+// For more info on oidc aud claims, see the oidc spec:
+// https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 func NewAudClaim(authMethodId string, audClaim string) (*AudClaim, error) {
 	const op = "oidc.NewCallbackUrl"
 
@@ -30,19 +40,25 @@ func NewAudClaim(authMethodId string, audClaim string) (*AudClaim, error) {
 	return c, nil
 }
 
+// validate the AudClaim.  On success, it will return nil.
 func (a *AudClaim) validate(caller errors.Op) error {
+	if a.OidcMethodId == "" {
+		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
+	}
 	if a.Aud == "" {
 		return errors.New(errors.InvalidParameter, caller, "empty aud claim")
 	}
 	return nil
 }
 
+// AllocAudClaim make an empty one in memory.
 func AllocAudClaim() AudClaim {
 	return AudClaim{
 		AudClaim: &store.AudClaim{},
 	}
 }
 
+// Clone an AudClaim
 func (c *AudClaim) Clone() *AudClaim {
 	cp := proto.Clone(c.AudClaim)
 	return &AudClaim{
@@ -63,6 +79,7 @@ func (c *AudClaim) SetTableName(n string) {
 	c.tableName = n
 }
 
+// oplog will create oplog metadata for the AudClaim.
 func (c *AudClaim) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{c.OidcMethodId}, // the auth method is the root aggregate
