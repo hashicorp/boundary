@@ -6,8 +6,10 @@ import (
 )
 
 const (
+	// AuthMethodPrefix defines the prefix for AuthMethod public ids.
 	AuthMethodPrefix = "amoidc"
-	AccountPrefix    = "acctoidc"
+	// AccountPrefix defines the prefix for Account public ids.
+	AccountPrefix = "acctoidc"
 )
 
 func newAuthMethodId() (string, error) {

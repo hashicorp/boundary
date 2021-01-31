@@ -45,14 +45,15 @@ var supportedAlgorithms = map[Alg]bool{
 const DefaultSigningAlgTableName = "auth_oidc_signing_alg"
 
 // SigningAlg defines an signing algorithm supported by an OIDC auth method.
-// SigningAlgs are "owned" by their coresponding OIDC auth method.
+// It is assigned to an OIDC AuthMethod and updates/deletes to that AuthMethod
+// are cascaded to its SigningAlgs.
 type SigningAlg struct {
 	*store.SigningAlg
 	tableName string
 }
 
-// NewSigningAlg creates a new in memory signing alg for an OIDC AuthMethod. It
-// supports no options.
+// NewSigningAlg creates a new in memory signing alg assigned to an OIDC
+// AuthMethod. It supports no options.
 func NewSigningAlg(authMethodId string, alg Alg) (*SigningAlg, error) {
 	const op = "oidc.NewSigningAlg"
 	s := &SigningAlg{

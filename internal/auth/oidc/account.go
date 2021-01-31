@@ -12,16 +12,34 @@ import (
 // DefaultAccountTableName defines the default table name for an Account
 const DefaultAccountTableName = "auth_oidc_account"
 
-// Account contains an OIDC auth method configuration. It is owned
-// by a scope.
+// Account contains an OIDC auth method configuration. It is assigned to an OIDC
+// AuthMethod and updates/deletes to that AuthMethod are cascaded to its Accounts.
 type Account struct {
 	*store.Account
 	tableName string
 }
 
-// NewAccount creates a new in memory Account assigned to authMethodId.
+// NewAccount creates a new in memory Account assigned to OIDC AuthMethod.
 // WithFullName, WithEmail, WithName and WithDescription are the only valid
 // options. All other options are ignored.
+//
+// Issuer_id equals the Verifiable Identifier for an Issuer. An Issuer
+// Identifier is a case sensitive URL using the https scheme that contains
+// scheme, host, and optionally, port number and path components and no query or
+// fragment components.
+//
+// SubjectId equals the locally unique and never reassigned identifier within
+// the Issuer for the End-User, which is intended to be consumed by the Client.
+//
+// FullName equals the End-User's full name in displayable form including all name
+// parts, possibly including titles and suffixes, ordered according to the
+// End-User's locale and preferences.
+//
+// Email equals the End-User's preferred e-mail address. Its value MUST conform
+// to the RFC 5322 [RFC5322] addr-spec syntax. The RP MUST NOT rely upon this
+// value being unique
+//
+// See: https://openid.net/specs/openid-connect-core-1_0.html
 func NewAccount(authMethodId string, issuerId *url.URL, subjectId string, opt ...Option) (*Account, error) {
 	const op = "oidc.NewAccount"
 

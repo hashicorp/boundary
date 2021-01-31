@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAuthMethod creates an oidc auth method
+// TestAuthMethod creates a test oidc auth method
 func TestAuthMethod(
 	t *testing.T,
 	conn *gorm.DB,

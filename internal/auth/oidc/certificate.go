@@ -15,21 +15,23 @@ import (
 const DefaultCertificateTableName = "auth_oidc_certificate"
 
 // Certificate defines a certificate to use as part of a trust root when
-// connecting to the auth method's OIDC Provider.
+// connecting to the auth method's OIDC Provider.  It is assigned to an OIDC
+// AuthMethod and updates/deletes to that AuthMethod are cascaded to its
+// Certificates.
 type Certificate struct {
 	*store.Certificate
 	tableName string
 }
 
-// NewCertificate creates a new in memory certificate for an OIDC auth method.
-// Certificates are "owned" by their coresponding OIDC auth method.
-func NewCertificate(authMethodId string, cert string) (*Certificate, error) {
+// NewCertificate creates a new in memory certificate assigned to and OIDC auth
+// method.
+func NewCertificate(authMethodId string, certificatePem string) (*Certificate, error) {
 	const op = "oidc.NewCallbackUrl"
 
 	c := &Certificate{
 		Certificate: &store.Certificate{
 			OidcMethodId: authMethodId,
-			Cert:         cert,
+			Cert:         certificatePem,
 		},
 	}
 	if err := c.validate(op); err != nil {

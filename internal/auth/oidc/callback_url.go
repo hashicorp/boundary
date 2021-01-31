@@ -12,8 +12,9 @@ import (
 // DefaultCallbackUrlTableName defines the default table name for a CallbackUrl
 const DefaultCallbackUrlTableName = "auth_oidc_callback_url"
 
-// CallbackUrl defines an callback URL for an OIDC auth method.  Callbacks are
-// "owned" by their coresponding OIDC auth method.
+// CallbackUrl defines an callback URL for an OIDC auth method. It is assigned
+// to an OIDC AuthMethod and updates/deletes to that AuthMethod are cascaded to
+// its CallbackUrls.
 //
 // see redirect_uri in the oidc spec:
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
@@ -22,8 +23,8 @@ type CallbackUrl struct {
 	tableName string
 }
 
-// NewCallbackUrl creates a new in memory callback for an OIDC AuthMethod.  It
-// supports no options.
+// NewCallbackUrl creates a new in memory callback assigned to an OIDC
+// AuthMethod.  It supports no options.
 //
 // For more info on oidc callbacks, see redirect_uri in the oidc spec:
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest

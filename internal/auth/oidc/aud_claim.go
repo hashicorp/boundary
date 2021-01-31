@@ -10,8 +10,9 @@ import (
 // DefaultAudClaimTableName defines the default table name for an AudClaim
 const DefaultAudClaimTableName = "auth_oidc_aud_claim"
 
-// AudClaim defines an audience claim for an OIDC auth method.  Audiences are
-// "owned" by their coresponding OIDC auth method.
+// AudClaim defines an audience claim for an OIDC auth method.  It is assigned
+// to an OIDC AuthMethod and updates/deletes to that AuthMethod are cascaded to
+// its AudClaims.
 //
 // see aud claim in the oidc spec:
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
@@ -20,8 +21,10 @@ type AudClaim struct {
 	tableName string
 }
 
-// NewAudClaim creates a new in memory audience claim for an OIDC AuthMethod. It
-// supports no options.
+// NewAudClaim creates a new in memory audience claim assigned to an OIDC
+// AuthMethod. It supports no options.  If an AuthMethod as assigned AudClaims,
+// then ID tokens issued from the provider must contain one of the assigned
+// audiences to be valid.
 //
 // For more info on oidc aud claims, see the oidc spec:
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
