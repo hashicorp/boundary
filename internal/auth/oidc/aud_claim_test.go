@@ -162,14 +162,14 @@ func TestAudClaim_Delete(t *testing.T) {
 		},
 		{
 			name:            "bad-OidcMethodId",
-			AudClaim:        testResource(testAuthMethod.PublicId, "valid"),
+			AudClaim:        testResource(testAuthMethod.PublicId, "valid-2"),
 			overrides:       func(c *AudClaim) { c.OidcMethodId = "bad-id" },
 			wantErr:         false,
 			wantRowsDeleted: 0,
 		},
 		{
 			name:            "bad-aud",
-			AudClaim:        testResource(testAuthMethod.PublicId, "valid"),
+			AudClaim:        testResource(testAuthMethod.PublicId, "valid-3"),
 			overrides:       func(c *AudClaim) { c.Aud = "bad-aud" },
 			wantErr:         false,
 			wantRowsDeleted: 0,
