@@ -92,6 +92,22 @@ func TestAuthMethod(
 	return authMethod
 }
 
+func TestAccount(t *testing.T, conn *gorm.DB, authMethodId string, issuerId *url.URL, subjectId string, opt ...Option) *Account {
+	require := require.New(t)
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	a, err := NewAccount(authMethodId, issuerId, subjectId, opt...)
+	require.NoError(err)
+
+	id, err := newAccountId()
+	require.NoError(err)
+	a.PublicId = id
+
+	require.NoError(rw.Create(ctx, a))
+	return a
+}
+
 // TestEncodeCertificates will encode a number of x509 certificates to PEMs.
 func TestEncodeCertificates(t *testing.T, certs ...*x509.Certificate) []string {
 	t.Helper()
