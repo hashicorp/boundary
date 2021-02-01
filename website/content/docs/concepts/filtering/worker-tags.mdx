@@ -19,10 +19,10 @@ printable value. Each key can have more than one value:
 
 ```hcl
 worker {
-    name = "web-prod-us-east-1"
-	tags {
-        region = ["us-east-1"]
-        type = ["prod", "webservers"]
+  name = "web-prod-us-east-1"
+  tags {
+    region = ["us-east-1"]
+    type   = ["prod", "webservers"]
 	}
 }
 ```
@@ -47,8 +47,8 @@ possible to specify the tags in a pure key=value style:
 
 ```hcl
 worker {
-    name = "web-prod-us-east-1"
-	tags = ["region=us-east-1", "type=prod", "type=webservers"]
+  name = "web-prod-us-east-1"
+  tags = ["region=us-east-1", "type=prod", "type=webservers"]
 }
 ```
 
