@@ -45,6 +45,7 @@ create table auth_oidc_method (
 -- auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc
 -- auth method.  There must be at least one allowed alg for each oidc auth method.
 create table auth_oidc_signing_alg (
+  create_time wt_timestamp,
   oidc_method_id wt_public_id 
     references auth_oidc_method(public_id)
     on delete cascade
@@ -60,6 +61,7 @@ create table auth_oidc_signing_alg (
 -- oidc auth method.  There must be at least one callback url for each oidc auth
 -- method. 
 create table auth_oidc_callback_url (
+  create_time wt_timestamp,
   oidc_method_id wt_public_id 
     references auth_oidc_method(public_id)
     on delete cascade
@@ -72,6 +74,7 @@ create table auth_oidc_callback_url (
 -- method.  There can be 0 or more for each parent oidc auth method.  If an auth
 -- method has any aud claims, an ID token must contain one of them to be valid. 
 create table auth_oidc_aud_claim (
+  create_time wt_timestamp,
   oidc_method_id wt_public_id 
     references auth_oidc_method(public_id)
     on delete cascade
@@ -90,6 +93,7 @@ create table auth_oidc_aud_claim (
 -- used as trust anchors when connecting to the auth method's oidc provider
 -- (instead of the host system's cert chain).
 create table auth_oidc_certificate (
+  create_time wt_timestamp,
   oidc_method_id wt_public_id 
     references auth_oidc_method(public_id)
     on delete cascade
@@ -195,5 +199,31 @@ create trigger
   insert_auth_account_subtype
 before insert on auth_oidc_account
   for each row execute procedure insert_auth_account_subtype();
+
+-- triggers for auth_oidc_method children tables: auth_oidc_aud_claim,
+-- auth_oidc_callback_url, 
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_aud_claim
+  for each row execute procedure default_create_time();
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_callback_url
+  for each row execute procedure default_create_time();
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_certificate
+  for each row execute procedure default_create_time();
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_signing_alg
+  for each row execute procedure default_create_time();
 
 commit;
