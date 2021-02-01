@@ -30,6 +30,7 @@ const (
 	TicketAlreadyRedeemed Code = 106 // TicketAlreadyRedeemed represents that the ticket version has already been redeemed
 	TicketNotFound        Code = 107 // TicketNotFound represents that the ticket was not found
 	Io                    Code = 108 // Io represents that an io error occurred in an underlying call (i.e binary.Write)
+	InvalidTimeStamp      Code = 109 // InvalidTimeStamp represents an invalid time stamp for an operation
 
 	// PasswordTooShort results from attempting to set a password which is to short.
 	PasswordTooShort Code = 200

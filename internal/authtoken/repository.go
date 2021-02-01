@@ -157,7 +157,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	if opts.withTokenValue {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(at.GetKeyId()))
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 		}
 		if err := at.decrypt(ctx, databaseWrapper); err != nil {
 			return nil, errors.Wrap(err, op)
@@ -200,13 +200,11 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	// If the token is too old or stale invalidate it and return nothing.
 	exp, err := ptypes.Timestamp(retAT.GetExpirationTime().GetTimestamp())
 	if err != nil {
-		// hmm
-		return nil, errors.Wrap(err, op, errors.WithMsg("expiration time"))
+		return nil, errors.Wrap(err, op, errors.WithMsg("expiration time"), errors.WithCode(errors.InvalidTimeStamp))
 	}
 	lastAccessed, err := ptypes.Timestamp(retAT.GetApproximateLastAccessTime().GetTimestamp())
 	if err != nil {
-		// maybe should just return "invalid token?"
-		return nil, errors.Wrap(err, op, errors.WithMsg("last accessed time"))
+		return nil, errors.Wrap(err, op, errors.WithMsg("last accessed time"), errors.WithCode(errors.InvalidTimeStamp))
 	}
 
 	now := time.Now()
