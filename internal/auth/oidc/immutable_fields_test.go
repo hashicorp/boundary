@@ -86,3 +86,79 @@ func TestAuthMethod_ImmutableFields(t *testing.T) {
 		})
 	}
 }
+
+func TestAudClaim_ImmutableFields(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	rw := db.New(conn)
+	ctx := context.Background()
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+
+	am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name", WithAudClaims("alice.com"))
+
+	new := AllocAudClaim()
+	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", am.PublicId, "alice.com"))
+
+	tests := []struct {
+		name      string
+		update    *AudClaim
+		fieldMask []string
+	}{
+		{
+			name: "oidc_method_id",
+			update: func() *AudClaim {
+				cp := new.Clone()
+				cp.OidcMethodId = "p_thisIsNotAValidId"
+				return cp
+			}(),
+			fieldMask: []string{"PublicId"},
+		},
+		{
+			name: "create time",
+			update: func() *AudClaim {
+				cp := new.Clone()
+				cp.CreateTime = &ts
+				return cp
+			}(),
+			fieldMask: []string{"CreateTime"},
+		},
+		{
+			name: "aud",
+			update: func() *AudClaim {
+				cp := new.Clone()
+				cp.Aud = "o_thisIsNotAValidId"
+				return cp
+			}(),
+			fieldMask: []string{"ScopeId"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			orig := new.Clone()
+			orig.SetTableName(DefaultAuthMethodTableName)
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", orig.OidcMethodId, orig.Aud))
+
+			require.NoError(err)
+
+			tt.update.SetTableName(DefaultAuthMethodTableName)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+			require.Error(err)
+			assert.Equal(0, rowsUpdated)
+
+			after := new.Clone()
+			after.SetTableName(DefaultAuthMethodTableName)
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", after.OidcMethodId, after.Aud))
+
+			assert.True(proto.Equal(orig, after))
+		})
+	}
+}
